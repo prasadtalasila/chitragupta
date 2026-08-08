@@ -1,6 +1,6 @@
 ---
 name: corpus-reviser
-description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme in sections.md, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m src.citation_gate` before presenting.
+description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m src.citation_gate` before presenting.
 tags: [revision, dossier, citation, corpus]
 ---
 
@@ -49,7 +49,7 @@ user's to run.
 ## Say what it costs, before you start
 
 One sentence, before the first search, and let them stop you. A wide pass
-re-searches every sub-theme in `sections.md` and reads the whole draft,
+re-searches every sub-theme the dossier records and reads the whole draft,
 so it costs roughly what the original drafting run did, minus the
 clustering and the writing.
 
@@ -71,8 +71,13 @@ is judging the whole draft against the corpus, not one claim.
 
 **Step 4 stops being a decision.** In `draft-reviser` the question is
 whether to search at all, and the answer is usually no. Here it is
-already answered. Work through the sub-themes in `sections.md`, one
-search each:
+already answered.
+
+Take the sub-themes from `retrieval.md`'s recorded queries where the
+dossier has them -- those are the questions this draft was actually built
+by asking. Fall back to the section headings in `sections.md` where it
+doesn't, which is the case for any draft written before `--log` was
+passed. One search each:
 
 ```bash
 python3 -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<path>
