@@ -183,7 +183,7 @@ docs/                     reference docs that ship in the release zip -- everyth
                             re-running the pipeline that produced it
   TOKENS.md                 where a run's tokens go -- the resident/one-shot pools, two worked
                             examples, and how to measure it without paying for a full run
-  GENRE.md                  the six skills in .claude/: which writes what, how to pick, and what
+  GENRE.md                  the seven skills in .claude/: which writes what, how to pick, and what
                             each one refuses to do
   LADDERS.md                every automatic fallback chain the code walks, and every tier you pick
                             yourself -- and what the bottom rung of each costs

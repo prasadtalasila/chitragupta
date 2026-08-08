@@ -484,12 +484,26 @@ someone else's draft, and [SOUL.md](../SOUL.md) puts "let a machine
 outrank a human on a judgment call" under what this assistant will not
 do.
 
-So `draft-reviser` carries a second mode with a different cost profile:
-a wide pass that re-searches every sub-theme in `sections.md` and reads
-the whole draft. It is invoked when the user asks for it, when an agreed
-scope change invalidated the old queries, or when the draft is being
-re-targeted at a different reader -- and its cost is stated before it
-runs rather than discovered afterwards in `retrieval.md`.
+So the way out is a second skill, `corpus-reviser`: a wide pass that
+re-searches every sub-theme in `sections.md` and reads the whole draft.
+It is invoked when the user asks for it, when an agreed scope change
+invalidated the old queries, or when the draft is being re-targeted at a
+different reader -- and its cost is stated before it runs rather than
+discovered afterwards in `retrieval.md`.
+
+**Why a separate skill rather than a mode.** A split only enforces
+anything if it removes a capability. `draft-reviser` now contains no
+instructions for a wide search, so following it cannot produce one by
+drift -- which is the strongest enforcement available for a rule that
+must not become a gate. It also makes the expensive path something the
+user opts into by name, once, instead of something a model decides on
+their behalf mid-revision.
+
+The same test is why re-grounding is *not* a third skill. Its cost is
+bounded by construction -- candidates come from the queries already in
+`retrieval.md`, so it cannot invent one -- and splitting it out would
+remove no dangerous capability while duplicating the repair-and-edit
+loop.
 
 The guardrail that survives is narrower than "never re-search widely". It
 is **never re-run the genre skill**, which is a different act: it

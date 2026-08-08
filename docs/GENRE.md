@@ -4,8 +4,9 @@ Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
 as it stands.
 
 Which skill writes what, how to pick between them, and what each one
-refuses to do. Six skills live in `.claude/`: five that write a new draft
-and one that changes an existing one.
+refuses to do. Seven skills live in `.claude/`: five that write a new
+draft, and two that change an existing one -- one cheap and scoped, one
+that goes back to the whole corpus when you ask it to.
 
 You do not invoke any of them by name. Each has a `description` in its
 frontmatter that names its triggers, and asking for the thing in ordinary
@@ -16,7 +17,7 @@ and when you want to know why the one that ran refused something.
 
 Related reading:
 
-- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules all six
+- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules all seven
   share, and where in the technical-communication literature they come
   from.
 - [DRAFT-ITERATION.md](DRAFT-ITERATION.md) -- the dossier every skill
@@ -32,7 +33,8 @@ Related reading:
 - [At a glance](#at-a-glance)
 - [The five drafting genres](#the-five-drafting-genres)
 - [Revising: draft-reviser](#revising-draft-reviser)
-- [What all six have in common](#what-all-six-have-in-common)
+- [Revising widely: corpus-reviser](#revising-widely-corpus-reviser)
+- [What all seven have in common](#what-all-seven-have-in-common)
 - [The boundaries, and why they are enforced](#the-boundaries-and-why-they-are-enforced)
 - [Genres this project does not have](#genres-this-project-does-not-have)
 
@@ -42,7 +44,9 @@ Two questions settle it almost always.
 
 **Does the draft already exist in `content/drafts/`?** Then the answer is
 `draft-reviser`, whatever the genre. Never re-run the skill that wrote
-it.
+it. The one exception is when you want the whole corpus re-searched and
+have said so -- that is `corpus-reviser`, and it is still not the genre
+skill.
 
 **Otherwise: what is the reader doing while they read?**
 
@@ -72,6 +76,7 @@ both.
 | `tutorial-writer` | `content/drafts/<slug>.md` | closing section only | none | one run, plus running the lesson |
 | `deep-research` | `content/drafts/deep-research-<slug>.md` | every claim | 6 interviewers, N writers, 4 reviewers | heaviest by design |
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
+| `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass -- by request only |
 
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
@@ -232,15 +237,44 @@ already been chosen. [TOKENS.md](TOKENS.md) is why the rule exists.
 and the only mechanical gate in the pipeline is `citation_gate`. That is
 deliberate -- [SOUL.md](../SOUL.md) puts "let a machine outrank a human
 on a judgment call" under *what you will not do*, and how wide a revision
-should look is exactly such a call. So `draft-reviser` also carries a
-deliberate **wide pass**: re-search every sub-theme, read the whole
-draft, say what it costs first. What makes that different from re-running
-the genre skill is that it keeps the dossier -- the rejections and their
-reasons, the reader, the glossary, the steering -- and spends tokens only
-on what is genuinely unknown. The thing that stays never is discarding
-that state and rediscovering a worse version of it.
+should look is exactly such a call. So the way out is a door rather than
+an exception: `corpus-reviser`, below.
 
-## What all six have in common
+## Revising widely: `corpus-reviser`
+
+Also not a genre. The same act as `draft-reviser` -- changing a draft
+that already exists -- with one thing different: it re-searches every
+sub-theme in `sections.md` and reads the whole draft, instead of the one
+sub-theme a change touches.
+
+**It is a separate skill so that the choice is yours, and structural.**
+`draft-reviser` contains no instructions for a wide search, so following
+it cannot drift into one; asking for `corpus-reviser` is how you say the
+cost is worth it. A rule that lived as a paragraph inside one skill would
+depend on the model noticing it, which is exactly the kind of enforcement
+this project does not trust.
+
+Invoke it when you ask for a whole-corpus pass in as many words, when a
+scope change you agreed to has invalidated the recorded queries, or when
+the draft is being re-targeted at a different reader. Anything else --
+including repairing citations after a sync moved the corpus -- is
+`draft-reviser`. When it is genuinely unclear, the skills are told to
+pick `draft-reviser` and say so: being wrongly narrow costs a clarifying
+sentence, being wrongly wide costs the tokens.
+
+What it does *not* relax is the point of doing it here rather than by
+re-running the genre skill. It still consults and honours `rejected.md`,
+still logs every call to `retrieval.md`, still edits section by section
+rather than rewriting the file -- a wide *search* does not imply a wide
+*rewrite* -- still writes the dossier back, and still exits through the
+gate. It keeps the rejections and their reasons, the reader, the glossary
+and the steering, and spends tokens only on what is genuinely unknown.
+
+The thing that stays never, in both skills, is re-running the genre
+skill: that discards all of that state and pays to rediscover a worse
+version of it.
+
+## What all seven have in common
 
 These are not per-skill choices. They are the same rules restated in six
 files, and a skill that broke one would be the bug.

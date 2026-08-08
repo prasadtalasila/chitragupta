@@ -1,6 +1,6 @@
 ---
 name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure, re-target or correct a draft that already exists, including in a session that did not write it. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. Handles a deliberate wide pass too -- "re-check the whole draft against the corpus", "search everything, cost regardless" -- which stays in this skill because it keeps the dossier, rather than re-running the genre skill. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.citation_gate` before presenting and never invents a citekey.
+description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure, re-target or correct a draft that already exists, including in a session that did not write it. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.citation_gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
@@ -25,7 +25,7 @@ is shaped that way.
 | User asks for a **new** draft on a topic | Use the matching genre skill |
 | The draft exists but has no dossier | Bootstrap one (below), then continue here |
 | A sync moved the corpus, or `dossier status --all` names this draft | Re-grounding mode (below), not the ordinary loop |
-| User asks to re-check the **whole** draft against the corpus, cost regardless | Still this skill -- the wide pass below, never the genre skill |
+| User asks to re-check the **whole** draft against the corpus, cost regardless | Hand off to `corpus-reviser` -- not this skill, and never the genre skill |
 | User asks for a different genre of the same topic | That's a new draft -- use the genre skill |
 | Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
@@ -305,62 +305,26 @@ the candidate list by writing unpursued papers into `rejected.md` -- a
 rejection recorded from a title alone is a judgment you did not make, and
 `rejected.md` is trusted permanently by every revision after this one.
 
-## Revising against the whole corpus, deliberately
+## When a whole-corpus pass is what's wanted
 
 Everything above optimises for the common case: a change touches one
 sub-theme, so one sub-theme gets re-searched. That default is right often
-enough to be the default, and wrong often enough to need an exit.
+enough to be the default, and wrong often enough to need a way out.
 
-**The rule is not "never re-search widely". It is "never do it
-silently".** How wide a revision should look is a judgment about the
-user's draft, and `SOUL.md` is explicit that a machine does not outrank a
-human on one of those. If they ask for a full pass over the corpus, they
-get it -- with the cost said out loud first, not with a lecture.
+The way out is a different skill. **`corpus-reviser`** re-searches every
+sub-theme in `sections.md` and reads the whole draft, and it keeps the
+dossier while doing it. Hand off to it when the user asks for a wide pass
+in as many words, when a scope change they agreed to in step 2 has
+invalidated the recorded queries, or when the draft is being re-targeted
+at a different reader.
 
-Do it when any of these is true:
+The rule was never "never re-search widely" -- it is **never do it
+silently, and never in this skill**. Deliberately, nothing above tells
+you how to run a wide search, so following this skill cannot produce one
+by drift. Say what you think the request needs and let the user choose.
 
-- The user asks for it in as many words ("re-check the whole thing
-  against the corpus", "look at everything, I don't care what it costs").
-- The scope widened in step 2 and they agreed. The old queries were
-  chosen for the old scope, so re-searching only the sub-theme in play
-  would search the wrong thing.
-- The draft is being re-targeted to a different reader. What counts as
-  supporting evidence changes with the reader, so the kept set has to be
-  re-judged rather than extended.
-
-Say what it costs before starting, in one sentence, and let them stop
-you: a wide pass re-searches every sub-theme in `sections.md` and reads
-the whole draft, so it costs roughly what the original run did, minus the
-clustering and the drafting.
-
-What changes: you search per sub-theme across the draft rather than for
-the one change in play, and you read the whole draft rather than a
-section.
-
-**What does not change is the point of doing it here rather than by
-re-running the genre skill.** All of it still holds:
-
-- `rejected.md` is still consulted first, and a paper listed there with a
-  reason is still not re-retrieved and re-judged. A wide search is not a
-  licence to re-litigate old rejections -- it finds what was never
-  weighed, not what was already turned down.
-- Every call still carries `--log`, so the cost of the expensive choice
-  lands in `retrieval.md` and is visible afterwards instead of being
-  guessed at.
-- Edits are still `Edit`, section by section, never a whole-file `Write`.
-  A wide *search* does not imply a wide *rewrite*: most sections usually
-  survive a re-check untouched, and rewriting those is pure cost.
-- `scope.md`, `evidence.md`, `rejected.md`, `sections.md`, `steering.md`
-  and `revisions.md` are all still written back, and `revisions.md` says
-  plainly that this pass was wide and why.
-- The gate is still the exit.
-
-Re-running the genre skill remains the one thing that is never right,
-and it is a different thing from this. It throws away the dossier --
-every rejection and its reason, the recorded reader, the glossary, the
-steering -- and then pays to rediscover a worse version of it. A wide
-re-search keeps all of that and spends tokens only on what is actually
-unknown.
+What stays never, in either skill, is re-running the genre skill. That
+discards the dossier and pays to rediscover a worse version of it.
 
 ## When there is no dossier
 
@@ -387,11 +351,15 @@ citekey.
 
 - **Never re-run the genre skill to make a change.** If the request truly
   needs a new draft, say that and hand off explicitly. Wanting a wide
-  re-search is not that case -- it is the wide pass above, which keeps
-  the dossier.
-- **Never re-search widely without saying what it costs, and never refuse
-  to when asked.** The scoped default is an economy, not a rule about
-  what the user is allowed to want.
+  re-search is not that case -- that is `corpus-reviser`, which keeps the
+  dossier.
+- **Never turn this into a wide pass.** Searching every sub-theme because
+  the change felt big is the failure this skill is scoped to prevent, and
+  it is why the instructions for doing so live in another skill. Say what
+  you think the request needs and let the user pick.
+- **Never refuse a wide pass either.** The scoped default is an economy,
+  not a rule about what the user is allowed to want. Hand off to
+  `corpus-reviser` rather than arguing.
 - **Never run `python -m src.sync` or `scripts/enrich.py`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
