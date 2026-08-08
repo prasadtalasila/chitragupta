@@ -246,9 +246,11 @@ the first that supports the claim:
 2. The report's own `candidates` -- a paper that arrived matching the
    same query that once produced the broken citation is the likeliest
    replacement there is.
-3. `search "<the claim>" --k 15 --log content/drafts/<path>` -- here a
-   fresh search *is* right, unlike the candidate path, because a claim
-   left unsupported is genuinely new ground.
+3. A fresh search -- here it *is* right, unlike the candidate path,
+   because a claim left unsupported is genuinely new ground:
+   ```bash
+   python3 -m src.retrieval search "<the claim>" --k 15 --log content/drafts/<path>
+   ```
 
 If none of the three supports it, **remove the claim** and say so. Not a
 reworded sentence that keeps the assertion and quietly drops the
@@ -272,9 +274,10 @@ python3 -m src.retrieval evidence "<the query from the report>" \
 ```
 
 What the report lacks is text to judge on, and that is what `evidence` is
-for. Keep `search "<query>" --k 15 --log ...` for the case where the
-revision opens ground the dossier never covered -- a query not already in
-`retrieval.md`, which by definition could not have produced a candidate.
+for. Keep `python3 -m src.retrieval search "<query>" --k 15 --log <draft>`
+for the case where the revision opens ground the dossier never covered --
+a query not already in `retrieval.md`, which by definition could not have
+produced a candidate.
 
 **`reconsider` is not re-judged.** These are papers the draft already
 read and turned down, which its queries still reach. `rejected.md` has
