@@ -17,7 +17,10 @@ layer (generative, on-demand, user-reviewed) -- distinct from
   point the thesis document's `\addbibresource` (biblatex) or `\bibliography`
   (bibtex) at this file directly rather than a copy
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `search(query, k)` returns `SearchResult(citekey, title, score, snippet)`
+- `src/retrieval.py` -- `python3 -m src.retrieval search "<q>" --k 15 --log <draft>`,
+  which returns a citekey, title, score and a 500-character snippet per
+  candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
+  one document when a snippet is not enough to judge it
 
 ## The dossier: write down what produced the draft
 
@@ -112,9 +115,18 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 1. **Clarify the research question** the chapter serves, if not already given
    by the user. The chapter's narrative arc should argue toward/around this RQ,
    not just summarize papers in sequence.
-2. **Retrieve broadly, then filter.** Call `src.retrieval.search(query, k=15)`
-   against the RQ and its component concepts -- over-fetch rather than
-   assuming the top few hits are automatically the right ones. This is
+2. **Retrieve broadly, then filter.** Search against the RQ and its
+   component concepts -- over-fetch rather than assuming the top few hits
+   are automatically the right ones:
+   ```
+   python3 -m src.retrieval search "<concept>" --k 15 --log content/drafts/<slug>.tex
+   ```
+   `--log` records the query and the call's size in the dossier's
+   `retrieval.md`. **Pass it on every call.** It is what makes the run's
+   cost measurable instead of estimated, and it is also the list a later
+   `dossier status` re-asks against the corpus to tell you which newly
+   synced papers this chapter has never seen -- a chapter drafted without
+   it can never be told that. This is
    keyword overlap, not embeddings -- read each 500-character snippet and
    judge relevance yourself; a high score is a proxy, not a verdict. Keep
    only what actually supports part of the argument; write the kept set to

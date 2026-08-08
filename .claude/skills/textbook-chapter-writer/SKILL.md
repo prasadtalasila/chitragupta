@@ -149,7 +149,13 @@ candidate for the chapter.
    them.
    If you search the synced corpus for a motivating example, use the same
    retrieval discipline as the other skills: over-fetch
-   (`src.retrieval.search(query, k=15)`), read each 500-character snippet
+   ```
+   python3 -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   ```
+   `--log` records the query in the dossier's `retrieval.md`. **Pass it on
+   every call**, even here where citing is optional -- it is what a later
+   `dossier status` re-asks against the corpus to say which newly synced
+   papers this chapter has never seen. Then read each 500-character snippet
    yourself rather than trusting the score, and reformulate and search again
    if the first pass turns up nothing genuinely useful -- don't settle for a
    weak match just because it was the top hit.

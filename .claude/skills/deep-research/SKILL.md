@@ -219,9 +219,17 @@ type isn't available, use `general-purpose` and give it the protocol from
 file).
 
 Give each subagent: `TOPIC`, its `PERSPECTIVE` (name + focus), `ROUNDS` (per
-depth). Each returns: core position, grounded key claims cited by real
-citekey, an only-this-perspective insight, strongest evidence, open
-questions, and the citekeys consulted.
+depth), and the `DRAFT PATH` (`content/drafts/deep-research-<slug>.md`) so it
+can pass `--log` on every retrieval call. Without that path the queries this
+report was built from are never recorded, and a later `dossier status` can
+never tell it which newly synced papers it has not seen. Appending is
+concurrency-safe, so all of them logging in parallel is fine.
+
+Each returns: core position, grounded key claims cited by real citekey, an
+only-this-perspective insight, strongest evidence, open questions, and the
+citekeys consulted -- the discarded ones carrying the query that surfaced
+each and one clause on why it did not hold up, which is what `rejected.md`
+needs and what you would otherwise have to invent.
 
 **Transcribe every packet into the dossier before starting Phase 3** --
 kept claims and their citekeys into `evidence.md`, the packet's discarded
@@ -374,7 +382,8 @@ plus an adversarial reviewer):
   `.claude/agents/peer-reviewer.md`'s instructions for the assigned role.
 - **Reconcile under the concession threshold** (this project's own rule,
   not upstream's): any `high`-severity concern from *any* reviewer, or any
-  concern raised independently by *2 or more* reviewers, must be addressed
+  concern of `medium` or `high` severity raised independently by *2 or
+  more* reviewers, must be addressed
   before presenting -- either revise the claim/citation, or state the
   concern openly in the peer-review scorecard as an unresolved issue. It
   may not be silently dropped. `low`/single-reviewer `medium` concerns are
@@ -393,13 +402,16 @@ sources dominate); a missing 6th perspective; overall grade.
 Synthesis briefing -> article body -> Contradiction map -> Peer-review
 scorecard -> References (citekeys with title/year from the ledger, not URLs).
 
-**(c) Log provenance and gate.** Write `content/provenance/<slug>.json`
+**(c) Save, log provenance, and gate.** Save the assembled report to
+`content/drafts/deep-research-<slug>.md` first -- the gate reads a file, and
+every other skill in this repo saves before gating. Then write
+`content/provenance/<slug>.json`
 covering every section's citekeys. This is the machine record, and it is
 not the dossier: the JSON maps section -> citekey for tooling, while the
 dossier holds the working state a human or a later revision reads. Write
 both. Then:
 ```
-python -m src.citation_gate <output-file>
+python -m src.citation_gate content/drafts/deep-research-<slug>.md
 ```
 Fix and re-run until `OK`. Never present a draft that hasn't passed.
 

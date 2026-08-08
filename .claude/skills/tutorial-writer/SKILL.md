@@ -199,7 +199,14 @@ the lesson design is the part worth keeping either way.
    the how-to guides for the variations you refused to cover, and -- if the
    corpus genuinely has something -- cite it here.
    Same retrieval discipline as the other skills if you do search:
-   over-fetch (`src.retrieval.search(query, k=15)`), read each 500-character
+   over-fetch
+   ```
+   python3 -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   ```
+   `--log` records the query in the dossier's `retrieval.md`. **Pass it on
+   every call**, even here where citing is optional -- it is what a later
+   `dossier status` re-asks against the corpus to say which newly synced
+   papers this lesson has never seen. Then read each 500-character
    snippet yourself rather than trusting the score, and reformulate and
    search again rather than settling for a weak top hit. Citing remains
    optional; a tutorial with zero citations is the normal case, not a

@@ -844,6 +844,33 @@ class TestSectionCitekeys:
         )
         assert dossier.section_citekeys(grounded) == {}
 
+    def test_the_at_form_a_draft_uses_is_read_too(self, grounded):
+        """`@key` as well as `` `key` ``.
+
+        The templates show neither, and the skills wrote `sections.md`
+        the way a draft cites -- so the shipped example dossier is all
+        `@key`, and reading only the backticked form silently lost every
+        section mapping it had.
+        """
+        (grounded / "sections.md").write_text(
+            "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | @a_one_2024, @b_two_2024 |\n"
+            "| 2. Second | `b_two_2024` |\n"
+        )
+        assert dossier.section_citekeys(grounded) == {
+            "a_one_2024": ["1. First"],
+            "b_two_2024": ["1. First", "2. Second"],
+        }
+
+    def test_an_at_word_with_no_separator_is_not_a_citekey(self, grounded):
+        """The separator requirement is what keeps prose out, and it has
+        to keep doing so now that a bare `@` opens a match."""
+        (grounded / "sections.md").write_text(
+            "# Sections\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | ask @someone, see @2 |\n"
+        )
+        assert dossier.section_citekeys(grounded) == {}
+
 
 class TestDrift:
     def test_a_cited_key_that_left_the_ledger_is_reported_with_its_sections(self, grounded):
