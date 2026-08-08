@@ -406,12 +406,12 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
 # separator dropped it silently.
 #
 # Both delimiters, because the dossier is written by hand and by two
-# different habits. The templates imply a backticked key, and `evidence.md`
-# does use one; `sections.md` in practice does not, because the skill
-# filling it in copies the form the draft cites with (`@key`). Reading
-# only the backticked form lost every section mapping in the shipped
-# example dossier, which is what made `missing` report a departed citekey
-# with no sections to go and edit.
+# different habits. No template shows an example row, so each file settled
+# on whatever the skill filling it in reached for: `evidence.md` headings
+# are backticked, while `sections.md` copies the form the draft cites with
+# (`@key`). Reading only the backticked form lost every section mapping in
+# the shipped example dossier, which is what made `missing` report a
+# departed citekey with no sections to go and edit.
 #
 # A false *negative* is the worse failure, and always was: this set is
 # subtracted from the ledger's citekeys to find what a dossier never
