@@ -95,8 +95,11 @@ have the full semantics.
   `draft-reviser` reads the dossier and edits the affected sections
   instead of re-running the genre skill over the whole topic -- including
   when the change comes from the corpus rather than from you, re-grounding
-  a draft whose cited papers a `sync` removed. Never re-run a genre skill
-  to change an existing draft -- see docs/DRAFT-ITERATION.md.
+  a draft whose cited papers a `sync` removed. If you do want the whole
+  corpus re-searched, ask for it and you get `corpus-reviser`, which is
+  the same edit discipline over a full retrieval pass -- it still keeps
+  the dossier. Never re-run a genre skill to change an existing draft --
+  see docs/DRAFT-ITERATION.md.
 - **The enrichment layer -- optional** (`scripts/enrich.py`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is

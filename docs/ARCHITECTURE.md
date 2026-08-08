@@ -118,8 +118,9 @@ the lock.
 
 ## Layer 2: the drafting layer
 
-Five Claude Code skills in `.claude/skills/`, one set of grounding rules
-between them:
+Seven Claude Code skills in `.claude/skills/`, one set of grounding rules
+between them: five that write a new draft, and two that change one that
+already exists.
 
 | Skill | Produces |
 |---|---|
@@ -128,11 +129,17 @@ between them:
 | `textbook-chapter-writer` | an undergraduate chapter -- worked examples and exercises, for a reader who is studying |
 | `tutorial-writer` | a Diataxis lesson the reader follows at a keyboard to a working result, verified to run |
 | `deep-research` | a multi-perspective, corpus-grounded report -- heavier and slower than the others by design |
+| `draft-reviser` | a scoped edit to a draft that already exists, made from its dossier rather than the corpus -- including repairing citations after a sync moved the corpus |
+| `corpus-reviser` | the same edit discipline over a full retrieval pass, when you ask for the whole corpus to be re-searched |
 
 The two teaching genres are deliberately separate: a textbook chapter
-explains, a tutorial is verified to run. The prose standards all five
-share, and where in the technical-communication literature they come from,
-are in [WRITING-STANDARDS.md](WRITING-STANDARDS.md).
+explains, a tutorial is verified to run. The two revision skills are
+separate for a different reason: `draft-reviser` contains no instructions
+for a wide search, so the cheap path cannot drift into the expensive one
+-- see [GENRE.md](GENRE.md#revising-widely-corpus-reviser). The prose
+standards all seven share, and where in the technical-communication
+literature they come from, are in
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md).
 
 Each skill retrieves from the corpus layer, drafts into
 `content/drafts/`, then runs the same three commands on its own output:
