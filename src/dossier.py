@@ -422,8 +422,11 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
 # drift report, this same set is also differenced the other way to find
 # citekeys that have *left* the ledger, where an invented one would be
 # reported as a broken citation that isn't. The separator requirement is
-# what holds that line -- `@someone` and `@2` do not match, only the
-# `word_word_year` shape BibTeX actually produces.
+# what holds that line, and it is the *only* thing holding it: a match
+# needs a letter start and at least one `_`/`:`/`-` run followed by more
+# alphanumerics, so `@someone` and `@2` are not keys while
+# `@noauthor_digital_nodate` is. Nothing here requires a trailing year --
+# a real key in this corpus ends in `_nodate`.
 _KEY = r"[A-Za-z][A-Za-z0-9]*(?:[_:-]+[A-Za-z0-9]+)+"
 _CITEKEY_TOKEN = re.compile(rf"`({_KEY})`|@({_KEY})")
 
