@@ -1,6 +1,6 @@
 ---
 name: textbook-chapter-writer
-description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via src.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. Any citations it does include must pass `python -m src.citation_gate` before the draft is presented -- never a fabricated citekey.
+description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via src.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m src.citation_gate` before the draft is presented -- never a fabricated citekey.
 tags: [textbook, teaching, undergraduate, pedagogy, explanation]
 ---
 
@@ -27,7 +27,7 @@ user asked for the other one. See "When to invoke".
   optional -- see step 3)
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `scripts/enrich.py` or any `src/enrich/*` stage.** Both belong to the
+run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -84,6 +84,7 @@ exist whether or not a single `[@citekey]` does.
 | User asks for a hands-on lesson the reader follows step by step to a working result | Use `tutorial-writer` instead |
 | User asks for a survey or lit review | Use `survey-writer` instead |
 | User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
+| User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
 
 If the request is genuinely ambiguous ("write something teaching X"), ask one
 question: *will the reader be reading this, or doing it?* Reading is this
@@ -148,7 +149,13 @@ candidate for the chapter.
    them.
    If you search the synced corpus for a motivating example, use the same
    retrieval discipline as the other skills: over-fetch
-   (`src.retrieval.search(query, k=15)`), read each 500-character snippet
+   ```
+   python3 -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   ```
+   `--log` records the query in the dossier's `retrieval.md`. **Pass it on
+   every call**, even here where citing is optional -- it is what a later
+   `dossier status` re-asks against the corpus to say which newly synced
+   papers this chapter has never seen. Then read each 500-character snippet
    yourself rather than trusting the score, and reformulate and search again
    if the first pass turns up nothing genuinely useful -- don't settle for a
    weak match just because it was the top hit.

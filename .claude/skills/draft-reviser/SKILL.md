@@ -1,6 +1,6 @@
 ---
 name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure, re-target or correct a draft that already exists, including in a session that did not write it. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.citation_gate` before presenting and never invents a citekey.
+description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.citation_gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
@@ -21,11 +21,14 @@ is shaped that way.
 
 | Situation | Action |
 |---|---|
-| User asks to shorten, expand, restructure, re-target, correct or update an existing draft | Invoke this skill |
+| User asks to shorten, expand, restructure, correct or update an existing draft | Invoke this skill |
+| User asks to re-target the draft at a **different reader** | Hand off to `corpus-reviser` -- what counts as support changes with the reader, so the kept set has to be re-judged, not extended |
 | User asks for a **new** draft on a topic | Use the matching genre skill |
 | The draft exists but has no dossier | Bootstrap one (below), then continue here |
+| A sync moved the corpus, or `dossier status --all` names this draft | Re-grounding mode (below), not the ordinary loop |
+| User asks to re-check the **whole** draft against the corpus, cost regardless | Hand off to `corpus-reviser` -- not this skill, and never the genre skill |
 | User asks for a different genre of the same topic | That's a new draft -- use the genre skill |
-| Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync` |
+| Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
 **Read-only over the corpus layer.** Never run `python -m src.sync` and
 never run `scripts/enrich.py`. Both take the pipeline's write lock and
@@ -53,8 +56,13 @@ python3 -m src.dossier status content/drafts/<path>
 ```
 
 This prints which dossier files are filled in, the draft's section count,
-and whether the corpus has moved since the draft was written. It never
-fails on a missing ledger or a missing dossier -- it reports.
+and whether the corpus has moved since the draft was written. A missing
+or unreadable ledger is reported rather than raised -- it still tells you
+what the dossier holds. A missing *dossier* is the one thing this command
+treats as an error: it prints the `init` line and exits 1, which is your
+cue to go to "When there is no dossier" below. (Only the plain form does
+that; `--json`, used in re-grounding, exits 0 and reports it in the
+payload instead.)
 
 Then read `scope.md` and `steering.md`. **Always both, always first.**
 They are small, and they are what stops a revision from undoing an
@@ -80,9 +88,10 @@ whole draft to change one section. Consult `sections.md` when you need to
 know which section owns a citation without reading anything.
 
 The exception: a change that alters the draft's argument (restructuring,
-re-targeting, a claim that other sections lean on) needs a read of the
-whole draft. Recognise that case and pay for it deliberately, rather than
-defaulting to it.
+or a claim that other sections lean on) needs a read of the whole draft.
+Recognise that case and pay for it deliberately, rather than defaulting
+to it. Note that reading the whole draft is still not re-searching it --
+if the evidence also has to be re-judged, that is `corpus-reviser`.
 
 ### 4. Decide whether you need to search at all
 
@@ -113,7 +122,10 @@ dossier is paying off.
 If `status` reported corpus drift, read the named citekeys only if they
 bear on the sub-theme you are changing. **Drift is not itself a reason to
 redraft**, and a revision request is not a mandate to refresh the whole
-draft against a corpus that grew.
+draft against a corpus that grew. That holds for a corpus that *gained*
+papers. It does not hold for one that lost a paper the draft cites --
+that is a broken citation, the gate will fail on it, and it is fixed
+whether or not anyone asked. See "Re-grounding after the corpus moves".
 
 ### 5. Edit in place, inside the section
 
@@ -138,7 +150,11 @@ Update only what actually changed:
   (`docs/REJECTION.md`)
 - `retrieval.md` -- nothing by hand; `--log` appends to it for you
 - `sections.md` -- if headings or their citations moved
-- `scope.md` -- only if the user agreed to a scope change in step 2
+- `scope.md` -- the scope statement itself only if the user agreed to a
+  change in step 2. Its bookkeeping lines are a separate matter: a
+  tutorial's `## Verified environment` block records what the lesson was
+  last run on, and goes stale the moment you edit a step without
+  refreshing it
 - `steering.md` -- append the instruction that prompted this revision,
   dated. This is the part with nowhere else to live; skipping it is how
   the next session loses the thread.
@@ -149,7 +165,7 @@ Update only what actually changed:
 
 ```bash
 python -m src.citation_gate content/drafts/<path>
-python -m src.references content/drafts/<path>          # .md drafts
+python -m src.references content/drafts/<path>          # .md drafts; see --heading below
 python3 -m src.render_output content/drafts/<path> --format tex
 python3 -m src.render_output content/drafts/<path> --format pdf
 python3 -m src.render_output content/drafts/<path> --format md
@@ -158,6 +174,192 @@ python3 -m src.render_output content/drafts/<path> --format md
 Fix and re-run until the gate reports `OK`. **Never present a draft that
 hasn't passed.** A `[missing-binary]` or `[error]` from `render_output`
 is a one-line warning in chat and does not block presenting.
+
+Two things the genre decides, which a reviser has to look up rather than
+assume:
+
+- **`--heading`, if the draft's references section isn't called
+  "References".** `src.references` finds the existing section by heading
+  and replaces it; miss it and you append a second one. A tutorial calls
+  it `## Further reading` (pass `--heading "Further reading"`), and a
+  numbered textbook chapter calls it `## N. References` (pass
+  `--heading "N. References"`, or the numbering is silently dropped).
+  Look at the draft's own heading before running this. Skip the command
+  entirely for a `.tex` fragment, which manages its own bibliography.
+- **A tutorial must still run.** `tutorial-writer`'s governing rule is
+  that a tutorial which doesn't work is worse than none, because a
+  learner who follows it exactly and hits an error concludes they are the
+  problem. The citation gate does not check that -- a tutorial often has
+  no citekeys for it to check at all. If you edited a step, a command, a
+  version or an expected output, run the lesson from the top before
+  presenting it, and update `scope.md`'s `## Verified environment` block
+  with what you actually ran on. **Never present an unrun tutorial as if
+  it were tested**; if you could not run it, say exactly that.
+
+## Re-grounding after the corpus moves
+
+When `python -m src.sync` adds papers or drops stale ones, every existing
+draft moves with it and nothing says so. `dossier status --all` is what
+notices; this is what acts on it. It is the same loop entered from a
+report instead of a request, so steps 5, 6 and 7 above still apply
+verbatim -- what changes is how the work is found.
+
+### R1. Read the report as data
+
+```bash
+python3 -m src.dossier status content/drafts/<path> --json
+```
+
+Or take the payload from a `--all --json` sweep the user already has. The
+envelope is always `{"dossiers": [...]}`, so a single draft comes back as
+a one-element list: read `.dossiers[0]`, not a bare object.
+
+### R2. Branch on the payload, never on the exit code
+
+This command exits 0 almost unconditionally -- that is deliberate, so the
+caller reads the contents rather than a status. Two cases to check before
+anything else:
+
+- **`corpus_available` is `false`.** The ledger could not be read, so
+  every finding list is empty because the check never ran, not because
+  there is nothing to find. Say what you checked, point the user at
+  `python -m src.sync`, and stop. Do not report the draft as current.
+- **The dossier does not exist.** `--json` returns an almost-empty entry
+  and still exits 0. Go to "When there is no dossier", bootstrap, and
+  come back.
+
+### R3. Act on the three lists -- they are not the same kind of thing
+
+Flattening them into one list of "papers to look at" is the failure mode
+this section exists to prevent.
+
+**`missing` is a defect.** The draft stands on a paper the corpus no
+longer has; `citation_gate` already disagrees with the draft. Always
+actioned, whatever else the revision is about. Each entry maps a citekey
+to the sections citing it, and `python3 -m src.dossier sections
+content/drafts/<path>` turns those into line ranges, so the edit stays as
+scoped as any other. Look for the replacement in this order, and stop at
+the first that supports the claim:
+
+1. `evidence.md` -- another paper you already kept may support it, at no
+   retrieval cost at all.
+2. The report's own `candidates` -- a paper that arrived matching the
+   same query that once produced the broken citation is the likeliest
+   replacement there is.
+3. A fresh search -- here it *is* right, unlike the candidate path,
+   because a claim left unsupported is genuinely new ground:
+   ```bash
+   python3 -m src.retrieval search "<the claim>" --k 15 --log content/drafts/<path>
+   ```
+
+If none of the three supports it, **remove the claim** and say so. Not a
+reworded sentence that keeps the assertion and quietly drops the
+citation. Never leave the citekey in place, and never replace it with a
+key you have not seen in the ledger.
+
+**`candidates` are a decision, not a defect.** New papers that this
+dossier's own recorded queries reach. Pursue only the ones whose
+`queries` touch the sub-theme actually in play; the rest are reported to
+the user and left in the report for the next revision to weigh. Do not
+work through the list.
+
+For the ones you do pursue, go straight to the passage. The report
+already carries the citekey, the title and the query that surfaced it, so
+re-running `search` for that query pays for fifteen snippets to be handed
+back the same fifteen citekeys:
+
+```bash
+python3 -m src.retrieval evidence "<the query from the report>" \
+    --citekey <candidate> --log content/drafts/<path>
+```
+
+What the report lacks is text to judge on, and that is what `evidence` is
+for. Keep `python3 -m src.retrieval search "<query>" --k 15 --log <draft>`
+for the case where the revision opens ground the dossier never covered --
+a query not already in `retrieval.md`, which by definition could not have
+produced a candidate.
+
+**`reconsider` is not re-judged.** These are papers the draft already
+read and turned down, which its queries still reach. `rejected.md` has
+already been subtracted from `candidates`; these are carried separately
+*with the recorded reason* so you can weigh the reason without paying to
+re-judge the paper. Report citekey, title and reason. Re-open one only
+when the recorded reason no longer holds -- typically a scope change the
+user agreed to in step 2. Re-judging these by default is precisely the
+cost `rejected.md` exists to prevent (`docs/REJECTION.md`).
+
+### R4. Edit, write back, and re-stamp
+
+Step 5 unchanged. Step 6 unchanged except for two of its bullets, which
+were written for a revision someone asked for:
+
+- **`steering.md` -- usually nothing.** A re-grounding pass has no
+  instruction to record; the corpus moved, the user did not steer.
+  Append only if they actually said something here. Inventing a steering
+  entry to fill the file is the same failure as inventing an evidence
+  one.
+- **`scope.md` -- the fingerprint line only.** The rule that the scope
+  statement changes only by agreement is untouched; the corpus line
+  below is bookkeeping, and is the one thing this mode always writes.
+
+Then two things specific to this mode.
+
+**Re-stamp the corpus fingerprint** in `scope.md`, after the gate passes,
+from the report's `current` field -- it is the record that this draft was
+re-grounded against that corpus:
+
+```
+- corpus: 503 citekeys, digest `f6e5d4c3b2a1`
+```
+
+Rewrite the line; do not reshape it. Anything that no longer matches the
+recorded form makes `recorded_corpus()` return nothing, and the dossier
+silently downgrades to "records no corpus fingerprint" instead of
+erroring.
+
+**Append a `revisions.md` entry** naming this as a re-grounding: what was
+swapped, what was dropped, what was added, and -- with the same weight --
+which candidates were reported and *not* pursued. The Guardrails rule
+about reporting what you didn't do binds hardest here, because the user
+did not ask for this revision and cannot infer its edges.
+
+### R5. The gate is the exit, not the report
+
+Finish with step 7 and change nothing about it. `missing` is computed
+from the dossier's own `evidence.md` and `sections.md`, not from the
+draft body, so a citekey the draft cites that was never recorded in the
+dossier will not appear in the report at all. `python -m
+src.citation_gate` is the check that reads the draft, and it is what
+decides the draft is presentable. A clean drift report never does.
+
+Expect the draft to keep showing candidates in the next sweep, and say
+so. A query returns fifteen hits and a revision accepts one or two;
+"still has candidates" is the normal state of a healthy draft. What
+re-grounding promises is that the *missing* list is empty. Do not clear
+the candidate list by writing unpursued papers into `rejected.md` -- a
+rejection recorded from a title alone is a judgment you did not make, and
+`rejected.md` is trusted permanently by every revision after this one.
+
+## When a whole-corpus pass is what's wanted
+
+Everything above optimises for the common case: a change touches one
+sub-theme, so one sub-theme gets re-searched. That default is right often
+enough to be the default, and wrong often enough to need a way out.
+
+The way out is a different skill. **`corpus-reviser`** re-searches every
+sub-theme in `sections.md` and reads the whole draft, and it keeps the
+dossier while doing it. Hand off to it when the user asks for a wide pass
+in as many words, when a scope change they agreed to in step 2 has
+invalidated the recorded queries, or when the draft is being re-targeted
+at a different reader.
+
+The rule was never "never re-search widely" -- it is **never do it
+silently, and never in this skill**. Deliberately, nothing above tells
+you how to run a wide search, so following this skill cannot produce one
+by drift. Say what you think the request needs and let the user choose.
+
+What stays never, in either skill, is re-running the genre skill. That
+discards the dossier and pays to rediscover a worse version of it.
 
 ## When there is no dossier
 
@@ -183,11 +385,23 @@ citekey.
 ## Guardrails
 
 - **Never re-run the genre skill to make a change.** If the request truly
-  needs a new draft, say that and hand off explicitly.
+  needs a new draft, say that and hand off explicitly. Wanting a wide
+  re-search is not that case -- that is `corpus-reviser`, which keeps the
+  dossier.
+- **Never turn this into a wide pass.** Searching every sub-theme because
+  the change felt big is the failure this skill is scoped to prevent, and
+  it is why the instructions for doing so live in another skill. Say what
+  you think the request needs and let the user pick.
+- **Never refuse a wide pass either.** The scoped default is an economy,
+  not a rule about what the user is allowed to want. Hand off to
+  `corpus-reviser` rather than arguing.
 - **Never run `python -m src.sync` or `scripts/enrich.py`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
 - **Never silently change scope, reader or terminology.**
+- **Never record a rejection you did not make.** Writing an unpursued
+  candidate into `rejected.md` to tidy a drift report turns a title into
+  a permanent judgment that every later revision trusts.
 - **Report what you didn't do.** If the change requires re-searching a
   sub-theme and you judged it out of scope for this revision, say so
   rather than leaving a half-updated draft that looks finished.

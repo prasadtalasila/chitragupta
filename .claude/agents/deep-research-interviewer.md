@@ -29,8 +29,12 @@ synced corpus, simulating one editorial angle on the topic.
 2. Formulate up to 3 search-query reformulations of that question.
 3. Run each against this project's corpus:
    ```
-   python3 -m src.retrieval search "<query>" --k 15
+   python3 -m src.retrieval search "<query>" --k 15 --log <the draft path you were given>
    ```
+   Pass `--log` on every call. The dispatching skill hands you the draft
+   path; it records your query in the shared dossier, which is what lets a
+   later `dossier status` tell this report which newly synced papers it has
+   never seen. Appending is concurrency-safe, so every interviewer logs.
    or, if `content/chroma/` exists (the embedding stack has been built for
    this corpus):
    ```
@@ -38,7 +42,7 @@ synced corpus, simulating one editorial angle on the topic.
    ```
    Where a 500-character snippet is not enough to decide on a source you
    are minded to cite, read more of that one document:
-   `python3 -m src.retrieval evidence "<query>" --citekey <key>`.
+   `python3 -m src.retrieval evidence "<query>" --citekey <key> --log <draft path>`.
 4. **Filter before using anything as evidence.** A hit is a candidate, not
    evidence: a high score means the query's words are in the document, not
    that it supports a claim. Judge each snippet yourself and discard what
@@ -87,7 +91,12 @@ Markdown containing:
 - **Strongest evidence**, with its citekey
 - **Open questions** this interview didn't resolve
 - **Sources consulted**: the list of citekeys used, plus any citekeys that
-  came up in searches but were discarded during filtering
+  came up in searches but were discarded during filtering. For each
+  discarded one, give **the query that surfaced it and one clause on why it
+  did not hold up**. The orchestrator copies these straight into the
+  dossier's `rejected.md`, and a row missing either field cannot do that
+  file's job -- stopping the next revision re-retrieving and re-judging the
+  same paper
 
 Your output is an **internal packet for the orchestrator**, not
 reader-facing prose. Optimize it for the orchestrator's later use --

@@ -5,8 +5,8 @@ Source of truth for the `deep-research` skill's phases. Adapted from
 License), which itself encodes the Stanford STORM algorithm
 (`github.com/stanford-oval/storm`, NAACL 2024 / arXiv:2402.14207) fused with
 Nav Toor's 4-prompt adaptation. The adaptation for this project: **closed,
-citekey-grounded corpus instead of the live web** -- see SKILL.md's "one
-deliberate, load-bearing deviation" note before reading further.
+citekey-grounded corpus instead of the live web** -- see the opening of
+SKILL.md, under `# deep-research`, for what every claim must resolve to.
 
 ---
 

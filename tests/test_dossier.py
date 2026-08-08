@@ -844,6 +844,33 @@ class TestSectionCitekeys:
         )
         assert dossier.section_citekeys(grounded) == {}
 
+    def test_the_at_form_a_draft_uses_is_read_too(self, grounded):
+        """`@key` as well as `` `key` ``.
+
+        The templates show neither, and the skills wrote `sections.md`
+        the way a draft cites -- so the shipped example dossier is all
+        `@key`, and reading only the backticked form silently lost every
+        section mapping it had.
+        """
+        (grounded / "sections.md").write_text(
+            "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | @a_one_2024, @b_two_2024 |\n"
+            "| 2. Second | `b_two_2024` |\n"
+        )
+        assert dossier.section_citekeys(grounded) == {
+            "a_one_2024": ["1. First"],
+            "b_two_2024": ["1. First", "2. Second"],
+        }
+
+    def test_an_at_word_with_no_separator_is_not_a_citekey(self, grounded):
+        """The separator requirement is what keeps prose out, and it has
+        to keep doing so now that a bare `@` opens a match."""
+        (grounded / "sections.md").write_text(
+            "# Sections\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | ask @someone, see @2 |\n"
+        )
+        assert dossier.section_citekeys(grounded) == {}
+
 
 class TestDrift:
     def test_a_cited_key_that_left_the_ledger_is_reported_with_its_sections(self, grounded):
@@ -1073,6 +1100,18 @@ class TestStatusAllCLI:
         assert dossier.main(["status", str(draft), "--json"]) == 0
         payload = __import__("json").loads(capsys.readouterr().out)
         assert len(payload["dossiers"]) == 1
+
+    def test_json_reports_a_missing_dossier_rather_than_exiting_1(self, draft, capsys):
+        """`--json` returns before the `is_dir()` check the text path
+        exits 1 on, so a draft with no dossier still produces an envelope
+        and a 0. `draft-reviser` therefore has to branch on the payload
+        rather than the status code -- pinned so the contract cannot
+        change under it silently."""
+        _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
+        assert dossier.main(["status", str(draft), "--json"]) == 0
+        (entry,) = __import__("json").loads(capsys.readouterr().out)["dossiers"]
+        assert entry["missing"] == {} and entry["candidates"] == []
+        assert entry["recorded"] is None, "nothing on disk recorded a fingerprint"
 
     def test_a_draft_and_all_together_is_refused(self, draft, capsys):
         assert dossier.main(["status", str(draft), "--all"]) == 2

@@ -258,7 +258,7 @@ def _citekeys_in(dossier: Path, names: tuple[str, ...]) -> set[str]:
     for name in names:
         path = dossier / name
         if path.is_file():
-            found |= set(_CITEKEY_TOKEN.findall(path.read_text(encoding="utf-8")))
+            found |= set(_citekeys(path.read_text(encoding="utf-8")))
     return found
 
 
@@ -303,7 +303,7 @@ def rejected_reasons(dossier: Path) -> dict[str, str]:
         cells = [cell.strip() for cell in _ROW_SPLIT.split(stripped.strip("|"))]
         if len(cells) != 3:
             continue
-        for citekey in _CITEKEY_TOKEN.findall(cells[0]):
+        for citekey in _citekeys(cells[0]):
             found[citekey] = cells[2]
     return found
 
@@ -351,7 +351,7 @@ def citekeys_by_section(dossier: Path) -> dict[str, list[str]]:
         cells = [cell.strip() for cell in _ROW_SPLIT.split(stripped.strip("|"))]
         if len(cells) != 2 or [cell.lower() for cell in cells] == ["section", "citekeys"]:
             continue
-        found[cells[0]] = _CITEKEY_TOKEN.findall(cells[1])
+        found[cells[0]] = _citekeys(cells[1])
     return found
 
 
@@ -366,10 +366,11 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
 
     Keyed on the first citekey-shaped token in the heading, so
     ``## `smith_x_2024` -- kept for section 3`` is addressable as
-    `smith_x_2024`. A heading carrying no backticked token falls back to
-    its own text: a hand-written dossier is a supported input everywhere
-    else here, and a block nobody can address is a block the next run
-    re-retrieves.
+    `smith_x_2024`, and so is ``## @smith_x_2024`` -- either delimiter,
+    since `_citekeys` reads both. A heading carrying no citekey token at
+    all falls back to its own text: a hand-written dossier is a supported
+    input everywhere else here, and a block nobody can address is a block
+    the next run re-retrieves.
     """
     path = dossier / "evidence.md"
     if not path.is_file():
@@ -382,7 +383,7 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
             if key is not None:
                 found[key] = "\n".join(body).rstrip() + "\n"
             heading = line[3:].strip()
-            tokens = _CITEKEY_TOKEN.findall(heading)
+            tokens = _citekeys(heading)
             key = tokens[0] if tokens else heading.strip("` ")
             body = [line]
             continue
@@ -405,12 +406,35 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
 # BibTeX collapses "as-a-service" into a doubled hyphen. Matching only one
 # separator dropped it silently.
 #
-# Only false *negatives* matter here. This set is subtracted from the
-# ledger's citekeys to find what a dossier never considered, so a prose
-# token that looks key-shaped (`draft-reviser`) is inert -- it is not in
-# the ledger, so subtracting it changes nothing. A missed real key, by
-# contrast, gets reported as "never considered" when it was cited.
-_CITEKEY_TOKEN = re.compile(r"`([A-Za-z][A-Za-z0-9]*(?:[_:-]+[A-Za-z0-9]+)+)`")
+# Both delimiters, because the dossier is written by hand and by two
+# different habits. No template shows an example row, so each file settled
+# on whatever the skill filling it in reached for: `evidence.md` headings
+# are backticked, while `sections.md` copies the form the draft cites with
+# (`@key`). Reading only the backticked form lost every section mapping in
+# the shipped example dossier, which is what made `missing` report a
+# departed citekey with no sections to go and edit.
+#
+# A false *negative* is the worse failure, and always was: this set is
+# subtracted from the ledger's citekeys to find what a dossier never
+# considered, so a prose token that looks key-shaped (`draft-reviser`) is
+# inert -- it is not in the ledger, so subtracting it changes nothing,
+# while a missed real key gets reported as "never considered" when it was
+# cited. False positives are no longer entirely free, though: since the
+# drift report, this same set is also differenced the other way to find
+# citekeys that have *left* the ledger, where an invented one would be
+# reported as a broken citation that isn't. The separator requirement is
+# what holds that line, and it is the *only* thing holding it: a match
+# needs a letter start and at least one `_`/`:`/`-` run followed by more
+# alphanumerics, so `@someone` and `@2` are not keys while
+# `@noauthor_digital_nodate` is. Nothing here requires a trailing year --
+# a real key in this corpus ends in `_nodate`.
+_KEY = r"[A-Za-z][A-Za-z0-9]*(?:[_:-]+[A-Za-z0-9]+)+"
+_CITEKEY_TOKEN = re.compile(rf"`({_KEY})`|@({_KEY})")
+
+
+def _citekeys(text: str) -> list[str]:
+    """Every citekey token in `text`, in either delimiter, in order."""
+    return [backticked or at_form for backticked, at_form in _CITEKEY_TOKEN.findall(text)]
 
 
 # --------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 ---
 name: tutorial-writer
-description: Drafts a Diataxis-style tutorial -- a hands-on lesson that a learner follows at a keyboard, start to finish, to a working result they can see. Concrete, single-path, minimally explained, and verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they already know what they want and just need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via src.retrieval.search()) but only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. Any citation must pass `python -m src.citation_gate` before the draft is presented -- never a fabricated citekey.
+description: Drafts a Diataxis-style tutorial -- a hands-on lesson that a learner follows at a keyboard, start to finish, to a working result they can see. Concrete, single-path, minimally explained, and verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they already know what they want and just need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via src.retrieval.search()) but only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m src.citation_gate` before the draft is presented -- never a fabricated citekey.
 tags: [tutorial, diataxis, hands-on, lesson, teaching]
 ---
 
@@ -31,6 +31,11 @@ rule below follows from that.
 | **How-to guide** | Already competent; has a specific goal in mind | Not a skill here -- say so, and write it as a short procedure |
 | **Reference** | Needs a fact, fast | Not a skill here |
 | **Survey / thesis chapter** | Academic reader | `survey-writer` / `thesis-chapter-writer` |
+
+Changing a tutorial that **already exists** in `content/drafts/` is not a
+genre question at all: use `draft-reviser`, never another run of this
+skill. Re-running it rewrites a lesson that already works, and throws
+away the dossier that recorded why each step is the way it is.
 
 The two failure directions, both common:
 
@@ -63,7 +68,7 @@ other genre -- in a survey they'd delete the deliverable.
 - `src/retrieval.py` -- `search(query, k, snippet_chars)`
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `scripts/enrich.py` or any `src/enrich/*` stage.** Both belong to the
+run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -194,7 +199,14 @@ the lesson design is the part worth keeping either way.
    the how-to guides for the variations you refused to cover, and -- if the
    corpus genuinely has something -- cite it here.
    Same retrieval discipline as the other skills if you do search:
-   over-fetch (`src.retrieval.search(query, k=15)`), read each 500-character
+   over-fetch
+   ```
+   python3 -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   ```
+   `--log` records the query in the dossier's `retrieval.md`. **Pass it on
+   every call**, even here where citing is optional -- it is what a later
+   `dossier status` re-asks against the corpus to say which newly synced
+   papers this lesson has never seen. Then read each 500-character
    snippet yourself rather than trusting the score, and reformulate and
    search again rather than settling for a weak top hit. Citing remains
    optional; a tutorial with zero citations is the normal case, not a
