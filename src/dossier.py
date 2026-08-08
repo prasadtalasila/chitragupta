@@ -366,10 +366,11 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
 
     Keyed on the first citekey-shaped token in the heading, so
     ``## `smith_x_2024` -- kept for section 3`` is addressable as
-    `smith_x_2024`. A heading carrying no backticked token falls back to
-    its own text: a hand-written dossier is a supported input everywhere
-    else here, and a block nobody can address is a block the next run
-    re-retrieves.
+    `smith_x_2024`, and so is ``## @smith_x_2024`` -- either delimiter,
+    since `_citekeys` reads both. A heading carrying no citekey token at
+    all falls back to its own text: a hand-written dossier is a supported
+    input everywhere else here, and a block nobody can address is a block
+    the next run re-retrieves.
     """
     path = dossier / "evidence.md"
     if not path.is_file():
