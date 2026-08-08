@@ -4,13 +4,15 @@ skipped/missing-binary shaping is tested directly against mocked
 underlying module calls; main()'s stage-selection and per-stage
 exception isolation are tested against a fully mocked STAGE_FUNCS/corpus."""
 
+import logging
+import re
 import sys
 import types
 
 import pytest
 
 import scripts.enrich as enrich_script
-from src import render_output
+from src import config, render_output
 from src.enrich import docling_parse, embed_index, topic_model
 from src.enrich.corpus import CorpusDoc
 
@@ -207,6 +209,91 @@ class TestMain:
         assert "error" in out
         assert "stage exploded" in out
         assert "embed" in out  # second stage still ran despite the first raising
+
+
+class TestLogging:
+    """The `configure_logging` flag exists because this script takes its
+    lock *inside* main() rather than at the entrypoint, so
+    logging_setup.configure() -- which must run inside the lock -- can't
+    simply sit beside the SystemExit in `__main__`. Both sides of the
+    flag are load-bearing: on, or a scheduled run leaves no transcript;
+    off by default, or every test calling main() directly attaches
+    handlers and makes a logs/ directory appear."""
+
+    @pytest.fixture
+    def _cleanup_root_handlers(self):
+        root = logging.getLogger()
+        before = list(root.handlers)
+        yield
+        for handler in root.handlers[:]:
+            if handler not in before:
+                root.removeHandler(handler)
+                handler.close()
+        logging.getLogger("scripts").setLevel(logging.NOTSET)
+
+    def _run_one_stage(self, monkeypatch, **kwargs):
+        docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS, "embed",
+            lambda d, a: {"status": "ok", "detail": "e"},
+        )
+        return enrich_script.main(**kwargs)
+
+    def test_the_run_is_logged_when_the_entrypoint_asks_for_it(
+        self, isolated_config, monkeypatch, _cleanup_root_handlers
+    ):
+        """What `python scripts/enrich.py` actually does: the stage table
+        it prints also lands in logs/pipeline.log, tagged with this
+        script's logger name so it can be told apart from sync's lines in
+        the shared file."""
+        assert self._run_one_stage(monkeypatch, configure_logging=True) == 0
+
+        log_text = (config.LOGS_DIR / "pipeline.log").read_text()
+        assert "scripts.enrich" in log_text
+        assert "=== embed ===" in log_text
+        assert "Corpus: 1 doc(s)" in log_text
+
+    def test_a_dict_stage_detail_is_one_record_not_one_per_json_line(
+        self, isolated_config, monkeypatch, _cleanup_root_handlers
+    ):
+        """Every stage but `render` returns a dict here, and the terminal
+        renders it with json.dumps(indent=2). Mirrored verbatim that
+        wrote a log record per JSON line, only the first timestamped --
+        one event reading as six, with `grep '\\[ok\\]'` finding a header
+        and none of its content. The terminal keeps the indented form;
+        the file gets the same object on one line."""
+        docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS, "embed",
+            lambda d, a: {"status": "ok", "detail": {"a": 3, "b": {"c": 1}}},
+        )
+
+        assert enrich_script.main(configure_logging=True) == 0
+
+        for line in (config.LOGS_DIR / "pipeline.log").read_text().splitlines():
+            assert re.match(r"^\d{4}-\d{2}-\d{2} ", line), (
+                f"every record must start its own timestamped line: {line!r}"
+            )
+        assert '[ok] {"a": 3, "b": {"c": 1}}' in (
+            config.LOGS_DIR / "pipeline.log"
+        ).read_text()
+
+    def test_calling_main_directly_leaves_no_handler_or_logs_directory(
+        self, isolated_config, monkeypatch, _cleanup_root_handlers
+    ):
+        """The default, and why it is the default: every other test in
+        this file calls main() directly. If that configured logging, they
+        would each attach a handler to the root logger and create a
+        logs/ directory as a side effect of asserting on stdout."""
+        handlers_before = list(logging.getLogger().handlers)
+        assert self._run_one_stage(monkeypatch) == 0
+
+        assert logging.getLogger().handlers == handlers_before
+        assert not config.LOGS_DIR.exists()
 
 
 class TestPipelineLock:

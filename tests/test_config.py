@@ -213,7 +213,7 @@ class TestGetStartMethod:
 
 class TestGetLogLevel:
     """[logging].level decides how much python -m src.sync writes to
-    logs/sync.log. A typo has to be rejected at load, naming the
+    logs/pipeline.log. A typo has to be rejected at load, naming the
     alternatives, same reasoning as _get_start_method above."""
 
     @pytest.fixture(autouse=True)

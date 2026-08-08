@@ -23,7 +23,6 @@ runs with the bare system interpreter.
 
 import argparse
 import logging
-import logging.handlers
 import os
 import sys
 import time
@@ -33,13 +32,14 @@ from concurrent.futures import (FIRST_COMPLETED, ProcessPoolExecutor,
 from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
-from src import bib_reader, config, dedup, ledger, pdf_text, runlock
+from src import (bib_reader, config, dedup, ledger, logging_setup, pdf_text,
+                 runlock)
 
 # A fixed name, not __name__: this module is also the CLI entrypoint
 # (python -m src.sync), and Python sets __name__ to "__main__" for
 # whichever module is run that way -- not "src.sync". A logger named
 # "__main__" would sit outside the "src" tree entirely, so
-# _configure_logging()'s logging.getLogger("src").setLevel(...) below
+# logging_setup.configure()'s logging.getLogger("src").setLevel(...)
 # would silently never apply to it. Confirmed against a real `python -m
 # src.sync` run, not assumed: every test in this suite imports sync as a
 # plain submodule, where __name__ is already "src.sync" and this
@@ -531,14 +531,14 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
             f"{config.PARSER})."
         )
     print(summary)
-    # Also emitted through the logger -- landing in logs/sync.log even
+    # Also emitted through the logger -- landing in logs/pipeline.log even
     # though it's already on stdout -- so a rotated log file is a
     # self-contained run history without needing stdout alongside it.
     # Built from the same counters the return code below uses, not a
     # second independent tally, so the log and the exit status can never
     # disagree about whether this run had trouble.
     #
-    # extra={"file_only": True} keeps this out of _configure_logging()'s
+    # extra={"file_only": True} keeps this out of logging_setup.configure()'s
     # console handler specifically -- without it, a real `python -m
     # src.sync` run prints this line twice (once from the print() above,
     # once from the console handler catching this same record), which is
@@ -612,69 +612,6 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     return 1 if failed or backend_unavailable or kinds["deterministic"] else 0
 
 
-def _not_file_only(record: logging.LogRecord) -> bool:
-    """False for a record logged with extra={"file_only": True} -- the
-    summary line, which is already printed to stdout and would otherwise
-    print a second time via the console handler below."""
-    return not getattr(record, "file_only", False)
-
-
-def _this_project_only(record: logging.LogRecord) -> bool:
-    """False for a record from outside the "src" logger tree -- a third
-    party already using stdlib logging (docling, torch; see the [n/N]
-    progress comment above about their own chatter). Their WARNING+
-    still reaches logs/sync.log via file_handler below, "for free" --
-    this filter only keeps their chatter off the console, which is the
-    one thing this project's own output was never supposed to include."""
-    return record.name == "src" or record.name.startswith("src.")
-
-
-def _configure_logging() -> None:
-    """Attach a rotating file handler (logs/sync.log) and a stderr handler.
-
-    CLI-entrypoint-only, deliberately not called from run() itself --
-    same split as runlock.pipeline_lock() just below, and for the same
-    reason: run() stays callable in-process (the tests do that) without
-    a handler side effect or a logs/ directory appearing as an
-    import-time surprise.
-
-    5 MB x 5 backups is fixed rather than configurable -- see
-    config.LOGGING_LEVEL's own comment for why only the level is a
-    setting here.
-
-    config.LOGGING_LEVEL is applied to file_handler alone (via
-    setLevel), not to any logger. Setting it on the "src" logger tree
-    instead -- an earlier version of this function did -- silently
-    gated the console too: a logger only creates a record at all if the
-    *logger's* effective level allows it, before any handler is even
-    reached, so a level of WARNING would have suppressed the [n/N]
-    progress line (INFO) everywhere, not just in the file, contradicting
-    the "only affects the file" this project documents for this
-    setting. The "src" logger below is instead pinned permissive
-    (DEBUG) so every record this project's own code logs always reaches
-    both handlers; each handler then decides for itself what it keeps.
-    """
-    config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    file_handler = logging.handlers.RotatingFileHandler(
-        config.LOGS_DIR / "sync.log", maxBytes=5_000_000, backupCount=5,
-        encoding="utf-8",
-    )
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s %(levelname)s %(name)s: %(message)s"
-    ))
-    file_handler.setLevel(config.LOGGING_LEVEL)
-
-    console_handler = logging.StreamHandler(sys.stderr)
-    console_handler.setFormatter(logging.Formatter("%(message)s"))
-    console_handler.addFilter(_not_file_only)
-    console_handler.addFilter(_this_project_only)
-
-    root = logging.getLogger()
-    root.addHandler(file_handler)
-    root.addHandler(console_handler)
-    logging.getLogger("src").setLevel(logging.DEBUG)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Sync content/ledger.sqlite from the bib file "
@@ -697,19 +634,22 @@ if __name__ == "__main__":
         with runlock.pipeline_lock():
             # Inside the lock, not before it: two overlapping scheduled
             # invocations would otherwise both attach a
-            # RotatingFileHandler to the same logs/sync.log before
+            # RotatingFileHandler to the same logs/pipeline.log before
             # either acquires the lock -- and RotatingFileHandler isn't
             # safe for two processes to hold open on the same file at
             # once (a rotation from one can land mid-write from the
             # other). The lock already serializes actual sync work; this
             # makes it serialize handler creation too, so at most one
-            # process ever has a live handler on the file.
-            _configure_logging()
+            # process ever has a live handler on the file. The same
+            # constraint is why scripts/enrich.py -- which shares both
+            # this lock and this log file -- configures in the same
+            # place; see src/logging_setup.py's own docstring.
+            logging_setup.configure()
             raise SystemExit(run(remove_stale=args.remove_stale, reparse=args.reparse))
     except runlock.AlreadyRunning as exc:
         # Deliberately still a bare print, not the logger: this is the
         # losing side of the race above and must not touch
-        # logs/sync.log itself, which the winner may already be
+        # logs/pipeline.log itself, which the winner may already be
         # writing to. Losing the lock is an expected, harmless outcome
         # under any real schedule (see docs/CLI.md's "Running sync on a
         # schedule"), not a failure worth persisting.

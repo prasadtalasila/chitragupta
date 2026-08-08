@@ -15,9 +15,10 @@ content/drafts/
 content/provenance/
 content/dossiers/
 
-# python -m src.sync's rotated log file (see config.toml's [logging]
-# section) -- per-host, and the whole directory rather than *.log below,
-# since a rotated backup (sync.log.1, sync.log.2, ...) doesn't end in
+# The pipeline's rotated log file (see config.toml's [logging]
+# section) -- written by python -m src.sync and scripts/enrich.py alike,
+# per-host, and the whole directory rather than *.log below,
+# since a rotated backup (pipeline.log.1, pipeline.log.2, ...) doesn't end in
 # .log.
 logs/
 

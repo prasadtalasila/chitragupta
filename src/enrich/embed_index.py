@@ -21,14 +21,21 @@ closes that gap too.
 """
 
 import hashlib
+import logging
 import os
 import re
 import subprocess
 import tempfile
 from pathlib import Path
 
-from src import config
+from src import config, logging_setup
 from src.enrich.corpus import CorpusDoc
+
+# Fixed name for the same reason src/sync.py pins its own: this
+# module is imported, never run as __main__, but naming it here
+# rather than via __name__ keeps it obvious that it must stay inside
+# the "src" tree logging_setup.configure() pins to DEBUG.
+logger = logging.getLogger("src.enrich.embed_index")
 
 _COLLECTION_PREFIX = "corpus"
 
@@ -149,6 +156,16 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     n_embedded = n_unchanged = n_no_text = 0
     try:
         for position, doc in enumerate(docs, start=1):
+            # Bare prints for this whole per-document block, not
+            # logging_setup.say(): the citekey is written *before* the
+            # work and the outcome is appended to the same line after
+            # it, so "which document is it on right now" is visible
+            # while a slow embed is still running. A log record is a
+            # whole line by construction, so routing this through the
+            # logger would split each document across records and
+            # withhold the citekey until its work had already finished
+            # -- losing the one thing this line is for. The summary
+            # below is line-complete and does reach logs/pipeline.log.
             print(f"  [{position}/{len(docs)}] {doc.citekey}", end="", flush=True)
 
             text = get_text(doc)
@@ -203,13 +220,19 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
         # interrupted run is worth something and the message says so,
         # rather than leaving the reader to guess (the same promise
         # docling_parse.py makes when its own pool is interrupted).
-        print(f"\n  interrupted after {len(counts)}/{len(docs)} document(s) "
-              "-- what is embedded is kept; re-run to continue.", flush=True)
+        logging_setup.say(
+            logger,
+            f"\n  interrupted after {len(counts)}/{len(docs)} document(s) "
+            "-- what is embedded is kept; re-run to continue.",
+            level=logging.WARNING,
+        )
         raise
 
-    print(f"  {len(docs)} document(s): {n_embedded} embedded, {n_unchanged} unchanged, "
-          f"{n_no_text} with no text -- {sum(counts.values())} chunk(s) in the index",
-          flush=True)
+    logging_setup.say(
+        logger,
+        f"  {len(docs)} document(s): {n_embedded} embedded, {n_unchanged} unchanged, "
+        f"{n_no_text} with no text -- {sum(counts.values())} chunk(s) in the index",
+    )
     return counts
 
 

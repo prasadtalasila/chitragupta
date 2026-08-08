@@ -182,19 +182,30 @@ The values in full:
   not enforced, so a value above 1.0 loads fine and simply disables the
   warning, since no document can exceed it.
 
-### `[logging]` -- sync's log file
+### `[logging]` -- the pipeline log file
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
 | `level` | `LOGGING_LEVEL` | `"DEBUG"` \| `"INFO"` \| `"WARNING"` \| `"ERROR"` \| `"CRITICAL"` | `"INFO"` |
 
-- **`level`** -- how much `python -m src.sync` writes to `logs/sync.log`
+- **`level`** -- how much the pipeline writes to `logs/pipeline.log`
   (rotated at 5 MB, 5 backups kept -- fixed in code, not configurable).
   Case-insensitive; any other value is rejected, naming the valid ones.
   Only affects the file: terminal output is the same regardless of this
   setting. This is the only `[logging]` key -- rotation size and backup
   count haven't needed to vary per host. See
   [CLI.md's "Running sync on a schedule"](CLI.md#running-sync-on-a-schedule).
+
+  **One file, shared.** Both `python -m src.sync` and
+  `scripts/enrich.py` write here, and each line names its source
+  (`src.sync`, `scripts.enrich`, `src.enrich.docling_parse`), so
+  `grep 'src\.sync' logs/pipeline.log` recovers a per-command view. The
+  file is shared rather than split per command because that is what
+  makes it safe: a rotating file can only have one writer process at a
+  time, and these two already exclude each other through the pipeline
+  write lock. Commands that don't take that lock -- `src.retrieval`,
+  `src.citation_gate`, `src.references`, `src.dossier` and the rest of
+  the drafting-layer CLIs -- write to stdout only and are not logged.
 
 The log file's own location, `logs/` beside the repo root, has no
 `config.toml` key -- but does still honor a `LOGS_DIR` environment

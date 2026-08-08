@@ -25,13 +25,23 @@ Usage:
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.enrich import corpus, docling_parse, embed_index, topic_model
-from src import citation_provenance, config, render_output, runlock
+from src import citation_provenance, config, logging_setup, render_output, runlock
+
+# A fixed name, not __name__: this file is run as a script
+# (`python scripts/enrich.py`), so Python sets __name__ to "__main__",
+# which sits outside the logger trees logging_setup.configure() pins --
+# exactly the trap src/sync.py documents at its own getLogger call. The
+# "scripts" root is the second tree that function's _this_project_only
+# filter accepts; without it every line here would reach the log file
+# and be silently dropped from the console.
+logger = logging.getLogger("scripts.enrich")
 
 STAGE_ORDER = ["docling", "embed", "bertopic", "provenance", "render"]
 
@@ -92,7 +102,27 @@ def parse_args():
     return parser.parse_args()
 
 
-def main() -> int:
+def _say(message: str, *, level: int = logging.INFO, log_as: str | None = None) -> None:
+    """This script's stdout is its human-facing report -- the stage
+    table and the summary -- so every line goes to stdout and is
+    mirrored into the log file rather than moved to it. `log_as` gives
+    the log a different rendering of the same thing where the terminal
+    wants one shape and a grep wants another. See logging_setup.say()."""
+    logging_setup.say(logger, message, level=level, log_as=log_as)
+
+
+def main(configure_logging: bool = False) -> int:
+    """Run the selected stages under the pipeline lock.
+
+    `configure_logging` is off by default and set only by the
+    `__main__` block below, which keeps logging_setup.configure()
+    entrypoint-only in the same way src/sync.py does. The flag exists
+    at all because this script takes its lock *inside* main() rather
+    than at the entrypoint, and configure() must happen inside the lock
+    (see its docstring) -- so it cannot simply sit beside the
+    SystemExit below. Tests call main() directly and must not attach
+    handlers or create a logs/ directory as a side effect.
+    """
     args = parse_args()
     # Strip and drop blanks: "--stages 'embed, bertopic'" and a trailing
     # comma are both natural to type, and without this the first makes a
@@ -106,6 +136,10 @@ def main() -> int:
     # notably for a stage name this pipeline used to have and no longer does.
     unknown = sorted(selected - set(STAGE_ORDER))
     if unknown:
+        # A bare print, not _say: this runs before the lock, so no log
+        # file is open yet and none may be opened here (see main()'s
+        # docstring). Argument validation belongs to the caller's
+        # terminal anyway -- the run it describes has not started.
         print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- known stages: {', '.join(STAGE_ORDER)}")
 
     # Same lock as `python -m src.sync`: this stage writes content/ too,
@@ -115,36 +149,63 @@ def main() -> int:
     # not just sync-vs-sync.
     try:
         with runlock.pipeline_lock():
+            # Inside the lock for the same reason src/sync.py configures
+            # inside its own: RotatingFileHandler is not safe for two
+            # processes on one file, and this script shares
+            # logs/pipeline.log with sync. The lock is what makes the
+            # shared file sound -- see src/logging_setup.py's docstring.
+            if configure_logging:
+                logging_setup.configure()
             return _run_stages(args, selected)
     except runlock.AlreadyRunning as exc:
+        # Deliberately still a bare print, not _say: this is the losing
+        # side of the race above and must not touch logs/pipeline.log,
+        # which the winner may already be writing to. Same reasoning as
+        # the matching branch in src/sync.py.
         print(f"  {exc}")
         return runlock.EXIT_ALREADY_RUNNING
 
 
 def _run_stages(args, selected) -> int:
     docs = corpus.build_corpus()
-    print(f"Target: {args.target}")
-    print(f"Corpus: {len(docs)} doc(s) from {config.BIB_FILE_PATH}")
+    _say(f"Target: {args.target}")
+    _say(f"Corpus: {len(docs)} doc(s) from {config.BIB_FILE_PATH}")
 
     results = {}
     for name in STAGE_ORDER:
         if name not in selected:
             continue
-        print(f"\n=== {name} ===")
+        _say(f"\n=== {name} ===")
         try:
             result = STAGE_FUNCS[name](docs, args)
         except Exception as exc:  # noqa: BLE001 -- a stage failing must not abort the run
             result = {"status": "error", "detail": f"{type(exc).__name__}: {exc}"}
         results[name] = result
         detail = result["detail"]
-        print(f"[{result['status']}] " + (json.dumps(detail, indent=2, default=str) if not isinstance(detail, str) else detail))
+        # Two renderings of the same detail on purpose. The terminal gets
+        # the indented JSON it has always had; the log gets it on one
+        # line, because a record spanning several lines turns one event
+        # into several with only the first timestamped, and every stage
+        # but `render` returns a dict here -- so this is the common case,
+        # not an edge one.
+        #
+        # A failed stage is logged at WARNING so an unattended reader
+        # grepping logs/pipeline.log at the default level still sees it
+        # -- the stage swallowed the exception to keep the run going,
+        # so this line is the only trace it leaves.
+        is_text = isinstance(detail, str)
+        _say(
+            f"[{result['status']}] " + (detail if is_text else json.dumps(detail, indent=2, default=str)),
+            level=logging.WARNING if result["status"] == "error" else logging.INFO,
+            log_as=None if is_text else f"[{result['status']}] " + json.dumps(detail, default=str),
+        )
 
-    print("\n=== Summary ===")
+    _say("\n=== Summary ===")
     for name in STAGE_ORDER:
         if name in results:
-            print(f"  {name:10s} {results[name]['status']}")
+            _say(f"  {name:10s} {results[name]['status']}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(configure_logging=True))
