@@ -108,7 +108,7 @@ kept evidence, rejected candidates and why, contradictions, and the
 user's steering.
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `scripts/enrich.py` or any `src/enrich/*` stage.** Both belong to the
+run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
