@@ -24,7 +24,7 @@ A clear and concise description of what was expected to happen.
 
 ## Actual Output
 
-Paste the relevant output. For a `sync` problem, `logs/sync.log` carries the
+Paste the relevant output. For a `sync` or `enrich` problem, `logs/pipeline.log` carries the
 per-document progress and warnings that stdout does not.
 
 **Do not paste your bibliography or any PDF text** -- `papers/` and

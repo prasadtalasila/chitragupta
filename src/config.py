@@ -318,11 +318,11 @@ def _get_log_level(env_var: str, *toml_path: str, default: str) -> str:
     return raw
 
 
-# How much python -m src.sync writes to logs/sync.log (see LOGS_DIR
+# How much the pipeline writes to logs/pipeline.log (see LOGS_DIR
 # below) -- one of the standard library's own level names. Deliberately
 # the only [logging] setting: rotation size/backup count are fixed in
-# sync.py rather than exposed here, since nothing so far has needed them
-# to vary per host.
+# logging_setup.py rather than exposed here, since nothing so far has
+# needed them to vary per host.
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 LOGGING_LEVEL = _get_log_level("LOGGING_LEVEL", "logging", "level", default="INFO")
 # No config.toml key, unlike the paths above -- a fixed, predictable
@@ -332,7 +332,7 @@ LOGGING_LEVEL = _get_log_level("LOGGING_LEVEL", "logging", "level", default="INF
 # no [logging].dir to also check) -- every other path constant in this
 # file gets one, and a real subprocess CLI test needs to point this
 # somewhere other than this checkout's own logs/. Gitignored; see
-# src/sync.py for what lands here.
+# src/logging_setup.py for what lands here and why it is one file.
 LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(REPO_ROOT / "logs")))
 
 # src/citation_provenance.py band thresholds: the fraction of a citing

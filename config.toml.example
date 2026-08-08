@@ -233,9 +233,15 @@ long_word_ratio = 0.01
 min_tokens = 200
 
 [logging]
-# How much `python -m src.sync` writes to logs/sync.log (rotated,
+# How much the pipeline writes to logs/pipeline.log (rotated,
 # gitignored -- created on first run). One of Python's own level names:
 # DEBUG, INFO, WARNING, ERROR, CRITICAL. Case-insensitive.
+#
+# One file for both `python -m src.sync` and `scripts/enrich.py`: each
+# line names its source, so `grep 'src\.sync' logs/pipeline.log` splits
+# them back apart. The drafting-layer CLIs (src.retrieval,
+# src.citation_gate, src.references, src.dossier) print to stdout and
+# are not logged here -- see docs/CONFIG.md for why.
 #
 # Only affects the file. Terminal output (stdout/stderr) is unchanged by
 # this setting -- the per-document progress and summary lines print

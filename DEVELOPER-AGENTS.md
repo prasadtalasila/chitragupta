@@ -127,12 +127,19 @@ Three, each learned from a bug rather than chosen:
   (#50). `sync`, `docling_parse` and `embed_index` all emit
   `[done/total] <citekey>`, opened *before* the slow call so the reader
   sees the document currently under way rather than the last one that
-  finished. Where it goes differs, and the split is deliberate (3.4.0):
+  finished. Where it goes differs, and the split is deliberate.
   `sync`'s stdout is a documented contract -- bibliography order,
-  diffable between runs, pinned by tests -- so progress and warnings go
-  through `logging` to `logs/sync.log` instead, while the enrichment
-  stages still `print(..., flush=True)`. Flush anything printed: stdout
-  is block-buffered when it isn't a terminal, and the tail of an
+  diffable between runs, pinned by tests -- so its progress and warnings
+  go through `logging` to `logs/pipeline.log` instead (3.4.0). The
+  enrichment stages keep their stdout and *mirror* it into the same file
+  via `logging_setup.say()`, which prints and logs one line with
+  `extra={"file_only": True}` so the console handler doesn't echo it.
+  Two kinds of message stay bare `print`s and must not be
+  converted: anything built across several writes (`print(..., end="")`,
+  where a log record's one-line-per-entry shape would withhold the
+  citekey until the work finished) and anything running in a worker
+  process or a signal handler. Flush anything printed: stdout is
+  block-buffered when it isn't a terminal, and the tail of an
   interrupted run is the part worth keeping.
 - **Classify a failure by cause on the exception, not by matching its
   message.** `pdf_text.py` sets `transient` and `timed_out` marks that

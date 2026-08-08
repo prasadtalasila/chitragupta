@@ -3,7 +3,6 @@
 
 import contextlib
 import logging
-import logging.handlers
 import multiprocessing
 import subprocess
 import sys
@@ -564,113 +563,6 @@ class TestCliEntrypoint:
         )
         assert result.returncode == 2
         assert "unrecognized arguments" in result.stderr
-
-
-class TestConfigureLogging:
-    """_configure_logging() is CLI-entrypoint-only (see its own
-    docstring for why), so unlike everything else in this file it isn't
-    exercised through run() -- it has to be called directly, which means
-    the two handlers it attaches to the root logger have to be removed
-    again afterwards, or they'd leak into every other test in the
-    process."""
-
-    @pytest.fixture(autouse=True)
-    def _cleanup_root_handlers(self):
-        root = logging.getLogger()
-        before = list(root.handlers)
-        yield
-        for handler in root.handlers[:]:
-            if handler not in before:
-                root.removeHandler(handler)
-                handler.close()
-        logging.getLogger("src").setLevel(logging.NOTSET)
-
-    def test_creates_the_log_file_and_sets_the_configured_level(
-        self, isolated_config, monkeypatch
-    ):
-        monkeypatch.setattr(config, "LOGGING_LEVEL", "WARNING")
-        root_level_before = logging.getLogger().level
-        sync._configure_logging()
-        assert (config.LOGS_DIR / "sync.log").exists()
-        file_handlers = [
-            h for h in logging.getLogger().handlers
-            if isinstance(h, logging.handlers.RotatingFileHandler)
-        ]
-        assert len(file_handlers) == 1
-        # LOGGING_LEVEL is a handler-level filter on file_handler alone
-        # -- not a logger level -- see test_console_output_ignores_
-        # logging_level below for why that distinction is load-bearing.
-        assert file_handlers[0].level == logging.WARNING
-        assert logging.getLogger().level == root_level_before
-
-    def test_console_output_ignores_logging_level(
-        self, isolated_config, monkeypatch, capsys
-    ):
-        """The bug this guards against: setting LOGGING_LEVEL on the
-        "src" logger tree (an earlier version of _configure_logging()
-        did) gates whether a record is created at all, before any
-        handler is reached -- so WARNING would have silently suppressed
-        the [n/N] progress line (INFO) on the console too, contradicting
-        "only affects the file". Confirmed here at the strictest
-        setting: an INFO record must still reach the console even when
-        LOGGING_LEVEL is CRITICAL."""
-        monkeypatch.setattr(config, "LOGGING_LEVEL", "CRITICAL")
-        sync._configure_logging()
-        sync.logger.info("progress line")
-
-        log_text = (config.LOGS_DIR / "sync.log").read_text()
-        assert "progress line" not in log_text  # correctly filtered out of the file
-
-        err = capsys.readouterr().err
-        assert "progress line" in err  # but not off the console
-
-    def test_a_third_partys_warning_reaches_the_file_but_not_the_console(
-        self, isolated_config, monkeypatch, capsys
-    ):
-        """docling and torch already use stdlib logging. Their WARNING+
-        should land in logs/sync.log "for free" -- but not flood the
-        console, which is exactly the "docling's own OCR chatter"
-        problem the [n/N] progress line's own comment describes."""
-        monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
-        sync._configure_logging()
-        logging.getLogger("docling").warning("a third-party warning")
-
-        log_text = (config.LOGS_DIR / "sync.log").read_text()
-        assert "a third-party warning" in log_text
-
-        err = capsys.readouterr().err
-        assert "a third-party warning" not in err
-
-    def test_a_file_only_record_reaches_the_file_but_not_the_console(
-        self, isolated_config, monkeypatch, capsys
-    ):
-        """Confirmed against a real `python -m src.sync` run: without
-        this filter, run()'s summary line -- already printed to stdout
-        -- prints a second time via the console handler, once for each
-        handler on the same logger call."""
-        monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
-        sync._configure_logging()
-        sync.logger.info("ordinary message")
-        sync.logger.info("file only message", extra={"file_only": True})
-
-        log_text = (config.LOGS_DIR / "sync.log").read_text()
-        assert "ordinary message" in log_text
-        assert "file only message" in log_text
-
-        err = capsys.readouterr().err
-        assert "ordinary message" in err
-        assert "file only message" not in err
-
-    def test_the_log_file_is_utf8(self, isolated_config, monkeypatch):
-        """Explicit encoding, not the platform default: a citekey or
-        title carrying an accented or non-Latin name (this corpus has
-        real ones -- Schroder-with-an-umlaut, Greek in formulae) must
-        not depend on whatever locale the host happens to be in."""
-        monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
-        sync._configure_logging()
-        sync.logger.info("Wüllnerstraße αβγ")
-        log_text = (config.LOGS_DIR / "sync.log").read_text(encoding="utf-8")
-        assert "Wüllnerstraße αβγ" in log_text
 
 
 MANY_BIB = "".join(f"""

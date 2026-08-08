@@ -9,6 +9,7 @@ short path; this is the full set.
 ## Table of contents
 
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
+- [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
 - [Upgrading from 2.x](#upgrading-from-2x)
 - [Which interpreter](#which-interpreter)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
@@ -46,6 +47,32 @@ you delete by hand.
 
 Nothing to do, in other words -- but if you would rather force it all at
 once, `python -m src.sync --reparse` still re-extracts everything.
+
+## Upgrading from 3.11 or earlier: the log file moved
+
+`logs/sync.log` is now **`logs/pipeline.log`**. It is the same file doing
+the same job, renamed because `scripts/enrich.py` now writes to it too
+and the old name had stopped being true.
+
+Nothing about how you *invoke* anything changed, and `[logging].level`
+means exactly what it meant before. But two things need a hand:
+
+- **Anything naming the old path** -- a cron wrapper, a systemd unit's
+  redirect, a log shipper, a runbook -- keeps pointing at a file nothing
+  writes to any more, and will go quiet without erroring. Point it at
+  `logs/pipeline.log`.
+- **An existing `logs/sync.log` and its rotated backups are orphaned,
+  not migrated.** Rotation only ever touches the current name, so those
+  files sit there indefinitely. Read anything you still want out of
+  them, then delete them.
+
+Telling the two commands apart in the shared file is what `%(name)s` in
+each line is for:
+
+```bash
+grep 'src\.sync' logs/pipeline.log        # just the corpus layer
+grep 'scripts\.enrich' logs/pipeline.log  # just the enrichment layer
+```
 
 ## Upgrading from 2.x
 
@@ -645,26 +672,35 @@ archive. Every prose document ships: `docs/`, `README.md`, `SOUL.md`,
 write lock (`src.runlock`) -- it was already safe to run unattended.
 What makes it worth *actually* putting on a schedule is the other two
 things: exit codes an unattended caller can branch on without parsing
-any text, and `logs/sync.log` (rotated; see `[logging]` in
+any text, and `logs/pipeline.log` (rotated; see `[logging]` in
 `config.toml.example`) as a persistent transcript to check afterwards.
 
-**Don't hand-roll a log redirect for most of this.** `logs/sync.log`
+`scripts/enrich.py` writes to the same file, so a host that schedules
+both has one transcript rather than two. Each line names its source, so
+`grep 'src\.sync' logs/pipeline.log` narrows it back down when that is
+what you want -- and the interleaved view is often the useful one, since
+the enrichment layer's docling stage reuses whatever the corpus layer
+already parsed.
+
+**Don't hand-roll a log redirect for most of this.** `logs/pipeline.log`
 carries almost every warning, per-document progress line, and the run
 summary, at the level `[logging].level` sets -- a cron or systemd
-wrapper around this command doesn't need its own `>> some.log 2>&1` to
-get a durable record of those. Two messages are the exception and stay
+wrapper around these commands doesn't need its own `>> some.log 2>&1` to
+get a durable record of those. Three messages are the exception and stay
 terminal-only by design: a docling worker's GPU-OOM fallback (runs in a
-child process with no route back to the file) and the Ctrl+C interrupt
-notice (runs in a signal handler, deliberately kept to a bare `print`).
-Both are rare and neither is the kind of thing a schedule needs to
-recover from unattended.
+child process with no route back to the file), the Ctrl+C interrupt
+notice (runs in a signal handler, deliberately kept to a bare `print`),
+and the "another run already holds the lock" refusal (the losing side of
+a race must not touch a file the winner is writing). All three are rare
+and none is the kind of thing a schedule needs to recover from
+unattended.
 
 **Exit codes are the API**, not the printed text:
 
 | Exit code | Meaning | What an unattended caller should do |
 |---|---|---|
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
-| `1` | At least one document failed, or a prior deterministic failure is still unresolved | Alert; `logs/sync.log`'s FAILED/WARNING lines name which citekey and why |
+| `1` | At least one document failed, or a prior deterministic failure is still unresolved | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
 
 ### cron
@@ -677,7 +713,7 @@ recover from unattended.
 
 cron's own default, with no `MAILTO` set, is to mail stdout/stderr to
 the crontab's owner -- which needs a working local MTA to go anywhere,
-and most hosts don't have one configured. `logs/sync.log` doesn't depend
+and most hosts don't have one configured. `logs/pipeline.log` doesn't depend
 on any of that: it's a plain file, written every run regardless of mail
 setup.
 
@@ -718,7 +754,7 @@ WantedBy=timers.target
 sudo systemctl daemon-reload
 sudo systemctl enable --now chitragupta-sync.timer
 journalctl -u chitragupta-sync.service   # systemd's own transcript,
-                                          # alongside logs/sync.log
+                                          # alongside logs/pipeline.log
 ```
 
 Both assume a host where `.venv-full/` is already built (see

@@ -57,13 +57,20 @@ what every .md should contain.
 """
 
 import json
+import logging
 import os
 import re
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from src import config, passages, pdf_text
+from src import config, logging_setup, passages, pdf_text
 from src.enrich.corpus import CorpusDoc
+
+# Fixed name, not __name__: this module has no __main__ block of its
+# own, but naming the logger explicitly keeps it inside the "src"
+# tree logging_setup.configure() pins permissive -- the same trap
+# src/sync.py documents at its own getLogger call.
+logger = logging.getLogger("src.enrich.docling_parse")
 
 # Bump when a change to what parse_doc() *writes* makes an existing .md
 # stale even though its PDF hasn't changed -- the (size, mtime_ns)
@@ -131,10 +138,12 @@ def _save_cache(cache: dict) -> None:
         tmp_path.write_text(json.dumps(payload))
         os.replace(tmp_path, config.DOCLING_CACHE_PATH)
     except OSError as exc:
-        print(
+        logging_setup.say(
+            logger,
             f"  WARNING: couldn't persist Docling's incremental cache "
             f"({exc}) -- next run will re-parse what was already done "
-            "this run."
+            "this run.",
+            level=logging.WARNING,
         )
 
 
@@ -433,10 +442,10 @@ def _executor_for(workers: int):
     """
     ctx, complaint = pdf_text.process_pool_context()
     if complaint:
-        print(complaint)
+        logging_setup.say(logger, complaint, level=logging.WARNING)
     devices, gpu_complaint = pdf_text.usable_devices()
     if gpu_complaint:
-        print(gpu_complaint)
+        logging_setup.say(logger, gpu_complaint, level=logging.WARNING)
     return ProcessPoolExecutor(
         max_workers=workers,
         mp_context=ctx,
@@ -630,14 +639,17 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     reusable = {d.citekey for d in docs if d.pdf_path and not _is_cached(d, cache)
                 and _corpus_parse_available(d)}
     if reusable:
-        print(f"  reusing the corpus layer's docling parse for "
-              f"{len(reusable)} document(s) -- no second parse needed")
+        logging_setup.say(
+            logger,
+            f"  reusing the corpus layer's docling parse for "
+            f"{len(reusable)} document(s) -- no second parse needed",
+        )
 
     pending = [d for d in docs if d.pdf_path and not _is_cached(d, cache)
                and d.citekey not in reusable]
     workers, complaint = pdf_text.resolve_workers(len(pending))
     if complaint:
-        print(complaint)
+        logging_setup.say(logger, complaint, level=logging.WARNING)
 
     if workers > 1:
         threads = pdf_text.docling_threads(workers)
@@ -662,12 +674,16 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
                 if fingerprint is not None:
                     cache[citekey] = fingerprint
                 done += 1
-                print(f"  [{done}/{len(jobs)}] {citekey}")
+                logging_setup.say(logger, f"  [{done}/{len(jobs)}] {citekey}")
         except KeyboardInterrupt:
             executor.shutdown(wait=False, cancel_futures=True)
             pdf_text.terminate_workers(executor)
-            print(f"\n  interrupted after {done}/{len(jobs)} document(s) -- "
-                  "parsed output is kept; re-run to continue.")
+            logging_setup.say(
+                logger,
+                f"\n  interrupted after {done}/{len(jobs)} document(s) -- "
+                "parsed output is kept; re-run to continue.",
+                level=logging.WARNING,
+            )
             _save_cache(cache)
             raise
         finally:

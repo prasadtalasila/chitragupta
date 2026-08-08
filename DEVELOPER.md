@@ -270,7 +270,7 @@ tests/                    pytest suite -- unit tests per module + end-to-end fea
 content/                  generated, gitignored (regenerate with sync)
   ledger.sqlite, parsed/<citekey>.txt, provenance/,
   docling/, chroma/, topics.json, topic_embed_cache.json, rendered/  (src/enrich/ outputs)
-logs/                     gitignored -- sync.log, rotated at 5MB x 5 backups. Level from
+logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups. Level from
                           config.toml's [logging]; relocate with the LOGS_DIR env var
 .claude/skills/           drafting layer: survey-writer, thesis-chapter-writer,
                           textbook-chapter-writer, tutorial-writer, deep-research
@@ -357,7 +357,9 @@ Full design rationale, including the measurements behind those choices:
 ## Open questions and unbuilt features
 
 Running this pipeline on a schedule was the long-standing goal here.
-**Most of it now exists**, as of 3.4.0: `logs/sync.log` with rotation,
+**Most of it now exists**, as of 3.4.0: a rotating log file (added as
+`logs/sync.log`, and renamed to `logs/pipeline.log` once
+`scripts/enrich.py` started sharing it -- see `src/logging_setup.py`),
 a pages/s throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
 [docs/CLI.md](docs/CLI.md#running-sync-on-a-schedule) -- including the
