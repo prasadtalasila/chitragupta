@@ -157,16 +157,19 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 7. **Log provenance.** Write `content/provenance/<slug>.json`:
    `{"section": "...", "citekeys": [...]}` per section, for later audit (in
    addition to the evidence file from step 2).
-8. **Map sections to citekeys in the dossier.** Fill in the dossier's
-   `sections.md` -- one row per section heading with the citekeys cited
-   under it -- so a later revision can tell which section owns a citation
-   without reading the fragment.
-   `python3 -m src.dossier sections content/drafts/<slug>.tex` prints the
-   headings and their line ranges to build it from; it tracks
-   `verbatim`/`lstlisting`/`minted`, so a
-   `\section`-like line inside a code environment won't show up as a
-   heading. This is the same mapping as step 7's provenance JSON, kept in
-   the form a reviser reads.
+8. **Map sections to citekeys in the dossier.** Save the fragment to
+   `content/drafts/<slug>.tex` first, then derive the map rather than
+   writing it by hand:
+   ```
+   python3 -m src.dossier sections content/drafts/<slug>.tex --citekeys --write
+   ```
+   It reads `\citep`/`\citet` as readily as `[@key]` and tracks
+   `verbatim`/`lstlisting`/`minted`, so a `\section`-like line inside a
+   code environment is neither a heading nor a citation. The result is
+   the same mapping as step 7's provenance JSON, kept in the form a
+   reviser reads. Drop `--write` to see the table first; a citekey cited
+   above the first `\section` is reported on stderr rather than
+   attributed to a section that does not contain it.
 9. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
    (this remains the canonical deliverable -- the one meant to be `\input`-ed),
    then run:

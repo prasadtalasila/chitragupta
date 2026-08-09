@@ -81,7 +81,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from src import config
+from src import citation_gate, config
 
 # The files a dossier holds, in the order `init` writes them and `status`
 # reports them. The value is how `status` counts entries in that file --
@@ -348,7 +348,14 @@ def citekeys_by_section(dossier: Path) -> dict[str, list[str]]:
         stripped = line.strip()
         if not stripped.startswith("|") or set(stripped) <= set("|-: \t"):
             continue
-        cells = [cell.strip() for cell in _ROW_SPLIT.split(stripped.strip("|"))]
+        # `\|` is markdown's literal pipe, and a heading containing one is
+        # written that way (by hand or by `sections --citekeys`). Splitting
+        # already skips it; unescaping here is the other half, so the
+        # section name read back is the heading as it appears in the draft
+        # rather than its escaped spelling -- which is what a caller then
+        # matches against `sections()` output.
+        cells = [cell.strip().replace(r"\|", "|")
+                 for cell in _ROW_SPLIT.split(stripped.strip("|"))]
         if len(cells) != 2 or [cell.lower() for cell in cells] == ["section", "citekeys"]:
             continue
         found[cells[0]] = _citekeys(cells[1])
@@ -546,6 +553,60 @@ def sections(text: str) -> list[Section]:
     if found:
         found[-1].end = len(lines)
     return found
+
+
+def attribute_citekeys(text: str) -> tuple[list[tuple[Section, list[str]]], list[str]]:
+    """(section, its citekeys) for every heading, plus the unattributed ones.
+
+    The join key is the line number: `sections()` gives each heading a
+    line range, `citation_gate.extract_citekeys()` gives every citekey the
+    line it was cited on, and the intersection is the relation
+    `sections.md` records. Both halves already handle the two syntaxes
+    and skip code, so `.md` (`[@key]`) and `.tex` (`\\citep{key}`) need no
+    separate treatment here.
+
+    Duplicates collapse, keeping first-cited order -- the file answers
+    "which section leans on this paper", and a key cited three times in
+    one section is one answer, not three.
+
+    A key cited before the first heading belongs to no section and is
+    returned separately rather than dropped or forced into the first row.
+    Attributing it to a section that does not contain it would be a wrong
+    answer handed to a reviser, which is the failure this whole file
+    exists to prevent.
+    """
+    outline = sections(text)
+    per_section: list[tuple[Section, list[str]]] = [(section, []) for section in outline]
+    unattributed: list[str] = []
+    for line, citekey in citation_gate.extract_citekeys(text):
+        for section, keys in per_section:
+            if section.start <= line <= section.end:
+                if citekey not in keys:
+                    keys.append(citekey)
+                break
+        else:
+            if citekey not in unattributed:
+                unattributed.append(citekey)
+    return per_section, unattributed
+
+
+def sections_markdown(text: str) -> str:
+    """The finished `sections.md` for a draft, header and all.
+
+    Deterministic, so it can be regenerated rather than maintained: the
+    template already says the file is "rebuildable from the draft", and
+    this is that sentence made executable. A pipe in a heading is escaped
+    rather than left to break the row -- `_ROW_SPLIT` reads `\\|` as
+    literal, so the round trip through `citekeys_by_section()` returns
+    the heading as written.
+    """
+    per_section, _ = attribute_citekeys(text)
+    rows = "".join(
+        f"| {section.title.replace('|', r'\|')} | "
+        f"{', '.join(f'`{key}`' for key in keys)} |\n"
+        for section, keys in per_section
+    )
+    return _SECTIONS_TEMPLATE + rows
 
 
 # --------------------------------------------------------------------------
@@ -1751,7 +1812,16 @@ def _cmd_sections(args: argparse.Namespace) -> int:
     if not draft.is_file():
         print(f"No such draft: {draft}", file=sys.stderr)
         return 1
-    outline = sections(draft.read_text(encoding="utf-8"))
+    if args.write and not args.citekeys:
+        # Refused rather than assumed: the bare form prints an outline,
+        # and writing that into sections.md would replace the citekey
+        # relation with a heading list.
+        print("--write needs --citekeys.", file=sys.stderr)
+        return 1
+    text = draft.read_text(encoding="utf-8")
+    if args.citekeys:
+        return _sections_citekeys(draft, text, args.write)
+    outline = sections(text)
     if not outline:
         print(f"No headings in {draft_relpath(draft)}.")
         return 0
@@ -1762,6 +1832,44 @@ def _cmd_sections(args: argparse.Namespace) -> int:
         print(f"  {span:>12}  ({section.lines:>4} lines)  {indent}{section.title}")
     print("\n  Read one section with offset=<start>, limit=<lines>; edit inside that")
     print("  range rather than rewriting the file.")
+    return 0
+
+
+def _sections_citekeys(draft: Path, text: str, write: bool) -> int:
+    """`sections --citekeys`: the derived table, printed or written.
+
+    Exit code 1 when the draft has no headings, because there is then no
+    table to build and a caller that piped this somewhere should hear
+    about it rather than write an empty file.
+    """
+    per_section, unattributed = attribute_citekeys(text)
+    if not per_section:
+        print(f"No headings in {draft_relpath(draft)}.", file=sys.stderr)
+        return 1
+
+    table = sections_markdown(text)
+    if write:
+        target = dossier_dir(draft) / "sections.md"
+        if not target.parent.is_dir():
+            print(
+                f"No dossier for {draft_relpath(draft)} -- run `init` first.",
+                file=sys.stderr,
+            )
+            return 1
+        target.write_text(table, encoding="utf-8")
+        print(f"{target}: {len(per_section)} section(s) from {draft_relpath(draft)}")
+    else:
+        print(table, end="")
+
+    if unattributed:
+        # Said out loud rather than dropped: a citekey cited above the
+        # first heading is real evidence the table cannot place, and a
+        # reviser reading only the table would never learn it exists.
+        print(
+            "Cited before the first heading, so in no section: "
+            + ", ".join(f"`{key}`" for key in unattributed),
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -1926,6 +2034,13 @@ def main(argv: list[str] | None = None) -> int:
     p_sections = sub.add_parser(
         "sections", help="Heading -> line range, for reading and editing one section")
     p_sections.add_argument("draft", help="Path to the draft")
+    p_sections.add_argument(
+        "--citekeys", action="store_true",
+        help="Print the dossier's sections.md table -- heading -> the citekeys "
+             "cited under it -- derived from the draft instead of by hand")
+    p_sections.add_argument(
+        "--write", action="store_true",
+        help="With --citekeys: write the table to the dossier's sections.md")
     p_sections.set_defaults(func=_cmd_sections)
 
     p_brief = sub.add_parser(

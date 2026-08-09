@@ -448,13 +448,21 @@ a rendering failure never blocks presenting the `.md` report.
   report: Phase 4 wrote the *plan* there, and the writers moved off it --
   a citekey one of them added by re-searching (its `### Sources added`
   block) is cited and unlisted, and one it was handed but never used is
-  listed and uncited. Correct the rows to what the report actually cites,
-  so a later revision can tell which section owns a citation without
-  reading the report.
-  `python3 -m src.dossier sections content/drafts/deep-research-<slug>.md`
-  prints the headings and their line ranges to check against. It is the
-  same section -> citekey relation as (c)'s provenance JSON, written for
-  the reviser rather than for tooling.
+  listed and uncited. Replace the plan with what the report actually
+  cites, derived rather than corrected by hand:
+  ```bash
+  python3 -m src.dossier sections content/drafts/deep-research-<slug>.md \
+      --citekeys --write
+  ```
+  It overwrites the file with the heading -> citekey relation read out of
+  the report itself, which is the same relation as (c)'s provenance JSON,
+  written for the reviser rather than for tooling. **Do this only here,
+  never before Phase 5.** Phase 4's rows are a plan for sections that do
+  not exist yet, and deriving from a report that isn't written would
+  replace that plan with an empty table -- the one thing `brief` cannot
+  tell apart from a mistyped section name. Run it once the report is
+  final, and read its stderr: a citekey cited above the first heading is
+  reported rather than filed under a section that doesn't contain it.
 - **The steering.** If the user shaped this run in chat -- "drop the
   adoption perspective", "shorter", "deep depth", "don't lead with
   tooling" -- append it to `steering.md`, dated. It is invisible in the
