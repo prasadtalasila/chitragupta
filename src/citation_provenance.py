@@ -449,6 +449,15 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
             written[fmt] = render_output.render(str(md_path), fmt)
         except render_output.MissingBinary as exc:
             print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
+        except render_output.OutsideContentDir as exc:
+            # A layout fault rather than this report's fault: content/rendered
+            # or content/drafts resolves out of the content directory, so
+            # render_output has nowhere it is willing to write. The md report
+            # above is already written and unaffected -- it goes to
+            # content/provenance/ -- so degrade the same way as the two causes
+            # above rather than taking the whole run out, which is also how
+            # render_output.py's own CLI reports it.
+            print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
         except subprocess.CalledProcessError as exc:
             # A quoted excerpt can carry characters straight from the
             # source PDF (e.g. circled digits) that pdflatex's default

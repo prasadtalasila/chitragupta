@@ -376,6 +376,20 @@ class TestExport:
             for _, name in dossier.bundle_members([], with_rendered=True)
         )
 
+    def test_a_name_selects_the_rendered_output_of_a_nested_draft(self, draft):
+        # Rendering mirrors the draft's own path (src/render_output.py's
+        # _output_dir), which is what makes this match: while every format
+        # wrote flat, `export dt-for-engineers --with-rendered` produced a
+        # bundle with no PDFs in it and said nothing about it.
+        rendered = config.RENDERED_DIR / "dt-for-engineers"
+        rendered.mkdir(parents=True)
+        (rendered / "survey.pdf").write_bytes(b"%PDF")
+        names = {
+            name
+            for _, name in dossier.bundle_members(["dt-for-engineers"], with_rendered=True)
+        }
+        assert "rendered/dt-for-engineers/survey.pdf" in names
+
     def test_a_name_selects_one_topic_directory(self, draft, isolated_config):
         other = config.DRAFTS_DIR / "unrelated.md"
         other.write_text("# other\n")

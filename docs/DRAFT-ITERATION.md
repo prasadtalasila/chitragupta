@@ -94,9 +94,20 @@ content/drafts/dt-for-engineers/survey.md
 ```
 
 That rule is mechanical, needs no registry, and handles both layouts the
-repository actually contains -- the flat `content/drafts/<slug>.md` the
-genre skills describe and the `content/drafts/<topic>/<genre>.md` the
-shipped example content uses.
+repository actually contains -- the flat `content/drafts/<slug>.md` and
+the `content/drafts/<topic>/<genre>.md` the shipped example content uses.
+Which one you get is the user's call: a genre skill settles the draft's
+path with them before it starts (step 0), so "a book chapter in
+`books/software-engineering`" becomes
+`content/drafts/books/software-engineering/book-chapter.md`, at whatever
+depth was asked for.
+
+`content/rendered/` mirrors the same path, so a topic directory names a
+draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together --
+[CLI.md](CLI.md#python3--m-srcrender_output) has the detail. That is
+what makes `dossier export <topic> --with-rendered` able to find the
+renders at all: it matches them by their path relative to
+`content/rendered/`.
 
 | File | What it holds | Status before this |
 |---|---|---|

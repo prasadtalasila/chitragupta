@@ -43,6 +43,22 @@ escaped `\\[1\\]` markers and a bibliography wrapped in `:::` fenced divs
 and `[...]{.csl-left-margin}` spans, which render as literal punctuation
 anywhere that isn't pandoc.
 
+Every format lands beside the draft: `_output_dir` mirrors the draft's
+own path under `config.DRAFTS_DIR` into `config.RENDERED_DIR`, so
+`content/drafts/dt/survey.md` renders to `content/rendered/dt/survey.*`
+and a flat `content/drafts/survey.md` renders to
+`content/rendered/survey.*` as it always has. Before that, every format
+wrote flat, which lost two things quietly: two topics with a same-named
+draft overwrote each other's output, and `dossier export <topic>
+--with-rendered` matched nothing, because it matches a rendered file by
+its path relative to `RENDERED_DIR`.
+
+Reading is unrestricted -- the input may be any file, in or out of the
+tree -- but **every path this module writes resolves inside
+`config.CONTENT_DIR`**, and the cases that would break that raise
+`OutsideContentDir` rather than being quietly redirected. `_output_dir`
+holds that check.
+
 Every render also passes documentclass/fontsize/papersize/geometry
 variables so a tex/pdf output always opens with a 12pt, a4paper article
 class and 1-inch margins via the geometry package -- overridable per
@@ -70,6 +86,17 @@ from src.citation_gate import _PANDOC_CITE_RE
 
 class MissingBinary(RuntimeError):
     pass
+
+
+class OutsideContentDir(RuntimeError):
+    """A render would have written outside `config.CONTENT_DIR`.
+
+    Raised, rather than quietly redirected somewhere safe: every case
+    that reaches it is a symlink or a configured path that resolves
+    somewhere other than it reads, and silently writing to a *second*
+    place the user also didn't name would be the same surprise twice.
+    Nothing an ordinary layout does reaches this.
+    """
 
 
 def _require(binary: str) -> None:
@@ -267,11 +294,88 @@ def _local_image_refs(text: str) -> list[str]:
     ]
 
 
+def _really_inside(path: Path, root: Path) -> bool:
+    """Whether `path` lives under `root` once both are resolved.
+
+    Resolving both sides is the whole point: it is what makes a symlink
+    and a `..` component answer for where they actually land rather than
+    for how they are spelled.
+    """
+    return path.resolve().is_relative_to(root.resolve())
+
+
+def _output_dir(input_path: Path) -> Path:
+    """Where `input_path`'s rendered output goes: `config.RENDERED_DIR`
+    with the draft's own place under `config.DRAFTS_DIR` mirrored into
+    it, so `content/drafts/dt/survey.md` renders to
+    `content/rendered/dt/survey.{md,tex,pdf,docx}`.
+
+    **Every path this returns resolves inside `config.CONTENT_DIR`**,
+    which is the invariant the checks below exist for. Reading is
+    unrestricted -- README.md documents `render_output path/to/draft.md`
+    on a file that needn't be in the tree at all, and a read from
+    outside `content/` takes nothing out of it -- so it is only the
+    write side that is confined.
+
+    What that leaves:
+
+      - A draft not under `DRAFTS_DIR` has no path to mirror, so the
+        flat `RENDERED_DIR` stands. So does a flat
+        `content/drafts/<slug>.md`, whose relative parent is `.`.
+      - Only the part of the draft's path *below* `DRAFTS_DIR` is ever
+        carried over, and both sides are resolved before they are
+        compared, so `relative` can hold neither a `..` nor a symlink's
+        spelling -- there is no argument that mirrors to somewhere else.
+      - The three ways the write could still land outside `content/` are
+        all configuration or symlinks rather than arguments, and each
+        raises `OutsideContentDir` rather than being redirected: a
+        `content/rendered` or `content/drafts` that resolves out of
+        `CONTENT_DIR`, and a mirrored topic directory that resolves out
+        of `RENDERED_DIR`. `_copy_local_images` skips an escaping image
+        reference silently because the draft is still rendered correctly
+        without that one image; here there is no correct output left to
+        produce, so this says so instead.
+
+    This duplicates the rule `dossier.dossier_dir()` applies to
+    `content/dossiers/`, deliberately, rather than importing it: the
+    module docstring commits this file to stdlib plus
+    `config`/`citation_gate`/`references` so a genre skill can render
+    under bare `python3`, and `src/dossier.py` is outside that set. The
+    two are kept in step by hand -- there is one rule, "mirror the
+    draft's path", and both places state it.
+    """
+    for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
+        if not _really_inside(directory, config.CONTENT_DIR):
+            raise OutsideContentDir(
+                f"{directory} resolves to {directory.resolve()}, outside the content "
+                f"directory {config.CONTENT_DIR.resolve()}. Rendering mirrors a draft's "
+                f"path from content/drafts/ into content/rendered/, so a '{label}' that "
+                "points out of the content directory has no mirror to compute and would "
+                "write where nothing else in this pipeline looks. Move it back, or point "
+                "[content].dir (config.toml) at wherever it really lives."
+            )
+
+    try:
+        relative = input_path.resolve().relative_to(config.DRAFTS_DIR.resolve())
+    except ValueError:
+        return config.RENDERED_DIR
+
+    mirrored = config.RENDERED_DIR / relative.parent
+    if not _really_inside(mirrored, config.RENDERED_DIR):
+        raise OutsideContentDir(
+            f"{mirrored} resolves to {mirrored.resolve()}, outside "
+            f"{config.RENDERED_DIR.resolve()}. A draft's own path is never a reason to "
+            "write outside the content directory -- remove the symlink, or render the "
+            "draft from a topic directory that isn't one."
+        )
+    return mirrored
+
+
 def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
     """Copies every local image `input_path` references alongside the
     rendered output in `dest_dir`, so a `tex` output is actually
-    self-contained and compilable on its own (`cd content/rendered &&
-    pdflatex *.tex`).
+    self-contained and compilable on its own (`cd` to the directory the
+    render landed in -- see `_output_dir` -- and `pdflatex *.tex`).
 
     Without this, pandoc's LaTeX writer emits `\\includegraphics{path}`
     verbatim, unresolved and uncopied -- the `pdf` format only looks fine
@@ -308,6 +412,9 @@ def render(
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
+    The output lands in `_output_dir(input_path)` -- `content/rendered/`
+    with the draft's own place under `content/drafts/` mirrored into it.
+
     Citations and the bibliography are formatted with `csl` (default:
     `config.CSL_STYLE_PATH`, the vendored IEEE style), so a rendered draft
     carries numeric markers -- `[1]`, and `[3]-[6]` for a consecutive run
@@ -328,6 +435,7 @@ def render(
     `\\usepackage[margin=1in]{geometry}`.
     """
     input_path = Path(input_path)
+    out_dir = _output_dir(input_path)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not
         # a format conversion, and pandoc is the wrong tool for it. Its
@@ -343,16 +451,16 @@ def render(
         # thesis fragment's `\citep{...}` into Markdown genuinely is a
         # format conversion, and that fragment deliberately carries no
         # reference list of its own.
-        _copy_local_images(input_path, config.RENDERED_DIR)
-        return references.write_numbered(input_path, config.RENDERED_DIR)
+        _copy_local_images(input_path, out_dir)
+        return references.write_numbered(input_path, out_dir)
 
     _require("pandoc")
     if output_format == "pdf":
         _require("pdflatex")
 
-    config.RENDERED_DIR.mkdir(parents=True, exist_ok=True)
-    _copy_local_images(input_path, config.RENDERED_DIR)
-    out_path = config.RENDERED_DIR / f"{input_path.stem}.{output_format}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _copy_local_images(input_path, out_dir)
+    out_path = out_dir / f"{input_path.stem}.{output_format}"
     csl_path = _resolve_csl(csl) if csl is not None else config.CSL_STYLE_PATH
     if collapse_citations is None:
         collapse_citations = config.RENDER_COLLAPSE_CITATIONS
@@ -447,6 +555,15 @@ def main() -> int:
         )
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}")
+        return 1
+    except OutsideContentDir as exc:
+        # Reported like any other render failure rather than as a
+        # traceback, same as the KeyError below: a genre skill's
+        # documented reaction to `[error]` is to warn and carry on
+        # presenting the draft, which is right here too -- the draft is
+        # fine, and it is the place this copy would have gone that is
+        # wrong.
+        print(f"[error] {exc}")
         return 1
     except subprocess.CalledProcessError as exc:
         print(f"[error] pandoc failed: {exc.stderr or exc}")

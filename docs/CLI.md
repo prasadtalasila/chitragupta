@@ -519,6 +519,38 @@ the one that can be numbered consistently with the inline markers --
 under the draft's own heading, including a numbered one like
 `## 6. References`. The draft file itself is never modified.
 
+**Where the output lands.** `<slug>` may itself contain directories --
+`content/drafts/dt-for-engineers/survey.md`, or
+`content/drafts/books/software-engineering/chapter.md` -- and every
+format is written **beside the draft**, mirroring its path under
+`content/drafts/` into `content/rendered/`:
+
+```
+content/drafts/dt-for-engineers/survey.md
+   -> content/rendered/dt-for-engineers/survey.{md,tex,pdf,docx}
+```
+
+This is the same mirroring rule `content/dossiers/` follows (see
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#the-dossier)), so one topic
+directory names a draft, its dossier and its renders together -- which
+is what lets `dossier export <topic> --with-rendered` find them. A flat
+`content/drafts/<slug>.md` renders to `content/rendered/<slug>.*`, as it
+always has, and an input outside `content/drafts/` altogether (the
+`path/to/draft.md` form above) has no path to mirror and lands flat too.
+
+**Reading is unrestricted; writing is confined to `content/`.** The
+input may be any file, in the tree or out of it -- reading one takes
+nothing out of `content/`. Every path this command *writes*, though,
+resolves inside `content/`: only the part of a draft's path below
+`content/drafts/` is ever carried over, and both sides are resolved
+before they are compared, so no argument -- a `..`, a symlinked draft --
+mirrors anywhere else. The three ways a write could still escape are
+configuration or symlinks rather than arguments, and each is refused
+with `[error]` rather than redirected: a `content/rendered` or
+`content/drafts` that resolves out of the content directory, and a
+topic directory under `content/rendered/` that is a symlink pointing
+off-tree.
+
 | Flag | Default | What it does |
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
@@ -532,8 +564,8 @@ under the draft's own heading, including a numbered one like
 | `--no-collapse-citations` | off | Render a run as `[3], [4], [5], [6]` instead of `[3]–[6]`, i.e. leave the style exactly as it is on disk |
 
 `--format md` on a **Markdown** draft is a special case, and the one
-output you can read without a PDF viewer: it writes
-`content/rendered/<slug>.md` with the citekeys replaced by the same IEEE
+output you can read without a PDF viewer: it writes a `.md` beside the
+draft's other renders, with the citekeys replaced by the same IEEE
 numbers the PDF uses (`[1]`, `[3]–[6]`) over a reference list built from
 the ledger. It needs no `pandoc`, because pandoc's Markdown writer is the
 wrong tool for it -- that writer escapes every marker (`\[1\]`, since
