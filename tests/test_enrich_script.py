@@ -20,7 +20,7 @@ from src.enrich.corpus import CorpusDoc
 def make_args(**overrides):
     ns = types.SimpleNamespace(
         target="host", stages=",".join(enrich_script.STAGE_ORDER),
-        input=None, output_format="pdf", documentclass="article",
+        for_draft=None, input=None, output_format="pdf", documentclass="article",
     )
     for k, v in overrides.items():
         setattr(ns, k, v)
@@ -105,10 +105,15 @@ class TestStageRender:
 
 class TestParseArgs:
     def test_defaults(self, monkeypatch):
+        """`--stages` parses as None rather than the joined list, so
+        main() can tell "every stage, because you said so" apart from
+        "every stage, because you said nothing" -- --for-draft narrows
+        the second and is refused against the first."""
         monkeypatch.setattr(sys, "argv", ["enrich.py"])
         args = enrich_script.parse_args()
         assert args.target == "host"
-        assert args.stages == ",".join(enrich_script.STAGE_ORDER)
+        assert args.stages is None
+        assert args.for_draft is None
         assert args.input is None
 
     def test_custom_stages(self, monkeypatch):
@@ -116,6 +121,19 @@ class TestParseArgs:
         args = enrich_script.parse_args()
         assert args.stages == "embed,bertopic"
         assert args.target == "docker"
+
+    def test_help_states_both_halves_of_the_stages_default(self, monkeypatch, capsys):
+        """argparse prints no "(default: ...)" of its own for --stages,
+        so this help string is the only place the default is written
+        down -- and it now depends on whether --for-draft was given."""
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--help"])
+        with pytest.raises(SystemExit):
+            enrich_script.parse_args()
+        # Whitespace-collapsed: argparse rewraps help text to the
+        # terminal width, so the sentence is split across lines at a
+        # column this test has no business predicting.
+        out = re.sub(r"\s+", " ", capsys.readouterr().out)
+        assert "default: all five, or docling alone with --for-draft" in out
 
 
 class TestMain:
@@ -137,6 +155,25 @@ class TestMain:
         assert "docling" in out and "ok" in out
         assert "=== Summary ===" in out
         assert "WARNING: unknown stage" not in out  # every selected name is real
+
+    def test_no_stages_argument_runs_every_stage(self, monkeypatch):
+        """The documented default, and the one an unattended run gets.
+        Worth pinning separately from `--stages docling,embed` because
+        the default is no longer the literal argparse default -- main()
+        resolves it, and --for-draft resolves it differently."""
+        docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
+        monkeypatch.setattr(sys, "argv", ["enrich.py"])
+
+        called = []
+        for name in enrich_script.STAGE_ORDER:
+            monkeypatch.setitem(
+                enrich_script.STAGE_FUNCS, name,
+                lambda d, a, _n=name: called.append(_n) or {"status": "ok", "detail": _n},
+            )
+
+        assert enrich_script.main() == 0
+        assert called == enrich_script.STAGE_ORDER
 
     def test_reports_the_corpus_size_before_any_stage_runs(self, monkeypatch, capsys):
         """What went into the corpus decides what every stage indexes, so
@@ -209,6 +246,287 @@ class TestMain:
         assert "error" in out
         assert "stage exploded" in out
         assert "embed" in out  # second stage still ran despite the first raising
+
+
+class TestForDraftScope:
+    """`--for-draft content/drafts/<slug>.md` (issue #52).
+
+    The enrichment layer's unit of work is the corpus, which is right
+    for `embed` and `bertopic` and expensive for nothing in particular
+    when what you want is quotable passages for the eleven papers a
+    chapter cites. The flag narrows the document list to those papers.
+
+    Two properties are what make it safe to offer, and both are pinned
+    here: the narrowing never reaches the two stages whose artefact has
+    no partial form (`embed`'s Chroma collection records no completeness
+    marker; `bertopic` overwrites content/topics.json outright), and a
+    scope that selects nothing says so rather than running a stage over
+    an empty corpus.
+    """
+
+    @pytest.fixture
+    def corpus_of_three(self, monkeypatch):
+        docs = [
+            CorpusDoc(citekey="a2024", title="A", pdf_path="/tmp/a.pdf"),
+            CorpusDoc(citekey="b2025", title="B", pdf_path="/tmp/b.pdf"),
+            CorpusDoc(citekey="c2026", title="C", pdf_path="/tmp/c.pdf"),
+        ]
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
+        return docs
+
+    @pytest.fixture
+    def recorded_stages(self, monkeypatch):
+        """Every stage replaced by a recorder of the corpus it was
+        handed, so a test can assert both which stages ran and what
+        reached them without any of the real work happening."""
+        calls = {}
+
+        def recorder(name):
+            def stage(docs, args):
+                calls[name] = [doc.citekey for doc in docs]
+                return {"status": "ok", "detail": name}
+            return stage
+
+        for name in enrich_script.STAGE_ORDER:
+            monkeypatch.setitem(enrich_script.STAGE_FUNCS, name, recorder(name))
+        return calls
+
+    @pytest.fixture
+    def draft(self, tmp_path):
+        path = tmp_path / "chapter.md"
+        path.write_text("A claim [@a2024] and another [@c2026], and @a2024 again.\n")
+        return path
+
+    def test_only_the_cited_papers_reach_docling(
+        self, corpus_of_three, recorded_stages, draft, monkeypatch
+    ):
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        assert enrich_script.main() == 0
+        assert recorded_stages["docling"] == ["a2024", "c2026"]  # b2025 is uncited
+
+    def test_the_count_says_what_was_left_out_not_only_what_was_kept(
+        self, corpus_of_three, recorded_stages, draft, monkeypatch, capsys
+    ):
+        """"Corpus: 2 doc(s)" would read as a two-paper corpus. The
+        denominator is what tells a reader the run was narrowed, and the
+        draft path is what tells them by what."""
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert "Corpus: 2 of 3 doc(s)" in out
+        assert f"scoped to {draft}" in out
+
+    def test_a_bare_for_draft_runs_docling_alone(
+        self, corpus_of_three, recorded_stages, draft, monkeypatch
+    ):
+        """Not docling,provenance,render: the scope only reaches docling,
+        and passages for the cited papers are what the flag is for.
+        Rendering a PDF as a side effect of asking for passages would be
+        work nobody requested -- and embed/bertopic must not run at all,
+        or a scoped invocation quietly rebuilds the whole corpus."""
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        assert enrich_script.main() == 0
+        assert set(recorded_stages) == {"docling"}
+
+    def test_the_draft_becomes_the_default_input(
+        self, corpus_of_three, recorded_stages, draft, monkeypatch
+    ):
+        """provenance and render need an --input; when a draft has been
+        named once already, needing to name it twice is friction with no
+        purpose."""
+        monkeypatch.setattr(
+            sys, "argv",
+            ["enrich.py", "--for-draft", str(draft), "--stages", "docling,provenance"],
+        )
+
+        captured = {}
+
+        def provenance(docs, args):
+            captured["input"] = args.input
+            return {"status": "ok", "detail": "p"}
+
+        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "provenance", provenance)
+
+        assert enrich_script.main() == 0
+        assert captured["input"] == str(draft)
+
+    def test_an_explicit_input_is_never_overridden(
+        self, corpus_of_three, recorded_stages, draft, monkeypatch, tmp_path
+    ):
+        """The only way to enrich one draft's papers while rendering a
+        different document -- so --for-draft supplies a default, it does
+        not take the argument over."""
+        other = tmp_path / "other.md"
+        other.write_text("# other\n")
+        monkeypatch.setattr(
+            sys, "argv",
+            ["enrich.py", "--for-draft", str(draft), "--stages", "render", "--input", str(other)],
+        )
+
+        captured = {}
+
+        def render(docs, args):
+            captured["input"] = args.input
+            return {"status": "ok", "detail": "r"}
+
+        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "render", render)
+
+        assert enrich_script.main() == 0
+        assert captured["input"] == str(other)
+
+    @pytest.mark.parametrize("stage", ["embed", "bertopic"])
+    def test_scoping_a_whole_corpus_stage_is_refused(
+        self, recorded_stages, draft, monkeypatch, capsys, stage
+    ):
+        """A tier, not a ladder: it stops and names what it cannot give
+        you. Running the stage corpus-wide instead would be an hour of
+        work the flag exists to avoid, and running it scoped would leave
+        an artefact that answers as though it covered the corpus."""
+        def never(*_a, **_k):
+            raise AssertionError("the corpus must not be built for a refused run")
+
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", never)
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", stage])
+
+        rc = enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert rc == enrich_script.EXIT_BAD_SCOPE
+        assert f"--for-draft cannot scope {stage}" in out
+        assert f"--stages {stage}" in out  # the corpus-wide command to run instead
+        assert recorded_stages == {}
+
+    def test_refusing_names_every_offending_stage_at_once(
+        self, draft, monkeypatch, capsys
+    ):
+        """Reporting one at a time would make the user re-run to
+        discover the second."""
+        monkeypatch.setattr(
+            sys, "argv",
+            ["enrich.py", "--for-draft", str(draft), "--stages", "docling,embed,bertopic"],
+        )
+
+        rc = enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert rc == enrich_script.EXIT_BAD_SCOPE
+        assert "cannot scope bertopic or embed" in out
+
+    def test_a_cited_citekey_the_ledger_lacks_is_named(
+        self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
+    ):
+        """The hard gate normally keeps these out of a passing draft,
+        but a draft written before a re-export has them. Enriching the
+        remainder silently would report a smaller number with nothing to
+        explain it."""
+        draft = tmp_path / "stale.md"
+        draft.write_text("Cited [@a2024] and [@gone2019].\n")
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        assert enrich_script.main() == 0
+        out = capsys.readouterr().out
+
+        assert "1 cited citekey(s) are not in the ledger" in out
+        assert "gone2019" in out
+        assert recorded_stages["docling"] == ["a2024"]  # the rest still ran
+
+    def test_a_scope_matching_nothing_stops_before_the_stage(
+        self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
+    ):
+        """parse_corpus([]) would report `ok` over zero documents, which
+        reads like a successful run."""
+        draft = tmp_path / "stale.md"
+        draft.write_text("Nothing here is in the ledger [@gone2019].\n")
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        rc = enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert rc == enrich_script.EXIT_BAD_SCOPE
+        assert "nothing to enrich" in out
+        assert "python -m src.sync" in out
+        assert recorded_stages == {}
+
+    def test_a_scope_matching_nothing_still_renders(
+        self, corpus_of_three, recorded_stages, monkeypatch, tmp_path
+    ):
+        """render and provenance read --input and never look at the
+        corpus, so an empty scope is no reason to refuse them -- the
+        stop above is about a stage that was going to use the corpus."""
+        draft = tmp_path / "stale.md"
+        draft.write_text("Nothing here is in the ledger [@gone2019].\n")
+        monkeypatch.setattr(
+            sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", "render"],
+        )
+
+        assert enrich_script.main() == 0
+        assert set(recorded_stages) == {"render"}
+
+    def test_an_unreadable_draft_stops_before_the_lock(
+        self, recorded_stages, monkeypatch, tmp_path, capsys
+    ):
+        def never(*_a, **_k):
+            raise AssertionError("the corpus must not be built for an unreadable draft")
+
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", never)
+        missing = tmp_path / "does-not-exist.md"
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(missing)])
+
+        rc = enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert rc == enrich_script.EXIT_BAD_SCOPE
+        assert f"cannot read --for-draft {missing}" in out
+
+    def test_a_draft_with_no_citations_stops_and_says_how_to_proceed(
+        self, recorded_stages, monkeypatch, tmp_path, capsys
+    ):
+        """An empty scope from an uncited draft is not "enrich nothing"
+        and not "enrich everything" -- neither is obviously what was
+        meant, so the run stops and names the flag to drop."""
+        def never(*_a, **_k):
+            raise AssertionError("the corpus must not be built for an uncited draft")
+
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", never)
+        draft = tmp_path / "uncited.md"
+        draft.write_text("# A chapter that cites nothing at all.\n")
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        rc = enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert rc == enrich_script.EXIT_BAD_SCOPE
+        assert "no citations found" in out
+        assert "Drop --for-draft" in out
+
+
+class TestDraftCitekeys:
+    def test_repeats_collapse_and_both_syntaxes_are_read(self, tmp_path):
+        draft = tmp_path / "d.md"
+        draft.write_text("[@a2024] again [@a2024], and \\citep{b2025} too.\n")
+        assert enrich_script.draft_citekeys(draft) == {"a2024", "b2025"}
+
+    def test_a_citation_wrapped_across_lines_contributes_every_key(self, tmp_path):
+        """The reason this calls extract_citekeys() and not the
+        per-line wrapper: a `\\citep{...}` argument spanning two lines is
+        common once a claim rests on more than a couple of papers, and a
+        per-line scan matches neither line, so both papers would be left
+        out of the scope with nothing said."""
+        draft = tmp_path / "d.md"
+        draft.write_text("A well-supported claim \\citep{a2024,\n    b2025}.\n")
+        assert enrich_script.draft_citekeys(draft) == {"a2024", "b2025"}
+
+    def test_a_citation_inside_a_code_fence_is_not_one(self, tmp_path):
+        """Inherited from the gate rather than re-decided here: a
+        teaching draft's `@dataclass` is not a paper, and scoping a run
+        to it would look for a citekey no ledger has."""
+        draft = tmp_path / "d.md"
+        draft.write_text("Real [@a2024].\n\n```python\n@dataclass\nclass X: ...\n```\n")
+        assert enrich_script.draft_citekeys(draft) == {"a2024"}
 
 
 class TestLogging:

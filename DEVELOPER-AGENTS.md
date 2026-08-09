@@ -103,6 +103,17 @@ layer: a doc whose text hasn't changed since the last run isn't
 re-embedded, and a PDF whose `(size, mtime_ns)` hasn't changed since the
 last run (`config.DOCLING_CACHE_PATH`) isn't re-parsed by Docling.
 
+That per-document incrementality is what `--for-draft` rests on, so
+don't trade it away. The flag narrows the corpus to the citekeys one
+draft cites, and the reason a narrow run and a full run can be mixed in
+either order without repeating work is that the caches are keyed by
+document and merged, never rewritten to match the run's own view of the
+corpus. `embed` and `bertopic` are refused rather than scoped, because
+each writes one whole-corpus artefact with no partial form -- allowing
+either needs the Chroma collection to record its own coverage first.
+[docs/LADDERS.md](docs/LADDERS.md#scoping-a-run-to-one-draft) owns that
+reasoning; keep it there rather than restating it.
+
 No stage in this pipeline calls out to an LLM or needs an API key --
 Docling, embeddings/Chroma, BERTopic, and the Pandoc/LaTeX render
 step are all local/deterministic. Any LLM-backed synthesis happens only

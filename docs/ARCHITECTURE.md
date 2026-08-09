@@ -193,15 +193,23 @@ ever reads what it produced.
 ```bash
 .venv-full/bin/python scripts/enrich.py --stages docling,embed
 .venv-full/bin/python scripts/enrich.py --stages render --input draft.md
+.venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
 ```
 
-| Stage | What it produces | Needs `--input`? |
-|---|---|---|
-| `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | no |
-| `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | no |
-| `bertopic` | `content/topics.json` -- one cluster assignment per document | no |
-| `provenance` | the citation-provenance report -- the same code as `python3 -m src.citation_provenance`, wrapped for convenience rather than enrichment work | **yes** |
-| `render` | the rendered draft -- likewise the drafting layer's own `python3 -m src.render_output`, wrapped here | **yes** |
+| Stage | What it produces | Needs `--input`? | `--for-draft` |
+|---|---|---|---|
+| `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | no | scoped |
+| `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | no | refused |
+| `bertopic` | `content/topics.json` -- one cluster assignment per document | no | refused |
+| `provenance` | the citation-provenance report -- the same code as `python3 -m src.citation_provenance`, wrapped for convenience rather than enrichment work | **yes** | unaffected |
+| `render` | the rendered draft -- likewise the drafting layer's own `python3 -m src.render_output`, wrapped here | **yes** | unaffected |
+
+The default unit of work is the whole corpus. `--for-draft` narrows it to
+the papers one draft cites, which reaches `docling` only: `provenance`
+and `render` read `--input` and are per-draft already, and `embed` and
+`bertopic` each write one whole-corpus artefact with no partial form, so
+they are refused rather than scoped. [LADDERS.md](LADDERS.md#scoping-a-run-to-one-draft)
+has the reasoning and [CLI.md](CLI.md#enriching-one-drafts-papers) the flags.
 
 Each stage probes its own prerequisites and reports `ok`, `partial`,
 `skipped`, `missing-binary` or `error`, so a missing TeX Live is a correct
