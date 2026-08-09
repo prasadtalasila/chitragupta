@@ -59,7 +59,7 @@ def test_every_retrieval_cli_invocation_carries_log():
     for path in files:
         missing = _invocations_missing_log(path.read_text(encoding="utf-8"))
         if missing:
-            offenders[path.relative_to(REPO_ROOT)] = missing
+            offenders[str(path.relative_to(REPO_ROOT))] = missing
 
     assert not offenders, (
         "retrieval CLI invocation(s) without --log (each row is a token-cost "
@@ -70,9 +70,12 @@ def test_every_retrieval_cli_invocation_carries_log():
 def test_at_least_one_invocation_is_actually_found():
     # A regression guard on the test itself: if every skill file were
     # rewritten to use the Python API exclusively, the assertion above
-    # would pass vacuously and stop meaning anything.
+    # would pass vacuously and stop meaning anything. >= 1 rather than a
+    # specific count -- a higher threshold would make this brittle to a
+    # future reorganization that consolidates skill files without
+    # actually losing coverage.
     total = sum(
         len(_INVOCATION.findall(path.read_text(encoding="utf-8")))
         for path in _skill_and_agent_files()
     )
-    assert total >= 10
+    assert total >= 1
