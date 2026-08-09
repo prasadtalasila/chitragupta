@@ -878,6 +878,21 @@ class TestRevisionMarker:
         assert "| revision | cli pass | 0 | 0 | 0 |" in text
         assert "cli pass" in capsys.readouterr().out
 
+    def test_status_lifetime_totals_match_retrieval_cost(self, draft):
+        """`status()` derives its lifetime totals from
+        `retrieval_cost_by_revision`'s segments rather than parsing
+        `retrieval.md` a second time via `retrieval_cost` -- this pins
+        the two to agree regardless of which one changes first."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft, "shorten intro")
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        dossier.mark_revision(draft, "no search needed")  # empty, dropped
+
+        report = dossier.status(draft)
+        calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
+        assert (report.retrieval_calls, report.retrieval_chars) == (calls, chars) == (2, 300)
+
 
 # ---------------------------------------------------------------------
 # Corpus drift across every dossier (`status --all`)

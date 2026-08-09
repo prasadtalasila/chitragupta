@@ -1044,8 +1044,14 @@ def status(draft_or_dossier: Path) -> Status:
 
     if draft is not None:
         report.outline = sections(draft.read_text(encoding="utf-8"))
-    report.retrieval_calls, report.retrieval_chars = retrieval_cost(dossier)
+    # One parse of retrieval.md, not two: retrieval_cost_by_revision's
+    # segments already exclude mark_revision's boundary rows the same
+    # way retrieval_cost does, so the lifetime totals are just their sum
+    # -- calling retrieval_cost here too would parse the same file twice
+    # for numbers `_retrieval_rows` only needed to compute once.
     report.revisions = retrieval_cost_by_revision(dossier)
+    report.retrieval_calls = sum(segment.calls for segment in report.revisions)
+    report.retrieval_chars = sum(segment.chars for segment in report.revisions)
 
     report.recorded = recorded_corpus(dossier)
     corpus_keys = known_citekeys()
