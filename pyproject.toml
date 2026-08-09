@@ -110,8 +110,9 @@ omit = [
 # It holds on a host with the full toolchain (pandoc, TeX Live, poppler)
 # installed -- without those binaries the render/pdf tests self-skip and
 # take src/render_output.py down to ~76%, which is a missing dependency
-# rather than a missing test. Pass --cov-fail-under=0 on such a host; CI
-# does exactly that on its Windows leg, where os-deps is apt-only.
+# rather than a missing test. Pass --cov-fail-under=0 on such a host. CI's
+# Windows leg, where os-deps is apt-only, holds a 95 floor instead of the
+# full bar -- see .github/workflows/ci.yml for why that number.
 fail_under = 100
 # Two decimal places, because a rounded total is not a number you can set a
 # threshold from: CI's Windows leg prints "99%", which could be anything from

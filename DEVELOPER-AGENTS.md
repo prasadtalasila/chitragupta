@@ -196,7 +196,11 @@ Before saying so, actually run, in this repo:
   so the run exits non-zero on a drop. It assumes the full toolchain:
   without pandoc/TeX Live/poppler the render tests self-skip and the
   total falls short for a missing binary rather than a missing test --
-  pass `--cov-fail-under=0` on such a host, as CI's Windows leg does.
+  pass `--cov-fail-under=0` on such a host. CI runs both legs against a
+  floor rather than exempting either: Linux holds the full 100, and the
+  Windows leg -- which installs no `os-deps` and so self-skips the render
+  and pdf tests -- holds 95, low enough not to need re-tuning whenever
+  toolchain-only code is added and high enough to catch a real collapse.
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --
