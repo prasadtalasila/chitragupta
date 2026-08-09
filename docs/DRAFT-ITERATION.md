@@ -144,6 +144,32 @@ only needed when a change opens a sub-theme up for re-searching. One
 combined file would have to be read whole every time, which is the cost
 this module exists to avoid.
 
+### `sections.md` is derived, not maintained
+
+Its own template says the file is "rebuildable from the draft", and it is:
+a heading owns a line range, a citekey is cited on a line, and the
+relation falls out of the intersection. Five genre skills nonetheless
+had a model read the outline and attribute each key by hand -- a
+mechanical step with a wrong answer available, and a `sections.md` that
+disagrees with the draft hands `draft-reviser` the wrong section for a
+citation.
+
+```bash
+python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+```
+
+builds it instead, from both citation syntaxes, skipping fenced code and
+LaTeX verbatim so a `# Step 1` comment in an example listing is neither a
+heading nor a citation. A key cited above the first heading belongs to no
+section; it is reported on stderr rather than filed under one that does
+not contain it.
+
+`deep-research` is the exception, and only for timing: Phase 4 writes
+*planned* rows before the sections exist, and Phase 5 dispatches its
+writers from them. There is no draft to derive from at that point, so
+that write stays by hand and the derived form belongs at Phase 7(e),
+where the plan is replaced by what the finished report actually cites.
+
 ### Why not merge the provenance JSON into it
 
 `thesis-chapter-writer` and `deep-research` also write

@@ -365,6 +365,7 @@ never transcribed it, and that material is gone rather than mislaid.
 | `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since |
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
+| `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
 | `list` | Every dossier on this machine |
@@ -377,6 +378,8 @@ never transcribed it, and that material is gone rather than mislaid.
 | `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
 | `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
 | `--label TEXT` | `mark-revision` | Short name for this revision. Optional -- an unlabelled marker is numbered by order instead (`revision 1`, `revision 2`, ...) |
+| `--citekeys` | `sections` | Print the derived `sections.md` table instead of the outline. A citekey cited above the first heading is reported on stderr, never filed under a section that doesn't contain it |
+| `--write` | `sections` | With `--citekeys`: write the table into the dossier's `sections.md`, replacing what is there. Refused without `--citekeys`, and refused when the dossier doesn't exist |
 | `--section NAME` | `brief` | Take the citekeys from that `sections.md` row. Matches without the section's numbering; an ambiguous name matches nothing rather than guessing |
 | `--check` | `brief` | Report what resolves, and what doesn't, without printing the blocks -- what an orchestrator runs before dispatching |
 | `--out FILE` | `export` | Archive path (default `drafts-<name>-<date>.tar.gz`) |
@@ -387,6 +390,8 @@ never transcribed it, and that material is gone rather than mislaid.
 python3 -m src.dossier init content/drafts/survey.md --genre survey
 python3 -m src.dossier status content/drafts/survey.md
 python3 -m src.dossier sections content/drafts/survey.md
+# Derive the section -> citekey map instead of writing it by hand
+python3 -m src.dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
 python3 -m src.dossier mark-revision content/drafts/survey.md --label "shorten intro"

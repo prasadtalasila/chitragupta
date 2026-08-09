@@ -199,11 +199,19 @@ collapse them for the sake of a cleaner narrative.
    in the ledger, say so in prose to the user instead ("X is commonly discussed
    in this area but isn't in your synced library yet") -- do not invent a key
    for it.
-8. **Map sections to citekeys.** Fill in the dossier's `sections.md` --
-   one row per section heading with the citekeys cited under it -- so a
-   later revision can tell which section owns a citation without reading
-   the draft. `python3 -m src.dossier sections content/drafts/<slug>.md`
-   prints the headings and their line ranges to build it from.
+8. **Map sections to citekeys.** Save the draft to
+   `content/drafts/<slug>.md` first if you haven't already, then derive
+   the map rather than writing it by hand:
+   ```
+   python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+   ```
+   It joins each heading's line range to the citekeys cited inside it and
+   writes the dossier's `sections.md`, so a later revision can tell which
+   section owns a citation without reading the draft. Drop `--write` to
+   see the table first. Read what it prints on stderr: a citekey cited
+   above the first heading belongs to no section, and it says so rather
+   than dropping it. Fix that in the draft (the claim wants a section) --
+   don't hand-edit the table, which is regenerated from the draft.
 9. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
    (this is the canonical, source-of-truth format), then run:
    ```

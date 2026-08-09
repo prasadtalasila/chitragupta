@@ -1950,3 +1950,159 @@ class TestBriefCli:
         err = capsys.readouterr().err
         assert "is not under" in err
         assert "init" not in err
+
+
+class TestAttributeCitekeys:
+    """Deriving `sections.md` from the draft (#89).
+
+    The relation is mechanical -- heading line range x citekey line
+    number -- and a `sections.md` that disagrees with the draft hands a
+    reviser a wrong answer about which section owns a citation. So what
+    is pinned here is the join itself, both syntaxes, and the two cases
+    that have no obvious right answer: a key cited above every heading,
+    and a heading containing the character the table is delimited by.
+    """
+
+    MD = (
+        "Opening prose citing [@early_2020].\n"
+        "\n"
+        "# Title\n"
+        "\n"
+        "## 1. Background\n"
+        "\n"
+        "Claims [@a_one_2024] and [@b_two_2024; @a_one_2024].\n"
+        "\n"
+        "```python\n"
+        "# Step 1: not a heading\n"
+        'print("[@fenced_9999]")\n'
+        "```\n"
+        "\n"
+        "## 2. Results\n"
+        "\n"
+        "More [@c_three_2022].\n"
+    )
+
+    def test_each_citekey_lands_in_the_section_that_cites_it(self):
+        per_section, unattributed = dossier.attribute_citekeys(self.MD)
+        assert [(section.title, keys) for section, keys in per_section] == [
+            ("Title", []),
+            ("1. Background", ["a_one_2024", "b_two_2024"]),
+            ("2. Results", ["c_three_2022"]),
+        ]
+        assert unattributed == ["early_2020"]
+
+    def test_a_key_cited_twice_in_one_section_appears_once(self):
+        per_section, _ = dossier.attribute_citekeys(self.MD)
+        background = dict((s.title, keys) for s, keys in per_section)["1. Background"]
+        assert background.count("a_one_2024") == 1
+
+    def test_a_citekey_inside_a_fence_is_not_attributed(self):
+        """`sections()` already skips fenced code for line ranges, and
+        `extract_citekeys` skips it for keys -- so a `[@key]` printed by
+        the shipped example tutorial's own Python must not become
+        evidence."""
+        per_section, unattributed = dossier.attribute_citekeys(self.MD)
+        every = [key for _, keys in per_section for key in keys] + unattributed
+        assert "fenced_9999" not in every
+
+    def test_the_latex_syntax_is_read_too(self):
+        tex = (
+            "\\section{Intro}\n"
+            "A claim \\citep{a_one_2024} and \\citet{b_two_2024}.\n"
+            "\\subsection{Detail}\n"
+            "\\begin{verbatim}\n"
+            "\\citep{verbatim_0000}\n"
+            "\\end{verbatim}\n"
+            "Another \\citep{a_one_2024}.\n"
+        )
+        per_section, unattributed = dossier.attribute_citekeys(tex)
+        assert [(section.title, keys) for section, keys in per_section] == [
+            ("Intro", ["a_one_2024", "b_two_2024"]),
+            ("Detail", ["a_one_2024"]),
+        ]
+        assert unattributed == []
+
+    def test_a_key_cited_twice_above_every_heading_is_reported_once(self):
+        text = "Prose [@a_one_2024], and again [@a_one_2024].\n\n## 1. First\n\ntext\n"
+        _, unattributed = dossier.attribute_citekeys(text)
+        assert unattributed == ["a_one_2024"]
+
+    def test_a_draft_with_no_headings_attributes_nothing(self):
+        per_section, unattributed = dossier.attribute_citekeys("Just prose [@a_one_2024].\n")
+        assert per_section == []
+        assert unattributed == ["a_one_2024"]
+
+
+class TestSectionsMarkdown:
+    def test_it_writes_the_template_and_one_row_per_section(self):
+        table = dossier.sections_markdown(TestAttributeCitekeys.MD)
+        assert table.startswith("# Sections and their citekeys")
+        assert "| section | citekeys |" in table
+        assert "| 1. Background | `a_one_2024`, `b_two_2024` |" in table
+        assert "| 2. Results | `c_three_2022` |" in table
+        assert "| Title |  |" in table
+
+    def test_it_round_trips_through_the_reader(self, tmp_path):
+        """The file has one parser (`citekeys_by_section`), and this is
+        the other end of it: what is derived here must read back as the
+        same relation, or a reviser and a writer disagree."""
+        (tmp_path / "sections.md").write_text(
+            dossier.sections_markdown(TestAttributeCitekeys.MD), encoding="utf-8"
+        )
+        assert dossier.citekeys_by_section(tmp_path) == {
+            "Title": [],
+            "1. Background": ["a_one_2024", "b_two_2024"],
+            "2. Results": ["c_three_2022"],
+        }
+
+    def test_a_pipe_in_a_heading_survives_the_round_trip(self, tmp_path):
+        """A `|` in a heading would otherwise cut the row in two. It is
+        escaped on the way out and unescaped on the way back, so the
+        section name matches what `sections()` reports for the draft."""
+        text = "## Results | caveats\n\nA claim [@a_one_2024].\n"
+        (tmp_path / "sections.md").write_text(
+            dossier.sections_markdown(text), encoding="utf-8"
+        )
+        assert r"| Results \| caveats |" in (tmp_path / "sections.md").read_text()
+        assert dossier.citekeys_by_section(tmp_path) == {
+            "Results | caveats": ["a_one_2024"],
+        }
+        assert list(dossier.citekeys_by_section(tmp_path)) == [
+            section.title for section in dossier.sections(text)
+        ]
+
+
+class TestSectionsCitekeysCli:
+    def test_it_prints_the_table(self, draft, capsys):
+        draft.write_text(TestAttributeCitekeys.MD)
+        assert dossier.main(["sections", str(draft), "--citekeys"]) == 0
+        out = capsys.readouterr()
+        assert "| 1. Background | `a_one_2024`, `b_two_2024` |" in out.out
+        assert "early_2020" in out.err, "an unattributed key must be said out loud"
+
+    def test_write_fills_in_the_dossiers_own_file(self, draft, capsys):
+        draft.write_text(TestAttributeCitekeys.MD)
+        dossier.init(draft, "survey")
+        assert dossier.main(["sections", str(draft), "--citekeys", "--write"]) == 0
+        written = (dossier.dossier_dir(draft) / "sections.md").read_text()
+        assert "| 2. Results | `c_three_2022` |" in written
+        assert "sections.md" in capsys.readouterr().out
+
+    def test_a_draft_citing_only_inside_sections_says_nothing_on_stderr(self, draft, capsys):
+        draft.write_text("## 1. First\n\nA claim [@a_one_2024].\n")
+        assert dossier.main(["sections", str(draft), "--citekeys"]) == 0
+        assert capsys.readouterr().err == ""
+
+    def test_write_without_a_dossier_is_refused(self, draft, capsys):
+        draft.write_text(TestAttributeCitekeys.MD)
+        assert dossier.main(["sections", str(draft), "--citekeys", "--write"]) == 1
+        assert "init" in capsys.readouterr().err
+
+    def test_write_needs_citekeys(self, draft, capsys):
+        assert dossier.main(["sections", str(draft), "--write"]) == 1
+        assert "--citekeys" in capsys.readouterr().err
+
+    def test_a_draft_with_no_headings_is_an_error(self, draft, capsys):
+        draft.write_text("Just prose.\n")
+        assert dossier.main(["sections", str(draft), "--citekeys"]) == 1
+        assert "No headings" in capsys.readouterr().err

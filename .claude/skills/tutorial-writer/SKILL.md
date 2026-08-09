@@ -251,16 +251,18 @@ the lesson design is the part worth keeping either way.
 10. **Map the lesson's outline into the dossier.** Save the draft to
     `content/drafts/<slug>.md` first if you haven't already -- `sections`
     reads the file and reports `No such draft` if it isn't on disk yet. Then
-    fill in `sections.md` from:
+    derive `sections.md` rather than writing it by hand:
     ```
-    python3 -m src.dossier sections content/drafts/<slug>.md
+    python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
     ```
-    which prints every heading with its line range. The citekey column is
-    thin in this genre by design: citations live only in "Where to go next",
-    so usually that one section carries every key in the file, and often
-    there are none at all. Write "no citations" against a section rather than
-    leaving the table blank -- an empty table can't be told apart from a
-    template nobody filled in. The outline is the real payload here. It is
+    It writes one row per heading, and it skips fenced code -- which matters
+    more here than anywhere else, since a `# Step 1: ...` comment inside a
+    shell block is indistinguishable from a heading to anything that doesn't
+    track fences. The citekey column is thin in this genre by design:
+    citations live only in "Where to go next", so usually that one section
+    carries every key in the file, and often there are none at all. A row
+    with an empty cell is the honest result, and it comes out that way
+    without a judgement call. The outline is the real payload here. It is
     what lets `draft-reviser` repair one step of the lesson, at its recorded
     line range, without reading the whole thing.
 

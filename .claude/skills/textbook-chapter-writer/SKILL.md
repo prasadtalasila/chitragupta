@@ -212,16 +212,17 @@ candidate for the chapter.
    term arrives undefined, a step skips reasoning, or notation changes
    meaning mid-chapter. This pass catches more real problems than any other
    single step here.
-9. **Map the chapter's sections.** Fill in the dossier's `sections.md` -- one
-   row per section heading, with any citekeys cited under it -- so a later
-   revision can find the section that owns a change without reading the whole
-   chapter. Once the draft is saved,
-   `python3 -m src.dossier sections content/drafts/<slug>.md` prints the
-   headings and their line ranges to build the table from, skipping fenced
-   code so a `# Step 1` comment inside an example listing isn't mistaken for
-   a heading. A chapter with no citations still gets this map: leave the
-   citekeys column empty, since the outline is what a reviser navigates by
-   either way.
+9. **Map the chapter's sections.** Once the draft is saved, derive the
+   dossier's `sections.md` rather than writing it by hand:
+   ```
+   python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+   ```
+   so a later revision can find the section that owns a change without
+   reading the whole chapter. It skips fenced code, so a `# Step 1`
+   comment inside an example listing is neither mistaken for a heading
+   nor read as a citation. A chapter with no citations still gets this
+   map -- every row comes out with an empty citekey cell, and the outline
+   is what a reviser navigates by either way.
 10. **Never write a citekey you didn't get from `search()`.** If you do include
     any citations, save the draft as `content/drafts/<slug>.md` and gate it:
     ```
