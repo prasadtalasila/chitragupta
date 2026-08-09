@@ -21,6 +21,7 @@ Usage:
     python scripts/enrich.py --target host
     python scripts/enrich.py --stages embed,bertopic
     python scripts/enrich.py --stages render --input draft.md
+    python scripts/enrich.py --for-draft content/drafts/chapter.md
 """
 
 import argparse
@@ -32,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.enrich import corpus, docling_parse, embed_index, topic_model
-from src import citation_provenance, config, logging_setup, render_output, runlock
+from src import citation_gate, citation_provenance, config, logging_setup, render_output, runlock
 
 # A fixed name, not __name__: this file is run as a script
 # (`python scripts/enrich.py`), so Python sets __name__ to "__main__",
@@ -44,6 +45,57 @@ from src import citation_provenance, config, logging_setup, render_output, runlo
 logger = logging.getLogger("scripts.enrich")
 
 STAGE_ORDER = ["docling", "embed", "bertopic", "provenance", "render"]
+
+# The stages --for-draft refuses to run, rather than running over a
+# subset. Both write one whole-corpus artefact whose partial form is
+# indistinguishable from its complete one: `embed` upserts into a Chroma
+# collection that records no completeness marker, and four skills branch
+# on nothing more than "does content/chroma/ exist" before searching it,
+# so a collection holding a draft's eleven papers would answer as if it
+# held the corpus; `bertopic` overwrites content/topics.json outright, so
+# a scoped run replaces a corpus-wide topic model with an eleven-document
+# one. Allowing either would mean inventing that marker, which is a
+# larger change than this filter and belongs to its own issue.
+#
+# This is a tier and not a ladder, in docs/LADDERS.md's vocabulary: the
+# run stops and names what it cannot give you, rather than quietly
+# substituting the whole corpus (an hour of work nobody asked for) or a
+# fraction of it (an index that lies about its coverage).
+SCOPE_REFUSED = ("embed", "bertopic")
+
+# The stages that read the corpus at all. `provenance` and `render` are
+# handed the document list and never look at it -- both work entirely off
+# args.input, and are per-draft already -- so once the two above are
+# refused, --for-draft's filter changes the behaviour of exactly one
+# stage. Named here because an empty scope is only a reason to stop if
+# some stage was going to use it.
+#
+# Overlapping SCOPE_REFUSED is not redundancy: this tuple says which
+# stages read the corpus at all, which stays true whether or not a scope
+# is in play, while that one says which refuse to have it narrowed.
+CORPUS_STAGES = ("docling", "embed", "bertopic")
+
+# 3, not 2: argparse already exits 2 for a usage error it detects
+# itself, and runlock.EXIT_ALREADY_RUNNING is 2 as well. A wrapper needs
+# to tell "you asked for something incoherent" apart from "someone else
+# holds the lock, try later", because only the second is worth retrying.
+EXIT_BAD_SCOPE = 3
+
+
+def draft_citekeys(path: Path) -> set[str]:
+    """Every citekey `path` cites, as the docling stage's scope.
+
+    citation_gate.extract_citekeys() rather than a regex of this
+    script's own, for two reasons: it is the same reader the hard gate
+    uses, so a scoped run covers exactly the papers the gate will check
+    the draft against, and it is whole-document rather than per-line, so
+    a `\\citep{a,\\n b}` wrapped across lines contributes both keys
+    (extract_citekeys_from_line would contribute neither).
+
+    Returns a set: a draft cites the same paper many times, and the
+    caller wants the papers, not the citations.
+    """
+    return {key for _, key in citation_gate.extract_citekeys(path.read_text(encoding="utf-8"))}
 
 
 def stage_docling(docs, args):
@@ -94,9 +146,21 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--target", choices=["host", "docker"], default="host",
                          help="Informational only -- stages self-probe regardless of this flag.")
-    parser.add_argument("--stages", default=",".join(STAGE_ORDER),
-                         help=f"Comma-separated subset of: {','.join(STAGE_ORDER)}")
-    parser.add_argument("--input", help="Input file for the render stage")
+    # default=None, not the joined list, so main() can tell "the user
+    # asked for every stage" apart from "the user asked for nothing in
+    # particular" -- --for-draft narrows the second and is refused
+    # against the first. argparse shows no "(default: ...)" of its own
+    # here, so the help text below is the only place that default is
+    # stated and it has to state both halves.
+    parser.add_argument("--stages", default=None,
+                         help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
+                              "(default: all five, or docling alone with --for-draft)")
+    parser.add_argument("--for-draft", metavar="PATH",
+                         help="Scope the docling stage to the papers this draft cites, instead of "
+                              "the whole corpus, and use it as the --input default. Refused "
+                              f"together with an explicit --stages naming {' or '.join(SCOPE_REFUSED)}.")
+    parser.add_argument("--input", help="Input file for the provenance and render stages "
+                                        "(defaults to --for-draft's draft when that is given)")
     parser.add_argument("--output-format", default="pdf", help="Output format for the render stage")
     parser.add_argument("--documentclass", default="article", help="LaTeX documentclass for the render stage (default: article)")
     return parser.parse_args()
@@ -124,11 +188,26 @@ def main(configure_logging: bool = False) -> int:
     handlers or create a logs/ directory as a side effect.
     """
     args = parse_args()
+    # Every print between here and the lock is deliberately a bare print
+    # rather than _say: no log file is open yet and none may be opened
+    # here (see this docstring). Argument validation belongs to the
+    # caller's terminal anyway -- the run it describes has not started.
+    if args.stages is not None:
+        stages = args.stages
+    elif args.for_draft:
+        # Just docling, not docling,provenance,render: the scope only
+        # reaches docling (provenance and render read args.input and
+        # never look at the corpus), and quotable passages for the cited
+        # papers are what --for-draft is for. Adding the other two would
+        # make a bare --for-draft write a rendered PDF nobody asked for.
+        stages = "docling"
+    else:
+        stages = ",".join(STAGE_ORDER)
     # Strip and drop blanks: "--stages 'embed, bertopic'" and a trailing
     # comma are both natural to type, and without this the first makes a
     # real stage look unknown (" bertopic" matches nothing) while the
     # second puts an empty name in the warning below.
-    selected = {name.strip() for name in args.stages.split(",") if name.strip()}
+    selected = {name.strip() for name in stages.split(",") if name.strip()}
 
     # An unrecognized stage name would otherwise be a silent no-op: the
     # loop below iterates STAGE_ORDER and skips anything not selected, so
@@ -136,11 +215,57 @@ def main(configure_logging: bool = False) -> int:
     # notably for a stage name this pipeline used to have and no longer does.
     unknown = sorted(selected - set(STAGE_ORDER))
     if unknown:
-        # A bare print, not _say: this runs before the lock, so no log
-        # file is open yet and none may be opened here (see main()'s
-        # docstring). Argument validation belongs to the caller's
-        # terminal anyway -- the run it describes has not started.
         print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- known stages: {', '.join(STAGE_ORDER)}")
+
+    scope = None
+    if args.for_draft:
+        # Refused against the stages the user *typed*, not against the
+        # default: a bare --for-draft selects docling alone above and
+        # never reaches this, so the only way here is having asked for a
+        # scoped embed or bertopic in so many words.
+        refused = sorted(selected & set(SCOPE_REFUSED))
+        if refused:
+            print(f"  --for-draft cannot scope {' or '.join(refused)}: "
+                  f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
+                  "artefact, and a partial one is indistinguishable from a complete one. Run "
+                  "them as separate commands:\n"
+                  f"      python scripts/enrich.py --for-draft {args.for_draft} --stages docling\n"
+                  f"      python scripts/enrich.py --stages {','.join(refused)}")
+            return EXIT_BAD_SCOPE
+
+        draft_path = Path(args.for_draft)
+        try:
+            scope = draft_citekeys(draft_path)
+        except OSError as exc:
+            print(f"  cannot read --for-draft {draft_path}: {exc}")
+            return EXIT_BAD_SCOPE
+        except UnicodeDecodeError as exc:
+            # A separate branch because it is a separate failure:
+            # UnicodeDecodeError is a ValueError, so the clause above
+            # does not catch it, and the fix is different enough to be
+            # worth naming. Not read with errors="replace" instead --
+            # a replacement character lands in the middle of whatever
+            # citekey the bad byte was part of, and the run would then
+            # scope itself to a quietly wrong set of papers rather than
+            # stopping.
+            print(f"  cannot read --for-draft {draft_path} as UTF-8: {exc}\n"
+                  "      Every draft this pipeline writes is UTF-8, so this one came from "
+                  "somewhere else -- re-save it in that encoding.")
+            return EXIT_BAD_SCOPE
+        if not scope:
+            # Before the lock rather than after: this is a property of
+            # the file the user named, and answerable without the
+            # ledger, so there is no reason to make a concurrent sync
+            # wait for the answer.
+            print(f"  no citations found in {draft_path} -- nothing to scope the run to. "
+                  "Drop --for-draft to enrich the whole corpus.")
+            return EXIT_BAD_SCOPE
+        # The draft is the only input a scoped run could sensibly have,
+        # so --for-draft supplies it -- but never overrides an --input
+        # the user typed, which is the only way to enrich one draft's
+        # papers while rendering another document.
+        if args.input is None:
+            args.input = str(draft_path)
 
     # Same lock as `python -m src.sync`: this stage writes content/ too,
     # and sync's parsed-text writes are not atomic, so an enrichment run
@@ -156,7 +281,7 @@ def main(configure_logging: bool = False) -> int:
             # shared file sound -- see src/logging_setup.py's docstring.
             if configure_logging:
                 logging_setup.configure()
-            return _run_stages(args, selected)
+            return _run_stages(args, selected, scope)
     except runlock.AlreadyRunning as exc:
         # Deliberately still a bare print, not _say: this is the losing
         # side of the race above and must not touch logs/pipeline.log,
@@ -166,10 +291,36 @@ def main(configure_logging: bool = False) -> int:
         return runlock.EXIT_ALREADY_RUNNING
 
 
-def _run_stages(args, selected) -> int:
+def _run_stages(args, selected, scope: set[str] | None = None) -> int:
     docs = corpus.build_corpus()
     _say(f"Target: {args.target}")
-    _say(f"Corpus: {len(docs)} doc(s) from {config.BIB_FILE_PATH}")
+    if scope is None:
+        _say(f"Corpus: {len(docs)} doc(s) from {config.BIB_FILE_PATH}")
+    else:
+        # The filter sits here rather than inside build_corpus(): that
+        # function's whole contract is "every ledger item", the full
+        # SELECT is microseconds next to any stage, and keeping the
+        # unfiltered list in hand is what lets the count below say what
+        # was left out instead of only what was kept.
+        total = len(docs)
+        docs = [doc for doc in docs if doc.citekey in scope]
+        _say(f"Corpus: {len(docs)} of {total} doc(s) from {config.BIB_FILE_PATH} "
+             f"-- scoped to {args.for_draft}")
+
+        # Named, not just counted. A citekey a draft cites and the
+        # ledger has never heard of is normally the hard gate's business
+        # and cannot reach a passing draft -- but a draft written before
+        # a re-export, or against a corpus that has since moved, has
+        # them, and silently enriching the remainder would report a
+        # smaller number with nothing to explain it.
+        unknown = sorted(scope - {doc.citekey for doc in docs})
+        if unknown:
+            _say(f"  {len(unknown)} cited citekey(s) are not in the ledger and cannot be "
+                 f"enriched: {', '.join(unknown)}", level=logging.WARNING)
+        if not docs and selected & set(CORPUS_STAGES):
+            _say("  nothing to enrich -- re-export your bibliography and run "
+                 "`python -m src.sync` first.", level=logging.WARNING)
+            return EXIT_BAD_SCOPE
 
     results = {}
     for name in STAGE_ORDER:

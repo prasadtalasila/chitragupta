@@ -563,8 +563,9 @@ correct answer rather than a bug.
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
-| `--stages STAGES` | all five | Comma-separated subset of `docling,embed,bertopic,provenance,render` |
-| `--input INPUT` | -- | Input file for the `render` stage |
+| `--stages STAGES` | all five, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,provenance,render` |
+| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites, and use it as the `--input` default. Refused with an explicit `--stages embed` or `bertopic` |
+| `--input INPUT` | `--for-draft`'s draft, when given | Input file for the `provenance` and `render` stages |
 | `--output-format FORMAT` | `pdf` | Output format for the `render` stage |
 | `--documentclass CLASS` | `article` | LaTeX documentclass for the `render` stage |
 
@@ -572,9 +573,65 @@ correct answer rather than a bug.
 .venv-full/bin/python scripts/enrich.py
 # .venv-full/bin/python scripts/enrich.py --stages docling
 # .venv-full/bin/python scripts/enrich.py --stages embed,bertopic
+# .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
 # .venv-full/bin/python scripts/enrich.py --stages render \
 #     --input content/drafts/survey.md --output-format pdf --documentclass report
 ```
+
+#### Enriching one draft's papers
+
+By default the unit of work is the corpus: every ledger item, whether a
+draft cites it or not. `--for-draft` narrows that to the papers one draft
+cites, read out of the draft with the same reader the citation gate uses
+(`src.citation_gate.extract_citekeys`), so a draft resting on twenty-three
+papers costs twenty-three parses rather than the whole library:
+
+```console
+$ .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
+Target: host
+Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/drafts/digital-twins.md
+
+=== docling ===
+[ok] {
+  "ali_modeling_2024": "ok: content/docling/ali_modeling_2024.md",
+  ...
+}
+
+=== Summary ===
+  docling    ok
+```
+
+With no `--stages` of its own it runs `docling` alone -- the stage the
+scope actually reaches, and the one that produces the quotable passages
+this is usually for. Add `--stages docling,provenance` (or `render`) to
+carry on into the draft's own report; `--input` already points at the
+draft, so it needs naming only when you want a *different* document
+rendered.
+
+Two stages refuse the scope rather than honouring it:
+
+```console
+$ .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md --stages embed
+  --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
+      python scripts/enrich.py --for-draft content/drafts/digital-twins.md --stages docling
+      python scripts/enrich.py --stages embed
+```
+
+That is a tier, not a ladder ([LADDERS.md](LADDERS.md)): `embed` writes a
+Chroma collection carrying no record of how much of the corpus it covers,
+and every skill that reads it decides by asking only whether
+`content/chroma/` exists -- so a collection holding eleven papers would
+answer as though it held 642. `bertopic` overwrites `content/topics.json`
+whole, so a scoped run would replace a corpus-wide topic model with an
+eleven-document one. Neither is worth a silently smaller answer, so the
+run stops and names the command to use instead (exit status 3).
+
+A citekey the draft cites and the ledger has never heard of is named, not
+quietly dropped, and a scope matching nothing at all stops rather than
+reporting `ok` over zero documents. The Docling cache is per-document and
+never rewritten to match the scope, so a scoped run and a full run do no
+duplicate work in either order -- narrow first and widen later, or the
+reverse, and nothing is parsed twice.
 
 The `embed` stage names each document as it reaches it, so a run over a
 real corpus is legible rather than silent for its whole duration:

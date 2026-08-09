@@ -713,6 +713,40 @@ class TestIncrementalSkip:
         # no model load whatsoever.
         assert FakeDocumentConverter.build_count == 0
 
+    def test_a_narrowed_corpus_does_not_evict_the_rest_of_the_cache(
+        self, isolated_config, fake_docling, tmp_path
+    ):
+        """The property that makes `--for-draft` (issue #52) safe to
+        offer: a scoped run and a full run do no duplicate work in
+        either order.
+
+        Stated as the regression rather than the principle, because
+        there is exactly one way to break it -- rewriting the cache as
+        the scoped run's own view of it, so that every document the
+        narrow run didn't look at loses its fingerprint and re-parses on
+        the next full one. `_save_cache` persists the merged dict today,
+        so this passes as written; it is here to keep that true.
+        """
+        pdfs = {}
+        for citekey in ("a2024", "b2024"):
+            pdf = tmp_path / f"{citekey}.pdf"
+            pdf.write_bytes(f"%PDF {citekey}".encode())
+            pdfs[citekey] = CorpusDoc(citekey=citekey, title="t", pdf_path=str(pdf))
+
+        docling_parse.parse_corpus(list(pdfs.values()))
+        assert FakeDocumentConverter.call_count == 2
+
+        # The scoped run: one document of the two, as `--for-draft`
+        # would hand it over.
+        docling_parse.parse_corpus([pdfs["a2024"]])
+
+        cache = json.loads(isolated_config.DOCLING_CACHE_PATH.read_text())
+        assert set(cache["items"]) == {"a2024", "b2024"}
+
+        # ...and the full run that follows still parses nothing.
+        docling_parse.parse_corpus(list(pdfs.values()))
+        assert FakeDocumentConverter.call_count == 2
+
 
 class TestCacheLoading:
     def test_missing_cache_file_is_empty(self, isolated_config):

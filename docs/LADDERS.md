@@ -190,8 +190,10 @@ Every command above and the flags it takes are in
 ### What the enrichment layer works on
 
 Worth stating plainly, because the natural assumption is the expensive
-one and it is wrong: **the enrichment layer parses your whole corpus, not
-the papers a draft happens to cite.**
+one and it is wrong: **by default the enrichment layer parses your whole
+corpus, not the papers a draft happens to cite.** One flag changes that,
+for one of the five stages; the rest of this section is what it does and
+does not reach.
 
 `scripts/enrich.py` calls `corpus.build_corpus()`, which returns **every
 row in the ledger, and nothing else.** `ledger.all_items()` is a bare
@@ -210,10 +212,10 @@ in exchange for indexing evidence no draft was ever allowed to use. If a
 paper is worth indexing it is worth cataloguing: put it in your reference
 manager, re-export, and re-run `python -m src.sync`.
 
-Every stage then receives that whole list. Nothing anywhere filters by
-draft, by reference list, or by citation: a draft citing eleven papers
-does not cause eleven papers to be parsed, and there is no command that
-would make it. The unit of work is the corpus.
+Every stage then receives that whole list, and unless you say otherwise
+nothing filters it by draft, by reference list, or by citation: a draft
+citing eleven papers does not cause eleven papers to be parsed. The
+default unit of work is the corpus.
 
 Only the documents that have a PDF get parsed, though, which is worth
 knowing before reading a stage's counts. Measured on this project's own
@@ -224,6 +226,47 @@ That is why the enrichment layer is opt-in and why its cost is quoted
 per-corpus rather than per-draft: on this project's own 501-PDF corpus, a
 first Docling pass is 3330s serial and 310s at twelve workers
 ([docs/PERFORMANCE.md](PERFORMANCE.md)).
+
+### Scoping a run to one draft
+
+`--for-draft content/drafts/<slug>.md` narrows that list to the papers
+the named draft cites, read out of it with the same
+`citation_gate.extract_citekeys` the hard gate uses. It exists because
+the honest advice was otherwise "run it over everything, once, and budget
+an hour", which is a decision most people defer rather than take -- and
+deferring it is why rung 1 of the passage ladder below is so often
+absent. The flag makes the layer something you can try on one chapter and
+judge before committing the machine to the whole library. Flags and
+worked output are in [docs/CLI.md](CLI.md#enriching-one-drafts-papers).
+
+Which stages it reaches is the part worth being precise about, because it
+is fewer than it sounds:
+
+| Stage | Under `--for-draft` | Why |
+|---|---|---|
+| `docling` | scoped | Per-document by nature. Its artefacts are keyed by citekey and its cache is per-document, so eleven of them is a subset of the corpus-wide result, not a different one |
+| `embed` | **refused** | The Chroma collection records nothing about how much of the corpus it covers, and every skill that reads it decides by asking only whether `content/chroma/` exists. A partial index would answer as though it were complete |
+| `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus -- one added document can move every assignment -- so a scoped run would replace a topic model with something that isn't one |
+| `provenance` | unaffected | Reads `--input`, never the corpus. Already per-draft |
+| `render` | unaffected | Likewise |
+
+So the filter changes the behaviour of exactly one stage, and the other
+four are either already per-draft or deliberately out of reach.
+
+The two refusals are a **tier**, not a ladder, in this page's vocabulary,
+and they are the reason the flag is safe to offer at all. Asked to scope
+`embed`, the run stops and prints the two commands to use instead. It
+does not descend to a neighbouring answer -- neither "run it over the
+whole corpus anyway", which is the hour of work `--for-draft` exists to
+avoid, nor "index the eleven", which is the silently-partial artefact
+this page's opening worries about. Allowing the second would need the
+Chroma collection to record its own coverage first; until it does, the
+honest answer is to refuse.
+
+What makes the scoped `docling` run safe in the other direction is that
+its cache is per-document and is never rewritten to match the scope: a
+narrow run followed by a full one, or a full run followed by a narrow
+one, parses nothing twice.
 
 It is also why the `docling` stage now adopts the corpus layer's parse
 where it can. When `[parser].backend = "docling"` has already parsed a
