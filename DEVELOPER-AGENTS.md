@@ -191,7 +191,16 @@ Before saying so, actually run, in this repo:
 - The full test suite with coverage: `.venv-full/bin/python -m pytest
   --cov=src --cov=scripts --cov-report=term-missing`. This repo maintains
   100% line and branch coverage -- a change that drops it needs a test
-  added, not a lowered bar.
+  added, not a lowered bar. `fail_under = 100` in `pyproject.toml`'s
+  `[tool.coverage.report]` enforces that rather than leaving it asserted,
+  so the run exits non-zero on a drop. It assumes the full toolchain:
+  without pandoc/TeX Live/poppler the render tests self-skip and the
+  total falls short for a missing binary rather than a missing test --
+  pass `--cov-fail-under=0` on such a host. CI runs both legs against a
+  floor rather than exempting either: Linux holds the full 100, and the
+  Windows leg -- which installs no `os-deps` and so self-skips the render
+  and pdf tests -- holds 95, low enough not to need re-tuning whenever
+  toolchain-only code is added and high enough to catch a real collapse.
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --

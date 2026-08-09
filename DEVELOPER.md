@@ -23,6 +23,11 @@ bash scripts/install_full_pipeline.sh dev-deps
 
 # Run the full suite with coverage
 .venv-full/bin/python -m pytest --cov=src --cov=scripts --cov-report=term-missing
+
+# Same, on a host without pandoc/TeX Live/poppler: the render tests skip,
+# so opt out of the 100% bar (pyproject's fail_under) rather than lower it
+.venv-full/bin/python -m pytest --cov=src --cov=scripts --cov-report=term-missing \
+    --cov-fail-under=0
 ```
 
 `tests/` covers both the corpus layer and `src/enrich/*` -- the enrich group's

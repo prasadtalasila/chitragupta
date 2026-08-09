@@ -28,12 +28,16 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    # windows-latest is exploratory (docs/DESIGN.md's cross-platform-CI
-    # recommendation) -- this repo's install path and every doc
-    # (DEVELOPER-AGENTS.md, DEVELOPER.md) assume Linux, so don't let it block the
-    # Linux leg (this repo's actual gate) while real gaps get found and
-    # fixed one at a time instead of guessed at up front.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    # windows-latest was exploratory (docs/DESIGN.md's cross-platform-CI
+    # recommendation) and carried `continue-on-error` while real gaps were
+    # found and fixed one at a time. They have been: the leg has run clean
+    # -- every step green, no failing test -- for ten consecutive runs, so
+    # it now blocks like the Linux one rather than reporting success
+    # whatever happens. What it does *not* share is the coverage bar: it
+    # gets python-deps without os-deps (apt-only), so ~30 render/pdf tests
+    # self-skip there and the total lands near 99% against Linux's 100%.
+    # That difference is a missing toolchain, and the floor below is set
+    # for it rather than the leg being exempted from checking at all.
     steps:
       - uses: actions/checkout@v4
 
@@ -88,20 +92,33 @@ jobs:
       # Python's Scripts/) via poetry.toml's virtualenvs.create = false
       # + VIRTUAL_ENV, instead of this workflow needing to know which
       # one .venv-full actually has.
+      # Two floors, because the two legs run different amounts of the suite.
+      # Linux installs os-deps and runs all of it, so it holds pyproject's
+      # [tool.coverage.report] fail_under = 100. Windows gets python-deps
+      # only (os-deps is apt-only: pandoc, TeX Live, poppler), so ~30
+      # render/pdf tests self-skip and src/render_output.py lands at ~76%,
+      # taking the total near 99%. 95 is a floor under that, not a target:
+      # it catches pure-Python coverage collapsing on a platform where the
+      # suite is partial, without re-tuning every time a pandoc-only line
+      # is added. Raise it only against a measured number -- `precision = 2`
+      # is set so the report prints one.
       - name: Run test suite with coverage
         shell: bash
         run: |
           export VIRTUAL_ENV="$PWD/.venv-full"
           set -o pipefail
+          fail_under=100
+          [ "$RUNNER_OS" = "Linux" ] || fail_under=95
           poetry run python -m pytest --cov=src --cov=scripts --cov-report=term-missing \
-            -rf | tee pytest-output.txt
+            --cov-fail-under="$fail_under" -rf | tee pytest-output.txt
 
-      # Which test failed is the only actionable part of a red run, and on
-      # the exploratory Windows leg it is easy to miss: continue-on-error
-      # means the run's own conclusion still reads "success", so nothing
-      # on the PR page says a test failed at all. Surfacing the short
-      # summary as annotations and in the job summary puts it where it is
-      # seen rather than looked for.
+      # Which test failed is the only actionable part of a red run.
+      # This step mattered most while the Windows leg carried
+      # `continue-on-error` and a failure there left the run reading
+      # "success" -- it is kept now that the leg blocks, because the
+      # summary and the annotations still beat opening a matrix job's log
+      # to find one line, and because a Windows-only failure is the one
+      # this repo's Linux-assuming docs leave you least prepared for.
       #
       # (An earlier version of this comment claimed the logs were
       # unreadable without an actions:read scope. That was wrong -- the
