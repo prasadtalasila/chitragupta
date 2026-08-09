@@ -477,6 +477,30 @@ class TestWriteReportAndCli:
         assert "md" in written and "pdf" not in written
         assert "pandoc not found" in capsys.readouterr().err
 
+    def test_an_escaping_render_target_warns_and_still_returns_md(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """render_output refuses to write outside the content directory when
+        content/rendered or content/drafts is symlinked out of it. That is a
+        layout fault, not this report's -- the md above is already written to
+        content/provenance/, so it must degrade like a missing binary rather
+        than taking the run out with a traceback."""
+        from src import render_output
+
+        def raise_outside(*a, **k):
+            raise render_output.OutsideContentDir("content/rendered resolves to /elsewhere")
+
+        monkeypatch.setattr(render_output, "render", raise_outside)
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("The hysteresis band matters [@a_2024].\n")
+
+        written = cp.write_report(path, ["md", "pdf"])
+
+        assert "md" in written and "pdf" not in written
+        assert "resolves to /elsewhere" in capsys.readouterr().err
+
     def test_pandoc_failure_warns_and_still_returns_md(self, isolated_config, monkeypatch, capsys):
         """A quoted excerpt can carry a glyph (e.g. a circled digit lifted
         verbatim from the source PDF) that pdflatex's default fonts can't
