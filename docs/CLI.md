@@ -284,10 +284,11 @@ python3 -m src.references content/drafts/survey.md
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
 relative to `content/drafts/`, minus the suffix -- so
-`content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`. Six
+`content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`. Seven
 Markdown files hold the reader, the scope, the glossary, the kept
-evidence, the rejected candidates and why, the user's steering, and a
-revision log. [DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
+evidence, the rejected candidates and why, the user's steering, a
+revision log, and every retrieval call.
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
 
 Stdlib only, and never a gate: it takes no lock and only ever opens the
 ledger read-only.
@@ -362,6 +363,7 @@ never transcribed it, and that material is gone rather than mislaid.
 | `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since |
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
+| `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
@@ -372,6 +374,7 @@ never transcribed it, and that material is gone rather than mislaid.
 | `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research` |
 | `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
 | `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
+| `--label TEXT` | `mark-revision` | Short name for this revision. Optional -- an unlabelled marker is numbered by order instead (`revision 1`, `revision 2`, ...) |
 | `--section NAME` | `brief` | Take the citekeys from that `sections.md` row. Matches without the section's numbering; an ambiguous name matches nothing rather than guessing |
 | `--check` | `brief` | Report what resolves, and what doesn't, without printing the blocks -- what an orchestrator runs before dispatching |
 | `--out FILE` | `export` | Archive path (default `drafts-<name>-<date>.tar.gz`) |
@@ -382,6 +385,9 @@ never transcribed it, and that material is gone rather than mislaid.
 python3 -m src.dossier init content/drafts/survey.md --genre survey
 python3 -m src.dossier status content/drafts/survey.md
 python3 -m src.dossier sections content/drafts/survey.md
+
+# Before a revision session's first retrieval call
+python3 -m src.dossier mark-revision content/drafts/survey.md --label "shorten intro"
 
 # Before dispatching a section writer: do this section's rows resolve?
 python3 -m src.dossier brief content/drafts/survey.md --section "2. Failure modes" --check

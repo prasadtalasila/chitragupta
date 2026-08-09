@@ -68,6 +68,19 @@ Then read `scope.md` and `steering.md`. **Always both, always first.**
 They are small, and they are what stops a revision from undoing an
 earlier decision the user already made.
 
+Mark the start of this revision session in `retrieval.md`, before any
+retrieval call:
+
+```bash
+python3 -m src.dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
+```
+
+`retrieval.md` rows otherwise carry only a date, and two revisions on the
+same day are indistinguishable by it -- the marker is what lets
+`dossier status` total a draft's retrieval cost per revision instead of
+only as one lifetime figure. Costs nothing if step 4 below decides no
+search is needed: an empty revision segment isn't reported.
+
 ### 2. Check the request against the recorded scope
 
 If the change contradicts `scope.md`'s "Covers"/"Does not cover", say so

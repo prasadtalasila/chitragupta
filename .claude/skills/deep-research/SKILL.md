@@ -376,10 +376,12 @@ plus an adversarial reviewer):
 
 - Dispatch four `peer-reviewer` subagents **in parallel**, one per role --
   `domain-accuracy`, `methodology-rigor`, `clarity-completeness`,
-  `devils-advocate` -- each given the full draft and nothing else (no
-  reviewer sees another's critique). If that subagent type isn't
-  available, use `general-purpose` with
-  `.claude/agents/peer-reviewer.md`'s instructions for the assigned role.
+  `devils-advocate` -- each given the full draft, the `DRAFT PATH`
+  (`content/drafts/deep-research-<slug>.md`, for `--log` -- see
+  `.claude/agents/peer-reviewer.md`), and nothing else (no reviewer sees
+  another's critique). If that subagent type isn't available, use
+  `general-purpose` with `.claude/agents/peer-reviewer.md`'s instructions
+  for the assigned role.
 - **Reconcile under the concession threshold** (this project's own rule,
   not upstream's): any `high`-severity concern from *any* reviewer, or any
   concern of `medium` or `high` severity raised independently by *2 or

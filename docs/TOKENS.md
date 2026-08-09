@@ -486,50 +486,90 @@ Claude Code writes a JSONL transcript per session under
 `~/.claude/projects/<slugified-cwd>/<session-id>.jsonl`, and every
 assistant entry carries a `usage` object with `input_tokens`,
 `cache_read_input_tokens`, `cache_creation_input_tokens` and
-`output_tokens`. Subagent turns appear in the same file flagged
-`isSidechain: true` -- which means **the two pools can be separated
-empirically, from a run you have already paid for**:
+`output_tokens`.
+
+**Subagent turns are not in that file.** An earlier version of this
+recipe said they were, flagged `isSidechain: true` in the same JSONL --
+wrong, checked directly against this machine's own transcripts rather
+than assumed: every subagent turn instead lives in its own file, under
+`<session-id>/subagents/agent-<id>.jsonl`, a sibling directory of the
+session file rather than a line inside it. The two pools still separate
+empirically, from a run already paid for -- the fix is reading a second
+set of files, not a different flag:
 
 ```python
-import json, sys
+import json
+import sys
+from pathlib import Path
 
-seen = set()
-pools = {"orchestrator": [0, 0, 0], "subagent": [0, 0, 0]}   # turns, input, output
-for line in open(sys.argv[1], encoding="utf-8"):
-    try:
-        entry = json.loads(line)
-    except ValueError:
-        continue
-    usage = (entry.get("message") or {}).get("usage")
-    rid = entry.get("requestId")
-    if not usage or rid in seen:      # streaming writes an entry more than once
-        continue
-    seen.add(rid)
-    pool = pools["subagent" if entry.get("isSidechain") else "orchestrator"]
-    pool[0] += 1
-    pool[1] += (usage.get("input_tokens", 0)
-                + usage.get("cache_read_input_tokens", 0)
-                + usage.get("cache_creation_input_tokens", 0))
-    pool[2] += usage.get("output_tokens", 0)
+def _pool_usage(paths):
+    seen = set()
+    turns = tokens_in = tokens_out = 0
+    for path in paths:
+        for line in path.open(encoding="utf-8"):
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            usage = (entry.get("message") or {}).get("usage")
+            rid = entry.get("requestId")
+            if not usage or rid in seen:      # streaming writes an entry twice
+                continue
+            seen.add(rid)
+            turns += 1
+            tokens_in += (usage.get("input_tokens", 0)
+                          + usage.get("cache_read_input_tokens", 0)
+                          + usage.get("cache_creation_input_tokens", 0))
+            tokens_out += usage.get("output_tokens", 0)
+    return turns, tokens_in, tokens_out
 
-for name, (turns, inp, outp) in pools.items():
+session_file = Path(sys.argv[1])                       # <session-id>.jsonl
+subagent_dir = session_file.with_suffix("") / "subagents"
+subagent_files = sorted(subagent_dir.glob("*.jsonl")) if subagent_dir.is_dir() else []
+
+for name, (turns, inp, outp) in (
+    ("orchestrator", _pool_usage([session_file])),
+    ("subagent", _pool_usage(subagent_files)),
+):
     print(f"{name:13} turns {turns:4}  input {inp:12,}  output {outp:9,}"
           f"  mean input/turn {inp // max(turns, 1):,}")
 ```
 
-This is a recipe, not shipped tooling -- it reads a harness file this
-project does not own, and the schema is the harness's to change.
+This is a recipe, not shipped tooling -- it reads harness files this
+project does not own, and the schema (this directory layout included) is
+the harness's to change.
 
-Run against the session that wrote this document -- a documentation
-session, no drafting, no subagents -- it reports 35 orchestrator turns,
-**1,991,974 input tokens against 14,318 output tokens**. That ratio, 139
-input tokens per output token, is the resident multiplier measured rather
-than argued, on a session doing nothing more expensive than reading files
-and writing prose.
+**On a session with no subagent dispatches**, `subagent_dir` doesn't
+exist and the split is moot but the input:output ratio still holds: run
+against the session that wrote this document's original draft -- a
+documentation session, no drafting, no subagents -- it reports 35
+orchestrator turns, **1,991,974 input tokens against 14,318 output
+tokens**. That ratio, 139 input tokens per output token, is the resident
+multiplier measured rather than argued, on a session doing nothing more
+expensive than reading files and writing prose. De-duplicating on
+`requestId` matters here too: summing naively inflated the same session
+to 56 turns and 3.2M tokens.
 
-De-duplicating on `requestId` matters: streaming writes the same usage
-record more than once, and summing naively inflated the same session to
-56 turns and 3.2M tokens.
+**On a session that does dispatch subagents**, measured on two of this
+machine's own multi-agent engineering sessions in this repository (not a
+drafting run -- ordinary feature work using the `Agent` tool, the closest
+real material available to check the fixed recipe against):
+
+| Session | Orchestrator turns | Orchestrator input | Subagent turns (agents) | Subagent input |
+|---|---|---|---|---|
+| A | 199 | 34,902,281 | 93 (5) | 4,277,676 |
+| B | 268 | 66,634,805 | 69 (4) | 3,555,862 |
+
+Orchestrator input outweighs subagent input by roughly 8-19x on these two
+-- the direction [the resident multiplier](#the-resident-multiplier)
+predicts (the orchestrator's context is append-only and re-billed every
+turn; a subagent's is paid once and discarded), but the ratio itself is
+two data points from unrelated engineering sessions, not a
+`deep-research` or `survey-writer` run, and should not be read as this
+skill's own boundary saving. [The dispatch payload, measured on real
+material](#the-dispatch-payload-measured-on-real-material) below is the
+number that answers that question, for the one boundary it was measured
+on; the rest is [#76](https://github.com/prasadtalasila/chitragupta/issues/76).
 
 ### Cheap: a stub corpus
 
@@ -623,18 +663,141 @@ see [what the dossier actually recovers](#what-the-dossier-actually-recovers)),
 and the turn counts either side of the change. Those still want the
 before/after run in [#76](https://github.com/prasadtalasila/chitragupta/issues/76).
 
+### The step 2a boundary, measured on real material
+
+The other subagent boundary this document argues for --
+[survey-writer step 2a](#the-one-lever-this-repository-does-not-own), the
+one [Example 1](#example-1-one-rejected-paper-followed-to-the-end-of-the-run)
+above derives a saving for from estimated figures (~150 tokens per result,
+"3 kept per query, 12 rejected"). Measured here on real material, the
+same way as the Phase 5 payload above: a real character count, not a
+token count of a run.
+
+Method: three sub-themes actually retrieved against the real 501-paper
+corpus (`digital twin DevOps continuous integration`, `digital twin
+runtime verification synchronization`, `digital twin security threat
+model` -- a topic this corpus turns out to cover well, chosen for that
+reason), `--k 15` each, `--log`ged to a scratch dossier. Every one of the
+45 results read and judged by hand, exactly as `survey-writer` step 2
+specifies -- kept into `evidence.md` with a `relevance:`/`support:` block,
+turned down into `rejected.md` with a reason -- and both files measured
+against the raw retrieval payload `retrieval.md` already recorded.
+
+| | Characters |
+|---|---|
+| Raw candidate snippets, all 3 sub-themes (`retrieval.md`'s own `chars` total) | **22,280** |
+| Judged packet a step 2a subagent returns instead (20 kept + 24 rejected) | **9,084** |
+| Ratio | **2.45x** |
+
+Smaller than Phase 5's 17.4x, and the reason is structural rather than a
+measurement discrepancy: Phase 5's `brief` replaces detailed evidence with
+a one-line file reference, discarding nearly all of the payload from the
+orchestrator's side. Step 2a's boundary discards nothing -- the packet
+still carries a `relevance:`/`support:` pair for every kept citekey and a
+reason for every rejected one, the full judgment, just restructured
+rather than thrown away. Rejecting harder wouldn't close the gap either,
+per Example 1's own point: the tokens are spent at retrieval regardless
+of what survives judging.
+
+**This run kept 20 of 45 (44%); Example 1 assumed 3 kept per query, 9 of
+45 (20%).** The 2.45x ratio above moves directly with that keep rate --
+one reader's judgment on one topic, on a sub-theme set chosen because
+this corpus covers it unusually well. A stricter keeper, or a
+thinner-covered topic, would reject more and push the ratio up. Treat
+2.45x as this run's number, not a property of the boundary in general.
+
+**Reconciled against Example 1, on the same slice of material.** Example
+1 costs only the rejected share (5.4k of estimated tokens) and its own
+text says "only the kept evidence comes back" -- then charges nothing for
+that return trip, so its with-boundary total (6.8k, against 17.6k, a
+~61% saving) is the subagent's one-time read and nothing past it. Redone
+on the *measured* rejected share here -- 24 of 45 candidates, so
+24/45 of the raw payload (2,971 tokens), and `rejected.md`'s own body
+(952 tokens) -- at Example 1's exact method first, to check the two are
+actually comparable:
+
+| | Input-token equivalents (Example 1's method) |
+|---|---|
+| No boundary | 3,714 + 5,942 = **9,656** |
+| With boundary (subagent's one-time read only, as Example 1 counts it) | **3,714** |
+| Saving | **61.5%** |
+
+That reproduces Example 1's ~61% almost exactly on real material, which
+is the useful check: the method is internally consistent, and the gap
+between the estimate and this run is measurement noise, not a modelling
+error. **Then add the cost Example 1's text describes but its total
+omits** -- the rejected list re-entering the orchestrator's context, once
+at 1.25x and resident for the same ~20 turns as everything else it holds:
+
+| | Input-token equivalents (rejected list costed both ways) |
+|---|---|
+| With boundary, subagent read + `rejected.md` write-back | 3,714 + 1,190 + 1,904 = **6,808** |
+| Saving, corrected | **29.5%**, not 61.5% |
+
+The boundary still wins on this slice -- discarding the raw candidates
+inside a subagent instead of holding them resident for 20 turns is real
+-- but the earlier ~61% counted the win and not its cost. Example 1 is
+left as written rather than edited, since it is explicitly a worked
+derivation of the *method* and this is the reconciliation, not a
+retraction.
+
+**The whole-payload figure -- kept and rejected together, which Example 1
+never computed -- is a different, broader number, not a comparison to
+Example 1's:**
+
+| | Input-token equivalents (kept + rejected together) |
+|---|---|
+| No boundary: full raw payload enters once, resident 20 turns | 5,570 x 1.25 + 5,570 x 0.1 x 20 = **18,103** |
+| With boundary: subagent's one-time read + full judged packet (kept + rejected) enters once, resident 20 turns | 5,570 x 1.25 + 2,271 x 1.25 + 2,271 x 0.1 x 20 = **14,343** |
+| Saving | **21%** |
+
+Lower than the rejects-only 29.5%, because the kept evidence was always
+going to enter the orchestrator's context eventually -- it is what gets
+cited -- so folding it into "cost avoided by the boundary" overstates the
+boundary's own contribution. The rejects-only figure above is the fairer
+one to compare against Example 1; this one is the fairer one to compare
+against "what does step 2a save on this run's whole payload."
+
+Reproduce it: run the three searches above with `--log` against a synced
+corpus, judge every result the way `survey-writer` step 2 describes, and
+diff `retrieval.md`'s total against `evidence.md` + `rejected.md`.
+Nothing about it needs a full drafting run -- retrieval, judging, and
+`dossier status` are the whole cost, and the judging is the same reading
+a real drafting session would do regardless of which arm it measures.
+
+What it does **not** measure: whether **the second, un-run arm** -- an
+orchestrator running steps 1-2 inline, with no subagent at all -- differs
+from this in any way other than where the read happens. It shouldn't, by
+construction: the same 45 candidates get read and judged either way, so
+the raw-payload row above already *is* that arm's cost, measured rather
+than run twice. What a second run would add is confirming the turn count
+doesn't itself change with the boundary removed (plausible, since
+`survey-writer`'s numbered steps are unchanged either way, but unmeasured
+here) -- the last piece [#76](https://github.com/prasadtalasila/chitragupta/issues/76)
+still owns.
+
 ## Measured, derived, and asserted
 
 Kept separate on purpose, in a project where
 [PERFORMANCE.md](PERFORMANCE.md) means measured.
 
-**Measured** -- two figures, in two different units. The 35 turns /
+**Measured** -- four figures now, in two different units. The 35 turns /
 1,991,974 input / 14,318 output above, from this session's own
 transcript, on the machine this was written on: it demonstrates the
-ratio, and is not a benchmark of a drafting run. And the
+ratio, and is not a benchmark of a drafting run. The [199/268
+orchestrator turns against 93/69 subagent
+turns](#free-the-session-transcript-already-has-the-answer) from two of
+this machine's own multi-agent sessions, after the transcript recipe's
+subagent-file bug was fixed -- ordinary engineering work, not a drafting
+run either. The
 [15,660 against 901 characters](#the-dispatch-payload-measured-on-real-material)
 of Phase 5 dispatch payload, counted on the shipped example report
-against the real corpus: a payload size, not a run.
+against the real corpus: a payload size, not a run. And the [22,280
+against 9,084 characters](#the-step-2a-boundary-measured-on-real-material)
+of the step 2a boundary, from a real 3-sub-theme, 45-candidate retrieval
+pass against the real corpus, judged by hand: also a payload size, not a
+run -- and the one figure here that corrects an earlier derived estimate
+(Example 1's implied ~61% saving) rather than only confirming one.
 
 **Derived** -- the turn counts (read off the skill files), the pricing
 multipliers (structural ratios of the Claude API, not prices), and every

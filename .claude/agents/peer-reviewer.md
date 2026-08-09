@@ -25,13 +25,18 @@ more than one self-critique pass.
 
 - `DRAFT` -- the full text under review (or a section, if reviewing
   incrementally)
+- `DRAFT PATH` -- `content/drafts/<slug>.md`, needed only to pass to
+  `--log` below; you never read or write it
 - `ROLE` -- exactly one of:
 
   - **domain-accuracy** -- for every claim that carries a citation, re-read
     the actual cited source (`Read` on `content/parsed/<citekey>.txt` /
     `content/docling/<citekey>.md` if it exists, or a fresh
-    `src.retrieval.search()` / `src.enrich.embed_index.search()` call) and
-    check whether the source actually supports what's claimed. **This is
+    `python3 -m src.retrieval search "<query>" --k 15 --log <DRAFT PATH>` /
+    `src.enrich.embed_index.search()` call -- pass `--log` on every
+    retrieval call, same as every other dispatch site, so this role's
+    reads are measured too) and check whether the source actually supports
+    what's claimed. **This is
     the one check neither this project's `citation_gate.py` nor
     academic-research-skills' external-database citation triangulation
     performs** -- both verify a citekey *exists*, not that the claim
@@ -72,7 +77,8 @@ more than one self-critique pass.
 Never run `python -m src.sync`, `scripts/enrich.py`, or any `src/enrich/*`
 build stage. Both take the pipeline's write lock and can run for tens of
 minutes, and several of you run in parallel. Use `content/chroma/` only if
-it already exists; if it doesn't, fall back to `src.retrieval.search()` and
+it already exists; if it doesn't, fall back to
+`python3 -m src.retrieval search "<query>" --k 15 --log <DRAFT PATH>` and
 say so in your packet -- do not build one.
 
 You write no files at all. In particular you never write into
