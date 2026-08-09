@@ -286,8 +286,8 @@ restore it. A dossier lives at `content/dossiers/` plus the draft's path
 relative to `content/drafts/`, minus the suffix -- so
 `content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`. Seven
 Markdown files hold the reader, the scope, the glossary, the kept
-evidence, the rejected candidates and why, the user's steering, a
-revision log, and every retrieval call.
+evidence, which section cites which citekey, the rejected candidates and
+why, the user's steering, a revision log, and every retrieval call.
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
 
 Stdlib only, and never a gate: it takes no lock and only ever opens the

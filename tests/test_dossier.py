@@ -833,13 +833,15 @@ class TestRevisionMarker:
     def test_a_pipe_in_the_label_does_not_break_the_row(self, draft):
         """Escaped the same way `log_retrieval` escapes a query -- the
         row must still parse to six cells and split into its own
-        segment, not merge with the next one."""
+        segment, not merge with the next one -- and unescaped back on
+        the way out, so `dossier status` prints what the user wrote
+        rather than the markdown-safe form."""
         dossier.init(draft, "survey")
         dossier.mark_revision(draft, "shorten | tighten")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert len(segments) == 1
-        assert "shorten" in segments[0].label and "tighten" in segments[0].label
+        assert segments[0].label == "shorten | tighten"
 
     def test_status_prints_the_breakdown_once_there_is_more_than_one_segment(
         self, draft, capsys

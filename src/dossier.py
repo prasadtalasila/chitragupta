@@ -874,7 +874,11 @@ def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
             if calls or chars:
                 segments.append(RevisionCost(label, calls, chars))
             marker_index += 1
-            label = row[2] or f"revision {marker_index}"
+            # `mark_revision` escapes a pipe in the label the same way
+            # `log_retrieval` escapes one in a query, so the row parses;
+            # unescape it back for display, same as `recorded_queries`
+            # does for a query cell.
+            label = row[2].replace("\\|", "|") or f"revision {marker_index}"
             calls = chars = 0
             continue
         calls += 1
