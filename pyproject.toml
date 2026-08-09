@@ -113,6 +113,12 @@ omit = [
 # rather than a missing test. Pass --cov-fail-under=0 on such a host; CI
 # does exactly that on its Windows leg, where os-deps is apt-only.
 fail_under = 100
+# Two decimal places, because a rounded total is not a number you can set a
+# threshold from: CI's Windows leg prints "99%", which could be anything from
+# 98.5 to 99.4, and choosing a floor for it off that display would be guessing.
+# It also makes the strictness of `fail_under = 100` visible -- 99.97% is
+# reported as 99.97 and fails, rather than displaying as 100 and passing.
+precision = 2
 exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
