@@ -166,6 +166,12 @@ shape.
 | `thesis-chapter-writer` | 26 | Mixed | Discards the sources that qualify an argument |
 | `deep-research` | 11 | **Worst** | Solves a problem it does not have; breaks one it does |
 
+The `thesis-chapter-writer` example no longer ships: its `.tex` render
+turned out to be a byte-identical copy of the textbook chapter's, so the
+whole example was removed rather than republished. Its count above is
+what the draft measured while it shipped, and the argument it supports is
+about the genre's citation profile rather than about that one file.
+
 **`tutorial-writer`** cites only in a closing "Where to go next", never
 mid-lesson -- one to three pointers. The machinery is overhead against a
 saving of a few hundred characters, on a skill whose stated virtue is a
