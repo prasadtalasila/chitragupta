@@ -482,6 +482,34 @@ class TestForDraftScope:
         assert rc == enrich_script.EXIT_BAD_SCOPE
         assert f"cannot read --for-draft {missing}" in out
 
+    def test_a_draft_that_is_not_utf8_stops_instead_of_raising(
+        self, recorded_stages, monkeypatch, tmp_path, capsys
+    ):
+        """UnicodeDecodeError is a ValueError, not an OSError, so it
+        slips past the unreadable-file branch and would reach the user
+        as a traceback -- from a script whose whole argument-validation
+        style is a one-line message and an exit code.
+
+        Read strictly rather than with errors="replace" on purpose: a
+        replacement character lands inside whatever citekey the bad byte
+        belonged to, so the tolerant read would scope the run to a
+        quietly wrong set of papers instead of stopping.
+        """
+        def never(*_a, **_k):
+            raise AssertionError("the corpus must not be built for an undecodable draft")
+
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", never)
+        draft = tmp_path / "latin1.md"
+        draft.write_bytes("Caf\xe9 in latin-1, then [@a2024].\n".encode("latin-1"))
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
+
+        rc = enrich_script.main()
+        out = capsys.readouterr().out
+
+        assert rc == enrich_script.EXIT_BAD_SCOPE
+        assert f"cannot read --for-draft {draft} as UTF-8" in out
+        assert "re-save it in that encoding" in out
+
     def test_a_draft_with_no_citations_stops_and_says_how_to_proceed(
         self, recorded_stages, monkeypatch, tmp_path, capsys
     ):

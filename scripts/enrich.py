@@ -239,6 +239,19 @@ def main(configure_logging: bool = False) -> int:
         except OSError as exc:
             print(f"  cannot read --for-draft {draft_path}: {exc}")
             return EXIT_BAD_SCOPE
+        except UnicodeDecodeError as exc:
+            # A separate branch because it is a separate failure:
+            # UnicodeDecodeError is a ValueError, so the clause above
+            # does not catch it, and the fix is different enough to be
+            # worth naming. Not read with errors="replace" instead --
+            # a replacement character lands in the middle of whatever
+            # citekey the bad byte was part of, and the run would then
+            # scope itself to a quietly wrong set of papers rather than
+            # stopping.
+            print(f"  cannot read --for-draft {draft_path} as UTF-8: {exc}\n"
+                  "      Every draft this pipeline writes is UTF-8, so this one came from "
+                  "somewhere else -- re-save it in that encoding.")
+            return EXIT_BAD_SCOPE
         if not scope:
             # Before the lock rather than after: this is a property of
             # the file the user named, and answerable without the
