@@ -285,9 +285,11 @@ The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
 relative to `content/drafts/`, minus the suffix -- so
 `content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`. Seven
-Markdown files hold the reader, the scope, the glossary, the kept
-evidence, which section cites which citekey, the rejected candidates and
-why, the user's steering, a revision log, and every retrieval call.
+Markdown files: `scope.md` (the reader, the scope, the glossary),
+`evidence.md` (the kept evidence), `rejected.md` (the rejected candidates
+and why), `sections.md` (which section cites which citekey), `steering.md`
+(the user's steering), `revisions.md` (a revision log), and `retrieval.md`
+(every retrieval call, plus a `mark-revision` boundary per revision pass).
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
 
 Stdlib only, and never a gate: it takes no lock and only ever opens the
