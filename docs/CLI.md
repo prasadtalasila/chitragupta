@@ -564,8 +564,8 @@ off-tree.
 | `--no-collapse-citations` | off | Render a run as `[3], [4], [5], [6]` instead of `[3]–[6]`, i.e. leave the style exactly as it is on disk |
 
 `--format md` on a **Markdown** draft is a special case, and the one
-output you can read without a PDF viewer: it writes the draft's
-mirrored `.md` with the citekeys replaced by the same IEEE
+output you can read without a PDF viewer: it writes a `.md` beside the
+draft's other renders, with the citekeys replaced by the same IEEE
 numbers the PDF uses (`[1]`, `[3]–[6]`) over a reference list built from
 the ledger. It needs no `pandoc`, because pandoc's Markdown writer is the
 wrong tool for it -- that writer escapes every marker (`\[1\]`, since

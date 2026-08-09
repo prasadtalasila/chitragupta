@@ -377,7 +377,7 @@ class TestOutputDir:
         draft = isolated_config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True)
         draft.write_text("# T\n")
-        sys.argv = ["render_output.py", str(draft), "--format", "md"]
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "md"])
 
         rc = render_output.main()
 
@@ -798,18 +798,18 @@ class TestMainCli:
         monkeypatch.setattr(shutil, "which", lambda name: None)
         draft = tmp_path / "draft.md"
         draft.write_text("text\n")
-        sys.argv = ["render_output.py", str(draft)]
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft)])
         rc = render_output.main()
         out = capsys.readouterr().out
         assert rc == 1
         assert "[missing-binary]" in out
 
     @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
-    def test_called_process_error_prints_and_returns_1(self, isolated_config, tmp_path, capsys):
+    def test_called_process_error_prints_and_returns_1(self, isolated_config, tmp_path, monkeypatch, capsys):
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = tmp_path / "draft.md"
         # Malformed LaTeX documentclass argument to force pandoc to fail.
-        sys.argv = ["render_output.py", str(draft), "--documentclass", "this is not valid \\"]
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--documentclass", "this is not valid \\"])
         draft.write_text("text\n")
         rc = render_output.main()
         out = capsys.readouterr().out
@@ -817,11 +817,11 @@ class TestMainCli:
         assert "[error]" in out
 
     @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
-    def test_success_prints_output_path_and_returns_0(self, isolated_config, tmp_path, capsys):
+    def test_success_prints_output_path_and_returns_0(self, isolated_config, tmp_path, monkeypatch, capsys):
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = tmp_path / "draft.md"
         draft.write_text("# Title\n\nNo citations here.\n")
-        sys.argv = ["render_output.py", str(draft), "--format", "tex"]
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "tex"])
         rc = render_output.main()
         out = capsys.readouterr().out
         assert rc == 0
