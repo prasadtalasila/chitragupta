@@ -329,12 +329,11 @@ class TestOutputDir:
             isolated_config.RENDERED_DIR
         )
 
-    def test_a_mirrored_directory_that_escapes_is_not_followed(
-        self, isolated_config, tmp_path
-    ):
+    def test_a_mirrored_directory_that_escapes_is_refused(self, isolated_config, tmp_path):
         # content/rendered/dt/ already exists as a symlink out of
         # content/. Following it would write the render outside the
-        # content directory entirely, so the flat directory stands.
+        # content directory; redirecting it to the flat directory
+        # instead would be a second place the user didn't name either.
         outside = tmp_path / "outside"
         outside.mkdir()
         isolated_config.RENDERED_DIR.mkdir(parents=True)
@@ -344,7 +343,46 @@ class TestOutputDir:
         draft.parent.mkdir(parents=True)
         draft.write_text("# T\n")
 
-        assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR
+        with pytest.raises(render_output.OutsideContentDir, match="outside"):
+            render_output._output_dir(draft)
+
+    @pytest.mark.parametrize("attr", ["RENDERED_DIR", "DRAFTS_DIR"])
+    def test_a_content_directory_pointing_out_of_the_tree_is_refused(
+        self, isolated_config, tmp_path, monkeypatch, attr
+    ):
+        # Neither content/rendered nor content/drafts may resolve out of
+        # the content directory: the mirroring rule is defined between
+        # the two, and one of them living elsewhere means every render
+        # writes where nothing else in the pipeline looks.
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        link = isolated_config.CONTENT_DIR / f"linked-{attr}"
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(outside, target_is_directory=True)
+        monkeypatch.setattr(isolated_config, attr, link)
+
+        with pytest.raises(render_output.OutsideContentDir, match="content directory"):
+            render_output._output_dir(isolated_config.DRAFTS_DIR / "survey.md")
+
+    def test_the_cli_reports_an_escaping_directory_rather_than_raising(
+        self, isolated_config, tmp_path, monkeypatch, capsys
+    ):
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
+        link = isolated_config.CONTENT_DIR / "linked-rendered"
+        link.symlink_to(outside, target_is_directory=True)
+        monkeypatch.setattr(isolated_config, "RENDERED_DIR", link)
+
+        draft = isolated_config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# T\n")
+        sys.argv = ["render_output.py", str(draft), "--format", "md"]
+
+        rc = render_output.main()
+
+        assert rc == 1
+        assert "[error]" in capsys.readouterr().out
 
 
 class TestRequire:

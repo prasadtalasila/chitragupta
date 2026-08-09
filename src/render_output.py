@@ -53,6 +53,12 @@ draft overwrote each other's output, and `dossier export <topic>
 --with-rendered` matched nothing, because it matches a rendered file by
 its path relative to `RENDERED_DIR`.
 
+Reading is unrestricted -- the input may be any file, in or out of the
+tree -- but **every path this module writes resolves inside
+`config.CONTENT_DIR`**, and the cases that would break that raise
+`OutsideContentDir` rather than being quietly redirected. `_output_dir`
+holds that check.
+
 Every render also passes documentclass/fontsize/papersize/geometry
 variables so a tex/pdf output always opens with a 12pt, a4paper article
 class and 1-inch margins via the geometry package -- overridable per
@@ -80,6 +86,17 @@ from src.citation_gate import _PANDOC_CITE_RE
 
 class MissingBinary(RuntimeError):
     pass
+
+
+class OutsideContentDir(RuntimeError):
+    """A render would have written outside `config.CONTENT_DIR`.
+
+    Raised, rather than quietly redirected somewhere safe: every case
+    that reaches it is a symlink or a configured path that resolves
+    somewhere other than it reads, and silently writing to a *second*
+    place the user also didn't name would be the same surprise twice.
+    Nothing an ordinary layout does reaches this.
+    """
 
 
 def _require(binary: str) -> None:
@@ -277,30 +294,47 @@ def _local_image_refs(text: str) -> list[str]:
     ]
 
 
+def _really_inside(path: Path, root: Path) -> bool:
+    """Whether `path` lives under `root` once both are resolved.
+
+    Resolving both sides is the whole point: it is what makes a symlink
+    and a `..` component answer for where they actually land rather than
+    for how they are spelled.
+    """
+    return path.resolve().is_relative_to(root.resolve())
+
+
 def _output_dir(input_path: Path) -> Path:
     """Where `input_path`'s rendered output goes: `config.RENDERED_DIR`
     with the draft's own place under `config.DRAFTS_DIR` mirrored into
     it, so `content/drafts/dt/survey.md` renders to
     `content/rendered/dt/survey.{md,tex,pdf,docx}`.
 
-    What is mirrored is always a path *inside* `config.CONTENT_DIR`, and
-    what comes back always is too. Only the part of the draft's path
-    below `DRAFTS_DIR` is carried over, so nothing a caller types can
-    steer a render out of `content/`:
+    **Every path this returns resolves inside `config.CONTENT_DIR`**,
+    which is the invariant the checks below exist for. Reading is
+    unrestricted -- README.md documents `render_output path/to/draft.md`
+    on a file that needn't be in the tree at all, and a read from
+    outside `content/` takes nothing out of it -- so it is only the
+    write side that is confined.
 
-      - A draft that isn't under `DRAFTS_DIR` at all -- README.md
-        documents `render_output path/to/draft.md`, which needn't be --
-        has no path to mirror, so the flat directory stands. So does a
-        flat `content/drafts/<slug>.md`, whose relative parent is `.`.
-      - Both sides are resolved first, so a symlinked draft is judged by
-        where it really lives, and a `..` in the argument is gone before
-        anything is compared -- `relative` can then hold neither.
-      - A mirrored directory that *itself* resolves outside
-        `RENDERED_DIR` (a symlinked topic directory pointing elsewhere)
-        falls back to the flat directory rather than being followed --
-        the same rule `_copy_local_images` applies to an escaping image
-        reference, and for the same reason: a draft's own path is never
-        a reason to write outside `content/rendered/`.
+    What that leaves:
+
+      - A draft not under `DRAFTS_DIR` has no path to mirror, so the
+        flat `RENDERED_DIR` stands. So does a flat
+        `content/drafts/<slug>.md`, whose relative parent is `.`.
+      - Only the part of the draft's path *below* `DRAFTS_DIR` is ever
+        carried over, and both sides are resolved before they are
+        compared, so `relative` can hold neither a `..` nor a symlink's
+        spelling -- there is no argument that mirrors to somewhere else.
+      - The three ways the write could still land outside `content/` are
+        all configuration or symlinks rather than arguments, and each
+        raises `OutsideContentDir` rather than being redirected: a
+        `content/rendered` or `content/drafts` that resolves out of
+        `CONTENT_DIR`, and a mirrored topic directory that resolves out
+        of `RENDERED_DIR`. `_copy_local_images` skips an escaping image
+        reference silently because the draft is still rendered correctly
+        without that one image; here there is no correct output left to
+        produce, so this says so instead.
 
     This duplicates the rule `dossier.dossier_dir()` applies to
     `content/dossiers/`, deliberately, rather than importing it: the
@@ -310,13 +344,30 @@ def _output_dir(input_path: Path) -> Path:
     two are kept in step by hand -- there is one rule, "mirror the
     draft's path", and both places state it.
     """
+    for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
+        if not _really_inside(directory, config.CONTENT_DIR):
+            raise OutsideContentDir(
+                f"{directory} resolves to {directory.resolve()}, outside the content "
+                f"directory {config.CONTENT_DIR.resolve()}. Rendering mirrors a draft's "
+                f"path from content/drafts/ into content/rendered/, so a '{label}' that "
+                "points out of the content directory has no mirror to compute and would "
+                "write where nothing else in this pipeline looks. Move it back, or point "
+                "[content].dir (config.toml) at wherever it really lives."
+            )
+
     try:
         relative = input_path.resolve().relative_to(config.DRAFTS_DIR.resolve())
     except ValueError:
         return config.RENDERED_DIR
+
     mirrored = config.RENDERED_DIR / relative.parent
-    if not mirrored.resolve().is_relative_to(config.RENDERED_DIR.resolve()):
-        return config.RENDERED_DIR
+    if not _really_inside(mirrored, config.RENDERED_DIR):
+        raise OutsideContentDir(
+            f"{mirrored} resolves to {mirrored.resolve()}, outside "
+            f"{config.RENDERED_DIR.resolve()}. A draft's own path is never a reason to "
+            "write outside the content directory -- remove the symlink, or render the "
+            "draft from a topic directory that isn't one."
+        )
     return mirrored
 
 
@@ -504,6 +555,15 @@ def main() -> int:
         )
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}")
+        return 1
+    except OutsideContentDir as exc:
+        # Reported like any other render failure rather than as a
+        # traceback, same as the KeyError below: a genre skill's
+        # documented reaction to `[error]` is to warn and carry on
+        # presenting the draft, which is right here too -- the draft is
+        # fine, and it is the place this copy would have gone that is
+        # wrong.
+        print(f"[error] {exc}")
         return 1
     except subprocess.CalledProcessError as exc:
         print(f"[error] pandoc failed: {exc.stderr or exc}")

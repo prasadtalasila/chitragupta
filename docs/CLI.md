@@ -537,8 +537,19 @@ is what lets `dossier export <topic> --with-rendered` find them. A flat
 `content/drafts/<slug>.md` renders to `content/rendered/<slug>.*`, as it
 always has, and an input outside `content/drafts/` altogether (the
 `path/to/draft.md` form above) has no path to mirror and lands flat too.
-Only the part of the path below `content/drafts/` is carried over, so
-nothing typed as an input can steer a render out of `content/`.
+
+**Reading is unrestricted; writing is confined to `content/`.** The
+input may be any file, in the tree or out of it -- reading one takes
+nothing out of `content/`. Every path this command *writes*, though,
+resolves inside `content/`: only the part of a draft's path below
+`content/drafts/` is ever carried over, and both sides are resolved
+before they are compared, so no argument -- a `..`, a symlinked draft --
+mirrors anywhere else. The three ways a write could still escape are
+configuration or symlinks rather than arguments, and each is refused
+with `[error]` rather than redirected: a `content/rendered` or
+`content/drafts` that resolves out of the content directory, and a
+topic directory under `content/rendered/` that is a symlink pointing
+off-tree.
 
 | Flag | Default | What it does |
 |---|---|---|
