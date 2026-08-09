@@ -73,8 +73,24 @@ install_os_deps() {
     # apt-get takes no alternatives on the command line -- so pick
     # whichever name this release actually has rather than hardcoding one
     # and breaking every host on the other side of the rename.
+    # `policy` rather than `show`: after the rename the old name survives
+    # in the index as a record with no installation candidate, so `show`
+    # succeeds on a name `install` then refuses. The candidate line is
+    # the thing that actually answers "can this be installed here" --
+    # measured on Debian 13, where libglib2.0-0 reports
+    # "Candidate: (none)" and libglib2.0-0t64 reports a version.
+    #
+    # Captured into a variable rather than piped into grep, because this
+    # script runs under `set -o pipefail` and `grep -q` exits at its
+    # first match: apt-cache then takes SIGPIPE, the pipeline reports
+    # failure, and the fallback fires on the release where the probe
+    # just *succeeded*. Caught by testing the branch rather than by
+    # reading it -- it selects the wrong name every time.
     glib_pkg="libglib2.0-0t64"
-    apt-cache show "$glib_pkg" >/dev/null 2>&1 || glib_pkg="libglib2.0-0"
+    glib_policy="$(apt-cache policy "$glib_pkg" 2>/dev/null || true)"
+    case "$glib_policy" in
+        ""|*"Candidate: (none)"*) glib_pkg="libglib2.0-0" ;;
+    esac
     sudo_if_needed apt-get install -y --no-install-recommends \
         python3 python3-venv python3-pip \
         python3-poetry \
@@ -104,10 +120,10 @@ install_os_deps() {
     # pulls `rapidocr`, which requires the `opencv-python` distribution by
     # name -- the GUI-linked wheel, not `opencv-python-headless`. Its
     # cv2.abi3.so vendors Qt but *not* libGL.so.1, libglib-2.0.so.0 or the
-    # X libraries libgl1 pulls in, so on a base image installed with
-    # --no-install-recommends (docker/Dockerfile's ubuntu:24.04, and any
-    # host provisioned only by this stage) `import cv2` raises
-    # "libGL.so.1: cannot open shared object file".
+    # X libraries libgl1 pulls in -- ldd resolves those to the system, and
+    # a base image installed with --no-install-recommends
+    # (docker/Dockerfile's ubuntu:24.04, and any host provisioned only by
+    # this stage) has none of them, so `import cv2` fails.
     # That error is never the one you see. src/pdf_text.py's forkserver
     # preloads docling, `forkserver.main()` catches ImportError and
     # discards it, and cv2's own loader leaves `sys.OpenCV_LOADER` set

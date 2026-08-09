@@ -349,9 +349,16 @@ this as a known gap; this is that gap costing a run's diagnosability.
 for: the enrich group's `docling` pulls `docling-slim[standard]`, which
 pulls `rapidocr`, which requires the `opencv-python` distribution *by
 name*. That is the GUI-linked wheel. Its `cv2.abi3.so` vendors Qt but not
-`libGL.so.1`, `libglib-2.0.so.0`, or the X libraries, so on a base image
-installed with `--no-install-recommends` the first import raises
-`ImportError: libGL.so.1: cannot open shared object file`.
+`libGL.so.1`, `libglib-2.0.so.0`, or the X libraries -- `ldd` resolves
+those to the system, and a base image installed with
+`--no-install-recommends` has none of them. So the first import raises,
+and installing exactly those libraries is what fixes it.
+
+The precise first-error string is inferred rather than captured: the mask
+is what reaches the log, and by the time this was diagnosed the host had
+been repaired. On a missing `libGL.so.1` the loader's message is
+`ImportError: libGL.so.1: cannot open shared object file`. What is
+confirmed is the mask mechanism (reproduced below) and the remedy.
 
 **The fix.** `libgl1` and GLib are in the `os-deps` package list, so
 `bash scripts/install_full_pipeline.sh os-deps` covers it. By hand:
