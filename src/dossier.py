@@ -568,7 +568,7 @@ pipeline. Genre: {genre}.
 | `sections.md` | section heading -> the citekeys cited under it |
 | `steering.md` | what the user asked for in chat that the draft doesn't show |
 | `revisions.md` | append-only log of what changed and why |
-| `retrieval.md` | every retrieval call and the size of what it returned |
+| `retrieval.md` | every retrieval call and the size of what it returned, plus a `mark-revision` boundary per revision pass |
 
 This directory is gitignored, like the draft it describes. Back it up and
 restore it with:
@@ -669,7 +669,13 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      handed back: the thing that then sits in the caller's context for
      the rest of the run. Together with evidence.md's and rejected.md's
      counts, this is what turns "retrieval is where the tokens go" from
-     an estimate into a measurement for a particular draft. -->
+     an estimate into a measurement for a particular draft.
+
+     A row with mode `revision` is not a call: `python3 -m src.dossier
+     mark-revision` writes one, at the start of each draft-reviser pass,
+     so `dossier status` can total retrieval cost per revision instead of
+     only as one lifetime figure -- the date column alone can't tell two
+     same-day revisions apart. -->
 
 | date | mode | query | asked | results | chars |
 |---|---|---|---|---|---|
@@ -758,6 +764,43 @@ def log_retrieval(
     return path
 
 
+# `log_retrieval`'s `mode` is always "search" or "evidence" -- the two
+# `python3 -m src.retrieval` subcommands. "revision" can't collide with a
+# real logged call; it exists only so `retrieval_cost_by_revision` has
+# something to split on.
+_REVISION_MARKER_MODE = "revision"
+
+
+def mark_revision(draft: Path, label: str = "") -> Path:
+    """Append a revision-boundary marker to the dossier's `retrieval.md`.
+
+    `retrieval.md` rows otherwise carry only a date (`log_retrieval` writes
+    `date.today()`), and two revisions on the same day are indistinguishable
+    by it. `draft-reviser`'s loop calls this once per pass, before any
+    retrieval, precisely so same-day revisions don't get silently merged
+    into one figure -- see `retrieval_cost_by_revision`, the reader this
+    writes for.
+
+    Shares `log_retrieval`'s append-only, no-offset-write discipline (see
+    that function's docstring for why), even though nothing calls this one
+    concurrently -- one write path is one fewer thing to get right twice.
+    A marker with `results` and `chars` both 0 costs nothing towards
+    `retrieval_cost`'s totals; it is real data only to
+    `retrieval_cost_by_revision`, which reads it as a boundary rather than
+    a call.
+    """
+    target = dossier_dir(draft)
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / "retrieval.md"
+    safe_label = " ".join(label.split()).replace("|", "\\|")
+    row = f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 |\n"
+    with path.open("a", encoding="utf-8") as handle:
+        if not handle.tell():
+            handle.write(_RETRIEVAL_TEMPLATE)
+        handle.write(row)
+    return path
+
+
 def _retrieval_rows(dossier: Path) -> list[list[str]]:
     """The parseable rows of `retrieval.md`, six cells each.
 
@@ -786,9 +829,63 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
 
 
 def retrieval_cost(dossier: Path) -> tuple[int, int]:
-    """(calls, characters returned) recorded in `retrieval.md`."""
-    rows = _retrieval_rows(dossier)
+    """(calls, characters returned) recorded in `retrieval.md`.
+
+    Excludes `mark_revision`'s boundary rows: they record zero retrieval
+    work by construction (`results` and `chars` are always 0), but without
+    filtering them out here each one would still count as a "call" that
+    fetched nothing, inflating this total by one per revision session.
+    """
+    rows = [row for row in _retrieval_rows(dossier) if row[1] != _REVISION_MARKER_MODE]
     return len(rows), sum(int(row[5]) for row in rows)
+
+
+@dataclass
+class RevisionCost:
+    label: str
+    calls: int
+    chars: int
+
+
+def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
+    """`retrieval_cost`, split at each `mark_revision` boundary.
+
+    Rows logged before the first marker -- which is every row on a dossier
+    revised before this existed, or one revised without `draft-reviser`'s
+    loop -- form a leading segment labelled `"initial draft"`. Each marker
+    after that starts a new segment, labelled with the text passed to
+    `mark_revision` or, if none was given, `"revision N"` counted by marker
+    order (so numbering stays stable even if an earlier revision logged no
+    calls and is dropped below).
+
+    A segment with no calls is dropped rather than reported as a
+    zero-cost revision -- `mark-revision` costs nothing to call even when
+    `draft-reviser` step 4 decides no search is needed, and a list of
+    revisions padded with real ones that did nothing would obscure the
+    ones that did.
+    """
+    rows = _retrieval_rows(dossier)
+    segments: list[RevisionCost] = []
+    label = "initial draft"
+    marker_index = 0
+    calls = chars = 0
+    for row in rows:
+        if row[1] == _REVISION_MARKER_MODE:
+            if calls or chars:
+                segments.append(RevisionCost(label, calls, chars))
+            marker_index += 1
+            # `mark_revision` escapes a pipe in the label the same way
+            # `log_retrieval` escapes one in a query, so the row parses;
+            # unescape it back for display, same as `recorded_queries`
+            # does for a query cell.
+            label = row[2].replace("\\|", "|") or f"revision {marker_index}"
+            calls = chars = 0
+            continue
+        calls += 1
+        chars += int(row[5])
+    if calls or chars:
+        segments.append(RevisionCost(label, calls, chars))
+    return segments
 
 
 def recorded_queries(dossier: Path) -> list[str]:
@@ -801,9 +898,17 @@ def recorded_queries(dossier: Path) -> list[str]:
     draft would have wanted". Deduplicated because a reformulated search
     logs the same query more than once, and running it twice would just
     report the same candidate twice.
+
+    Skips `mark_revision`'s boundary rows. Their third cell holds the
+    `--label` text, not a query -- without this exclusion a label like
+    "shorten intro" would be ranked against the corpus as if someone had
+    searched for it, both here and in every caller (`corpus-reviser`'s
+    sub-theme list, `status --all`'s candidate matching).
     """
     seen: dict[str, None] = {}
     for cells in _retrieval_rows(dossier):
+        if cells[1] == _REVISION_MARKER_MODE:
+            continue
         # `log_retrieval` escapes a pipe on the way in; unescape it so the
         # query goes to the ranker as the caller actually typed it.
         query = cells[2].replace("\\|", "|").strip()
@@ -873,6 +978,7 @@ class Status:
     unconsidered: set[str] = field(default_factory=set)
     retrieval_calls: int = 0
     retrieval_chars: int = 0
+    revisions: list[RevisionCost] = field(default_factory=list)
 
     @property
     def drifted(self) -> bool:
@@ -938,7 +1044,14 @@ def status(draft_or_dossier: Path) -> Status:
 
     if draft is not None:
         report.outline = sections(draft.read_text(encoding="utf-8"))
-    report.retrieval_calls, report.retrieval_chars = retrieval_cost(dossier)
+    # One parse of retrieval.md, not two: retrieval_cost_by_revision's
+    # segments already exclude mark_revision's boundary rows the same
+    # way retrieval_cost does, so the lifetime totals are just their sum
+    # -- calling retrieval_cost here too would parse the same file twice
+    # for numbers `_retrieval_rows` only needed to compute once.
+    report.revisions = retrieval_cost_by_revision(dossier)
+    report.retrieval_calls = sum(segment.calls for segment in report.revisions)
+    report.retrieval_chars = sum(segment.chars for segment in report.revisions)
 
     report.recorded = recorded_corpus(dossier)
     corpus_keys = known_citekeys()
@@ -1439,6 +1552,13 @@ def _cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_mark_revision(args: argparse.Namespace) -> int:
+    path = mark_revision(Path(args.draft), args.label)
+    print(f"Marked a revision boundary in {draft_relpath(path)}"
+          + (f" ({args.label!r})" if args.label else "") + ".")
+    return 0
+
+
 # How many findings of one kind to print before summarising the rest.
 # A drift report is read to decide what to do next, not as a manifest;
 # what it must never do is truncate silently, so the remainder is always
@@ -1585,6 +1705,17 @@ def _cmd_status(args: argparse.Namespace) -> int:
             print("  but evidence.md and rejected.md hold no entries -- this run")
             print("  searched and recorded nothing it found, so a revision will")
             print("  have to re-retrieve and re-judge the same candidates.")
+
+        # Only worth a breakdown once there's more than one segment --
+        # with just one, it would repeat the total line above under a
+        # different label. A dossier revised before `mark-revision`
+        # existed has exactly one ("initial draft") for the same reason a
+        # dossier with no revisions yet does: nothing split it.
+        if len(report.revisions) > 1:
+            print("  by revision:")
+            for segment in report.revisions:
+                print(f"    {segment.label:<24}{segment.calls} call(s), "
+                      f"{segment.chars:,} characters")
 
     print()
     if report.current is None:
@@ -1782,6 +1913,15 @@ def main(argv: list[str] | None = None) -> int:
     p_status.add_argument("--json", action="store_true",
                           help="Machine-readable drift report (for draft-reviser)")
     p_status.set_defaults(func=_cmd_status)
+
+    p_mark_revision = sub.add_parser(
+        "mark-revision",
+        help="Record a revision-session boundary, so retrieval cost totals per revision")
+    p_mark_revision.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_mark_revision.add_argument(
+        "--label", default="",
+        help="Short name for this revision (the date is already recorded)")
+    p_mark_revision.set_defaults(func=_cmd_mark_revision)
 
     p_sections = sub.add_parser(
         "sections", help="Heading -> line range, for reading and editing one section")

@@ -34,8 +34,11 @@ WORKDIR /workspace/chitragupta
 COPY scripts/install_full_pipeline.sh scripts/install_full_pipeline.sh
 RUN chmod +x scripts/install_full_pipeline.sh
 
-# Stage 1: OS packages (TeX Live, Pandoc, poppler-utils,
-# git/curl/unzip). Its own cached layer -- rarely changes.
+# Stage 1: OS packages (TeX Live, Pandoc, poppler-utils, git/curl/unzip,
+# and OpenCV's runtime libraries -- this base image is
+# --no-install-recommends, so nothing else drags libGL/GLib in, and the
+# docling backend fails every document without them; the script's own
+# comment has the full reckoning). Its own cached layer -- rarely changes.
 RUN scripts/install_full_pipeline.sh os-deps && rm -rf /var/lib/apt/lists/*
 
 # Stage 2: Python deps -- same script + pyproject.toml/poetry.lock as

@@ -17,10 +17,10 @@ layer: deterministic, safe to run unattended).
 - `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
   `sync` reads it, it is never regenerated
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python3 -m src.retrieval search "<q>" --k 15`, which
-  returns a citekey, title, score and a 500-character snippet per candidate.
-  `... evidence "<q>" --citekey <key>` reads more of one document when a
-  snippet is not enough to judge it
+- `src/retrieval.py` -- `python3 -m src.retrieval search "<q>" --k 15 --log <draft>`,
+  which returns a citekey, title, score and a 500-character snippet per
+  candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
+  one document when a snippet is not enough to judge it
 
 ## The dossier: write down what produced the draft
 

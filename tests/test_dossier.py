@@ -729,6 +729,171 @@ class TestRetrievalLog:
         assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
 
+class TestRevisionMarker:
+    """`mark_revision` and `retrieval_cost_by_revision`.
+
+    `retrieval.md` rows carry only a date, so two revisions logged on the
+    same day are otherwise indistinguishable -- that is the gap this
+    machinery closes, and it is the thing worth testing directly rather
+    than through `status`'s printed text.
+    """
+
+    def test_calls_before_any_marker_are_the_initial_draft_segment(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert segments == [dossier.RevisionCost("initial draft", 1, 100)]
+
+    def test_a_marker_starts_a_new_segment(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft, "shorten intro")
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert segments == [
+            dossier.RevisionCost("initial draft", 1, 100),
+            dossier.RevisionCost("shorten intro", 1, 200),
+        ]
+
+    def test_same_day_revisions_are_kept_separate(self, draft):
+        """The whole point: a bare date column can't tell these apart,
+        but two markers can, regardless of what `date.today()` writes."""
+        dossier.init(draft, "survey")
+        dossier.mark_revision(draft, "morning pass")
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft, "afternoon pass")
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert [s.label for s in segments] == ["morning pass", "afternoon pass"]
+        assert [s.chars for s in segments] == [100, 200]
+
+    def test_an_unlabelled_marker_is_numbered_by_order(self, draft):
+        dossier.init(draft, "survey")
+        dossier.mark_revision(draft)
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft)
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert [s.label for s in segments] == ["revision 1", "revision 2"]
+
+    def test_a_revision_that_logged_nothing_is_dropped_not_zeroed(self, draft):
+        """`mark-revision` costs nothing to call even when draft-reviser
+        step 4 decides no search is needed -- that must not show up as a
+        reported zero-cost revision cluttering the breakdown."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft, "no search needed")
+        dossier.mark_revision(draft, "this one searched")
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert [s.label for s in segments] == ["initial draft", "this one searched"]
+
+    def test_marker_numbering_stays_stable_across_a_dropped_revision(self, draft):
+        """The second *displayed* segment is still called "revision 2",
+        not "revision 1" renumbered after the empty one between them was
+        dropped -- numbering tracks marker order, not display order."""
+        dossier.init(draft, "survey")
+        dossier.mark_revision(draft)
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft)  # logged nothing, dropped below
+        dossier.mark_revision(draft)
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert [s.label for s in segments] == ["revision 1", "revision 3"]
+
+    def test_no_markers_at_all_is_one_initial_draft_segment(self, draft):
+        """A dossier revised before this existed, or without
+        draft-reviser's loop calling it -- must not error and must not
+        silently drop the only retrieval this draft has."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        dossier.log_retrieval(draft, "evidence", "q", 1, 3, 50)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert segments == [dossier.RevisionCost("initial draft", 2, 150)]
+
+    def test_a_trailing_marker_with_nothing_after_it_is_dropped(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        dossier.mark_revision(draft, "just started")
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert [s.label for s in segments] == ["initial draft"]
+
+    def test_marker_rows_are_excluded_from_retrieval_cost(self, draft):
+        """A marker records zero retrieval work by construction; counting
+        it as a call would inflate the aggregate by one per revision."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        dossier.mark_revision(draft, "pass two")
+        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+
+    def test_creates_the_dossier_when_called_before_init(self, draft):
+        dossier.mark_revision(draft, "early")
+        assert (dossier.dossier_dir(draft) / "retrieval.md").is_file()
+
+    def test_a_pipe_in_the_label_does_not_break_the_row(self, draft):
+        """Escaped the same way `log_retrieval` escapes a query -- the
+        row must still parse to six cells and split into its own
+        segment, not merge with the next one -- and unescaped back on
+        the way out, so `dossier status` prints what the user wrote
+        rather than the markdown-safe form."""
+        dossier.init(draft, "survey")
+        dossier.mark_revision(draft, "shorten | tighten")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert len(segments) == 1
+        assert segments[0].label == "shorten | tighten"
+
+    def test_status_prints_the_breakdown_once_there_is_more_than_one_segment(
+        self, draft, capsys
+    ):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft, "shorten intro")
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        dossier.main(["status", str(draft)])
+        out = capsys.readouterr().out
+        assert "by revision:" in out
+        assert "initial draft" in out
+        assert "shorten intro" in out
+        assert "1 call(s), 100 characters" in out
+        assert "1 call(s), 200 characters" in out
+
+    def test_status_omits_the_breakdown_with_only_one_segment(self, draft, capsys):
+        """One segment would just repeat the total line under a
+        different label -- not worth the extra output."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        dossier.main(["status", str(draft)])
+        out = capsys.readouterr().out
+        assert "by revision:" not in out
+
+    def test_cli_mark_revision_writes_a_row(self, draft, capsys):
+        dossier.init(draft, "survey")
+        assert dossier.main(["mark-revision", str(draft), "--label", "cli pass"]) == 0
+        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        # No calls logged yet, so the marker alone produces no segment --
+        # confirmed via the row itself instead.
+        assert segments == []
+        text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
+        assert "| revision | cli pass | 0 | 0 | 0 |" in text
+        assert "cli pass" in capsys.readouterr().out
+
+    def test_status_lifetime_totals_match_retrieval_cost(self, draft):
+        """`status()` derives its lifetime totals from
+        `retrieval_cost_by_revision`'s segments rather than parsing
+        `retrieval.md` a second time via `retrieval_cost` -- this pins
+        the two to agree regardless of which one changes first."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
+        dossier.mark_revision(draft, "shorten intro")
+        dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
+        dossier.mark_revision(draft, "no search needed")  # empty, dropped
+
+        report = dossier.status(draft)
+        calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
+        assert (report.retrieval_calls, report.retrieval_chars) == (calls, chars) == (2, 300)
+
+
 # ---------------------------------------------------------------------
 # Corpus drift across every dossier (`status --all`)
 # ---------------------------------------------------------------------
@@ -821,6 +986,26 @@ class TestRecordedQueries:
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "retrieval.md").unlink()
         assert dossier.recorded_queries(dossier.dossier_dir(draft)) == []
+
+    def test_a_revision_label_is_never_reported_as_a_query(self, draft):
+        """A marker's third cell holds `mark_revision`'s `--label` text,
+        not a query -- without this exclusion it would be ranked against
+        the corpus as if someone had searched for it (both here and in
+        every caller: corpus-reviser's sub-theme list, `status --all`'s
+        candidate matching)."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        dossier.mark_revision(draft, "shorten the introduction")
+        dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100)
+        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == [
+            "digital twin", "co-simulation",
+        ]
+
+    def test_an_unlabelled_revision_marker_contributes_no_empty_query(self, draft):
+        dossier.init(draft, "survey")
+        dossier.mark_revision(draft)
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == ["digital twin"]
 
 
 class TestSectionCitekeys:

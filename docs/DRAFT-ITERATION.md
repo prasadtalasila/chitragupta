@@ -422,7 +422,10 @@ The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
 
 1. `python3 -m src.dossier status <draft>` -- what is on disk, and has
-   the corpus moved?
+   the corpus moved? Then `python3 -m src.dossier mark-revision <draft>`,
+   before any retrieval call, so `retrieval.md` can tell this revision's
+   cost apart from the last one -- its rows otherwise carry only a date,
+   and two revisions on the same day would merge into one figure.
 2. Read `scope.md` and `steering.md`. These bound what the revision may
    change: a request that contradicts the recorded scope is a scope
    change, and gets said out loud rather than silently applied.
