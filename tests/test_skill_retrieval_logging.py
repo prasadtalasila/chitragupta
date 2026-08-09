@@ -33,7 +33,12 @@ _LOOKAHEAD_CHARS = 220
 
 
 def _skill_and_agent_files():
-    return sorted(CLAUDE_DIR.glob("skills/*/SKILL.md")) + sorted(CLAUDE_DIR.glob("agents/*.md"))
+    # Every Markdown file under .claude/, not just SKILL.md and agent
+    # files: `deep-research/reference.md` is a real, separate protocol
+    # doc that a retrieval invocation could land in just as easily, and
+    # nothing about this project's layout rules out another one like it
+    # appearing alongside a future skill.
+    return sorted(CLAUDE_DIR.glob("**/*.md"))
 
 
 def _invocations_missing_log(text: str):
@@ -48,7 +53,7 @@ def _invocations_missing_log(text: str):
 
 def test_every_retrieval_cli_invocation_carries_log():
     files = _skill_and_agent_files()
-    assert files, "expected to find skill/agent files under .claude/"
+    assert files, "expected to find Markdown files under .claude/"
 
     offenders = {}
     for path in files:
