@@ -622,7 +622,7 @@ One install path for both a bare machine and the Docker image. Takes
 | Stage | What it does |
 |---|---|
 | `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich` |
-| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt |
+| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt |
 | `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first |
 | `all` | `os-deps` + `python-deps`. **Does not include `dev-deps`** |
 

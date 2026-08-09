@@ -15,8 +15,9 @@
 #                is published or pip-installable from this repo.
 #   os-deps      -- apt-get the system packages the heavy pipeline needs
 #                (TeX Live, Pandoc, poppler-utils, Poetry itself,
-#                git/curl/unzip). Needs root; auto-sudo's if not already
-#                root. Opt-in -- not everyone wants this script touching apt.
+#                git/curl/unzip, and OpenCV's runtime libraries). Needs
+#                root; auto-sudo's if not already root. Opt-in -- not
+#                everyone wants this script touching apt.
 #   dev-deps     -- `poetry install --with dev` (pytest, pytest-cov) into
 #                the same venv as python-deps. Only needed to run the
 #                test suite, not the pipeline itself -- opt-in, and not
@@ -65,8 +66,15 @@ sudo_if_needed() {
 }
 
 install_os_deps() {
-    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, Poetry) ..."
+    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry) ..."
     sudo_if_needed apt-get update
+    # GLib's package was renamed in the 64-bit-time_t transition
+    # (libglib2.0-0 -> libglib2.0-0t64 in Ubuntu 24.04 / Debian 13), and
+    # apt-get takes no alternatives on the command line -- so pick
+    # whichever name this release actually has rather than hardcoding one
+    # and breaking every host on the other side of the rename.
+    glib_pkg="libglib2.0-0t64"
+    apt-cache show "$glib_pkg" >/dev/null 2>&1 || glib_pkg="libglib2.0-0"
     sudo_if_needed apt-get install -y --no-install-recommends \
         python3 python3-venv python3-pip \
         python3-poetry \
@@ -74,7 +82,8 @@ install_os_deps() {
         git curl ca-certificates unzip zip \
         pandoc \
         texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended latexmk \
-        lmodern
+        lmodern \
+        libgl1 "$glib_pkg"
     # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
     # pip on this host regardless of root (see AGENTS.md), and Poetry is
     # itself the thing python-deps below shells out to -- it can't
@@ -90,6 +99,26 @@ install_os_deps() {
     # zip/unzip: scripts/release.py itself only needs stdlib zipfile,
     # not these binaries -- they're here so a human can inspect/repack a
     # release archive by hand.
+    # libgl1 + GLib are for OpenCV, which nothing here asks for directly:
+    # the enrich group's `docling` pulls `docling-slim[standard]`, which
+    # pulls `rapidocr`, which requires the `opencv-python` distribution by
+    # name -- the GUI-linked wheel, not `opencv-python-headless`. Its
+    # cv2.abi3.so vendors Qt but *not* libGL.so.1, libglib-2.0.so.0 or the
+    # X libraries libgl1 pulls in, so on a base image installed with
+    # --no-install-recommends (docker/Dockerfile's ubuntu:24.04, and any
+    # host provisioned only by this stage) `import cv2` raises
+    # "libGL.so.1: cannot open shared object file".
+    # That error is never the one you see. src/pdf_text.py's forkserver
+    # preloads docling, `forkserver.main()` catches ImportError and
+    # discards it, and cv2's own loader leaves `sys.OpenCV_LOADER` set
+    # when its bootstrap dies partway -- so every worker forked afterwards
+    # reports 'recursion is detected during loading of "cv2" binary
+    # extensions' instead, and `python -m src.sync` fails every document
+    # with a message naming neither PDFs nor the missing library. See
+    # docs/PDF-PARSER.md's troubleshooting entry.
+    # Pinning opencv-python-headless instead does not work: rapidocr
+    # requires opencv-python by distribution name, so both would install
+    # and clobber the same cv2/ directory.
 }
 
 check_poetry() {

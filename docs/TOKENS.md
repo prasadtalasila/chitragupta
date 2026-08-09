@@ -33,6 +33,7 @@ Related reading:
 - [Two worked examples](#two-worked-examples)
 - [What the dossier actually recovers](#what-the-dossier-actually-recovers)
 - [Why deep-research has no lever left](#why-deep-research-has-no-lever-left)
+- [The one lever this repository does not own](#the-one-lever-this-repository-does-not-own)
 - [Who writes a packet down, and when](#who-writes-a-packet-down-and-when)
 - [Measuring this without writing a survey](#measuring-this-without-writing-a-survey)
 - [Measured, derived, and asserted](#measured-derived-and-asserted)
@@ -327,6 +328,59 @@ dispatch-prompt half, and the two only work together. A run that skips
 the transcription now finds out at Phase 5, because `brief` exits 1 and
 names the citekey it has no block for.
 
+## The one lever this repository does not own
+
+Everything above is a lever on *what enters context*. There is one lever
+on *what the work is priced at*, it belongs to the user rather than to
+this repository, and a user who wants cheaper subagents needs nothing from
+here to get them:
+
+```console
+$ export CLAUDE_CODE_SUBAGENT_MODEL=haiku
+```
+
+Claude Code resolves a subagent's model from that environment variable
+first, then the per-invocation parameter, then the agent's `model:`
+frontmatter -- which defaults to `inherit`, the session's model. So the
+variable applies to **every** subagent dispatched by every skill here:
+`survey-writer` step 2a, and `deep-research` Phases 2, 5 and 7. Nothing in
+this repository can override it, and nothing here tries to.
+
+Three things are worth being exact about, because the size of the saving
+is easy to overstate and the cost of it is easy to miss.
+
+**It discounts the pool that was already cheap.** A subagent is the
+one-shot pool from [the two pools](#the-two-pools): billed once, discarded
+on return. The variable applies a constant factor to that half and does
+nothing to residency, which is the multiplier this whole document is
+about. It makes an expensive run somewhat cheaper; it does not change
+which runs are expensive.
+
+**It is all-or-nothing, and two of the four sites should not be
+cheapened.** `survey-writer` step 2a returns the *rejected* list, and
+`rejected.md` makes a rejection permanent --
+[REJECTION.md](REJECTION.md) and SOUL.md both make that the load-bearing,
+irreversible judgment in the pipeline. `draft-reviser` repairing a
+citation-gate failure has to choose between correcting a claim and
+removing it, and its own text forbids the third option
+(`draft-reviser/SKILL.md`: *"never 'fix' a gate failure by inventing a
+plausible-looking key -- correct it or remove the claim"*). Setting the
+variable downgrades both along with
+everything else. That is a legitimate choice to make knowingly, and this
+document's job is to make sure it is knowing.
+
+**Use the aliases, not a pinned model ID.** `haiku`, `sonnet`, `opus` and
+`fable` track the recommended version for the provider and move with it; a
+full model name pins to one and rots silently as models are renamed and
+retired. There is no model reference anywhere in `.claude/` for the same
+reason.
+
+*Asserted*, in the sense of ["Measured, derived, and
+asserted"](#measured-derived-and-asserted) below: the resolution order and
+the `inherit` default are properties of the harness, and the size of the
+saving is unmeasured until
+[#76](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
+
 ## Who writes a packet down, and when
 
 Two questions come up whenever this design is explained, and both have
@@ -592,7 +646,9 @@ draft. All from file sizes and documented defaults, at four characters
 per token.
 
 **Asserted** -- that the orchestrator's context is append-only between
-compactions, and that a subagent's is discarded on return. These are
+compactions, that a subagent's is discarded on return, and the
+[`CLAUDE_CODE_SUBAGENT_MODEL` resolution order](#the-one-lever-this-repository-does-not-own)
+together with the `inherit` frontmatter default. These are
 properties of the harness rather than of this repository, and everything
 in ["What the dossier actually recovers"](#what-the-dossier-actually-recovers)
 depends on them. If a future harness evicts old tool results, the

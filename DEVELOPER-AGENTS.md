@@ -64,7 +64,7 @@ durable rule is the probe:
 Install everything with:
 ```
 bash scripts/install_full_pipeline.sh              # Python deps only (default) -- what every host needs regardless of OS packages
-bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, Poetry, zip/unzip -- needs root, opt-in
+bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry, zip/unzip -- needs root, opt-in
 bash scripts/install_full_pipeline.sh dev-deps     # pytest/pytest-cov, to run the test suite -- opt-in
 bash scripts/install_full_pipeline.sh all          # os-deps + python-deps
 ```

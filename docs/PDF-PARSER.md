@@ -71,6 +71,10 @@ was mostly publisher furniture and figure sub-captions but on one
 document included two whole tables. See
 [PERFORMANCE.md](PERFORMANCE.md#parserocr----the-largest-single-lever-and-a-trade).
 
+It also carries a system dependency nothing else in this repository has,
+and one that announces itself in a thoroughly misleading way -- see
+["docling fails every document with an OpenCV recursion error"](#docling-fails-every-document-with-an-opencv-recursion-error).
+
 ### `grobid`
 GROBID is most valuable for reference extraction and scholarly structure. It was never a drop-in replacement for the other tools, and is no longer part of this repo -- see below.
 
@@ -300,3 +304,75 @@ three orders of magnitude apart on that measure, so the threshold does
 not need precise tuning. Had it existed earlier, this would have been
 reported by `sync` on the first run instead of being noticed by eye in a
 retrieval snippet.
+
+## docling fails every document with an OpenCV recursion error
+
+Diagnosed 2026-08-09. Fixed in the `os-deps` stage; recorded here because
+the error message points at nothing useful, and because a host provisioned
+some other way will hit it again.
+
+**The symptom.** With `[parser].backend = "docling"`, `python -m src.sync`
+prints a bare `sys.path` listing before the bibliography progress and then
+fails every document it had to parse:
+
+```
+['/workspace', '/usr/lib/python313.zip', ..., '/workspace/.venv-full/lib/python3.13/site-packages']
+[497/497] noauthor_logical_nodate
+FAILED  shao_use_2021: ERROR: recursion is detected during loading of "cv2" binary extensions. Check OpenCV installation.
+```
+
+There is no recursion, and OpenCV is installed correctly. Both halves of
+that message are wrong.
+
+**The mask.** `cv2/__init__.py` sets `sys.OpenCV_LOADER = True` at the top
+of its bootstrap and deletes it at the bottom. If the *first* `import cv2`
+in a process dies partway, the flag leaks -- and every later `import cv2`
+in that process, or in any process forked from it, reports the recursion
+error instead of the real reason. The stray `sys.path` line is cv2's own
+`print(sys.path)` on that path. Reproduce the mask directly:
+
+```console
+$ python -c "import sys; sys.OpenCV_LOADER = True; import cv2"
+ImportError: ERROR: recursion is detected during loading of "cv2" binary extensions.
+```
+
+**Why sync turns that into a whole-run failure.** `src/pdf_text.py`'s
+`prestart_pool()` starts a forkserver whose preload imports `docling` while
+the parent reads the bibliography -- which is why the print lands *before*
+the progress lines. `forkserver.main()` catches `ImportError` and discards
+it, so the genuine failure is swallowed and the poisoned flag survives in
+the server process. Every worker forked from it then re-imports cv2 and
+reports the mask. `src/pdf_text.preload_modules`' docstring already named
+this as a known gap; this is that gap costing a run's diagnosability.
+
+**The real cause.** OpenCV is a transitive dependency nothing here asks
+for: the enrich group's `docling` pulls `docling-slim[standard]`, which
+pulls `rapidocr`, which requires the `opencv-python` distribution *by
+name*. That is the GUI-linked wheel. Its `cv2.abi3.so` vendors Qt but not
+`libGL.so.1`, `libglib-2.0.so.0`, or the X libraries, so on a base image
+installed with `--no-install-recommends` the first import raises
+`ImportError: libGL.so.1: cannot open shared object file`.
+
+**The fix.** `libgl1` and GLib are in the `os-deps` package list, so
+`bash scripts/install_full_pipeline.sh os-deps` covers it. By hand:
+
+```console
+$ sudo apt-get install -y libgl1 libglib2.0-0t64   # libglib2.0-0 before Ubuntu 24.04 / Debian 13
+```
+
+**To see the real error rather than the mask,** run the parse serially --
+the import then happens in-process, with no preload to swallow it and no
+second attempt to trigger the flag:
+
+```console
+$ PARSER_WORKERS=1 python -m src.sync
+```
+
+**Why `opencv-python-headless` is not the fix.** It is the right wheel for
+a container, but `rapidocr` requires `opencv-python` by distribution name
+and arrives through `docling-slim[standard]`, which is not droppable. A
+constraint would install both distributions; they own the same `cv2/`
+directory and clobber each other. Swapping to headless would have to be
+post-install surgery -- uninstall one, install the other, after the enrich
+group -- in the style of `ensure_gpu_torch`, and was not worth it against
+two apt packages.
