@@ -167,6 +167,7 @@ python3 -m src.citation_gate path/to/draft.md
 python3 -m src.references path/to/draft.md --heading "References"    # --heading default: "References"
 python3 -m src.render_output path/to/draft.md --format pdf     # also: --csl, --no-collapse-citations, --documentclass, --fontsize, --margin (--help for all)
 python3 -m src.render_output path/to/draft.md --format md      # numbered Markdown copy in content/rendered/ (no pandoc needed)
+# Every format lands beside the draft: content/drafts/<topic>/survey.md -> content/rendered/<topic>/survey.{md,tex,pdf}
 
 # 7. Check the draft against its sources. Review aids, not gates: none of
 #    these runs automatically, and none of them can block a draft.

@@ -270,6 +270,83 @@ class TestCopyLocalImages:
         assert (dest_dir / "figures" / "figure.png").read_bytes() == b"fake png bytes"
 
 
+class TestOutputDir:
+    """Where a render lands: beside the draft's own place under
+    content/drafts/, mirrored into content/rendered/."""
+
+    def test_a_draft_in_a_topic_directory_renders_into_that_topic(self, isolated_config):
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+        assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR / "dt"
+
+    def test_mirrors_a_path_of_any_depth(self, isolated_config):
+        # The layout a user asks for by naming a place rather than a
+        # topic ("a book chapter in books/software-engineering").
+        draft = isolated_config.DRAFTS_DIR / "books" / "software-engineering" / "chapter.md"
+        assert render_output._output_dir(draft) == (
+            isolated_config.RENDERED_DIR / "books" / "software-engineering"
+        )
+
+    def test_a_flat_draft_is_unchanged(self, isolated_config):
+        # The layout every documented invocation uses -- it must keep
+        # landing exactly where it always has.
+        draft = isolated_config.DRAFTS_DIR / "survey.md"
+        assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR
+
+    def test_a_draft_outside_the_drafts_directory_falls_back_to_flat(
+        self, isolated_config, tmp_path
+    ):
+        # README.md documents `render_output path/to/draft.md`, which
+        # need not be under content/drafts/ at all -- there is no path to
+        # mirror, so the flat directory stands.
+        assert render_output._output_dir(tmp_path / "elsewhere" / "draft.md") == (
+            isolated_config.RENDERED_DIR
+        )
+
+    def test_a_parent_escaping_argument_cannot_steer_the_output(
+        self, isolated_config, tmp_path
+    ):
+        # `..` is gone by the time anything is compared, because both
+        # sides are resolved first -- so this names a draft outside
+        # content/drafts/ and gets the flat directory, not a write into
+        # tmp_path.
+        escaping = isolated_config.DRAFTS_DIR / ".." / ".." / "outside" / "draft.md"
+        assert render_output._output_dir(escaping) == isolated_config.RENDERED_DIR
+
+    def test_a_symlinked_draft_is_judged_by_where_it_really_lives(
+        self, isolated_config, tmp_path
+    ):
+        # The draft's path says content/drafts/dt/, but the file is
+        # elsewhere on disk. Mirroring the name rather than the reality
+        # would be a directory this project doesn't own.
+        real = tmp_path / "outside" / "survey.md"
+        real.parent.mkdir(parents=True)
+        real.write_text("# T\n")
+        link_dir = isolated_config.DRAFTS_DIR / "dt"
+        link_dir.mkdir(parents=True)
+        (link_dir / "survey.md").symlink_to(real)
+
+        assert render_output._output_dir(link_dir / "survey.md") == (
+            isolated_config.RENDERED_DIR
+        )
+
+    def test_a_mirrored_directory_that_escapes_is_not_followed(
+        self, isolated_config, tmp_path
+    ):
+        # content/rendered/dt/ already exists as a symlink out of
+        # content/. Following it would write the render outside the
+        # content directory entirely, so the flat directory stands.
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        isolated_config.RENDERED_DIR.mkdir(parents=True)
+        (isolated_config.RENDERED_DIR / "dt").symlink_to(outside, target_is_directory=True)
+
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# T\n")
+
+        assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR
+
+
 class TestRequire:
     def test_raises_missing_binary_when_not_on_path(self, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: None)
@@ -358,6 +435,49 @@ class TestRenderMarkdown:
         assert out_path == isolated_config.RENDERED_DIR / "chapter.md"
         assert "Intro" in out_path.read_text()
 
+    def test_lands_beside_the_draft_when_the_draft_is_in_a_topic_directory(
+        self, isolated_config, monkeypatch
+    ):
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# T\n\nNo citations.\n")
+
+        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        out_path = render_output.render(str(draft), output_format="md")
+
+        assert out_path == isolated_config.RENDERED_DIR / "dt" / "survey.md"
+
+    def test_two_topics_sharing_a_stem_do_not_overwrite_each_other(
+        self, isolated_config, monkeypatch
+    ):
+        # Flat output made this silent: both drafts rendered to
+        # content/rendered/survey.md, last one wins, no warning.
+        for topic, body in [("dt", "First topic.\n"), ("mde", "Second topic.\n")]:
+            draft = isolated_config.DRAFTS_DIR / topic / "survey.md"
+            draft.parent.mkdir(parents=True)
+            draft.write_text(f"# T\n\n{body}")
+            monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+            render_output.render(str(draft), output_format="md")
+
+        assert "First topic." in (isolated_config.RENDERED_DIR / "dt" / "survey.md").read_text()
+        assert "Second topic." in (isolated_config.RENDERED_DIR / "mde" / "survey.md").read_text()
+
+    def test_a_local_image_is_copied_into_the_mirrored_directory(
+        self, isolated_config, monkeypatch
+    ):
+        # An image left behind in the flat directory would break the
+        # self-containment the .tex output depends on.
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        (draft.parent / "figure.png").write_bytes(b"fake png bytes")
+        draft.write_text("# T\n\n![A caption](figure.png)\n")
+
+        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        render_output.render(str(draft), output_format="md")
+
+        copied = isolated_config.RENDERED_DIR / "dt" / "figure.png"
+        assert copied.read_bytes() == b"fake png bytes"
+
 
 @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
 class TestRenderReal:
@@ -375,6 +495,21 @@ class TestRenderReal:
         out_path = render_output.render(str(draft), output_format="pdf")
         assert out_path.exists()
         assert out_path == isolated_config.RENDERED_DIR / "draft.pdf"
+
+    @pytest.mark.parametrize("output_format", ["tex", "pdf"])
+    def test_every_pandoc_format_lands_beside_the_draft(self, isolated_config, output_format):
+        # The `md` format is covered without pandoc above; these two are
+        # the ones that only ever ran through pandoc, and they flattened
+        # the same way.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# Title\n\nNo citations here.\n")
+
+        out_path = render_output.render(str(draft), output_format=output_format)
+
+        assert out_path == isolated_config.RENDERED_DIR / "dt" / f"survey.{output_format}"
+        assert out_path.exists()
 
     def test_renders_to_tex_replacing_a_manual_refs_section_with_citeprocs(self, isolated_config, tmp_path):
         con = ledger.connect()

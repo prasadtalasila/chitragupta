@@ -107,6 +107,16 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    ```
    python3 -m src.dossier init content/drafts/<slug>.tex --genre thesis-chapter
    ```
+   **Settle `<slug>` with the user before running that.** It is a path
+   under `content/drafts/` and it may contain directories: "the methods
+   chapter of `thesis/`" means
+   `content/drafts/thesis/methods.tex`, and a topic that will hold more
+   than one genre wants `content/drafts/<topic>/thesis-chapter.tex` so
+   they sit together. A flat `content/drafts/<slug>.tex` is the default
+   when neither applies. Ask rather than guess: the dossier
+   (`content/dossiers/<slug>/`) and every render
+   (`content/rendered/<the draft's own directory>/`) mirror whatever you
+   pick, so moving the draft later means moving both.
    Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
    **Glossary** now, while you are deciding them -- the glossary is where
    the chapter's terminology gets pinned, so a revision doesn't drift off
@@ -186,6 +196,10 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     python3 -m src.render_output content/drafts/<slug>.tex --format md
     python3 -m src.render_output content/drafts/<slug>.tex --format pdf
     ```
+    Both previews land beside the fragment: a draft at
+    `content/drafts/<topic>/<name>.tex` renders to
+    `content/rendered/<topic>/<name>.{md,pdf}`, so one topic directory
+    holds the chapter, its dossier and its previews.
     This needs only bare `python3` plus `pandoc`/`pdflatex` on PATH -- don't
     assume either is present or absent without checking; probe (or just try
     the command and read the result) rather than assuming from a prior run

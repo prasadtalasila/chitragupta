@@ -43,6 +43,16 @@ escaped `\\[1\\]` markers and a bibliography wrapped in `:::` fenced divs
 and `[...]{.csl-left-margin}` spans, which render as literal punctuation
 anywhere that isn't pandoc.
 
+Every format lands beside the draft: `_output_dir` mirrors the draft's
+own path under `config.DRAFTS_DIR` into `config.RENDERED_DIR`, so
+`content/drafts/dt/survey.md` renders to `content/rendered/dt/survey.*`
+and a flat `content/drafts/survey.md` renders to
+`content/rendered/survey.*` as it always has. Before that, every format
+wrote flat, which lost two things quietly: two topics with a same-named
+draft overwrote each other's output, and `dossier export <topic>
+--with-rendered` matched nothing, because it matches a rendered file by
+its path relative to `RENDERED_DIR`.
+
 Every render also passes documentclass/fontsize/papersize/geometry
 variables so a tex/pdf output always opens with a 12pt, a4paper article
 class and 1-inch margins via the geometry package -- overridable per
@@ -267,11 +277,54 @@ def _local_image_refs(text: str) -> list[str]:
     ]
 
 
+def _output_dir(input_path: Path) -> Path:
+    """Where `input_path`'s rendered output goes: `config.RENDERED_DIR`
+    with the draft's own place under `config.DRAFTS_DIR` mirrored into
+    it, so `content/drafts/dt/survey.md` renders to
+    `content/rendered/dt/survey.{md,tex,pdf,docx}`.
+
+    What is mirrored is always a path *inside* `config.CONTENT_DIR`, and
+    what comes back always is too. Only the part of the draft's path
+    below `DRAFTS_DIR` is carried over, so nothing a caller types can
+    steer a render out of `content/`:
+
+      - A draft that isn't under `DRAFTS_DIR` at all -- README.md
+        documents `render_output path/to/draft.md`, which needn't be --
+        has no path to mirror, so the flat directory stands. So does a
+        flat `content/drafts/<slug>.md`, whose relative parent is `.`.
+      - Both sides are resolved first, so a symlinked draft is judged by
+        where it really lives, and a `..` in the argument is gone before
+        anything is compared -- `relative` can then hold neither.
+      - A mirrored directory that *itself* resolves outside
+        `RENDERED_DIR` (a symlinked topic directory pointing elsewhere)
+        falls back to the flat directory rather than being followed --
+        the same rule `_copy_local_images` applies to an escaping image
+        reference, and for the same reason: a draft's own path is never
+        a reason to write outside `content/rendered/`.
+
+    This duplicates the rule `dossier.dossier_dir()` applies to
+    `content/dossiers/`, deliberately, rather than importing it: the
+    module docstring commits this file to stdlib plus
+    `config`/`citation_gate`/`references` so a genre skill can render
+    under bare `python3`, and `src/dossier.py` is outside that set. The
+    two are kept in step by hand -- there is one rule, "mirror the
+    draft's path", and both places state it.
+    """
+    try:
+        relative = input_path.resolve().relative_to(config.DRAFTS_DIR.resolve())
+    except ValueError:
+        return config.RENDERED_DIR
+    mirrored = config.RENDERED_DIR / relative.parent
+    if not mirrored.resolve().is_relative_to(config.RENDERED_DIR.resolve()):
+        return config.RENDERED_DIR
+    return mirrored
+
+
 def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
     """Copies every local image `input_path` references alongside the
     rendered output in `dest_dir`, so a `tex` output is actually
-    self-contained and compilable on its own (`cd content/rendered &&
-    pdflatex *.tex`).
+    self-contained and compilable on its own (`cd` to the directory the
+    render landed in -- see `_output_dir` -- and `pdflatex *.tex`).
 
     Without this, pandoc's LaTeX writer emits `\\includegraphics{path}`
     verbatim, unresolved and uncopied -- the `pdf` format only looks fine
@@ -308,6 +361,9 @@ def render(
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
+    The output lands in `_output_dir(input_path)` -- `content/rendered/`
+    with the draft's own place under `content/drafts/` mirrored into it.
+
     Citations and the bibliography are formatted with `csl` (default:
     `config.CSL_STYLE_PATH`, the vendored IEEE style), so a rendered draft
     carries numeric markers -- `[1]`, and `[3]-[6]` for a consecutive run
@@ -328,6 +384,7 @@ def render(
     `\\usepackage[margin=1in]{geometry}`.
     """
     input_path = Path(input_path)
+    out_dir = _output_dir(input_path)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not
         # a format conversion, and pandoc is the wrong tool for it. Its
@@ -343,16 +400,16 @@ def render(
         # thesis fragment's `\citep{...}` into Markdown genuinely is a
         # format conversion, and that fragment deliberately carries no
         # reference list of its own.
-        _copy_local_images(input_path, config.RENDERED_DIR)
-        return references.write_numbered(input_path, config.RENDERED_DIR)
+        _copy_local_images(input_path, out_dir)
+        return references.write_numbered(input_path, out_dir)
 
     _require("pandoc")
     if output_format == "pdf":
         _require("pdflatex")
 
-    config.RENDERED_DIR.mkdir(parents=True, exist_ok=True)
-    _copy_local_images(input_path, config.RENDERED_DIR)
-    out_path = config.RENDERED_DIR / f"{input_path.stem}.{output_format}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _copy_local_images(input_path, out_dir)
+    out_path = out_dir / f"{input_path.stem}.{output_format}"
     csl_path = _resolve_csl(csl) if csl is not None else config.CSL_STYLE_PATH
     if collapse_citations is None:
         collapse_citations = config.RENDER_COLLAPSE_CITATIONS

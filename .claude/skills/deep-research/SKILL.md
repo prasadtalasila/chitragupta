@@ -181,7 +181,24 @@ python3 -m src.dossier init content/drafts/deep-research-<slug>.md --genre deep-
 
 Give it the same path Phase 7(d) will save to -- the dossier mirrors its
 draft's path, and one opened under a different name is found by nothing
-later. Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
+later.
+
+**Settle that path with the user first.** It may contain directories:
+"deep research for the `books/software-engineering` book" means
+`content/drafts/books/software-engineering/deep-research.md`, and a
+topic that will hold more than one genre wants
+`content/drafts/<topic>/deep-research.md` so they sit together -- that
+is the layout the shipped example content uses. The flat
+`content/drafts/deep-research-<slug>.md` above is the default when
+neither applies. Ask rather than guess: the dossier
+(`content/dossiers/<the same path minus its suffix>/`) and every render
+(`content/rendered/<the draft's own directory>/`) mirror whatever you
+pick, so moving the report later means moving both. Whichever you
+choose, use it verbatim everywhere below -- the `--log` argument in
+every retrieval call, the `DRAFT PATH` handed to each subagent, the gate,
+and Phase 7(d).
+
+Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
 **Glossary** now, while you are deciding them; Phase 4 fixes the final
 reader sentence and glossary and updates that same file. `init` also
 stamps the corpus fingerprint, which is what lets a later revision tell
@@ -433,9 +450,12 @@ python3 -m src.render_output content/drafts/deep-research-<slug>.md --format tex
 python3 -m src.render_output content/drafts/deep-research-<slug>.md --format pdf
 python3 -m src.render_output content/drafts/deep-research-<slug>.md --format md
 ```
-The `md` output is a numbered copy in `content/rendered/` -- the same
-IEEE numbers as the PDF, for a reader who won't open one. The draft
-itself keeps its `[@citekey]` markers.
+All three land beside the draft: a draft at
+`content/drafts/<topic>/<name>.md` renders to
+`content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic directory
+holds the report, its dossier and its renders. The `md` output is a
+numbered copy -- the same IEEE numbers as the PDF, for a reader who
+won't open one. The draft itself keeps its `[@citekey]` markers.
 
 This needs only bare `python3` plus `pandoc`/`pdflatex` on PATH — no enrich
 group required. If either command reports `[missing-binary]` or `[error]`,
