@@ -9,7 +9,7 @@
 [tool.poetry]
 package-mode = false
 name = "chitragupta"
-version = "3.15.0"
+version = "3.15.1"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
@@ -106,6 +106,13 @@ omit = [
 ]
 
 [tool.coverage.report]
+# The 100% bar DEVELOPER-AGENTS.md states, enforced rather than asserted.
+# It holds on a host with the full toolchain (pandoc, TeX Live, poppler)
+# installed -- without those binaries the render/pdf tests self-skip and
+# take src/render_output.py down to ~76%, which is a missing dependency
+# rather than a missing test. Pass --cov-fail-under=0 on such a host; CI
+# does exactly that on its Windows leg, where os-deps is apt-only.
+fail_under = 100
 exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
