@@ -48,8 +48,8 @@ at the end.
 **Answers:** what are the steps, and who does each one?
 
 Deliberately the least detailed diagram here. Two properties do all the
-work: phase 0 is the only entrance -- citekeys come from your BibTeX
-export and nowhere else -- and phase 3 is the only exit, with no arrow
+work: phase 1 is the only entrance -- citekeys come from your BibTeX
+export and nowhere else -- and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#how-it-works).
 
 The `DISCARD DRAFT` box loops back to **drafting**, not to you. A failing
@@ -60,15 +60,15 @@ isn't in the corpus yet.
 ```mermaid
 flowchart LR
 
-  P0["<b>0 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><b>papers/bibliography.bib</b><br/><small>nothing else may invent a citekey</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><b>papers/bibliography.bib</b><br/><small>nothing else may invent a citekey</small>"]
 
-  P1["<b>1 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/><code>python -m src.sync</code><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b><br/><small>idempotent · re-runs cost almost nothing</small>"]
+  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/><code>python -m src.sync</code><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b><br/><small>idempotent · re-runs cost almost nothing</small>"]
 
-  P2["<b>2 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>3 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>src.citation_gate</code><br/>Is every citekey<br/>in the ledger?"}}
+  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>src.citation_gate</code><br/>Is every citekey<br/>in the ledger?"}}
 
-  P4["<b>4 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>src.references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>render_output --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>src.references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>render_output --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
   FIX["<b>DISCARD DRAFT</b><br/><br/>The skill throws the bad claim away<br/>and drafts again — you never see this.<br/><br/><small>“Fix and re-run until <code>OK</code>.”<br/>A FAIL is treated like a failing test,<br/>not a lint warning.</small>"]
 
@@ -187,8 +187,8 @@ the lightweight default when it doesn't.
 ```mermaid
 flowchart TB
 
-  %% ─────────────── 0 · CURATE ───────────────
-  subgraph S0["<b>0 · CURATE</b> — you, in Zotero. The pipeline never fetches a paper."]
+  %% ─────────────── 1 · CURATE ───────────────
+  subgraph S0["<b>1 · CURATE</b> — you, in Zotero. The pipeline never fetches a paper."]
     direction TB
     ZOT[("Zotero library")]
     BIB["<b>papers/bibliography.bib</b><br/><i>the source of truth for citekeys</i>"]
@@ -197,8 +197,8 @@ flowchart TB
     ZOT --> ATT
   end
 
-  %% ─────────────── 1 · SYNC ───────────────
-  subgraph S1["<b>1 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.sync</code> · holds the run lock"]
+  %% ─────────────── 2 · SYNC ───────────────
+  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.sync</code> · holds the run lock"]
     direction TB
     BR["<b>src/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
@@ -208,8 +208,8 @@ flowchart TB
     BR --> LED --> PT --> TXT --> ADV
   end
 
-  %% ─────────────── 2 · RETRIEVE ───────────────
-  subgraph S2["<b>2 · RETRIEVE</b> — the only evidence a writer is given · <b>one ranker or the other, never both</b>"]
+  %% ─────────────── 3 · RETRIEVE ───────────────
+  subgraph S2["<b>3 · RETRIEVE</b> — the only evidence a writer is given · <b>one ranker or the other, never both</b>"]
     direction LR
     XOR{{"which ranker?<br/><small>the genre skill picks</small>"}}
     BM25["<b>src/retrieval.py</b> · BM25<br/><small>stdlib keyword overlap, cached term-frequency index.<br/><b>the default every skill starts from</b></small>"]
@@ -221,21 +221,21 @@ flowchart TB
     EMB --> PASS
   end
 
-  %% ─────────────── 3 · DRAFT ───────────────
-  subgraph S3["<b>3 · DRAFT</b> — the drafting layer · generative, on demand, reviewed by you"]
+  %% ─────────────── 4 · DRAFT ───────────────
+  subgraph S3["<b>4 · DRAFT</b> — the drafting layer · generative, on demand, reviewed by you"]
     direction TB
     SKILLS["<b>.claude/skills/</b> — five genre skills<br/>survey-writer · thesis-chapter-writer · textbook-chapter-writer<br/>tutorial-writer · deep-research"]
     DRAFT[/"<b>content/drafts/&lt;slug&gt;.md | .tex</b>"/]
     SKILLS --> DRAFT
   end
 
-  %% ─────────────── 4 · GATE ───────────────
+  %% ─────────────── 5 · GATE ───────────────
   GATE{{"<b>THE CITATION GATE</b> · <code>python3 -m src.citation_gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
   ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
-  %% ─────────────── 5 · PUBLISH ───────────────
-  subgraph S5["<b>5 · PUBLISH</b> — stdlib only, no venv needed"]
+  %% ─────────────── 6 · PUBLISH ───────────────
+  subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
     direction TB
     REFS["<b>python3 -m src.references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
     REND["<b>python3 -m src.render_output</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
@@ -631,19 +631,19 @@ question in this genre.
 ```mermaid
 flowchart LR
 
-  P0["<b>0 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Breadth is the whole job here.<br/>A thin corpus shows up<br/>immediately as a thin survey.<br/><br/><b>papers/bibliography.bib</b><br/><small>the only source either skill can reach —<br/>everything retrieval returns is citable</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Breadth is the whole job here.<br/>A thin corpus shows up<br/>immediately as a thin survey.<br/><br/><b>papers/bibliography.bib</b><br/><small>the only source either skill can reach —<br/>everything retrieval returns is citable</small>"]
 
-  P1["<b>1 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — worth it for this genre</b><br/><code>enrich.py --stages docling,embed</code><br/><br/><b>docling</b> → layout-aware .md + .passages.json<br/><small>better quotable passages, so claims survive review</small><br/><br/><b>embed</b> → content/chroma/<br/><small>semantic recall: finds the paper that argues the<br/>point in different words. <b>Both skills name<br/><code>embed_index.search()</code> by hand.</b></small>"]
 
-  P2["<b>2 · DRAFT</b><br/><i>every sentence is a cited claim</i><br/><br/><b>survey-writer</b> — over-fetch <code>k=15</code>,<br/>hand-cluster into 2-4 sub-themes,<br/>comparison table + gap analysis<br/><br/><b>deep-research</b> — perspectives,<br/>parallel interviews, contradiction map,<br/>then cited sections<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>every sentence is a cited claim</i><br/><br/><b>survey-writer</b> — over-fetch <code>k=15</code>,<br/>hand-cluster into 2-4 sub-themes,<br/>comparison table + gap analysis<br/><br/><b>deep-research</b> — perspectives,<br/>parallel interviews, contradiction map,<br/>then cited sections<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>3 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>swap the key for one retrieval<br/>actually returned, or drop the claim.<br/>Never invent one.</small>"]
 
-  P4["<b>4 · PUBLISH</b><br/><br/><code>src.references</code> → IEEE list<br/><code>render_output --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code> → IEEE list<br/><code>render_output --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
   AID["<b>afterwards, by you — not a gate</b><br/><code>--stages provenance</code> · <code>verbatim_check.py</code><br/><code>src.citation_coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 
@@ -706,19 +706,19 @@ gate in this repository can catch it.
 ```mermaid
 flowchart LR
 
-  P0["<b>0 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>A handful of grounding papers is<br/>enough. Breadth buys you<br/>very little in this genre.<br/><br/><b>papers/bibliography.bib</b>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>A handful of grounding papers is<br/>enough. Breadth buys you<br/>very little in this genre.<br/><br/><b>papers/bibliography.bib</b>"]
 
-  P1["<b>1 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step —<br/><code>enrich.py --stages render</code> only wraps it</small>"]
 
-  P2["<b>2 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>3 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small><b>May legitimately pass with<br/>zero citations.</b> Both SKILL.md<br/>files say so explicitly — this is<br/>the one genre where an empty<br/>reference list is correct.</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small><b>May legitimately pass with<br/>zero citations.</b> Both SKILL.md<br/>files say so explicitly — this is<br/>the one genre where an empty<br/>reference list is correct.</small>"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>drop the claim; the lesson<br/>rarely needed it in the first place</small>"]
 
-  P4["<b>4 · PUBLISH</b><br/><br/><code>src.references</code><br/><small><b>tutorial-writer</b> passes<br/><code>--heading &quot;Further reading&quot;</code>,<br/>which then survives into the render<br/>instead of being stripped</small><br/><br/><code>render_output --format pdf</code>"]
+  P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code><br/><small><b>tutorial-writer</b> passes<br/><code>--heading &quot;Further reading&quot;</code>,<br/>which then survives into the render<br/>instead of being stripped</small><br/><br/><code>render_output --format pdf</code>"]
 
   RISK["<b>the real failure mode here isn't a bad citekey</b><br/><small>It is writing the wrong genre: a tutorial that explains<br/>instead of instructing, or a chapter that instructs instead<br/>of explaining. Both SKILL.md files open by warning about<br/>exactly that — and no gate in this repository can catch it.<br/><b>You are the check.</b></small>"]
 
@@ -773,19 +773,19 @@ rule is worded identically to the other four skills.
 ```mermaid
 flowchart LR
 
-  P0["<b>0 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Depth over breadth: everything<br/>bearing on one research question.<br/><br/><b>papers/bibliography.bib</b><br/><small>this same .bib is very likely already<br/>your thesis's <code>\\bibliography</code> — which is<br/>why the two stay consistent for free</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Depth over breadth: everything<br/>bearing on one research question.<br/><br/><b>papers/bibliography.bib</b><br/><small>this same .bib is very likely already<br/>your thesis's <code>\\bibliography</code> — which is<br/>why the two stay consistent for free</small>"]
 
-  P1["<b>1 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>SKILL.md names <code>src/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
 
-  P2["<b>2 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 
-  P3{{"<b>3 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>“Fix and re-run until <code>OK</code>.<br/>Never present a draft<br/>that hasn't passed.”</small>"]
 
-  P4["<b>4 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>render_output --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
+  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>render_output --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
 
   OUT["<b>the actual output</b><br/><code>\\input{chapter-4}</code><br/><small>into your own thesis, compiled by your own<br/>LaTeX toolchain against your own .bib</small>"]
 

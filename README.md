@@ -42,9 +42,9 @@ This pipeline is built to make that impossible rather than unlikely:
 
 ## How it works
 
-Five phases. You own phase 0, the **corpus layer** owns phase 1, the
-**drafting layer** owns 2 through 4, and nothing reaches phase 4 without
-passing phase 3.
+Five phases. You own phase 1, the **corpus layer** owns phase 2, the
+**drafting layer** owns 3 through 5, and nothing reaches phase 5 without
+passing phase 4.
 
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
@@ -54,10 +54,10 @@ passing phase 3.
 
 Two properties of that picture do all the work:
 
-- **Phase 0 is the only entrance.** Citekeys come from your reference
+- **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export. The pipeline never fetches a paper, never
   invents a citekey, and never renames one.
-- **Phase 3 is the only exit.** `src.citation_gate` sits on the single
+- **Phase 4 is the only exit.** `src.citation_gate` sits on the single
   path between a draft and a rendered document. There is no arrow around
   it, and a `FAIL` is treated like a failing test rather than a lint
   warning.
@@ -65,9 +65,9 @@ Two properties of that picture do all the work:
 The loop back from a failed gate goes to *drafting*, not to you: the skill
 discards the unsupported claim and writes again. You only get involved in
 the rarer case where the paper genuinely isn't in the corpus yet -- the
-dotted arrow back to phase 0.
+dotted arrow back to phase 1.
 
-Seven skills sit behind phase 2, all obeying the same grounding rules:
+Seven skills sit behind phase 3, all obeying the same grounding rules:
 five that write a new draft -- survey, thesis chapter, undergraduate
 textbook chapter, tutorial, and a heavier multi-perspective deep-research
 mode -- and two that change one that already exists, because a draft is

@@ -3,19 +3,19 @@ title: "Genre C — the LaTeX-native writer: thesis-chapter-writer"
 ---
 flowchart LR
 
-  P0["<b>0 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Depth over breadth: everything<br/>bearing on one research question.<br/><br/><b>papers/bibliography.bib</b><br/><small>this same .bib is very likely already<br/>your thesis's <code>\\bibliography</code> — which is<br/>why the two stay consistent for free</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Depth over breadth: everything<br/>bearing on one research question.<br/><br/><b>papers/bibliography.bib</b><br/><small>this same .bib is very likely already<br/>your thesis's <code>\\bibliography</code> — which is<br/>why the two stay consistent for free</small>"]
 
-  P1["<b>1 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>SKILL.md names <code>src/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
 
-  P2["<b>2 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 
-  P3{{"<b>3 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>“Fix and re-run until <code>OK</code>.<br/>Never present a draft<br/>that hasn't passed.”</small>"]
 
-  P4["<b>4 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>render_output --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
+  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>render_output --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
 
   OUT["<b>the actual output</b><br/><code>\\input{chapter-4}</code><br/><small>into your own thesis, compiled by your own<br/>LaTeX toolchain against your own .bib</small>"]
 

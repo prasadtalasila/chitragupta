@@ -3,8 +3,8 @@ title: "The full workflow — every module, every artifact"
 ---
 flowchart TB
 
-  %% ─────────────── 0 · CURATE ───────────────
-  subgraph S0["<b>0 · CURATE</b> — you, in Zotero. The pipeline never fetches a paper."]
+  %% ─────────────── 1 · CURATE ───────────────
+  subgraph S0["<b>1 · CURATE</b> — you, in Zotero. The pipeline never fetches a paper."]
     direction TB
     ZOT[("Zotero library")]
     BIB["<b>papers/bibliography.bib</b><br/><i>the source of truth for citekeys</i>"]
@@ -13,8 +13,8 @@ flowchart TB
     ZOT --> ATT
   end
 
-  %% ─────────────── 1 · SYNC ───────────────
-  subgraph S1["<b>1 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.sync</code> · holds the run lock"]
+  %% ─────────────── 2 · SYNC ───────────────
+  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.sync</code> · holds the run lock"]
     direction TB
     BR["<b>src/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
@@ -24,8 +24,8 @@ flowchart TB
     BR --> LED --> PT --> TXT --> ADV
   end
 
-  %% ─────────────── 2 · RETRIEVE ───────────────
-  subgraph S2["<b>2 · RETRIEVE</b> — the only evidence a writer is given · <b>one ranker or the other, never both</b>"]
+  %% ─────────────── 3 · RETRIEVE ───────────────
+  subgraph S2["<b>3 · RETRIEVE</b> — the only evidence a writer is given · <b>one ranker or the other, never both</b>"]
     direction LR
     XOR{{"which ranker?<br/><small>the genre skill picks</small>"}}
     BM25["<b>src/retrieval.py</b> · BM25<br/><small>stdlib keyword overlap, cached term-frequency index.<br/><b>the default every skill starts from</b></small>"]
@@ -37,21 +37,21 @@ flowchart TB
     EMB --> PASS
   end
 
-  %% ─────────────── 3 · DRAFT ───────────────
-  subgraph S3["<b>3 · DRAFT</b> — the drafting layer · generative, on demand, reviewed by you"]
+  %% ─────────────── 4 · DRAFT ───────────────
+  subgraph S3["<b>4 · DRAFT</b> — the drafting layer · generative, on demand, reviewed by you"]
     direction TB
     SKILLS["<b>.claude/skills/</b> — five genre skills<br/>survey-writer · thesis-chapter-writer · textbook-chapter-writer<br/>tutorial-writer · deep-research"]
     DRAFT[/"<b>content/drafts/&lt;slug&gt;.md | .tex</b>"/]
     SKILLS --> DRAFT
   end
 
-  %% ─────────────── 4 · GATE ───────────────
+  %% ─────────────── 5 · GATE ───────────────
   GATE{{"<b>THE CITATION GATE</b> · <code>python3 -m src.citation_gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
   ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
-  %% ─────────────── 5 · PUBLISH ───────────────
-  subgraph S5["<b>5 · PUBLISH</b> — stdlib only, no venv needed"]
+  %% ─────────────── 6 · PUBLISH ───────────────
+  subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
     direction TB
     REFS["<b>python3 -m src.references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
     REND["<b>python3 -m src.render_output</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
