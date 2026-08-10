@@ -249,7 +249,8 @@ and none of them gates anything:
 | Command | Answers |
 |---|---|
 | `python3 -m src.citation_provenance <draft>` | what in each cited source actually supports the claim citing it, quoting a real passage |
-| `python3 scripts/verbatim_check.py overlap\|locate …` | how much wording a draft shares with a source, and which page a phrase is on |
+| `python3 scripts/verbatim_check.py overlap\|locate …` | how much wording a draft shares with one cited source, and which page a phrase is on |
+| `python3 scripts/verbatim_check.py scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
 | `python3 -m src.citation_coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
 
 That they are *not* gates is the design, not an omission. The gate answers
@@ -258,6 +259,20 @@ and can therefore be automatic and absolute. These three answer questions
 of judgement, where a machine verdict would be either wrong often enough
 to be ignored, or trusted more than it deserves. They give you the
 evidence and leave the call to you.
+
+`scan` is worth placing against the gate specifically, because the two
+are complements and both are deterministic. The gate proves every citekey
+is *real*; the scan reports what *wording* came along with them. Same
+corpus, same determinism, opposite halves of one question -- and the
+reason the second is a review aid anyway is not that it is fuzzy, but
+that "this sentence resembles its source" has no single right answer the
+way ledger membership does. Its findings are what a later severity policy
+would be tuned against, not a verdict waiting to be switched on:
+[SOUL.md](../SOUL.md) commits to verbatim checks *staying* review aids.
+Note also what a clean run does not mean -- `scan` is the exact detection
+tier, and the paraphrase tiers beside it are unbuilt, so it comes up short
+by being silently incomplete rather than by being wrong. See
+[docs/PLAGIARISM.md](PLAGIARISM.md).
 
 ## Incremental by default, honest about failure
 
@@ -302,7 +317,7 @@ a specific span of a specific source.
 | `content/rendered/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
 | `content/topics.json` | **Yes** on unchanged input -- UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change -- two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
-| `content/overlap/` | A cache, not an output: `scripts/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. Delete it and the next `overlap` check rebuilds whatever it needs |
+| `content/overlap/` | A cache, not an output: `scripts/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
 | `content/chroma/` | The embedding store the `embed` stage writes -- persistent, not a cache, but incremental: a document whose text hashes the same is not re-embedded. Inherits whatever instability its input text has |
 
 ### The passage sidecar, specifically
@@ -404,7 +419,8 @@ directory it lives in.
 
 Both words appear across these docs, and they are not the same thing.
 Summarised here; each one is treated in full, with what its bottom rung
-costs you, in [docs/LADDERS.md](LADDERS.md).
+costs you, in [docs/LADDERS.md](LADDERS.md) -- except the detection
+tiers, whose full treatment is [docs/PLAGIARISM.md](PLAGIARISM.md).
 
 A **ladder** is an ordered chain the code walks *automatically*: it tries
 the first rung, and falls to the next when that one can't answer. A
@@ -426,6 +442,19 @@ what is missing.
 | Parser backend | `pdftotext`, `docling` | `sync` warns and skips parsing. It does **not** silently substitute the other backend |
 | Interpreter | the three tiers above | `ModuleNotFoundError` |
 | Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + pdflatex) | reported as `missing-binary`. No format is silently downgraded to another |
+| Detection | `exact` word-n-gram runs (built), a deterministic skip-gram tier and an embedding tier (both proposed) | the embedding tier needs the optional enrichment layer's `content/chroma/`; without it that tier is unavailable and says so, rather than falling back to the exact tier and reporting less |
+
+One difference worth stating, because it is the exception to the word
+*tier* as used above: the detection tiers are **not mutually exclusive**.
+The other three tier sets are a menu you pick exactly one option from;
+`scan` runs every detection tier that exists and unions the findings,
+labelling each with the tier that produced it -- which is what the
+`tier: "exact"` field on a finding is for, with one value so far. The
+practical consequence is the one every place that offers `scan` repeats:
+an unbuilt tier contributes nothing and nothing says so, so a clean run
+means "no exact or near-exact copying found", never "no borrowed
+wording". [docs/PLAGIARISM.md](PLAGIARISM.md) has the three tiers and the
+literature behind them.
 
 ## One writer at a time
 

@@ -110,7 +110,12 @@ have the full semantics.
   `scripts/verbatim_check.py`, `src/citation_coverage.py`): in no layer --
   run by hand when reviewing a draft, never invoked automatically, never
   gate anything. Don't promote one to a gate -- [SOUL.md](SOUL.md) has
-  why.
+  why. `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus
+  one, and the complement of the citation gate: the gate proves every
+  citekey is real, the scan reports what wording came along with them.
+  It is the exact detection tier, and the paraphrase tiers beside it are
+  unbuilt, so a clean run is not a clean bill of health --
+  [docs/PLAGIARISM.md](docs/PLAGIARISM.md).
 
 ## Retrieval
 

@@ -209,6 +209,25 @@ assume:
   with what you actually ran on. **Never present an unrun tutorial as if
   it were tested**; if you could not run it, say exactly that.
 
+### Offer the verbatim scan
+
+Before presenting, offer this -- don't run it silently, and never make it
+a condition of presenting:
+
+```bash
+python3 scripts/verbatim_check.py scan content/drafts/<path>
+```
+
+It reports wording the draft shares with **any** parsed source, cited or
+not. Worth offering after a revision specifically: text you rewrote to
+sit closer to a source is exactly the text most likely to have drifted
+into its wording, and a revision that moved a claim between sections can
+strand borrowed phrasing in a paragraph that no longer cites anything. A
+review aid, not a gate: it exits 0 either way and cannot block the draft.
+Say what it misses when you offer it -- it sees verbatim and
+near-verbatim reuse only, and **paraphrase is not detected**, so a clean
+scan is not a clean bill of health (`docs/PLAGIARISM.md`).
+
 ## Re-grounding after the corpus moves
 
 When `python -m src.sync` adds papers or drops stale ones, every existing

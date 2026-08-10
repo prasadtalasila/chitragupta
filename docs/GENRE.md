@@ -309,6 +309,18 @@ Technical Writing courses, all CC-licensed and all requiring credit.
 missing binary prints a one-line warning and the `.md` draft is presented
 anyway.
 
+**The verbatim scan is offered, never run silently and never a gate.**
+Once the gate has passed and the renders are done, and before presenting,
+each skill offers `python3 scripts/verbatim_check.py scan
+content/drafts/<path>` -- which reports wording the draft shares with
+*any* parsed source, cited or not. It cannot block a draft and no skill
+treats it as a condition of presenting. The offer carries its own
+caveat, in every skill, because the drafter is the one it is about: the
+scan is the exact detection tier, so it sees verbatim and near-verbatim
+reuse only and paraphrase is invisible to it -- a clean scan is not a
+clean bill of health.
+[PLAGIARISM.md](PLAGIARISM.md) has what the unbuilt tiers would add.
+
 ## The boundaries, and why they are enforced
 
 Every skill carries a "When to invoke" table whose rows are mostly

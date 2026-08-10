@@ -287,7 +287,20 @@ candidate for the chapter.
     and pedagogical steering is the kind that undoes most quietly, because
     nothing in the finished chapter shows that an easier example was ever on
     the table.
-14. **Present the draft** plus a short note on what it assumes as prior
+14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+    it silently, and never make it a condition of presenting:
+    ```
+    python3 scripts/verbatim_check.py scan content/drafts/<slug>.md
+    ```
+    It reports wording the chapter shares with **any** parsed source,
+    cited or not -- including a source the citing paragraph never names,
+    and reuse in the connective prose between worked examples, which
+    cites nothing. A review aid, not a gate: it exits 0 either way and
+    cannot block the draft. Say what it misses when you offer it -- it
+    sees verbatim and near-verbatim reuse only, and **paraphrase is not
+    detected**, so a clean scan is not a clean bill of health
+    (`docs/PLAGIARISM.md`).
+15. **Present the draft** plus a short note on what it assumes as prior
     knowledge, what it deliberately leaves out, and where a student is meant
     to go next -- and report the render outcome (paths to the `.tex`/`.pdf`
     if they succeeded, or the warning if not). Tell the user where the

@@ -333,7 +333,22 @@ the lesson design is the part worth keeping either way.
     path in the first place, it is invisible in the prose, and it has nowhere
     else to live; a revision that doesn't know about it will undo it.
 
-15. **Present**, reporting: the draft path, the render outcome (or warning),
+15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+    it silently, and never make it a condition of presenting:
+    ```
+    python3 scripts/verbatim_check.py scan content/drafts/<slug>.md
+    ```
+    It reports wording the tutorial shares with **any** parsed source,
+    cited or not. That matters here even though this genre barely cites:
+    the prose between steps cites nothing, so it is exactly the text no
+    per-citekey check can see. A review aid, not a gate: it exits 0
+    either way and cannot block the draft. It skips fenced code, so your
+    commands and file contents won't light it up. Say what it misses
+    when you offer it -- it sees verbatim and near-verbatim reuse only,
+    and **paraphrase is not detected**, so a clean scan is not a clean
+    bill of health (`docs/PLAGIARISM.md`).
+
+16. **Present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of

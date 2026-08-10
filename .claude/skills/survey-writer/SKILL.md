@@ -276,7 +276,19 @@ collapse them for the sake of a cleaner narrative.
     append it to the dossier's `steering.md`, dated. It is invisible in
     the prose and has nowhere else to live; a revision that doesn't know
     about it will undo it.
-14. Present the draft plus a one-paragraph summary of thin-coverage areas and
+14. **Offer the verbatim scan.** Before presenting, offer this — don't run
+    it silently, and never make it a condition of presenting:
+    ```
+    python3 scripts/verbatim_check.py scan content/drafts/<slug>.md
+    ```
+    It reports wording the draft shares with **any** parsed source, cited
+    or not — including a source the citing paragraph never names, and
+    reuse in connective prose that cites nothing. A review aid, not a
+    gate: it exits 0 either way and cannot block the draft. Say what it
+    misses when you offer it — it sees verbatim and near-verbatim reuse
+    only, and **paraphrase is not detected**, so a clean scan is not a
+    clean bill of health (`docs/PLAGIARISM.md`).
+15. Present the draft plus a one-paragraph summary of thin-coverage areas and
     any unresolved cross-source disagreement, and report the render outcome
     (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
     Tell the user where the dossier is, that changes to this draft should

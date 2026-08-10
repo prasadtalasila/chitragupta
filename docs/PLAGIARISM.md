@@ -1,15 +1,22 @@
 # Plagiarism / verbatim-reuse detection
 
-Status: **implemented, one tier of a planned three.** Written 2026-08-10.
+Status: **implemented, one detection tier of a planned three.** Written
+2026-08-10.
 
 **Written for** someone deciding whether `scripts/verbatim_check.py`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
 a synced corpus (`python -m src.sync`) and a citekey-verified draft
 (`python -m src.citation_gate`). **Not covered:** how to invoke the tools
-day to day -- that is [CLI.md](CLI.md)'s job (already updated for `scan`
-by this same PR); issue #112 is still wiring it into README's step-7
-review-aid list and the genre skills' own final-check steps.
+day to day -- that is [CLI.md](CLI.md)'s job.
+
+The three tiers below are the one **tier set** in this project whose
+options are not mutually exclusive ([ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)):
+nobody picks one, every built tier runs, and the findings are unioned
+with each labelled by the tier that produced it. That matters for how a
+result is read -- an unbuilt tier contributes nothing and says nothing,
+so the gap between "what tier 1 found" and "what is actually borrowed"
+is the subject of the next section rather than a footnote to it.
 
 ## What "plagiarism" means here, and what it deliberately doesn't
 
@@ -29,7 +36,9 @@ LLM-written**, and literal paraphrase is an LLM's default failure mode
 when it drifts too close to a source, not an edge case. Treat a clean
 `scan` as "no exact or near-exact copying found", never as "no borrowed
 wording found" -- see [Where this sits in a bigger plan](#where-this-sits-in-a-bigger-plan)
-for the tiers that close that gap.
+for the tiers that close that gap. That is this tier set's
+characteristic failure: the missing tiers do not announce themselves, so
+a thin result and a thorough one look identical.
 
 ## The two tools, and when each is right
 
@@ -238,7 +247,8 @@ collection is namespaced per embedding model precisely because vectors
 change when `[enrich].embedding_model` does -- so it can never gate, only
 advise.
 
-That produces a **three-tier stack**, of which this document covers tier 1:
+That produces **three detection tiers** -- cumulative, not a menu you
+pick one option from -- of which this document covers tier 1:
 
 1. **Exact tier (here).** Inverted word-8-gram index, whole-corpus `scan`,
    gap-tolerant merge. Built (#110, #111).
@@ -268,11 +278,14 @@ the index doesn't already have.
 
 ## See also
 
-- [CLI.md](CLI.md) -- `overlap`/`scan` flags and usage (issue #112 will
-  add `scan` to README's step-7 review-aid list and the genre skills'
-  own final-check steps).
+- [CLI.md](CLI.md) -- `overlap`/`scan` flags and usage. `scan` is also in
+  [README](../README.md)'s step-7 review-aid list and is offered by each
+  of the seven skills' own final-check steps.
+- [LADDERS.md](LADDERS.md) -- *ladder*, *rung* and *tier* as this project
+  uses them, and the other three tier sets these sit beside.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- `content/overlap/`'s place in the
-  reproducibility contract.
+  reproducibility contract, and where `scan` sits against the citation
+  gate.
 - `bench/RESULTS.md` -- wall-clock measurements for `overlap`/`scan`
   against this project's real corpus (separate from the backend
   comparison above, which is about detection quality, not speed).

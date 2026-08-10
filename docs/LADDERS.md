@@ -565,5 +565,8 @@ rather than interleaving writes to `content/`.
 - [docs/CONFIG.md](CONFIG.md) -- every setting these tiers read
 - [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md) -- what ladder 1
   is ultimately for
+- [docs/PLAGIARISM.md](PLAGIARISM.md) -- the detection tiers in full: what
+  the exact tier catches, what it cannot, and why the other two are not
+  mutually exclusive with it
 - [docs/PDF-PARSER.md](PDF-PARSER.md) -- how the parser tier was chosen
 - [docs/PERFORMANCE.md](PERFORMANCE.md) -- what each of these costs

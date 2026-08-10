@@ -235,7 +235,19 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     background recap" -- append it to the dossier's `steering.md`, dated.
     It is invisible in the prose and has nowhere else to live; a revision
     that doesn't know about it will undo it.
-13. Present the `.tex` fragment (the deliverable to `\input`) plus, if
+13. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+    it silently, and never make it a condition of presenting:
+    ```
+    python3 scripts/verbatim_check.py scan content/drafts/<slug>.tex
+    ```
+    It reports wording the chapter shares with **any** parsed source,
+    cited or not -- including a source the citing paragraph never names,
+    and reuse in the connective prose an examiner reads as your own. A
+    review aid, not a gate: it exits 0 either way and cannot block the
+    fragment. Say what it misses when you offer it -- it sees verbatim
+    and near-verbatim reuse only, and **paraphrase is not detected**, so
+    a clean scan is not a clean bill of health (`docs/PLAGIARISM.md`).
+14. Present the `.tex` fragment (the deliverable to `\input`) plus, if
     rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning
     if it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of

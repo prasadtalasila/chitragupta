@@ -6,15 +6,20 @@ integration regressions the unit tests structurally can't (e.g. sync's
 real handoff to pdf_text, or a regression in the real bibliography.bib
 export itself)."""
 
+import json
+import os
+import re
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
 from src import bib_reader, citation_gate, config, dossier, ledger, references, sync
 from src import render_output
 
-from tests.conftest import content_draft
+from tests.conftest import content_draft, make_reference
 
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
@@ -458,3 +463,397 @@ class TestReGroundingAfterTheCorpusMoves:
         assert not report.clean, (
             "an unweighed candidate is still a decision the sweep should surface"
         )
+
+
+# --- The whole-draft x whole-corpus verbatim scan, end to end -------------
+#
+# tests/test_verbatim_check.py drives `cmd_scan()` in process, with capsys
+# and a hand-built index, and covers the finding logic. These drive the
+# command a reviewer actually types -- a child process, over a real
+# mini-ledger with real pdf_hash values and real form-feed page breaks --
+# and assert on what the user sees. Four things that reaches which the
+# unit tests structurally cannot: the CONTENT_DIR override the command is
+# configured through, the index artifacts appearing on disk, their reuse
+# on a second run, and invalidation after the corpus moves underneath.
+
+# Planted verbatim runs. Each is well above the n=8 index floor, so a
+# finding is unambiguous rather than borderline.
+SCAN_RUN_CITED = (
+    "the composable architecture of a digital twin separates its "
+    "simulation core from its data ingestion layer"
+)
+SCAN_RUN_UNCITED = (
+    "elastic provisioning of virtual machines allows a workload to "
+    "acquire capacity on demand and release it afterwards"
+)
+SCAN_RUN_CONNECTIVE = (
+    "recalibration must be triggered whenever the residual between "
+    "measured and predicted behaviour exceeds a fixed threshold"
+)
+# What the corpus says after a re-sync replaces the first source's text.
+SCAN_RUN_AFTER_RESYNC = (
+    "the revised architecture note now describes a scheduler that "
+    "batches ingestion jobs by priority"
+)
+
+# The negative control. The draft form swaps a synonym at exactly every
+# fourth word of the source form -- see the test that uses it for why
+# that spacing is the point rather than an arbitrary choice.
+SCAN_PARAPHRASE_IN_SOURCE = (
+    "the validation of a digital twin requires continuous comparison "
+    "against measurements taken from the physical asset"
+)
+SCAN_PARAPHRASE_IN_DRAFT = (
+    "the validation of one digital twin requires constant comparison "
+    "against measurements drawn from the physical plant"
+)
+
+
+def _scan_source_text(page_one, page_two):
+    """Parsed text with a real form-feed page break in it.
+
+    `overlap_index` splits source text on form feeds to number pages, so
+    putting every planted run on page two is what lets these tests assert
+    a literal `pdf p.2` instead of settling for "some plausible page".
+    """
+    return f"{page_one}\n\f{page_two}\n"
+
+
+def _add_scan_paper(citekey, text, pdf_bytes=b"%PDF-1.4 fixture"):
+    """One parsed ledger row, left the way `sync` leaves one.
+
+    Both calls matter. `upsert_reference` hashes the PDF bytes for real,
+    and that hash is half of the key the corpus index caches per
+    document; `mark_parsed` is what moves the row to `status='parsed'`,
+    which is the only status `overlap_index._ledger_items()` selects.
+    """
+    config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+    pdf = config.CONTENT_DIR / f"{citekey}.pdf"
+    pdf.write_bytes(pdf_bytes)
+    parsed = config.PARSED_DIR / f"{citekey}.txt"
+    parsed.write_text(text, encoding="utf-8")
+    con = ledger.connect()
+    try:
+        ledger.upsert_reference(con, make_reference(citekey=citekey, pdf_path=str(pdf)))
+        ledger.mark_parsed(con, citekey, parsed)
+    finally:
+        con.close()
+    return parsed
+
+
+_FINDING_RE = re.compile(
+    r"\s+\[(?P<span>\d+) words(?:, (?P<matched>\d+) matched)?, "
+    r"pdf p\.(?P<page>\d+)\] (?P<citekey>\S+) \(tier=(?P<tier>\w+)\)(?P<flags>.*)"
+)
+
+
+def _findings(stdout):
+    """`scan`'s three-lines-per-finding output, parsed back into dicts.
+
+    Asserting through the printed form rather than around it is
+    deliberate: the printed line *is* the product here, and a change that
+    dropped the page number or the UNCITED SOURCE flag would leave every
+    in-process assertion on the findings list passing.
+    """
+    lines = stdout.splitlines()
+    parsed = []
+    for i, line in enumerate(lines):
+        match = _FINDING_RE.fullmatch(line)
+        if match:
+            parsed.append({
+                "span": int(match["span"]),
+                "page": int(match["page"]),
+                "citekey": match["citekey"],
+                "tier": match["tier"],
+                "flags": match["flags"].strip(),
+                "fragment": lines[i + 1].strip(),
+            })
+    return parsed
+
+
+def _run_scan(draft, *args):
+    """`scan`, in a child process, against this test's throwaway corpus.
+
+    The coverage variables are stripped rather than inherited. Under the
+    pinned pytest-cov 6.x a .pth file auto-instruments every spawned
+    child, and a child that inherits the parent's coverage settings
+    without the config those settings assume can fail at the *combine*
+    step -- long after every test has passed, with a message
+    (`Can't combine statement coverage data with branch data`) that names
+    nothing connected to the test that caused it. That happened for real
+    on PR #114. `scripts/verbatim_check.py` is covered in process by
+    tests/test_verbatim_check.py, so nothing is lost by not measuring
+    these children.
+    """
+    env = {
+        key: value for key, value in os.environ.items()
+        if not key.startswith("COV_CORE_")
+        and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
+    }
+    env["CONTENT_DIR"] = str(config.CONTENT_DIR)
+    return subprocess.run(
+        [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), *args],
+        cwd=str(Path(__file__).resolve().parent.parent),
+        capture_output=True, text=True, env=env,
+    )
+
+
+class TestVerbatimScanEndToEnd:
+    """`python3 scripts/verbatim_check.py scan <draft>` over a real
+    mini-ledger: index build -> disk cache -> findings, through the entry
+    point README's step 7 and the seven skills now point at.
+
+    No `skipif`. The whole scan path is stdlib-only and never opens the
+    PDF -- only its bytes' hash reaches the index -- so unlike the
+    render-chain tests above there is no binary to be missing, and
+    `TestReGroundingAfterTheCorpusMoves`'s reasoning applies: run
+    everywhere rather than skip wherever pandoc is absent.
+    """
+
+    @pytest.fixture
+    def corpus(self, isolated_config):
+        """Three parsed sources, each with its planted run on page 2."""
+        _add_scan_paper("dt_arch_2024", _scan_source_text(
+            "This opening page reviews how twins are checked before release. "
+            + SCAN_PARAPHRASE_IN_SOURCE + ".",
+            SCAN_RUN_CITED + ". A later remark on module boundaries follows it.",
+        ))
+        _add_scan_paper("cloud_infra_2023", _scan_source_text(
+            "An opening page about billing models for rented hardware.",
+            SCAN_RUN_UNCITED + ". Costs are then compared across three vendors.",
+        ))
+        _add_scan_paper("calib_2025", _scan_source_text(
+            "An opening page about sensor drift in long-lived deployments.",
+            SCAN_RUN_CONNECTIVE + ". Two thresholds are then derived empirically.",
+        ))
+        return isolated_config
+
+    @pytest.fixture
+    def planted_draft(self, corpus):
+        """A draft carrying all four planted cases at once.
+
+        Written as one plausible document rather than four minimal ones,
+        because three of the four only exist relative to their
+        surroundings: whether a run's paragraph cites the source it
+        borrowed from is the thing under test.
+        """
+        draft = content_draft(corpus, "drafts/scan-e2e.md")
+        draft.write_text(
+            "# Architecture of digital twins\n\n"
+            "## 1. Structure\n\n"
+            # (a) verbatim, in a paragraph that does cite this source.
+            f"Recent work sets out the shape of these systems: {SCAN_RUN_CITED} "
+            "[@dt_arch_2024].\n\n"
+            "## 2. Deployment\n\n"
+            # (b) verbatim from a source this paragraph never cites --
+            # it cites a different one, which is what makes the borrowed
+            # wording invisible to a per-citekey `overlap` run.
+            "Most twins are deployed on rented infrastructure [@dt_arch_2024]. "
+            f"{SCAN_RUN_UNCITED}.\n\n"
+            "## 3. Keeping a twin honest\n\n"
+            # (c) verbatim, in connective prose that cites nothing at all,
+            # so no `overlap` invocation would ever examine it.
+            f"{SCAN_RUN_CONNECTIVE}. That question is taken up below.\n\n"
+            "## 4. Validation\n\n"
+            # (d) the negative control.
+            f"{SCAN_PARAPHRASE_IN_DRAFT}, which is by now a familiar demand.\n",
+            encoding="utf-8",
+        )
+        return draft
+
+    def test_planted_runs_from_cited_uncited_and_connective_prose_all_report(
+        self, planted_draft
+    ):
+        """The three cases the scan exists for, through the real CLI.
+
+        The `UNCITED SOURCE` flag is the discriminator a reviewer acts
+        on, so each case is asserted on the flag and not merely on having
+        produced some finding.
+        """
+        result = _run_scan(planted_draft)
+
+        assert result.returncode == 0, result.stderr
+        findings = {f["citekey"]: f for f in _findings(result.stdout)}
+        assert set(findings) == {"dt_arch_2024", "cloud_infra_2023", "calib_2025"}
+
+        # (a) The paragraph cites the source it borrowed from: reported,
+        # with the page it came from, and deliberately not flagged.
+        cited = findings["dt_arch_2024"]
+        assert cited["fragment"] == SCAN_RUN_CITED
+        assert cited["page"] == 2, "the run was planted on the source's second page"
+        assert cited["tier"] == "exact"
+        assert "UNCITED SOURCE" not in cited["flags"]
+
+        # (b) Borrowed from a source the paragraph never names.
+        uncited = findings["cloud_infra_2023"]
+        assert uncited["fragment"] == SCAN_RUN_UNCITED
+        assert uncited["page"] == 2
+        assert "UNCITED SOURCE" in uncited["flags"]
+
+        # (c) Borrowed into prose that cites nothing whatsoever.
+        connective = findings["calib_2025"]
+        assert connective["fragment"] == SCAN_RUN_CONNECTIVE
+        assert connective["page"] == 2
+        assert "UNCITED SOURCE" in connective["flags"]
+
+    def test_lightly_paraphrased_run_is_not_reported_by_the_exact_tier(
+        self, planted_draft
+    ):
+        """A deliberate negative control, not a coverage gap.
+
+        `SCAN_PARAPHRASE_IN_DRAFT` is `SCAN_PARAPHRASE_IN_SOURCE` with a
+        synonym swapped at every fourth word -- the signature of an LLM
+        paraphrasing a passage it has drifted too close to. The spacing
+        is the whole construction: swapping every fourth word leaves no
+        unbroken run longer than three words, so no 8-gram survives and
+        the exact tier cannot fire. Swap every tenth word instead and an
+        8-gram does survive, this test fails, and it fails for a reason
+        that has nothing to do with the behaviour being pinned.
+
+        This is not a duplicate of
+        `test_clean_paraphrase_does_not_flag` in
+        tests/test_verbatim_check.py: that fixture is a clean rewrite,
+        which nobody expects an n-gram index to catch. This one is
+        near-verbatim and still missed, which is the documented boundary
+        of the exact tier and the reason README, docs/CLI.md and all
+        seven skills say a clean scan is not a clean bill of health.
+
+        When the deterministic skip-gram tier lands (discussion #115),
+        this is the fixture that must flip from missed to caught. Invert
+        the assertion then -- don't delete it.
+        """
+        result = _run_scan(planted_draft)
+
+        assert result.returncode == 0, result.stderr
+        assert not [
+            f for f in _findings(result.stdout)
+            if f["citekey"] == "dt_arch_2024" and f["page"] == 1
+        ], "the exact tier reported the paraphrased passage on the source's first page"
+        assert "validation" not in result.stdout
+
+    def test_clean_draft_reports_nothing_and_still_exits_zero(self, corpus):
+        """A review aid, so "found nothing" is a successful run."""
+        draft = content_draft(corpus, "drafts/scan-clean.md")
+        draft.write_text(
+            "# A clean chapter\n\n"
+            "Everything here was written from scratch for this chapter, and "
+            "no sentence in it was taken from anywhere else [@dt_arch_2024].\n",
+            encoding="utf-8",
+        )
+
+        result = _run_scan(draft)
+
+        assert result.returncode == 0, result.stderr
+        assert "no verbatim run" in result.stdout
+        assert _findings(result.stdout) == []
+
+    def test_first_scan_builds_the_index_on_disk(self, planted_draft):
+        """The command builds the real index, not a stand-in for one.
+
+        Asserting the artifacts exist is what makes the rest of this
+        class a test of the cached index path rather than of whatever a
+        mock would have returned.
+        """
+        assert not config.OVERLAP_DIR.exists(), "the fixture starts with no cache"
+
+        assert _run_scan(planted_draft).returncode == 0
+
+        assert (config.OVERLAP_DIR / "index.bin").is_file()
+        assert (config.OVERLAP_DIR / "index.json").is_file()
+        for citekey in ("dt_arch_2024", "cloud_infra_2023", "calib_2025"):
+            assert (config.OVERLAP_DIR / "docs" / f"{citekey}.fpr").is_file()
+
+    def test_rescanning_an_unchanged_corpus_reuses_the_merged_index(
+        self, planted_draft
+    ):
+        """The "re-scans are near-instant" contract docs/CLI.md states.
+
+        `index.bin` is the artifact to watch, and the `.fpr` files are
+        not: on a cache hit `build_corpus_index` returns from
+        `_load_corpus_index` before it ever reaches `fingerprint_document`,
+        so "the .fpr files were not rewritten" would be trivially true and
+        would pass even if the merged index were rebuilt from scratch
+        every run.
+        """
+        first = _run_scan(planted_draft)
+        assert first.returncode == 0, first.stderr
+        index_bin = config.OVERLAP_DIR / "index.bin"
+        stamp = index_bin.stat().st_mtime_ns
+        key = json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"]
+
+        second = _run_scan(planted_draft)
+
+        assert second.returncode == 0, second.stderr
+        assert index_bin.stat().st_mtime_ns == stamp, "the merged index was rebuilt"
+        assert json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"] == key
+        assert second.stdout == first.stdout, "a cache hit changed the findings"
+
+    def test_a_resynced_source_is_refingerprinted_before_the_next_scan(self, corpus):
+        """The user-visible command never serves a stale index.
+
+        What this proves is the workflow-level half: `scan` re-fingerprints
+        and re-merges when the corpus moves under it. It does *not*
+        isolate `pdf_hash` from the `(size, mtime_ns)` half of
+        `_fingerprint_key` -- rewriting a source's text moves both at once,
+        which is exactly what a real re-sync does.
+        tests/test_overlap_index.py pins each half separately.
+        """
+        draft = content_draft(corpus, "drafts/scan-resync.md")
+        draft.write_text(
+            f"One claim [@dt_arch_2024]. {SCAN_RUN_CITED}.\n\n"
+            f"Another claim [@dt_arch_2024]. {SCAN_RUN_AFTER_RESYNC}.\n",
+            encoding="utf-8",
+        )
+        before = _run_scan(draft)
+        assert [f["fragment"] for f in _findings(before.stdout)] == [SCAN_RUN_CITED]
+        key_before = json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"]
+
+        # What `sync` does to a paper whose PDF was replaced: new bytes,
+        # so a new pdf_hash, and new parsed text alongside it.
+        _add_scan_paper(
+            "dt_arch_2024",
+            _scan_source_text(
+                "A rewritten opening page.",
+                SCAN_RUN_AFTER_RESYNC + ". The scheduler section then continues.",
+            ),
+            pdf_bytes=b"%PDF-1.4 fixture, revised",
+        )
+
+        after = _run_scan(draft)
+
+        assert after.returncode == 0, after.stderr
+        assert [f["fragment"] for f in _findings(after.stdout)] == [
+            SCAN_RUN_AFTER_RESYNC
+        ], "the scan served fingerprints of text the corpus no longer holds"
+        assert (
+            json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"]
+            != key_before
+        )
+
+    def test_scan_runs_on_the_bare_system_interpreter(
+        self, planted_draft, system_python
+    ):
+        """docs/CLI.md files `scan` in interpreter tier 1 -- bare
+        `python3`, stdlib only, no venv. Everything above runs it on
+        `sys.executable`, which is the venv's interpreter and so cannot
+        tell that claim from a false one. This is the same check
+        `citation_gate`/`references`/`render_output` already get, applied
+        to the command this change is adding to that list.
+        """
+        env = {
+            key: value for key, value in os.environ.items()
+            if not key.startswith("COV_CORE_")
+            and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
+        }
+        env["CONTENT_DIR"] = str(config.CONTENT_DIR)
+
+        result = subprocess.run(
+            [system_python, "scripts/verbatim_check.py", "scan", str(planted_draft)],
+            cwd=str(Path(__file__).resolve().parent.parent),
+            capture_output=True, text=True, env=env,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert {f["citekey"] for f in _findings(result.stdout)} == {
+            "dt_arch_2024", "cloud_infra_2023", "calib_2025"
+        }
