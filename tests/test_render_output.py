@@ -15,20 +15,7 @@ import pytest
 from src import ledger
 from src import render_output
 
-from tests.conftest import make_reference
-
-
-def content_draft(cfg, name: str) -> Path:
-    """A draft path a tier-1 tool will accept: under `CONTENT_DIR`.
-
-    Since 3.17.0 `citation_gate`, `references` and `render_output` all
-    refuse a path outside the content directory, so a test draft has to
-    live under one. Creates the parent, which `isolated_config` names but
-    does not make.
-    """
-    path = cfg.CONTENT_DIR / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
+from tests.conftest import content_draft, make_reference
 
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None

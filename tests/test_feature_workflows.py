@@ -14,20 +14,11 @@ import pytest
 from src import bib_reader, citation_gate, config, dossier, ledger, references, sync
 from src import render_output
 
+from tests.conftest import content_draft
+
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
 pdftotext_available = shutil.which("pdftotext") is not None
-
-
-def content_draft(cfg, name: str) -> "object":
-    """A draft path a tier-1 tool will accept: under `CONTENT_DIR`.
-
-    Since 3.17.0 `citation_gate`, `references` and `render_output` all
-    refuse a path outside the content directory.
-    """
-    path = cfg.CONTENT_DIR / name
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
 
 
 def make_real_pdf(md_path, pdf_path, body):
