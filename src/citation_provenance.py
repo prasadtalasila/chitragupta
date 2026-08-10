@@ -430,8 +430,19 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
     stage in this project treats an absent optional tool.
     """
     report = build_report(draft_path)
-    config.PROVENANCE_DIR.mkdir(parents=True, exist_ok=True)
-    md_path = config.PROVENANCE_DIR / f"{draft_path.stem}.provenance.md"
+    # Mirrors the draft's own place under content/drafts/, the same rule
+    # content/rendered/ and content/dossiers/ follow -- so
+    # drafts/<topic>/survey.md reports to
+    # provenance/<topic>/survey.provenance.md. Flat before 3.19.2, which
+    # meant two drafts named survey.md in different topic directories
+    # wrote one file and the second silently destroyed the first. A draft
+    # that isn't under content/drafts/ has no path to mirror, so the flat
+    # directory stands, matching render_output._output_dir's fallback.
+    out_dir = config.mirrored_dir(draft_path, config.DRAFTS_DIR, config.PROVENANCE_DIR)
+    if out_dir is None or not config.resolves_inside(out_dir, config.PROVENANCE_DIR):
+        out_dir = config.PROVENANCE_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"{draft_path.stem}.provenance.md"
     md_path.write_text(render_markdown(report), encoding="utf-8")
     written = {"md": md_path}
 

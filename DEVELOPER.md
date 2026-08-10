@@ -351,8 +351,11 @@ document the enrichment layer parses comes from the bib file (see
 `python -m src.citation_provenance content/drafts/<slug>.md` reports, for
 every citation in a draft, what in the cited source supports it and where
 -- ordered worst match first. It writes
-`content/provenance/<slug>.provenance.md` plus `.tex`/`.pdf` renders, and
-is also an enrichment stage (`--stages provenance --input <draft>`).
+`content/provenance/<the draft's path minus its suffix>.provenance.md`
+plus `.tex`/`.pdf` renders, and is also an enrichment stage
+(`--stages provenance --input <draft>`). The report mirrors the draft's
+own place under `content/drafts/`, the same rule `rendered/` and
+`dossiers/` follow (`config.mirrored_dir`).
 
 A **review aid, not a gate**, deliberately: matching is lexical, so it
 cannot tell "the source doesn't say this" from "the source says it in

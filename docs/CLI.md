@@ -8,6 +8,7 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Upgrading from 3.19.1 or earlier: provenance reports moved](#upgrading-from-3191-or-earlier-provenance-reports-moved)
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
 - [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
 - [Upgrading from 2.x](#upgrading-from-2x)
@@ -29,6 +30,36 @@ short path; this is the full set.
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Upgrading from 3.19.1 or earlier: provenance reports moved
+
+Since 3.19.2 a provenance report mirrors its draft's own place under
+`content/drafts/`, the same rule `content/rendered/` and
+`content/dossiers/` already followed. A draft at
+`content/drafts/<topic>/survey.md` now reports to
+`content/provenance/<topic>/survey.provenance.md` instead of
+`content/provenance/survey.provenance.md`.
+
+**If every draft sits directly in `content/drafts/`, nothing changed** --
+there is no path to mirror, and the report lands exactly where it always
+did.
+
+**If you use topic directories, re-run the command** and delete the old
+flat reports. This is not housekeeping: the reason for the change is that
+two drafts named `survey.md` in different topic directories used to write
+*one* file, so a flat report left behind now is either half-wrong or
+belongs to a draft you can no longer identify -- and its citekeys will
+look plausible for either, which is the failure this fixes. Nothing reads
+those files automatically, so an orphan is inert until a human opens it
+and believes it.
+
+```bash
+python3 -m src.citation_provenance content/drafts/<topic>/<slug>.md
+rm content/provenance/<slug>.provenance.md   # the old flat one
+```
+
+`content/provenance/` is regenerable output and gitignored, so re-running
+is the whole migration.
 
 ## Upgrading a corpus parsed by an earlier version
 
@@ -136,17 +167,25 @@ Using the wrong interpreter is the most likely first error you will hit:
 
 ## The full first run, step by step
 
+Every command this project exposes appears below at least once, in the
+order a first run reaches it. Flags are shown only where a first run
+would want one -- [Every command and flag](#every-command-and-flag) is
+the exhaustive reference, and each command's own section links from the
+table of contents.
+
 ```bash
 # 1. Export your reference manager's library to BibTeX at
 #    papers/bibliography.bib (create papers/ if needed -- it's gitignored,
 #    so a fresh clone never has it). Skipping this makes step 3 fail
 #    immediately with a FileNotFoundError telling you to do exactly this.
+#    Zotero specifics, including the attachment-path trap that silently
+#    leaves every entry without a PDF, are in ZOTERO.md.
 mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
 
 # 1b. Create your config from the tracked example. config.toml is
 #     gitignored per-host data, so a fresh clone has none, and
 #     src/config.py refuses to import without it (naming this exact
-#     command). Every key in it is optional -- see docs/CONFIG.md.
+#     command). Every key in it is optional -- see CONFIG.md.
 cp config.toml.example config.toml
 
 # 2. Install. scripts/install_full_pipeline.sh is the only install path;
@@ -156,31 +195,84 @@ cp config.toml.example config.toml
 pipx install poetry
 bash scripts/install_full_pipeline.sh os-deps      # root; pdftotext, Pandoc, TeX Live
 bash scripts/install_full_pipeline.sh python-deps  # .venv-full/ + the enrich group
-bash scripts/install_full_pipeline.sh dev-deps     # only to run the test suite
 
 # `all` is os-deps + python-deps in one call, and deliberately excludes
-# dev-deps:
+# dev-deps (which only the test suite needs -- see the last block below):
 # bash scripts/install_full_pipeline.sh all
 
-# 3. Sync the corpus layer from papers/bibliography.bib.
+# 3. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
+#    venv, and holds the write lock.
 .venv-full/bin/python -m src.sync
+# .venv-full/bin/python -m src.sync --reparse         # re-extract text even if the PDF is unchanged
+# .venv-full/bin/python -m src.sync --remove-stale    # only after reading the stale list it prints
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
 python3 -m src.ledger
+# python3 -m src.ledger --list
+# python3 -m src.ledger --status parse_failed
+# python3 -m src.ledger --citekey talasila_composable_2025
 
-# 5. In Claude Code, ask for a draft, e.g.:
+# 5. Optional, and only when you want it: the enrichment layer.
+#    Layout-aware parsing, semantic search and topic clustering over the
+#    whole corpus. Nothing below needs it, and no skill builds it for you
+#    -- RETRIEVAL.md says which stage is worth your time. Takes the same
+#    write lock as sync.
+.venv-full/bin/python scripts/enrich.py --stages docling,embed
+# .venv-full/bin/python scripts/enrich.py --stages docling --for-draft content/drafts/<slug>.md
+
+# 6. Search the corpus yourself, the same way a skill does. Read-only.
+#    `--log` takes the draft whose dossier records the call, so retrieval
+#    cost can be totalled later -- omit it for a one-off look.
+python3 -m src.retrieval search "digital twin composability" --k 15
+python3 -m src.retrieval evidence "calibration" --citekey talasila_composable_2025 \
+    --log content/drafts/<slug>.md
+
+# 7. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own citation_gate -> references -> render_output chain.
+# including its own citation_gate -> references -> render_output chain,
+# and writes a dossier beside the draft as it goes.
 
-# 6. Re-run any step of that chain by hand (no venv needed for these).
+# 8. Re-run any step of that chain by hand (no venv needed for these).
+#    All three read only under content/ -- a draft kept outside it is
+#    refused, so that one directory stays the whole record of the work.
 python3 -m src.citation_gate content/drafts/<slug>.md
-python3 -m src.references content/drafts/<slug>.md
-python3 -m src.render_output content/drafts/<slug>.md --format pdf
+python3 -m src.references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
+python3 -m src.render_output content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
+python3 -m src.render_output content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
+python3 -m src.render_output content/drafts/<slug>.md --format docx  #       --margin (--help for all)
+python3 -m src.render_output content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
+
+# 9. Read and maintain the draft's dossier -- what was kept, what was
+#    rejected and why, and whether the corpus has moved under it since.
+python3 -m src.dossier list
+python3 -m src.dossier brief content/drafts/<slug>.md
+python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+python3 -m src.dossier status --all --json
+python3 -m src.dossier export <slug>
+
+# 10. Check the draft against its sources. Review aids, not gates: none of
+#     these runs automatically, and none of them can block a draft.
+python3 -m src.citation_provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
+python3 scripts/verbatim_check.py overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
+python3 scripts/verbatim_check.py scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
+python3 scripts/verbatim_check.py locate <citekey> "a phrase to find"  # which pdf page a phrase is on
+python3 -m src.citation_coverage content/drafts/<slug>.md --query "digital twin composability"
+```
+
+Two commands are not part of a first run at all, and are listed here only
+so this walkthrough is complete. Both are for working *on* this
+repository rather than drafting with it:
+
+```bash
+bash scripts/install_full_pipeline.sh dev-deps   # pytest + pytest-cov, only to run the test suite
+.venv-full/bin/python -m pytest                  # the suite itself
+
+python3 scripts/release.py                       # bundles release/chitragupta-<version>.zip
 ```
 
 ## Every command and flag
@@ -542,12 +634,13 @@ This is the same mirroring rule `content/dossiers/` follows (see
 directory names a draft, its dossier and its renders together -- which
 is what lets `dossier export <topic> --with-rendered` find them. A flat
 `content/drafts/<slug>.md` renders to `content/rendered/<slug>.*`, as it
-always has, and an input outside `content/drafts/` altogether (the
-`path/to/draft.md` form above) has no path to mirror and lands flat too.
+always has, and an input under `content/` but outside `content/drafts/`
+(`content/loose.md`, say) has no path to mirror and lands flat too.
 
-**Reading is unrestricted; writing is confined to `content/`.** The
-input may be any file, in the tree or out of it -- reading one takes
-nothing out of `content/`. Every path this command *writes*, though,
+**Both reading and writing are confined to `content/`.** Since 3.17.0
+the input must resolve under the content directory -- a draft kept
+outside it is refused by name rather than rendered, so that one directory
+stays the whole record of the work. Every path this command *writes*,
 resolves inside `content/`: only the part of a draft's path below
 `content/drafts/` is ever carried over, and both sides are resolved
 before they are compared, so no argument -- a `..`, a symlinked draft --

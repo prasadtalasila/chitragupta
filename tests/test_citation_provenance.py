@@ -661,3 +661,61 @@ class TestEdgeShapes:
 
         assert len(report.findings) == 2
         assert calls == ["a_2024"], "second citation must reuse the cached passages"
+
+
+class TestReportPathMirrorsTheDraft:
+    """`content/drafts/<topic>/survey.md` must report to
+    `content/provenance/<topic>/survey.provenance.md`.
+
+    Before this, the report path was `PROVENANCE_DIR / f"{stem}.provenance.md"`
+    -- flat, keyed on the filename alone -- while `content/rendered/` and
+    `content/dossiers/` both mirrored the draft's path. Two drafts named
+    `survey.md` in different topic directories wrote the same file, and the
+    second silently destroyed the first. A wrong-but-plausible provenance
+    report is worse than a missing one: both drafts draw on the same corpus,
+    so the surviving file's citekeys look right for either.
+    """
+
+    def test_two_drafts_sharing_a_filename_write_separate_reports(self, isolated_config):
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        paths = {}
+        for topic in ("topic-a", "topic-b"):
+            draft = config.DRAFTS_DIR / topic / "survey.md"
+            draft.parent.mkdir(parents=True, exist_ok=True)
+            draft.write_text(f"The hysteresis band matters in {topic} [@a_2024].\n")
+            paths[topic] = cp.write_report(draft, ["md"])["md"]
+
+        assert paths["topic-a"] != paths["topic-b"], (
+            "both topics wrote the same provenance report; one silently "
+            "overwrote the other"
+        )
+        assert paths["topic-a"] == config.PROVENANCE_DIR / "topic-a" / "survey.provenance.md"
+        assert paths["topic-b"] == config.PROVENANCE_DIR / "topic-b" / "survey.provenance.md"
+        assert "topic-a" in paths["topic-a"].read_text()
+        assert "topic-b" in paths["topic-b"].read_text()
+
+    def test_a_flat_draft_keeps_the_path_it_always_had(self, isolated_config):
+        """The mirrored part is only what sits *below* `DRAFTS_DIR`, so a
+        draft directly in `content/drafts/` is unchanged by this -- which is
+        what keeps the fix from moving anyone's existing output."""
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("The hysteresis band matters [@a_2024].\n")
+
+        written = cp.write_report(draft, ["md"])
+
+        assert written["md"] == config.PROVENANCE_DIR / "survey.provenance.md"
+
+    def test_a_draft_outside_drafts_dir_has_no_path_to_mirror(self, isolated_config):
+        """Same fallback `render_output._output_dir` documents: nothing under
+        `DRAFTS_DIR` to be relative to, so the flat directory stands rather
+        than the command refusing a draft it is allowed to read."""
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        draft = config.CONTENT_DIR / "loose.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("The hysteresis band matters [@a_2024].\n")
+
+        written = cp.write_report(draft, ["md"])
+
+        assert written["md"] == config.PROVENANCE_DIR / "loose.provenance.md"

@@ -301,11 +301,13 @@ def _output_dir(input_path: Path) -> Path:
     `content/rendered/dt/survey.{md,tex,pdf,docx}`.
 
     **Every path this returns resolves inside `config.CONTENT_DIR`**,
-    which is the invariant the checks below exist for. Reading is
-    unrestricted -- README.md documents `render_output path/to/draft.md`
-    on a file that needn't be in the tree at all, and a read from
-    outside `content/` takes nothing out of it -- so it is only the
-    write side that is confined.
+    which is the invariant the checks below exist for. Since 3.17.0 the
+    read side is confined too, but not here: `render()` calls
+    `config.require_inside_content` on its input before this is ever
+    reached, so what arrives is already somewhere under `content/`. The
+    flat fallback below is therefore for a draft that is under `content/`
+    but not under `content/drafts/` -- `content/loose.md`, say -- not for
+    one "anywhere on disk", which no longer reaches this function.
 
     What that leaves:
 
@@ -326,13 +328,30 @@ def _output_dir(input_path: Path) -> Path:
         without that one image; here there is no correct output left to
         produce, so this says so instead.
 
-    This duplicates the rule `dossier.dossier_dir()` applies to
-    `content/dossiers/`, deliberately, rather than importing it: the
-    module docstring commits this file to stdlib plus
+    The rule itself is `config.mirrored_dir()`, shared with
+    `dossier.dossier_dir()` and `citation_provenance.write_report()`
+    rather than written out again here. It lives in `config` because this
+    module's docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python3`, and `src/dossier.py` is outside that set. The
-    two are kept in step by hand -- there is one rule, "mirror the
-    draft's path", and both places state it.
+    under bare `python3`, which rules out importing `src/dossier.py`.
+    What stays here is the *policy* -- fall back flat, and refuse to
+    write outside `content/` -- which is this module's to decide.
+
+    **Two mirror sources, not one.** A draft under `DRAFTS_DIR` is the
+    obvious one. The second is `PROVENANCE_DIR`, because
+    `citation_provenance` renders its report by handing *that* path to
+    `render()`: without it, a mirrored `provenance/<topic>/survey.provenance.md`
+    would still render flat, so two drafts named `survey.md` would stop
+    colliding on the report and go on colliding on its `.tex`/`.pdf`.
+
+    `PROVENANCE_DIR` is deliberately *not* in the escape check below,
+    which runs on every call. Rendering an ordinary draft has no stake in
+    where `content/provenance/` points, and adding it there would fail
+    that render over an unrelated directory. Nothing is lost by leaving
+    it out: the confinement invariant is carried by the check on
+    `mirrored` further down, which is computed from whichever source root
+    actually matched and is what a symlinked `PROVENANCE_DIR` would have
+    to get past.
     """
     for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
         if not config.resolves_inside(directory, config.CONTENT_DIR):
@@ -345,12 +364,13 @@ def _output_dir(input_path: Path) -> Path:
                 "[content].dir (config.toml) at wherever it really lives."
             )
 
-    try:
-        relative = input_path.resolve().relative_to(config.DRAFTS_DIR.resolve())
-    except ValueError:
+    for source_root in (config.DRAFTS_DIR, config.PROVENANCE_DIR):
+        mirrored = config.mirrored_dir(input_path, source_root, config.RENDERED_DIR)
+        if mirrored is not None:
+            break
+    else:
         return config.RENDERED_DIR
 
-    mirrored = config.RENDERED_DIR / relative.parent
     if not config.resolves_inside(mirrored, config.RENDERED_DIR):
         raise OutsideContentDir(
             f"{mirrored} resolves to {mirrored.resolve()}, outside "

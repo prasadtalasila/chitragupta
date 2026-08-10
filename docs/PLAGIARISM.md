@@ -278,9 +278,10 @@ the index doesn't already have.
 
 ## See also
 
-- [CLI.md](CLI.md) -- `overlap`/`scan` flags and usage. `scan` is also in
-  [README](../README.md)'s step-7 review-aid list and is offered by each
-  of the seven skills' own final-check steps.
+- [CLI.md](CLI.md) -- `overlap`/`scan` flags and usage, and the
+  review-aid step of [The full first run, step by
+  step](CLI.md#the-full-first-run-step-by-step). `scan` is also offered
+  by each of the seven skills' own final-check steps.
 - [LADDERS.md](LADDERS.md) -- *ladder*, *rung* and *tier* as this project
   uses them, and the other three tier sets these sit beside.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- `content/overlap/`'s place in the

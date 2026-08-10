@@ -292,12 +292,68 @@ class TestOutputDir:
         draft = isolated_config.DRAFTS_DIR / "survey.md"
         assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR
 
+    def test_a_provenance_report_mirrors_its_own_topic_directory(self, isolated_config):
+        """`citation_provenance` hands its report to `render()`, and the
+        report lives under `PROVENANCE_DIR`, not `DRAFTS_DIR`.
+
+        Mirroring only from `DRAFTS_DIR` would fix the report's own path
+        and leave its `.tex`/`.pdf` landing flat -- so two drafts named
+        `survey.md` would stop colliding on the report and go on colliding
+        on the renders of it. Both content subtrees that hold a mirrored
+        path are therefore mirror sources.
+        """
+        report = isolated_config.PROVENANCE_DIR / "dt" / "survey.provenance.md"
+        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR / "dt"
+
+    def test_a_flat_provenance_report_is_unchanged(self, isolated_config):
+        report = isolated_config.PROVENANCE_DIR / "survey.provenance.md"
+        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR
+
+    def test_an_escaping_provenance_dir_does_not_break_an_ordinary_render(
+        self, isolated_config, tmp_path
+    ):
+        """`content/provenance/` is a mirror *source*, but it is not part
+        of the escape check that runs on every call.
+
+        Regression: putting it there made
+        `render_output content/drafts/survey.md --format pdf` raise over a
+        directory that render never touches. A draft render has no stake
+        in where `content/provenance/` points.
+        """
+        isolated_config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        isolated_config.PROVENANCE_DIR.symlink_to(outside)
+
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+
+        assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR / "dt"
+
+    def test_a_report_under_an_escaping_provenance_dir_is_still_confined(
+        self, isolated_config, tmp_path
+    ):
+        """What the escape check above would have caught is caught anyway,
+        one step later: the mirrored path is checked against RENDERED_DIR
+        whichever source root it came from, so the write stays inside
+        content/ without the every-call precondition."""
+        isolated_config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        outside = tmp_path / "outside"
+        (outside / "topic").mkdir(parents=True)
+        isolated_config.PROVENANCE_DIR.symlink_to(outside)
+
+        report = isolated_config.PROVENANCE_DIR / "topic" / "survey.provenance.md"
+
+        # Mirrors from the escaped root, and lands inside rendered/ --
+        # which is the invariant, not that the source root was tidy.
+        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR / "topic"
+
     def test_a_draft_outside_the_drafts_directory_falls_back_to_flat(
         self, isolated_config, tmp_path
     ):
-        # README.md documents `render_output path/to/draft.md`, which
-        # need not be under content/drafts/ at all -- there is no path to
-        # mirror, so the flat directory stands.
+        # Since 3.17.0 `render()` confines its *input* to content/ too,
+        # so this is reachable only for a file under content/ but outside
+        # content/drafts/ -- there is no path to mirror, so the flat
+        # directory stands. Called directly here, below that check.
         assert render_output._output_dir(tmp_path / "elsewhere" / "draft.md") == (
             isolated_config.RENDERED_DIR
         )

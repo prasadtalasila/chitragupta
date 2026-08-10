@@ -119,19 +119,42 @@ def dossier_dir(draft: Path) -> Path:
     Raises rather than guessing if the draft isn't under
     `content/drafts/`: the mirroring rule is the only thing tying the two
     together, and a dossier written somewhere unmirrored would be found
-    by nothing later.
+    by nothing later. That refusal is this module's policy;
+    `config.mirrored_dir` holds only the shared rule, and answers `None`
+    so each caller can decide.
+
+    One shape difference from the other three consumers of that rule: a
+    dossier is a *directory per draft*, not per topic, so the draft's own
+    name is appended. `content/drafts/dt/survey.md` gets
+    `content/dossiers/dt/survey/`, which is what lets two drafts in one
+    topic directory keep separate dossiers.
     """
-    resolved = Path(draft).resolve()
-    drafts_dir = config.DRAFTS_DIR.resolve()
-    try:
-        relative = resolved.relative_to(drafts_dir)
-    except ValueError:
+    mirrored = config.mirrored_dir(draft, config.DRAFTS_DIR, config.DOSSIERS_DIR)
+    if mirrored is None:
         raise DossierError(
             f"{draft} is not under {config.DRAFTS_DIR}. A dossier mirrors its "
             "draft's path, so the draft has to live where the genre skills "
             "save it."
-        ) from None
-    return config.DOSSIERS_DIR / relative.with_suffix("")
+        )
+    target = mirrored / Path(draft).stem
+    # The draft's own path can't get out -- `mirrored_dir` resolves both
+    # sides before subtracting them, so no argument carries a `..` or a
+    # symlink's spelling past it. What can is the target side: a topic
+    # directory under content/dossiers/ that is itself a symlink out of
+    # the tree. `render_output._output_dir` and
+    # `citation_provenance.write_report` both check their own mirrored
+    # result for exactly this; this is the third consumer of that rule and
+    # was the one that didn't.
+    if not config.resolves_inside(target, config.DOSSIERS_DIR):
+        raise DossierError(
+            f"{target} resolves to {target.resolve()}, outside "
+            f"{config.DOSSIERS_DIR.resolve()}. A dossier is only useful where "
+            "the rest of the pipeline looks for it, and a copy of content/ is "
+            "meant to be the whole record of the work -- remove the symlink on "
+            "the topic directory, or point [content].dir (config.toml) at the "
+            "tree you are really working in."
+        )
+    return target
 
 
 def draft_name(draft: Path) -> str:
