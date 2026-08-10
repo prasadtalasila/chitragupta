@@ -857,3 +857,99 @@ class TestVerbatimScanEndToEnd:
         assert {f["citekey"] for f in _findings(result.stdout)} == {
             "dt_arch_2024", "cloud_infra_2023", "calib_2025"
         }
+
+
+class TestOneDraftsReviewArtefactsLandTogether:
+    """The property #121 exists to provide: a draft, and the evidence
+    behind it, findable from the draft's own path.
+
+    Every other test in the review layer checks one command. This checks
+    the thing none of them can -- that all three, run independently and
+    knowing nothing about each other, converge on one directory. Getting
+    that wrong is not a crash; it is three reports scattered across two
+    directories with nothing complaining, which is exactly what the layer
+    was introduced to stop.
+
+    No `skipif`: the `.md` half of every report is stdlib-only, and the
+    formats are pinned to `md` so a host without pandoc runs the same
+    assertions as one with it.
+    """
+
+    def _draft(self, isolated_config):
+        _add_scan_paper("dt_arch_2024", _scan_source_text(
+            "Front matter and abstract.",
+            "A digital twin architecture couples a physical asset to its model.",
+        ))
+        draft = content_draft(isolated_config, "drafts/dt/survey.md")
+        draft.write_text(
+            "# Survey\n\n"
+            "A digital twin architecture couples a physical asset to its "
+            "model [@dt_arch_2024].\n"
+        )
+        return draft
+
+    def test_all_three_reports_share_one_mirrored_directory(self, isolated_config, capsys):
+        import scripts.verbatim_check as vc
+        from src import citation_coverage, citation_provenance
+
+        draft = self._draft(isolated_config)
+
+        citation_provenance.write_report(draft, ["md"])
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+        citation_coverage.main([str(draft), "--query", "digital twin", "--write",
+                                "--formats", "md"])
+
+        review_dir = config.REVIEW_DIR / "dt"
+        assert sorted(p.name for p in review_dir.iterdir()) == [
+            "survey.coverage.md", "survey.provenance.md", "survey.verbatim.md"
+        ]
+
+    def test_nothing_lands_in_the_drafting_layers_output(self, isolated_config, capsys):
+        """A review artefact in `content/rendered/` is the layer smear
+        this issue removed -- 3.19.2 rendered a report's `.tex`/`.pdf`
+        there, because `render()` had no way to be told otherwise."""
+        from src import citation_provenance
+
+        draft = self._draft(isolated_config)
+        citation_provenance.write_report(draft, ["md"])
+
+        assert not list(config.RENDERED_DIR.rglob("*provenance*")), (
+            "a review artefact reached content/rendered/"
+        )
+
+    def test_every_report_says_it_is_not_a_verdict(self, isolated_config, capsys):
+        """The banner has to be in the file, not only in the docs: a
+        report found on disk months later is the case the docs can't
+        reach."""
+        import scripts.verbatim_check as vc
+        from src import citation_coverage, citation_provenance
+
+        draft = self._draft(isolated_config)
+        citation_provenance.write_report(draft, ["md"])
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+        citation_coverage.main([str(draft), "--query", "digital twin", "--write",
+                                "--formats", "md"])
+
+        for report in (config.REVIEW_DIR / "dt").iterdir():
+            assert "Review aid, not a gate" in report.read_text(), report.name
+
+    def test_the_bundle_carries_them_and_restores_them(self, isolated_config, tmp_path, capsys):
+        """`dossier export` is the tool the findability property is *for*
+        -- #114's own rationale for confining everything to `content/`."""
+        import scripts.verbatim_check as vc
+        from src import citation_provenance
+
+        draft = self._draft(isolated_config)
+        dossier.init(draft, "survey")
+        citation_provenance.write_report(draft, ["md"])
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        out, _ = dossier.export([], tmp_path / "bundle.tar.gz")
+        shutil.rmtree(config.REVIEW_DIR)
+
+        plan = dossier.restore(out, force=True)
+
+        assert plan.performed
+        assert sorted(p.name for p in (config.REVIEW_DIR / "dt").iterdir()) == [
+            "survey.provenance.md", "survey.verbatim.md"
+        ]

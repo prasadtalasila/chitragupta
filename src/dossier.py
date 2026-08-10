@@ -81,7 +81,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from src import citation_gate, config
+from src import citation_gate, config, review
 
 # The files a dossier holds, in the order `init` writes them and `status`
 # reports them. The value is how `status` counts entries in that file --
@@ -99,9 +99,14 @@ FILES: dict[str, str] = {
 # Top-level directories a bundle may contain, and the only ones `restore`
 # will unpack. A whitelist rather than a blocklist: an archive member
 # naming anything else is refused outright, so a hand-edited or
-# hostile tarball cannot write outside the three directories this
-# module owns.
-ARCHIVE_ROOTS = ("drafts", "dossiers", "rendered")
+# hostile tarball cannot write outside the directories this module owns.
+#
+# Every root `bundle_members` can emit has to be here, or `export` and
+# `restore` stop being a round trip -- and because `_checked_members`
+# refuses the *whole* archive rather than skipping a member, the failure
+# would be a bundle that cannot be restored at all rather than one
+# missing a file.
+ARCHIVE_ROOTS = ("drafts", "dossiers", "rendered", "review")
 
 
 class DossierError(Exception):
@@ -1507,6 +1512,20 @@ def _matches(relative: PurePosixPath, names: list[str]) -> bool:
     )
 
 
+def _strip_aid_suffix(relative: PurePosixPath) -> PurePosixPath:
+    """`survey.provenance.md` -> `survey`, for matching a review report
+    against the draft it belongs to.
+
+    Drops the format suffix, then the aid suffix -- and only if it really
+    is one of `review.AIDS`, so a draft named `survey.v2.md` keeps its
+    `.v2` and its reports go on matching `topic/survey.v2`.
+    """
+    stem = relative.with_suffix("")
+    if stem.suffix.lstrip(".") in review.AIDS:
+        return stem.with_suffix("")
+    return stem
+
+
 def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, str]]:
     """(file on disk, name inside the archive) for everything to back up.
 
@@ -1542,12 +1561,14 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
             # to the draft named `topic/survey`. A review report mirrors
             # the draft's path exactly, so it needs no such adjustment --
             # but its own name carries the aid (`survey.provenance.md`),
-            # so strip that too before matching against a draft named
-            # `topic/survey`.
+            # so strip exactly that before matching against a draft named
+            # `topic/survey`. Exactly that, not "two suffixes": a draft
+            # named `survey.v2.md` would otherwise have its reports
+            # double-stripped to `survey` and stop matching the draft.
             if label == "dossiers":
                 match_against = relative.parent
             elif label == "review":
-                match_against = relative.with_suffix("").with_suffix("")
+                match_against = _strip_aid_suffix(relative)
             else:
                 match_against = relative
             if _matches(match_against, names):
