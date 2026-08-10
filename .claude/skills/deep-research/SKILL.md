@@ -489,7 +489,24 @@ a rendering failure never blocks presenting the `.md` report.
   prose and has nowhere else to live; a revision that doesn't know about
   it will undo it.
 
-**(f) Present.** Give the user: headline finding, the single most
+**(f) Offer the verbatim scan.** Before presenting, offer this -- don't
+run it silently, and never make it a condition of presenting:
+
+```bash
+python3 scripts/verbatim_check.py scan content/drafts/deep-research-<slug>.md
+```
+
+It reports wording the report shares with **any** parsed source, cited or
+not. This genre earns the check more than most: a dozen subagents wrote
+sections independently, so no single context ever saw the whole report,
+and the synthesis prose stitching their sections together cites nothing
+at all -- exactly the text no per-citekey check can see. A review aid,
+not a gate: it exits 0 either way and cannot block the report. Say what
+it misses when you offer it -- it sees verbatim and near-verbatim reuse
+only, and **paraphrase is not detected**, so a clean scan is not a clean
+bill of health (`docs/PLAGIARISM.md`).
+
+**(g) Present.** Give the user: headline finding, the single most
 important contradiction, the actionable insight, the overall grade, any
 unresolved peer-review concern left in the scorecard, the citekey count,
 the saved path, and the render outcome (paths to the `.tex`/`.pdf` if they

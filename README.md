@@ -177,6 +177,7 @@ python3 -m src.render_output content/drafts/<slug>.md --format md      # numbere
 #    these runs automatically, and none of them can block a draft.
 python3 -m src.citation_provenance path/to/draft.md                  # what in each source supports the claim citing it
 python3 scripts/verbatim_check.py overlap path/to/draft.md <citekey> # wording shared with that source
+python3 scripts/verbatim_check.py scan path/to/draft.md              # everything the draft shares with *any* parsed source, cited or not
 python3 -m src.citation_coverage path/to/draft.md --query "..."      # retrieval found it -- did the draft cite it?
 
 # 8. Optional, and only when you want it: the enrichment layer. Layout-aware
@@ -185,6 +186,19 @@ python3 -m src.citation_coverage path/to/draft.md --query "..."      # retrieval
 #    docs/RETRIEVAL.md for which stage is worth your time.
 .venv-full/bin/python scripts/enrich.py --stages docling,embed
 ```
+
+One thing to know before reading a `scan` result, because the natural
+reading of it is wrong. `scan` is the **exact tier** of a planned
+three-tier detection stack: it matches word n-grams, so it sees verbatim
+and lightly-edited reuse and nothing else. The drafts this pipeline
+produces are LLM-written, and literal paraphrase -- the same sentence
+with a synonym swapped every few words -- is an LLM's normal failure mode
+when it drifts too close to a source. That mode is invisible to an exact
+match *by construction*. So a clean `scan` means "no exact or near-exact
+copying found", never "no borrowed wording found". What the other two
+tiers would add, and why they aren't built yet, is in
+[docs/PLAGIARISM.md](docs/PLAGIARISM.md) and
+[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115).
 
 Exporting from Zotero in detail, including the attachment-path trap that
 silently leaves every entry without a PDF, is in

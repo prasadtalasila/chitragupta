@@ -1,4 +1,4 @@
-# The pipeline, its ladders, and its tiers
+# The pipeline, its ladders, its tiers, and its one stack
 
 Status: **reference.** Written 2026-08-06.
 
@@ -12,6 +12,11 @@ Three you pick yourself, in a config file or on a command line. Telling
 those two apart is the whole point of the page, because they fail
 differently: the first kind degrades quietly and you may not notice for
 weeks, the second kind stops and names what is missing.
+
+There is also one place where the same question has more than one answer
+and *nothing* picks, because all of them are meant to run. That is a
+third shape with a third failure mode, and it gets its own section
+below.
 
 Read [docs/ARCHITECTURE.md](ARCHITECTURE.md) first if you want to know
 *what the parts are*, and [docs/DIAGRAMS.md](DIAGRAMS.md) if you want to
@@ -31,13 +36,14 @@ between?
   - [1. Parser backend](#tier-1-parser-backend)
   - [2. Interpreter](#tier-2-interpreter)
   - [3. Render format](#tier-3-render-format)
+- [The one stack](#the-one-stack)
 - [What is deliberately not a ladder](#what-is-deliberately-not-a-ladder)
 - [The mapping](#the-mapping)
 
 ## The terms
 
-Seven words, used precisely throughout this repository. The first four
-describe the shape of the system; the last three describe how it decides.
+Eight words, used precisely throughout this repository. The first four
+describe the shape of the system; the last four describe how it decides.
 
 **Pipeline.** Everything from a BibTeX export to a rendered document. Not
 a single process: it is three layers that run at different times, on
@@ -74,13 +80,33 @@ always means *most faithful to the source*, never fastest.
 you picked is unavailable, the pipeline says so and stops that piece of
 work. It does not quietly substitute a neighbour.
 
-The distinction between the last two is the one worth holding on to:
+**Stack.** Every available option runs, and their results are combined.
+Nothing is chosen and nothing descends -- the options are not rivals
+answering one question with differing fidelity, they each answer a
+*different part* of the question, and you want all the answers. A stack
+fails by being **silently incomplete**: an option that has not been built
+yet, or is not installed, simply contributes nothing, and the combined
+result looks exactly like a complete one.
+
+The distinction between the last three is the one worth holding on to:
 
 > A **ladder** answers "this is the best I could do." A **tier** answers
-> "you asked for something this host cannot give you."
+> "you asked for something this host cannot give you." A **stack**
+> answers "here is everything I currently know how to look for" -- and
+> does not say what it doesn't.
+
+One collision to name, because both senses are live in this repository
+and both are correct. A **tier set** -- the three sections below -- is
+*exclusive*: you pick one option and the others don't happen. A stack's
+members are also called **tiers** (`scan` labels every finding
+`tier: "exact"`, and [discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
+names a three-tier detection stack), but those are *cumulative*: all of
+them run. Where a sentence could be read either way, write **tier set**
+or **detection tier** rather than a bare "tier".
 
 Drawn side by side, because the shapes are what separate them -- one
-descends on its own, the other doesn't descend at all:
+descends on its own, one doesn't descend at all, and one never had a
+choice to make:
 
 ```mermaid
 flowchart TB
@@ -100,7 +126,7 @@ flowchart TB
     L3 --> LA
   end
 
-  subgraph TIE["<b>TIER</b> — you choose, and nothing descends"]
+  subgraph TIE["<b>TIER SET</b> — you choose, and nothing descends"]
     direction TB
     TQ(["a menu<br/><small>a <code>config.toml</code> key, or a flag you type</small>"])
     T1["option A"]
@@ -115,25 +141,43 @@ flowchart TB
     T2 -- "unavailable" --> TNO
   end
 
+  subgraph STK["<b>STACK</b> — nobody chooses, everything runs"]
+    direction TB
+    SQ(["a question with several <i>parts</i><br/><small>“what wording here isn't the author's?”</small>"])
+    S1["<b>tier 1</b><br/><small>built</small>"]
+    S2["<b>tier 2</b><br/><small>not built yet</small>"]
+    S3["<b>tier 3</b><br/><small>needs an optional layer</small>"]
+    SA(["<b>the union of what ran</b><br/><small>each result labelled with the tier that found it</small>"])
+    SNO(["<b>silently incomplete</b><br/><small>an absent tier contributes nothing,<br/>and nothing says so</small>"])
+    SQ --> S1 & S2 & S3
+    S1 --> SA
+    S2 -.-> SNO
+    S3 -.-> SNO
+    SNO -.-> SA
+  end
+
   classDef q fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef rung fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
   classDef good fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#052e16
   classDef stop fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#450a0a
   classDef dim fill:#f8fafc,stroke:#94a3b8,stroke-dasharray:4 3,color:#0f172a
 
-  class LQ,TQ q
-  class L1,L2,L3,T2 rung
-  class LA,TOK good
-  class TNO stop
-  class T1,T3 dim
+  class LQ,TQ,SQ q
+  class L1,L2,L3,T2,S1 rung
+  class LA,TOK,SA good
+  class TNO,SNO stop
+  class T1,T3,S2,S3 dim
 ```
 
-The asymmetry in those two shapes is the whole reason to name them apart.
-A ladder always reaches an answer, so its worst rung is silent -- the
-output still looks like output, and nothing in the run says which rung
-produced it. A tier can only give you what you asked for or nothing, so
-its failure is loud and self-describing. Everything below is one or the
-other.
+The asymmetry in those three shapes is the whole reason to name them
+apart. A ladder always reaches an answer, so its worst rung is silent --
+the output still looks like output, and nothing in the run says which
+rung produced it. A tier set can only give you what you asked for or
+nothing, so its failure is loud and self-describing. A stack is the
+quietest of the three: it doesn't degrade an answer, it just returns
+fewer of them, and a caller who doesn't already know which tiers exist
+cannot tell a thorough result from a thin one. Everything below is one
+of the three.
 
 A ladder that silently reaches its worst rung is the failure mode this
 repository worries about most, because the output still looks like output.
@@ -440,6 +484,50 @@ through `getattr` and never imports the library. See
 traceback, and never silently downgraded to a format that would have
 worked. A `.pdf` you asked for and did not get is a fact you need to see.
 
+## The one stack
+
+### Detection tiers: verbatim and paraphrase reuse
+
+**The question:** which wording in this draft belongs to someone else?
+
+**Where:** [`scripts/verbatim_check.py`](https://github.com/prasadtalasila/chitragupta/blob/main/scripts/verbatim_check.py)'s
+`scan` mode, over the index in
+[`src/overlap_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/overlap_index.py).
+[docs/PLAGIARISM.md](PLAGIARISM.md) is the full treatment; this entry is
+only about the *shape*.
+
+| # | Detection tier | State | Deterministic? |
+|---|---|---|---|
+| 1 | exact word-8-gram runs, gap-tolerant merge | **built** (#110, #111) | yes |
+| 2 | stemmed odd/even skip-grams -- light paraphrase | proposed, not built | yes |
+| 3 | embedding k-NN against `content/chroma/` -- literal paraphrase | proposed, not built | no -- advisory only |
+
+These are not rungs: tier 2 is not a worse answer to tier 1's question,
+it is the answer to a different one, and finding an exact run tells you
+nothing about whether a paraphrased one is also there. They are not a
+tier set either: there is no flag that picks one. When 2 and 3 exist,
+all three run and every finding carries the tier that produced it --
+which is what `scan`'s `tier: "exact"` field is for, today, with one
+value.
+
+**What the missing tiers cost you.** The drafts this pipeline produces
+are LLM-written, and literal paraphrase is an LLM's normal failure mode
+when it drifts too close to a source -- so the *dominant* reuse mode is
+the one tier 1 cannot see by construction. A clean `scan` means "no
+exact or near-exact copying found". It does not mean "no borrowed
+wording", and read as though it did it is worse than not running the
+check, because it converts an open question into a false all-clear.
+This is the silent-incompleteness failure in its sharpest form, and it
+is why both [README](../README.md)'s step-7 block and
+[CLI.md](CLI.md#scriptsverbatim_checkpy)'s `scan` entry carry the caveat
+in the same breath as the command.
+
+**Why it is in no table below.** §[The mapping](#the-mapping)'s columns
+are "Decided" and "Selects", and a stack answers neither: nothing is
+decided and nothing is selected. The count in this page's opening stays
+at six for the same reason -- six places where something picks, and this
+is not one of them.
+
 ## What is deliberately not a ladder
 
 Naming three ladders implies the rest of the pipeline doesn't fall back,
@@ -565,5 +653,7 @@ rather than interleaving writes to `content/`.
 - [docs/CONFIG.md](CONFIG.md) -- every setting these tiers read
 - [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md) -- what ladder 1
   is ultimately for
+- [docs/PLAGIARISM.md](PLAGIARISM.md) -- the detection stack in full: what
+  tier 1 catches, what it cannot, and the literature behind tiers 2 and 3
 - [docs/PDF-PARSER.md](PDF-PARSER.md) -- how the parser tier was chosen
 - [docs/PERFORMANCE.md](PERFORMANCE.md) -- what each of these costs

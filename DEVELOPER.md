@@ -252,7 +252,7 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           pages -> pdftotext) and whether it may be quoted -- shared by the consumers
                           that need to point at part of a source rather than all of it
   overlap_index.py          disk-cached word n-gram fingerprint index (content/overlap/) for
-                          scripts/verbatim_check.py's overlap mode -- one .fpr file per citekey plus
+                          scripts/verbatim_check.py's overlap and scan modes -- one .fpr file per citekey plus
                           a merged, binary-searchable corpus-wide index.bin, both keyed by
                           (pdf_hash, parsed-file stat) so a re-run over an unchanged corpus costs no
                           re-fingerprinting. Read-only over the corpus layer, no writer lock
@@ -278,7 +278,8 @@ src/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetr
 scripts/
   install_full_pipeline.sh  single staged install path (os-deps/python-deps/dev-deps/all) for host + Docker
   enrich.py                 orchestrates src/enrich/* stages -- the enrichment layer's entry point
-  verbatim_check.py          ad-hoc review aid: verbatim-overlap and page-locating checks against sources
+  verbatim_check.py          ad-hoc review aid: per-citekey overlap, whole-draft x whole-corpus scan, and
+                          page-locating checks against sources
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)

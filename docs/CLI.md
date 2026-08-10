@@ -707,9 +707,9 @@ arguments to print its usage.
 
 [PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
 section: what `overlap`/`scan` catch and don't (verbatim only --
-paraphrase is a later, unbuilt tier), the fingerprinting technique and
-its literature sources, and a measured `docling`-vs-`pdftotext` backend
-comparison.
+paraphrase is a later, unbuilt detection tier), the fingerprinting
+technique and its literature sources, and a measured
+`docling`-vs-`pdftotext` backend comparison.
 
 | Subcommand | Arguments | What it does |
 |---|---|---|
@@ -724,6 +724,34 @@ python3 scripts/verbatim_check.py scan content/drafts/survey.md
 # python3 scripts/verbatim_check.py scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
 # python3 scripts/verbatim_check.py locate talasila_composable_2025 "a digital twin is"
 ```
+
+**What `scan` does not see, and why that matters more than it sounds.**
+`scan` is the **exact tier** of a three-tier detection stack, and the
+other two tiers are not built. It matches word n-grams, so literal
+paraphrase -- the same sentence skeleton with a synonym swapped every few
+words -- is invisible to it *by construction*, not by omission. Because
+the drafts this pipeline produces are LLM-written, and that is an LLM's
+normal failure mode when it drifts too close to a source, the reuse mode
+`scan` cannot see is the dominant one. Read a clean run as "no exact or
+near-exact copying found", never "no borrowed wording found". A stack
+fails by being silently incomplete, so nothing in the output will tell
+you this -- see [PLAGIARISM.md](PLAGIARISM.md),
+[LADDERS.md](LADDERS.md#the-one-stack) for the vocabulary, and
+[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
+for the three-tier plan.
+
+**The disk cache, and what the first run costs.** `scan` builds a
+corpus-wide index the first time it runs -- `content/overlap/index.bin`
+plus an `index.json` header -- merged from the per-document fingerprints
+in `content/overlap/docs/<citekey>.fpr`. That first build is the only
+slow part (~27s over this project's 497-document corpus); every later
+scan over an unchanged corpus reloads the merged index and is
+sub-second. The header key covers the n-gram size, the tokenizer version
+and the sorted `(citekey, pdf_hash)` pairs, so a `sync` that changes one
+PDF re-fingerprints that one document and re-merges, rather than
+rebuilding from scratch. The whole directory is a cache, not an output:
+delete it and the next run rebuilds whatever it needs. See
+[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
 `scan` groups a match's `(citekey, page, diagonal)` -- the source position
 minus the draft position, held constant across a run -- and merges runs on

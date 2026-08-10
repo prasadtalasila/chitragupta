@@ -119,6 +119,17 @@ turn a wide pass into the re-run this skill exists to avoid.
   was wide and why.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m src.citation_gate`.
+- **Offer the verbatim scan** -- `python3 scripts/verbatim_check.py scan
+  content/drafts/<path>` -- before presenting. Don't run it silently and
+  never make it a condition of presenting. It reports wording the draft
+  shares with **any** parsed source, cited or not, which earns its place
+  after a wide pass in particular: this skill re-reads the whole corpus
+  and rewrites against sources the draft may never have cited, so it is
+  the pass most able to import someone else's phrasing into a paragraph
+  that credits no one. A review aid, not a gate: it exits 0 either way.
+  Say what it misses when you offer it -- verbatim and near-verbatim
+  reuse only, and **paraphrase is not detected**, so a clean scan is not
+  a clean bill of health (`docs/PLAGIARISM.md`).
 
 ## Guardrails
 
