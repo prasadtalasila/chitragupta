@@ -703,6 +703,17 @@ class TestScanWrite:
         text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
         assert "No verbatim run" in text
 
+    def test_limit_is_recorded_in_the_command_line(self, ledger_con, isolated_config, tmp_path, capsys):
+        """The header has to reproduce the invocation exactly: a report
+        capped at one finding reads very differently from an uncapped
+        one, and the difference is invisible without the flag."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), limit=1, write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert "--limit 1" in text
+
     def test_two_runs_over_unchanged_input_are_byte_identical(
         self, ledger_con, isolated_config, tmp_path, capsys
     ):
@@ -774,6 +785,19 @@ class TestCliDispatch:
         )
         assert result.returncode == 0
         assert "no verbatim run" in result.stdout
+
+    def test_locate_needs_no_draft_and_so_skips_the_draft_check(self, tmp_path):
+        """`locate` takes a citekey and phrases, not a draft -- so it
+        returns before `require_reviewable`, which has nothing to check."""
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "locate",
+             "nonexistent_key_2024", "a phrase"],
+            cwd=str(repo_root), capture_output=True, text=True,
+            env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
+        )
+        assert result.returncode == 0, result.stderr
+        assert "nonexistent_key_2024" in result.stdout
 
     def test_a_draft_outside_the_content_dir_is_refused(self, tmp_path):
         """The review layer's input rule, which this command did not

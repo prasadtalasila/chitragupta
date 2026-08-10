@@ -477,6 +477,25 @@ class TestExport:
 
         assert names == {"drafts/survey.v2.md", "review/survey.v2.provenance.md"}
 
+    def test_a_file_in_review_that_is_not_a_report_is_still_matched_by_topic(
+        self, draft, isolated_config
+    ):
+        """Not everything under `content/review/` is `<stem>.<aid>.<ext>`.
+        `render_output._copy_local_images` copies a report's images in
+        beside it, so the aid-suffix strip has to leave a name it does not
+        recognise alone rather than mangling it -- the file is still that
+        topic's, and a bundle that dropped it would leave a `.tex` that no
+        longer compiles."""
+        directory = self._review_reports()
+        (directory / "figure.png").write_bytes(b"\x89PNG")
+
+        names = {
+            name
+            for _, name in dossier.bundle_members(["dt-for-engineers"], with_rendered=True)
+        }
+
+        assert "review/dt-for-engineers/figure.png" in names
+
     def test_a_name_selects_one_drafts_reports(self, draft, isolated_config):
         """A report's name carries the aid as well as the draft's stem
         (`survey.provenance.md`), so matching has to strip both suffixes

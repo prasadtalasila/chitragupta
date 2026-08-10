@@ -171,6 +171,58 @@ class TestWrite:
         assert "--query 'digital twin' --query composability" in text
         assert "--k 3" in text
 
+    def test_no_candidates_says_so_rather_than_reporting_zero_percent(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """An empty ledger means nothing was retrieved, which is not the
+        same finding as "0% of what was retrieved is cited" -- the report
+        must not let those read alike."""
+        draft = _draft("[@a2024]\n")
+
+        citation_coverage.main([str(draft), "--query", "nothing matches this",
+                                "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "No candidates found for any query" in text
+        assert "%" not in text.split("## Coverage")[1]
+
+    def test_uncited_candidates_are_listed_with_their_titles(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """The whole point of the report: a source retrieval surfaced and
+        the draft never cited. A bare citekey would make the reader look
+        each one up."""
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft("Cites nothing from the corpus.\n")
+
+        citation_coverage.main([str(draft), "--query", "digital twin composability",
+                                "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "### Retrieved but not cited" in text
+        assert "`a2024` -- Digital Twin Composability" in text
+
+    def test_a_citekey_cited_but_not_surfaced_is_listed_as_not_a_gap(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """Listed so the report cannot be misread as a complete picture
+        of the draft's sources -- and labelled so it is not misread as a
+        finding either."""
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="a2024", title="Digital Twin Composability"))
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="b2023", title="Unrelated Runtime Verification"))
+        draft = _draft("Cites both [@a2024] [@b2023].\n")
+
+        citation_coverage.main([str(draft), "--query", "digital twin composability",
+                                "--k", "1", "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "### Cited but not surfaced by these queries" in text
+        assert "Not necessarily a problem" in text
+        assert "`b2023`" in text
+
     def test_two_runs_over_unchanged_input_are_byte_identical(
         self, ledger_con, isolated_config, capsys
     ):
