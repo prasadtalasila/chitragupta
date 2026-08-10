@@ -747,9 +747,13 @@ in `content/overlap/docs/<citekey>.fpr`. That first build is the only
 slow part (~27s over this project's 497-document corpus); every later
 scan over an unchanged corpus reloads the merged index and is
 sub-second. The header key covers the n-gram size, the tokenizer version
-and the sorted `(citekey, pdf_hash)` pairs, so a `sync` that changes one
-PDF re-fingerprints that one document and re-merges, rather than
-rebuilding from scratch. The whole directory is a cache, not an output:
+and, per document, its `pdf_hash` *together with the parsed file's own
+size and mtime* -- so a `sync` that changes one PDF re-fingerprints that
+one document and re-merges, rather than rebuilding from scratch. Both
+halves of that per-document key earn their place: re-parsing the corpus
+under a different `[parser].backend` rewrites the text without touching
+the PDF, and the parsed-file stat is the only part that notices. The
+whole directory is a cache, not an output:
 delete it and the next run rebuilds whatever it needs. See
 [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
