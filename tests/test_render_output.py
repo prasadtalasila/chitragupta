@@ -292,6 +292,23 @@ class TestOutputDir:
         draft = isolated_config.DRAFTS_DIR / "survey.md"
         assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR
 
+    def test_a_provenance_report_mirrors_its_own_topic_directory(self, isolated_config):
+        """`citation_provenance` hands its report to `render()`, and the
+        report lives under `PROVENANCE_DIR`, not `DRAFTS_DIR`.
+
+        Mirroring only from `DRAFTS_DIR` would fix the report's own path
+        and leave its `.tex`/`.pdf` landing flat -- so two drafts named
+        `survey.md` would stop colliding on the report and go on colliding
+        on the renders of it. Both content subtrees that hold a mirrored
+        path are therefore mirror sources.
+        """
+        report = isolated_config.PROVENANCE_DIR / "dt" / "survey.provenance.md"
+        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR / "dt"
+
+    def test_a_flat_provenance_report_is_unchanged(self, isolated_config):
+        report = isolated_config.PROVENANCE_DIR / "survey.provenance.md"
+        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR
+
     def test_a_draft_outside_the_drafts_directory_falls_back_to_flat(
         self, isolated_config, tmp_path
     ):

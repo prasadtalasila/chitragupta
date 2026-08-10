@@ -389,6 +389,17 @@ here.
 
 ## The three tiers
 
+Three here, four in
+[ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)'s tier-set table,
+and both are right. The fourth is the **detection tiers** behind
+`scripts/verbatim_check.py`'s `scan`, and it has no section here because
+this page's question -- *where does the pipeline choose, and what does it
+choose between?* -- has no answer for it: nothing picks a detection tier,
+every built one runs, and the findings are unioned. It is a tier set only
+in the sense the table's third column asks about, namely what happens
+when an option is unavailable. [PLAGIARISM.md](PLAGIARISM.md) treats it
+in full.
+
 ### Tier 1: Parser backend
 
 **Set by:** `[parser].backend` in `config.toml`, or the `PARSER` env var.

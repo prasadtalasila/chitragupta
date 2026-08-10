@@ -427,6 +427,47 @@ def resolves_inside(path: Path, root: Path) -> bool:
     return Path(path).resolve().is_relative_to(Path(root).resolve())
 
 
+def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | None":
+    """`target_root` carrying `path`'s own place under `source_root`.
+
+    The one rule four directories under `content/` obey: a draft at
+    `content/drafts/<topic>/survey.md` has its renders at
+    `content/rendered/<topic>/`, its dossier at
+    `content/dossiers/<topic>/survey/`, and its provenance report at
+    `content/provenance/<topic>/`. One topic directory, one draft's worth
+    of everything.
+
+    Returns `None` when `path` is not under `source_root`, because the
+    two callers disagree about what that means and both are right:
+    `render_output._output_dir` and `citation_provenance.write_report`
+    fall back to the flat target directory (they are allowed to read a
+    draft from anywhere, and refusing to write output for one would be a
+    worse answer than writing it flat), while `dossier.dossier_dir`
+    raises (a dossier written somewhere unmirrored would be found by
+    nothing later). Policy stays with the caller; only the rule lives
+    here.
+
+    Only the part of `path` *below* `source_root` is ever carried over,
+    and both sides are resolved before being compared, so the result can
+    hold neither a `..` nor a symlink's spelling. It is still the
+    caller's job to check the result resolves inside `target_root`:
+    `source_root` and `target_root` are configuration, and a symlinked
+    one can land outside without any argument being at fault.
+
+    Lives here rather than in either caller because `src/render_output.py`
+    is committed to stdlib plus `config`/`citation_gate`/`references` so a
+    genre skill can render under bare `python3` -- it cannot import
+    `src/dossier.py`, and before this the rule was written out three times
+    and missed in a fourth place (`citation_provenance`), which is how
+    two drafts named `survey.md` came to share one report.
+    """
+    try:
+        relative = Path(path).resolve().relative_to(Path(source_root).resolve())
+    except ValueError:
+        return None
+    return Path(target_root) / relative.parent
+
+
 def require_inside_content(path: Path, what: str = "draft") -> Path:
     """Returns `path`, having refused it if it resolves outside CONTENT_DIR."""
     if not resolves_inside(path, CONTENT_DIR):

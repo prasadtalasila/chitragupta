@@ -119,19 +119,24 @@ def dossier_dir(draft: Path) -> Path:
     Raises rather than guessing if the draft isn't under
     `content/drafts/`: the mirroring rule is the only thing tying the two
     together, and a dossier written somewhere unmirrored would be found
-    by nothing later.
+    by nothing later. That refusal is this module's policy;
+    `config.mirrored_dir` holds only the shared rule, and answers `None`
+    so each caller can decide.
+
+    One shape difference from the other three consumers of that rule: a
+    dossier is a *directory per draft*, not per topic, so the draft's own
+    name is appended. `content/drafts/dt/survey.md` gets
+    `content/dossiers/dt/survey/`, which is what lets two drafts in one
+    topic directory keep separate dossiers.
     """
-    resolved = Path(draft).resolve()
-    drafts_dir = config.DRAFTS_DIR.resolve()
-    try:
-        relative = resolved.relative_to(drafts_dir)
-    except ValueError:
+    mirrored = config.mirrored_dir(draft, config.DRAFTS_DIR, config.DOSSIERS_DIR)
+    if mirrored is None:
         raise DossierError(
             f"{draft} is not under {config.DRAFTS_DIR}. A dossier mirrors its "
             "draft's path, so the draft has to live where the genre skills "
             "save it."
-        ) from None
-    return config.DOSSIERS_DIR / relative.with_suffix("")
+        )
+    return mirrored / Path(draft).stem
 
 
 def draft_name(draft: Path) -> str:

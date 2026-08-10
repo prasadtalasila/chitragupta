@@ -143,7 +143,8 @@ bash scripts/install_full_pipeline.sh all
 #    later drops out of the bib file (a paper removed from your reference
 #    manager) is only *reported* by default; re-run with --remove-stale
 #    to actually delete its ledger row once you've reviewed the reported
-#    list (see "Removing a paper" below) -- not needed on a first run.
+#    list -- not needed on a first run. docs/ZOTERO.md has the full
+#    semantics and why the default is to report rather than delete.
 source .venv-full/bin/activate
 python -m src.sync
 
@@ -154,76 +155,26 @@ python -m src.sync
 #    sync is running), and needs no venv.
 python3 -m src.ledger
 
-# 5. In Claude Code, ask for a draft, e.g.:
+# 5. Optional, and only when you want it: the enrichment layer. Layout-aware
+#    parsing, semantic search and topic clustering over the whole corpus.
+#    Nothing else needs it, and no skill builds it for you -- see
+#    docs/RETRIEVAL.md for which stage is worth your time.
+.venv-full/bin/python scripts/enrich.py --stages docling,embed
+
+# 6. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
 # including its own citation_gate -> references -> render_output chain
-
-# 6. Manually re-run any step of that chain yourself (no venv needed for any of these)
-# All three read only under content/ -- a draft kept outside it is refused, so that
-# one directory stays the whole record of the work (see docs/CLI.md).
-python3 -m src.citation_gate content/drafts/<slug>.md
-python3 -m src.references content/drafts/<slug>.md --heading "References"    # --heading default: "References"
-python3 -m src.render_output content/drafts/<slug>.md --format pdf     # also: --csl, --no-collapse-citations, --documentclass, --fontsize, --margin (--help for all)
-python3 -m src.render_output content/drafts/<slug>.md --format md      # numbered Markdown copy in content/rendered/ (no pandoc needed)
-# A draft under content/drafts/ has its path mirrored, so every format lands beside it:
-#   content/drafts/<topic>/survey.md -> content/rendered/<topic>/survey.{md,tex,pdf,docx}
-# A draft anywhere else (like the path/to/draft.md above) has no path to mirror and lands flat in content/rendered/.
-
-# 7. Check the draft against its sources. Review aids, not gates: none of
-#    these runs automatically, and none of them can block a draft.
-python3 -m src.citation_provenance path/to/draft.md                  # what in each source supports the claim citing it
-python3 scripts/verbatim_check.py overlap path/to/draft.md <citekey> # wording shared with that source
-python3 scripts/verbatim_check.py scan path/to/draft.md              # everything the draft shares with *any* parsed source, cited or not
-python3 -m src.citation_coverage path/to/draft.md --query "..."      # retrieval found it -- did the draft cite it?
-
-# 8. Optional, and only when you want it: the enrichment layer. Layout-aware
-#    parsing, semantic search and topic clustering over the whole corpus.
-#    Nothing above needs it, and no skill builds it for you -- see
-#    docs/RETRIEVAL.md for which stage is worth your time.
-.venv-full/bin/python scripts/enrich.py --stages docling,embed
 ```
 
-One thing to know before reading a `scan` result, because the natural
-reading of it is wrong. `scan` is the **exact tier**, the first of three planned detection tiers: it matches word n-grams, so
-it sees verbatim and lightly-edited reuse and nothing else. The drafts this pipeline
-produces are LLM-written, and literal paraphrase -- the same sentence
-with a synonym swapped every few words -- is an LLM's normal failure mode
-when it drifts too close to a source. That mode is invisible to an exact
-match *by construction*. So a clean `scan` means "no exact or near-exact
-copying found", never "no borrowed wording found". What the other two
-tiers would add, and why they aren't built yet, is in
-[docs/PLAGIARISM.md](docs/PLAGIARISM.md) and
-[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115).
-
-Exporting from Zotero in detail, including the attachment-path trap that
-silently leaves every entry without a PDF, is in
-[docs/ZOTERO.md](docs/ZOTERO.md). Every command and which interpreter it
-needs is in [docs/CLI.md](docs/CLI.md). Every setting -- including
-`[parser].backend`, which decides how faithfully your PDFs are read -- is
-in [docs/CONFIG.md](docs/CONFIG.md). What each of these commands is part
-of, and why some need `.venv-full/bin/python` while others run on bare
-`python3`, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-Two of those commands rewrite the shared corpus layer -- `sync` and the
-enrichment layer -- and they share one lock, so the second to start exits
-`2` rather than interleaving. Everything else only reads, which is why
-`python3 -m src.ledger` and the citation gate work fine while a sync is in
-progress.
-
-Removing a paper: delete the entry in Zotero, re-export, re-run `sync`.
-By default `sync` only *reports* citekeys that dropped out of the bib
-file -- it doesn't delete their `content/ledger.sqlite` row until you
-re-run with `--remove-stale`. This is deliberate: a bib export that comes
-back short a citekey is far more often a botched re-export or `BIB_FILE`
-pointing at the wrong path than an intentional deletion, so the default
-keeps the ledger untouched until a human confirms. `--remove-stale` still
-refuses if the bib file comes back completely empty against a non-empty
-ledger, for the same reason -- fix the export or path rather than
-deleting everything in one run.
+Every command that chain runs, every way to re-run one by hand, and every
+review aid for checking a finished draft against its sources are in
+[docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
+step](docs/CLI.md#the-full-first-run-step-by-step), which walks the whole
+sequence above and everything that follows it, in order.
 
 ## The enrichment layer
 
@@ -317,7 +268,7 @@ split by who is asking.
 | [docs/GENRE.md](docs/GENRE.md) | Which of the seven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
-| [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml` |
+| [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
 
 **Understanding the system**
 
@@ -343,6 +294,7 @@ split by who is asking.
 | Document | Answers |
 |---|---|
 | [docs/CITATION-PROVENANCE.md](docs/CITATION-PROVENANCE.md) | What does the provenance report say, and how do I read it? |
+| [docs/PLAGIARISM.md](docs/PLAGIARISM.md) | How much of a draft's wording came from its sources? What the verbatim `overlap`/`scan` checks catch, and -- just as important -- what they cannot see, since these drafts are LLM-written and paraphrase is invisible to an exact match |
 | [docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) | What prose standards do the genre skills follow, and where in the technical-communication literature do they come from? |
 
 ### Working on it

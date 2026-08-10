@@ -103,8 +103,19 @@ python -m src.citation_provenance content/drafts/<slug>.md
 ```
 
 Writes `content/provenance/<slug>.provenance.md`, plus `.tex` and `.pdf`
-renders of the same report when `pandoc`/`pdflatex` are available. It is
-also a stage of the enrichment layer:
+renders of the same report when `pandoc`/`pdflatex` are available.
+
+The report mirrors the draft's own place under `content/drafts/`, the
+same rule `content/rendered/` and `content/dossiers/` follow: a draft at
+`content/drafts/<topic>/survey.md` reports to
+`content/provenance/<topic>/survey.provenance.md`, and its renders land
+in `content/rendered/<topic>/`. A draft directly in `content/drafts/`,
+or outside it altogether, has no path to mirror and keeps the flat
+directory. Before 3.19.2 the report was always flat, so two drafts named
+`survey.md` in different topic directories wrote one file and the second
+silently replaced the first.
+
+It is also a stage of the enrichment layer:
 
 ```
 python scripts/enrich.py --stages provenance --input content/drafts/<slug>.md

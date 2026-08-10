@@ -357,7 +357,7 @@ flowchart TB
       direction LR
       DRF[/"content/drafts/&lt;slug&gt;.md | .tex"/]
       REN[/"content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md"/]
-      PRV[/"content/provenance/&lt;slug&gt;.provenance.md"/]
+      PRV[/"content/provenance/&lt;slug&gt;.provenance.md<br/><small>the draft's path under drafts/, mirrored</small>"/]
     end
 
     LCK[/"content/pipeline.lock.db<br/><small>held by whichever writer is running</small>"/]

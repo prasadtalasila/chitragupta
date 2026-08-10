@@ -326,15 +326,27 @@ def _output_dir(input_path: Path) -> Path:
         without that one image; here there is no correct output left to
         produce, so this says so instead.
 
-    This duplicates the rule `dossier.dossier_dir()` applies to
-    `content/dossiers/`, deliberately, rather than importing it: the
-    module docstring commits this file to stdlib plus
+    The rule itself is `config.mirrored_dir()`, shared with
+    `dossier.dossier_dir()` and `citation_provenance.write_report()`
+    rather than written out again here. It lives in `config` because this
+    module's docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python3`, and `src/dossier.py` is outside that set. The
-    two are kept in step by hand -- there is one rule, "mirror the
-    draft's path", and both places state it.
+    under bare `python3`, which rules out importing `src/dossier.py`.
+    What stays here is the *policy* -- fall back flat, and refuse to
+    write outside `content/` -- which is this module's to decide.
+
+    **Two mirror sources, not one.** A draft under `DRAFTS_DIR` is the
+    obvious one. The second is `PROVENANCE_DIR`, because
+    `citation_provenance` renders its report by handing *that* path to
+    `render()`: without it, a mirrored `provenance/<topic>/survey.provenance.md`
+    would still render flat, so two drafts named `survey.md` would stop
+    colliding on the report and go on colliding on its `.tex`/`.pdf`.
     """
-    for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
+    for label, directory in (
+        ("rendered", config.RENDERED_DIR),
+        ("drafts", config.DRAFTS_DIR),
+        ("provenance", config.PROVENANCE_DIR),
+    ):
         if not config.resolves_inside(directory, config.CONTENT_DIR):
             raise OutsideContentDir(
                 f"{directory} resolves to {directory.resolve()}, outside the content "
@@ -345,12 +357,13 @@ def _output_dir(input_path: Path) -> Path:
                 "[content].dir (config.toml) at wherever it really lives."
             )
 
-    try:
-        relative = input_path.resolve().relative_to(config.DRAFTS_DIR.resolve())
-    except ValueError:
+    for source_root in (config.DRAFTS_DIR, config.PROVENANCE_DIR):
+        mirrored = config.mirrored_dir(input_path, source_root, config.RENDERED_DIR)
+        if mirrored is not None:
+            break
+    else:
         return config.RENDERED_DIR
 
-    mirrored = config.RENDERED_DIR / relative.parent
     if not config.resolves_inside(mirrored, config.RENDERED_DIR):
         raise OutsideContentDir(
             f"{mirrored} resolves to {mirrored.resolve()}, outside "
