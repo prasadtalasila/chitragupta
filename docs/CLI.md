@@ -714,7 +714,7 @@ comparison.
 | Subcommand | Arguments | What it does |
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). Always exits `0` -- a review aid, never a gate |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). Exits `0` on every successful invocation, findings or not -- a review aid, never a gate. A malformed invocation (a flag with no value, or a missing `<draft>`) exits `2`, the usual CLI-usage error, not a verdict |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
 ```bash

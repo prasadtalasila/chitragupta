@@ -40,10 +40,13 @@ for the tiers that close that gap.
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
 | Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after |
 
-Both are **review aids, not gates**: exit 0 always, never wired into a
-hook, never block a draft. Whether long verbatim runs should gate is a
-later, deliberately separate decision (issue #110's Phase 2) -- these
-tools only produce the findings that decision would be tuned against.
+Both are **review aids, not gates**: a successful run exits 0 whether it
+found anything or not, and neither is wired into a hook or blocks a
+draft. (A malformed invocation -- a bad flag, a missing argument --
+exits 2, ordinary CLI-usage error handling, not a verdict on the draft.)
+Whether long verbatim runs should gate is a later, deliberately separate
+decision (issue #110's Phase 2) -- these tools only produce the findings
+that decision would be tuned against.
 
 ## How it works
 

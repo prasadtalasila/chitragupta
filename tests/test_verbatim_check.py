@@ -674,3 +674,42 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert "Ad-hoc plagiarism" in result.stdout
+
+    def test_no_arguments_prints_docstring_and_exits_zero(self, tmp_path):
+        # Regression: sys.argv[1] on an empty invocation used to raise a
+        # raw IndexError, contradicting this file's own "Run with no
+        # arguments to print its usage" claim (docs/CLI.md).
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 0
+        assert "Ad-hoc plagiarism" in result.stdout
+
+    def test_overlap_mode_missing_arguments_exits_cleanly(self, tmp_path):
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "overlap", "only-one-arg"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "usage: verbatim_check.py overlap" in result.stderr
+
+    def test_scan_mode_missing_draft_exits_cleanly(self, tmp_path):
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "usage: verbatim_check.py scan" in result.stderr
+
+    def test_locate_mode_missing_arguments_exits_cleanly(self, tmp_path):
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "locate", "only-one-arg"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "usage: verbatim_check.py locate" in result.stderr

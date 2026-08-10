@@ -11,7 +11,9 @@ Not part of the deterministic pipeline -- a review aid. Three modes:
         slide the WHOLE draft across the WHOLE corpus index (src/overlap_index.py),
         not just the sources a paragraph happens to cite -- catches verbatim
         reuse from an uncited source, and reuse in connective prose that
-        cites nothing at all. Always exits 0; a review aid, not a gate.
+        cites nothing at all. Exits 0 on every successful invocation, findings
+        or not -- a review aid, not a gate. A malformed invocation (a bad or
+        valueless flag) exits 2, the usual CLI-usage error, not a verdict.
 
     verbatim_check.py locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
@@ -299,10 +301,14 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None):
     """Slide `draft`'s whole normalized text across the corpus-wide index,
     grouping matches by `(citekey, page, diagonal)` and merging each
     group into maximal same-diagonal runs (see `_merge_runs`). Prints one
-    finding per surviving run, longest first; never raises for "nothing
-    found" and always returns normally -- this is a review aid, not a
-    gate, and it is not wired into anything that treats a nonzero exit as
-    a failure.
+    finding per surviving run, longest first; this function itself never
+    raises for "nothing found" and always returns normally -- this is a
+    review aid, not a gate, and it is not wired into anything that treats
+    a nonzero exit as a failure. (The `scan` CLI wraps this with flag
+    validation -- `_pop_flag`, below -- that can exit 2 on a malformed
+    invocation, e.g. `--gap` with no value, before this function is ever
+    called; that is ordinary CLI-usage error handling, not this function's
+    own contract, which is unconditional.)
 
     Known limitation, not fixed here: `src/overlap_index.py`'s
     `token_position` resets to 0 at every page break in the *source*, so
@@ -435,16 +441,32 @@ def _pop_flag(rest, name, cast):
 
 
 if __name__ == "__main__":
+    # No mode at all is the same "tell me how to use this" request as an
+    # unrecognized one (the `else` branch below) -- printing __doc__ for
+    # one and raising IndexError on sys.argv[1] for the other was an
+    # inconsistency a bare invocation shouldn't have to know about.
+    if len(sys.argv) < 2:
+        print(__doc__)
+        raise SystemExit(0)
     mode, rest = sys.argv[1], sys.argv[2:]
     if mode == "overlap":
         n, rest = _pop_flag(rest, "--n", int)
+        if len(rest) < 2:
+            print("usage: verbatim_check.py overlap <draft.md> <citekey> [--n N]", file=sys.stderr)
+            raise SystemExit(2)
         cmd_overlap(rest[0], rest[1], n if n is not None else 8)
     elif mode == "scan":
         min_run, rest = _pop_flag(rest, "--min-run", int)
         gap, rest = _pop_flag(rest, "--gap", int)
         limit, rest = _pop_flag(rest, "--limit", int)
+        if len(rest) < 1:
+            print("usage: verbatim_check.py scan <draft.md> [--min-run N] [--gap N] [--limit N]", file=sys.stderr)
+            raise SystemExit(2)
         cmd_scan(rest[0], min_run, gap if gap is not None else 1, limit)
     elif mode == "locate":
+        if len(rest) < 2:
+            print('usage: verbatim_check.py locate <citekey> "<phrase>" [more phrases...]', file=sys.stderr)
+            raise SystemExit(2)
         cmd_locate(*rest)
     else:
         print(__doc__)
