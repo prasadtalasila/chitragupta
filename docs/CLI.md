@@ -698,21 +698,45 @@ picks up from there.
 
 ### `scripts/verbatim_check.py`
 
-Review aid with two subcommands: verbatim overlap between a draft and a
-source, and page location for a phrase. Stdlib-only -- but `locate` shells
-out to the `pdftotext` binary, so that subcommand needs poppler-utils on
-`PATH`. Run with no arguments to print its usage.
+Review aid with three subcommands: verbatim overlap between a draft and one
+cited source, a whole-draft x whole-corpus scan, and page location for a
+phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary, so
+that subcommand needs poppler-utils on `PATH`. `overlap` and `scan` read
+already-parsed text via `src/overlap_index.py`'s cache instead. Run with no
+arguments to print its usage.
+
+[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
+section: what `overlap`/`scan` catch and don't (verbatim only --
+paraphrase is a later, unbuilt tier), the fingerprinting technique and
+its literature sources, and a measured `docling`-vs-`pdftotext` backend
+comparison.
 
 | Subcommand | Arguments | What it does |
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). Exits `0` on every successful invocation, findings or not -- a review aid, never a gate. A malformed invocation (a flag with no value, or a missing `<draft>`) exits `2`, the usual CLI-usage error, not a verdict |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
 ```bash
 python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025
 # python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025 --n 12
+python3 scripts/verbatim_check.py scan content/drafts/survey.md
+# python3 scripts/verbatim_check.py scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
 # python3 scripts/verbatim_check.py locate talasila_composable_2025 "a digital twin is"
 ```
+
+`scan` groups a match's `(citekey, page, diagonal)` -- the source position
+minus the draft position, held constant across a run -- and merges runs on
+the same diagonal within `--gap` words of each other, so a single edited
+word inside an otherwise-verbatim passage still reports as one run. It
+cannot merge a run across a page break in the *source*: the fingerprint
+cache's token position resets there, so a genuine lift spanning one is
+reported as two (or more) shorter findings, and a short remainder stranded
+alone on the far side of the break can fall under `--min-run` and vanish
+entirely. Each finding reports whether the containing draft paragraph
+actually cites that source (`UNCITED SOURCE` if not) and whether the run
+sits inside quote delimiters -- both informational; `scan` doesn't decide
+severity, it produces the findings a later gate would be tuned against.
 
 `locate` reports page numbers by splitting on the form-feed characters
 between pages. Both backends emit them, so a page number here is a page

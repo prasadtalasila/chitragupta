@@ -103,7 +103,19 @@ def gram_hashes(words: list[str], n: int) -> list[int]:
 
     `gram_hashes(words, n)[j]` is the hash of `words[j:j + n]`. Returns `[]`
     when there are fewer than `n` words to form a single window.
+
+    `n < 1` raises rather than silently misbehaving: `n == 0` doesn't
+    short-circuit on the `len(words) < n` check below (every word count is
+    `>= 0`), and every zero-word "window" then hashes to the same constant
+    -- which would make a corpus-wide lookup treat every draft position as
+    a match. `n < 0` fails even louder, with an out-of-range list index a
+    few lines down, once the second loop's `word_hashes[j - 1]` runs past
+    the end of `words`. Callers that let `n` come from a CLI flag should
+    validate before this point and report a clean usage error; this is
+    the library-level backstop for anyone calling it directly.
     """
+    if n < 1:
+        raise ValueError(f"n must be >= 1, got {n}")
     if len(words) < n:
         return []
     word_hashes = [_word_hash(w) for w in words]
@@ -473,3 +485,22 @@ def pages_for_gram(index: CorpusIndex, gram_hash: int, citekey: "str | None" = N
             continue
         matched_pages.add(index.pages[i])
     return sorted(matched_pages)
+
+
+def postings_for_gram(index: CorpusIndex, gram_hash: int) -> list[tuple[str, int, int]]:
+    """Every `(citekey, page, token_position)` posting for `gram_hash`,
+    undeduped, in the same order they were merged into `index` (stable
+    ties on the sort in `build_corpus_index` -- effectively citekey order,
+    then page/position order).
+
+    Unlike `pages_for_gram`, this keeps every occurrence rather than
+    collapsing to distinct pages: `scripts/verbatim_check.py`'s `scan`
+    mode needs `token_position` to align a run across consecutive draft
+    positions, which a deduplicated page list would throw away.
+    """
+    lo = bisect_left(index.grams, gram_hash)
+    hi = bisect_right(index.grams, gram_hash, lo=lo)
+    return [
+        (index.citekeys[index.citekey_ids[i]], index.pages[i], index.positions[i])
+        for i in range(lo, hi)
+    ]

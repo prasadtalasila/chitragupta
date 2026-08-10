@@ -47,6 +47,18 @@ class TestGramHashes:
         b = overlap_index.gram_hashes("wholly unrelated word sequence".split(), 4)
         assert a != b
 
+    def test_n_zero_raises_instead_of_hashing_every_position_the_same(self):
+        # Regression: n=0 doesn't trip the `len(words) < n` short-circuit
+        # (every word count is >= 0), so every zero-word "window" used to
+        # hash to the same constant -- a corpus-wide lookup would then
+        # treat every draft position as a match against everything.
+        with pytest.raises(ValueError, match="n must be >= 1"):
+            overlap_index.gram_hashes(["alpha", "beta"], 0)
+
+    def test_negative_n_raises(self):
+        with pytest.raises(ValueError, match="n must be >= 1"):
+            overlap_index.gram_hashes(["alpha", "beta"], -1)
+
 
 class TestFingerprintDocument:
     def test_builds_postings_with_page_and_position(self, isolated_config, tmp_path):
@@ -331,3 +343,41 @@ class TestPagesForGram:
         index = overlap_index.build_corpus_index(n=4)
         shared_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
         assert overlap_index.pages_for_gram(index, shared_hash) == [1, 2]
+
+
+class TestPostingsForGram:
+    def test_unknown_gram_returns_empty(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        index = overlap_index.build_corpus_index(n=4)
+        assert overlap_index.postings_for_gram(index, 0xDEADBEEF) == []
+
+    def test_empty_index_returns_empty(self, isolated_config):
+        index = overlap_index.build_corpus_index(n=4)
+        assert overlap_index.postings_for_gram(index, 0xDEADBEEF) == []
+
+    def test_a_single_posting_carries_citekey_page_and_position(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        index = overlap_index.build_corpus_index(n=4)
+        gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        assert overlap_index.postings_for_gram(index, gram_hash) == [("smith_2024", 1, 0)]
+
+    def test_repeated_gram_on_one_page_yields_one_posting_per_occurrence(self, ledger_con, tmp_path):
+        # Unlike pages_for_gram, nothing here is deduplicated: scan mode
+        # needs every occurrence (and its own token_position) to align a
+        # run, not just "this page has a match".
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024",
+            "alpha beta gamma delta filler words alpha beta gamma delta",
+        )
+        index = overlap_index.build_corpus_index(n=4)
+        gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        postings = overlap_index.postings_for_gram(index, gram_hash)
+        assert sorted(postings) == [("smith_2024", 1, 0), ("smith_2024", 1, 6)]
+
+    def test_postings_from_multiple_citekeys_are_all_returned(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "doe_2023", "alpha beta gamma delta")
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        index = overlap_index.build_corpus_index(n=4)
+        gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        postings = overlap_index.postings_for_gram(index, gram_hash)
+        assert sorted(postings) == [("doe_2023", 1, 0), ("smith_2024", 1, 0)]

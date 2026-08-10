@@ -142,6 +142,7 @@ nav:
       - PDF parser: docs/PDF-PARSER.md
   - Reading the output:
       - Citation provenance: docs/CITATION-PROVENANCE.md
+      - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
   - Working on it:
       - Design constraints: docs/DESIGN.md
