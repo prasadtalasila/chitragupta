@@ -42,9 +42,9 @@ This pipeline is built to make that impossible rather than unlikely:
 
 ## How it works
 
-Five phases across three layers. You own phase 0, the **corpus layer**
-owns phase 1, the **drafting layer** owns 2 through 4, and nothing reaches
-phase 4 without passing phase 3.
+Five phases. You own phase 0, the **corpus layer** owns phase 1, the
+**drafting layer** owns 2 through 4, and nothing reaches phase 4 without
+passing phase 3.
 
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
@@ -63,47 +63,38 @@ Two properties of that picture do all the work:
   warning.
 
 The loop back from a failed gate goes to *drafting*, not to you: the skill
-discards the unsupported claim and writes again, so a gate failure is
-normally something you never see. You only get involved in the rarer case
-where the paper genuinely isn't in the corpus yet -- the dotted arrow back
-to phase 0.
+discards the unsupported claim and writes again. You only get involved in
+the rarer case where the paper genuinely isn't in the corpus yet -- the
+dotted arrow back to phase 0.
 
-Five genre skills sit behind phase 2 -- survey, thesis chapter,
-undergraduate textbook chapter, tutorial, and a heavier multi-perspective
-deep-research mode -- and all five obey the same grounding rules. An
-optional third layer, **enrichment**, deepens the same corpus with
-layout-aware parsing, semantic search and topic clustering; nothing above
-needs it.
+Seven skills sit behind phase 2, all obeying the same grounding rules:
+five that write a new draft -- survey, thesis chapter, undergraduate
+textbook chapter, tutorial, and a heavier multi-perspective deep-research
+mode -- and two that change one that already exists, because a draft is
+never revised by re-running the skill that produced it
+([docs/GENRE.md](docs/GENRE.md)). A third layer, **enrichment**, sits
+outside these phases: it deepens the same corpus with layout-aware
+parsing, semantic search and topic clustering, and nothing above needs it.
 
-The figure is `docs/diagrams/svg/v1-overview.svg`, rendered from
-[docs/DIAGRAMS.md](docs/DIAGRAMS.md), which draws this workflow eleven
-ways -- by depth, by genre, and in time order.
+[docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
+by depth, by genre, and in time order -- and is where the figure above
+comes from.
 
 ### One thing the corpus layer does not promise
 
 The corpus layer is deterministic in the sense that matters most -- no
-LLM, no judgement calls, same bibliography in, same citekeys out -- but
-it is **not** bit-reproducible with every parser. Re-running it over
-**unchanged inputs** with the default `pdftotext` backend, parsed text
-comes back byte-identical and every ledger column is stable except the
-`last_synced` timestamp.
+LLM, no judgement calls, same bibliography in, same citekeys out -- but it
+is **not** bit-reproducible with every parser. With the default
+`pdftotext` backend it is: parsed text comes back byte-identical, every
+ledger column stable except the `last_synced` timestamp.
 
-"Unchanged inputs" is doing real work in that sentence. Re-exporting
-`bibliography.bib` gives its PDFs fresh modification times, and that is a
-different input: `pdf_mtime_ns` legitimately changes, even for a
-byte-identical file.
-
-With the opt-in `docling` backend and a worker pool, it is not. Docling
-groups dense reference blocks slightly differently under load, so around
-1.4% of documents come back with different text and about 1% with a
-different *quotable passage* -- which means the exact span quoted from a
-source can change between runs. Two runs of the *same* configuration are
-not exempt, at roughly a third of that rate. Serial parsing
-(`[parser].workers = 1`, the default) has not been observed to vary.
-
-That is Docling's behaviour, not something this pipeline adds, and it
-cannot be switched off. If it matters to you, keep `workers = 1` or use
-`pdftotext`. The full artifact-by-artifact contract is in
+With the opt-in `docling` backend *and* a worker pool, it isn't -- and the
+instability reaches the *quotable passage*, so the exact span quoted from
+a source can change between runs. That is Docling's behaviour under load
+rather than something this pipeline adds, and it cannot be switched off;
+serial parsing (`[parser].workers = 1`, the default) has not been observed
+to vary. The artifact-by-artifact contract, the measured rates and how
+little they can pin down are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
 ## Quickstart
