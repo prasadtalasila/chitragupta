@@ -73,13 +73,18 @@ re-run with `--remove-stale`, because a short export is more often a
 botched one than an intentional deletion. README.md and docs/ZOTERO.md
 have the full semantics.
 
-## The three layers
+## The four layers
 
-- **The corpus layer -- deterministic** (`python -m src.sync`): bib file
+The numbers below are the order these are introduced, and the order you
+meet them: you need a corpus before a draft, and there is nothing to
+review until a draft exists. They are not a dependency rank -- the
+enrichment layer is optional and nothing above it needs it.
+
+- **Layer 1, the corpus layer -- deterministic** (`python -m src.sync`): bib file
   read -> ledger update -> PDF text extraction -> duplicate-citekey check
   -> stale-citekey report. No LLM calls, no judgment calls, idempotent;
   safe to run unattended. docs/ARCHITECTURE.md has the stage detail.
-- **The drafting layer -- generative** (the `.claude/skills/`): invoked on
+- **Layer 2, the drafting layer -- generative** (the `.claude/skills/`): invoked on
   demand, reviewed by the user. **Read-only over the corpus layer**: they
   never write to `content/ledger.sqlite`, and they never run `python -m
   src.sync` or the enrichment layer on the user's behalf. On an empty
@@ -100,21 +105,37 @@ have the full semantics.
   the same edit discipline over a full retrieval pass -- it still keeps
   the dossier. Never re-run a genre skill to change an existing draft --
   see docs/DRAFT-ITERATION.md.
-- **The enrichment layer -- optional** (`scripts/enrich.py`):
+- **Layer 3, the enrichment layer -- optional** (`scripts/enrich.py`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
   generative, everything it writes is a corpus artefact, and it takes the
   same write lock as `sync` for that reason. Run by a human, never by a
-  skill.
-- **Ad-hoc review aids** (`src/citation_provenance.py`,
-  `scripts/verbatim_check.py`, `src/citation_coverage.py`): in no layer --
-  run by hand when reviewing a draft, never invoked automatically, never
-  gate anything. Don't promote one to a gate -- [SOUL.md](SOUL.md) has
-  why. `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus
-  one, and the complement of the citation gate: the gate proves every
-  citekey is real, the scan reports what wording came along with them.
-  It is the exact detection tier, and the paraphrase tiers beside it are
-  unbuilt, so a clean run is not a clean bill of health --
+  skill. It imports nothing from the drafting or review layers: until
+  3.20.0 it carried a `provenance` and a `render` stage that did, which
+  was the one cycle in this picture.
+- **Layer 4, the review layer -- advisory** (`src/citation_provenance.py`,
+  `scripts/verbatim_check.py`, `src/citation_coverage.py`): run by hand on
+  a finished draft, never invoked automatically. Each reads a draft plus
+  the corpus and produces **evidence for a human judgement, never a
+  verdict** -- every one exits 0 whether it finds something or not, and
+  none may block a draft. Don't promote one to a gate --
+  [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
+  corpus, so it keeps working during a `sync`, like `python3 -m
+  src.ledger` and retrieval. Input is a draft under `content/`; output is
+  `content/review/`, mirroring the draft's path under `content/drafts/`
+  the way `content/rendered/` and `content/dossiers/` do, with
+  `src/review.py` owning that contract.
+
+  *Review*, not *verification*: `citation_gate` is verification, it lives
+  in the drafting layer, and it is that layer's only exit. The gate
+  answers a question with one correct answer and may block; these three
+  answer questions of judgement and may not.
+
+  `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus one,
+  and the complement of the citation gate: the gate proves every citekey
+  is real, the scan reports what wording came along with them. It is the
+  exact detection tier, and the paraphrase tiers beside it are unbuilt,
+  so a clean run is not a clean bill of health --
   [docs/PLAGIARISM.md](docs/PLAGIARISM.md).
 
 ## Retrieval

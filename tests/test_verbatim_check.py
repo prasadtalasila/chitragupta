@@ -1,7 +1,8 @@
-"""scripts/verbatim_check.py: the ad-hoc verbatim-overlap/page-locator
-review aid (not part of the deterministic pipeline). REPO/BIB are
-module-level constants computed from Path(__file__) at import time;
-tests monkeypatch them directly to point at a throwaway fixture tree."""
+"""scripts/verbatim_check.py: the review layer's verbatim-overlap,
+whole-corpus scan and page-locator command -- advisory over a finished
+draft, never a gate. REPO/BIB are module-level constants computed from
+Path(__file__) at import time; tests monkeypatch them directly to point
+at a throwaway fixture tree."""
 
 import argparse
 import os

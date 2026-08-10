@@ -10,7 +10,7 @@ Related reading:
 - [TOKENS.md](TOKENS.md) -- where a run's tokens go, the two-pool
   framing this document assumes, and how to measure any of it. The
   arithmetic that used to be in "Where the tokens go" below.
-- [ARCHITECTURE.md](ARCHITECTURE.md) -- the three layers this sits inside.
+- [ARCHITECTURE.md](ARCHITECTURE.md) -- the four layers this sits inside.
 - [RETRIEVAL.md](RETRIEVAL.md) -- how the corpus is ranked, and what a
   snippet actually contains.
 - [REJECTION.md](REJECTION.md) -- why turning a source down is the
@@ -181,14 +181,23 @@ writers from them. There is no draft to derive from at that point, so
 that write stays by hand and the derived form belongs at Phase 7(e),
 where the plan is replaced by what the finished report actually cites.
 
-### Why not merge the provenance JSON into it
+### Why not merge the provenance JSON into the rest of the dossier
 
-`thesis-chapter-writer` and `deep-research` also write
-`content/provenance/<slug>.json`. Both artifacts are kept, and neither
-replaces the other, because they answer different questions for different
-readers:
+`thesis-chapter-writer` and `deep-research` also write a `provenance.json`
+(and, for the thesis genre, an `evidence.json`). Since 3.20.0 both live
+**inside** the dossier directory --
+`content/dossiers/<draft path minus suffix>/provenance.json` -- rather
+than in a `content/provenance/` of their own, which has been removed. Two
+reasons: they are drafting state, produced by the run that wrote the
+draft, so they belong with the rest of that run's state; and
+`dossier_dir()` mirrors the draft's path, so two drafts named `survey.md`
+in different topics stop sharing one file.
 
-| | `content/provenance/*.json` | `content/dossiers/<draft>/` |
+They stay separate *files*, and neither replaces the other, because they
+answer different questions for different readers. That argument was
+always about Markdown-versus-JSON, not about directories:
+
+| | `provenance.json` | the dossier's Markdown |
 |---|---|---|
 | Shape | JSON, machine-readable | Markdown, human-readable |
 | Holds | section -> citekey, and why that source supports that claim | reader, scope, glossary, kept evidence, **rejected candidates and why**, steering |
@@ -197,7 +206,7 @@ readers:
 
 The overlap is one column of `sections.md`. Collapsing them would mean
 either putting prose a human needs into JSON, or putting a machine record
-into Markdown that nothing parses -- so they stay separate, and the two
+into Markdown that nothing parses -- so they stay separate files, and the two
 skills that produce both write both.
 
 ### The corpus fingerprint

@@ -372,8 +372,8 @@ class TestInputsAreConfinedToContent:
 
     def test_a_draft_anywhere_under_content_is_accepted(self, isolated_config, capsys):
         # content/drafts/ is where the genre skills save one, but the rule
-        # is "under content/" -- content/provenance/ reports are checked
-        # the same way.
+        # is "under content/" -- a scratch note or a content/review/ report
+        # is checked the same way.
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="a_2024"))
         con.close()

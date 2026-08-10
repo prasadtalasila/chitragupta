@@ -357,7 +357,7 @@ flowchart TB
       direction LR
       DRF[/"content/drafts/&lt;slug&gt;.md | .tex"/]
       REN[/"content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md"/]
-      PRV[/"content/provenance/&lt;slug&gt;.provenance.md<br/><small>the draft's path under drafts/, mirrored</small>"/]
+      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
     end
 
     LCK[/"content/pipeline.lock.db<br/><small>held by whichever writer is running</small>"/]
@@ -385,7 +385,7 @@ flowchart TB
   LED -- "src/references.py<br/>bib_fields → IEEE entries" --> DRF
   DRF == "<b>src.citation_gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
   DRF -- "src.render_output<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "src.citation_provenance" --> PRV
+  DRF -- "the review layer<br/><small>citation_provenance · verbatim_check scan --write<br/>citation_coverage --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef corpus fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
@@ -398,7 +398,7 @@ flowchart TB
   class LED,TXT,CPS corpus
   class DOC,CHR,TOP heavy
   class RIX,DCA,TCA cache
-  class DRF,REN,PRV draft
+  class DRF,REN,RVW draft
   class LCK lock
 ```
 
@@ -645,7 +645,7 @@ flowchart LR
 
   P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code> → IEEE list<br/><code>render_output --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
-  AID["<b>afterwards, by you — not a gate</b><br/><code>--stages provenance</code> · <code>verbatim_check.py</code><br/><code>src.citation_coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
+  AID["<b>LAYER 4 · REVIEW — afterwards, by you, never a gate</b><br/><code>src.citation_provenance</code> · <code>verbatim_check.py</code><br/><code>src.citation_coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 
   BERT["<b>bertopic</b> → content/topics.json<br/><small>no skill calls this. It is for <i>you</i>, deciding what<br/>the survey should even be about.</small>"]
 
@@ -710,7 +710,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step —<br/><code>enrich.py --stages render</code> only wraps it</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python3 -m src.render_output</code> — it was never<br/>enrichment work, and stopped being a stage in 3.20.0</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -901,7 +901,7 @@ sequenceDiagram
     Ren-->>You: content/rendered/<slug>.pdf
     end
 
-    Note over You,Ren: Optional afterwards, and never a gate:<br/>citation_provenance · verbatim_check · citation_coverage
+    Note over You,Ren: Layer 4, the review layer — optional afterwards, never a gate:<br/>citation_provenance · verbatim_check · citation_coverage<br/>reports land in content/review/, mirroring the draft
 ```
 
 

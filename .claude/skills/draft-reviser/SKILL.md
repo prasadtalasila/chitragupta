@@ -227,6 +227,9 @@ review aid, not a gate: it exits 0 either way and cannot block the draft.
 Say what it misses when you offer it -- it sees verbatim and
 near-verbatim reuse only, and **paraphrase is not detected**, so a clean
 scan is not a clean bill of health (`docs/PLAGIARISM.md`).
+If the user wants the finding kept, add `--write`: the report
+goes to `content/review/`, mirroring the draft's path, beside any
+provenance and coverage reports for the same draft.
 
 ## Re-grounding after the corpus moves
 

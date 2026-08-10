@@ -8,7 +8,7 @@ short path; this is the full set.
 
 ## Table of contents
 
-- [Upgrading from 3.19.1 or earlier: provenance reports moved](#upgrading-from-3191-or-earlier-provenance-reports-moved)
+- [Upgrading from 3.19.x: `content/provenance/` is now `content/review/`](#upgrading-from-319x-contentprovenance-is-now-contentreview)
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
 - [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
 - [Upgrading from 2.x](#upgrading-from-2x)
@@ -31,35 +31,54 @@ short path; this is the full set.
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
 
-## Upgrading from 3.19.1 or earlier: provenance reports moved
+## Upgrading from 3.19.x: `content/provenance/` is now `content/review/`
 
-Since 3.19.2 a provenance report mirrors its draft's own place under
-`content/drafts/`, the same rule `content/rendered/` and
-`content/dossiers/` already followed. A draft at
-`content/drafts/<topic>/survey.md` now reports to
-`content/provenance/<topic>/survey.provenance.md` instead of
-`content/provenance/survey.provenance.md`.
+Since 3.20.0 the three review commands are a named layer with one shared
+output contract. Two things moved.
 
-**If every draft sits directly in `content/drafts/`, nothing changed** --
-there is no path to mirror, and the report lands exactly where it always
-did.
+**Review reports.** `content/provenance/` is gone, replaced by
+`content/review/`, and all three commands write there -- mirroring the
+draft's path, as 3.19.2 taught the provenance report to do:
 
-**If you use topic directories, re-run the command** and delete the old
-flat reports. This is not housekeeping: the reason for the change is that
-two drafts named `survey.md` in different topic directories used to write
-*one* file, so a flat report left behind now is either half-wrong or
-belongs to a draft you can no longer identify -- and its citekeys will
-look plausible for either, which is the failure this fixes. Nothing reads
-those files automatically, so an orphan is inert until a human opens it
-and believes it.
+```
+content/drafts/<topic>/survey.md
+  -> content/review/<topic>/survey.provenance.md
+     content/review/<topic>/survey.verbatim.md      (new: scan --write)
+     content/review/<topic>/survey.coverage.md      (new: --write)
+```
+
+A report's `.tex`/`.pdf` now land **beside its `.md`** rather than in
+`content/rendered/`, which is the drafting layer's publish output.
+`content/provenance/` and `content/rendered/*.provenance.*` are
+regenerable, gitignored output, so re-running is the whole migration:
 
 ```bash
 python3 -m src.citation_provenance content/drafts/<topic>/<slug>.md
-rm content/provenance/<slug>.provenance.md   # the old flat one
+rm -r content/provenance/                    # the old directory
+rm content/rendered/**/*.provenance.tex content/rendered/**/*.provenance.pdf
 ```
 
-`content/provenance/` is regenerable output and gitignored, so re-running
-is the whole migration.
+**Two enrichment stages are gone.** `--stages provenance` and
+`--stages render` were wrappers around tier-1 commands. Call those
+directly -- they need no venv, and unlike the stages they replace they do
+not wait on `sync`'s write lock:
+
+```bash
+# was: .venv-full/bin/python scripts/enrich.py --stages provenance --input <draft>
+python3 -m src.citation_provenance <draft>
+
+# was: .venv-full/bin/python scripts/enrich.py --stages render --input <draft>
+python3 -m src.render_output <draft> --format pdf
+```
+
+`--input`, `--output-format` and `--documentclass` went with them.
+
+**The genre skills' provenance JSON moved too**, from
+`content/provenance/<slug>.json` to
+`content/dossiers/<draft path minus suffix>/provenance.json`. It is
+drafting state, not a review report, and nothing reads it back -- so
+there is nothing to migrate unless you have tooling of your own pointed
+at the old path.
 
 ## Upgrading a corpus parsed by an earlier version
 
@@ -157,9 +176,11 @@ Two commands look like they belong in a higher tier and don't:
   `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
   dependencies. (It was `src.heavy.render_output` until 3.0.0, which made
   it look like part of the enrichment layer; it never was.)
-- `src.citation_coverage` and `scripts/verbatim_check.py` are review aids
-  built on `src.retrieval` and `src.config`, both stdlib. `verbatim_check`
-  calls the `pdftotext` binary, again an OS package.
+- `src.citation_coverage` and `scripts/verbatim_check.py` are review-layer
+  commands built on `src.retrieval` and `src.config`, both stdlib.
+  `verbatim_check` calls the `pdftotext` binary, again an OS package, and
+  lives under `scripts/` only for historical reasons -- it is no heavier
+  than the other two.
 
 Using the wrong interpreter is the most likely first error you will hit:
 `ModuleNotFoundError: No module named 'bibtexparser'` means you ran
@@ -262,6 +283,8 @@ python3 scripts/verbatim_check.py overlap content/drafts/<slug>.md <citekey>  # 
 python3 scripts/verbatim_check.py scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
 python3 scripts/verbatim_check.py locate <citekey> "a phrase to find"  # which pdf page a phrase is on
 python3 -m src.citation_coverage content/drafts/<slug>.md --query "digital twin composability"
+# add --write to any of the three to file the report under content/review/,
+# mirroring the draft's path -- printing stays the default
 ```
 
 Two commands are not part of a first run at all, and are listed here only
@@ -578,18 +601,29 @@ it reuses `src.retrieval`, which is itself stdlib.
 | `<draft>` | required | The draft to check |
 | `--query QUERY` | required, repeatable | A retrieval query to check coverage against. Give it more than once |
 | `--k K` | `5` | Top-k results per query |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default -- the usual use is a question asked and answered in one sitting |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the formats to produce. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
 python3 -m src.citation_coverage content/drafts/survey.md \
     --query "digital twin composability" \
     --query "runtime verification"
 # ... --k 10
+# ... --write --formats md
 ```
+
+A written report records the whole invocation in its header, queries
+included: a coverage figure means nothing without knowing 62% *of what*.
 
 ### `python3 -m src.citation_provenance`
 
 Reports what in each cited source actually supports the claim citing it,
-quoting a real passage. A review aid, not a gate.
+quoting a real passage. Layer 4, the review layer: advisory, not a gate.
+
+Unlike the other two it writes by default -- reading a provenance report
+in a terminal was never the point. The report lands in
+`content/review/<topic>/<stem>.provenance.md`, mirroring the draft's path,
+with its `.tex`/`.pdf` renders beside it.
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -700,9 +734,8 @@ correct answer rather than a bug.
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
-| `--stages STAGES` | all five, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,provenance,render` |
-| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites, and use it as the `--input` default. Refused with an explicit `--stages embed` or `bertopic` |
-| `--input INPUT` | `--for-draft`'s draft, when given | Input file for the `provenance` and `render` stages |
+| `--stages STAGES` | all three, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic` |
+| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
 | `--output-format FORMAT` | `pdf` | Output format for the `render` stage |
 | `--documentclass CLASS` | `article` | LaTeX documentclass for the `render` stage |
 
@@ -711,8 +744,10 @@ correct answer rather than a bug.
 # .venv-full/bin/python scripts/enrich.py --stages docling
 # .venv-full/bin/python scripts/enrich.py --stages embed,bertopic
 # .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
-# .venv-full/bin/python scripts/enrich.py --stages render \
-#     --input content/drafts/survey.md --output-format pdf --documentclass report
+# The provenance and render stages left in 3.20.0 -- run the tier-1
+# commands directly instead (no venv, no lock):
+# python3 -m src.citation_provenance content/drafts/survey.md
+# python3 -m src.render_output content/drafts/survey.md --format pdf
 ```
 
 #### Enriching one draft's papers
@@ -740,8 +775,9 @@ Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/draft
 
 With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
-this is usually for. Add `--stages docling,provenance` (or `render`) to
-carry on into the draft's own report; `--input` already points at the
+this is usually for. (Before 3.20.0 you could add `--stages
+docling,provenance` to carry on into the draft's own report; that stage
+is gone -- run `python3 -m src.citation_provenance <draft>`.) `--input` already pointed at the
 draft, so it needs naming only when you want a *different* document
 rendered.
 
@@ -791,12 +827,12 @@ picks up from there.
 
 ### `scripts/verbatim_check.py`
 
-Review aid with three subcommands: verbatim overlap between a draft and one
-cited source, a whole-draft x whole-corpus scan, and page location for a
-phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary, so
-that subcommand needs poppler-utils on `PATH`. `overlap` and `scan` read
-already-parsed text via `src/overlap_index.py`'s cache instead. Run with no
-arguments to print its usage.
+Layer 4, the review layer, with three subcommands: verbatim overlap
+between a draft and one cited source, a whole-draft x whole-corpus scan,
+and page location for a phrase. Stdlib-only -- but `locate` shells out to
+the `pdftotext` binary, so that subcommand needs poppler-utils on `PATH`.
+`overlap` and `scan` read already-parsed text via `src/overlap_index.py`'s
+cache instead. Run with no arguments to print its usage.
 
 [PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
 section: what `overlap`/`scan` catch and don't (verbatim only --
@@ -807,14 +843,21 @@ technique and its literature sources, and a measured
 | Subcommand | Arguments | What it does |
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). Exits `0` on every successful invocation, findings or not -- a review aid, never a gate. A malformed invocation (a flag with no value, or a missing `<draft>`) exits `2`, the usual CLI-usage error, not a verdict |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
+
+**Exit codes**, shared with the other two review commands: `0` on every
+successful invocation, findings or not -- advisory, never a gate. `1` for
+a draft this layer will not read (missing, or resolving outside
+`content/`). `2` for a malformed invocation, the usual CLI-usage error,
+not a verdict.
 
 ```bash
 python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025
 # python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025 --n 12
 python3 scripts/verbatim_check.py scan content/drafts/survey.md
 # python3 scripts/verbatim_check.py scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
+# python3 scripts/verbatim_check.py scan content/drafts/survey.md --write --formats md
 # python3 scripts/verbatim_check.py locate talasila_composable_2025 "a digital twin is"
 ```
 

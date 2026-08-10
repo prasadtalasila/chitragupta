@@ -101,7 +101,8 @@ the citekey when a block is missing, so a transcription you skipped
 surfaces here instead of silently.
 
 **The dossier is not the provenance JSON, and neither replaces the
-other -- this skill writes both.** `content/provenance/<slug>.json`
+other -- this skill writes both.**
+`content/dossiers/<draft path minus suffix>/provenance.json`
 (Phase 7c) is the machine record of section -> citekey, for tooling. The
 dossier is the human-readable working state: reader, scope, glossary,
 kept evidence, rejected candidates and why, contradictions, and the
@@ -424,7 +425,7 @@ scorecard -> References (citekeys with title/year from the ledger, not URLs).
 **(c) Save, log provenance, and gate.** Save the assembled report to
 `content/drafts/deep-research-<slug>.md` first -- the gate reads a file, and
 every other skill in this repo saves before gating. Then write
-`content/provenance/<slug>.json`
+`content/dossiers/<draft path minus suffix>/provenance.json`
 covering every section's citekeys. This is the machine record, and it is
 not the dossier: the JSON maps section -> citekey for tooling, while the
 dossier holds the working state a human or a later revision reads. Write
@@ -505,6 +506,9 @@ not a gate: it exits 0 either way and cannot block the report. Say what
 it misses when you offer it -- it sees verbatim and near-verbatim reuse
 only, and **paraphrase is not detected**, so a clean scan is not a clean
 bill of health (`docs/PLAGIARISM.md`).
+If the user wants the finding kept, add `--write`: the report
+goes to `content/review/`, mirroring the draft's path, beside any
+provenance and coverage reports for the same draft.
 
 **(g) Present.** Give the user: headline finding, the single most
 important contradiction, the actionable insight, the overall grade, any

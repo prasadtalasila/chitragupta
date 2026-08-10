@@ -3,7 +3,7 @@ content/ledger.sqlite
 content/pipeline.lock.db
 content/pipeline.lock.db.holder
 content/library.bib
-content/provenance/
+content/review/
 content/docling/
 content/docling_cache.json
 content/chroma/
@@ -13,7 +13,6 @@ content/retrieval_index.json
 content/overlap/
 content/rendered/
 content/drafts/
-content/provenance/
 content/dossiers/
 
 # The pipeline's rotated log file (see config.toml's [logging]

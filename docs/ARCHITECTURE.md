@@ -17,11 +17,11 @@ work on the repository itself ([DEVELOPER.md](../DEVELOPER.md)).
 
 ## Table of contents
 
-- [The three layers](#the-three-layers)
+- [The four layers](#the-four-layers)
 - [Layer 1: the corpus layer](#layer-1-the-corpus-layer)
 - [Layer 2: the drafting layer](#layer-2-the-drafting-layer)
-- [The enrichment layer](#the-enrichment-layer)
-- [Review aids: in no layer](#review-aids-in-no-layer)
+- [Layer 3: the enrichment layer](#layer-3-the-enrichment-layer)
+- [Layer 4: the review layer](#layer-4-the-review-layer)
 - [Incremental by default, honest about failure](#incremental-by-default-honest-about-failure)
 - [What is reproducible, and what is not](#what-is-reproducible-and-what-is-not)
 - [What this architecture does not do](#what-this-architecture-does-not-do)
@@ -30,42 +30,67 @@ work on the repository itself ([DEVELOPER.md](../DEVELOPER.md)).
 - [Ladders and tiers](#ladders-and-tiers)
 - [One writer at a time](#one-writer-at-a-time)
 
-## The three layers
+## The four layers
 
-Three layers: a deterministic **corpus layer**, a generative **drafting
-layer**, and an optional **enrichment layer** that deepens the corpus for
-whoever wants it. (These were called "job 1", "job 2" and "the heavy
-pipeline" before 2026-08-06; older content and commit messages still use
-those names.) The diagram below adds the axis the workflow diagrams leave
+Four layers: a deterministic **corpus layer**, a generative **drafting
+layer**, an optional **enrichment layer** that deepens the corpus for
+whoever wants it, and an advisory **review layer** you run by hand over a
+finished draft. (The first three were called "job 1", "job 2" and "the
+heavy pipeline" before 2026-08-06; older content and commit messages
+still use those names. The fourth was "review aids, in no layer" until
+3.20.0.) The diagram below adds the axis the workflow diagrams leave
 out: **which interpreter each part needs, and who holds the write lock.**
+
+The numbers are the order these are introduced, and the order you meet
+them: you need a corpus before a draft, and there is nothing to review
+until a draft exists. They are **not a dependency rank.** The actual
+dependency graph is acyclic and entirely artefact-mediated -- every edge
+is one layer reading a file another wrote, and no layer calls into
+another:
+
+```
+corpus (sync) ──ledger, parsed/──▶ drafting (skills + gate chain) ──draft──▶ review
+     │                                    ▲                                    │
+     └──▶ enrichment (enrich.py) ──docling/, chroma/, passages──┘              │
+                        └───────────────── passages ────────────────────────────┘
+```
+
+Until 3.20.0 that was not quite true in code: `scripts/enrich.py` hosted
+a `provenance` and a `render` stage, each a three-line wrapper around a
+tier-1 command, so the enrichment layer imported the review and drafting
+layers. Both stages are gone -- run `python3 -m src.citation_provenance
+<draft>` and `python3 -m src.render_output <draft> --format pdf`
+directly, which need no venv and take no lock.
 
 ```mermaid
 flowchart TB
 
-  subgraph J1["<b>CORPUS LAYER</b> — deterministic, no LLM, safe unattended"]
+  subgraph J1["<b>LAYER 1 · CORPUS</b> — deterministic, no LLM, safe unattended"]
     direction TB
     SYNC["<code>python -m src.sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
     OUT1[/"<b>content/ledger.sqlite</b> · <b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     SYNC --> OUT1
   end
 
-  subgraph J2["<b>DRAFTING LAYER</b> — generative, on demand, you review it"]
+  subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
     direction TB
     SKILL["<b>.claude/skills/</b> — five genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
     CHAIN["<b>the chain, on every draft</b><br/><code>python3 -m src.citation_gate</code> — <b>hard gate</b><br/><code>python3 -m src.references</code><br/><code>python3 -m src.render_output</code><br/><small><b>bare python3, no venv</b> — by design</small>"]
     SKILL --> CHAIN
   end
 
-  subgraph JH["<b>OPTIONAL · ENRICHMENT LAYER</b> — you run it, no skill does"]
+  subgraph JH["<b>LAYER 3 · ENRICHMENT</b> — optional · you run it, no skill does"]
     direction TB
     FULL["<code>python scripts/enrich.py --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
     OUT3[/"content/docling/ · content/chroma/ · content/topics.json"/]
     FULL --> OUT3
   end
 
-  subgraph AID["<b>REVIEW AIDS</b> — in no layer · never automatic · never a gate"]
-    direction LR
-    A["<code>python3 -m src.citation_provenance</code><br/><code>python3 -m src.citation_coverage</code><br/><code>python3 scripts/verbatim_check.py</code><br/><small>bare python3</small>"]
+  subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never automatic, never a gate · <b>takes no lock</b>"]
+    direction TB
+    A["<code>python3 -m src.citation_provenance</code><br/><code>python3 -m src.citation_coverage</code><br/><code>python3 scripts/verbatim_check.py</code><br/><small>bare python3 · runs happily during a sync</small>"]
+    OUT4[/"<b>content/review/&lt;topic&gt;/&lt;stem&gt;.{provenance,verbatim,coverage}.md</b>"/]
+    A --> OUT4
   end
 
   OUT1 == "the only evidence a writer is given" ==> SKILL
@@ -78,12 +103,12 @@ flowchart TB
   classDef gen fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#052e16
   classDef heavy fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
   classDef store fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
-  classDef aid fill:#f8fafc,stroke:#94a3b8,stroke-dasharray:4 3,color:#0f172a
+  classDef aid fill:#f8fafc,stroke:#64748b,stroke-width:1.5px,color:#0f172a
 
   class SYNC det
   class SKILL,CHAIN gen
   class FULL heavy
-  class OUT1,OUT3 store
+  class OUT1,OUT3,OUT4 store
   class A aid
 ```
 
@@ -176,10 +201,10 @@ has already built it -- `deep-research` checks for `content/chroma/`
 before reaching for embedding search, `peer-reviewer` reads
 `content/docling/<citekey>.md` if it exists -- and fall back to the
 lightweight default when it isn't there. Building that stack is your
-decision, not a side effect of asking for a draft. See [the enrichment
-layer](#the-enrichment-layer) below.
+decision, not a side effect of asking for a draft. See [layer 3, the
+enrichment layer](#layer-3-the-enrichment-layer) below.
 
-## The enrichment layer
+## Layer 3: the enrichment layer
 
 **It extends the corpus layer, not the drafting one.** That is worth
 saying plainly, because the old name for it -- "the heavy pipeline" --
@@ -192,28 +217,35 @@ ever reads what it produced.
 
 ```bash
 .venv-full/bin/python scripts/enrich.py --stages docling,embed
-.venv-full/bin/python scripts/enrich.py --stages render --input draft.md
 .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
 ```
 
-| Stage | What it produces | Needs `--input`? | `--for-draft` |
-|---|---|---|---|
-| `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | no | scoped |
-| `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | no | refused |
-| `bertopic` | `content/topics.json` -- one cluster assignment per document | no | refused |
-| `provenance` | the citation-provenance report -- the same code as `python3 -m src.citation_provenance`, wrapped for convenience rather than enrichment work | **yes** | unaffected |
-| `render` | the rendered draft -- likewise the drafting layer's own `python3 -m src.render_output`, wrapped here | **yes** | unaffected |
+| Stage | What it produces | `--for-draft` |
+|---|---|---|
+| `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | scoped |
+| `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
+| `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
+
+**Two stages left in 3.20.0**, and it is worth knowing why if you have a
+command that names them. `provenance` and `render` were three-line
+wrappers around `python3 -m src.citation_provenance` and `python3 -m
+src.render_output` -- this page already called them conveniences rather
+than enrichment work. Hosting them here had two costs: it made the
+enrichment layer *import* the review and drafting layers, the one cycle
+in the four-layer picture; and because the lock wraps every stage, it
+made a review aid and a draft render wait on a running `sync`. Call the
+two commands directly instead. They need no venv at all, so the
+replacement is cheaper than what it replaces.
 
 The default unit of work is the whole corpus. `--for-draft` narrows it to
-the papers one draft cites, which reaches `docling` only: `provenance`
-and `render` read `--input` and are per-draft already, and `embed` and
+the papers one draft cites, which reaches `docling` only: `embed` and
 `bertopic` each write one whole-corpus artefact with no partial form, so
 they are refused rather than scoped. [LADDERS.md](LADDERS.md#scoping-a-run-to-one-draft)
 has the reasoning and [CLI.md](CLI.md#enriching-one-drafts-papers) the flags.
 
 Each stage probes its own prerequisites and reports `ok`, `partial`,
-`skipped`, `missing-binary` or `error`, so a missing TeX Live is a correct
-answer rather than a crash. No stage needs an LLM API key -- this
+`skipped`, `missing-binary` or `error`, so a missing dependency is a
+correct answer rather than a crash. No stage needs an LLM API key -- this
 repository intentionally has none. (An earlier revision had PaperQA2 and
 STORM stages that required `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; they
 were removed to keep it key-free. LLM-backed synthesis happens only in the
@@ -222,7 +254,7 @@ drafting layer, through a Claude Code session.)
 What the three build stages are *for*, and which one to build first, is in
 [RETRIEVAL.md](RETRIEVAL.md).
 
-**`--stages` is the only way to run the first three.**
+**`--stages` is the only way to run them.**
 `src/enrich/docling_parse.py`, `embed_index.py` and `topic_model.py` have
 no `__main__` block, so `python -m src.enrich.docling_parse` imports the
 module, does nothing, and exits 0 -- a silent no-op, not an error.
@@ -230,21 +262,25 @@ module, does nothing, and exits 0 -- a silent no-op, not an error.
 package from the `enrich` group, and belongs to the drafting layer --
 which is why it lives in `src/` rather than in the package.
 
-**Calling it from a skill or an agent.** A skill runs inline with the same
-Bash access as the session that invoked it, so it *can* shell out to
-`scripts/enrich.py` exactly as you would. The pattern to follow is
-the one the existing skills use: check the stack exists before calling
-into it (`content/chroma/` for embeddings, `content/docling/` for
-passages, `.venv-full/` for anything in the enrich group), and degrade to
-the lightweight default rather than erroring when it doesn't. Bear in mind
-what that costs: the enrichment layer takes the same write lock as `sync`,
-and
-a first full-corpus Docling parse is measured in tens of minutes.
+**A skill must not run it.** A skill runs inline with the same Bash
+access as the session that invoked it, so it *can* shell out to
+`scripts/enrich.py` -- and must not, which is what AGENTS.md and all
+seven `SKILL.md` files say. Two reasons: this layer takes the same write
+lock as `sync`, so a skill invoking it can block or be blocked by the
+user's own run; and a first full-corpus Docling parse is measured in tens
+of minutes, which is not a cost a skill may incur on the user's behalf
+without being asked.
 
-## Review aids: in no layer
+What a skill *does* do is **read** what this layer produced, which is the
+only edge between the two: check the stack exists before using it
+(`content/chroma/` for embeddings, `content/docling/` for passages), and
+degrade to the lightweight default rather than erroring when it doesn't.
+Reading an artefact is not calling a layer.
 
-Three commands sit outside all three layers. Nothing invokes them automatically,
-and none of them gates anything:
+## Layer 4: the review layer
+
+Three commands, run by hand over a finished draft. Nothing invokes them
+automatically, and none of them gates anything:
 
 | Command | Answers |
 |---|---|
@@ -252,6 +288,41 @@ and none of them gates anything:
 | `python3 scripts/verbatim_check.py overlap\|locate …` | how much wording a draft shares with one cited source, and which page a phrase is on |
 | `python3 scripts/verbatim_check.py scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
 | `python3 -m src.citation_coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
+
+**Advisory, not a gate**, and named accordingly. *Review* rather than
+*verification* because `src.citation_gate` is verification, it lives in
+the drafting layer, and it is that layer's only exit -- a "verification
+layer" that excluded the gate would split the concept across two layers.
+The contrast is the point, not a competition.
+
+**It takes no lock.** These are read-only over the corpus and must keep
+working during a `sync`, like `python3 -m src.ledger` and retrieval. That
+was true of the commands before 3.20.0 and false of one entry point into
+them: `enrich.py --stages provenance` ran a review aid holding sync's
+write lock, which is why that stage is gone.
+
+**One output contract**, mirroring the draft's path exactly as
+`content/rendered/` and `content/dossiers/` do, so a draft, its dossier,
+its renders and its review artefacts are all findable from the draft's
+own path:
+
+```
+content/drafts/<topic>/survey.md
+  -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
+     content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf)
+     content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
+```
+
+`src/citation_provenance` writes by default; `verbatim_check scan` and
+`citation_coverage` write under `--write`, printing being the usual use
+for both. Every report opens with a banner saying it is not a verdict --
+a file found on disk months later is exactly the case the docs cannot
+reach -- and **carries no timestamp**, because the reason to write one is
+that it diffs cleanly against the next revision's. `src/review.py` owns
+all of that. A draft under `content/` but not under `content/drafts/`
+writes flat, matching `render_output._output_dir`; a draft resolving
+outside `content/` is refused, the tier-1 rule 3.17.0 set for the gate
+chain.
 
 That they are *not* gates is the design, not an omission. The gate answers
 a question with one correct answer -- is this citekey in the ledger? --
@@ -314,7 +385,8 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.txt`, `docling` | **No.** ~1.4% of documents differ between differently-configured runs, ~0.9% between two runs of the *same* configuration on multiple GPUs |
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters -- see below |
 | `content/rendered/*.md`, `*.tex` | **Yes** -- byte-identical, measured |
-| `content/rendered/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
+| `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
+| `content/review/*.md` -- the three review reports | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input -- UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change -- two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
 | `content/overlap/` | A cache, not an output: `scripts/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
@@ -409,7 +481,11 @@ not worth hand-rolling.
 **Directory membership is not the same axis, and used to disagree with
 it.** `render_output.py` sat under `src/heavy/` until 3.0.0 while needing
 no package from that group at all -- it is the drafting layer's publish
-step. It now lives in `src/` beside the rest of that layer. What it needs
+step. It now lives in `src/` beside the rest of that layer. One residue
+of the same confusion is still here: `scripts/verbatim_check.py` is a
+review-layer command living in the directory that holds the enrichment
+layer's entry point. It runs on bare `python3` like the other two and is
+in no way heavier; only its path suggests otherwise. What it needs
 is `pandoc` and `pdflatex`, which are operating-system packages, probed at
 runtime and reported as `missing-binary` when absent. That axis -- which
 binaries a command shells out to -- is still independent of which
@@ -464,6 +540,9 @@ against any other writer, not just sync against sync. The second one to
 start exits `2` rather than interleaving, and the lock releases itself if
 its holder is killed.
 
-Readers are never blocked: `python3 -m src.ledger`, the citation gate and
-retrieval all run happily while a sync is in progress.
+Readers are never blocked: `python3 -m src.ledger`, the citation gate,
+retrieval and **the whole review layer** all run happily while a sync is
+in progress. The review layer's exemption is deliberate and stated in its
+own section -- reviewing a finished draft is exactly the kind of work
+that should not have to wait for a corpus rebuild.
 [DESIGN.md](DESIGN.md) has the reasoning and the failure analysis.

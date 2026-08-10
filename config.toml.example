@@ -23,13 +23,15 @@
 path = "papers/bibliography.bib"
 
 [content]
-# Where sync and the enrichment layer write: ledger.sqlite, parsed/,
-# provenance/, rendered/, and the enrichment stages' docling/, chroma/,
+# Everything this pipeline writes lives under here: sync's ledger.sqlite
+# and parsed/, the drafting layer's drafts/, dossiers/ and rendered/, the
+# review layer's review/, and the enrichment stages' docling/, chroma/,
 # topics.json.
 # Since 3.17.0 this is also what every tier-1 tool will accept as an
-# input: citation_gate, references and render_output all refuse a draft
-# that resolves outside it, so that one directory is the whole record of
-# the work and a copy of it is complete.
+# input: citation_gate, references and render_output refuse a draft that
+# resolves outside it, and since 3.20.0 so do the three review commands.
+# That one directory is then the whole record of the work, and a copy of
+# it is complete.
 # Relative to the repo root, or absolute.  Default: content
 dir = "content"
 
@@ -255,6 +257,8 @@ min_tokens = 200
 level = "INFO"
 
 [provenance]
+# The citation-provenance tool's own thresholds, not the review layer's --
+# the section keeps the tool's name, not the layer's.
 # src/citation_provenance.py bands the fraction of a citing sentence's
 # distinctive words found in the best-matching source passage. Below
 # weak_score a finding reads "no support found", which means "go look at

@@ -72,9 +72,11 @@ five that write a new draft -- survey, thesis chapter, undergraduate
 textbook chapter, tutorial, and a heavier multi-perspective deep-research
 mode -- and two that change one that already exists, because a draft is
 never revised by re-running the skill that produced it
-([docs/GENRE.md](docs/GENRE.md)). A third layer, **enrichment**, sits
-outside these phases: it deepens the same corpus with layout-aware
-parsing, semantic search and topic clustering, and nothing above needs it.
+([docs/GENRE.md](docs/GENRE.md)). Two more layers sit outside these
+phases. **Enrichment** deepens the same corpus with layout-aware parsing,
+semantic search and topic clustering, and nothing above needs it.
+**Review** is what you run afterwards on a finished draft -- provenance,
+verbatim and coverage reports, all advisory, none of them a gate.
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
 by depth, by genre, and in time order -- and is where the figure above
@@ -162,7 +164,7 @@ python3 -m src.ledger
 ```
 
 Every command that chain runs, every way to re-run one by hand, and every
-review aid for checking a finished draft against its sources are in
+review-layer command for checking a finished draft against its sources are in
 [docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
 step](docs/CLI.md#the-full-first-run-step-by-step), which walks the whole
 sequence above and everything that follows it, in order.
@@ -177,7 +179,6 @@ corpus.
 
 ```bash
 .venv-full/bin/python scripts/enrich.py --stages docling,embed
-.venv-full/bin/python scripts/enrich.py --stages render --input draft.md
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in
@@ -189,7 +190,7 @@ when it isn't.
 Which stage is worth that cost, and what each one actually answers, is in
 [docs/RETRIEVAL.md](docs/RETRIEVAL.md). How the stages fit into the rest
 of the system, including how to call them from your own script or skill,
-is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-enrichment-layer).
+is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#layer-3-the-enrichment-layer).
 
 No stage needs an LLM API key -- this repository intentionally has none.
 Every stage probes its own prerequisites and reports `ok`, `skipped` or

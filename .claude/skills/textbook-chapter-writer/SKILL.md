@@ -300,6 +300,9 @@ candidate for the chapter.
     sees verbatim and near-verbatim reuse only, and **paraphrase is not
     detected**, so a clean scan is not a clean bill of health
     (`docs/PLAGIARISM.md`).
+    If the user wants the finding kept, add `--write`: the report
+    goes to `content/review/`, mirroring the draft's path, beside any
+    provenance and coverage reports for the same draft.
 15. **Present the draft** plus a short note on what it assumes as prior
     knowledge, what it deliberately leaves out, and where a student is meant
     to go next -- and report the render outcome (paths to the `.tex`/`.pdf`

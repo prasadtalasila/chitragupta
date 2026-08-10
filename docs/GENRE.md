@@ -80,7 +80,7 @@ both.
 
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
-`content/provenance/<slug>.json`. Nothing under `content/` is tracked by
+a machine-readable `provenance.json` in that same directory. Nothing under `content/` is tracked by
 git -- see [DRAFT-ITERATION.md](DRAFT-ITERATION.md#backup-and-restore)
 for how a draft and its dossier get backed up.
 
