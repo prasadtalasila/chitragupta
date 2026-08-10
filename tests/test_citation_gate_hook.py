@@ -64,6 +64,32 @@ def payload(file_path) -> str:
     return json.dumps({"tool_input": {"file_path": str(file_path)}})
 
 
+def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
+    """Whether an env var would make a child process start its own coverage.
+
+    Stripped from the hook's environment because the hook runs
+    `python3 -m src.citation_gate` with `cwd` set to *its* repo root --
+    the temp one, under this fixture. Coverage started there finds no
+    config file, so it records statement-only data while the parent
+    records branch data, and the run dies at combine time with
+    "Can't combine statement coverage data with branch data" *after*
+    every test has passed.
+
+    Whether it happens at all depends on the pytest-cov version and on
+    what `python3` resolves to: pytest-cov 6.x ships a `.pth` that
+    instruments every subprocess, 7.x does not, and the hook spawns a
+    literal `python3` rather than `sys.executable`, so a venv on PATH
+    (what `poetry run` gives CI) is instrumented while a bare system
+    interpreter is not. Stripping these makes every combination behave
+    the same. Nothing is lost: the in-process tests already cover
+    `src/citation_gate.py` fully, which is why the total is 100% on a
+    host where these children were never measured.
+    """
+    return name.startswith("COV_CORE") or name in (
+        "COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE",
+    )
+
+
 class HookRepo:
     """A throwaway repo root the hook can call its own.
 
@@ -83,7 +109,7 @@ class HookRepo:
         self.drafts = root / "content" / "drafts"
         self.drafts.mkdir(parents=True, exist_ok=True)
         self.env = {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)},
             "CONTENT_DIR": str(cfg.CONTENT_DIR),
             "PYTHONPATH": str(REPO_ROOT),
         }
