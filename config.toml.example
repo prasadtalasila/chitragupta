@@ -33,11 +33,6 @@ path = "papers/bibliography.bib"
 # Relative to the repo root, or absolute.  Default: content
 dir = "content"
 
-# The ledger file, relative to `dir` (or absolute). Separately overridable
-# so that pointing `dir` at another tree -- which now also decides which
-# drafts are acceptable -- doesn't force the ledger to move with it.
-# Default: ledger.sqlite
-# ledger = "ledger.sqlite"
 
 [render]
 # How `python3 -m src.render_output` formats citations. Used by

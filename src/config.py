@@ -136,15 +136,7 @@ BIB_FILE_PATH = REPO_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibl
 
 CONTENT_DIR = REPO_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
-# Overridable independently of CONTENT_DIR, which it otherwise derives
-# from. That mattered from 3.17.0, when the content directory stopped
-# being only "where things are kept" and became "which paths a tool will
-# accept at all" (require_inside_content, below): before that a caller
-# could point CONTENT_DIR at a scratch tree purely to read a different
-# ledger, and now doing so would also refuse every real draft. This knob
-# keeps the two separable -- read this ledger, judge paths against the
-# tree they actually live in.
-LEDGER_PATH = CONTENT_DIR / _get("LEDGER_PATH", "content", "ledger", default="ledger.sqlite")
+LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 PROVENANCE_DIR = CONTENT_DIR / "provenance"
 # Where a genre skill saves its draft, and where src/dossier.py keeps the
 # working state that produced it -- one dossier directory per draft,
