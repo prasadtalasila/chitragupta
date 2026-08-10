@@ -363,7 +363,7 @@ under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
 three review-layer commands.
 
 It was also an enrichment stage (`--stages provenance --input <draft>`)
-until 3.20.0, which had the enrichment layer importing the review layer
+until 4.0.0, which had the enrichment layer importing the review layer
 and made this command wait on `sync`'s write lock. Run it directly.
 
 **Advisory, not a gate**, deliberately: matching is lexical, so it

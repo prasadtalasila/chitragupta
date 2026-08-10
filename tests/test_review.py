@@ -157,7 +157,7 @@ class TestWrite:
     def test_renders_beside_the_report_not_into_rendered(self, isolated_config, monkeypatch):
         """The whole point of the output contract: a report's .tex/.pdf
         belong with the report, not in the drafting layer's publish
-        output. Before 3.20.0 they landed in content/rendered/."""
+        output. Before 4.0.0 they landed in content/rendered/."""
         from src import render_output
 
         seen = {}

@@ -38,7 +38,7 @@ whoever wants it, and an advisory **review layer** you run by hand over a
 finished draft. (The first three were called "job 1", "job 2" and "the
 heavy pipeline" before 2026-08-06; older content and commit messages
 still use those names. The fourth was "review aids, in no layer" until
-3.20.0.) The diagram below adds the axis the workflow diagrams leave
+4.0.0.) The diagram below adds the axis the workflow diagrams leave
 out: **which interpreter each part needs, and who holds the write lock.**
 
 The numbers are the order these are introduced, and the order you meet
@@ -55,7 +55,7 @@ corpus (sync) ──ledger, parsed/──▶ drafting (skills + gate chain) ─�
                         └───────────────── passages ────────────────────────────┘
 ```
 
-Until 3.20.0 that was not quite true in code: `scripts/enrich.py` hosted
+Until 4.0.0 that was not quite true in code: `scripts/enrich.py` hosted
 a `provenance` and a `render` stage, each a three-line wrapper around a
 tier-1 command, so the enrichment layer imported the review and drafting
 layers. Both stages are gone -- run `python3 -m src.citation_provenance
@@ -226,7 +226,7 @@ ever reads what it produced.
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
 
-**Two stages left in 3.20.0**, and it is worth knowing why if you have a
+**Two stages left in 4.0.0**, and it is worth knowing why if you have a
 command that names them. `provenance` and `render` were three-line
 wrappers around `python3 -m src.citation_provenance` and `python3 -m
 src.render_output` -- this page already called them conveniences rather
@@ -297,7 +297,7 @@ The contrast is the point, not a competition.
 
 **It takes no lock.** These are read-only over the corpus and must keep
 working during a `sync`, like `python3 -m src.ledger` and retrieval. That
-was true of the commands before 3.20.0 and false of one entry point into
+was true of the commands before 4.0.0 and false of one entry point into
 them: `enrich.py --stages provenance` ran a review aid holding sync's
 write lock, which is why that stage is gone.
 

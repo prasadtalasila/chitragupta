@@ -57,7 +57,7 @@ class Finding:
 
 @dataclass
 class Report:
-    draft: str
+    draft: Path
     findings: list[Finding] = field(default_factory=list)
     unreadable: dict[str, str] = field(default_factory=dict)
 
@@ -309,7 +309,7 @@ def build_report(draft_path: Path) -> Report:
     # exact confusion the mirroring exists to prevent, reintroduced inside
     # the file. It also makes the recorded command re-runnable, which
     # `survey.md` alone is not.
-    report = Report(draft=str(draft_path))
+    report = Report(draft=Path(draft_path))
     con = ledger.connect()
     try:
         cache: dict[str, list[Passage]] = {}

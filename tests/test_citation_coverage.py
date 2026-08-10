@@ -243,7 +243,7 @@ class TestWrite:
 class TestInputIsConfinedToContent:
     def test_a_draft_outside_the_content_dir_is_refused(self, ledger_con, isolated_config, tmp_path, capsys):
         """The tier-1 rule 3.17.0 set for the gate chain, which the three
-        review aids did not follow until 3.20.0."""
+        review aids did not follow until 4.0.0."""
         outside = tmp_path / "outside.md"
         outside.write_text("[@a2024]\n")
 

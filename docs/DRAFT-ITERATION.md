@@ -184,7 +184,7 @@ where the plan is replaced by what the finished report actually cites.
 ### Why not merge the provenance JSON into the rest of the dossier
 
 `thesis-chapter-writer` and `deep-research` also write a `provenance.json`
-(and, for the thesis genre, an `evidence.json`). Since 3.20.0 both live
+(and, for the thesis genre, an `evidence.json`). Since 4.0.0 both live
 **inside** the dossier directory --
 `content/dossiers/<draft path minus suffix>/provenance.json` -- rather
 than in a `content/provenance/` of their own, which has been removed. Two

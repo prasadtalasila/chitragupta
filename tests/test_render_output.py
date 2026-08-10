@@ -296,7 +296,7 @@ class TestOutputDir:
         """`content/review/` is not a mirror source.
 
         3.19.2 made `PROVENANCE_DIR` a second source root so a report's
-        renders would follow the report. 3.20.0 replaced that with
+        renders would follow the report. 4.0.0 replaced that with
         `render(output_dir=...)`: `src/review.py` says where its renders
         go, and this function is left answering only "where does a
         *draft* render to". Reaching here with a report at all means the

@@ -17,7 +17,7 @@ corpus and drafting layers (python -m src.sync, src/citation_gate.py) do
 not depend on any of this and are unaffected either way.
 
 Every stage here writes a **corpus** artefact, which is why this layer
-takes the same write lock as `python -m src.sync`. Until 3.20.0 it also
+takes the same write lock as `python -m src.sync`. Until 4.0.0 it also
 carried two stages that did not: `provenance` (a review-layer report) and
 `render` (the drafting layer's publish step), each a three-line wrapper
 around a command you can run directly. Both are gone -- run
@@ -81,7 +81,7 @@ STAGE_ORDER = ["docling", "embed", "bertopic"]
 SCOPE_REFUSED = ("embed", "bertopic")
 
 # The stages that read the corpus at all -- every stage there is, since
-# 3.20.0 removed the two per-draft passthroughs. Kept as its own name
+# 4.0.0 removed the two per-draft passthroughs. Kept as its own name
 # rather than folded into STAGE_ORDER because it answers a different
 # question: an empty scope is only a reason to stop if some stage was
 # going to use it, and SCOPE_REFUSED says which stages refuse to have a

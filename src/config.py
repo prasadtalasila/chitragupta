@@ -144,7 +144,7 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # the .tex/.pdf renders of each. See src/review.py and
 # docs/ARCHITECTURE.md's "Layer 4: the review layer".
 #
-# Was content/provenance/ until 3.20.0, when it held only
+# Was content/provenance/ until 4.0.0, when it held only
 # citation_provenance's report -- a name that described one of the three
 # review aids rather than the layer, and that the genre skills' own
 # section-to-citekey JSON had also been sharing. That JSON is drafting

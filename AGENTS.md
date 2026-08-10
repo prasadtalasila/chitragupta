@@ -111,7 +111,7 @@ enrichment layer is optional and nothing above it needs it.
   generative, everything it writes is a corpus artefact, and it takes the
   same write lock as `sync` for that reason. Run by a human, never by a
   skill. It imports nothing from the drafting or review layers: until
-  3.20.0 it carried a `provenance` and a `render` stage that did, which
+  4.0.0 it carried a `provenance` and a `render` stage that did, which
   was the one cycle in this picture.
 - **Layer 4, the review layer -- advisory** (`src/citation_provenance.py`,
   `scripts/verbatim_check.py`, `src/citation_coverage.py`): run by hand on

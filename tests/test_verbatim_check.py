@@ -801,7 +801,7 @@ class TestCliDispatch:
 
     def test_a_draft_outside_the_content_dir_is_refused(self, tmp_path):
         """The review layer's input rule, which this command did not
-        follow until 3.20.0. Exit 1, not 2: the invocation is well
+        follow until 4.0.0. Exit 1, not 2: the invocation is well
         formed, the draft is somewhere this pipeline will not read."""
         repo_root = Path(__file__).resolve().parent.parent
         outside = tmp_path / "outside.md"

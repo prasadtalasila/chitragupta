@@ -29,7 +29,7 @@ absent from the ledger. That is a *gate* -- drafting is blocked until it
 passes.
 
 Some tools in the repo are gates. Others are **advisory**: they report
-something for a human to judge, and never block. Since 3.20.0 those three
+something for a human to judge, and never block. Since 4.0.0 those three
 are a named layer -- the **review layer**, layer 4 -- rather than a group
 defined by what it is not. The distinction from the gate matters a lot
 below.
@@ -122,12 +122,12 @@ Two things about that changed recently and are worth knowing if you have
 a script or a habit built on the old shape. Before 3.19.2 the report was
 always flat, so two drafts named `survey.md` in different topic
 directories wrote one file and the second silently replaced the first.
-Before 3.20.0 the directory was `content/provenance/` and the `.tex`/`.pdf`
+Before 4.0.0 the directory was `content/provenance/` and the `.tex`/`.pdf`
 renders landed in `content/rendered/` -- the drafting layer's publish
 output -- rather than beside the report.
 
 It was also a stage of the enrichment layer
-(`--stages provenance --input <draft>`) until 3.20.0. That stage is gone:
+(`--stages provenance --input <draft>`) until 4.0.0. That stage is gone:
 hosting it there had the enrichment layer importing the review layer, and
 made this command wait on `sync`'s write lock for no reason. Run the
 command above, which needs no venv.

@@ -163,8 +163,9 @@ python3 -m src.ledger
 # including its own citation_gate -> references -> render_output chain
 ```
 
-Every command that chain runs, every way to re-run one by hand, and every
-review-layer command for checking a finished draft against its sources are in
+Every command that chain runs, every way to re-run one by hand, and all
+three review-layer commands for checking a finished draft against its
+sources are in
 [docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
 step](docs/CLI.md#the-full-first-run-step-by-step), which walks the whole
 sequence above and everything that follows it, in order.

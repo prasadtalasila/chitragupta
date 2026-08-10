@@ -59,7 +59,7 @@ The numbers are introduction order, not a dependency rank.
 **Stage.** One step within a layer, with its own name and its own status.
 The enrichment layer is the only one that literally enumerates them
 (`--stages docling,embed,bertopic`, each reporting `ok`, `partial`,
-`skipped`, `missing-binary` or `error`). It had five until 3.20.0; the
+`skipped`, `missing-binary` or `error`). It had five until 4.0.0; the
 two that went were per-draft wrappers around tier-1 commands, and neither
 wrote a corpus artefact.
 
@@ -576,7 +576,7 @@ rather than interleaving writes to `content/`.
 
 Review's "none" is load-bearing rather than incidental: the layer is
 read-only over the corpus and must keep working during a `sync`. Two
-rows of this table were false until 3.20.0, for one reason -- `enrich.py`
+rows of this table were false until 4.0.0, for one reason -- `enrich.py`
 hosted a `provenance` and a `render` stage inside its lock, so a review
 aid and a drafting-layer render each took a lock their own layer says
 they do not. Removing the stages made the table true rather than

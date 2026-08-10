@@ -33,7 +33,7 @@ short path; this is the full set.
 
 ## Upgrading from 3.19.x: `content/provenance/` is now `content/review/`
 
-Since 3.20.0 the three review commands are a named layer with one shared
+Since 4.0.0 the three review commands are a named layer with one shared
 output contract. Two things moved.
 
 **Review reports.** `content/provenance/` is gone, replaced by
@@ -742,7 +742,7 @@ correct answer rather than a bug.
 # .venv-full/bin/python scripts/enrich.py --stages docling
 # .venv-full/bin/python scripts/enrich.py --stages embed,bertopic
 # .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
-# The provenance and render stages left in 3.20.0 -- run the tier-1
+# The provenance and render stages left in 4.0.0 -- run the tier-1
 # commands directly instead (no venv, no lock):
 # python3 -m src.citation_provenance content/drafts/survey.md
 # python3 -m src.render_output content/drafts/survey.md --format pdf
@@ -773,7 +773,7 @@ Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/draft
 
 With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
-this is usually for. (Before 3.20.0 you could add `--stages
+this is usually for. (Before 4.0.0 you could add `--stages
 docling,provenance` to carry on into the draft's own report; that stage
 is gone -- run `python3 -m src.citation_provenance <draft>`.) `--input` already pointed at the
 draft, so it needs naming only when you want a *different* document

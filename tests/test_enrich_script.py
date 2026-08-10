@@ -4,7 +4,7 @@ tested directly against mocked underlying module calls; main()'s
 stage-selection and per-stage exception isolation are tested against a
 fully mocked STAGE_FUNCS/corpus.
 
-3.20.0 removed the `provenance` and `render` stages -- both were
+4.0.0 removed the `provenance` and `render` stages -- both were
 three-line wrappers around a tier-1 command, and hosting them here made
 the enrichment layer import the review and drafting layers and made two
 per-draft commands wait on sync's write lock. Their tests went with
@@ -368,7 +368,7 @@ class TestForDraftScope:
     def test_every_stage_now_reads_the_corpus_so_an_empty_scope_always_stops(
         self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """CORPUS_STAGES == STAGE_ORDER since 3.20.0 removed the two
+        """CORPUS_STAGES == STAGE_ORDER since 4.0.0 removed the two
         per-draft passthroughs, so there is no longer a selection that an
         empty scope could leave work for. The carve-out that used to
         exist for `render`/`provenance` went with them."""
