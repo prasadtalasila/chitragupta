@@ -329,29 +329,28 @@ def _output_dir(input_path: Path) -> Path:
         produce, so this says so instead.
 
     The rule itself is `config.mirrored_dir()`, shared with
-    `dossier.dossier_dir()` and `citation_provenance.write_report()`
-    rather than written out again here. It lives in `config` because this
-    module's docstring commits it to stdlib plus
+    `dossier.dossier_dir()` and `review.report_path()` rather than
+    written out again here. It lives in `config` because this module's
+    docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
     under bare `python3`, which rules out importing `src/dossier.py`.
     What stays here is the *policy* -- fall back flat, and refuse to
     write outside `content/` -- which is this module's to decide.
 
-    **Two mirror sources, not one.** A draft under `DRAFTS_DIR` is the
-    obvious one. The second is `PROVENANCE_DIR`, because
-    `citation_provenance` renders its report by handing *that* path to
-    `render()`: without it, a mirrored `provenance/<topic>/survey.provenance.md`
-    would still render flat, so two drafts named `survey.md` would stop
-    colliding on the report and go on colliding on its `.tex`/`.pdf`.
+    **One mirror source, and a caller that can say otherwise.** This
+    function answers "where does a *draft* render to", so `DRAFTS_DIR` is
+    the only source root it knows. A caller rendering something that is
+    not a draft -- `src/review.py`, turning a review report into
+    `.tex`/`.pdf` beside the report -- passes `render(output_dir=...)`
+    and never reaches here.
 
-    `PROVENANCE_DIR` is deliberately *not* in the escape check below,
-    which runs on every call. Rendering an ordinary draft has no stake in
-    where `content/provenance/` points, and adding it there would fail
-    that render over an unrelated directory. Nothing is lost by leaving
-    it out: the confinement invariant is carried by the check on
-    `mirrored` further down, which is computed from whichever source root
-    actually matched and is what a symlinked `PROVENANCE_DIR` would have
-    to get past.
+    3.19.2 did that differently, mirroring from `PROVENANCE_DIR` as a
+    second source root so a provenance report's renders would stop
+    colliding. It worked, but it put a review-layer directory in the path
+    of every ordinary draft render, and it landed the renders in
+    `content/rendered/` -- the drafting layer's publish output -- rather
+    than beside the report they belong to. `output_dir` replaces it:
+    "the caller says where" is not a second rule about drafts.
     """
     for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
         if not config.resolves_inside(directory, config.CONTENT_DIR):
@@ -364,11 +363,8 @@ def _output_dir(input_path: Path) -> Path:
                 "[content].dir (config.toml) at wherever it really lives."
             )
 
-    for source_root in (config.DRAFTS_DIR, config.PROVENANCE_DIR):
-        mirrored = config.mirrored_dir(input_path, source_root, config.RENDERED_DIR)
-        if mirrored is not None:
-            break
-    else:
+    mirrored = config.mirrored_dir(input_path, config.DRAFTS_DIR, config.RENDERED_DIR)
+    if mirrored is None:
         return config.RENDERED_DIR
 
     if not config.resolves_inside(mirrored, config.RENDERED_DIR):
@@ -419,11 +415,21 @@ def render(
     margin: str = "1in",
     csl: str | Path | None = None,
     collapse_citations: bool | None = None,
+    output_dir: str | Path | None = None,
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
     The output lands in `_output_dir(input_path)` -- `content/rendered/`
     with the draft's own place under `content/drafts/` mirrored into it.
+
+    `output_dir` overrides that, for a caller rendering something that is
+    not a draft and so has no business in `content/rendered/`:
+    `src/review.py` passes the review report's own directory so a
+    report's `.tex`/`.pdf` land beside its `.md` rather than in the
+    drafting layer's publish output. It is confined to `content/` like
+    every other path this module writes, and it is the caller's whole
+    answer -- nothing is mirrored into it, because the caller has already
+    done that.
 
     Citations and the bibliography are formatted with `csl` (default:
     `config.CSL_STYLE_PATH`, the vendored IEEE style), so a rendered draft
@@ -445,7 +451,18 @@ def render(
     `\\usepackage[margin=1in]{geometry}`.
     """
     input_path = config.require_inside_content(Path(input_path))
-    out_dir = _output_dir(input_path)
+    if output_dir is None:
+        out_dir = _output_dir(input_path)
+    else:
+        out_dir = Path(output_dir)
+        if not config.resolves_inside(out_dir, config.CONTENT_DIR):
+            raise OutsideContentDir(
+                f"{out_dir} resolves to {out_dir.resolve()}, outside the content "
+                f"directory {config.CONTENT_DIR.resolve()}. Naming an output "
+                "directory does not widen where this pipeline may write -- see "
+                "config.require_inside_content, and point [content].dir "
+                "(config.toml) at the tree you are really working in."
+            )
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not
         # a format conversion, and pandoc is the wrong tool for it. Its

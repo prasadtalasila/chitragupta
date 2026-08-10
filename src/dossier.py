@@ -1513,8 +1513,17 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
     Archive names are relative to `content/`, not to the repo root, so a
     bundle restores correctly into a checkout whose `[content].dir`
     points somewhere else.
+
+    `content/review/` is included by default, filtered to the `.md`
+    reports. That is the line `--with-rendered` already draws -- it
+    exists to gate PDFs, not text -- and a bundle that dropped the
+    review reports would quietly falsify the property they were given a
+    mirrored path for, namely that a draft's evidence is findable from
+    the draft. Their `.tex`/`.pdf` renders sit in the same tree and are
+    gated with everything else heavy.
     """
-    roots = [("drafts", config.DRAFTS_DIR), ("dossiers", config.DOSSIERS_DIR)]
+    roots = [("drafts", config.DRAFTS_DIR), ("dossiers", config.DOSSIERS_DIR),
+             ("review", config.REVIEW_DIR)]
     if with_rendered:
         roots.append(("rendered", config.RENDERED_DIR))
 
@@ -1525,18 +1534,30 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
         for path in sorted(root.rglob("*")):
             if not path.is_file():
                 continue
+            if label == "review" and not with_rendered and path.suffix.lower() != ".md":
+                continue
             relative = PurePosixPath(path.relative_to(root).as_posix())
             # A dossier lives one directory deeper than its draft, so
             # match its parent: `dossiers/topic/survey/scope.md` belongs
-            # to the draft named `topic/survey`.
-            match_against = relative.parent if label == "dossiers" else relative
+            # to the draft named `topic/survey`. A review report mirrors
+            # the draft's path exactly, so it needs no such adjustment --
+            # but its own name carries the aid (`survey.provenance.md`),
+            # so strip that too before matching against a draft named
+            # `topic/survey`.
+            if label == "dossiers":
+                match_against = relative.parent
+            elif label == "review":
+                match_against = relative.with_suffix("").with_suffix("")
+            else:
+                match_against = relative
             if _matches(match_against, names):
                 members.append((path, f"{label}/{relative.as_posix()}"))
     return members
 
 
 def export(names: list[str], out: Path, with_rendered: bool = False) -> tuple[Path, int]:
-    """Write a gzipped tar of the named drafts and their dossiers."""
+    """Write a gzipped tar of the named drafts, their dossiers and their
+    review reports (`.md`; the renders need `--with-rendered`)."""
     members = bundle_members(names, with_rendered)
     if not members:
         raise DossierError(
@@ -2084,7 +2105,8 @@ def main(argv: list[str] | None = None) -> int:
                           help="Draft names to include (default: everything)")
     p_export.add_argument("--out", help="Archive path (default: drafts-<name>-<date>.tar.gz)")
     p_export.add_argument("--with-rendered", action="store_true",
-                          help="Include content/rendered/ (large: PDFs)")
+                          help="Include content/rendered/, and the .tex/.pdf renders "
+                               "of content/review/'s reports (large: PDFs)")
     p_export.set_defaults(func=_cmd_export)
 
     p_restore = sub.add_parser("restore", help="Unpack a bundle (dry run unless --force)")

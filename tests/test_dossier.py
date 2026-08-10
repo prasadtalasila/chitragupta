@@ -438,6 +438,45 @@ class TestExport:
         names = {name for _, name in dossier.bundle_members(["survey"], with_rendered=False)}
         assert names == {"drafts/survey.md"}
 
+    def _review_reports(self, topic="dt-for-engineers"):
+        directory = config.REVIEW_DIR / topic
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "survey.provenance.md").write_text("# p\n")
+        (directory / "survey.verbatim.md").write_text("# v\n")
+        (directory / "survey.provenance.pdf").write_bytes(b"%PDF")
+        return directory
+
+    def test_review_reports_are_bundled_by_default(self, draft):
+        """The review layer gave its reports a mirrored path so a draft's
+        evidence is findable from the draft. A bundle that dropped them
+        would falsify that quietly."""
+        self._review_reports()
+        names = {name for _, name in dossier.bundle_members([], with_rendered=False)}
+        assert "review/dt-for-engineers/survey.provenance.md" in names
+        assert "review/dt-for-engineers/survey.verbatim.md" in names
+
+    def test_their_renders_are_opt_in_like_every_other_pdf(self, draft):
+        """--with-rendered gates PDFs, not text -- so the .md reports
+        ship by default and their renders ride with the rest."""
+        self._review_reports()
+        default = {name for _, name in dossier.bundle_members([], with_rendered=False)}
+        opted_in = {name for _, name in dossier.bundle_members([], with_rendered=True)}
+        assert "review/dt-for-engineers/survey.provenance.pdf" not in default
+        assert "review/dt-for-engineers/survey.provenance.pdf" in opted_in
+
+    def test_a_name_selects_one_drafts_reports(self, draft, isolated_config):
+        """A report's name carries the aid as well as the draft's stem
+        (`survey.provenance.md`), so matching has to strip both suffixes
+        to see the draft named `dt-for-engineers/survey`."""
+        self._review_reports()
+        self._review_reports(topic="unrelated-topic")
+        names = {
+            name
+            for _, name in dossier.bundle_members(["dt-for-engineers/survey"], with_rendered=False)
+        }
+        assert "review/dt-for-engineers/survey.provenance.md" in names
+        assert not any("unrelated-topic" in name for name in names)
+
     def test_exporting_nothing_is_an_error_rather_than_an_empty_archive(self, isolated_config):
         with pytest.raises(dossier.DossierError, match="Nothing to export"):
             dossier.export([], Path("out.tar.gz"))

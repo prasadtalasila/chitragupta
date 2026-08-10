@@ -137,12 +137,25 @@ BIB_FILE_PATH = REPO_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibl
 CONTENT_DIR = REPO_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
 LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
-PROVENANCE_DIR = CONTENT_DIR / "provenance"
+# Every report the review layer writes, one directory per draft,
+# mirroring the draft's own path under DRAFTS_DIR: a draft at
+# content/drafts/<topic>/survey.md has its provenance, verbatim and
+# coverage reports at content/review/<topic>/survey.<aid>.md, alongside
+# the .tex/.pdf renders of each. See src/review.py and
+# docs/ARCHITECTURE.md's "Layer 4: the review layer".
+#
+# Was content/provenance/ until 3.20.0, when it held only
+# citation_provenance's report -- a name that described one of the three
+# review aids rather than the layer, and that the genre skills' own
+# section-to-citekey JSON had also been sharing. That JSON is drafting
+# state, not a review artefact, and moved into the dossier directory in
+# the same release.
+REVIEW_DIR = CONTENT_DIR / "review"
 # Where a genre skill saves its draft, and where src/dossier.py keeps the
 # working state that produced it -- one dossier directory per draft,
 # mirroring the draft's own path under DRAFTS_DIR (docs/DRAFT-ITERATION.md).
-# Separate from PROVENANCE_DIR, which holds generated review reports
-# (src/citation_provenance.py) rather than state a later session reads back.
+# Separate from REVIEW_DIR, which holds reports generated *from* a
+# finished draft rather than the state that produced it.
 DRAFTS_DIR = CONTENT_DIR / "drafts"
 DOSSIERS_DIR = CONTENT_DIR / "dossiers"
 # Cached BM25 term-frequency index for src/retrieval.py -- keyed by a
@@ -433,24 +446,25 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
     The one rule four directories under `content/` obey: a draft at
     `content/drafts/<topic>/survey.md` has its renders at
     `content/rendered/<topic>/`, its dossier at
-    `content/dossiers/<topic>/survey/`, and its provenance report at
-    `content/provenance/<topic>/`. One topic directory, one draft's worth
-    of everything.
+    `content/dossiers/<topic>/survey/`, and its review reports at
+    `content/review/<topic>/`. One topic directory, one draft's worth of
+    everything.
 
     Returns `None` when `path` is not under `source_root`, rather than
     picking an answer, because the callers disagree about what that means
     and each is right for itself. `render_output._output_dir` and
-    `citation_provenance.write_report` fall back to the flat target
-    directory: both accept an input that is legitimately elsewhere under
-    `content/`, and writing its output flat is a better answer than
-    refusing to produce any. `dossier.dossier_dir` raises, because a
-    dossier written somewhere unmirrored would be found by nothing later.
-    Policy stays with the caller; only the rule lives here.
+    `review.report_path` fall back to the flat target directory: both
+    accept an input that is legitimately elsewhere under `content/`, and
+    writing its output flat is a better answer than refusing to produce
+    any. `dossier.dossier_dir` raises, because a dossier written
+    somewhere unmirrored would be found by nothing later. Policy stays
+    with the caller; only the rule lives here.
 
     Note this says nothing about which inputs a caller will *accept* --
     that is a separate decision each one makes for itself, before it gets
     here (`render_output` and `references` confine reads to `content/`
-    with `require_inside_content`; `citation_provenance` does not).
+    with `require_inside_content`, and `review.require_reviewable` does
+    the same for the three review aids).
 
     Only the part of `path` *below* `source_root` is ever carried over,
     and both sides are resolved before being compared, so the result can

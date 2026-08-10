@@ -10,11 +10,18 @@ citekey cited but never surfaced by any of the given queries is not a
 problem (it's likely explained by a different query the skill also ran)
 but worth showing so the report isn't misread as a gap-finder.
 
-Not a gate -- purely informational, unlike citation_gate.py. This does
-not run automatically as part of any genre skill; it is a review aid you
-run by hand with whatever queries you want to check coverage against, the
-same way scripts/verbatim_check.py is a review aid rather than part of
-the automatic citation_gate -> references -> render_output chain.
+One of the three commands in the **review layer**, with
+src/citation_provenance.py and scripts/verbatim_check.py -- run by hand
+on a finished draft, never automatically, never a gate, and never
+holding the write lock. Purely informational, unlike citation_gate.py.
+src/review.py owns where a written report goes
+(`content/review/<topic>/<stem>.coverage.md`, mirroring the draft's
+path) and what its header looks like.
+
+Printing to stdout is the default, because the usual use is a question
+asked and answered in one sitting; `--write` is for when the answer
+should still be there next month, and diffable against the next
+revision's.
 
 Stdlib-only (reuses src.retrieval and src.citation_gate.extract_citekeys_from_line,
 both already stdlib-only) -- runs with bare `python3`, no venv, same as
@@ -22,14 +29,16 @@ citation_gate.py/references.py.
 
 Usage:
     python -m src.citation_coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
+    python -m src.citation_coverage <draft.md> --query "topic one" --write
 """
 
 import argparse
+import shlex
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import retrieval
+from src import config, retrieval, review
 from src.citation_gate import extract_citekeys_from_line
 
 
@@ -97,19 +106,106 @@ def format_report(draft_path: Path, queries: list[str], result: CoverageResult) 
     return "\n".join(lines)
 
 
+def _command(draft_path: Path, queries: list[str], k: int) -> str:
+    """The invocation that produced a report, for its header.
+
+    Recorded in full because a coverage report is meaningless without
+    its queries: "62% covered" says nothing until you know 62% of what
+    was asked for.
+    """
+    parts = ["python3", "-m", "src.citation_coverage", str(draft_path)]
+    for query in queries:
+        parts += ["--query", query]
+    parts += ["--k", str(k)]
+    return shlex.join(parts)
+
+
+def render_markdown(draft_path: Path, queries: list[str], k: int, result: CoverageResult) -> str:
+    """The same report as `format_report`, as a Markdown document.
+
+    Kept beside the plain-text version rather than replacing it: stdout
+    is read in a terminal mid-review and wants no syntax, while a file
+    kept for months is read next to the draft's other review reports and
+    should look like them.
+    """
+    lines = review.header(draft_path, "coverage", _command(draft_path, queries, k))
+    lines += [
+        "## How to read this",
+        "",
+        "Each query below was run through the same retrieval this project's",
+        "genre skills use. A candidate it surfaced that the draft never cites",
+        "is either a source worth adding or a query that was too broad --",
+        "this report does not know which, and does not guess.",
+        "",
+        "A citekey cited but not surfaced here is **not** a gap: it is almost",
+        "always explained by a different query the skill ran. It is listed so",
+        "the report cannot be misread as a complete picture of the draft's",
+        "sources.",
+        "",
+        "## Queries",
+        "",
+    ]
+    lines += [f"- `{query}`" for query in queries]
+    lines += ["", f"Top {k} results per query.", "", "## Coverage", ""]
+
+    if result.coverage_pct is None:
+        lines += ["No candidates found for any query -- nothing to compare against.", ""]
+    else:
+        lines += [
+            f"**{result.coverage_pct:.0f}%** -- {len(result.cited_candidates)} of "
+            f"{len(result.candidates)} retrieved candidates are cited.",
+            "",
+        ]
+        if result.uncited_candidates:
+            lines += ["### Retrieved but not cited", ""]
+            for key in sorted(result.uncited_candidates):
+                lines.append(f"- `{key}` -- {result.candidates[key]}")
+            lines.append("")
+
+    if result.cited_outside_candidates:
+        lines += [
+            "### Cited but not surfaced by these queries",
+            "",
+            "Not necessarily a problem -- see above.",
+            "",
+        ]
+        for key in sorted(result.cited_outside_candidates):
+            lines.append(f"- `{key}`")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("draft", help="Path to the draft to check")
     parser.add_argument("--query", action="append", required=True, dest="queries",
                          help="A retrieval query to check coverage for (repeatable)")
     parser.add_argument("--k", type=int, default=5, help="Top-k results per query (default: 5)")
+    parser.add_argument("--write", action="store_true",
+                        help="Also write the report to content/review/, mirroring the "
+                             "draft's path. Off by default: printing is the usual use.")
+    parser.add_argument("--formats", default="md,tex,pdf",
+                        help="With --write, the formats to produce (default: md,tex,pdf). "
+                             "tex/pdf need pandoc/pdflatex on PATH.")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    result = compute_coverage(Path(args.draft), args.queries, k=args.k)
-    print(format_report(Path(args.draft), args.queries, result))
+    try:
+        draft_path = review.require_reviewable(Path(args.draft))
+    except (FileNotFoundError, config.OutsideContentDir) as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
+    result = compute_coverage(draft_path, args.queries, k=args.k)
+    print(format_report(draft_path, args.queries, result))
+
+    if args.write:
+        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
+        body = render_markdown(draft_path, args.queries, args.k, result)
+        review.print_written(review.write(draft_path, "coverage", body, formats))
     return 0
 
 

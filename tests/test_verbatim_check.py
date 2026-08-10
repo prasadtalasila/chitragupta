@@ -3,6 +3,7 @@ review aid (not part of the deterministic pipeline). REPO/BIB are
 module-level constants computed from Path(__file__) at import time;
 tests monkeypatch them directly to point at a throwaway fixture tree."""
 
+import argparse
 import os
 import shutil
 import subprocess
@@ -12,7 +13,7 @@ from pathlib import Path
 import pytest
 
 import scripts.verbatim_check as vc
-from src import ledger
+from src import config, ledger
 from tests.conftest import make_reference
 
 
@@ -651,39 +652,107 @@ class TestCmdScan:
         assert "w25" not in out.split("in:")[0]  # the 5-word tail never becomes its own finding
 
 
-class TestPopFlag:
-    def test_extracts_value_and_removes_flag_and_argument(self):
-        value, rest = vc._pop_flag(["--n", "12", "other"], "--n", int)
-        assert value == 12
-        assert rest == ["other"]
+class TestScanWrite:
+    """`scan --write` files the report in content/review/, mirroring the
+    draft's path, so it sits beside the same draft's provenance and
+    coverage reports rather than only in a terminal that gets closed."""
 
-    def test_returns_none_and_leaves_rest_unchanged_when_absent(self):
-        value, rest = vc._pop_flag(["other"], "--n", int)
-        assert value is None
-        assert rest == ["other"]
+    def _planted(self, ledger_con, tmp_path, name="dt/survey.md"):
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = config.DRAFTS_DIR / name
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(
+            "As shown [@cited_2024], alpha beta gamma delta epsilon zeta eta theta appears here.\n"
+        )
+        return draft
 
-    def test_flag_with_no_following_value_exits_cleanly(self, capsys):
-        with pytest.raises(SystemExit) as exc:
-            vc._pop_flag(["--n"], "--n", int)
-        assert exc.value.code == 2
-        assert "--n needs a value" in capsys.readouterr().err
+    def test_off_by_default(self, ledger_con, isolated_config, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+        vc.cmd_scan(str(draft))
+        assert not config.REVIEW_DIR.exists()
 
-    def test_flag_with_an_uncastable_value_exits_cleanly(self, capsys):
-        with pytest.raises(SystemExit) as exc:
-            vc._pop_flag(["--n", "not-a-number"], "--n", int)
-        assert exc.value.code == 2
-        assert "--n 'not-a-number' is not a valid value" in capsys.readouterr().err
+    def test_write_lands_in_the_mirrored_review_dir(self, ledger_con, isolated_config, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        report = config.REVIEW_DIR / "dt" / "survey.verbatim.md"
+        assert report.is_file()
+        text = report.read_text()
+        assert "Review aid, not a gate" in text
+        assert "cited_2024" in text
+        # The caveat the docs carry has to travel with the file: the exact
+        # tier is the only one built, so a clean run proves less than it
+        # looks like it does.
+        assert "not a clean bill of health" in text
+
+    def test_a_clean_draft_still_writes_a_report(self, ledger_con, isolated_config, tmp_path, capsys):
+        """Nothing found is a finding worth keeping -- and worth diffing
+        against the next revision, which is the point of writing at all."""
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", "wholly unrelated source text here")
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("Entirely original prose that shares nothing.\n")
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
+        assert "No verbatim run" in text
+
+    def test_two_runs_over_unchanged_input_are_byte_identical(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        """No wall-clock timestamp anywhere in a report: the point of
+        writing one is that it diffs cleanly against the next revision's."""
+        draft = self._planted(ledger_con, tmp_path)
+        report = config.REVIEW_DIR / "dt" / "survey.verbatim.md"
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+        first = report.read_bytes()
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        assert report.read_bytes() == first
+
+
+class TestBoundedInt:
+    """argparse `type=` callables that reject an out-of-range value as a
+    usage error rather than letting it through to be silently absorbed."""
+
+    def test_casts_a_valid_value(self):
+        assert vc._bounded_int(1, "--n")("12") == 12
+
+    def test_a_non_integer_is_a_usage_error(self):
+        with pytest.raises(argparse.ArgumentTypeError) as exc:
+            vc._bounded_int(1, "--n")("not-a-number")
+        assert "not a valid value" in str(exc.value)
+
+    def test_a_below_minimum_value_is_a_usage_error(self):
+        with pytest.raises(argparse.ArgumentTypeError) as exc:
+            vc._bounded_int(1, "--n")("0")
+        assert "--n must be >= 1" in str(exc.value)
+
+
+def _content_draft(tmp_path, text, name="draft.md"):
+    """A draft where the review layer will accept one, for a subprocess
+    run whose CONTENT_DIR is pointed at `tmp_path / "content"`."""
+    path = tmp_path / "content" / "drafts" / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return path
 
 
 class TestCliDispatch:
     def test_overlap_mode_via_subprocess(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
-        draft = tmp_path / "draft.md"
-        draft.write_text("Some claim citing nonexistent_key_2024.\n")
+        draft = _content_draft(tmp_path, "Some claim citing nonexistent_key_2024.\n")
 
         result = subprocess.run(
             [sys.executable, "scripts/verbatim_check.py", "overlap", str(draft), "nonexistent_key_2024"],
             cwd=str(repo_root), capture_output=True, text=True,
+            env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 0
         assert "no source text for nonexistent_key_2024" in result.stdout
@@ -695,8 +764,7 @@ class TestCliDispatch:
         # an empty corpus. Without the override this would create real
         # files under the checked-out repo's own content/ directory.
         repo_root = Path(__file__).resolve().parent.parent
-        draft = tmp_path / "draft.md"
-        draft.write_text("Nothing to see here at all.\n")
+        draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
 
         result = subprocess.run(
             [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), "--min-run", "8", "--gap", "1"],
@@ -706,13 +774,30 @@ class TestCliDispatch:
         assert result.returncode == 0
         assert "no verbatim run" in result.stdout
 
-    def test_unknown_mode_prints_docstring(self, tmp_path):
+    def test_a_draft_outside_the_content_dir_is_refused(self, tmp_path):
+        """The review layer's input rule, which this command did not
+        follow until 3.20.0. Exit 1, not 2: the invocation is well
+        formed, the draft is somewhere this pipeline will not read."""
+        repo_root = Path(__file__).resolve().parent.parent
+        outside = tmp_path / "outside.md"
+        outside.write_text("Anything.\n")
+
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan", str(outside)],
+            cwd=str(repo_root), capture_output=True, text=True,
+            env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
+        )
+        assert result.returncode == 1
+        assert "outside the content directory" in result.stderr
+
+    def test_unknown_mode_is_a_usage_error(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "scripts/verbatim_check.py", "bogus-mode"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
-        assert "Ad-hoc plagiarism" in result.stdout
+        assert result.returncode == 2
+        assert "invalid choice: 'bogus-mode'" in result.stderr
 
     def test_no_arguments_prints_docstring_and_exits_zero(self, tmp_path):
         # Regression: sys.argv[1] on an empty invocation used to raise a
@@ -724,7 +809,7 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 0
-        assert "Ad-hoc plagiarism" in result.stdout
+        assert "Plagiarism / page-locator helper" in result.stdout
 
     def test_overlap_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
@@ -754,7 +839,7 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: verbatim_check.py overlap" in result.stderr
+        assert "unrecognized arguments: extra" in result.stderr
 
     def test_overlap_mode_n_below_one_exits_cleanly(self, tmp_path):
         # Regression: --n 0 didn't raise -- every zero-word "window"
@@ -777,7 +862,7 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: verbatim_check.py scan" in result.stderr
+        assert "unrecognized arguments: extra" in result.stderr
 
     def test_scan_mode_negative_gap_exits_cleanly(self, tmp_path):
         # Regression: a sufficiently negative --gap silently broke even a
@@ -812,8 +897,7 @@ class TestCliDispatch:
         # translates that into the same stderr-plus-exit-2 shape as its
         # other malformed invocations, e.g. --gap/--limit above.
         repo_root = Path(__file__).resolve().parent.parent
-        draft = tmp_path / "draft.md"
-        draft.write_text("Anything.\n")
+        draft = _content_draft(tmp_path, "Anything.\n")
 
         result = subprocess.run(
             [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), "--min-run", "4"],

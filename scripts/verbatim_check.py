@@ -1,26 +1,41 @@
 #!/usr/bin/env python3
-"""Ad-hoc plagiarism / page-locator helper for reviewing a draft.
+"""Plagiarism / page-locator helper for reviewing a draft.
 
-Not part of the deterministic pipeline -- a review aid. Three modes:
+One of the three commands in the **review layer**, with
+src/citation_provenance.py and src/citation_coverage.py -- run by hand on
+a finished draft, never automatically, never a gate, and never holding
+the write lock. src/review.py owns where a written report goes
+(`content/review/<topic>/<stem>.verbatim.md`, mirroring the draft's path)
+and what its header looks like.
+
+Three modes:
 
     verbatim_check.py overlap <draft.md> <citekey> [--n 8]
         report the longest verbatim word-n-gram runs shared between the
         draft's sentences citing <citekey> and that source's parsed text.
 
     verbatim_check.py scan <draft.md> [--min-run 8] [--gap 1] [--limit N]
+                             [--write] [--formats md,tex,pdf]
         slide the WHOLE draft across the WHOLE corpus index (src/overlap_index.py),
         not just the sources a paragraph happens to cite -- catches verbatim
         reuse from an uncited source, and reuse in connective prose that
-        cites nothing at all. Exits 0 on every successful invocation, findings
-        or not -- a review aid, not a gate. A malformed invocation (a bad or
-        valueless flag) exits 2, the usual CLI-usage error, not a verdict.
+        cites nothing at all. Prints by default; --write also files the
+        report under content/review/, beside the same draft's provenance
+        and coverage reports.
 
     verbatim_check.py locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
         appears on, for fact-checking page numbers.
+
+Exits 0 on every successful invocation, findings or not -- a review aid,
+not a gate. A draft this layer will not read (missing, or outside
+content/) exits 1; a malformed invocation exits 2, the usual CLI-usage
+error, not a verdict.
 """
 
+import argparse
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -29,7 +44,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from src import citation_gate, config, overlap_index, references  # noqa: E402 -- needs REPO on sys.path first
+from src import citation_gate, config, overlap_index, references, review  # noqa: E402 -- needs REPO on sys.path first
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
@@ -297,14 +312,14 @@ def _merge_runs(positions, gap, n):
     return runs
 
 
-def cmd_scan(draft, min_run=None, gap=1, limit=None):
+def scan_findings(draft, min_run=None, gap=1, limit=None):
     """Slide `draft`'s whole normalized text across the corpus-wide index,
     grouping matches by `(citekey, page, diagonal)` and merging each
-    group into maximal same-diagonal runs (see `_merge_runs`). Prints one
-    finding per surviving run, longest first; this function never raises
-    for "nothing found" and returns normally in that case -- this is a
-    review aid, not a gate, and it is not wired into anything that treats
-    a nonzero exit as a failure. It does raise `ValueError` for a request
+    group into maximal same-diagonal runs (see `_merge_runs`). Returns
+    `(findings, min_run)`, longest run first; this function never raises
+    for "nothing found" and returns an empty list in that case -- this is
+    a review aid, not a gate, and it is not wired into anything that
+    treats a nonzero exit as a failure. It does raise `ValueError` for a request
     it cannot honor at all, e.g. `min_run` below the corpus index's own
     n-gram size (see below) -- that is not "no findings", it is "this
     input can't be scanned as asked", and the `scan` CLI (below) turns it
@@ -392,24 +407,118 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None):
     findings.sort(key=lambda f: (-f["span_words"], f["citekey"], f["start"]))
     if limit is not None:
         findings = findings[:limit]
+    return findings, min_run
 
+
+def _flags(finding):
+    flags = []
+    if not finding["cites_source"]:
+        flags.append("UNCITED SOURCE")
+    if finding["quoted"]:
+        flags.append("quoted")
+    return flags
+
+
+def _matched_note(finding):
+    if finding["matched_words"] == finding["span_words"]:
+        return ""
+    return f", {finding['matched_words']} matched"
+
+
+def format_scan(findings, min_run):
+    """The plain-text form, for stdout."""
     if not findings:
-        print(f"no verbatim run of >= {min_run} words found anywhere in the draft")
-        return
+        return f"no verbatim run of >= {min_run} words found anywhere in the draft"
+    lines = []
     for f in findings:
-        flags = []
-        if not f["cites_source"]:
-            flags.append("UNCITED SOURCE")
-        if f["quoted"]:
-            flags.append("quoted")
+        flags = _flags(f)
         flag_text = f" [{', '.join(flags)}]" if flags else ""
-        matched_note = "" if f["matched_words"] == f["span_words"] else f", {f['matched_words']} matched"
-        print(
-            f"  [{f['span_words']} words{matched_note}, pdf p.{f['page']}] "
+        lines.append(
+            f"  [{f['span_words']} words{_matched_note(f)}, pdf p.{f['page']}] "
             f"{f['citekey']} (tier={f['tier']}){flag_text}"
         )
-        print(f"      {f['fragment']}")
-        print(f"      in: {f['context']}...")
+        lines.append(f"      {f['fragment']}")
+        lines.append(f"      in: {f['context']}...")
+    return "\n".join(lines)
+
+
+def render_scan_markdown(draft, findings, min_run, gap, limit):
+    """The same findings as a Markdown report, for `--write`.
+
+    Kept beside `format_scan` rather than replacing it: stdout is read in
+    a terminal mid-review and wants no syntax, while a file kept for
+    months is read next to the same draft's provenance and coverage
+    reports and should look like them.
+    """
+    command = ["python3", "scripts/verbatim_check.py", "scan", str(draft),
+               "--min-run", str(min_run), "--gap", str(gap)]
+    if limit is not None:
+        command += ["--limit", str(limit)]
+
+    lines = review.header(Path(draft), "verbatim", shlex.join(command))
+    lines += [
+        "## How to read this",
+        "",
+        "Every run of at least `--min-run` words this draft shares with **any**",
+        "parsed source in the corpus, cited or not. Sharing wording is not by",
+        "itself misconduct -- a defined term, a standard's name and a correctly",
+        "quoted sentence all show up here -- so each finding is a place to look,",
+        "not a charge.",
+        "",
+        "Two flags narrow the reading:",
+        "",
+        "- **UNCITED SOURCE** -- the paragraph the run sits in does not cite the",
+        "  source it matched. That is the finding `overlap` structurally cannot",
+        "  make, and the one most worth reading first.",
+        "- **quoted** -- the whole run sits inside quote delimiters, so it is",
+        "  most likely a deliberate quotation.",
+        "",
+        "**A clean run is not a clean bill of health.** This is the exact",
+        "detection tier; the paraphrase tiers beside it are unbuilt, so this",
+        "comes up short by being silently incomplete rather than by being wrong.",
+        "See docs/PLAGIARISM.md.",
+        "",
+        "## Findings",
+        "",
+    ]
+
+    if not findings:
+        lines += [
+            f"No verbatim run of {min_run} words or more was found anywhere in "
+            "the draft.",
+            "",
+        ]
+        return "\n".join(lines)
+
+    lines += [f"{len(findings)} run(s), longest first.", ""]
+    for f in findings:
+        flags = _flags(f)
+        flag_text = f" -- **{', '.join(flags)}**" if flags else ""
+        lines += [
+            f"### {f['span_words']} words{_matched_note(f)} -- `{f['citekey']}` "
+            f"p.{f['page']}{flag_text}",
+            "",
+            f"> {f['fragment']}",
+            "",
+            f"In context: {f['context']}...",
+            "",
+        ]
+    return "\n".join(lines)
+
+
+def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False, formats=("md", "tex", "pdf")):
+    """`scan`'s stdout entry point: run the scan and print it.
+
+    Printing stays the default -- the usual use is a question asked and
+    answered in one sitting. `write` additionally puts the Markdown
+    report in `content/review/`, mirroring the draft's path, beside the
+    same draft's provenance and coverage reports.
+    """
+    findings, min_run = scan_findings(draft, min_run, gap, limit)
+    print(format_scan(findings, min_run))
+    if write:
+        body = render_scan_markdown(draft, findings, min_run, gap, limit)
+        review.print_written(review.write(Path(draft), "verbatim", body, list(formats)))
 
 
 def cmd_locate(citekey, *phrases):
@@ -427,85 +536,107 @@ def cmd_locate(citekey, *phrases):
         print(f"  {phrase!r}\n      -> {top}")
 
 
-def _pop_flag(rest, name, cast):
-    """`(value, remaining_args)` for `name` popped out of `rest`, or
-    `(None, rest)` unchanged if it isn't present.
+def _bounded_int(minimum, name):
+    """An argparse `type` that rejects an out-of-range value as a usage
+    error rather than letting it through to be silently absorbed.
 
-    A malformed invocation -- the flag with no value after it, or a value
-    `cast` rejects -- exits 2 with a one-line message instead of an
-    uncaught `IndexError`/`ValueError` traceback, matching how a bad
-    usage is reported elsewhere in this project's stdlib-only tools (e.g.
-    `src/citation_gate.py`'s `-h`/usage handling).
+    A value that parses fine can still be nonsensical: `--limit 0`
+    silently hides every finding behind the same "no verbatim run found"
+    message a genuinely clean draft prints, and a negative `--gap` breaks
+    even a pure-verbatim run's merge (Python's `list[:0]`/negative-gap
+    arithmetic degrade silently rather than raising) -- both look like
+    "nothing to report" instead of the usage error they actually are.
     """
-    if name not in rest:
-        return None, rest
-    k = rest.index(name)
-    if k + 1 >= len(rest):
-        print(f"{name} needs a value", file=sys.stderr)
-        raise SystemExit(2)
+    def parse(raw):
+        try:
+            value = int(raw)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"{raw!r} is not a valid value") from None
+        if value < minimum:
+            raise argparse.ArgumentTypeError(f"{name} must be >= {minimum}")
+        return value
+    return parse
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="verbatim_check.py",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sub = parser.add_subparsers(dest="mode")
+
+    p_overlap = sub.add_parser("overlap", help="per-citekey verbatim runs")
+    p_overlap.add_argument("draft", help="Markdown draft to check")
+    p_overlap.add_argument("citekey", help="The cited source to compare against")
+    p_overlap.add_argument("--n", type=_bounded_int(1, "--n"), default=8,
+                           help="Minimum run length in words (default: 8)")
+
+    p_scan = sub.add_parser("scan", help="whole-draft x whole-corpus scan")
+    p_scan.add_argument("draft", help="Markdown draft to scan")
+    p_scan.add_argument("--min-run", type=_bounded_int(1, "--min-run"), default=None,
+                        help="Reporting length floor in words (default: the corpus "
+                             "index's own n-gram size)")
+    p_scan.add_argument("--gap", type=_bounded_int(0, "--gap"), default=1,
+                        help="Non-matching words tolerated inside a run (default: 1)")
+    p_scan.add_argument("--limit", type=_bounded_int(1, "--limit"), default=None,
+                        help="Cap how many findings print (default: all of them)")
+    p_scan.add_argument("--write", action="store_true",
+                        help="Also write the report to content/review/, mirroring the "
+                             "draft's path. Off by default: printing is the usual use.")
+    p_scan.add_argument("--formats", default="md,tex,pdf",
+                        help="With --write, the formats to produce (default: md,tex,pdf). "
+                             "tex/pdf need pandoc/pdflatex on PATH.")
+
+    p_locate = sub.add_parser("locate", help="which page a phrase is on")
+    p_locate.add_argument("citekey", help="The source to search")
+    p_locate.add_argument("phrases", nargs="+", help="Phrases to locate")
+
+    return parser
+
+
+def main(argv=None):
+    """Exit codes: `0` on every successful invocation, findings or not --
+    a review aid, not a gate. `1` for a draft this layer will not read
+    (missing, or outside `content/`). `2` for a malformed invocation,
+    the usual CLI-usage error, which argparse already uses.
+
+    No mode at all prints the usage and exits 0: that is the same "tell
+    me how to use this" request as `--help`, not an error.
+    """
+    parser = build_parser()
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if args.mode is None:
+        parser.print_help()
+        return 0
+
+    if args.mode == "locate":
+        cmd_locate(args.citekey, *args.phrases)
+        return 0
+
     try:
-        value = cast(rest[k + 1])
-    except ValueError:
-        print(f"{name} {rest[k + 1]!r} is not a valid value", file=sys.stderr)
-        raise SystemExit(2) from None
-    return value, rest[:k] + rest[k + 2:]
+        draft = review.require_reviewable(Path(args.draft))
+    except (FileNotFoundError, config.OutsideContentDir) as exc:
+        print(exc, file=sys.stderr)
+        return 1
 
+    if args.mode == "overlap":
+        cmd_overlap(str(draft), args.citekey, args.n)
+        return 0
 
-def _require_min(value, name, minimum):
-    """Exit 2 if `value` (already cast to an int by `_pop_flag`, or None
-    if the flag was never given) is below `minimum`.
-
-    A value that parses fine can still be nonsensical in a way `cast`
-    alone can't catch: `--limit 0` silently hides every finding behind
-    the same "no verbatim run found" message a genuinely clean draft
-    prints, and `--gap` negative breaks even a pure-verbatim run's merge
-    (Python's `list[:0]`/negative-gap arithmetic degrade silently rather
-    than raising) -- both look like "nothing to report" instead of the
-    usage error they actually are.
-    """
-    if value is not None and value < minimum:
-        print(f"{name} must be >= {minimum}", file=sys.stderr)
-        raise SystemExit(2)
+    try:
+        cmd_scan(
+            str(draft), args.min_run, args.gap, args.limit,
+            write=args.write,
+            formats=[f.strip() for f in args.formats.split(",") if f.strip()],
+        )
+    except ValueError as exc:
+        # "this input can't be scanned as asked" (e.g. --min-run below the
+        # corpus index's own n-gram size) is a usage error, not a finding.
+        print(exc, file=sys.stderr)
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
-    # No mode at all is the same "tell me how to use this" request as an
-    # unrecognized one (the `else` branch below) -- printing __doc__ for
-    # one and raising IndexError on sys.argv[1] for the other was an
-    # inconsistency a bare invocation shouldn't have to know about.
-    if len(sys.argv) < 2:
-        print(__doc__)
-        raise SystemExit(0)
-    mode, rest = sys.argv[1], sys.argv[2:]
-    if mode == "overlap":
-        n, rest = _pop_flag(rest, "--n", int)
-        _require_min(n, "--n", 1)
-        # != rather than < : an extra trailing argument is as much a typo
-        # as a missing one, and silently ignoring it (the old `rest[0]`/
-        # `rest[1]` shape did) hides exactly the mistake a usage error is
-        # for.
-        if len(rest) != 2:
-            print("usage: verbatim_check.py overlap <draft.md> <citekey> [--n N]", file=sys.stderr)
-            raise SystemExit(2)
-        cmd_overlap(rest[0], rest[1], n if n is not None else 8)
-    elif mode == "scan":
-        min_run, rest = _pop_flag(rest, "--min-run", int)
-        gap, rest = _pop_flag(rest, "--gap", int)
-        limit, rest = _pop_flag(rest, "--limit", int)
-        _require_min(gap, "--gap", 0)
-        _require_min(limit, "--limit", 1)
-        if len(rest) != 1:
-            print("usage: verbatim_check.py scan <draft.md> [--min-run N] [--gap N] [--limit N]", file=sys.stderr)
-            raise SystemExit(2)
-        try:
-            cmd_scan(rest[0], min_run, gap if gap is not None else 1, limit)
-        except ValueError as exc:
-            print(exc, file=sys.stderr)
-            raise SystemExit(2) from None
-    elif mode == "locate":
-        if len(rest) < 2:
-            print('usage: verbatim_check.py locate <citekey> "<phrase>" [more phrases...]', file=sys.stderr)
-            raise SystemExit(2)
-        cmd_locate(*rest)
-    else:
-        print(__doc__)
+    raise SystemExit(main())

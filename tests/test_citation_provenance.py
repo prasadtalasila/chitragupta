@@ -449,7 +449,7 @@ class TestReport:
 
 
 class TestWriteReportAndCli:
-    def test_writes_markdown_into_provenance_dir(self, isolated_config):
+    def test_writes_markdown_into_the_review_dir(self, isolated_config):
         _add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -457,7 +457,7 @@ class TestWriteReportAndCli:
 
         written = cp.write_report(path, ["md"])
 
-        assert written["md"] == config.PROVENANCE_DIR / "d.provenance.md"
+        assert written["md"] == config.REVIEW_DIR / "d.provenance.md"
         assert written["md"].exists()
 
     def test_missing_render_binary_warns_and_still_returns_md(self, isolated_config, monkeypatch, capsys):
@@ -483,7 +483,7 @@ class TestWriteReportAndCli:
         """render_output refuses to write outside the content directory when
         content/rendered or content/drafts is symlinked out of it. That is a
         layout fault, not this report's -- the md above is already written to
-        content/provenance/, so it must degrade like a missing binary rather
+        content/review/, so it must degrade like a missing binary rather
         than taking the run out with a traceback."""
         from src import render_output
 
@@ -665,9 +665,9 @@ class TestEdgeShapes:
 
 class TestReportPathMirrorsTheDraft:
     """`content/drafts/<topic>/survey.md` must report to
-    `content/provenance/<topic>/survey.provenance.md`.
+    `content/review/<topic>/survey.provenance.md`.
 
-    Before this, the report path was `PROVENANCE_DIR / f"{stem}.provenance.md"`
+    Before 3.19.2 the report path was `<dir> / f"{stem}.provenance.md"`
     -- flat, keyed on the filename alone -- while `content/rendered/` and
     `content/dossiers/` both mirrored the draft's path. Two drafts named
     `survey.md` in different topic directories wrote the same file, and the
@@ -689,8 +689,8 @@ class TestReportPathMirrorsTheDraft:
             "both topics wrote the same provenance report; one silently "
             "overwrote the other"
         )
-        assert paths["topic-a"] == config.PROVENANCE_DIR / "topic-a" / "survey.provenance.md"
-        assert paths["topic-b"] == config.PROVENANCE_DIR / "topic-b" / "survey.provenance.md"
+        assert paths["topic-a"] == config.REVIEW_DIR / "topic-a" / "survey.provenance.md"
+        assert paths["topic-b"] == config.REVIEW_DIR / "topic-b" / "survey.provenance.md"
         assert "topic-a" in paths["topic-a"].read_text()
         assert "topic-b" in paths["topic-b"].read_text()
 
@@ -705,7 +705,7 @@ class TestReportPathMirrorsTheDraft:
 
         written = cp.write_report(draft, ["md"])
 
-        assert written["md"] == config.PROVENANCE_DIR / "survey.provenance.md"
+        assert written["md"] == config.REVIEW_DIR / "survey.provenance.md"
 
     def test_a_draft_outside_drafts_dir_has_no_path_to_mirror(self, isolated_config):
         """Same fallback `render_output._output_dir` documents: nothing under
@@ -718,4 +718,4 @@ class TestReportPathMirrorsTheDraft:
 
         written = cp.write_report(draft, ["md"])
 
-        assert written["md"] == config.PROVENANCE_DIR / "loose.provenance.md"
+        assert written["md"] == config.REVIEW_DIR / "loose.provenance.md"

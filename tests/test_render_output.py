@@ -292,60 +292,19 @@ class TestOutputDir:
         draft = isolated_config.DRAFTS_DIR / "survey.md"
         assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR
 
-    def test_a_provenance_report_mirrors_its_own_topic_directory(self, isolated_config):
-        """`citation_provenance` hands its report to `render()`, and the
-        report lives under `PROVENANCE_DIR`, not `DRAFTS_DIR`.
+    def test_a_review_report_is_not_a_draft_and_does_not_mirror(self, isolated_config):
+        """`content/review/` is not a mirror source.
 
-        Mirroring only from `DRAFTS_DIR` would fix the report's own path
-        and leave its `.tex`/`.pdf` landing flat -- so two drafts named
-        `survey.md` would stop colliding on the report and go on colliding
-        on the renders of it. Both content subtrees that hold a mirrored
-        path are therefore mirror sources.
+        3.19.2 made `PROVENANCE_DIR` a second source root so a report's
+        renders would follow the report. 3.20.0 replaced that with
+        `render(output_dir=...)`: `src/review.py` says where its renders
+        go, and this function is left answering only "where does a
+        *draft* render to". Reaching here with a report at all means the
+        caller forgot to pass `output_dir`, and the flat fallback is the
+        right answer for a file that isn't under `content/drafts/`.
         """
-        report = isolated_config.PROVENANCE_DIR / "dt" / "survey.provenance.md"
-        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR / "dt"
-
-    def test_a_flat_provenance_report_is_unchanged(self, isolated_config):
-        report = isolated_config.PROVENANCE_DIR / "survey.provenance.md"
+        report = isolated_config.REVIEW_DIR / "dt" / "survey.provenance.md"
         assert render_output._output_dir(report) == isolated_config.RENDERED_DIR
-
-    def test_an_escaping_provenance_dir_does_not_break_an_ordinary_render(
-        self, isolated_config, tmp_path
-    ):
-        """`content/provenance/` is a mirror *source*, but it is not part
-        of the escape check that runs on every call.
-
-        Regression: putting it there made
-        `render_output content/drafts/survey.md --format pdf` raise over a
-        directory that render never touches. A draft render has no stake
-        in where `content/provenance/` points.
-        """
-        isolated_config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
-        outside = tmp_path / "outside"
-        outside.mkdir()
-        isolated_config.PROVENANCE_DIR.symlink_to(outside)
-
-        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
-
-        assert render_output._output_dir(draft) == isolated_config.RENDERED_DIR / "dt"
-
-    def test_a_report_under_an_escaping_provenance_dir_is_still_confined(
-        self, isolated_config, tmp_path
-    ):
-        """What the escape check above would have caught is caught anyway,
-        one step later: the mirrored path is checked against RENDERED_DIR
-        whichever source root it came from, so the write stays inside
-        content/ without the every-call precondition."""
-        isolated_config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
-        outside = tmp_path / "outside"
-        (outside / "topic").mkdir(parents=True)
-        isolated_config.PROVENANCE_DIR.symlink_to(outside)
-
-        report = isolated_config.PROVENANCE_DIR / "topic" / "survey.provenance.md"
-
-        # Mirrors from the escaped root, and lands inside rendered/ --
-        # which is the invariant, not that the source root was tidy.
-        assert render_output._output_dir(report) == isolated_config.RENDERED_DIR / "topic"
 
     def test_a_draft_outside_the_drafts_directory_falls_back_to_flat(
         self, isolated_config, tmp_path
@@ -916,9 +875,7 @@ class TestInputsAreConfinedToContent:
         self, isolated_config, monkeypatch
     ):
         # The one remaining flat case: in-content, so accepted, but with
-        # no path under content/drafts/ to mirror. This is also how
-        # citation_provenance's own content/provenance/*.provenance.md
-        # reaches render().
+        # no path under content/drafts/ to mirror.
         scratch = isolated_config.CONTENT_DIR / "scratch" / "notes.md"
         scratch.parent.mkdir(parents=True)
         scratch.write_text("# T\n\nNo citations.\n")
@@ -927,3 +884,55 @@ class TestInputsAreConfinedToContent:
         out_path = render_output.render(str(scratch), output_format="md")
 
         assert out_path == isolated_config.RENDERED_DIR / "notes.md"
+
+
+class TestOutputDirOverride:
+    """`render(output_dir=...)` -- how src/review.py lands a report's
+    renders beside the report instead of in content/rendered/."""
+
+    def test_the_caller_s_directory_is_used_verbatim(self, isolated_config, monkeypatch):
+        report = isolated_config.REVIEW_DIR / "dt" / "survey.provenance.md"
+        report.parent.mkdir(parents=True)
+        report.write_text("# T\n\nNo citations.\n")
+
+        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        out_path = render_output.render(
+            str(report), output_format="md", output_dir=report.parent
+        )
+
+        # Beside the report, and nothing mirrored into it: the caller has
+        # already decided the whole path.
+        assert out_path == report.parent / "survey.provenance.md"
+
+    def test_omitting_it_keeps_the_mirroring_behaviour(self, isolated_config, monkeypatch):
+        draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# T\n\nNo citations.\n")
+
+        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        out_path = render_output.render(str(draft), output_format="md")
+
+        assert out_path == isolated_config.RENDERED_DIR / "dt" / "survey.md"
+
+    def test_a_directory_outside_content_is_refused(self, isolated_config, tmp_path):
+        """Naming an output directory does not widen where the pipeline
+        may write -- the same rule the input side has had since 3.17.0."""
+        draft = isolated_config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# T\n")
+
+        with pytest.raises(render_output.OutsideContentDir):
+            render_output.render(
+                str(draft), output_format="md", output_dir=tmp_path / "outside"
+            )
+
+    def test_a_parent_escaping_output_dir_is_refused(self, isolated_config):
+        draft = isolated_config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# T\n")
+
+        with pytest.raises(render_output.OutsideContentDir):
+            render_output.render(
+                str(draft), output_format="md",
+                output_dir=isolated_config.REVIEW_DIR / ".." / ".." / "outside",
+            )
