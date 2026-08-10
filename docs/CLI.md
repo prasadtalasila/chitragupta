@@ -726,17 +726,16 @@ python3 scripts/verbatim_check.py scan content/drafts/survey.md
 ```
 
 **What `scan` does not see, and why that matters more than it sounds.**
-`scan` is the **exact tier** of a three-tier detection stack, and the
-other two tiers are not built. It matches word n-grams, so literal
+`scan` is the **exact tier** of three planned detection tiers, and the
+other two are not built. It matches word n-grams, so literal
 paraphrase -- the same sentence skeleton with a synonym swapped every few
 words -- is invisible to it *by construction*, not by omission. Because
 the drafts this pipeline produces are LLM-written, and that is an LLM's
 normal failure mode when it drifts too close to a source, the reuse mode
 `scan` cannot see is the dominant one. Read a clean run as "no exact or
-near-exact copying found", never "no borrowed wording found". A stack
-fails by being silently incomplete, so nothing in the output will tell
-you this -- see [PLAGIARISM.md](PLAGIARISM.md),
-[LADDERS.md](LADDERS.md#the-one-stack) for the vocabulary, and
+near-exact copying found", never "no borrowed wording found". An
+unbuilt tier contributes nothing and nothing in the output says so -- see
+[PLAGIARISM.md](PLAGIARISM.md) and
 [discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
 for the three-tier plan.
 

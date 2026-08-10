@@ -188,9 +188,8 @@ python3 -m src.citation_coverage path/to/draft.md --query "..."      # retrieval
 ```
 
 One thing to know before reading a `scan` result, because the natural
-reading of it is wrong. `scan` is the **exact tier** of a planned
-three-tier detection stack: it matches word n-grams, so it sees verbatim
-and lightly-edited reuse and nothing else. The drafts this pipeline
+reading of it is wrong. `scan` is the **exact tier**, the first of three planned detection tiers: it matches word n-grams, so
+it sees verbatim and lightly-edited reuse and nothing else. The drafts this pipeline
 produces are LLM-written, and literal paraphrase -- the same sentence
 with a synonym swapped every few words -- is an LLM's normal failure mode
 when it drifts too close to a source. That mode is invisible to an exact

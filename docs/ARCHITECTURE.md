@@ -27,7 +27,7 @@ work on the repository itself ([DEVELOPER.md](../DEVELOPER.md)).
 - [What this architecture does not do](#what-this-architecture-does-not-do)
 - [What each capability requires](#what-each-capability-requires)
 - [Which interpreter, and why](#which-interpreter-and-why)
-- [Ladders, tiers and one stack](#ladders-tiers-and-one-stack)
+- [Ladders and tiers](#ladders-and-tiers)
 - [One writer at a time](#one-writer-at-a-time)
 
 ## The three layers
@@ -269,9 +269,9 @@ that "this sentence resembles its source" has no single right answer the
 way ledger membership does. Its findings are what a later severity policy
 would be tuned against, not a verdict waiting to be switched on:
 [SOUL.md](../SOUL.md) commits to verbatim checks *staying* review aids.
-Note also what a clean run does not mean -- `scan` is the exact tier of a
-detection stack whose paraphrase tiers are unbuilt, so it fails by being
-silently incomplete rather than by being wrong. See
+Note also what a clean run does not mean -- `scan` is the exact detection
+tier, and the paraphrase tiers beside it are unbuilt, so it comes up short
+by being silently incomplete rather than by being wrong. See
 [docs/PLAGIARISM.md](PLAGIARISM.md).
 
 ## Incremental by default, honest about failure
@@ -415,11 +415,12 @@ runtime and reported as `missing-binary` when absent. That axis -- which
 binaries a command shells out to -- is still independent of which
 directory it lives in.
 
-## Ladders, tiers and one stack
+## Ladders and tiers
 
-All three words appear across these docs, and they are not the same
-thing. Summarised here; each one is treated in full, with what its bottom
-rung costs you, in [docs/LADDERS.md](LADDERS.md).
+Both words appear across these docs, and they are not the same thing.
+Summarised here; each one is treated in full, with what its bottom rung
+costs you, in [docs/LADDERS.md](LADDERS.md) -- except the detection
+tiers, whose full treatment is [docs/PLAGIARISM.md](PLAGIARISM.md).
 
 A **ladder** is an ordered chain the code walks *automatically*: it tries
 the first rung, and falls to the next when that one can't answer. A
@@ -441,20 +442,19 @@ what is missing.
 | Parser backend | `pdftotext`, `docling` | `sync` warns and skips parsing. It does **not** silently substitute the other backend |
 | Interpreter | the three tiers above | `ModuleNotFoundError` |
 | Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + pdflatex) | reported as `missing-binary`. No format is silently downgraded to another |
+| Detection | `exact` word-n-gram runs (built), a deterministic skip-gram tier and an embedding tier (both proposed) | the embedding tier needs the optional enrichment layer's `content/chroma/`; without it that tier is unavailable and says so, rather than falling back to the exact tier and reporting less |
 
-A **stack** is the third shape: every available option runs and the
-results are combined, so nothing is chosen and nothing descends. There is
-one, the **detection tiers** behind `scripts/verbatim_check.py`'s `scan`
--- exact word-n-gram matching today, with a skip-gram tier and an
-embedding tier proposed. It gets no row above because a tier set's
-options are exclusive and a stack's are cumulative: the question "what
-happens if the one you picked is unavailable" has no answer when you
-never picked. A stack fails a third way instead -- **silently
-incomplete**, contributing fewer findings with nothing to say so, which
-is why every place that offers `scan` also states what it cannot see.
-[docs/PLAGIARISM.md](PLAGIARISM.md) has the tiers; LADDERS.md has the
-vocabulary, including why a bare "tier" is ambiguous here and what to
-write instead.
+One difference worth stating, because it is the exception to the word
+*tier* as used above: the detection tiers are **not mutually exclusive**.
+The other three tier sets are a menu you pick exactly one option from;
+`scan` runs every detection tier that exists and unions the findings,
+labelling each with the tier that produced it -- which is what the
+`tier: "exact"` field on a finding is for, with one value so far. The
+practical consequence is the one every place that offers `scan` repeats:
+an unbuilt tier contributes nothing and nothing says so, so a clean run
+means "no exact or near-exact copying found", never "no borrowed
+wording". [docs/PLAGIARISM.md](PLAGIARISM.md) has the three tiers and the
+literature behind them.
 
 ## One writer at a time
 

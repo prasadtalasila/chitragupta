@@ -113,7 +113,7 @@ have the full semantics.
   why. `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus
   one, and the complement of the citation gate: the gate proves every
   citekey is real, the scan reports what wording came along with them.
-  It is the exact tier of a detection stack whose paraphrase tiers are
+  It is the exact detection tier, and the paraphrase tiers beside it are
   unbuilt, so a clean run is not a clean bill of health --
   [docs/PLAGIARISM.md](docs/PLAGIARISM.md).
 
