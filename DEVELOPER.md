@@ -247,6 +247,11 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
   passages.py               where a citekey's supporting text comes from (docling sidecar -> form-feed
                           pages -> pdftotext) and whether it may be quoted -- shared by the consumers
                           that need to point at part of a source rather than all of it
+  overlap_index.py          disk-cached word n-gram fingerprint index (content/overlap/) for
+                          scripts/verbatim_check.py's overlap mode -- one .fpr file per citekey plus
+                          a merged, binary-searchable corpus-wide index.bin, both keyed by
+                          (pdf_hash, parsed-file stat) so a re-run over an unchanged corpus costs no
+                          re-fingerprinting. Read-only over the corpus layer, no writer lock
   citation_gate.py          hard citation-verification gate -- the drafting layer must pass this
   dossier.py                the working state behind a draft (reader, scope, kept evidence, rejected
                           candidates, steering, revision log) as Markdown under content/dossiers/,
@@ -273,7 +278,7 @@ scripts/
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)
-  ledger.sqlite, parsed/<citekey>.txt, provenance/,
+  ledger.sqlite, parsed/<citekey>.txt, provenance/, retrieval_index.json, overlap/,
   docling/, chroma/, topics.json, topic_embed_cache.json, rendered/  (src/enrich/ outputs)
 logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups. Level from
                           config.toml's [logging]; relocate with the LOGS_DIR env var

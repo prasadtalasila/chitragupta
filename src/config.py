@@ -150,6 +150,11 @@ DOSSIERS_DIR = CONTENT_DIR / "dossiers"
 # search() call only re-tokenizes docs whose text actually changed since
 # the last run, mirroring src/ledger.py's own stat-before-hash skip logic.
 RETRIEVAL_INDEX_PATH = CONTENT_DIR / "retrieval_index.json"
+# Cached n-gram fingerprints for src/overlap_index.py -- content/overlap/docs/
+# holds one file per citekey, content/overlap/index.bin the merged corpus
+# index. Both are keyed by (pdf_hash, parsed-file size/mtime_ns), the same
+# stat-before-hash shape as RETRIEVAL_INDEX_PATH above.
+OVERLAP_DIR = CONTENT_DIR / "overlap"
 # Mutex for anything that writes content/ -- see src/runlock.py. A
 # dedicated sqlite file rather than the ledger, so that locking a run
 # doesn't force the ledger's five commit points into one transaction.
