@@ -90,6 +90,7 @@ used as given.
 |---|---|---|---|
 | `[bib] path` | `BIB_FILE` | path | `papers/bibliography.bib` |
 | `[content] dir` | `CONTENT_DIR` | path | `content` |
+| `[content] ledger` | `LEDGER_PATH` | path | `ledger.sqlite` |
 
 - **`[bib] path`** -- the BibTeX export `src/bib_reader.py` parses. The
   only source of citekeys; nothing in the pipeline invents or renames
@@ -97,6 +98,15 @@ used as given.
 - **`[content] dir`** -- everything `sync` and the enrichment layer write:
   `ledger.sqlite`, `parsed/`, `provenance/`, `rendered/`, plus
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
+  Since 3.17.0 it is also what the tier-1 tools will *accept*:
+  `citation_gate`, `references` and `render_output` each refuse a path
+  that resolves outside it, so this one directory stays the whole record
+  of the work and a copy of it is complete.
+- **`[content] ledger`** -- the ledger file, relative to `[content] dir`
+  or absolute. Separately overridable precisely because of the line
+  above: once the content directory decides which drafts are acceptable,
+  pointing it at another tree purely to read a different ledger would
+  also refuse every real draft. This keeps the two separable.
 
 There is no key for "extra PDFs to enrich": the enrichment layer indexes
 the bibliography and nothing else, so everything it can retrieve is

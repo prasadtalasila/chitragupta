@@ -19,6 +19,17 @@ pdflatex_available = shutil.which("pdflatex") is not None
 pdftotext_available = shutil.which("pdftotext") is not None
 
 
+def content_draft(cfg, name: str) -> "object":
+    """A draft path a tier-1 tool will accept: under `CONTENT_DIR`.
+
+    Since 3.17.0 `citation_gate`, `references` and `render_output` all
+    refuse a path outside the content directory.
+    """
+    path = cfg.CONTENT_DIR / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def make_real_pdf(md_path, pdf_path, body):
     md_path.write_text(body)
     subprocess.run(
@@ -61,7 +72,7 @@ class TestFullPipelineNoMocks:
         assert row["status"] == "parsed"
         assert "distinctive digital twin content" in (config.PARSED_DIR / "smith_realpaper_2024.txt").read_text()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Chapter\n\nAs shown by prior work [@smith_realpaper_2024], digital twins matter.\n"
         )
@@ -85,7 +96,7 @@ class TestFullPipelineNoMocks:
         )
         assert sync.run() == 0
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Citing a real source [@real_key_2024] and a fabricated one [@invented_2024].\n")
 
         rc = citation_gate.run([str(draft)])

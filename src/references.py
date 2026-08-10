@@ -45,7 +45,7 @@ import re
 import sys
 from pathlib import Path
 
-from src import citation_gate, ledger
+from src import citation_gate, config, ledger
 
 # Matches the References heading this module writes, bare ("## References")
 # or numbered to match a draft's own heading convention ("## 6. References"),
@@ -432,6 +432,7 @@ def write_numbered(path: Path, out_dir: Path) -> Path:
 
 
 def apply(path: Path, heading: str = "References") -> str:
+    path = config.require_inside_content(path)
     text = path.read_text()
     keys = used_citekeys(text)
     if not keys:
@@ -464,7 +465,11 @@ def main() -> int:
 
     try:
         print(apply(Path(args.input), args.heading))
-    except KeyError as exc:
+    except (KeyError, config.OutsideContentDir) as exc:
+        # Both are "this draft can't be processed, and here is why" rather
+        # than a bug: a citekey the ledger doesn't hold, or a path outside
+        # content/. Reported on stderr like any other refusal instead of
+        # as a traceback.
         print(f"[error] {exc}", file=sys.stderr)
         return 1
     return 0

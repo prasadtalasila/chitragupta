@@ -20,7 +20,7 @@ not depend on any of this and are unaffected either way.
 Usage:
     python scripts/enrich.py --target host
     python scripts/enrich.py --stages embed,bertopic
-    python scripts/enrich.py --stages render --input draft.md
+    python scripts/enrich.py --stages render --input content/drafts/chapter.md
     python scripts/enrich.py --for-draft content/drafts/chapter.md
 """
 

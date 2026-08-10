@@ -52,8 +52,27 @@ def payload(file_path) -> str:
 def env_for(cfg) -> dict:
     """Env for the hook's child citation_gate process to read the
     isolated ledger `isolated_config` set up in *this* process, instead
-    of the real repo's content/ledger.sqlite."""
-    return {**os.environ, "CONTENT_DIR": str(cfg.CONTENT_DIR)}
+    of the real repo's content/ledger.sqlite.
+
+    CONTENT_DIR stays pointed at this repo's real content directory,
+    which is where the gated draft has to live: the hook derives
+    content/drafts/ from its own on-disk location, and since 3.17.0 the
+    gate refuses a draft outside CONTENT_DIR, so redirecting the content
+    root would make every one of these drafts unacceptable rather than
+    merely un-gated. LEDGER_PATH is what carries the isolation now --
+    see src/config.py, where it became separately overridable for
+    exactly this reason. In production the two always agree, because
+    both derive from the same repo root.
+    """
+    # The child opens this ledger directly, so its directory has to exist
+    # even in a test that adds no rows to it -- `isolated_config` names
+    # the content dir but only `ledger.connect()` creates it.
+    cfg.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    return {
+        **os.environ,
+        "CONTENT_DIR": str(REPO_ROOT / "content"),
+        "LEDGER_PATH": str(cfg.LEDGER_PATH),
+    }
 
 
 class DraftFile:

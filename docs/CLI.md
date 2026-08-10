@@ -178,9 +178,9 @@ python3 -m src.ledger
 # including its own citation_gate -> references -> render_output chain.
 
 # 6. Re-run any step of that chain by hand (no venv needed for these).
-python3 -m src.citation_gate path/to/draft.md
-python3 -m src.references path/to/draft.md
-python3 -m src.render_output path/to/draft.md --format pdf
+python3 -m src.citation_gate content/drafts/<slug>.md
+python3 -m src.references content/drafts/<slug>.md
+python3 -m src.render_output content/drafts/<slug>.md --format pdf
 ```
 
 ## Every command and flag
@@ -244,9 +244,16 @@ python3 -m src.citation_gate content/drafts/survey.md
 # python3 -m src.citation_gate content/drafts/*.md      # several at once
 
 # Exit codes: 0 = every citation verified,
-#             1 = at least one unresolved citekey,
+#             1 = at least one unresolved citekey, or a file outside content/,
 #             2 = no files given.
 ```
+
+A file that resolves outside `content/` is reported as a `FAIL` for that
+document and the remaining files are still checked -- this command's
+contract is that you hand it several drafts and get a verdict on each, so
+one unusable path must not hide the others. It exits 1 rather than the
+usage code 2 for the same reason: it is a document that did not pass,
+alongside the rest.
 
 ### `python3 -m src.references`
 
