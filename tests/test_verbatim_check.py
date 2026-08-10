@@ -3,6 +3,7 @@ review aid (not part of the deterministic pipeline). REPO/BIB are
 module-level constants computed from Path(__file__) at import time;
 tests monkeypatch them directly to point at a throwaway fixture tree."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -338,6 +339,291 @@ class TestCmdLocate:
         assert "digital twin simulation" in out
 
 
+class TestMergeRuns:
+    def test_consecutive_positions_always_merge_at_gap_zero(self):
+        assert vc._merge_runs([0, 1, 2, 3], gap=0, n=8) == [[0, 1, 2, 3]]
+
+    def test_single_word_edit_merges_at_gap_one_not_gap_zero(self):
+        # A clean anchor at 0 and the next clean anchor at n+1=9 (see
+        # _merge_runs' docstring) is exactly what a single edited word
+        # inside an n=8 gram produces.
+        assert vc._merge_runs([0, 9], gap=1, n=8) == [[0, 9]]
+        assert vc._merge_runs([0, 9], gap=0, n=8) == [[0], [9]]
+
+    def test_far_apart_clusters_stay_separate_even_with_gap(self):
+        assert vc._merge_runs([0, 1, 50, 51], gap=2, n=8) == [[0, 1], [50, 51]]
+
+    def test_duplicate_positions_are_deduped(self):
+        assert vc._merge_runs([5, 5, 5], gap=0, n=8) == [[5]]
+
+
+class TestQuoteCharSpans:
+    def test_straight_double_quotes_detected(self):
+        spans = vc._quote_char_spans('before "a quoted phrase" after')
+        assert spans and spans[0] == (7, 24)
+
+    def test_curly_double_quotes_detected(self):
+        spans = vc._quote_char_spans("before “a quoted phrase” after")
+        assert spans
+
+    def test_blockquote_line_detected(self):
+        spans = vc._quote_char_spans("> a blockquote line\nnot a quote\n")
+        assert spans and spans[0][0] == 0
+
+    def test_no_quotes_returns_empty(self):
+        assert vc._quote_char_spans("nothing quoted here at all") == []
+
+
+class TestMaskForScan:
+    def test_blanks_fenced_code(self):
+        text = "before\n```\n@dataclass\n```\nafter"
+        masked = vc._mask_for_scan(text)
+        assert "dataclass" not in masked
+        assert "before" in masked and "after" in masked
+
+    def test_blanks_inline_code(self):
+        masked = vc._mask_for_scan("use `@property` here")
+        assert "property" not in masked
+        assert "use" in masked and "here" in masked
+
+    def test_blanks_references_section_onward(self):
+        text = "Intro text here.\n\n## References\n\n[1] Some Title, Some Venue.\n"
+        masked = vc._mask_for_scan(text)
+        assert "Intro text here" in masked
+        assert "Some Title" not in masked
+
+    def test_no_references_section_leaves_text_untouched(self):
+        text = "Just prose, no heading at all.\n"
+        assert vc._mask_for_scan(text) == text
+
+
+class TestTokenizeDraft:
+    def test_flat_word_list_spans_paragraphs(self):
+        text = "First paragraph words.\n\nSecond paragraph words.\n"
+        words, _ = vc._tokenize_draft(text)
+        assert [w.text for w in words] == ["first", "paragraph", "words", "second", "paragraph", "words"]
+
+    def test_paragraph_citekeys_tracks_citations_per_paragraph(self):
+        text = "Cites [@smith_2024] here.\n\nCites nothing here.\n"
+        _, paragraph_citekeys = vc._tokenize_draft(text)
+        assert paragraph_citekeys == [{"smith_2024"}, set()]
+
+    def test_citation_markers_are_not_in_the_word_stream(self):
+        words, _ = vc._tokenize_draft("Text citing [@smith_2024] a source.\n")
+        assert "smith_2024" not in [w.text for w in words]
+
+    def test_words_inside_quotes_are_flagged_quoted(self):
+        words, _ = vc._tokenize_draft('An unquoted word and "a quoted phrase" here.\n')
+        by_text = {w.text: w.quoted for w in words}
+        assert by_text["unquoted"] is False
+        assert by_text["quoted"] is True
+
+
+class TestCmdScan:
+    def test_planted_verbatim_run_from_cited_source_is_flagged(self, ledger_con, tmp_path, capsys):
+        # (a) per issue #111's fixture set.
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text("As shown [@cited_2024], alpha beta gamma delta epsilon zeta eta theta appears here.\n")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "cited_2024" in out
+        assert "UNCITED SOURCE" not in out
+
+    def test_one_word_edit_variant_of_the_cited_run_still_merges_at_default_gap(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # (a)'s gap-merge variant: a single word changed mid-run must
+        # still report as one run at the default --gap, per the issue's
+        # scoping comment (a single edited word is the drafts' normal
+        # failure mode, being LLM-written and lightly edited).
+        source_text = (
+            "one two three four five six seven eight nine ten eleven twelve "
+            "thirteen fourteen fifteen sixteen seventeen eighteen"
+        )
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", source_text)
+        edited = source_text.replace("nine", "ninexx")
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"As shown [@cited_2024], {edited} end.\n")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "18 words" in out
+        assert "17 matched" in out
+
+    def test_planted_run_from_uncited_source_is_flagged(self, ledger_con, tmp_path, capsys):
+        # (b) per issue #111's fixture set: overlap mode structurally
+        # cannot see this -- it never looks at a source the paragraph
+        # doesn't cite.
+        _add_parsed_item(
+            ledger_con, tmp_path, "uncited_2024",
+            "lorem ipsum dolor sit amet consectetur adipiscing elit sed do",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "As shown [@other_2024], lorem ipsum dolor sit amet consectetur adipiscing elit sed do appears here.\n"
+        )
+        _add_parsed_item(ledger_con, tmp_path, "other_2024", "completely unrelated filler text")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "uncited_2024" in out
+        assert "UNCITED SOURCE" in out
+
+    def test_planted_run_in_connective_prose_citing_nothing_is_flagged(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # (c) per issue #111's fixture set: reuse in a paragraph that
+        # cites no one at all -- overlap mode never even runs on it.
+        _add_parsed_item(
+            ledger_con, tmp_path, "connective_2024",
+            "the quick brown fox jumps over the lazy dog while running",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "Some cited claim [@other_2024].\n\n"
+            "The quick brown fox jumps over the lazy dog while running fast.\n\n"
+            "Another cited claim [@other_2024].\n"
+        )
+        _add_parsed_item(ledger_con, tmp_path, "other_2024", "completely unrelated filler text")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "connective_2024" in out
+        assert "UNCITED SOURCE" in out
+
+    def test_clean_paraphrase_does_not_flag(self, ledger_con, tmp_path, capsys):
+        # (d) per issue #111's fixture set: must stay quiet at the
+        # default n=8 floor.
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "structural health monitoring relies on continuous sensor data acquisition "
+            "combined with periodic model recalibration to remain trustworthy",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "Keeping a monitoring system trustworthy over time [@cited_2024] means "
+            "revisiting its parameters as fresh readings arrive, not fitting it once "
+            "and walking away.\n"
+        )
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "no verbatim run" in out
+
+    def test_quoted_run_is_flagged_quoted(self, ledger_con, tmp_path, capsys):
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            'As [@cited_2024] puts it, "alpha beta gamma delta epsilon zeta eta theta" exactly.\n'
+        )
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "quoted" in out
+
+    def test_tier_is_exact(self, ledger_con, tmp_path, capsys):
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta")
+        draft = tmp_path / "draft.md"
+        draft.write_text("[@cited_2024] alpha beta gamma delta epsilon zeta eta theta end.\n")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "tier=exact" in out
+
+    def test_no_findings_prints_message(self, isolated_config, tmp_path, capsys):
+        draft = tmp_path / "draft.md"
+        draft.write_text("Nothing to see here at all.\n")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "no verbatim run of >= 8 words found anywhere in the draft" in out
+
+    def test_min_run_below_index_n_is_rejected(self, isolated_config, tmp_path, capsys):
+        draft = tmp_path / "draft.md"
+        draft.write_text("Anything.\n")
+
+        vc.cmd_scan(str(draft), min_run=4)
+        out = capsys.readouterr().out
+        assert "--min-run must be >=" in out
+
+    def test_run_shorter_than_min_run_is_filtered_out(self, ledger_con, tmp_path, capsys):
+        # A real, matching 8-word run exists, but --min-run 20 asks for
+        # more than that -- exercises the length-floor continue, distinct
+        # from "no candidate groups existed at all".
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta")
+        draft = tmp_path / "draft.md"
+        draft.write_text("[@cited_2024] alpha beta gamma delta epsilon zeta eta theta end.\n")
+
+        vc.cmd_scan(str(draft), min_run=20)
+        out = capsys.readouterr().out
+        assert "no verbatim run of >= 20 words found" in out
+
+    def test_limit_truncates_findings(self, ledger_con, tmp_path, capsys):
+        _add_parsed_item(ledger_con, tmp_path, "a_2024", "alpha beta gamma delta epsilon zeta eta theta")
+        _add_parsed_item(ledger_con, tmp_path, "b_2024", "one two three four five six seven eight")
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "[@a_2024] alpha beta gamma delta epsilon zeta eta theta.\n\n"
+            "[@b_2024] one two three four five six seven eight.\n"
+        )
+
+        vc.cmd_scan(str(draft), limit=1)
+        out = capsys.readouterr().out
+        assert out.count("tier=exact") == 1
+
+    def test_page_boundary_split_run_both_halves_survive_independently(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # Documented limitation (cmd_scan's docstring): a run can never
+        # merge across a page break, since token_position resets to 0
+        # there. A 15/15 split still clears --min-run on both sides, so
+        # both report -- as two findings, not one.
+        words = [f"w{i}" for i in range(30)]
+        page1, page2 = " ".join(words[:15]), " ".join(words[15:])
+        _add_parsed_item(ledger_con, tmp_path, "split_2024", page1 + "\f" + page2)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"[@split_2024] {' '.join(words)} end.\n")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "pdf p.1" in out and "pdf p.2" in out
+
+    def test_page_boundary_short_remainder_is_invisible(self, ledger_con, tmp_path, capsys):
+        # The sharper edge of the same limitation: a 25/5 split leaves a
+        # 5-word remainder alone on its page, below --min-run, so it
+        # never appears at all -- not merged, not reported separately.
+        words = [f"w{i}" for i in range(30)]
+        page1, page2 = " ".join(words[:25]), " ".join(words[25:])
+        _add_parsed_item(ledger_con, tmp_path, "split_2024", page1 + "\f" + page2)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"[@split_2024] {' '.join(words)} end.\n")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "25 words" in out
+        assert "w25" not in out.split("in:")[0]  # the 5-word tail never becomes its own finding
+
+
+class TestPopFlag:
+    def test_extracts_value_and_removes_flag_and_argument(self):
+        value, rest = vc._pop_flag(["--n", "12", "other"], "--n", int)
+        assert value == 12
+        assert rest == ["other"]
+
+    def test_returns_none_and_leaves_rest_unchanged_when_absent(self):
+        value, rest = vc._pop_flag(["other"], "--n", int)
+        assert value is None
+        assert rest == ["other"]
+
+
 class TestCliDispatch:
     def test_overlap_mode_via_subprocess(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
@@ -350,6 +636,24 @@ class TestCliDispatch:
         )
         assert result.returncode == 0
         assert "no source text for nonexistent_key_2024" in result.stdout
+
+    def test_scan_mode_via_subprocess(self, tmp_path):
+        # CONTENT_DIR is overridden to a throwaway directory: cmd_scan
+        # always calls build_corpus_index(), which -- unlike cmd_overlap's
+        # ledger_item() short-circuit -- writes content/overlap/* even for
+        # an empty corpus. Without the override this would create real
+        # files under the checked-out repo's own content/ directory.
+        repo_root = Path(__file__).resolve().parent.parent
+        draft = tmp_path / "draft.md"
+        draft.write_text("Nothing to see here at all.\n")
+
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), "--min-run", "8", "--gap", "1"],
+            cwd=str(repo_root), capture_output=True, text=True,
+            env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
+        )
+        assert result.returncode == 0
+        assert "no verbatim run" in result.stdout
 
     def test_unknown_mode_prints_docstring(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent

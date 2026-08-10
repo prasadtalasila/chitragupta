@@ -331,3 +331,41 @@ class TestPagesForGram:
         index = overlap_index.build_corpus_index(n=4)
         shared_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
         assert overlap_index.pages_for_gram(index, shared_hash) == [1, 2]
+
+
+class TestPostingsForGram:
+    def test_unknown_gram_returns_empty(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        index = overlap_index.build_corpus_index(n=4)
+        assert overlap_index.postings_for_gram(index, 0xDEADBEEF) == []
+
+    def test_empty_index_returns_empty(self, isolated_config):
+        index = overlap_index.build_corpus_index(n=4)
+        assert overlap_index.postings_for_gram(index, 0xDEADBEEF) == []
+
+    def test_a_single_posting_carries_citekey_page_and_position(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        index = overlap_index.build_corpus_index(n=4)
+        gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        assert overlap_index.postings_for_gram(index, gram_hash) == [("smith_2024", 1, 0)]
+
+    def test_repeated_gram_on_one_page_yields_one_posting_per_occurrence(self, ledger_con, tmp_path):
+        # Unlike pages_for_gram, nothing here is deduplicated: scan mode
+        # needs every occurrence (and its own token_position) to align a
+        # run, not just "this page has a match".
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024",
+            "alpha beta gamma delta filler words alpha beta gamma delta",
+        )
+        index = overlap_index.build_corpus_index(n=4)
+        gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        postings = overlap_index.postings_for_gram(index, gram_hash)
+        assert sorted(postings) == [("smith_2024", 1, 0), ("smith_2024", 1, 6)]
+
+    def test_postings_from_multiple_citekeys_are_all_returned(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "doe_2023", "alpha beta gamma delta")
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        index = overlap_index.build_corpus_index(n=4)
+        gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        postings = overlap_index.postings_for_gram(index, gram_hash)
+        assert sorted(postings) == [("doe_2023", 1, 0), ("smith_2024", 1, 0)]

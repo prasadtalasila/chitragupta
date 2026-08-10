@@ -25,6 +25,7 @@ if it is obvious which is which, so:
 | [2026-08-04b: repeats](#2026-08-04b-repeats-and-where-the-time-goes) | **Current** | Overturned the 32-vs-48 "knee" from the single-run sweep |
 | [2026-08-07: does the quotable passage survive a re-parse?](#2026-08-07-does-the-quotable-passage-survive-a-re-parse) | **Current** | Corrected "same-configuration runs reproduce exactly", which had been asserted in three documents |
 | [2026-08-08: what a drift sweep costs](#2026-08-08-what-a-drift-sweep-costs) | **Current** | The first measurement of `dossier status --all`, on the real corpus |
+| [2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy) | **Current** | The first measurement of `scripts/verbatim_check.py`'s `overlap` and `scan` modes, on the real corpus |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -854,4 +855,112 @@ Reproduce:
 ```bash
 python3 bench/bench_drift.py --dossiers 1 10 50 --repeats 5 \
     --out bench/results/<date>-drift/drift-501.json
+```
+
+## 2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy
+
+Both features shipped on an architectural argument (content-addressed
+caching, a corpus-wide index) rather than a stopwatch. This measures both
+against a real draft and this project's own real corpus, rather than the
+tiny synthetic fixtures the unit test suite uses.
+
+Host: the multi-GPU machine (48 allowed CPUs, 251 GB RAM), bare `python3`
+3.13.5, no GPU involved -- `src.overlap_index` and `scripts/verbatim_check.py`
+are stdlib-only. Corpus: this project's own `content/ledger.sqlite`, 497
+parsed items. Draft: `bench/fixtures/cloud-computing-for-digital-twins.md`,
+a genuine ~3,000-word chapter written for this measurement, citing 16 real
+corpus papers.
+
+### #110: the per-document fingerprint cache
+
+`scripts/verbatim_check.py overlap` used to re-invoke `pdftotext -layout`
+on the cited PDF and rebuild its n-gram dictionary from scratch on every
+call. Measured against the 16 citekeys the draft actually cites, before
+(commit 18f9f4b2, the parent of #110's merge) and after:
+
+| | 16x `overlap` |
+|---|---|
+| before #110 (pdftotext subprocess, every call) | 2.379s |
+| after #110, cold (.fpr cache built this run) | 0.477s (**5.0x**) |
+| after #110, warm (.fpr cache from a prior run) | 0.081-0.087s (**27-29x**) |
+
+The "before" figure is a one-time historical comparison, not something
+`bench/bench_overlap.py` reproduces going forward -- the pre-#110
+implementation no longer exists on `main`. Reproduce it by checking out
+18f9f4b2 and timing `cmd_overlap` from `scripts/verbatim_check.py` there.
+
+### #111: N invocations of `overlap` versus one `scan`
+
+Before #111, the only way to approximate a whole-draft check was running
+`overlap` once per citekey the draft cites -- and even that only ever
+compares a paragraph against the one source it names. `scan` slides the
+whole draft across the whole corpus index in one call, no citekey
+argument.
+
+`bench/bench_overlap.py --draft bench/fixtures/cloud-computing-for-digital-twins.md`,
+against the real corpus, `CONTENT_DIR` pointed at this host's own
+`content/`:
+
+| | time |
+|---|---|
+| 16x `overlap` (warm .fpr caches, i.e. #110 already paid for) | 0.087s |
+| 1x `scan`, cold corpus index (first `build_corpus_index()` ever, this host) | 27.2-27.5s |
+| 1x `scan`, warm corpus index (unchanged corpus, second call) | 0.214-0.216s |
+
+Read as a wall-clock number alone, this looks like a regression: 0.087s
+for the thing #110 already made fast, versus 27s the first time anyone
+runs `scan` on an unchanged 497-document corpus. That first cost is the
+one-time price of merging every fingerprintable document's postings --
+per-document fingerprinting is itself cached (`fingerprint_document`), so
+a *second* corpus-wide build, even after every existing `overlap` call
+has already populated the per-document `.fpr` cache, still pays the
+merge-and-sort over ~millions of postings once. After that one-time
+build, `scan` is 0.21s regardless of how many citekeys the draft cites --
+the real comparison the "N invocations" framing invites is N *scan*-scale
+checks against N separate `overlap` calls, and `scan` checks every
+source in the corpus, not just N of them, in less time than 3 warm
+`overlap` calls take.
+
+**The number that matters is not the wall clock.** It's what each mode
+can structurally see. `bench/fixtures/cloud-computing-for-digital-twins-planted-reuse.md`
+is the same chapter with one added paragraph, verbatim from a real,
+uncited corpus paper (`aguzzi_cloud_2020`, never mentioned anywhere else
+in the draft):
+
+```
+16x overlap (one per cited source): surfaces the planted reuse? False
+1x scan: surfaces the planted reuse? True
+  [18 words, pdf p.1] aguzzi_cloud_2020 (tier=exact) [UNCITED SOURCE]
+  [10 words, pdf p.2] aguzzi_cloud_2020 (tier=exact) [UNCITED SOURCE]
+```
+
+This is not a near-miss `overlap` could catch with a longer run or a
+lower `--n` -- it is structural. `cmd_overlap(draft, citekey)` only ever
+loads *that* `citekey`'s own fingerprint (`grams_for_citekey`); a source
+never named in the 16 citekeys a reviewer would think to check is never
+loaded at all, no matter how many times `overlap` is run. `scan` finds it
+in the same 0.21s warm call as everything else, because it checks every
+parsed source in the corpus against every word of the draft, not just the
+sources the draft happens to cite.
+
+### What this does not measure
+
+- **A corpus larger than 497 documents.** The one-time `scan` build cost
+  is expected to grow roughly linearly with corpus size (more documents
+  to fingerprint and merge), matching `bench_drift.py`'s finding for the
+  retrieval index's own cold cost -- not verified here.
+- **`--gap`'s cost.** The gap-tolerant run merge is a constant-factor
+  addition per diagonal group; not separated out from the rest of `scan`'s
+  per-call cost.
+- **Concurrency.** Both modes are single-threaded, measured on an
+  otherwise-idle machine.
+- **A cold page cache.** `content/ledger.sqlite` and 497 parsed text files
+  were already OS-cached from prior runs on this host.
+
+Reproduce:
+
+```bash
+CONTENT_DIR=/path/to/your/content python3 bench/bench_overlap.py \
+    --draft bench/fixtures/cloud-computing-for-digital-twins.md \
+    --out bench/results/<date>-overlap/overlap.json
 ```

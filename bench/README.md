@@ -16,10 +16,14 @@ timings behind them are in `results/<date>-<tag>/*.jsonl`.
 Needs the "enrich" Poetry group (`bash scripts/install_full_pipeline.sh
 python-deps`), since it drives the real Docling stack.
 
-`bench_drift.py` is the exception: it measures `src.dossier`, which is
-stdlib-only, so it runs under bare `python3` with no corpus built and no
-GPU -- it generates its own throwaway corpus and never touches
-`content/`.
+`bench_drift.py` and `bench_overlap.py` are the exceptions: they measure
+`src.dossier` and `src.overlap_index`/`scripts/verbatim_check.py`, all
+stdlib-only, so both run under bare `python3` with no corpus built and no
+GPU. `bench_drift.py` generates its own throwaway corpus and never
+touches `content/`; `bench_overlap.py` reads this host's real
+`content/ledger.sqlite` (read-only -- see its docstring for why that is
+safe here and not for `bench_drift.py`) but writes its own cache to a
+throwaway directory, never the real `content/overlap/`.
 
 ```bash
 # 1. Build the work lists from your own bib file (gitignored output --
@@ -48,6 +52,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | How does the workload spread across N processes and G cards? | `run_parallel.py` |
 | What would the whole corpus cost, from a sample? | `estimate.py` -- **but see its docstring: it understates** |
 | What does a drift sweep over every dossier cost? | **`bench_drift.py`** -- stdlib only, synthetic corpus, no GPU |
+| What does `verbatim_check.py overlap`/`scan` cost, and what can `scan` see that N `overlap` calls can't? | **`bench_overlap.py`** -- stdlib only, this host's real corpus, no GPU |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a

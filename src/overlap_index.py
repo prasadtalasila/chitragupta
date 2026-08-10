@@ -473,3 +473,22 @@ def pages_for_gram(index: CorpusIndex, gram_hash: int, citekey: "str | None" = N
             continue
         matched_pages.add(index.pages[i])
     return sorted(matched_pages)
+
+
+def postings_for_gram(index: CorpusIndex, gram_hash: int) -> list[tuple[str, int, int]]:
+    """Every `(citekey, page, token_position)` posting for `gram_hash`,
+    undeduped, in the same order they were merged into `index` (stable
+    ties on the sort in `build_corpus_index` -- effectively citekey order,
+    then page/position order).
+
+    Unlike `pages_for_gram`, this keeps every occurrence rather than
+    collapsing to distinct pages: `scripts/verbatim_check.py`'s `scan`
+    mode needs `token_position` to align a run across consecutive draft
+    positions, which a deduplicated page list would throw away.
+    """
+    lo = bisect_left(index.grams, gram_hash)
+    hi = bisect_right(index.grams, gram_hash, lo=lo)
+    return [
+        (index.citekeys[index.citekey_ids[i]], index.pages[i], index.positions[i])
+        for i in range(lo, hi)
+    ]
