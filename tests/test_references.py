@@ -9,7 +9,7 @@ import pytest
 
 from src import ledger, references
 
-from tests.conftest import make_reference
+from tests.conftest import content_draft, make_reference
 
 
 class TestUsedCitekeys:
@@ -244,7 +244,7 @@ class TestWriteNumbered:
         ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         original = "Body [@smith2024].\n"
         draft.write_text(original)
         out_dir = tmp_path / "rendered"
@@ -314,7 +314,7 @@ class TestBuildSection:
 
 class TestApply:
     def test_no_citekeys_returns_message_and_leaves_file_untouched(self, isolated_config, tmp_path):
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Just prose, nothing cited.\n")
         result = references.apply(draft)
         assert "nothing to do" in result
@@ -325,7 +325,7 @@ class TestApply:
         ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Body text citing [@smith2024].\n")
         result = references.apply(draft)
 
@@ -340,7 +340,7 @@ class TestApply:
         ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "Body text citing [@smith2024].\n\n## References\n\n- stale entry\n"
         )
@@ -362,7 +362,7 @@ class TestMainCli:
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@smith2024]\n")
 
         sys.argv = ["references.py", str(draft)]
@@ -372,7 +372,7 @@ class TestMainCli:
         assert "wrote References section" in out
 
     def test_missing_citekey_prints_error_and_returns_1(self, isolated_config, tmp_path, capsys):
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@fabricated2024]\n")
 
         sys.argv = ["references.py", str(draft)]
@@ -387,7 +387,7 @@ class TestMainCli:
         ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Citing [@smith2024] here.\n")
 
         repo_root = Path(__file__).resolve().parent.parent
@@ -399,3 +399,33 @@ class TestMainCli:
         )
         assert result.returncode == 0, result.stderr
         assert "wrote References section" in result.stdout
+
+
+class TestInputsAreConfinedToContent:
+    def test_a_draft_outside_the_content_directory_is_refused(self, isolated_config, tmp_path):
+        loose = tmp_path / "loose.md"
+        loose.write_text("A claim [@a_2024].\n")
+        with pytest.raises(references.config.OutsideContentDir, match="outside the content"):
+            references.apply(loose)
+
+    def test_a_draft_anywhere_under_content_is_accepted(self, isolated_config):
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
+        con.close()
+        scratch = isolated_config.CONTENT_DIR / "scratch" / "notes.md"
+        scratch.parent.mkdir(parents=True)
+        scratch.write_text("A claim [@a_2024].\n")
+
+        references.apply(scratch)
+
+        assert "a_2024" in scratch.read_text()
+
+    def test_the_cli_reports_it_rather_than_raising(self, isolated_config, tmp_path, monkeypatch, capsys):
+        loose = tmp_path / "loose.md"
+        loose.write_text("A claim [@a_2024].\n")
+        monkeypatch.setattr(sys, "argv", ["references.py", str(loose)])
+
+        rc = references.main()
+
+        assert rc == 1
+        assert "outside the content directory" in capsys.readouterr().err

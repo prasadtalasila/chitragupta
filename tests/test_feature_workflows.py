@@ -14,6 +14,8 @@ import pytest
 from src import bib_reader, citation_gate, config, dossier, ledger, references, sync
 from src import render_output
 
+from tests.conftest import content_draft
+
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
 pdftotext_available = shutil.which("pdftotext") is not None
@@ -61,7 +63,7 @@ class TestFullPipelineNoMocks:
         assert row["status"] == "parsed"
         assert "distinctive digital twin content" in (config.PARSED_DIR / "smith_realpaper_2024.txt").read_text()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Chapter\n\nAs shown by prior work [@smith_realpaper_2024], digital twins matter.\n"
         )
@@ -85,7 +87,7 @@ class TestFullPipelineNoMocks:
         )
         assert sync.run() == 0
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Citing a real source [@real_key_2024] and a fabricated one [@invented_2024].\n")
 
         rc = citation_gate.run([str(draft)])

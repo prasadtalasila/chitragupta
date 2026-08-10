@@ -119,6 +119,19 @@ def ledger_con(isolated_config):
     con.close()
 
 
+def content_draft(cfg, name: str) -> Path:
+    """A draft path a tier-1 tool will accept: under `cfg.CONTENT_DIR`.
+
+    Since 3.17.0 `citation_gate`, `references` and `render_output` all
+    refuse a path that resolves outside the content directory, so a test
+    draft has to live under one. Creates the parent, which
+    `isolated_config` names but does not make.
+    """
+    path = cfg.CONTENT_DIR / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def make_reference(citekey="smith_example_2024", **overrides):
     """A minimal src.bib_reader.Reference, for tests that don't need a
     real .bib file on disk."""

@@ -10,7 +10,7 @@ import pytest
 
 from src import citation_gate, ledger
 
-from tests.conftest import make_reference
+from tests.conftest import content_draft, make_reference
 
 
 class TestExtractLatexCitations:
@@ -240,7 +240,7 @@ class TestCheckDocument:
 class TestRun:
     def test_empty_ledger_warns_and_fails(self, isolated_config, tmp_path, capsys):
         ledger.connect().close()
-        path = tmp_path / "draft.md"
+        path = content_draft(isolated_config, "draft.md")
         path.write_text("[@smith2024]\n")
 
         rc = citation_gate.run([str(path)])
@@ -256,7 +256,7 @@ class TestRun:
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
 
-        path = tmp_path / "draft.md"
+        path = content_draft(isolated_config, "draft.md")
         path.write_text("[@smith2024]\n")
         rc = citation_gate.run([str(path)])
         out = capsys.readouterr().out
@@ -270,9 +270,9 @@ class TestRun:
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
 
-        good = tmp_path / "good.md"
+        good = content_draft(isolated_config, "good.md")
         good.write_text("[@smith2024]\n")
-        bad = tmp_path / "bad.md"
+        bad = content_draft(isolated_config, "bad.md")
         bad.write_text("[@fabricated2024]\n")
 
         rc = citation_gate.run([str(good), str(bad)])
@@ -316,7 +316,7 @@ class TestCliEntrypoint:
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@smith2024]\n")
 
         repo_root = Path(__file__).resolve().parent.parent
@@ -329,3 +329,57 @@ class TestCliEntrypoint:
         assert "bibtexparser" not in (result.stderr or "").lower()
         assert result.returncode == 0, result.stderr
         assert "OK" in result.stdout
+
+
+class TestInputsAreConfinedToContent:
+    """Every tier-1 tool reads only under content/, so that one directory
+    is the whole record of the work -- see src/config.py's
+    require_inside_content."""
+
+    def test_a_draft_outside_the_content_directory_is_refused(
+        self, isolated_config, tmp_path, capsys
+    ):
+        loose = tmp_path / "loose.md"
+        loose.write_text("A claim [@a_2024].\n")
+
+        rc = citation_gate.run([str(loose)])
+
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "outside the content directory" in out
+        assert str(loose) in out
+
+    def test_one_bad_path_does_not_stop_the_others_being_checked(
+        self, isolated_config, tmp_path, capsys
+    ):
+        # run() reports on every path it is given; a refusal is one more
+        # per-document result, not an abort.
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="a_2024"))
+        con.close()
+        good = isolated_config.CONTENT_DIR / "drafts" / "good.md"
+        good.parent.mkdir(parents=True)
+        good.write_text("A claim [@a_2024].\n")
+        loose = tmp_path / "loose.md"
+        loose.write_text("A claim [@a_2024].\n")
+
+        rc = citation_gate.run([str(loose), str(good)])
+
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "outside the content directory" in out
+        assert f"OK    {good}" in out
+
+    def test_a_draft_anywhere_under_content_is_accepted(self, isolated_config, capsys):
+        # content/drafts/ is where the genre skills save one, but the rule
+        # is "under content/" -- content/provenance/ reports are checked
+        # the same way.
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="a_2024"))
+        con.close()
+        scratch = isolated_config.CONTENT_DIR / "scratch" / "notes.md"
+        scratch.parent.mkdir(parents=True)
+        scratch.write_text("A claim [@a_2024].\n")
+
+        assert citation_gate.run([str(scratch)]) == 0
+        assert "OK" in capsys.readouterr().out

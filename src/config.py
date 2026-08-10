@@ -387,3 +387,51 @@ EMBEDDING_MODEL = _get(
     "EMBEDDING_MODEL", "enrich", "embedding_model",
     default="sentence-transformers/all-MiniLM-L6-v2",
 )
+
+
+# --------------------------------------------------------------------------
+# Path containment
+# --------------------------------------------------------------------------
+#
+# Lives here rather than in any one tool because all three of the tier-1,
+# stdlib-only tools need it and none of them can import each other:
+# src/render_output.py already imports src/citation_gate.py, so a shared
+# helper in either of those two would close a cycle. This module imports
+# nothing from src/ and owns CONTENT_DIR, which makes "is this path inside
+# the content directory" its question to answer.
+
+
+class OutsideContentDir(RuntimeError):
+    """A path a tool was asked to read or write lies outside CONTENT_DIR.
+
+    Raised rather than worked around. Every path this pipeline reads or
+    writes lives under `content/`, which is what makes a `dossier export`
+    or a copy of that one directory a complete record of the work -- a
+    draft kept somewhere else is invisible to backup, to `dossier`, and
+    to every later revision.
+    """
+
+
+def resolves_inside(path: Path, root: Path) -> bool:
+    """Whether `path` really lives under `root`, once both are resolved.
+
+    Resolving both sides is the whole point: it is what makes a symlink
+    and a `..` component answer for where they actually land rather than
+    for how they are spelled.
+    """
+    return Path(path).resolve().is_relative_to(Path(root).resolve())
+
+
+def require_inside_content(path: Path, what: str = "draft") -> Path:
+    """Returns `path`, having refused it if it resolves outside CONTENT_DIR."""
+    if not resolves_inside(path, CONTENT_DIR):
+        raise OutsideContentDir(
+            f"{path} resolves to {Path(path).resolve()}, outside the content "
+            f"directory {CONTENT_DIR.resolve()}. This pipeline reads and writes "
+            f"only under content/, so that one directory is the whole record of "
+            f"the work -- move the {what} under content/drafts/ (where the genre "
+            f"skills save one, and the only place whose path is mirrored into "
+            f"content/rendered/), or point [content].dir in config.toml at the "
+            f"tree you are really working in."
+        )
+    return Path(path)

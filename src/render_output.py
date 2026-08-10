@@ -53,11 +53,12 @@ draft overwrote each other's output, and `dossier export <topic>
 --with-rendered` matched nothing, because it matches a rendered file by
 its path relative to `RENDERED_DIR`.
 
-Reading is unrestricted -- the input may be any file, in or out of the
-tree -- but **every path this module writes resolves inside
+**Every path this module reads or writes resolves inside
 `config.CONTENT_DIR`**, and the cases that would break that raise
-`OutsideContentDir` rather than being quietly redirected. `_output_dir`
-holds that check.
+`OutsideContentDir` rather than being quietly redirected. `render()`
+checks its input; `_output_dir` checks where the output would land. That
+one directory is then the whole record of the work, which is what makes
+`dossier export` or a copy of it complete.
 
 Every render also passes documentclass/fontsize/papersize/geometry
 variables so a tex/pdf output always opens with a 12pt, a4paper article
@@ -88,15 +89,14 @@ class MissingBinary(RuntimeError):
     pass
 
 
-class OutsideContentDir(RuntimeError):
-    """A render would have written outside `config.CONTENT_DIR`.
-
-    Raised, rather than quietly redirected somewhere safe: every case
-    that reaches it is a symlink or a configured path that resolves
-    somewhere other than it reads, and silently writing to a *second*
-    place the user also didn't name would be the same surprise twice.
-    Nothing an ordinary layout does reaches this.
-    """
+# Re-exported: this name shipped here in 3.16.0, and
+# src/citation_provenance.py catches it as `render_output.OutsideContentDir`.
+# It moved to src/config.py in 3.17.0, when src/citation_gate.py and
+# src/references.py started raising it too and needed a home neither of
+# them could import from -- render_output already imports citation_gate
+# (`_PANDOC_CITE_RE` above), so a shared helper in either would close a
+# cycle.
+OutsideContentDir = config.OutsideContentDir
 
 
 def _require(binary: str) -> None:
@@ -294,16 +294,6 @@ def _local_image_refs(text: str) -> list[str]:
     ]
 
 
-def _really_inside(path: Path, root: Path) -> bool:
-    """Whether `path` lives under `root` once both are resolved.
-
-    Resolving both sides is the whole point: it is what makes a symlink
-    and a `..` component answer for where they actually land rather than
-    for how they are spelled.
-    """
-    return path.resolve().is_relative_to(root.resolve())
-
-
 def _output_dir(input_path: Path) -> Path:
     """Where `input_path`'s rendered output goes: `config.RENDERED_DIR`
     with the draft's own place under `config.DRAFTS_DIR` mirrored into
@@ -345,7 +335,7 @@ def _output_dir(input_path: Path) -> Path:
     draft's path", and both places state it.
     """
     for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
-        if not _really_inside(directory, config.CONTENT_DIR):
+        if not config.resolves_inside(directory, config.CONTENT_DIR):
             raise OutsideContentDir(
                 f"{directory} resolves to {directory.resolve()}, outside the content "
                 f"directory {config.CONTENT_DIR.resolve()}. Rendering mirrors a draft's "
@@ -361,7 +351,7 @@ def _output_dir(input_path: Path) -> Path:
         return config.RENDERED_DIR
 
     mirrored = config.RENDERED_DIR / relative.parent
-    if not _really_inside(mirrored, config.RENDERED_DIR):
+    if not config.resolves_inside(mirrored, config.RENDERED_DIR):
         raise OutsideContentDir(
             f"{mirrored} resolves to {mirrored.resolve()}, outside "
             f"{config.RENDERED_DIR.resolve()}. A draft's own path is never a reason to "
@@ -434,7 +424,7 @@ def render(
     `\\documentclass[12pt,a4paper]{article}` plus
     `\\usepackage[margin=1in]{geometry}`.
     """
-    input_path = Path(input_path)
+    input_path = config.require_inside_content(Path(input_path))
     out_dir = _output_dir(input_path)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not

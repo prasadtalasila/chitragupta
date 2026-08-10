@@ -15,7 +15,7 @@ import pytest
 from src import ledger
 from src import render_output
 
-from tests.conftest import make_reference
+from tests.conftest import content_draft, make_reference
 
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
@@ -408,7 +408,7 @@ class TestRenderMarkdown:
                 fields={"author": "Doe, Jane", "journal": "J. Things"}))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# T\n\nOne [@b_2024]. Two [@a_2023].\n")
 
         # Deliberately hidden: this path must not need pandoc, so a host
@@ -430,7 +430,7 @@ class TestRenderMarkdown:
     ):
         # The gate would normally catch this first, but render_output is a
         # standalone CLI -- it must not answer with a traceback.
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Body [@never_synced_2024].\n")
 
         monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "md"])
@@ -446,7 +446,7 @@ class TestRenderMarkdown:
         ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
         con.close()
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         original = "Body [@a_2024].\n"
         draft.write_text(original)
         render_output.render(str(draft), output_format="md")
@@ -466,7 +466,7 @@ class TestRenderMarkdown:
             "@article{a_2024,\n  author={Doe, Jane},\n  title={A Paper},\n  year={2024},\n}\n"
         )
 
-        fragment = tmp_path / "chapter.tex"
+        fragment = content_draft(isolated_config, "chapter.tex")
         fragment.write_text("\\section{Intro}\nA claim \\citep{a_2024}.\n")
         out_path = render_output.render(str(fragment), output_format="md")
 
@@ -527,7 +527,7 @@ class TestRenderReal:
         bib = isolated_config.BIB_FILE_PATH
         bib.write_text("@article{smith_2024,\n  title={An Example Paper},\n  year={2024},\n}\n")
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nSome claim [@smith_2024].\n")
 
         out_path = render_output.render(str(draft), output_format="pdf")
@@ -558,7 +558,7 @@ class TestRenderReal:
             "  journal={J. Examples},\n  year={2024},\n}\n"
         )
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Title\n\nSome claim [@smith_2024].\n\n"
             "## References\n\n[1] J. Smith, \"An Example Paper,\" *J. Examples*, 2024. `smith_2024`\n"
@@ -593,7 +593,7 @@ class TestRenderReal:
             "  journal={J. Examples},\n  year={2024},\n}\n"
         )
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Title\n\nSome claim [@smith_2024].\n\n"
             "## 6. References\n\n[1] J. Smith, \"An Example Paper,\" 2024. `smith_2024`\n"
@@ -619,7 +619,7 @@ class TestRenderReal:
             f"  journal={{J. Examples}},\n  year={{2024}},\n}}" for key in keys
         ))
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Title\n\nOne [@k1_2024]. Another [@k2_2024].\n\n"
             "A run of four [@k2_2024; @k3_2024; @k4_2024; @k5_2024].\n"
@@ -650,14 +650,14 @@ class TestRenderReal:
             f"  journal={{J. Examples}},\n  year={{2024}},\n}}" for key in keys
         ))
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nA run [@k1_2024; @k2_2024; @k3_2024].\n")
         out_path = render_output.render(str(draft), output_format="html", collapse_citations=False)
 
         assert "[1], [2], [3]" in out_path.read_text()
 
     def test_missing_csl_style_is_reported_not_passed_to_pandoc(self, isolated_config, tmp_path):
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nNo citations here.\n")
         with pytest.raises(render_output.MissingBinary, match="CSL style not found"):
             render_output.render(str(draft), output_format="tex", csl=str(tmp_path / "nope.csl"))
@@ -672,7 +672,7 @@ class TestRenderReal:
             "@article{zech_digital-twins-as--service_2024,\n  title={Zech Paper},\n  year={2024},\n}\n"
         )
 
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nA claim [@zech_digital-twins-as--service_2024].\n")
 
         out_path = render_output.render(str(draft), output_format="tex")
@@ -787,7 +787,7 @@ class TestRenderReal:
 
     def test_missing_binary_path(self, isolated_config, tmp_path, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: None)
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("No citations here.\n")
         with pytest.raises(render_output.MissingBinary):
             render_output.render(str(draft))
@@ -796,7 +796,7 @@ class TestRenderReal:
 class TestMainCli:
     def test_missing_binary_prints_and_returns_1(self, isolated_config, tmp_path, monkeypatch, capsys):
         monkeypatch.setattr(shutil, "which", lambda name: None)
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("text\n")
         monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft)])
         rc = render_output.main()
@@ -807,7 +807,7 @@ class TestMainCli:
     @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
     def test_called_process_error_prints_and_returns_1(self, isolated_config, tmp_path, monkeypatch, capsys):
         isolated_config.BIB_FILE_PATH.write_text("")
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         # Malformed LaTeX documentclass argument to force pandoc to fail.
         monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--documentclass", "this is not valid \\"])
         draft.write_text("text\n")
@@ -819,10 +819,55 @@ class TestMainCli:
     @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
     def test_success_prints_output_path_and_returns_0(self, isolated_config, tmp_path, monkeypatch, capsys):
         isolated_config.BIB_FILE_PATH.write_text("")
-        draft = tmp_path / "draft.md"
+        draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nNo citations here.\n")
         monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "tex"])
         rc = render_output.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert str(isolated_config.RENDERED_DIR / "draft.tex") in out
+
+
+class TestInputsAreConfinedToContent:
+    """#113: reading is confined to content/ too, not just writing."""
+
+    def test_a_draft_outside_the_content_directory_is_refused(self, isolated_config, tmp_path):
+        loose = tmp_path / "loose.md"
+        loose.write_text("# T\n\nNo citations.\n")
+        with pytest.raises(render_output.config.OutsideContentDir, match="outside the content"):
+            render_output.render(str(loose), output_format="md")
+
+    def test_a_parent_escaping_argument_is_refused(self, isolated_config):
+        escaping = isolated_config.DRAFTS_DIR / ".." / ".." / "outside" / "draft.md"
+        with pytest.raises(render_output.config.OutsideContentDir):
+            render_output.render(str(escaping), output_format="md")
+
+    def test_a_symlinked_draft_is_judged_by_where_it_really_lives(
+        self, isolated_config, tmp_path
+    ):
+        # The path says content/drafts/dt/, the file is elsewhere on disk.
+        real = tmp_path / "outside" / "survey.md"
+        real.parent.mkdir(parents=True)
+        real.write_text("# T\n")
+        link_dir = isolated_config.DRAFTS_DIR / "dt"
+        link_dir.mkdir(parents=True)
+        (link_dir / "survey.md").symlink_to(real)
+
+        with pytest.raises(render_output.config.OutsideContentDir):
+            render_output.render(str(link_dir / "survey.md"), output_format="md")
+
+    def test_a_draft_under_content_but_not_under_drafts_renders_flat(
+        self, isolated_config, monkeypatch
+    ):
+        # The one remaining flat case: in-content, so accepted, but with
+        # no path under content/drafts/ to mirror. This is also how
+        # citation_provenance's own content/provenance/*.provenance.md
+        # reaches render().
+        scratch = isolated_config.CONTENT_DIR / "scratch" / "notes.md"
+        scratch.parent.mkdir(parents=True)
+        scratch.write_text("# T\n\nNo citations.\n")
+
+        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        out_path = render_output.render(str(scratch), output_format="md")
+
+        assert out_path == isolated_config.RENDERED_DIR / "notes.md"

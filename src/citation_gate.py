@@ -28,7 +28,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import ledger
+from src import config, ledger
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -211,7 +211,19 @@ def run(paths: list[str]) -> int:
 
     all_ok = True
     for p in paths:
-        result = check_document(Path(p), known)
+        try:
+            checked = config.require_inside_content(Path(p))
+        except config.OutsideContentDir as exc:
+            # Reported per document and the loop continues, like a FAIL:
+            # this tool's contract is that you hand it several files and
+            # get a result for each, so one unusable path must not hide
+            # the verdict on the rest. Exit 1 rather than the usage code
+            # 2 for the same reason -- it is a document that did not
+            # pass, alongside the others.
+            all_ok = False
+            print(f"FAIL  {p}: {exc}")
+            continue
+        result = check_document(checked, known)
         if result.ok:
             print(f"OK    {p}: {result.total_citations} citation(s), all verified against the ledger.")
         else:
