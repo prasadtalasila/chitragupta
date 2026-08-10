@@ -437,15 +437,20 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
     `content/provenance/<topic>/`. One topic directory, one draft's worth
     of everything.
 
-    Returns `None` when `path` is not under `source_root`, because the
-    two callers disagree about what that means and both are right:
-    `render_output._output_dir` and `citation_provenance.write_report`
-    fall back to the flat target directory (they are allowed to read a
-    draft from anywhere, and refusing to write output for one would be a
-    worse answer than writing it flat), while `dossier.dossier_dir`
-    raises (a dossier written somewhere unmirrored would be found by
-    nothing later). Policy stays with the caller; only the rule lives
-    here.
+    Returns `None` when `path` is not under `source_root`, rather than
+    picking an answer, because the callers disagree about what that means
+    and each is right for itself. `render_output._output_dir` and
+    `citation_provenance.write_report` fall back to the flat target
+    directory: both accept an input that is legitimately elsewhere under
+    `content/`, and writing its output flat is a better answer than
+    refusing to produce any. `dossier.dossier_dir` raises, because a
+    dossier written somewhere unmirrored would be found by nothing later.
+    Policy stays with the caller; only the rule lives here.
+
+    Note this says nothing about which inputs a caller will *accept* --
+    that is a separate decision each one makes for itself, before it gets
+    here (`render_output` and `references` confine reads to `content/`
+    with `require_inside_content`; `citation_provenance` does not).
 
     Only the part of `path` *below* `source_root` is ever carried over,
     and both sides are resolved before being compared, so the result can

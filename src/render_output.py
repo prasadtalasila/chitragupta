@@ -301,11 +301,13 @@ def _output_dir(input_path: Path) -> Path:
     `content/rendered/dt/survey.{md,tex,pdf,docx}`.
 
     **Every path this returns resolves inside `config.CONTENT_DIR`**,
-    which is the invariant the checks below exist for. Reading is
-    unrestricted -- README.md documents `render_output path/to/draft.md`
-    on a file that needn't be in the tree at all, and a read from
-    outside `content/` takes nothing out of it -- so it is only the
-    write side that is confined.
+    which is the invariant the checks below exist for. Since 3.17.0 the
+    read side is confined too, but not here: `render()` calls
+    `config.require_inside_content` on its input before this is ever
+    reached, so what arrives is already somewhere under `content/`. The
+    flat fallback below is therefore for a draft that is under `content/`
+    but not under `content/drafts/` -- `content/loose.md`, say -- not for
+    one "anywhere on disk", which no longer reaches this function.
 
     What that leaves:
 

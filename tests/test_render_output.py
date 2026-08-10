@@ -350,9 +350,10 @@ class TestOutputDir:
     def test_a_draft_outside_the_drafts_directory_falls_back_to_flat(
         self, isolated_config, tmp_path
     ):
-        # README.md documents `render_output path/to/draft.md`, which
-        # need not be under content/drafts/ at all -- there is no path to
-        # mirror, so the flat directory stands.
+        # Since 3.17.0 `render()` confines its *input* to content/ too,
+        # so this is reachable only for a file under content/ but outside
+        # content/drafts/ -- there is no path to mirror, so the flat
+        # directory stands. Called directly here, below that check.
         assert render_output._output_dir(tmp_path / "elsewhere" / "draft.md") == (
             isolated_config.RENDERED_DIR
         )

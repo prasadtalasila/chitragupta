@@ -8,11 +8,11 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Upgrading from 3.19.1 or earlier: provenance reports moved](#upgrading-from-3191-or-earlier-provenance-reports-moved)
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
 - [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
 - [Upgrading from 2.x](#upgrading-from-2x)
 - [Which interpreter](#which-interpreter)
-- [Upgrading from 3.19.1 or earlier: provenance reports moved](#upgrading-from-3191-or-earlier-provenance-reports-moved)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
   - [`src.sync`](#python--m-srcsync)
@@ -634,12 +634,13 @@ This is the same mirroring rule `content/dossiers/` follows (see
 directory names a draft, its dossier and its renders together -- which
 is what lets `dossier export <topic> --with-rendered` find them. A flat
 `content/drafts/<slug>.md` renders to `content/rendered/<slug>.*`, as it
-always has, and an input outside `content/drafts/` altogether (the
-`path/to/draft.md` form above) has no path to mirror and lands flat too.
+always has, and an input under `content/` but outside `content/drafts/`
+(`content/loose.md`, say) has no path to mirror and lands flat too.
 
-**Reading is unrestricted; writing is confined to `content/`.** The
-input may be any file, in the tree or out of it -- reading one takes
-nothing out of `content/`. Every path this command *writes*, though,
+**Both reading and writing are confined to `content/`.** Since 3.17.0
+the input must resolve under the content directory -- a draft kept
+outside it is refused by name rather than rendered, so that one directory
+stays the whole record of the work. Every path this command *writes*,
 resolves inside `content/`: only the part of a draft's path below
 `content/drafts/` is ever carried over, and both sides are resolved
 before they are compared, so no argument -- a `..`, a symlinked draft --
