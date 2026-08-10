@@ -73,6 +73,34 @@ class TestDossierDir:
         with pytest.raises(dossier.DossierError, match="not under"):
             dossier.dossier_dir(stray)
 
+    def test_a_dossier_dir_that_escapes_the_content_tree_is_refused(
+        self, isolated_config, tmp_path
+    ):
+        """A symlinked topic directory under `content/dossiers/` must not
+        become a licence to write outside `content/`.
+
+        `relative` is computed from resolved paths, so no *argument* can
+        smuggle a `..` past this -- the way out is configuration or a
+        symlink on the target side, which is why the check is on the
+        result rather than on the input. `render_output._output_dir` and
+        `citation_provenance.write_report` already made it; this was the
+        one consumer of the shared mirroring rule that didn't, so a
+        dossier could be written where nothing else in the pipeline looks
+        and no backup of `content/` would carry it.
+        """
+        config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        config.DOSSIERS_DIR.mkdir(parents=True, exist_ok=True)
+        outside = tmp_path / "elsewhere"
+        outside.mkdir()
+        (config.DOSSIERS_DIR / "topic").symlink_to(outside)
+
+        draft = config.DRAFTS_DIR / "topic" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("# x\n")
+
+        with pytest.raises(dossier.DossierError, match="outside"):
+            dossier.dossier_dir(draft)
+
     def test_find_draft_is_the_inverse(self, draft):
         assert dossier.find_draft(dossier.dossier_dir(draft)) == draft
 

@@ -136,7 +136,25 @@ def dossier_dir(draft: Path) -> Path:
             "draft's path, so the draft has to live where the genre skills "
             "save it."
         )
-    return mirrored / Path(draft).stem
+    target = mirrored / Path(draft).stem
+    # The draft's own path can't get out -- `mirrored_dir` resolves both
+    # sides before subtracting them, so no argument carries a `..` or a
+    # symlink's spelling past it. What can is the target side: a topic
+    # directory under content/dossiers/ that is itself a symlink out of
+    # the tree. `render_output._output_dir` and
+    # `citation_provenance.write_report` both check their own mirrored
+    # result for exactly this; this is the third consumer of that rule and
+    # was the one that didn't.
+    if not config.resolves_inside(target, config.DOSSIERS_DIR):
+        raise DossierError(
+            f"{target} resolves to {target.resolve()}, outside "
+            f"{config.DOSSIERS_DIR.resolve()}. A dossier is only useful where "
+            "the rest of the pipeline looks for it, and a copy of content/ is "
+            "meant to be the whole record of the work -- remove the symlink on "
+            "the topic directory, or point [content].dir (config.toml) at the "
+            "tree you are really working in."
+        )
+    return target
 
 
 def draft_name(draft: Path) -> str:
