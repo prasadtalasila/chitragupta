@@ -341,12 +341,17 @@ def _output_dir(input_path: Path) -> Path:
     `render()`: without it, a mirrored `provenance/<topic>/survey.provenance.md`
     would still render flat, so two drafts named `survey.md` would stop
     colliding on the report and go on colliding on its `.tex`/`.pdf`.
+
+    `PROVENANCE_DIR` is deliberately *not* in the escape check below,
+    which runs on every call. Rendering an ordinary draft has no stake in
+    where `content/provenance/` points, and adding it there would fail
+    that render over an unrelated directory. Nothing is lost by leaving
+    it out: the confinement invariant is carried by the check on
+    `mirrored` further down, which is computed from whichever source root
+    actually matched and is what a symlinked `PROVENANCE_DIR` would have
+    to get past.
     """
-    for label, directory in (
-        ("rendered", config.RENDERED_DIR),
-        ("drafts", config.DRAFTS_DIR),
-        ("provenance", config.PROVENANCE_DIR),
-    ):
+    for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
         if not config.resolves_inside(directory, config.CONTENT_DIR):
             raise OutsideContentDir(
                 f"{directory} resolves to {directory.resolve()}, outside the content "

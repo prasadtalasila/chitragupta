@@ -8,6 +8,7 @@ import logging
 import re
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -81,6 +82,41 @@ class TestStageProvenance:
         result = enrich_script.stage_provenance([], make_args(input="draft.md"))
         assert result["status"] == "partial"
         assert set(result["detail"]) == {"md"}
+
+
+    def test_the_stage_writes_to_the_same_mirrored_path_the_cli_does(
+        self, isolated_config, ledger_con
+    ):
+        """`--stages provenance --input <draft>` is a second entry point
+        into `write_report`, so it inherits the mirrored report path --
+        and must be pinned separately, because every other test in this
+        class mocks `write_report` away and so cannot see where it writes.
+
+        The tests above are right to mock it: they are about the stage's
+        ok/partial/skipped shaping. This one is about the contract that
+        the stage and the CLI agree on where output lands.
+        """
+        parsed = config.PARSED_DIR / "a_2024.txt"
+        parsed.parent.mkdir(parents=True, exist_ok=True)
+        parsed.write_text("hysteresis band matters here\fpage two", encoding="utf-8")
+        ledger_con.execute(
+            "INSERT INTO items (citekey, title, parsed_path, status, last_synced) "
+            "VALUES ('a_2024', 'A', ?, 'parsed', '2026-01-01')", (str(parsed),))
+        ledger_con.commit()
+
+        draft = config.DRAFTS_DIR / "dt" / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("The hysteresis band matters here [@a_2024].\n")
+
+        result = enrich_script.stage_provenance([], make_args(input=str(draft)))
+
+        assert result["status"] in {"ok", "partial"}, result
+        # `detail` carries display strings, not Paths -- compare as paths.
+        written = Path(result["detail"]["md"])
+        assert written == config.PROVENANCE_DIR / "dt" / "survey.provenance.md", (
+            "the enrichment stage wrote somewhere the CLI would not have"
+        )
+        assert written.exists()
 
 
 class TestStageRender:

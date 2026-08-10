@@ -155,11 +155,11 @@ python -m src.sync
 #    sync is running), and needs no venv.
 python3 -m src.ledger
 
-# 5. Optional, and only when you want it: the enrichment layer. Layout-aware
+# 5. Optional, and only when you want it: the enrichment layer -- layout-aware
 #    parsing, semantic search and topic clustering over the whole corpus.
-#    Nothing else needs it, and no skill builds it for you -- see
-#    docs/RETRIEVAL.md for which stage is worth your time.
-.venv-full/bin/python scripts/enrich.py --stages docling,embed
+#    Nothing else needs it and no skill builds it for you, so skip this on a
+#    first run. What it costs and which stage is worth it: "The enrichment
+#    layer" below, then docs/RETRIEVAL.md.
 
 # 6. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"

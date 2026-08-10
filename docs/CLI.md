@@ -12,6 +12,7 @@ short path; this is the full set.
 - [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
 - [Upgrading from 2.x](#upgrading-from-2x)
 - [Which interpreter](#which-interpreter)
+- [Upgrading from 3.19.1 or earlier: provenance reports moved](#upgrading-from-3191-or-earlier-provenance-reports-moved)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
   - [`src.sync`](#python--m-srcsync)
@@ -29,6 +30,36 @@ short path; this is the full set.
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Upgrading from 3.19.1 or earlier: provenance reports moved
+
+Since 3.19.2 a provenance report mirrors its draft's own place under
+`content/drafts/`, the same rule `content/rendered/` and
+`content/dossiers/` already followed. A draft at
+`content/drafts/<topic>/survey.md` now reports to
+`content/provenance/<topic>/survey.provenance.md` instead of
+`content/provenance/survey.provenance.md`.
+
+**If every draft sits directly in `content/drafts/`, nothing changed** --
+there is no path to mirror, and the report lands exactly where it always
+did.
+
+**If you use topic directories, re-run the command** and delete the old
+flat reports. This is not housekeeping: the reason for the change is that
+two drafts named `survey.md` in different topic directories used to write
+*one* file, so a flat report left behind now is either half-wrong or
+belongs to a draft you can no longer identify -- and its citekeys will
+look plausible for either, which is the failure this fixes. Nothing reads
+those files automatically, so an orphan is inert until a human opens it
+and believes it.
+
+```bash
+python3 -m src.citation_provenance content/drafts/<topic>/<slug>.md
+rm content/provenance/<slug>.provenance.md   # the old flat one
+```
+
+`content/provenance/` is regenerable output and gitignored, so re-running
+is the whole migration.
 
 ## Upgrading a corpus parsed by an earlier version
 
