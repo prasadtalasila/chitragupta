@@ -529,6 +529,46 @@ class TestCmdScan:
         out = capsys.readouterr().out
         assert "quoted" in out
 
+    def test_run_only_partly_inside_quotes_is_not_flagged_quoted(self, ledger_con, tmp_path, capsys):
+        # Regression: "sits inside quote delimiters" means the whole run,
+        # not "at least one word of it happens to be quoted" -- a run
+        # straddling a quote's opening mark used to flag `quoted` on any
+        # overlap at all.
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            'As [@cited_2024] puts it, alpha beta gamma "delta epsilon zeta eta theta" exactly.\n'
+        )
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "quoted" not in out
+
+    def test_cites_source_checks_every_paragraph_a_run_spans(self, ledger_con, tmp_path, capsys):
+        # Regression: _tokenize_draft's word stream is flat, so an 8-gram
+        # run can straddle a paragraph break. cites_source used to check
+        # only the run's *starting* paragraph -- here that paragraph
+        # cites nothing, but the run's tail falls in a paragraph that
+        # does cite the matched source, so it must not be flagged
+        # UNCITED SOURCE.
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "This paragraph cites nothing at all but ends with alpha beta gamma delta.\n\n"
+            "epsilon zeta eta theta continues here [@cited_2024] in the next paragraph.\n"
+        )
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "cited_2024" in out
+        assert "UNCITED SOURCE" not in out
+
     def test_tier_is_exact(self, ledger_con, tmp_path, capsys):
         _add_parsed_item(ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta")
         draft = tmp_path / "draft.md"

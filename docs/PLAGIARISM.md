@@ -7,8 +7,9 @@ Status: **implemented, one tier of a planned three.** Written 2026-08-10.
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
 a synced corpus (`python -m src.sync`) and a citekey-verified draft
 (`python -m src.citation_gate`). **Not covered:** how to invoke the tools
-day to day -- that is [CLI.md](CLI.md)'s job, and issue #112 is wiring
-`scan` into README/CLI.md/the genre skills at the time of writing.
+day to day -- that is [CLI.md](CLI.md)'s job (already updated for `scan`
+by this same PR); issue #112 is still wiring it into README's step-7
+review-aid list and the genre skills' own final-check steps.
 
 ## What "plagiarism" means here, and what it deliberately doesn't
 

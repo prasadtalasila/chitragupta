@@ -361,7 +361,14 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None):
             if span_words < min_run:
                 continue
             matched_words = len({idx for p in run for idx in range(p, p + n)})
-            start_word = words[start]
+            run_words = words[start:end]
+            # Paragraphs *plural*: _tokenize_draft's word stream is flat
+            # (module note above), so a run can cross a paragraph break --
+            # checking only the start word's paragraph would call a run
+            # "uncited" when it actually runs on into a paragraph that
+            # does cite this source, or vice versa.
+            run_paragraphs = {w.paragraph for w in run_words}
+            cites_source = any(citekey in paragraph_citekeys[p] for p in run_paragraphs)
             findings.append({
                 "citekey": citekey,
                 "page": page,
@@ -370,8 +377,12 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None):
                 "start": start,
                 "fragment": " ".join(word_strs[start:end]),
                 "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
-                "cites_source": citekey in paragraph_citekeys[start_word.paragraph],
-                "quoted": any(w.quoted for w in words[start:end]),
+                "cites_source": cites_source,
+                # `all`, not `any`: "sits inside quote delimiters" means
+                # the whole run is inside the quote, not merely that one
+                # word of it happens to be near/inside an unrelated
+                # quoted phrase.
+                "quoted": all(w.quoted for w in run_words),
                 "tier": "exact",
             })
 
