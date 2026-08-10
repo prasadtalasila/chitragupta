@@ -11,6 +11,8 @@ from pathlib import Path
 import pytest
 
 import scripts.verbatim_check as vc
+from src import ledger
+from tests.conftest import make_reference
 
 
 @pytest.fixture
@@ -245,58 +247,82 @@ class TestSentencesCiting:
         assert vc.sentences_citing(str(draft), "smith_2024") == []
 
 
+def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
+    """A ledger row with status='parsed', a real pdf_hash, and parsed_path
+    pointing at real text on disk -- what `cmd_overlap` now reads through
+    src/overlap_index.py instead of pdftotext/PARSED_DIR fallback."""
+    pdf = tmp_path / f"{citekey}.pdf"
+    pdf.write_bytes(pdf_bytes)
+    parsed = tmp_path / f"{citekey}.txt"
+    parsed.write_text(text)
+    ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
+    ledger.mark_parsed(ledger_con, citekey, parsed)
+    return parsed
+
+
 class TestCmdOverlap:
-    def test_no_source_text_prints_message(self, fixture_repo, capsys):
-        vc.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
-        draft = fixture_repo / "draft.md"
+    def test_no_source_text_when_citekey_not_in_ledger(self, isolated_config, tmp_path, capsys):
+        draft = tmp_path / "draft.md"
         draft.write_text("Some claim citing smith_2024.\n")
         vc.cmd_overlap(str(draft), "smith_2024")
         out = capsys.readouterr().out
         assert "no source text for smith_2024" in out
 
-    def test_detects_verbatim_overlap_run(self, fixture_repo, capsys):
-        vc.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
-        parsed_dir = fixture_repo / "content" / "parsed"
-        parsed_dir.mkdir(parents=True)
+    def test_detects_verbatim_overlap_run(self, ledger_con, tmp_path, capsys):
         shared_phrase = "the quick brown fox jumps over the lazy dog repeatedly"
-        (parsed_dir / "smith_2024.txt").write_text(f"Intro text. {shared_phrase}. More text.")
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", f"Intro text. {shared_phrase}. More text.")
 
-        draft = fixture_repo / "draft.md"
+        draft = tmp_path / "draft.md"
         draft.write_text(f"As discussed [@smith_2024], {shared_phrase} in the study.\n")
 
         vc.cmd_overlap(str(draft), "smith_2024", n=4)
         out = capsys.readouterr().out
         assert "words, pdf p." in out
 
-    def test_overlap_run_extending_to_end_of_sentence(self, fixture_repo, capsys):
+    def test_overlap_run_extending_to_end_of_sentence(self, ledger_con, tmp_path, capsys):
         # The matching run must still be open (not yet flushed by a
         # non-matching n-gram) when the word list ends, exercising the
         # post-loop flush rather than the else-branch one.
-        vc.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
-        parsed_dir = fixture_repo / "content" / "parsed"
-        parsed_dir.mkdir(parents=True)
         shared_phrase = "the quick brown fox jumps over the lazy dog"
-        (parsed_dir / "smith_2024.txt").write_text(f"Intro text. {shared_phrase}.")
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", f"Intro text. {shared_phrase}.")
 
-        draft = fixture_repo / "draft.md"
+        draft = tmp_path / "draft.md"
         draft.write_text(f"As discussed [@smith_2024], {shared_phrase}\n")
 
         vc.cmd_overlap(str(draft), "smith_2024", n=4)
         out = capsys.readouterr().out
         assert "words, pdf p." in out
 
-    def test_no_overlap_found(self, fixture_repo, capsys):
-        vc.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
-        parsed_dir = fixture_repo / "content" / "parsed"
-        parsed_dir.mkdir(parents=True)
-        (parsed_dir / "smith_2024.txt").write_text("completely different vocabulary entirely")
+    def test_no_overlap_found(self, ledger_con, tmp_path, capsys):
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "completely different vocabulary entirely")
 
-        draft = fixture_repo / "draft.md"
+        draft = tmp_path / "draft.md"
         draft.write_text("An original sentence mentioning smith_2024 with unrelated words.\n")
 
         vc.cmd_overlap(str(draft), "smith_2024", n=8)
         out = capsys.readouterr().out
         assert "no verbatim run of >= 8 words found" in out
+
+    def test_matches_output_captured_from_the_pre_index_implementation(self, ledger_con, tmp_path, capsys):
+        """Pinned literal output, captured from `cmd_overlap` *before* it
+        was ported onto src/overlap_index.py (same fixture: a 4-gram
+        shared between page 1 and page 3 of the source, to also confirm
+        the ported page attribution keeps the pre-port "lowest page wins"
+        behavior rather than an arbitrary posting)."""
+        page1 = "Intro words padding here. alpha beta gamma delta epsilon continues on."
+        page2 = "Unrelated content on the second page entirely different words."
+        page3 = "Again we see alpha beta gamma delta reappear on a later page."
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "\f".join([page1, page2, page3]))
+
+        draft = tmp_path / "draft.md"
+        draft.write_text("As shown [@smith_2024], alpha beta gamma delta is the key phrase.\n")
+
+        vc.cmd_overlap(str(draft), "smith_2024", n=4)
+        out = capsys.readouterr().out
+        assert out == (
+            "  [4 words, pdf p.1] alpha beta gamma delta\n"
+            "      in: As shown [@smith_2024], alpha beta gamma delta is the key phrase. ...\n"
+        )
 
 
 class TestCmdLocate:

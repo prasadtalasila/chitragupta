@@ -10,6 +10,7 @@ content/chroma/
 content/topics.json
 content/topic_embed_cache.json
 content/retrieval_index.json
+content/overlap/
 content/rendered/
 content/drafts/
 content/provenance/

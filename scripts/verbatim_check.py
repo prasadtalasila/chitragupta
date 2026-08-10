@@ -20,7 +20,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from src import config  # noqa: E402 -- needs REPO on sys.path first
+from src import config, overlap_index  # noqa: E402 -- needs REPO on sys.path first
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
@@ -130,23 +130,33 @@ def sentences_citing(draft, citekey):
 
 
 def cmd_overlap(draft, citekey, n=8):
-    src_pages = pages(citekey)
-    if not src_pages:
+    """Verbatim word-n-gram overlap between `draft`'s paragraphs citing
+    `citekey` and that source's corpus-layer parsed text (src/ledger.py's
+    `parsed_path`) -- fingerprinted and cached by src/overlap_index.py, so
+    a re-run over an unchanged source costs no re-fingerprinting.
+
+    This reads the ledger's already-parsed text rather than re-invoking
+    `pdftotext` on the PDF the way `pages()`/this function used to: for a
+    citekey the ledger has actually parsed, that is the same text every
+    other reader of this corpus sees (and the only text a `docling`-backed
+    corpus has at all -- `pdftotext -layout` output never entered the
+    ledger there). A citekey the ledger has not parsed reports "no source
+    text", same as before.
+    """
+    item = overlap_index.ledger_item(citekey)
+    if item is None:
         print(f"no source text for {citekey}")
         return
-    grams = {}
-    for i, pg in enumerate(src_pages, 1):
-        w = norm(pg)
-        for j in range(len(w) - n + 1):
-            grams.setdefault(tuple(w[j:j + n]), i)
+    pdf_hash, parsed_path = item
+    grams = overlap_index.grams_for_citekey(citekey, pdf_hash, parsed_path, n)
     hits = []
     for s in sentences_citing(draft, citekey):
         w = norm(re.sub(r"\[@[^\]]+\]", "", s))
+        draft_hashes = overlap_index.gram_hashes(w, n)
         run, runs = [], []
-        for j in range(len(w) - n + 1):
-            g = tuple(w[j:j + n])
-            if g in grams:
-                run.append((j, grams[g]))
+        for j, gh in enumerate(draft_hashes):
+            if gh in grams:
+                run.append((j, grams[gh]))
             else:
                 if run:
                     runs.append(run)
