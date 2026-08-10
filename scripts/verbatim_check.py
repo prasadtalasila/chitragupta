@@ -585,8 +585,7 @@ def build_parser():
                         help="Also write the report to content/review/, mirroring the "
                              "draft's path. Off by default: printing is the usual use.")
     p_scan.add_argument("--formats", default="md,tex,pdf",
-                        help="With --write, the formats to produce (default: md,tex,pdf). "
-                             "tex/pdf need pandoc/pdflatex on PATH.")
+                        help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.")
 
     p_locate = sub.add_parser("locate", help="which page a phrase is on")
     p_locate.add_argument("citekey", help="The source to search")

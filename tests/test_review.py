@@ -109,6 +109,26 @@ class TestHeader:
         assert "python3 -m src.x --flag v" in text
         assert "chitragupta " in text
 
+    def test_a_draft_path_with_a_space_stays_re_runnable(self, isolated_config):
+        """The header claims to record the invocation, so it has to be
+        one. Two ways it stopped being one: an unquoted path with a space
+        names two arguments, and a bare filename names no directory at
+        all -- so two drafts called `survey.md` in different topics wrote
+        headers that read identically, the confusion the mirrored path
+        exists to prevent, reintroduced inside the file."""
+        from src import citation_provenance
+
+        draft = config.DRAFTS_DIR / "my topic" / "survey.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("No citations here.\n")
+
+        body = citation_provenance.render_markdown(
+            citation_provenance.build_report(draft)
+        )
+
+        assert f"- Draft: `{draft}`" in body
+        assert f"'{draft}'" in body, "the command has to be shlex-quoted"
+
     def test_carries_no_date(self, isolated_config):
         """The reason to write a report at all is that it diffs across
         revisions; a wall-clock line defeats that for no gain. Asserted

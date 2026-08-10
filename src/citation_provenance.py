@@ -36,6 +36,7 @@ Usage:
 
 import argparse
 import re
+import shlex
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -301,7 +302,14 @@ def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | N
 
 def build_report(draft_path: Path) -> Report:
     text = draft_path.read_text(encoding="utf-8")
-    report = Report(draft=draft_path.name)
+    # The path, not `.name`. It was the bare filename while every report
+    # landed flat in one directory and the title was decoration; now that
+    # reports mirror the draft's path, two drafts named `survey.md` in
+    # different topics would produce headers that read identically -- the
+    # exact confusion the mirroring exists to prevent, reintroduced inside
+    # the file. It also makes the recorded command re-runnable, which
+    # `survey.md` alone is not.
+    report = Report(draft=str(draft_path))
     con = ledger.connect()
     try:
         cache: dict[str, list[Passage]] = {}
@@ -338,7 +346,11 @@ def render_markdown(report: Report) -> str:
     good = config.PROVENANCE_GOOD_SCORE
     lines = review.header(
         report.draft, "provenance",
-        f"python3 -m src.citation_provenance {report.draft}",
+        # shlex.join, not an f-string: a draft path with a space in it
+        # would otherwise be recorded as two arguments, so the header
+        # would name an invocation that doesn't reproduce the report.
+        # The other two review commands already quote theirs.
+        shlex.join(["python3", "-m", "src.citation_provenance", str(report.draft)]),
     ) + [
         "## How to read this",
         "",
@@ -442,8 +454,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("draft", help="Markdown draft to check")
     parser.add_argument(
         "--formats", default="md,tex,pdf",
-        help="Comma-separated output formats (default: md,tex,pdf). "
-             "tex/pdf need pandoc/pdflatex on PATH.",
+        help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.",
     )
     args = parser.parse_args(argv)
 

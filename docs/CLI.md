@@ -602,7 +602,7 @@ it reuses `src.retrieval`, which is itself stdlib.
 | `--query QUERY` | required, repeatable | A retrieval query to check coverage against. Give it more than once |
 | `--k K` | `5` | Top-k results per query |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default -- the usual use is a question asked and answered in one sitting |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the formats to produce. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report -- so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
 python3 -m src.citation_coverage content/drafts/survey.md \
@@ -629,7 +629,7 @@ with its `.tex`/`.pdf` renders beside it.
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
-| `--formats FORMATS` | `md,tex,pdf` | Comma-separated output formats. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
 python3 -m src.citation_provenance content/drafts/survey.md
@@ -736,8 +736,6 @@ correct answer rather than a bug.
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
 | `--stages STAGES` | all three, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic` |
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
-| `--output-format FORMAT` | `pdf` | Output format for the `render` stage |
-| `--documentclass CLASS` | `article` | LaTeX documentclass for the `render` stage |
 
 ```bash
 .venv-full/bin/python scripts/enrich.py
@@ -843,7 +841,7 @@ technique and its literature sources, and a measured
 | Subcommand | Arguments | What it does |
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
 **Exit codes**, shared with the other two review commands: `0` on every
