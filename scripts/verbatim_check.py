@@ -411,12 +411,27 @@ def cmd_locate(citekey, *phrases):
 
 
 def _pop_flag(rest, name, cast):
-    if name in rest:
-        k = rest.index(name)
+    """`(value, remaining_args)` for `name` popped out of `rest`, or
+    `(None, rest)` unchanged if it isn't present.
+
+    A malformed invocation -- the flag with no value after it, or a value
+    `cast` rejects -- exits 2 with a one-line message instead of an
+    uncaught `IndexError`/`ValueError` traceback, matching how a bad
+    usage is reported elsewhere in this project's stdlib-only tools (e.g.
+    `src/citation_gate.py`'s `-h`/usage handling).
+    """
+    if name not in rest:
+        return None, rest
+    k = rest.index(name)
+    if k + 1 >= len(rest):
+        print(f"{name} needs a value", file=sys.stderr)
+        raise SystemExit(2)
+    try:
         value = cast(rest[k + 1])
-        rest = rest[:k] + rest[k + 2:]
-        return value, rest
-    return None, rest
+    except ValueError:
+        print(f"{name} {rest[k + 1]!r} is not a valid value", file=sys.stderr)
+        raise SystemExit(2) from None
+    return value, rest[:k] + rest[k + 2:]
 
 
 if __name__ == "__main__":

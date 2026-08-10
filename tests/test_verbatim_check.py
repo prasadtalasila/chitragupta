@@ -623,6 +623,18 @@ class TestPopFlag:
         assert value is None
         assert rest == ["other"]
 
+    def test_flag_with_no_following_value_exits_cleanly(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            vc._pop_flag(["--n"], "--n", int)
+        assert exc.value.code == 2
+        assert "--n needs a value" in capsys.readouterr().err
+
+    def test_flag_with_an_uncastable_value_exits_cleanly(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            vc._pop_flag(["--n", "not-a-number"], "--n", int)
+        assert exc.value.code == 2
+        assert "--n 'not-a-number' is not a valid value" in capsys.readouterr().err
+
 
 class TestCliDispatch:
     def test_overlap_mode_via_subprocess(self, tmp_path):
