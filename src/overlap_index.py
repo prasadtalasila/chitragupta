@@ -103,7 +103,19 @@ def gram_hashes(words: list[str], n: int) -> list[int]:
 
     `gram_hashes(words, n)[j]` is the hash of `words[j:j + n]`. Returns `[]`
     when there are fewer than `n` words to form a single window.
+
+    `n < 1` raises rather than silently misbehaving: `n == 0` doesn't
+    short-circuit on the `len(words) < n` check below (every word count is
+    `>= 0`), and every zero-word "window" then hashes to the same constant
+    -- which would make a corpus-wide lookup treat every draft position as
+    a match. `n < 0` fails even louder, with an out-of-range list index a
+    few lines down, once the second loop's `word_hashes[j - 1]` runs past
+    the end of `words`. Callers that let `n` come from a CLI flag should
+    validate before this point and report a clean usage error; this is
+    the library-level backstop for anyone calling it directly.
     """
+    if n < 1:
+        raise ValueError(f"n must be >= 1, got {n}")
     if len(words) < n:
         return []
     word_hashes = [_word_hash(w) for w in words]

@@ -440,6 +440,23 @@ def _pop_flag(rest, name, cast):
     return value, rest[:k] + rest[k + 2:]
 
 
+def _require_min(value, name, minimum):
+    """Exit 2 if `value` (already cast to an int by `_pop_flag`, or None
+    if the flag was never given) is below `minimum`.
+
+    A value that parses fine can still be nonsensical in a way `cast`
+    alone can't catch: `--limit 0` silently hides every finding behind
+    the same "no verbatim run found" message a genuinely clean draft
+    prints, and `--gap` negative breaks even a pure-verbatim run's merge
+    (Python's `list[:0]`/negative-gap arithmetic degrade silently rather
+    than raising) -- both look like "nothing to report" instead of the
+    usage error they actually are.
+    """
+    if value is not None and value < minimum:
+        print(f"{name} must be >= {minimum}", file=sys.stderr)
+        raise SystemExit(2)
+
+
 if __name__ == "__main__":
     # No mode at all is the same "tell me how to use this" request as an
     # unrecognized one (the `else` branch below) -- printing __doc__ for
@@ -451,7 +468,12 @@ if __name__ == "__main__":
     mode, rest = sys.argv[1], sys.argv[2:]
     if mode == "overlap":
         n, rest = _pop_flag(rest, "--n", int)
-        if len(rest) < 2:
+        _require_min(n, "--n", 1)
+        # != rather than < : an extra trailing argument is as much a typo
+        # as a missing one, and silently ignoring it (the old `rest[0]`/
+        # `rest[1]` shape did) hides exactly the mistake a usage error is
+        # for.
+        if len(rest) != 2:
             print("usage: verbatim_check.py overlap <draft.md> <citekey> [--n N]", file=sys.stderr)
             raise SystemExit(2)
         cmd_overlap(rest[0], rest[1], n if n is not None else 8)
@@ -459,7 +481,9 @@ if __name__ == "__main__":
         min_run, rest = _pop_flag(rest, "--min-run", int)
         gap, rest = _pop_flag(rest, "--gap", int)
         limit, rest = _pop_flag(rest, "--limit", int)
-        if len(rest) < 1:
+        _require_min(gap, "--gap", 0)
+        _require_min(limit, "--limit", 1)
+        if len(rest) != 1:
             print("usage: verbatim_check.py scan <draft.md> [--min-run N] [--gap N] [--limit N]", file=sys.stderr)
             raise SystemExit(2)
         cmd_scan(rest[0], min_run, gap if gap is not None else 1, limit)

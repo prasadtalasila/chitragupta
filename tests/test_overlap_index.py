@@ -47,6 +47,18 @@ class TestGramHashes:
         b = overlap_index.gram_hashes("wholly unrelated word sequence".split(), 4)
         assert a != b
 
+    def test_n_zero_raises_instead_of_hashing_every_position_the_same(self):
+        # Regression: n=0 doesn't trip the `len(words) < n` short-circuit
+        # (every word count is >= 0), so every zero-word "window" used to
+        # hash to the same constant -- a corpus-wide lookup would then
+        # treat every draft position as a match against everything.
+        with pytest.raises(ValueError, match="n must be >= 1"):
+            overlap_index.gram_hashes(["alpha", "beta"], 0)
+
+    def test_negative_n_raises(self):
+        with pytest.raises(ValueError, match="n must be >= 1"):
+            overlap_index.gram_hashes(["alpha", "beta"], -1)
+
 
 class TestFingerprintDocument:
     def test_builds_postings_with_page_and_position(self, isolated_config, tmp_path):

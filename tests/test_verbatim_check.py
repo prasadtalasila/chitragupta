@@ -705,6 +705,66 @@ class TestCliDispatch:
         assert result.returncode == 2
         assert "usage: verbatim_check.py scan" in result.stderr
 
+    def test_overlap_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
+        # Regression: a third positional argument used to be silently
+        # ignored (only rest[0]/rest[1] were ever read) rather than
+        # reported as the typo it almost certainly is.
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "overlap", "draft.md", "citekey", "extra"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "usage: verbatim_check.py overlap" in result.stderr
+
+    def test_overlap_mode_n_below_one_exits_cleanly(self, tmp_path):
+        # Regression: --n 0 didn't raise -- every zero-word "window"
+        # hashed to the same constant, so a corpus-wide lookup would
+        # treat every draft position as a match (overlap_index.gram_hashes
+        # now raises for n < 1; this is the CLI's clean-usage-error path
+        # in front of that).
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "overlap", "draft.md", "citekey", "--n", "0"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "--n must be >= 1" in result.stderr
+
+    def test_scan_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan", "draft.md", "extra"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "usage: verbatim_check.py scan" in result.stderr
+
+    def test_scan_mode_negative_gap_exits_cleanly(self, tmp_path):
+        # Regression: a sufficiently negative --gap silently broke even a
+        # pure-verbatim run's merge (_merge_runs's arithmetic degrades
+        # rather than raising) instead of being reported as nonsensical.
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan", "draft.md", "--gap", "-1"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "--gap must be >= 0" in result.stderr
+
+    def test_scan_mode_limit_zero_exits_cleanly(self, tmp_path):
+        # Regression: --limit 0 silently hid every finding behind the
+        # same "no verbatim run found" message a genuinely clean draft
+        # prints (findings[:0] == []), rather than being reported as the
+        # usage error it is.
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan", "draft.md", "--limit", "0"],
+            cwd=str(repo_root), capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "--limit must be >= 1" in result.stderr
+
     def test_locate_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
