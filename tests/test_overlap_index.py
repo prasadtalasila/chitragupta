@@ -307,3 +307,27 @@ class TestPagesForGram:
         _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         index = overlap_index.build_corpus_index(n=4)
         assert overlap_index.pages_for_gram(index, 0xDEADBEEF) == []
+
+    def test_a_gram_repeated_on_one_page_is_not_duplicated(self, ledger_con, tmp_path):
+        # "alpha beta gamma delta" occurs twice on page 1 -- two postings,
+        # same page, must collapse to one entry.
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024",
+            "alpha beta gamma delta filler words alpha beta gamma delta",
+        )
+        index = overlap_index.build_corpus_index(n=4)
+        shared_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        assert overlap_index.pages_for_gram(index, shared_hash) == [1]
+
+    def test_pages_are_returned_in_ascending_order(self, ledger_con, tmp_path):
+        # doe_2023 sorts before smith_2024, so its posting for the shared
+        # gram is merged in first -- but it's on page 2, while
+        # smith_2024's (merged in second) is on page 1. Insertion order
+        # alone would come back [2, 1]; pages_for_gram must still return
+        # [1, 2].
+        _add_parsed_item(ledger_con, tmp_path, "doe_2023", "zzz filler\falpha beta gamma delta")
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta\funrelated content here")
+
+        index = overlap_index.build_corpus_index(n=4)
+        shared_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
+        assert overlap_index.pages_for_gram(index, shared_hash) == [1, 2]

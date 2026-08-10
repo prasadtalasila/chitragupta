@@ -420,36 +420,56 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
     citekeys_sorted = sorted(by_citekey)
     id_by_citekey = {citekey: i for i, citekey in enumerate(citekeys_sorted)}
 
-    postings: list[tuple[int, int, int, int]] = []
+    # Accumulated into typed arrays, not a list of 4-tuples: at the
+    # corpus's real scale (~7,000,000 grams) a Python list of boxed-int
+    # tuples runs to the better part of a gigabyte, where the four
+    # array('Q'/'I') columns together cost under 200MB -- close to the
+    # issue's own "~100MB RAM" estimate for this index.
+    unsorted_grams: "array[int]" = array("Q")
+    unsorted_citekey_ids: "array[int]" = array("I")
+    unsorted_pages: "array[int]" = array("I")
+    unsorted_positions: "array[int]" = array("I")
     for citekey in citekeys_sorted:
         pdf_hash, parsed_path = by_citekey[citekey]
         fp = fingerprint_document(citekey, pdf_hash, parsed_path, n)
         citekey_id = id_by_citekey[citekey]
         for gram_hash, page, position in fp.postings:
-            postings.append((gram_hash, citekey_id, page, position))
-    postings.sort(key=lambda posting: posting[0])
+            unsorted_grams.append(gram_hash)
+            unsorted_citekey_ids.append(citekey_id)
+            unsorted_pages.append(page)
+            unsorted_positions.append(position)
+
+    # Sort by gram hash via an index permutation over the typed arrays,
+    # rather than sorting tuples directly -- same reason as above.
+    order = sorted(range(len(unsorted_grams)), key=unsorted_grams.__getitem__)
 
     index = CorpusIndex(
         n=n,
         citekeys=citekeys_sorted,
-        grams=array("Q", (p[0] for p in postings)),
-        citekey_ids=array("I", (p[1] for p in postings)),
-        pages=array("I", (p[2] for p in postings)),
-        positions=array("I", (p[3] for p in postings)),
+        grams=array("Q", (unsorted_grams[i] for i in order)),
+        citekey_ids=array("I", (unsorted_citekey_ids[i] for i in order)),
+        pages=array("I", (unsorted_pages[i] for i in order)),
+        positions=array("I", (unsorted_positions[i] for i in order)),
     )
     _save_corpus_index(index, corpus_key)
     return index
 
 
 def pages_for_gram(index: CorpusIndex, gram_hash: int, citekey: "str | None" = None) -> list[int]:
-    """Every page in the corpus (optionally narrowed to one `citekey`)
-    where `gram_hash` occurs -- a binary-search lookup into `index.grams`,
-    which is sorted."""
+    """Every distinct page in the corpus (optionally narrowed to one
+    `citekey`) where `gram_hash` occurs, in ascending order -- a
+    binary-search lookup into `index.grams`, which is sorted.
+
+    Deduplicated: a gram repeated more than once on the same page (a
+    second occurrence of the same phrase, or two documents sharing one
+    page number) would otherwise repeat that page once per posting, which
+    is not what "which pages" means to a caller.
+    """
     lo = bisect_left(index.grams, gram_hash)
     hi = bisect_right(index.grams, gram_hash, lo=lo)
-    matched_pages = []
+    matched_pages = set()
     for i in range(lo, hi):
         if citekey is not None and index.citekeys[index.citekey_ids[i]] != citekey:
             continue
-        matched_pages.append(index.pages[i])
-    return matched_pages
+        matched_pages.add(index.pages[i])
+    return sorted(matched_pages)
