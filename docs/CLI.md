@@ -705,6 +705,12 @@ that subcommand needs poppler-utils on `PATH`. `overlap` and `scan` read
 already-parsed text via `src/overlap_index.py`'s cache instead. Run with no
 arguments to print its usage.
 
+[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
+section: what `overlap`/`scan` catch and don't (verbatim only --
+paraphrase is a later, unbuilt tier), the fingerprinting technique and
+its literature sources, and a measured `docling`-vs-`pdftotext` backend
+comparison.
+
 | Subcommand | Arguments | What it does |
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |

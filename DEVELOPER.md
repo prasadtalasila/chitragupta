@@ -184,6 +184,10 @@ docs/                     reference docs that ship in the release zip -- everyth
     svg/*.svg                 rendered exports (mmdc -b white -w 1900). Exports only -- edit the
                               fenced block in DIAGRAMS.md, then re-render
   CITATION-PROVENANCE.md    what src/citation_provenance.py reports and how to read it
+  PLAGIARISM.md             what scripts/verbatim_check.py's overlap/scan modes catch and don't
+                            (verbatim reuse only, paraphrase is a later tier), the n-gram
+                            fingerprinting technique and its literature sources, and a measured
+                            docling-vs-pdftotext backend comparison
   DRAFT-ITERATION.md        what a dossier holds, and how a draft is revised weeks later without
                             re-running the pipeline that produced it
   TOKENS.md                 where a run's tokens go -- the resident/one-shot pools, two worked
