@@ -115,7 +115,7 @@ reports as two separate, shorter findings, and if the fragment on one
 side of the break is shorter than `--min-run`, that side is invisible --
 not truncated, just never reported. Fixing this needs a global (not
 per-page) token position in the fingerprint cache, a `.fpr` format
-change not made in the PR that shipped `scan` (#111).
+change deliberately left out of scope for issue #111's `scan` work.
 
 ## Measured: does the corpus's parser backend change the answer?
 

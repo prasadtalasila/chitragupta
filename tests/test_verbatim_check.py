@@ -586,13 +586,12 @@ class TestCmdScan:
         out = capsys.readouterr().out
         assert "no verbatim run of >= 8 words found anywhere in the draft" in out
 
-    def test_min_run_below_index_n_is_rejected(self, isolated_config, tmp_path, capsys):
+    def test_min_run_below_index_n_is_rejected(self, isolated_config, tmp_path):
         draft = tmp_path / "draft.md"
         draft.write_text("Anything.\n")
 
-        vc.cmd_scan(str(draft), min_run=4)
-        out = capsys.readouterr().out
-        assert "--min-run must be >=" in out
+        with pytest.raises(ValueError, match="--min-run must be >="):
+            vc.cmd_scan(str(draft), min_run=4)
 
     def test_run_shorter_than_min_run_is_filtered_out(self, ledger_con, tmp_path, capsys):
         # A real, matching 8-word run exists, but --min-run 20 asks for
@@ -804,6 +803,25 @@ class TestCliDispatch:
         )
         assert result.returncode == 2
         assert "--limit must be >= 1" in result.stderr
+
+    def test_scan_mode_min_run_below_index_n_exits_cleanly(self, tmp_path):
+        # Regression: --min-run below the corpus index's own n-gram size
+        # used to print the same message to stdout and return normally
+        # (exit 0) instead of being reported as the usage error it is --
+        # cmd_scan now raises ValueError, and this checks the CLI
+        # translates that into the same stderr-plus-exit-2 shape as its
+        # other malformed invocations, e.g. --gap/--limit above.
+        repo_root = Path(__file__).resolve().parent.parent
+        draft = tmp_path / "draft.md"
+        draft.write_text("Anything.\n")
+
+        result = subprocess.run(
+            [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), "--min-run", "4"],
+            cwd=str(repo_root), capture_output=True, text=True,
+            env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
+        )
+        assert result.returncode == 2
+        assert "--min-run must be >=" in result.stderr
 
     def test_locate_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent

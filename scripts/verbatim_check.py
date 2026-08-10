@@ -301,14 +301,15 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None):
     """Slide `draft`'s whole normalized text across the corpus-wide index,
     grouping matches by `(citekey, page, diagonal)` and merging each
     group into maximal same-diagonal runs (see `_merge_runs`). Prints one
-    finding per surviving run, longest first; this function itself never
-    raises for "nothing found" and always returns normally -- this is a
+    finding per surviving run, longest first; this function never raises
+    for "nothing found" and returns normally in that case -- this is a
     review aid, not a gate, and it is not wired into anything that treats
-    a nonzero exit as a failure. (The `scan` CLI wraps this with flag
-    validation -- `_pop_flag`, below -- that can exit 2 on a malformed
-    invocation, e.g. `--gap` with no value, before this function is ever
-    called; that is ordinary CLI-usage error handling, not this function's
-    own contract, which is unconditional.)
+    a nonzero exit as a failure. It does raise `ValueError` for a request
+    it cannot honor at all, e.g. `min_run` below the corpus index's own
+    n-gram size (see below) -- that is not "no findings", it is "this
+    input can't be scanned as asked", and the `scan` CLI (below) turns it
+    into the same stderr-plus-exit-2 usage error as its other malformed
+    invocations, e.g. `--gap` with no value.
 
     Known limitation, not fixed here: `src/overlap_index.py`'s
     `token_position` resets to 0 at every page break in the *source*, so
@@ -327,14 +328,13 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None):
 
     index = overlap_index.build_corpus_index()
     if min_run < index.n:
-        print(
+        raise ValueError(
             f"--min-run must be >= {index.n} (the corpus index's own n-gram "
             "size, src.overlap_index.DEFAULT_N) -- a shorter run cannot be "
             "detected without rebuilding the whole corpus index at a "
             "different n. Change the index's n, not this flag, if that is "
             "really what's needed."
         )
-        return
 
     text = Path(draft).read_text(encoding="utf-8")
     words, paragraph_citekeys = _tokenize_draft(text)
@@ -497,7 +497,11 @@ if __name__ == "__main__":
         if len(rest) != 1:
             print("usage: verbatim_check.py scan <draft.md> [--min-run N] [--gap N] [--limit N]", file=sys.stderr)
             raise SystemExit(2)
-        cmd_scan(rest[0], min_run, gap if gap is not None else 1, limit)
+        try:
+            cmd_scan(rest[0], min_run, gap if gap is not None else 1, limit)
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            raise SystemExit(2) from None
     elif mode == "locate":
         if len(rest) < 2:
             print('usage: verbatim_check.py locate <citekey> "<phrase>" [more phrases...]', file=sys.stderr)
