@@ -347,6 +347,9 @@ the lesson design is the part worth keeping either way.
     when you offer it -- it sees verbatim and near-verbatim reuse only,
     and **paraphrase is not detected**, so a clean scan is not a clean
     bill of health (`docs/PLAGIARISM.md`).
+    If the user wants the finding kept, add `--write`: the report
+    goes to `content/review/`, mirroring the draft's path, beside any
+    provenance and coverage reports for the same draft.
 
 16. **Present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,

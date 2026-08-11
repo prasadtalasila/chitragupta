@@ -28,9 +28,11 @@ mechanically: it extracts every citekey from a draft and fails if any is
 absent from the ledger. That is a *gate* -- drafting is blocked until it
 passes.
 
-Some tools in the repo are gates. Others are **review aids**: they report
-something for a human to judge, and never block. The distinction matters
-a lot below.
+Some tools in the repo are gates. Others are **advisory**: they report
+something for a human to judge, and never block. Since 4.0.0 those three
+are a named layer -- the **review layer**, layer 4 -- rather than a group
+defined by what it is not. The distinction from the gate matters a lot
+below.
 
 Two other terms used here:
 
@@ -61,8 +63,8 @@ would catch -- a claim that drifted away from its source during drafting
 
 ### Why the existing tools don't cover it
 
-The repository already has two review aids, and neither answers this
-question.
+The repository already had two of these commands, and neither answers
+this question.
 
 `src/citation_coverage.py` asks the inverse: *of the sources retrieval
 surfaced for a query, which ones did the draft actually cite?* That
@@ -102,24 +104,33 @@ part of any automatic chain.
 python -m src.citation_provenance content/drafts/<slug>.md
 ```
 
-Writes `content/provenance/<slug>.provenance.md`, plus `.tex` and `.pdf`
-renders of the same report when `pandoc`/`pdflatex` are available.
+Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
+renders of the same report beside it when `pandoc`/`pdflatex` are
+available.
 
 The report mirrors the draft's own place under `content/drafts/`, the
 same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 `content/drafts/<topic>/survey.md` reports to
-`content/provenance/<topic>/survey.provenance.md`, and its renders land
-in `content/rendered/<topic>/`. A draft directly in `content/drafts/`,
-or outside it altogether, has no path to mirror and keeps the flat
-directory. Before 3.19.2 the report was always flat, so two drafts named
-`survey.md` in different topic directories wrote one file and the second
-silently replaced the first.
+`content/review/<topic>/survey.provenance.md`, alongside the same draft's
+`survey.verbatim.md` and `survey.coverage.md`. A draft directly in
+`content/drafts/`, or outside it altogether, has no path to mirror and
+keeps the flat directory; a draft resolving outside `content/` is
+refused. `src/review.py` owns that contract for all three review-layer
+commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer).
 
-It is also a stage of the enrichment layer:
+Two things about that changed recently and are worth knowing if you have
+a script or a habit built on the old shape. Before 3.19.2 the report was
+always flat, so two drafts named `survey.md` in different topic
+directories wrote one file and the second silently replaced the first.
+Before 4.0.0 the directory was `content/provenance/` and the `.tex`/`.pdf`
+renders landed in `content/rendered/` -- the drafting layer's publish
+output -- rather than beside the report.
 
-```
-python scripts/enrich.py --stages provenance --input content/drafts/<slug>.md
-```
+It was also a stage of the enrichment layer
+(`--stages provenance --input <draft>`) until 4.0.0. That stage is gone:
+hosting it there had the enrichment layer importing the review layer, and
+made this command wait on `sync`'s write lock for no reason. Run the
+command above, which needs no venv.
 
 For each citing passage in the draft, emit:
 
@@ -138,8 +149,8 @@ three.
 
 ### Design decisions
 
-**A review aid, not a gate.** This mirrors `citation_coverage.py`'s
-stated position exactly. The reason is not caution for its own sake: a
+**Advisory, not a gate.** This mirrors `citation_coverage.py`'s
+stated position exactly -- it is why the two share a layer. The reason is not caution for its own sake: a
 lexical matcher cannot tell "this claim is unsupported" from "this claim
 is supported in vocabulary the matcher didn't recognise". Anything that
 *blocks* on that distinction would train people to work around it, which

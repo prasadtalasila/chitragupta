@@ -50,7 +50,7 @@ a thin result and a thorough one look identical.
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
 | Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after |
 
-Both are **review aids, not gates**: a successful run exits 0 whether it
+Both belong to the **review layer** and are advisory, not gates: a successful run exits 0 whether it
 found anything or not, and neither is wired into a hook or blocks a
 draft. (A malformed invocation -- a bad flag, a missing argument --
 exits 2, ordinary CLI-usage error handling, not a verdict on the draft.)
@@ -97,6 +97,15 @@ section, so a source's own title page never reads as "overlap with
 itself"), then for every draft position looks up **every** posting for
 that position's gram hash across **every** parsed document -- not just
 ones the surrounding paragraph cites.
+
+`--write` also files the findings as
+`content/review/<topic>/<stem>.verbatim.md`, beside the same draft's
+provenance and coverage reports -- printing stays the default, since the
+usual use is a question asked and answered in one sitting. The written
+report opens with a banner saying it is not a verdict and repeats the
+"not a clean bill of health" caveat above, so a file found on disk months
+later cannot be read as a clearance. It carries no timestamp, so two runs
+over an unchanged draft and corpus diff to nothing.
 
 Matches are grouped by `(citekey, page, diagonal)`, where `diagonal =
 source_position - draft_position`. Two matches on the same diagonal are

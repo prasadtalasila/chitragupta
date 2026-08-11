@@ -142,7 +142,7 @@ bench/                    parser measurement (dev-only, not shipped) -- see "Ben
                             and self-checks its own detector on every run
 SOUL.md                   one page: why this exists, the one invariant, what it refuses to become
 AGENTS.md                 instructions for agents drafting *with* the pipeline -- the citekey
-                          invariant, the three layers, retrieval
+                          invariant, the four layers, retrieval
 DEVELOPER-AGENTS.md       instructions for agents changing *this repo* -- install notes, dev
                           process, commit/PR/release conventions
 DEVELOPER.md              this file -- test running, repo layout, open questions
@@ -261,8 +261,12 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           candidates, steering, revision log) as Markdown under content/dossiers/,
                           mirroring the draft's path; plus tar.gz backup/restore. Read-only over the
                           corpus layer, never a gate -- see docs/DRAFT-ITERATION.md
-  citation_coverage.py      ad-hoc review aid: retrieval-candidates-vs-actually-cited report, not a gate
-  citation_provenance.py    ad-hoc review aid: what in each cited source supports the claim citing it, not a gate
+  review.py                 the review layer's shared output contract -- report path (content/review/,
+                          mirroring the draft), the "not a gate" banner, the header, and the
+                          write-md-then-render routine all three commands use. No timestamp, so a
+                          report diffs across revisions
+  citation_coverage.py      review layer: retrieval-candidates-vs-actually-cited report, not a gate
+  citation_provenance.py    review layer: what in each cited source supports the claim citing it, not a gate
                             (scores claims against passages.py's ladder; see docs/CITATION-PROVENANCE.md)
   references.py             auto-generates a draft's "## References" section from its own cited citekeys,
                           as numbered IEEE entries ordered by first appearance -- the same order (and
@@ -278,13 +282,14 @@ src/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetr
 scripts/
   install_full_pipeline.sh  single staged install path (os-deps/python-deps/dev-deps/all) for host + Docker
   enrich.py                 orchestrates src/enrich/* stages -- the enrichment layer's entry point
-  verbatim_check.py          ad-hoc review aid: per-citekey overlap, whole-draft x whole-corpus scan, and
+  verbatim_check.py          review layer: per-citekey overlap, whole-draft x whole-corpus scan, and
                           page-locating checks against sources
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)
-  ledger.sqlite, parsed/<citekey>.txt, provenance/, retrieval_index.json, overlap/,
-  docling/, chroma/, topics.json, topic_embed_cache.json, rendered/  (src/enrich/ outputs)
+  ledger.sqlite, parsed/<citekey>.txt, drafts/, dossiers/, rendered/, review/,
+  retrieval_index.json, overlap/,
+  docling/, chroma/, topics.json, topic_embed_cache.json  (src/enrich/ outputs)
 logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups. Level from
                           config.toml's [logging]; relocate with the LOGS_DIR env var
 .claude/skills/           drafting layer: survey-writer, thesis-chapter-writer,
@@ -351,13 +356,17 @@ document the enrichment layer parses comes from the bib file (see
 `python -m src.citation_provenance content/drafts/<slug>.md` reports, for
 every citation in a draft, what in the cited source supports it and where
 -- ordered worst match first. It writes
-`content/provenance/<the draft's path minus its suffix>.provenance.md`
-plus `.tex`/`.pdf` renders, and is also an enrichment stage
-(`--stages provenance --input <draft>`). The report mirrors the draft's
-own place under `content/drafts/`, the same rule `rendered/` and
-`dossiers/` follow (`config.mirrored_dir`).
+`content/review/<the draft's path minus its suffix>.provenance.md` plus
+`.tex`/`.pdf` renders beside it. The report mirrors the draft's own place
+under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
+(`config.mirrored_dir`), and `src/review.py` owns that contract for all
+three review-layer commands.
 
-A **review aid, not a gate**, deliberately: matching is lexical, so it
+It was also an enrichment stage (`--stages provenance --input <draft>`)
+until 4.0.0, which had the enrichment layer importing the review layer
+and made this command wait on `sync`'s write lock. Run it directly.
+
+**Advisory, not a gate**, deliberately: matching is lexical, so it
 cannot tell "the source doesn't say this" from "the source says it in
 words I didn't recognise". `citation_gate` blocks because it checks
 something exact (ledger membership); this reports because it doesn't.

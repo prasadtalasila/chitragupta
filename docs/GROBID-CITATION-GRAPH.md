@@ -7,7 +7,7 @@ exists. This document argues a case and
 records what it would cost; the decision has not been taken.
 
 **Written for** someone weighing whether to add the stage. It assumes
-[ARCHITECTURE.md](ARCHITECTURE.md) for the three layers and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the four layers and
 [PDF-PARSER.md](PDF-PARSER.md) for why GROBID was removed from this
 repository on 2026-08-01 -- which this proposal has to answer before it
 can argue anything else.

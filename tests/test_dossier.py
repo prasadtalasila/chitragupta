@@ -438,6 +438,77 @@ class TestExport:
         names = {name for _, name in dossier.bundle_members(["survey"], with_rendered=False)}
         assert names == {"drafts/survey.md"}
 
+    def _review_reports(self, topic="dt-for-engineers"):
+        directory = config.REVIEW_DIR / topic
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "survey.provenance.md").write_text("# p\n")
+        (directory / "survey.verbatim.md").write_text("# v\n")
+        (directory / "survey.provenance.pdf").write_bytes(b"%PDF")
+        return directory
+
+    def test_review_reports_are_bundled_by_default(self, draft):
+        """The review layer gave its reports a mirrored path so a draft's
+        evidence is findable from the draft. A bundle that dropped them
+        would falsify that quietly."""
+        self._review_reports()
+        names = {name for _, name in dossier.bundle_members([], with_rendered=False)}
+        assert "review/dt-for-engineers/survey.provenance.md" in names
+        assert "review/dt-for-engineers/survey.verbatim.md" in names
+
+    def test_their_renders_are_opt_in_like_every_other_pdf(self, draft):
+        """--with-rendered gates PDFs, not text -- so the .md reports
+        ship by default and their renders ride with the rest."""
+        self._review_reports()
+        default = {name for _, name in dossier.bundle_members([], with_rendered=False)}
+        opted_in = {name for _, name in dossier.bundle_members([], with_rendered=True)}
+        assert "review/dt-for-engineers/survey.provenance.pdf" not in default
+        assert "review/dt-for-engineers/survey.provenance.pdf" in opted_in
+
+    def test_a_versioned_draft_name_survives_the_aid_suffix_strip(self, isolated_config):
+        """`survey.v2.md` matches as `survey.v2`, so its reports have to
+        as well. Stripping two suffixes blindly would take them down to
+        `survey` and quietly leave them out of the bundle."""
+        config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        (config.DRAFTS_DIR / "survey.v2.md").write_text("# s\n")
+        config.REVIEW_DIR.mkdir(parents=True, exist_ok=True)
+        (config.REVIEW_DIR / "survey.v2.provenance.md").write_text("# p\n")
+
+        names = {name for _, name in dossier.bundle_members(["survey.v2"], with_rendered=False)}
+
+        assert names == {"drafts/survey.v2.md", "review/survey.v2.provenance.md"}
+
+    def test_a_file_in_review_that_is_not_a_report_is_still_matched_by_topic(
+        self, draft, isolated_config
+    ):
+        """Not everything under `content/review/` is `<stem>.<aid>.<ext>`.
+        `render_output._copy_local_images` copies a report's images in
+        beside it, so the aid-suffix strip has to leave a name it does not
+        recognise alone rather than mangling it -- the file is still that
+        topic's, and a bundle that dropped it would leave a `.tex` that no
+        longer compiles."""
+        directory = self._review_reports()
+        (directory / "figure.png").write_bytes(b"\x89PNG")
+
+        names = {
+            name
+            for _, name in dossier.bundle_members(["dt-for-engineers"], with_rendered=True)
+        }
+
+        assert "review/dt-for-engineers/figure.png" in names
+
+    def test_a_name_selects_one_drafts_reports(self, draft, isolated_config):
+        """A report's name carries the aid as well as the draft's stem
+        (`survey.provenance.md`), so matching has to strip both suffixes
+        to see the draft named `dt-for-engineers/survey`."""
+        self._review_reports()
+        self._review_reports(topic="unrelated-topic")
+        names = {
+            name
+            for _, name in dossier.bundle_members(["dt-for-engineers/survey"], with_rendered=False)
+        }
+        assert "review/dt-for-engineers/survey.provenance.md" in names
+        assert not any("unrelated-topic" in name for name in names)
+
     def test_exporting_nothing_is_an_error_rather_than_an_empty_archive(self, isolated_config):
         with pytest.raises(dossier.DossierError, match="Nothing to export"):
             dossier.export([], Path("out.tar.gz"))
@@ -472,6 +543,26 @@ class TestRestore:
         assert plan.performed
         assert draft.is_file()
         assert (target / "scope.md").is_file()
+
+    def test_a_bundle_carrying_review_reports_round_trips(self, draft, tmp_path):
+        """`bundle_members` gained a `review/` root; `ARCHIVE_ROOTS` is the
+        allowlist `restore` checks members against, and `_checked_members`
+        refuses the *whole* archive on an unlisted root. Miss one and
+        export/restore stops being a round trip -- not by dropping a file,
+        but by producing a bundle that cannot be restored at all."""
+        dossier.init(draft, "survey")
+        report = config.REVIEW_DIR / "dt-for-engineers" / "survey.provenance.md"
+        report.parent.mkdir(parents=True, exist_ok=True)
+        report.write_text("# provenance\n")
+
+        out, _ = dossier.export([], tmp_path / "bundle.tar.gz")
+        report.unlink()
+
+        plan = dossier.restore(out, force=True)
+
+        assert plan.performed
+        assert report.is_file()
+        assert report.read_text() == "# provenance\n"
 
     def test_reports_which_files_it_would_overwrite(self, bundle, draft):
         plan = dossier.restore(bundle)

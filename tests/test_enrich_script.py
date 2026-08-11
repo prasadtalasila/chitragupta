@@ -1,8 +1,15 @@
-"""scripts/enrich.py: the orchestrator -- Docling -> embed ->
-BERTopic -> Pandoc/LaTeX. Each stage_* wrapper's ok/partial/
-skipped/missing-binary shaping is tested directly against mocked
-underlying module calls; main()'s stage-selection and per-stage
-exception isolation are tested against a fully mocked STAGE_FUNCS/corpus."""
+"""scripts/enrich.py: the orchestrator -- Docling -> embed -> BERTopic.
+Each stage_* wrapper's ok/partial/skipped/missing-binary shaping is
+tested directly against mocked underlying module calls; main()'s
+stage-selection and per-stage exception isolation are tested against a
+fully mocked STAGE_FUNCS/corpus.
+
+4.0.0 removed the `provenance` and `render` stages -- both were
+three-line wrappers around a tier-1 command, and hosting them here made
+the enrichment layer import the review and drafting layers and made two
+per-draft commands wait on sync's write lock. Their tests went with
+them; the commands themselves are covered by
+tests/test_citation_provenance.py and tests/test_render_output.py."""
 
 import logging
 import re
@@ -13,15 +20,14 @@ from pathlib import Path
 import pytest
 
 import scripts.enrich as enrich_script
-from src import config, render_output
+from src import config
 from src.enrich import docling_parse, embed_index, topic_model
 from src.enrich.corpus import CorpusDoc
 
 
 def make_args(**overrides):
     ns = types.SimpleNamespace(
-        target="host", stages=",".join(enrich_script.STAGE_ORDER),
-        for_draft=None, input=None, output_format="pdf", documentclass="article",
+        target="host", stages=",".join(enrich_script.STAGE_ORDER), for_draft=None,
     )
     for k, v in overrides.items():
         setattr(ns, k, v)
@@ -59,86 +65,6 @@ class TestStageBertopic:
         assert "topic_info" not in result["detail"]
 
 
-class TestStageProvenance:
-    def test_skipped_without_input(self):
-        result = enrich_script.stage_provenance([], make_args(input=None))
-        assert result == {"status": "skipped", "detail": "no --input given"}
-
-    def test_ok_when_all_formats_written(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(
-            enrich_script.citation_provenance, "write_report",
-            lambda path, formats: {"md": tmp_path / "r.md", "tex": tmp_path / "r.tex",
-                                   "pdf": tmp_path / "r.pdf"})
-        result = enrich_script.stage_provenance([], make_args(input="draft.md"))
-        assert result["status"] == "ok"
-        assert set(result["detail"]) == {"md", "tex", "pdf"}
-
-    def test_partial_when_a_render_was_skipped(self, monkeypatch, tmp_path):
-        """pandoc/pdflatex absent is a normal host condition here, so the
-        stage reports partial rather than failing the run."""
-        monkeypatch.setattr(
-            enrich_script.citation_provenance, "write_report",
-            lambda path, formats: {"md": tmp_path / "r.md"})
-        result = enrich_script.stage_provenance([], make_args(input="draft.md"))
-        assert result["status"] == "partial"
-        assert set(result["detail"]) == {"md"}
-
-
-    def test_the_stage_writes_to_the_same_mirrored_path_the_cli_does(
-        self, isolated_config, ledger_con
-    ):
-        """`--stages provenance --input <draft>` is a second entry point
-        into `write_report`, so it inherits the mirrored report path --
-        and must be pinned separately, because every other test in this
-        class mocks `write_report` away and so cannot see where it writes.
-
-        The tests above are right to mock it: they are about the stage's
-        ok/partial/skipped shaping. This one is about the contract that
-        the stage and the CLI agree on where output lands.
-        """
-        parsed = config.PARSED_DIR / "a_2024.txt"
-        parsed.parent.mkdir(parents=True, exist_ok=True)
-        parsed.write_text("hysteresis band matters here\fpage two", encoding="utf-8")
-        ledger_con.execute(
-            "INSERT INTO items (citekey, title, parsed_path, status, last_synced) "
-            "VALUES ('a_2024', 'A', ?, 'parsed', '2026-01-01')", (str(parsed),))
-        ledger_con.commit()
-
-        draft = config.DRAFTS_DIR / "dt" / "survey.md"
-        draft.parent.mkdir(parents=True, exist_ok=True)
-        draft.write_text("The hysteresis band matters here [@a_2024].\n")
-
-        result = enrich_script.stage_provenance([], make_args(input=str(draft)))
-
-        assert result["status"] in {"ok", "partial"}, result
-        # `detail` carries display strings, not Paths -- compare as paths.
-        written = Path(result["detail"]["md"])
-        assert written == config.PROVENANCE_DIR / "dt" / "survey.provenance.md", (
-            "the enrichment stage wrote somewhere the CLI would not have"
-        )
-        assert written.exists()
-
-
-class TestStageRender:
-    def test_skipped_without_input(self):
-        result = enrich_script.stage_render([], make_args(input=None))
-        assert result == {"status": "skipped", "detail": "no --input given"}
-
-    def test_missing_binary(self, monkeypatch):
-        def raise_missing(*a, **k):
-            raise render_output.MissingBinary("pandoc missing")
-        monkeypatch.setattr(render_output, "render", raise_missing)
-        result = enrich_script.stage_render([], make_args(input="draft.md"))
-        assert result["status"] == "missing-binary"
-        assert "pandoc missing" in result["detail"]
-
-    def test_ok(self, monkeypatch, tmp_path):
-        out = tmp_path / "draft.pdf"
-        monkeypatch.setattr(render_output, "render", lambda *a, **k: out)
-        result = enrich_script.stage_render([], make_args(input="draft.md"))
-        assert result == {"status": "ok", "detail": str(out)}
-
-
 class TestParseArgs:
     def test_defaults(self, monkeypatch):
         """`--stages` parses as None rather than the joined list, so
@@ -150,7 +76,6 @@ class TestParseArgs:
         assert args.target == "host"
         assert args.stages is None
         assert args.for_draft is None
-        assert args.input is None
 
     def test_custom_stages(self, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed,bertopic", "--target", "docker"])
@@ -169,7 +94,7 @@ class TestParseArgs:
         # terminal width, so the sentence is split across lines at a
         # column this test has no business predicting.
         out = re.sub(r"\s+", " ", capsys.readouterr().out)
-        assert "default: all five, or docling alone with --for-draft" in out
+        assert "default: all three, or docling alone with --for-" in out
 
 
 class TestMain:
@@ -358,61 +283,14 @@ class TestForDraftScope:
     def test_a_bare_for_draft_runs_docling_alone(
         self, corpus_of_three, recorded_stages, draft, monkeypatch
     ):
-        """Not docling,provenance,render: the scope only reaches docling,
-        and passages for the cited papers are what the flag is for.
-        Rendering a PDF as a side effect of asking for passages would be
-        work nobody requested -- and embed/bertopic must not run at all,
-        or a scoped invocation quietly rebuilds the whole corpus."""
+        """Passages for the cited papers are what the flag is for, and
+        embed/bertopic must not run at all -- a scoped invocation that
+        quietly rebuilt the whole corpus would be an hour of work nobody
+        asked for."""
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
 
         assert enrich_script.main() == 0
         assert set(recorded_stages) == {"docling"}
-
-    def test_the_draft_becomes_the_default_input(
-        self, corpus_of_three, recorded_stages, draft, monkeypatch
-    ):
-        """provenance and render need an --input; when a draft has been
-        named once already, needing to name it twice is friction with no
-        purpose."""
-        monkeypatch.setattr(
-            sys, "argv",
-            ["enrich.py", "--for-draft", str(draft), "--stages", "docling,provenance"],
-        )
-
-        captured = {}
-
-        def provenance(docs, args):
-            captured["input"] = args.input
-            return {"status": "ok", "detail": "p"}
-
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "provenance", provenance)
-
-        assert enrich_script.main() == 0
-        assert captured["input"] == str(draft)
-
-    def test_an_explicit_input_is_never_overridden(
-        self, corpus_of_three, recorded_stages, draft, monkeypatch, tmp_path
-    ):
-        """The only way to enrich one draft's papers while rendering a
-        different document -- so --for-draft supplies a default, it does
-        not take the argument over."""
-        other = tmp_path / "other.md"
-        other.write_text("# other\n")
-        monkeypatch.setattr(
-            sys, "argv",
-            ["enrich.py", "--for-draft", str(draft), "--stages", "render", "--input", str(other)],
-        )
-
-        captured = {}
-
-        def render(docs, args):
-            captured["input"] = args.input
-            return {"status": "ok", "detail": "r"}
-
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "render", render)
-
-        assert enrich_script.main() == 0
-        assert captured["input"] == str(other)
 
     @pytest.mark.parametrize("stage", ["embed", "bertopic"])
     def test_scoping_a_whole_corpus_stage_is_refused(
@@ -487,20 +365,24 @@ class TestForDraftScope:
         assert "python -m src.sync" in out
         assert recorded_stages == {}
 
-    def test_a_scope_matching_nothing_still_renders(
-        self, corpus_of_three, recorded_stages, monkeypatch, tmp_path
+    def test_every_stage_now_reads_the_corpus_so_an_empty_scope_always_stops(
+        self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """render and provenance read --input and never look at the
-        corpus, so an empty scope is no reason to refuse them -- the
-        stop above is about a stage that was going to use the corpus."""
+        """CORPUS_STAGES == STAGE_ORDER since 4.0.0 removed the two
+        per-draft passthroughs, so there is no longer a selection that an
+        empty scope could leave work for. The carve-out that used to
+        exist for `render`/`provenance` went with them."""
+        assert set(enrich_script.CORPUS_STAGES) == set(enrich_script.STAGE_ORDER)
+
         draft = tmp_path / "stale.md"
         draft.write_text("Nothing here is in the ledger [@gone2019].\n")
         monkeypatch.setattr(
-            sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", "render"],
+            sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", "docling"],
         )
 
-        assert enrich_script.main() == 0
-        assert set(recorded_stages) == {"render"}
+        assert enrich_script.main() == enrich_script.EXIT_BAD_SCOPE
+        assert "nothing to enrich" in capsys.readouterr().out
+        assert recorded_stages == {}
 
     def test_an_unreadable_draft_stops_before_the_lock(
         self, recorded_stages, monkeypatch, tmp_path, capsys

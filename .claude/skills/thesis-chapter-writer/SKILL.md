@@ -37,11 +37,11 @@ you search (step 0) and fill it in as you go -- not at the end, when what
 you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
 is the full design.
 
-This skill writes both a dossier and `content/provenance/<slug>.json`,
-and keeps both: the provenance JSON is the machine-readable
-section-to-citekey record used for audit, while the dossier is the
-human-readable working state a later revision reads (reader, scope,
-glossary, rejected candidates and why, steering).
+This skill writes both the dossier's Markdown files and, in the same
+directory, `provenance.json`: the machine-readable section-to-citekey
+record used for audit, beside the human-readable working state a later
+revision reads (reader, scope, glossary, rejected candidates and why,
+steering). Two shapes for two readers, one directory per draft.
 
 **Read-only means read-only: never run `python -m src.sync`, and never
 run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
@@ -140,8 +140,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    keyword overlap, not embeddings -- read each 500-character snippet and
    judge relevance yourself; a high score is a proxy, not a verdict. Keep
    only what actually supports part of the argument; write the kept set to
-   `content/provenance/<slug>-evidence.json` (citekey + why it's relevant +
-   the supporting quote/paraphrase) before drafting prose. Record the same
+   `content/dossiers/<draft path minus suffix>/evidence.json` (citekey + why
+   it's relevant + the supporting quote/paraphrase) before drafting prose. Record the same
    judgment in the dossier while the snippets are still in front of you --
    the kept citekeys into `evidence.md`, and every candidate you turned
    down into `rejected.md` with the query that surfaced it and a few words
@@ -164,9 +164,13 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    user in prose rather than inventing a key -- see AGENTS.md's citekey
    invariant (fabricated placeholder references are exactly the failure
    mode this rule exists to prevent).
-7. **Log provenance.** Write `content/provenance/<slug>.json`:
+7. **Log provenance.** Write
+   `content/dossiers/<draft path minus suffix>/provenance.json`:
    `{"section": "...", "citekeys": [...]}` per section, for later audit (in
-   addition to the evidence file from step 2).
+   addition to the evidence file from step 2). It goes in the dossier
+   directory because it is state this run produced, not a report generated
+   from the finished draft -- the latter is the review layer's
+   `content/review/`, which no skill writes.
 8. **Map sections to citekeys in the dossier.** Save the fragment to
    `content/drafts/<slug>.tex` first, then derive the map rather than
    writing it by hand:
@@ -247,6 +251,9 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     fragment. Say what it misses when you offer it -- it sees verbatim
     and near-verbatim reuse only, and **paraphrase is not detected**, so
     a clean scan is not a clean bill of health (`docs/PLAGIARISM.md`).
+    If the user wants the finding kept, add `--write`: the report
+    goes to `content/review/`, mirroring the draft's path, beside any
+    provenance and coverage reports for the same draft.
 14. Present the `.tex` fragment (the deliverable to `\input`) plus, if
     rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning
     if it didn't. Tell the user where the dossier is, that changes to this

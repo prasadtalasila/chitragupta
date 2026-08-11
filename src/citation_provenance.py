@@ -7,9 +7,14 @@ exactly: *does the cited paper actually say this?* A claim that drifted
 away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
-Deliberately a review aid, not a gate -- the same position as
-src/citation_coverage.py and scripts/verbatim_check.py, and for a
-concrete reason. Matching is lexical, so it cannot separate "the source
+One of the three commands in the **review layer**, with
+src/citation_coverage.py and scripts/verbatim_check.py -- run by hand on
+a finished draft, never automatically, never a gate, and never holding
+the write lock. src/review.py owns what the three have in common: where
+the report goes (`content/review/`, mirroring the draft's path) and what
+its header looks like.
+
+Not a gate, and for a concrete reason. Matching is lexical, so it cannot separate "the source
 doesn't say this" from "the source says it in words I didn't recognise".
 A check that blocked on that distinction would train people to work
 around it, which is exactly the corrosion citation_gate avoids by only
@@ -31,13 +36,12 @@ Usage:
 
 import argparse
 import re
-import subprocess
+import shlex
 import sys
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
 
-from src import citation_gate, config, ledger
+from src import citation_gate, config, ledger, review
 from src.passages import Passage, distinctive, source_passages
 
 
@@ -53,7 +57,7 @@ class Finding:
 
 @dataclass
 class Report:
-    draft: str
+    draft: Path
     findings: list[Finding] = field(default_factory=list)
     unreadable: dict[str, str] = field(default_factory=dict)
 
@@ -298,7 +302,14 @@ def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | N
 
 def build_report(draft_path: Path) -> Report:
     text = draft_path.read_text(encoding="utf-8")
-    report = Report(draft=draft_path.name)
+    # The path, not `.name`. It was the bare filename while every report
+    # landed flat in one directory and the title was decoration; now that
+    # reports mirror the draft's path, two drafts named `survey.md` in
+    # different topics would produce headers that read identically -- the
+    # exact confusion the mirroring exists to prevent, reintroduced inside
+    # the file. It also makes the recorded command re-runnable, which
+    # `survey.md` alone is not.
+    report = Report(draft=Path(draft_path))
     con = ledger.connect()
     try:
         cache: dict[str, list[Passage]] = {}
@@ -333,11 +344,14 @@ def _band(score: float) -> str:
 def render_markdown(report: Report) -> str:
     weak = config.PROVENANCE_WEAK_SCORE
     good = config.PROVENANCE_GOOD_SCORE
-    lines = [
-        f"# Citation provenance: {report.draft}",
-        "",
-        f"Generated {date.today().isoformat()} by `python -m src.citation_provenance`.",
-        "",
+    lines = review.header(
+        report.draft, "provenance",
+        # shlex.join, not an f-string: a draft path with a space in it
+        # would otherwise be recorded as two arguments, so the header
+        # would name an invocation that doesn't reproduce the report.
+        # The other two review commands already quote theirs.
+        shlex.join(["python3", "-m", "src.citation_provenance", str(report.draft)]),
+    ) + [
         "## How to read this",
         "",
         "Each entry pairs a citing sentence from the draft with the passage of",
@@ -423,62 +437,14 @@ def render_markdown(report: Report) -> str:
 def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
     """Writes the report and returns {format: path} for what succeeded.
 
-    `md` is produced directly. `tex`/`pdf` go through
-    src/render_output.py, the same path every genre draft uses --
-    it needs pandoc/pdflatex on PATH, so a missing binary is reported and
-    skipped rather than failing the whole run, matching how every other
-    stage in this project treats an absent optional tool.
+    The report lands in `content/review/`, mirroring the draft's own
+    place under `content/drafts/`, with its `.tex`/`.pdf` renders beside
+    it -- `src/review.py` owns both the path and the degrade-on-missing-
+    binary behaviour, shared with the other two review aids.
     """
-    report = build_report(draft_path)
-    # Mirrors the draft's own place under content/drafts/, the same rule
-    # content/rendered/ and content/dossiers/ follow -- so
-    # drafts/<topic>/survey.md reports to
-    # provenance/<topic>/survey.provenance.md. Flat before 3.19.2, which
-    # meant two drafts named survey.md in different topic directories
-    # wrote one file and the second silently destroyed the first. A draft
-    # that isn't under content/drafts/ has no path to mirror, so the flat
-    # directory stands, matching render_output._output_dir's fallback.
-    out_dir = config.mirrored_dir(draft_path, config.DRAFTS_DIR, config.PROVENANCE_DIR)
-    if out_dir is None or not config.resolves_inside(out_dir, config.PROVENANCE_DIR):
-        out_dir = config.PROVENANCE_DIR
-    out_dir.mkdir(parents=True, exist_ok=True)
-    md_path = out_dir / f"{draft_path.stem}.provenance.md"
-    md_path.write_text(render_markdown(report), encoding="utf-8")
-    written = {"md": md_path}
-
-    remaining = [f for f in formats if f != "md"]
-    if not remaining:
-        return written
-
-    # Imported here rather than at module top only to keep the import
-    # cost off the md-only path; render_output is itself stdlib-only, so
-    # there is no optional dependency to guard against.
-    from src import render_output
-
-    for fmt in remaining:
-        try:
-            written[fmt] = render_output.render(str(md_path), fmt)
-        except render_output.MissingBinary as exc:
-            print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
-        except render_output.OutsideContentDir as exc:
-            # A layout fault rather than this report's fault: content/rendered
-            # or content/drafts resolves out of the content directory, so
-            # render_output has nowhere it is willing to write. The md report
-            # above is already written and unaffected -- it goes to
-            # content/provenance/ -- so degrade the same way as the two causes
-            # above rather than taking the whole run out, which is also how
-            # render_output.py's own CLI reports it.
-            print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
-        except subprocess.CalledProcessError as exc:
-            # A quoted excerpt can carry characters straight from the
-            # source PDF (e.g. circled digits) that pdflatex's default
-            # fonts can't set -- a real rendering failure, not a bug in
-            # this report. render_output.py's own CLI already treats this
-            # as warn-and-continue rather than a crash; do the same here
-            # so one unrenderable format doesn't take out the md/tex
-            # formats that did succeed.
-            print(f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}", file=sys.stderr)
-    return written
+    return review.write(
+        draft_path, "provenance", render_markdown(build_report(draft_path)), formats
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -488,21 +454,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("draft", help="Markdown draft to check")
     parser.add_argument(
         "--formats", default="md,tex,pdf",
-        help="Comma-separated output formats (default: md,tex,pdf). "
-             "tex/pdf need pandoc/pdflatex on PATH.",
+        help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.",
     )
     args = parser.parse_args(argv)
 
-    draft_path = Path(args.draft)
-    if not draft_path.is_file():
-        print(f"No such draft: {draft_path}", file=sys.stderr)
+    try:
+        draft_path = review.require_reviewable(Path(args.draft))
+    except (FileNotFoundError, config.OutsideContentDir) as exc:
+        print(exc, file=sys.stderr)
         return 1
 
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-    written = write_report(draft_path, formats)
-    for fmt in ("md", "tex", "pdf"):
-        if fmt in written:
-            print(f"  {fmt:3s} {written[fmt]}")
+    review.print_written(write_report(draft_path, formats))
     return 0
 
 

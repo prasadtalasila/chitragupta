@@ -42,9 +42,9 @@ This pipeline is built to make that impossible rather than unlikely:
 
 ## How it works
 
-Five phases. You own phase 0, the **corpus layer** owns phase 1, the
-**drafting layer** owns 2 through 4, and nothing reaches phase 4 without
-passing phase 3.
+Five phases. You own phase 1, the **corpus layer** owns phase 2, the
+**drafting layer** owns 3 through 5, and nothing reaches phase 5 without
+passing phase 4.
 
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
@@ -54,10 +54,10 @@ passing phase 3.
 
 Two properties of that picture do all the work:
 
-- **Phase 0 is the only entrance.** Citekeys come from your reference
+- **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export. The pipeline never fetches a paper, never
   invents a citekey, and never renames one.
-- **Phase 3 is the only exit.** `src.citation_gate` sits on the single
+- **Phase 4 is the only exit.** `src.citation_gate` sits on the single
   path between a draft and a rendered document. There is no arrow around
   it, and a `FAIL` is treated like a failing test rather than a lint
   warning.
@@ -65,16 +65,18 @@ Two properties of that picture do all the work:
 The loop back from a failed gate goes to *drafting*, not to you: the skill
 discards the unsupported claim and writes again. You only get involved in
 the rarer case where the paper genuinely isn't in the corpus yet -- the
-dotted arrow back to phase 0.
+dotted arrow back to phase 1.
 
-Seven skills sit behind phase 2, all obeying the same grounding rules:
+Seven skills sit behind phase 3, all obeying the same grounding rules:
 five that write a new draft -- survey, thesis chapter, undergraduate
 textbook chapter, tutorial, and a heavier multi-perspective deep-research
 mode -- and two that change one that already exists, because a draft is
 never revised by re-running the skill that produced it
-([docs/GENRE.md](docs/GENRE.md)). A third layer, **enrichment**, sits
-outside these phases: it deepens the same corpus with layout-aware
-parsing, semantic search and topic clustering, and nothing above needs it.
+([docs/GENRE.md](docs/GENRE.md)). Two more layers sit outside these
+phases. **Enrichment** deepens the same corpus with layout-aware parsing,
+semantic search and topic clustering, and nothing above needs it.
+**Review** is what you run afterwards on a finished draft -- provenance,
+verbatim and coverage reports, all advisory, none of them a gate.
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
 by depth, by genre, and in time order -- and is where the figure above
@@ -161,8 +163,9 @@ python3 -m src.ledger
 # including its own citation_gate -> references -> render_output chain
 ```
 
-Every command that chain runs, every way to re-run one by hand, and every
-review aid for checking a finished draft against its sources are in
+Every command that chain runs, every way to re-run one by hand, and all
+three review-layer commands for checking a finished draft against its
+sources are in
 [docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
 step](docs/CLI.md#the-full-first-run-step-by-step), which walks the whole
 sequence above and everything that follows it, in order.
@@ -177,7 +180,6 @@ corpus.
 
 ```bash
 .venv-full/bin/python scripts/enrich.py --stages docling,embed
-.venv-full/bin/python scripts/enrich.py --stages render --input draft.md
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in
@@ -189,7 +191,7 @@ when it isn't.
 Which stage is worth that cost, and what each one actually answers, is in
 [docs/RETRIEVAL.md](docs/RETRIEVAL.md). How the stages fit into the rest
 of the system, including how to call them from your own script or skill,
-is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-enrichment-layer).
+is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#layer-3-the-enrichment-layer).
 
 No stage needs an LLM API key -- this repository intentionally has none.
 Every stage probes its own prerequisites and reports `ok`, `skipped` or

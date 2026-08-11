@@ -19,10 +19,23 @@ This keeps a ledger of every citekey and audits citations against it.
 > export *and* was picked up into the ledger by a real parse of a real
 > PDF.**
 
-The gate, the hook, the three-layer split, the refusal to sanitise a
+The gate, the hook, the four-layer split, the refusal to sanitise a
 malformed key -- all of it exists to make a fabricated reference
 impossible rather than merely unlikely. No deadline and no
 plausible-looking key is worth bending it.
+
+What each layer is *not allowed* to do is the part that matters here:
+
+- **Corpus** reads only PDFs the `.bib` file points at, and is the only
+  thing that may write the ledger. That "only" is the entrance, and
+  there is no other.
+- **Enrichment** deepens the same corpus -- layout-aware parses,
+  embeddings, topic clusters -- and is optional. It reads the ledger and
+  never writes it, so it cannot make a citekey citable.
+- **Drafting** is generative and may be wrong. It is read-only over the
+  corpus, and the gate is its only exit.
+- **Review** answers questions of judgement over a finished draft. It
+  never blocks, and must not be made to.
 
 ## What earns trust here
 

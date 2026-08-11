@@ -130,6 +130,9 @@ turn a wide pass into the re-run this skill exists to avoid.
   Say what it misses when you offer it -- verbatim and near-verbatim
   reuse only, and **paraphrase is not detected**, so a clean scan is not
   a clean bill of health (`docs/PLAGIARISM.md`).
+  If the user wants the finding kept, add `--write`: the report
+  goes to `content/review/`, mirroring the draft's path, beside any
+  provenance and coverage reports for the same draft.
 
 ## Guardrails
 

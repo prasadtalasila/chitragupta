@@ -1,7 +1,9 @@
 """src/citation_coverage.py: how much of retrieval's candidates actually
 made it into a draft's citations. Informational only, not a gate."""
 
-from src import citation_coverage, ledger
+from pathlib import Path
+
+from src import citation_coverage, config, ledger
 
 from tests.conftest import make_reference
 
@@ -97,11 +99,18 @@ class TestFormatReport:
         assert "No candidates found" in report
 
 
+def _draft(text: str = "Composable twins [@a2024] are useful.\n", name: str = "draft.md") -> Path:
+    """A draft where the review layer will accept one: under content/drafts/."""
+    path = config.DRAFTS_DIR / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return path
+
+
 class TestMain:
-    def test_main_prints_report_and_returns_zero(self, ledger_con, tmp_path, capsys):
+    def test_main_prints_report_and_returns_zero(self, ledger_con, isolated_config, capsys):
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
-        draft = tmp_path / "draft.md"
-        draft.write_text("Composable twins [@a2024] are useful.\n")
+        draft = _draft()
 
         rc = citation_coverage.main([str(draft), "--query", "digital twin composability"])
 
@@ -109,13 +118,158 @@ class TestMain:
         out = capsys.readouterr().out
         assert "Coverage: 100%" in out
 
-    def test_main_supports_repeated_query_and_custom_k(self, ledger_con, tmp_path, capsys):
+    def test_main_supports_repeated_query_and_custom_k(self, ledger_con, isolated_config, capsys):
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
-        draft = tmp_path / "draft.md"
-        draft.write_text("[@a2024]\n")
+        draft = _draft("[@a2024]\n")
 
         rc = citation_coverage.main([
             str(draft), "--query", "digital twin", "--query", "composability", "--k", "1",
         ])
 
         assert rc == 0
+
+
+class TestWrite:
+    """`--write` puts the report in content/review/, mirroring the draft's
+    path, so it sits beside the same draft's provenance and verbatim
+    reports rather than only in a terminal that gets closed."""
+
+    def test_off_by_default(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        citation_coverage.main([str(draft), "--query", "digital twin composability"])
+
+        assert not config.REVIEW_DIR.exists()
+
+    def test_write_lands_in_the_mirrored_review_dir(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft(name="dt/survey.md")
+
+        rc = citation_coverage.main([
+            str(draft), "--query", "digital twin composability", "--write", "--formats", "md",
+        ])
+
+        assert rc == 0
+        report = config.REVIEW_DIR / "dt" / "survey.coverage.md"
+        assert report.is_file()
+
+    def test_the_report_records_its_queries(self, ledger_con, isolated_config, capsys):
+        """A coverage figure is meaningless without the queries it was
+        measured against, so the header carries the whole invocation."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        citation_coverage.main([
+            str(draft), "--query", "digital twin", "--query", "composability",
+            "--k", "3", "--write", "--formats", "md",
+        ])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "Review aid, not a gate" in text
+        # shlex-quoted, so a multi-word query is re-runnable as printed.
+        assert "--query 'digital twin' --query composability" in text
+        assert "--k 3" in text
+
+    def test_no_candidates_says_so_rather_than_reporting_zero_percent(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """An empty ledger means nothing was retrieved, which is not the
+        same finding as "0% of what was retrieved is cited" -- the report
+        must not let those read alike."""
+        draft = _draft("[@a2024]\n")
+
+        citation_coverage.main([str(draft), "--query", "nothing matches this",
+                                "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "No candidates found for any query" in text
+        assert "%" not in text.split("## Coverage")[1]
+
+    def test_uncited_candidates_are_listed_with_their_titles(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """The whole point of the report: a source retrieval surfaced and
+        the draft never cited. A bare citekey would make the reader look
+        each one up."""
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft("Cites nothing from the corpus.\n")
+
+        citation_coverage.main([str(draft), "--query", "digital twin composability",
+                                "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "### Retrieved but not cited" in text
+        assert "`a2024` -- Digital Twin Composability" in text
+
+    def test_a_citekey_cited_but_not_surfaced_is_listed_as_not_a_gap(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """Listed so the report cannot be misread as a complete picture
+        of the draft's sources -- and labelled so it is not misread as a
+        finding either."""
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="a2024", title="Digital Twin Composability"))
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="b2023", title="Unrelated Runtime Verification"))
+        draft = _draft("Cites both [@a2024] [@b2023].\n")
+
+        citation_coverage.main([str(draft), "--query", "digital twin composability",
+                                "--k", "1", "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "### Cited but not surfaced by these queries" in text
+        assert "Not necessarily a problem" in text
+        assert "`b2023`" in text
+
+    def test_the_recorded_command_regenerates_the_file(self, ledger_con, isolated_config, capsys):
+        """The header records the invocation so a reader can re-run it.
+        Without `--write` the recorded command prints to stdout and writes
+        nothing -- it reproduces the *findings* but not the file, which is
+        the one thing someone holding the file wants."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        citation_coverage.main([str(draft), "--query", "digital twin",
+                                "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "--write" in text
+
+    def test_two_runs_over_unchanged_input_are_byte_identical(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """No wall-clock timestamp anywhere in a report: the point of
+        writing one is that it diffs cleanly against the next revision's."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+        argv = [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
+
+        citation_coverage.main(argv)
+        first = (config.REVIEW_DIR / "draft.coverage.md").read_bytes()
+        citation_coverage.main(argv)
+        second = (config.REVIEW_DIR / "draft.coverage.md").read_bytes()
+
+        assert first == second
+
+
+class TestInputIsConfinedToContent:
+    def test_a_draft_outside_the_content_dir_is_refused(self, ledger_con, isolated_config, tmp_path, capsys):
+        """The tier-1 rule 3.17.0 set for the gate chain, which the three
+        review aids did not follow until 4.0.0."""
+        outside = tmp_path / "outside.md"
+        outside.write_text("[@a2024]\n")
+
+        rc = citation_coverage.main([str(outside), "--query", "x"])
+
+        assert rc == 1
+        assert "outside the content directory" in capsys.readouterr().err
+
+    def test_a_missing_draft_is_refused(self, ledger_con, isolated_config, capsys):
+        missing = config.DRAFTS_DIR / "nope.md"
+
+        rc = citation_coverage.main([str(missing), "--query", "x"])
+
+        assert rc == 1
+        assert "No such draft" in capsys.readouterr().err

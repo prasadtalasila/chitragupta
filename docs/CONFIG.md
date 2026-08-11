@@ -94,13 +94,15 @@ used as given.
 - **`[bib] path`** -- the BibTeX export `src/bib_reader.py` parses. The
   only source of citekeys; nothing in the pipeline invents or renames
   one. Gitignored per-host data.
-- **`[content] dir`** -- everything `sync` and the enrichment layer write:
-  `ledger.sqlite`, `parsed/`, `provenance/`, `rendered/`, plus
+- **`[content] dir`** -- everything every layer writes: `sync`'s
+  `ledger.sqlite` and `parsed/`, the drafting layer's `drafts/`,
+  `dossiers/` and `rendered/`, the review layer's `review/`, and
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
   Since 3.17.0 it is also what the tier-1 tools will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
-  that resolves outside it, so this one directory stays the whole record
-  of the work and a copy of it is complete.
+  that resolves outside it, and since 4.0.0 so do the three review
+  commands. This one directory is then the whole record of the work, and
+  a copy of it is complete.
 
 There is no key for "extra PDFs to enrich": the enrichment layer indexes
 the bibliography and nothing else, so everything it can retrieve is
@@ -223,7 +225,7 @@ script (or a test) that needs it somewhere else.
 | `weak_score` | `PROVENANCE_WEAK_SCORE` | number, a fraction 0.0-1.0 | `0.20` |
 | `good_score` | `PROVENANCE_GOOD_SCORE` | number, a fraction 0.0-1.0 | `0.50` |
 
-`src/citation_provenance.py` bands the fraction of a citing sentence's
+`src/citation_provenance.py` (the review layer) bands the fraction of a citing sentence's
 distinctive words found in the best-matching source passage. Below
 `weak_score` a finding reads "no support found", which means *go look at
 this one first* -- never "this citation is wrong". At or above

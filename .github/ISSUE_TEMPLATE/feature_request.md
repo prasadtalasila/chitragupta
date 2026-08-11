@@ -26,7 +26,7 @@ existing issue where applicable.
 
 A clear and concise description of the desired outcome. Name which layer it
 belongs to -- corpus (deterministic), drafting (generative), enrichment
-(optional), or a review aid (see AGENTS.md, "The three layers").
+(optional), or the review layer (see AGENTS.md, "The four layers").
 
 ## Alternatives Considered
 

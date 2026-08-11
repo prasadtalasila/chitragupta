@@ -2,7 +2,6 @@
 """Orchestrates the full enrichment layer:
 
     Docling -> sentence-transformers/Chroma -> BERTopic
-    -> citation provenance -> Pandoc/LaTeX
 
 One script for both the host and the Docker target (docker/Dockerfile) --
 the two don't need separate implementations. Each stage probes its own
@@ -17,10 +16,23 @@ pyproject.toml, and .venv-full/ on the host this was developed on). The
 corpus and drafting layers (python -m src.sync, src/citation_gate.py) do
 not depend on any of this and are unaffected either way.
 
+Every stage here writes a **corpus** artefact, which is why this layer
+takes the same write lock as `python -m src.sync`. Until 4.0.0 it also
+carried two stages that did not: `provenance` (a review-layer report) and
+`render` (the drafting layer's publish step), each a three-line wrapper
+around a command you can run directly. Both are gone -- run
+`python3 -m src.citation_provenance <draft>` and
+`python3 -m src.render_output <draft> --format pdf` instead, which need
+no venv at all, and neither of which should ever have been made to wait
+on a running sync.
+
+That removal is also what makes the layer diagram acyclic: the
+enrichment layer now reads corpus artefacts and writes corpus artefacts,
+and does not import the drafting or review layers.
+
 Usage:
     python scripts/enrich.py --target host
     python scripts/enrich.py --stages embed,bertopic
-    python scripts/enrich.py --stages render --input content/drafts/chapter.md
     python scripts/enrich.py --for-draft content/drafts/chapter.md
 """
 
@@ -33,7 +45,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.enrich import corpus, docling_parse, embed_index, topic_model
-from src import citation_gate, citation_provenance, config, logging_setup, render_output, runlock
+# citation_gate is read, not called into: draft_citekeys() below uses its
+# citekey reader so a scoped run covers exactly the papers the gate will
+# check against. That is this layer reading a draft, not invoking the
+# drafting layer -- see the module docstring on why nothing else from
+# src/ outside the corpus path is imported here.
+from src import citation_gate, config, logging_setup, runlock
 
 # A fixed name, not __name__: this file is run as a script
 # (`python scripts/enrich.py`), so Python sets __name__ to "__main__",
@@ -44,7 +61,7 @@ from src import citation_gate, citation_provenance, config, logging_setup, rende
 # and be silently dropped from the console.
 logger = logging.getLogger("scripts.enrich")
 
-STAGE_ORDER = ["docling", "embed", "bertopic", "provenance", "render"]
+STAGE_ORDER = ["docling", "embed", "bertopic"]
 
 # The stages --for-draft refuses to run, rather than running over a
 # subset. Both write one whole-corpus artefact whose partial form is
@@ -63,16 +80,12 @@ STAGE_ORDER = ["docling", "embed", "bertopic", "provenance", "render"]
 # fraction of it (an index that lies about its coverage).
 SCOPE_REFUSED = ("embed", "bertopic")
 
-# The stages that read the corpus at all. `provenance` and `render` are
-# handed the document list and never look at it -- both work entirely off
-# args.input, and are per-draft already -- so once the two above are
-# refused, --for-draft's filter changes the behaviour of exactly one
-# stage. Named here because an empty scope is only a reason to stop if
-# some stage was going to use it.
-#
-# Overlapping SCOPE_REFUSED is not redundancy: this tuple says which
-# stages read the corpus at all, which stays true whether or not a scope
-# is in play, while that one says which refuse to have it narrowed.
+# The stages that read the corpus at all -- every stage there is, since
+# 4.0.0 removed the two per-draft passthroughs. Kept as its own name
+# rather than folded into STAGE_ORDER because it answers a different
+# question: an empty scope is only a reason to stop if some stage was
+# going to use it, and SCOPE_REFUSED says which stages refuse to have a
+# scope narrowed rather than which read one.
 CORPUS_STAGES = ("docling", "embed", "bertopic")
 
 # 3, not 2: argparse already exits 2 for a usage error it detects
@@ -113,32 +126,10 @@ def stage_bertopic(docs, args):
     return {"status": "ok", "detail": {"n_docs": result["n_docs"], "assignments": result["assignments"]}}
 
 
-def stage_provenance(docs, args):
-    if not args.input:
-        return {"status": "skipped", "detail": "no --input given"}
-    written = citation_provenance.write_report(Path(args.input), ["md", "tex", "pdf"])
-    missing = [f for f in ("tex", "pdf") if f not in written]
-    return {
-        "status": "ok" if not missing else "partial",
-        "detail": {fmt: str(path) for fmt, path in written.items()},
-    }
-
-
-def stage_render(docs, args):
-    if not args.input:
-        return {"status": "skipped", "detail": "no --input given"}
-    try:
-        return {"status": "ok", "detail": str(render_output.render(args.input, args.output_format, args.documentclass))}
-    except render_output.MissingBinary as exc:
-        return {"status": "missing-binary", "detail": str(exc)}
-
-
 STAGE_FUNCS = {
     "docling": stage_docling,
     "embed": stage_embed,
     "bertopic": stage_bertopic,
-    "provenance": stage_provenance,
-    "render": stage_render,
 }
 
 
@@ -154,15 +145,11 @@ def parse_args():
     # stated and it has to state both halves.
     parser.add_argument("--stages", default=None,
                          help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
-                              "(default: all five, or docling alone with --for-draft)")
+                              "(default: all three, or docling alone with --for-draft)")
     parser.add_argument("--for-draft", metavar="PATH",
                          help="Scope the docling stage to the papers this draft cites, instead of "
-                              "the whole corpus, and use it as the --input default. Refused "
+                              "the whole corpus. Refused "
                               f"together with an explicit --stages naming {' or '.join(SCOPE_REFUSED)}.")
-    parser.add_argument("--input", help="Input file for the provenance and render stages "
-                                        "(defaults to --for-draft's draft when that is given)")
-    parser.add_argument("--output-format", default="pdf", help="Output format for the render stage")
-    parser.add_argument("--documentclass", default="article", help="LaTeX documentclass for the render stage (default: article)")
     return parser.parse_args()
 
 
@@ -195,11 +182,9 @@ def main(configure_logging: bool = False) -> int:
     if args.stages is not None:
         stages = args.stages
     elif args.for_draft:
-        # Just docling, not docling,provenance,render: the scope only
-        # reaches docling (provenance and render read args.input and
-        # never look at the corpus), and quotable passages for the cited
-        # papers are what --for-draft is for. Adding the other two would
-        # make a bare --for-draft write a rendered PDF nobody asked for.
+        # Just docling: the other two are refused with a scope
+        # (SCOPE_REFUSED above), and quotable passages for the cited
+        # papers are what --for-draft is for.
         stages = "docling"
     else:
         stages = ",".join(STAGE_ORDER)
@@ -260,15 +245,9 @@ def main(configure_logging: bool = False) -> int:
             print(f"  no citations found in {draft_path} -- nothing to scope the run to. "
                   "Drop --for-draft to enrich the whole corpus.")
             return EXIT_BAD_SCOPE
-        # The draft is the only input a scoped run could sensibly have,
-        # so --for-draft supplies it -- but never overrides an --input
-        # the user typed, which is the only way to enrich one draft's
-        # papers while rendering another document.
-        if args.input is None:
-            args.input = str(draft_path)
-
-    # Same lock as `python -m src.sync`: this stage writes content/ too,
-    # and sync's parsed-text writes are not atomic, so an enrichment run
+    # Same lock as `python -m src.sync`: every stage here writes a corpus
+    # artefact, and
+    # sync's parsed-text writes are not atomic, so an enrichment run
     # overlapping a sync can read a half-written .txt. One lock rather
     # than two, because the unsafe overlap is any-writer-vs-any-writer,
     # not just sync-vs-sync.

@@ -40,23 +40,28 @@ Seven words, used precisely throughout this repository. The first four
 describe the shape of the system; the last three describe how it decides.
 
 **Pipeline.** Everything from a BibTeX export to a rendered document. Not
-a single process: it is three layers that run at different times, on
+a single process: it is four layers that run at different times, on
 different commands, and under different assumptions about whether a human
 is watching.
 
-**Layer.** One of three groups of modules, distinguished by *who runs
+**Layer.** One of four groups of modules, distinguished by *who runs
 them and what they are allowed to do*.
 
 | Layer | What it is | Runs when |
 |---|---|---|
-| **Corpus** | `python -m src.sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
-| **Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
-| **Enrichment** | `scripts/enrich.py` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
+| **1. Corpus** | `python -m src.sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
+| **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
+| **3. Enrichment** | `scripts/enrich.py` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
+| **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`. Advisory over a finished draft -- never automatic, never a gate. | When you ask, after a draft exists |
+
+The numbers are introduction order, not a dependency rank.
 
 **Stage.** One step within a layer, with its own name and its own status.
 The enrichment layer is the only one that literally enumerates them
-(`--stages docling,embed,bertopic,provenance,render`, each reporting `ok`,
-`partial`, `skipped`, `missing-binary` or `error`).
+(`--stages docling,embed,bertopic`, each reporting `ok`, `partial`,
+`skipped`, `missing-binary` or `error`). It had five until 4.0.0; the
+two that went were per-draft wrappers around tier-1 commands, and neither
+wrote a corpus artefact.
 
 **Artefact.** A file a stage writes, under `content/`. Artefacts are how
 the layers communicate: no layer calls into another, they read each
@@ -561,12 +566,21 @@ And the same decisions against the layer that makes them:
 
 | Layer | Ladders it walks | Tiers it obeys | Lock |
 |---|---|---|---|
-| Corpus (`src.sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
-| Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
-| Enrichment (`scripts/enrich.py`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
+| 1. Corpus (`src.sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
+| 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
+| 3. Enrichment (`scripts/enrich.py`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
+| 4. Review (the three aids) | evidence passages, detection tiers | interpreter 1, render format | none |
 
 The two lock-holders never run at once: the second to start exits `2`
 rather than interleaving writes to `content/`.
+
+Review's "none" is load-bearing rather than incidental: the layer is
+read-only over the corpus and must keep working during a `sync`. Two
+rows of this table were false until 4.0.0, for one reason -- `enrich.py`
+hosted a `provenance` and a `render` stage inside its lock, so a review
+aid and a drafting-layer render each took a lock their own layer says
+they do not. Removing the stages made the table true rather than
+aspirational.
 
 ## See also
 
