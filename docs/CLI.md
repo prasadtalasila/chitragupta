@@ -695,7 +695,7 @@ technique and its literature sources, and a measured
 | `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other two review commands: `0` on every
+**Exit codes**, shared with the other two review aids: `0` on every
 successful invocation, findings or not -- advisory, never a gate. `1` for
 a draft this layer will not read (missing, or resolving outside
 `content/`). `2` for a malformed invocation, the usual CLI-usage error,

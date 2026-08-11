@@ -98,12 +98,13 @@ used as given.
   `ledger.sqlite` and `parsed/`, the drafting layer's `drafts/`,
   `dossiers/` and `rendered/`, the review layer's `review/`, and
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
-  Since 3.17.0 it is also what six of the seven tier-1 tools will
-  *accept*: `citation_gate`, `references` and `render_output` each
-  refuse a path that resolves outside it, and since 4.0.0 so do the
-  three review commands. The seventh, `ledger`, takes no path argument
-  at all -- its CLI only ever addresses rows by citekey or status -- so
-  the rule applies to it vacuously rather than needing a check. This one
+  Since 3.17.0 it is also what every tier-1 command that takes a path
+  will *accept*: `citation_gate`, `references` and `render_output` each
+  refuse a path that resolves outside it, and since 4.0.0 so do all
+  three of `src.review`'s aids. `ledger` is the one that takes no path
+  argument at all -- its CLI only ever addresses rows by citekey or
+  status -- so the rule applies to it vacuously rather than needing a
+  check. This one
   directory is then the whole record of the work, and a copy of it is
   complete.
 

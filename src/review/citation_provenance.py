@@ -349,7 +349,7 @@ def render_markdown(report: Report) -> str:
         # shlex.join, not an f-string: a draft path with a space in it
         # would otherwise be recorded as two arguments, so the header
         # would name an invocation that doesn't reproduce the report.
-        # The other two review commands already quote theirs.
+        # The other two review aids already quote theirs.
         shlex.join(["python3", "-m", "src.review", "provenance", str(report.draft)]),
     ) + [
         "## How to read this",
