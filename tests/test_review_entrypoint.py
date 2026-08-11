@@ -37,6 +37,12 @@ AID_MODULES = ["citation_provenance", "citation_coverage", "verbatim_check"]
 # point.
 _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 
+# Every read below passes encoding="utf-8" explicitly. Without it
+# read_text() uses the locale codec, which is cp1252 on the Windows CI
+# leg, and these sources contain non-ASCII punctuation -- so the check
+# died with a UnicodeDecodeError there while passing on Linux. Same
+# reason tests/test_skill_verbatim_scan_offer.py pins it.
+
 
 def _run(*argv):
     return subprocess.run(
@@ -87,7 +93,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         silent and harmless one, and the same one `src/enrich/`'s stage
         modules carry by design (docs/ARCHITECTURE.md). With one, the
         layer would have four entry points and no single --help."""
-        source = (REPO_ROOT / "src" / "review" / f"{module}.py").read_text()
+        source = (REPO_ROOT / "src" / "review" / f"{module}.py").read_text(encoding="utf-8")
         assert not _MAIN_BLOCK.search(source)
 
     @pytest.mark.parametrize("module", AID_MODULES)
@@ -102,7 +108,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         layer's design was taken from: `--stages` is the only way to run
         an enrichment stage."""
         for module in ["docling_parse", "embed_index", "topic_model"]:
-            source = (REPO_ROOT / "src" / "enrich" / f"{module}.py").read_text()
+            source = (REPO_ROOT / "src" / "enrich" / f"{module}.py").read_text(encoding="utf-8")
             assert not _MAIN_BLOCK.search(source), module
 
 
