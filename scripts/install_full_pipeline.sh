@@ -28,7 +28,7 @@
 #   bash scripts/install_full_pipeline.sh all
 #   bash scripts/install_full_pipeline.sh dev-deps   # optional, to run tests
 #   then: .venv-full/bin/python -m src.sync
-#         .venv-full/bin/python3 -m src.enrich
+#         .venv-full/bin/python -m src.enrich
 #         .venv-full/bin/python -m pytest
 #
 # Docker usage: docker/Dockerfile calls this once per stage as separate
@@ -192,7 +192,7 @@ install_python_deps() {
     echo
     echo "Installed. Run pipeline scripts via:"
     echo "  $bin_dir/python -m src.sync"
-    echo "  $bin_dir/python3 -m src.enrich"
+    echo "  $bin_dir/python -m src.enrich"
 }
 
 # pip's default torch wheel is built against whatever CUDA major version

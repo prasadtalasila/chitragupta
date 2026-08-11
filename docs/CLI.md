@@ -24,9 +24,9 @@ short path; this is the full set.
   - [`src.retrieval`](#python3--m-srcretrieval)
   - [`src.review coverage`](#python3--m-srcreview-coverage)
   - [`src.review provenance`](#python3--m-srcreview-provenance)
+  - [`src.review verbatim`](#python3--m-srcreview-verbatim)
   - [`src.render_output`](#python3--m-srcrender_output)
   - [`src.enrich`](#python3--m-srcenrich)
-  - [`src.review verbatim`](#python3--m-srcreview-verbatim)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
@@ -158,7 +158,7 @@ each line is for:
 
 ```bash
 grep 'src\.sync' logs/pipeline.log        # just the corpus layer
-grep 'scripts\.enrich' logs/pipeline.log  # just the enrichment layer
+grep 'src\.enrich' logs/pipeline.log     # just the enrichment layer
 ```
 
 ## Upgrading from 2.x
@@ -674,6 +674,95 @@ python3 -m src.review provenance content/drafts/survey.md
 # python3 -m src.review provenance content/drafts/survey.md --formats md,tex,pdf
 ```
 
+### `python3 -m src.review verbatim`
+
+Layer 4, the review layer, with three subcommands: verbatim overlap
+between a draft and one cited source, a whole-draft x whole-corpus scan,
+and page location for a phrase. Stdlib-only -- but `locate` shells out to
+the `pdftotext` binary, so that subcommand needs poppler-utils on `PATH`.
+`overlap` and `scan` read already-parsed text via `src/overlap_index.py`'s
+cache instead. Run with no arguments to print its usage.
+
+[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
+section: what `overlap`/`scan` catch and don't (verbatim only --
+paraphrase is a later, unbuilt detection tier), the fingerprinting
+technique and its literature sources, and a measured
+`docling`-vs-`pdftotext` backend comparison.
+
+| Subcommand | Arguments | What it does |
+|---|---|---|
+| `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
+| `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
+
+**Exit codes**, shared with the other two review commands: `0` on every
+successful invocation, findings or not -- advisory, never a gate. `1` for
+a draft this layer will not read (missing, or resolving outside
+`content/`). `2` for a malformed invocation, the usual CLI-usage error,
+not a verdict.
+
+```bash
+python3 -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
+# python3 -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
+python3 -m src.review verbatim scan content/drafts/survey.md
+# python3 -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
+# python3 -m src.review verbatim scan content/drafts/survey.md --write --formats md
+# python3 -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
+```
+
+**What `scan` does not see, and why that matters more than it sounds.**
+`scan` is the **exact tier** of three planned detection tiers, and the
+other two are not built. It matches word n-grams, so literal
+paraphrase -- the same sentence skeleton with a synonym swapped every few
+words -- is invisible to it *by construction*, not by omission. Because
+the drafts this pipeline produces are LLM-written, and that is an LLM's
+normal failure mode when it drifts too close to a source, the reuse mode
+`scan` cannot see is the dominant one. Read a clean run as "no exact or
+near-exact copying found", never "no borrowed wording found". An
+unbuilt tier contributes nothing and nothing in the output says so -- see
+[PLAGIARISM.md](PLAGIARISM.md) and
+[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
+for the three-tier plan.
+
+**The disk cache, and what the first run costs.** `scan` builds a
+corpus-wide index the first time it runs -- `content/overlap/index.bin`
+plus an `index.json` header -- merged from the per-document fingerprints
+in `content/overlap/docs/<citekey>.fpr`. That first build is the only
+slow part (~27s over this project's 497-document corpus); every later
+scan over an unchanged corpus reloads the merged index and is
+sub-second. The header key covers the n-gram size, the tokenizer version
+and, per document, its `pdf_hash` *together with the parsed file's own
+size and mtime* -- so a `sync` that changes one PDF re-fingerprints that
+one document and re-merges, rather than rebuilding from scratch. Both
+halves of that per-document key earn their place: re-parsing the corpus
+under a different `[parser].backend` rewrites the text without touching
+the PDF, and the parsed-file stat is the only part that notices. The
+whole directory is a cache, not an output:
+delete it and the next run rebuilds whatever it needs. See
+[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
+
+`scan` groups a match's `(citekey, page, diagonal)` -- the source position
+minus the draft position, held constant across a run -- and merges runs on
+the same diagonal within `--gap` words of each other, so a single edited
+word inside an otherwise-verbatim passage still reports as one run. It
+cannot merge a run across a page break in the *source*: the fingerprint
+cache's token position resets there, so a genuine lift spanning one is
+reported as two (or more) shorter findings, and a short remainder stranded
+alone on the far side of the break can fall under `--min-run` and vanish
+entirely. Each finding reports whether the containing draft paragraph
+actually cites that source (`UNCITED SOURCE` if not) and whether the run
+sits inside quote delimiters -- both informational; `scan` doesn't decide
+severity, it produces the findings a later gate would be tuned against.
+
+`locate` reports page numbers by splitting on the form-feed characters
+between pages. Both backends emit them, so a page number here is a page
+you can turn to whichever one parsed the citekey -- see
+[CONFIG.md](CONFIG.md#backend-pdftotext-or-docling). One limit: `docling`
+writes a break between consecutive pages that carry text, so a page with
+no extracted items at all shifts the numbering after it. The passage
+sidecar records each item's own page and is not affected; where the two
+disagree, believe `python3 -m src.review provenance`.
+
 ### `python3 -m src.render_output`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
@@ -859,95 +948,6 @@ it, which stays searchable by title through `src/retrieval.py` and not by
 meaning. Ctrl+C is safe: every chunk upserted before the interrupt is
 already in `content/chroma/`, the stage says how far it got, and re-running
 picks up from there.
-
-### `python3 -m src.review verbatim`
-
-Layer 4, the review layer, with three subcommands: verbatim overlap
-between a draft and one cited source, a whole-draft x whole-corpus scan,
-and page location for a phrase. Stdlib-only -- but `locate` shells out to
-the `pdftotext` binary, so that subcommand needs poppler-utils on `PATH`.
-`overlap` and `scan` read already-parsed text via `src/overlap_index.py`'s
-cache instead. Run with no arguments to print its usage.
-
-[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
-section: what `overlap`/`scan` catch and don't (verbatim only --
-paraphrase is a later, unbuilt detection tier), the fingerprinting
-technique and its literature sources, and a measured
-`docling`-vs-`pdftotext` backend comparison.
-
-| Subcommand | Arguments | What it does |
-|---|---|---|
-| `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
-| `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
-
-**Exit codes**, shared with the other two review commands: `0` on every
-successful invocation, findings or not -- advisory, never a gate. `1` for
-a draft this layer will not read (missing, or resolving outside
-`content/`). `2` for a malformed invocation, the usual CLI-usage error,
-not a verdict.
-
-```bash
-python3 -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
-# python3 -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
-python3 -m src.review verbatim scan content/drafts/survey.md
-# python3 -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
-# python3 -m src.review verbatim scan content/drafts/survey.md --write --formats md
-# python3 -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
-```
-
-**What `scan` does not see, and why that matters more than it sounds.**
-`scan` is the **exact tier** of three planned detection tiers, and the
-other two are not built. It matches word n-grams, so literal
-paraphrase -- the same sentence skeleton with a synonym swapped every few
-words -- is invisible to it *by construction*, not by omission. Because
-the drafts this pipeline produces are LLM-written, and that is an LLM's
-normal failure mode when it drifts too close to a source, the reuse mode
-`scan` cannot see is the dominant one. Read a clean run as "no exact or
-near-exact copying found", never "no borrowed wording found". An
-unbuilt tier contributes nothing and nothing in the output says so -- see
-[PLAGIARISM.md](PLAGIARISM.md) and
-[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
-for the three-tier plan.
-
-**The disk cache, and what the first run costs.** `scan` builds a
-corpus-wide index the first time it runs -- `content/overlap/index.bin`
-plus an `index.json` header -- merged from the per-document fingerprints
-in `content/overlap/docs/<citekey>.fpr`. That first build is the only
-slow part (~27s over this project's 497-document corpus); every later
-scan over an unchanged corpus reloads the merged index and is
-sub-second. The header key covers the n-gram size, the tokenizer version
-and, per document, its `pdf_hash` *together with the parsed file's own
-size and mtime* -- so a `sync` that changes one PDF re-fingerprints that
-one document and re-merges, rather than rebuilding from scratch. Both
-halves of that per-document key earn their place: re-parsing the corpus
-under a different `[parser].backend` rewrites the text without touching
-the PDF, and the parsed-file stat is the only part that notices. The
-whole directory is a cache, not an output:
-delete it and the next run rebuilds whatever it needs. See
-[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
-
-`scan` groups a match's `(citekey, page, diagonal)` -- the source position
-minus the draft position, held constant across a run -- and merges runs on
-the same diagonal within `--gap` words of each other, so a single edited
-word inside an otherwise-verbatim passage still reports as one run. It
-cannot merge a run across a page break in the *source*: the fingerprint
-cache's token position resets there, so a genuine lift spanning one is
-reported as two (or more) shorter findings, and a short remainder stranded
-alone on the far side of the break can fall under `--min-run` and vanish
-entirely. Each finding reports whether the containing draft paragraph
-actually cites that source (`UNCITED SOURCE` if not) and whether the run
-sits inside quote delimiters -- both informational; `scan` doesn't decide
-severity, it produces the findings a later gate would be tuned against.
-
-`locate` reports page numbers by splitting on the form-feed characters
-between pages. Both backends emit them, so a page number here is a page
-you can turn to whichever one parsed the citekey -- see
-[CONFIG.md](CONFIG.md#backend-pdftotext-or-docling). One limit: `docling`
-writes a break between consecutive pages that carry text, so a page with
-no extracted items at all shifts the numbering after it. The passage
-sidecar records each item's own page and is not affected; where the two
-disagree, believe `python3 -m src.review provenance`.
 
 ### `scripts/install_full_pipeline.sh`
 

@@ -15,8 +15,6 @@ without doing anything. See docs/ARCHITECTURE.md on why every layer's
 command surface stays one level deep.
 
 Three modes:
-
-Usage:
     python3 -m src.review verbatim overlap <draft.md> <citekey> [--n 8]
         report the longest verbatim word-n-gram runs shared between the
         draft's sentences citing <citekey> and that source's parsed text.
