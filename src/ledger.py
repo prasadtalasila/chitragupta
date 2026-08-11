@@ -434,7 +434,7 @@ def all_items(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 # ---------------------------------------------------------------------
-# Read-only CLI: `python3 -m src.ledger`
+# Read-only CLI: `python -m src.ledger`
 #
 # Its own entrypoint rather than a `sync --inspect` flag, for two reasons
 # that are both about what a *reader* needs. `sync` takes the pipeline
@@ -473,7 +473,7 @@ def main(argv: "list[str] | None" = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python3 -m src.ledger",
+        prog="python -m src.ledger",
         description="Show what the corpus layer holds. Read-only, takes no lock, "
                     "and runs with the bare system python3.",
     )
@@ -544,7 +544,7 @@ def main(argv: "list[str] | None" = None) -> int:
             print(f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
                   "automatically.\n  Fix or remove the PDF, or re-run "
                   "`python -m src.sync --reparse`.")
-            print("  See which: python3 -m src.ledger --status parse_failed")
+            print("  See which: python -m src.ledger --status parse_failed")
         elif kinds["transient"]:
             print(f"\n  {kinds['transient']} item(s) failed for a transient reason "
                   "and will be retried on the next sync.")

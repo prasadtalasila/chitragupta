@@ -599,7 +599,7 @@ def _run_scan(draft, *args):
 
 
 class TestVerbatimScanEndToEnd:
-    """`python3 -m src.review verbatim scan <draft>` over a real
+    """`python -m src.review verbatim scan <draft>` over a real
     mini-ledger: index build -> disk cache -> findings, through the entry
     point README's step 7 and the seven skills now point at.
 
@@ -834,7 +834,7 @@ class TestVerbatimScanEndToEnd:
         self, planted_draft, system_python
     ):
         """docs/CLI.md files `scan` in interpreter tier 1 -- bare
-        `python3`, stdlib only, no venv. Everything above runs it on
+        `python`, stdlib only, no venv. Everything above runs it on
         `sys.executable`, which is the venv's interpreter and so cannot
         tell that claim from a false one. This is the same check
         `citation_gate`/`references`/`render_output` already get, applied

@@ -21,7 +21,7 @@ checking out the commit before #110 merged (18f9f4b2) and timing
     python3 bench/bench_overlap.py --draft path/to/draft.md
     python3 bench/bench_overlap.py --draft path/to/draft.md --out bench/results/<date>-overlap/overlap.json
 
-Stdlib only, like the module it measures -- runs under bare `python3`.
+Stdlib only, like the module it measures -- runs under bare `python`.
 """
 
 import argparse

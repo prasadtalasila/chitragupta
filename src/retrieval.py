@@ -387,9 +387,9 @@ def evidence(
 
 
 # ---------------------------------------------------------------------
-# CLI: `python3 -m src.retrieval`
+# CLI: `python -m src.retrieval`
 #
-# Its own entrypoint rather than the `python3 -c "from src import
+# Its own entrypoint rather than the `python -c "from src import
 # retrieval; [print(r.citekey, r.snippet) for r in ...]"` one-liner the
 # skills used to carry. Three reasons, all about the caller's context
 # rather than convenience: the one-liner's output shape was whatever the
@@ -415,7 +415,7 @@ def main(argv: "list[str] | None" = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python3 -m src.retrieval",
+        prog="python -m src.retrieval",
         description="BM25 retrieval over the synced corpus. Read-only, takes no "
                     "lock, and runs with the bare system python3.",
         epilog="`search` ranks the corpus and hands back a snippet to judge each "

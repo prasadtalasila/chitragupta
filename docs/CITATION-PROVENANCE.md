@@ -39,7 +39,7 @@ Two other terms used here:
 - **Parser backend** -- how a PDF becomes text. `pdftotext` (fast, the
   default) or `docling` (slow, layout-aware). Set in `config.toml`.
 - **The enrichment layer** -- optional, opt-in stages under `src/enrich/`
-  run by `src/enrich/__main__.py`: layout-aware Docling parsing,
+  run by `python -m src.enrich`: layout-aware Docling parsing,
   embeddings, topic modelling, and rendering to PDF/LaTeX.
 
 ## The problem
@@ -101,7 +101,7 @@ part of any automatic chain.
 ## The solution, as built
 
 ```
-python3 -m src.review provenance content/drafts/<slug>.md
+python -m src.review provenance content/drafts/<slug>.md
 ```
 
 Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
@@ -171,7 +171,7 @@ form feeds, which means page resolution works regardless of which parser
 backend produced `content/parsed/`. That indirection is worth keeping.
 
 **Stdlib only.** `citation_gate.py`, `references.py` and
-`citation_coverage.py` all run under bare `python3` with no venv. This
+`citation_coverage.py` all run under bare `python` with no venv. This
 tool reuses `citation_gate.extract_citekeys` (which returns
 `(line_number, citekey)` pairs -- the line numbers are exactly what the
 report needs) plus `verbatim_check`'s `pages()` and `norm()`, all of

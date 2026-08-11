@@ -39,7 +39,7 @@ dir = "content"
 
 
 [render]
-# How `python3 -m src.render_output` formats citations. Used by
+# How `python -m src.render_output` formats citations. Used by
 # nothing else -- not by sync, not by the citation gate.
 
 # The CSL style pandoc's --citeproc formats citations and the
@@ -82,7 +82,7 @@ collapse_citations = true
 #                tables), needs the "enrich" dependency group. Its own
 #                output has no page boundaries, but src/pdf_text.py
 #                inserts the same form feeds explicitly, so
-#                scripts/verbatim_check.py's page locating and sync's
+#                src/review/verbatim_check.py's page locating and sync's
 #                pages/s summary line both work the same way regardless
 #                of backend.
 #
@@ -246,7 +246,7 @@ min_tokens = 200
 # gitignored -- created on first run). One of Python's own level names:
 # DEBUG, INFO, WARNING, ERROR, CRITICAL. Case-insensitive.
 #
-# One file for both `python -m src.sync` and `scripts/enrich.py`: each
+# One file for both `python -m src.sync` and `python -m src.enrich`: each
 # line names its source, so `grep 'src\.sync' logs/pipeline.log` splits
 # them back apart. The drafting-layer CLIs (src.retrieval,
 # src.citation_gate, src.references, src.dossier) print to stdout and
@@ -292,7 +292,7 @@ good_score = 0.50
 # embedding model" lists what works and what needs a code change first.
 #
 # Changing this does not re-embed the existing index -- rebuild it with
-# `python scripts/enrich.py --stages embed`.
+# `python -m src.enrich --stages embed`.
 #                       Default if absent: sentence-transformers/all-MiniLM-L6-v2
 embedding_model = "sentence-transformers/all-mpnet-base-v2"
 

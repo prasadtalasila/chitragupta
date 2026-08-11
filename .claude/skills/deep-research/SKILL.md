@@ -85,7 +85,7 @@ transcribed it, it is gone when the phase closes.
 hands each section writer a command that reads its rows back:
 
 ```bash
-python3 -m src.dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
+python -m src.dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
 Pasting the same claims into four dispatch prompts spends them as
@@ -109,7 +109,7 @@ kept evidence, rejected candidates and why, contradictions, and the
 user's steering.
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `src/enrich/__main__.py` or any `src/enrich/*` build stage.** Both belong to the
+run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -119,7 +119,7 @@ build one.
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python3 -m src.ledger
+python -m src.ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
@@ -177,7 +177,7 @@ the user has to make? a chapter's background?) and what it will and won't
 cover, then create the dossier:
 
 ```
-python3 -m src.dossier init content/drafts/deep-research-<slug>.md --genre deep-research
+python -m src.dossier init content/drafts/deep-research-<slug>.md --genre deep-research
 ```
 
 Give it the same path Phase 7(d) will save to -- the dossier mirrors its
@@ -315,7 +315,7 @@ Phase 4 already chose each section's citekeys and wrote them into
 resolve to transcribed evidence:
 
 ```bash
-python3 -m src.dossier brief content/drafts/deep-research-<slug>.md \
+python -m src.dossier brief content/drafts/deep-research-<slug>.md \
   --section "<section heading>" --check
 ```
 
@@ -331,7 +331,7 @@ its section outline fragment, and the one line that stands in for the
 evidence:
 
 ```
-Your evidence: python3 -m src.dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
+Your evidence: python -m src.dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
 **Do not paste the kept claims into the prompt.** That is the whole of
@@ -442,14 +442,14 @@ rather than hand-assembling it:
 ```
 python -m src.references content/drafts/deep-research-<slug>.md
 ```
-Stdlib-only, like the citation gate -- bare `python3`, no venv. It writes
+Stdlib-only, like the citation gate -- bare `python`, no venv. It writes
 numbered IEEE-style entries; leave the body's inline citations as
 `[@citekey]` rather than hand-numbering them to `[1]`, since pandoc
 assigns the numbers at render time. Then render the other three formats:
 ```
-python3 -m src.render_output content/drafts/deep-research-<slug>.md --format tex
-python3 -m src.render_output content/drafts/deep-research-<slug>.md --format pdf
-python3 -m src.render_output content/drafts/deep-research-<slug>.md --format md
+python -m src.render_output content/drafts/deep-research-<slug>.md --format tex
+python -m src.render_output content/drafts/deep-research-<slug>.md --format pdf
+python -m src.render_output content/drafts/deep-research-<slug>.md --format md
 ```
 All three land beside the draft: a draft at
 `content/drafts/<topic>/<name>.md` renders to
@@ -458,7 +458,7 @@ holds the report, its dossier and its renders. The `md` output is a
 numbered copy -- the same IEEE numbers as the PDF, for a reader who
 won't open one. The draft itself keeps its `[@citekey]` markers.
 
-This needs only bare `python3` plus `pandoc`/`pdflatex` on PATH — no enrich
+This needs only bare `python` plus `pandoc`/`pdflatex` on PATH — no enrich
 group required. If either command reports `[missing-binary]` or `[error]`,
 print a one-line warning in chat with that message and continue anyway —
 a rendering failure never blocks presenting the `.md` report.
@@ -472,7 +472,7 @@ a rendering failure never blocks presenting the `.md` report.
   listed and uncited. Replace the plan with what the report actually
   cites, derived rather than corrected by hand:
   ```bash
-  python3 -m src.dossier sections content/drafts/deep-research-<slug>.md \
+  python -m src.dossier sections content/drafts/deep-research-<slug>.md \
       --citekeys --write
   ```
   It overwrites the file with the heading -> citekey relation read out of
@@ -494,7 +494,7 @@ a rendering failure never blocks presenting the `.md` report.
 run it silently, and never make it a condition of presenting:
 
 ```bash
-python3 -m src.review verbatim scan content/drafts/deep-research-<slug>.md
+python -m src.review verbatim scan content/drafts/deep-research-<slug>.md
 ```
 
 It reports wording the report shares with **any** parsed source, cited or
@@ -519,7 +519,7 @@ that changes to this report should go through `draft-reviser` rather than
 another run of this skill -- seven phases and a dozen subagents is the
 wrong price for an edit -- and that `content/drafts/` and
 `content/dossiers/` are gitignored, so
-`python3 -m src.dossier export deep-research-<slug>` is how the report and
+`python -m src.dossier export deep-research-<slug>` is how the report and
 its working state get backed up.
 
 ## Guardrails

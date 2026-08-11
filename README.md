@@ -146,7 +146,7 @@ python -m src.sync
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python3 -m src.ledger
+python -m src.ledger
 
 # 5. Optional, and only when you want it: the enrichment layer -- layout-aware
 #    parsing, semantic search and topic clustering over the whole corpus.
@@ -179,7 +179,7 @@ arguing your point in different words, and topic clustering over the whole
 corpus.
 
 ```bash
-.venv-full/bin/python3 -m src.enrich --stages docling,embed
+.venv-full/bin/python -m src.enrich --stages docling,embed
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in

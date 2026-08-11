@@ -51,7 +51,7 @@ them and what they are allowed to do*.
 |---|---|---|
 | **1. Corpus** | `python -m src.sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
-| **3. Enrichment** | `src/enrich/__main__.py` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
+| **3. Enrichment** | `python -m src.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
 | **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`. Advisory over a finished draft -- never automatic, never a gate. | When you ask, after a draft exists |
 
 The numbers are introduction order, not a dependency rank.
@@ -160,14 +160,14 @@ flowchart TB
 
   subgraph DRAFTING["drafting layer -- generative, reviewed by you"]
     SKILL["a genre skill<br/><small>survey · thesis · textbook · tutorial · deep-research</small>"]
-    GATE{"python3 -m src.citation_gate<br/><b>hard gate</b>"}
-    REFS["python3 -m src.references"]
-    RENDER["python3 -m src.render_output"]
+    GATE{"python -m src.citation_gate<br/><b>hard gate</b>"}
+    REFS["python -m src.references"]
+    RENDER["python -m src.render_output"]
     DRAFT[("content/drafts/ · content/rendered/")]
   end
 
   subgraph ENRICH["enrichment layer -- optional, same lock as sync"]
-    ENR["python3 -m src.enrich --stages ..."]
+    ENR["python -m src.enrich --stages ..."]
     ART[("content/docling/ · content/chroma/ · content/topics.json")]
   end
 
@@ -430,9 +430,9 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python3`, stdlib only | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.passages` |
+| 1 | bare `python`, stdlib only | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.passages` |
 | 2 | a venv with `bibtexparser` | `python -m src.sync` |
-| 3 | a venv with the `enrich` group | `src/enrich/__main__.py` |
+| 3 | a venv with the `enrich` group | `python -m src.enrich` |
 
 Tier 1 is a design constraint, not an accident: the citation gate is the
 one thing that must run everywhere, including as a hook on a machine that
@@ -443,7 +443,7 @@ through `getattr` and never imports the library. See
 
 ### Tier 3: Render format
 
-**Set by:** `--format` on `python3 -m src.render_output`.
+**Set by:** `--format` on `python -m src.render_output`.
 
 | Format | Needs | Note |
 |---|---|---|
@@ -568,7 +568,7 @@ And the same decisions against the layer that makes them:
 |---|---|---|---|
 | 1. Corpus (`src.sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
 | 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
-| 3. Enrichment (`src/enrich/__main__.py`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
+| 3. Enrichment (`python -m src.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
 | 4. Review (the three aids) | evidence passages, detection tiers | interpreter 1, render format | none |
 
 The two lock-holders never run at once: the second to start exits `2`

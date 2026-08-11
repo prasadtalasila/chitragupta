@@ -58,8 +58,8 @@ corpus (sync) ──ledger, parsed/──▶ drafting (skills + gate chain) ─�
 Until 4.0.0 that was not quite true in code: `src/enrich/__main__.py` hosted
 a `provenance` and a `render` stage, each a three-line wrapper around a
 tier-1 command, so the enrichment layer imported the review and drafting
-layers. Both stages are gone -- run `python3 -m src.review provenance
-<draft>` and `python3 -m src.render_output <draft> --format pdf`
+layers. Both stages are gone -- run `python -m src.review provenance
+<draft>` and `python -m src.render_output <draft> --format pdf`
 directly, which need no venv and take no lock.
 
 ```mermaid
@@ -75,20 +75,20 @@ flowchart TB
   subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
     direction TB
     SKILL["<b>.claude/skills/</b> — five genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
-    CHAIN["<b>the chain, on every draft</b><br/><code>python3 -m src.citation_gate</code> — <b>hard gate</b><br/><code>python3 -m src.references</code><br/><code>python3 -m src.render_output</code><br/><small><b>bare python3, no venv</b> — by design</small>"]
+    CHAIN["<b>the chain, on every draft</b><br/><code>python -m src.citation_gate</code> — <b>hard gate</b><br/><code>python -m src.references</code><br/><code>python -m src.render_output</code><br/><small><b>bare python, no venv</b> — by design</small>"]
     SKILL --> CHAIN
   end
 
   subgraph JH["<b>LAYER 3 · ENRICHMENT</b> — optional · you run it, no skill does"]
     direction TB
-    FULL["<code>python3 -m src.enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
+    FULL["<code>python -m src.enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
     OUT3[/"content/docling/ · content/chroma/ · content/topics.json"/]
     FULL --> OUT3
   end
 
   subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never automatic, never a gate · <b>takes no lock</b>"]
     direction TB
-    A["<code>python3 -m src.review provenance</code><br/><code>python3 -m src.review coverage</code><br/><code>python3 -m src.review verbatim</code><br/><small>bare python3 · runs happily during a sync</small>"]
+    A["<code>python -m src.review provenance</code><br/><code>python -m src.review coverage</code><br/><code>python -m src.review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
     OUT4[/"<b>content/review/&lt;topic&gt;/&lt;stem&gt;.{provenance,verbatim,coverage}.md</b>"/]
     A --> OUT4
   end
@@ -169,14 +169,14 @@ literature they come from, are in
 Each skill retrieves from the corpus layer, drafts into
 `content/drafts/`, then runs the same three commands on its own output:
 
-1. `python3 -m src.citation_gate <draft>` -- the hard gate. The skill
+1. `python -m src.citation_gate <draft>` -- the hard gate. The skill
    loops here, fixing and re-running until it exits 0, and presents
    nothing before that.
-2. `python3 -m src.references <draft>` -- an IEEE reference list built from
+2. `python -m src.references <draft>` -- an IEEE reference list built from
    exactly the citekeys the draft cites, numbered by first appearance.
    Skipped for thesis `.tex` fragments, where the surrounding LaTeX owns
    the bibliography.
-3. `python3 -m src.render_output <draft> --format pdf` -- the
+3. `python -m src.render_output <draft> --format pdf` -- the
    rendered output. Citations render IEEE-style: numeric `[1]` markers,
    `[3]-[6]` for a consecutive run, over a numbered bibliography built
    from the citekeys actually cited.
@@ -216,8 +216,8 @@ ever reads what it produced.
 `src/enrich/__main__.py` is the entry point, and it is the only one:
 
 ```bash
-.venv-full/bin/python3 -m src.enrich --stages docling,embed
-.venv-full/bin/python3 -m src.enrich --for-draft content/drafts/digital-twins.md
+.venv-full/bin/python -m src.enrich --stages docling,embed
+.venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
 ```
 
 | Stage | What it produces | `--for-draft` |
@@ -228,7 +228,7 @@ ever reads what it produced.
 
 **Two stages left in 4.0.0**, and it is worth knowing why if you have a
 command that names them. `provenance` and `render` were three-line
-wrappers around `python3 -m src.review provenance` and `python3 -m
+wrappers around `python -m src.review provenance` and `python -m
 src.render_output` -- this page already called them conveniences rather
 than enrichment work. Hosting them here had two costs: it made the
 enrichment layer *import* the review and drafting layers, the one cycle
@@ -284,10 +284,10 @@ Nothing invokes them automatically, and none of them gates anything:
 
 | Command | Answers |
 |---|---|
-| `python3 -m src.review provenance <draft>` | what in each cited source actually supports the claim citing it, quoting a real passage |
-| `python3 -m src.review verbatim overlap\|locate …` | how much wording a draft shares with one cited source, and which page a phrase is on |
-| `python3 -m src.review verbatim scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
-| `python3 -m src.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
+| `python -m src.review provenance <draft>` | what in each cited source actually supports the claim citing it, quoting a real passage |
+| `python -m src.review verbatim overlap\|locate …` | how much wording a draft shares with one cited source, and which page a phrase is on |
+| `python -m src.review verbatim scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
+| `python -m src.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
 
 **Advisory, not a gate**, and named accordingly. *Review* rather than
 *verification* because `src.citation_gate` is verification, it lives in
@@ -296,7 +296,7 @@ layer" that excluded the gate would split the concept across two layers.
 The contrast is the point, not a competition.
 
 **It takes no lock.** These are read-only over the corpus and must keep
-working during a `sync`, like `python3 -m src.ledger` and retrieval. That
+working during a `sync`, like `python -m src.ledger` and retrieval. That
 was true of the commands before 4.0.0 and false of one entry point into
 them: `--stages provenance` on the enrichment layer ran a review aid
 holding sync's write lock, which is why that stage is gone.
@@ -462,9 +462,9 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python3`, stdlib only | `citation_gate`, `references`, `render_output`, `ledger`, `src.review` (all three aids) |
+| 1 | bare `python`, stdlib only | `citation_gate`, `references`, `render_output`, `ledger`, `src.review` (all three aids) |
 | 2 | venv + `bibtexparser` | `src.sync` |
-| 3 | venv + the `enrich` group | `src/enrich/__main__.py` |
+| 3 | venv + the `enrich` group | `python -m src.enrich` |
 
 **The gate chain is deliberately in tier 1.** `citation_gate` ->
 `references` -> `render_output` runs on the system interpreter with no
@@ -484,7 +484,7 @@ no package from that group at all -- it is the drafting layer's publish
 step. It now lives in `src/` beside the rest of that layer. The last
 residue of the same confusion went in 5.0.0: `verbatim_check.py` was a
 review-layer command living in `scripts/`, the directory that held the
-enrichment layer's entry point. It ran on bare `python3` like the other
+enrichment layer's entry point. It ran on bare `python` like the other
 two aids and was in no way heavier; only its path suggested otherwise.
 It is `src/review/verbatim_check.py` now, and `scripts/` holds no layer
 entry point at all -- `enrich.py` moved to `src/enrich/__main__.py` in
@@ -496,7 +496,7 @@ That axis -- which binaries a command shells out to -- is independent of
 which directory it lives in, and always was.
 
 **One entry point per layer, one level deep.** Every layer is reached
-through a single `python3 -m src.<layer>`: `src.sync` for the corpus
+through a single `python -m src.<layer>`: `src.sync` for the corpus
 layer, `src.enrich --stages …` for enrichment, `src.review <aid>` for
 review. A layer's package may nest as deep as its code wants; its
 *command surface* does not. The submodules inside `src/enrich/` and
@@ -559,7 +559,7 @@ against any other writer, not just sync against sync. The second one to
 start exits `2` rather than interleaving, and the lock releases itself if
 its holder is killed.
 
-Readers are never blocked: `python3 -m src.ledger`, the citation gate,
+Readers are never blocked: `python -m src.ledger`, the citation gate,
 retrieval and **the whole review layer** all run happily while a sync is
 in progress. The review layer's exemption is deliberate and stated in its
 own section -- reviewing a finished draft is exactly the kind of work

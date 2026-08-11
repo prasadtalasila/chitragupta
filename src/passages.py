@@ -54,7 +54,7 @@ passage shown to a reviewer, and the two should not answer "what does
 this source say here?" from different text -- but today they do.
 
 Stdlib only (sqlite3/re/subprocess), like citation_gate.py and
-references.py -- runs with bare `python3`, no venv.
+references.py -- runs with bare `python`, no venv.
 """
 
 import json
@@ -120,7 +120,7 @@ def passage_records(dl_doc) -> list[dict]:
 
     `dl_doc` is a Docling `DoclingDocument`, read entirely through
     `getattr` so that this module -- which must import under a bare
-    `python3` -- never names the library. Both writers pass one in: the
+    `python` -- never names the library. Both writers pass one in: the
     corpus layer's `pdf_text._extract_docling` and the enrichment layer's
     `docling_parse.parse_doc`.
     """

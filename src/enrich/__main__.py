@@ -4,7 +4,7 @@
     Docling -> sentence-transformers/Chroma -> BERTopic
 
 The enrichment layer's single entry point, one level deep like every
-other layer's: `python3 -m src.enrich`, as the corpus layer has
+other layer's: `python -m src.enrich`, as the corpus layer has
 `python -m src.sync`. The stage modules beside this one have no
 `__main__` block, so `python -m src.enrich.docling_parse` imports a
 module and exits 0 without doing anything -- `--stages` is the only way
@@ -28,8 +28,8 @@ takes the same write lock as `python -m src.sync`. Until 4.0.0 it also
 carried two stages that did not: `provenance` (a review-layer report) and
 `render` (the drafting layer's publish step), each a three-line wrapper
 around a command you can run directly. Both are gone -- run
-`python3 -m src.review provenance <draft>` and
-`python3 -m src.render_output <draft> --format pdf` instead, which need
+`python -m src.review provenance <draft>` and
+`python -m src.render_output <draft> --format pdf` instead, which need
 no venv at all, and neither of which should ever have been made to wait
 on a running sync.
 
@@ -38,9 +38,9 @@ enrichment layer now reads corpus artefacts and writes corpus artefacts,
 and does not import the drafting or review layers.
 
 Usage:
-    python3 -m src.enrich --target host
-    python3 -m src.enrich --stages embed,bertopic
-    python3 -m src.enrich --for-draft content/drafts/chapter.md
+    python -m src.enrich --target host
+    python -m src.enrich --stages embed,bertopic
+    python -m src.enrich --for-draft content/drafts/chapter.md
 """
 
 import argparse
@@ -139,7 +139,7 @@ STAGE_FUNCS = {
 def parse_args():
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
-    parser = argparse.ArgumentParser(prog="python3 -m src.enrich", description=__doc__,
+    parser = argparse.ArgumentParser(prog="python -m src.enrich", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--target", choices=["host", "docker"], default="host",
                          help="Informational only -- stages self-probe regardless of this flag.")
@@ -220,8 +220,8 @@ def main(configure_logging: bool = False) -> int:
                   f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
                   "artefact, and a partial one is indistinguishable from a complete one. Run "
                   "them as separate commands:\n"
-                  f"      python3 -m src.enrich --for-draft {args.for_draft} --stages docling\n"
-                  f"      python3 -m src.enrich --stages {','.join(refused)}")
+                  f"      python -m src.enrich --for-draft {args.for_draft} --stages docling\n"
+                  f"      python -m src.enrich --stages {','.join(refused)}")
             return EXIT_BAD_SCOPE
 
         draft_path = Path(args.for_draft)

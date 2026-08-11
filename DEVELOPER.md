@@ -353,7 +353,7 @@ document the enrichment layer parses comes from the bib file (see
 
 ## Citation provenance
 
-`python3 -m src.review provenance content/drafts/<slug>.md` reports, for
+`python -m src.review provenance content/drafts/<slug>.md` reports, for
 every citation in a draft, what in the cited source supports it and where
 -- ordered worst match first. It writes
 `content/review/<the draft's path minus its suffix>.provenance.md` plus

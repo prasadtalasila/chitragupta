@@ -102,7 +102,7 @@ flowchart LR
 The same path as [the Quickstart](../README.md#quickstart), drawn with the
 two checkpoints that actually catch people: the **Export Files** tick box,
 which silently produces a bibliography with no PDFs attached to it, and
-the first `python3 -m src.ledger` after a sync, which is where you find
+the first `python -m src.ledger` after a sync, which is where you find
 out whether anything became citable. Exit codes are on the diagram
 because at this stage they are the only feedback you have.
 
@@ -122,13 +122,13 @@ flowchart TB
   DFAIL["<b>1</b> — something didn't parse.<br/><small>The summary names each one.<br/>Fix or remove it; re-running is cheap.</small>"]
   DBUSY["<b>2</b> — another run holds the lock.<br/><small>Nothing was lost. Try again later.</small>"]
 
-  E["<b>5 · Look at what it found</b><br/><code>python3 -m src.ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
+  E["<b>5 · Look at what it found</b><br/><code>python -m src.ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
   E1{{"Rows with status<br/><code>parsed</code>?"}}
   EEMPTY["Nothing is citable yet.<br/><small>Almost always the Export Files trap above.<br/><code>--status no_pdf</code> tells you which entries and why.</small>"]
 
   F["<b>6 · Ask for a draft</b><br/><i>“write a survey section on digital twin composability”</i><br/><small>in Claude Code. The matching skill in <code>.claude/skills/</code><br/>picks it up and runs its own gate → references → render chain,<br/><b>looping on the gate until it exits 0</b> before showing you anything.</small>"]
 
-  G["<b>7 · Or drive that chain by hand</b><br/><code>python3 -m src.citation_gate &lt;draft&gt;</code> &nbsp;<i>← fix and repeat until OK</i><br/><code>python3 -m src.references &lt;draft&gt;</code><br/><code>python3 -m src.render_output &lt;draft&gt; --format pdf</code><br/><small>bare <code>python3</code> — none of these need the venv</small>"]
+  G["<b>7 · Or drive that chain by hand</b><br/><code>python -m src.citation_gate &lt;draft&gt;</code> &nbsp;<i>← fix and repeat until OK</i><br/><code>python -m src.references &lt;draft&gt;</code><br/><code>python -m src.render_output &lt;draft&gt; --format pdf</code><br/><small>bare <code>python</code> — none of these need the venv</small>"]
 
   DONE(["<b>content/rendered/&lt;slug&gt;.pdf</b>"])
 
@@ -230,21 +230,21 @@ flowchart TB
   end
 
   %% ─────────────── 5 · GATE ───────────────
-  GATE{{"<b>THE CITATION GATE</b> · <code>python3 -m src.citation_gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
+  GATE{{"<b>THE CITATION GATE</b> · <code>python -m src.citation_gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
   ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
   %% ─────────────── 6 · PUBLISH ───────────────
   subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
     direction TB
-    REFS["<b>python3 -m src.references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
-    REND["<b>python3 -m src.render_output</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
+    REFS["<b>python -m src.references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
+    REND["<b>python -m src.render_output</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
     OUT[/"<b>content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md</b>"/]
     REFS --> REND --> OUT
   end
 
   %% ─────────────── ENRICHMENT (side branch) ───────────────
-  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>python3 -m src.enrich --stages …</code> · same run lock"]
+  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>python -m src.enrich --stages …</code> · same run lock"]
     direction TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
@@ -710,7 +710,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python3 -m src.render_output</code> — it was never<br/>enrichment work, and stopped being a stage in 4.0.0</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m src.render_output</code> — it was never<br/>enrichment work, and stopped being a stage in 4.0.0</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -894,7 +894,7 @@ sequenceDiagram
 
     rect rgba(250,245,255,0.6)
     Note over Ref,Ren: PUBLISH
-    Skill->>Ref: python3 -m src.references <draft>
+    Skill->>Ref: python -m src.references <draft>
     Ref->>Led: bib_fields for exactly the cited citekeys
     Ref-->>Skill: a ## References section, numbered by first appearance
     Skill->>Ren: render_output --format pdf

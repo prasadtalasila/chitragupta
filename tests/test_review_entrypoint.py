@@ -14,6 +14,7 @@ tried once already, as `src.heavy.render_output`, and reverted in 3.0.0
 time except a reader comparing files by eye.
 """
 
+import importlib
 import re
 import subprocess
 import sys
@@ -59,13 +60,31 @@ class TestTheSubcommandsAreTheAids:
         (src/dossier.py checks `stem.suffix in review.AIDS`)."""
         assert set(entrypoint.AIDS) == set(review.AIDS)
 
+    def test_a_drifted_subcommand_set_is_refused_at_import(self, monkeypatch):
+        """And refused loudly, in every interpreter mode.
+
+        The check is a raise rather than an assert because `python -O`
+        strips assertions -- which would have left the invariant above
+        stated but unenforced exactly when someone had optimised the
+        interpreter and stopped watching.
+        """
+        monkeypatch.setitem(review.AIDS, "invented", "Not a real aid")
+        try:
+            with pytest.raises(RuntimeError, match="drifted apart"):
+                importlib.reload(entrypoint)
+        finally:
+            # Undo before the final reload, so the module is left importable
+            # for every test after this one.
+            monkeypatch.undo()
+            importlib.reload(entrypoint)
+
     @pytest.mark.parametrize("aid", ["provenance", "verbatim", "coverage"])
     def test_every_aid_is_reachable_and_declares_its_own_flags(self, aid):
         """--help rather than a run: this pins that the aid's parser was
         wired in, without needing a corpus."""
         result = _run("-m", "src.review", aid, "--help")
         assert result.returncode == 0
-        assert f"usage: python3 -m src.review {aid}" in result.stdout
+        assert f"usage: python -m src.review {aid}" in result.stdout
 
     def test_no_aid_prints_the_layers_usage_and_exits_zero(self):
         """"Tell me how to use this" is not an error -- the same rule

@@ -27,14 +27,14 @@ user asked for the other one. See "When to invoke".
   optional -- see step 3)
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `src/enrich/__main__.py` or any `src/enrich/*` build stage.** Both belong to the
+run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
 help and none exists, say so and use `src.retrieval.search()`; do not
 build one.
 
-If `python3 -m src.ledger` reports an empty ledger, say so before you
+If `python -m src.ledger` reports an empty ledger, say so before you
 start. Citations are optional in this genre, so the draft is still
 possible -- but it will carry none, and that is the user's call to make,
 not something to discover at the end. Ask whether to proceed uncited or to
@@ -123,7 +123,7 @@ candidate for the chapter.
    already know ("Audience first" above), and what it will and won't cover.
    Then create the dossier and record those decisions there:
    ```
-   python3 -m src.dossier init content/drafts/<slug>.md --genre textbook-chapter
+   python -m src.dossier init content/drafts/<slug>.md --genre textbook-chapter
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a book
@@ -160,7 +160,7 @@ candidate for the chapter.
    If you search the synced corpus for a motivating example, use the same
    retrieval discipline as the other skills: over-fetch
    ```
-   python3 -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   python -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
    ```
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
    every call**, even here where citing is optional -- it is what a later
@@ -225,7 +225,7 @@ candidate for the chapter.
 9. **Map the chapter's sections.** Once the draft is saved, derive the
    dossier's `sections.md` rather than writing it by hand:
    ```
-   python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+   python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
    ```
    so a later revision can find the section that owns a change without
    reading the whole chapter. It skips fenced code, so a `# Step 1`
@@ -246,7 +246,7 @@ candidate for the chapter.
     ```
     python -m src.references content/drafts/<slug>.md
     ```
-    Stdlib-only, like the citation gate -- bare `python3`, no venv. Writes
+    Stdlib-only, like the citation gate -- bare `python`, no venv. Writes
     numbered IEEE-style entries from `content/ledger.sqlite`, ordered by
     first appearance so the numbers match the rendered PDF's, each keeping
     its citekey in a trailing code span so a reader can trace every
@@ -262,9 +262,9 @@ candidate for the chapter.
 12. **Render tex and pdf.** Once saved (and gated/referenced, if it has
     citations), also render the other three formats:
     ```
-    python3 -m src.render_output content/drafts/<slug>.md --format tex
-    python3 -m src.render_output content/drafts/<slug>.md --format pdf
-    python3 -m src.render_output content/drafts/<slug>.md --format md
+    python -m src.render_output content/drafts/<slug>.md --format tex
+    python -m src.render_output content/drafts/<slug>.md --format pdf
+    python -m src.render_output content/drafts/<slug>.md --format md
     ```
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
@@ -274,7 +274,7 @@ candidate for the chapter.
     reader who won't open one. The draft itself keeps its `[@citekey]`
     markers.
 
-    This needs only bare `python3` plus `pandoc`/`pdflatex` on PATH -- no
+    This needs only bare `python` plus `pandoc`/`pdflatex` on PATH -- no
     enrich group required. If either command reports `[missing-binary]` or
     `[error]`, print a one-line warning in chat with that message and
     continue anyway -- a rendering failure never blocks presenting the
@@ -290,7 +290,7 @@ candidate for the chapter.
 14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
     ```
-    python3 -m src.review verbatim scan content/drafts/<slug>.md
+    python -m src.review verbatim scan content/drafts/<slug>.md
     ```
     It reports wording the chapter shares with **any** parsed source,
     cited or not -- including a source the citing paragraph never names,
@@ -310,7 +310,7 @@ candidate for the chapter.
     dossier is, that changes to this chapter should go through
     `draft-reviser` rather than another run of this skill, and that
     `content/drafts/` and `content/dossiers/` are gitignored -- so
-    `python3 -m src.dossier export <slug>` is how a draft and its working
+    `python -m src.dossier export <slug>` is how a draft and its working
     state get backed up.
 
 ## House style for this genre

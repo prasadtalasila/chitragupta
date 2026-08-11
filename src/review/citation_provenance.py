@@ -27,11 +27,11 @@ against whatever that ladder hands back; it no longer decides where the
 text comes from.
 
 Stdlib only (sqlite3/re), like citation_gate.py and references.py --
-runs with bare `python3`, no venv.
+runs with bare `python`, no venv.
 
 Usage:
-    python3 -m src.review provenance content/drafts/<slug>.md
-    python3 -m src.review provenance <draft.md> --formats md,tex,pdf
+    python -m src.review provenance content/drafts/<slug>.md
+    python -m src.review provenance <draft.md> --formats md,tex,pdf
 """
 
 import argparse
@@ -350,7 +350,7 @@ def render_markdown(report: Report) -> str:
         # would otherwise be recorded as two arguments, so the header
         # would name an invocation that doesn't reproduce the report.
         # The other two review aids already quote theirs.
-        shlex.join(["python3", "-m", "src.review", "provenance", str(report.draft)]),
+        shlex.join(["python", "-m", "src.review", "provenance", str(report.draft)]),
     ) + [
         "## How to read this",
         "",

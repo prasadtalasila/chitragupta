@@ -18,7 +18,7 @@ python-deps`), since it drives the real Docling stack.
 
 `bench_drift.py` and `bench_overlap.py` are the exceptions: they measure
 `src.dossier` and `src.overlap_index`/`src/review/verbatim_check.py`, all
-stdlib-only, so both run under bare `python3` with no corpus built and no
+stdlib-only, so both run under bare `python` with no corpus built and no
 GPU. `bench_drift.py` generates its own throwaway corpus and never
 touches `content/`; `bench_overlap.py` reads this host's real
 `content/ledger.sqlite` (read-only -- see its docstring for why that is

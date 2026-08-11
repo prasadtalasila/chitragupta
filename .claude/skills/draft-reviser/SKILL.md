@@ -31,7 +31,7 @@ is shaped that way.
 | Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
 **Read-only over the corpus layer.** Never run `python -m src.sync` and
-never run `src/enrich/__main__.py`. Both take the pipeline's write lock and
+never run `python -m src.enrich`. Both take the pipeline's write lock and
 can run for tens of minutes; they are the user's to run.
 
 ## Prose standards
@@ -52,7 +52,7 @@ break:
 ### 1. Locate the draft and read its state
 
 ```bash
-python3 -m src.dossier status content/drafts/<path>
+python -m src.dossier status content/drafts/<path>
 ```
 
 This prints which dossier files are filled in, the draft's section count,
@@ -72,7 +72,7 @@ Mark the start of this revision session in `retrieval.md`, before any
 retrieval call:
 
 ```bash
-python3 -m src.dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
+python -m src.dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
 ```
 
 `retrieval.md` rows otherwise carry only a date, and two revisions on the
@@ -92,7 +92,7 @@ scope change made without saying so is not.
 ### 3. Map the change onto sections
 
 ```bash
-python3 -m src.dossier sections content/drafts/<path>
+python -m src.dossier sections content/drafts/<path>
 ```
 
 Read **only** the sections the change touches, using the printed line
@@ -118,8 +118,8 @@ Most revisions don't. Before any retrieval call:
 Search only when the change opens genuinely new ground. If it does:
 
 ```bash
-python3 -m src.retrieval search "<query>" --k 15 --log content/drafts/<path>
-python3 -m src.retrieval evidence "<query>" --citekey <key> --log content/drafts/<path>
+python -m src.retrieval search "<query>" --k 15 --log content/drafts/<path>
+python -m src.retrieval evidence "<query>" --citekey <key> --log content/drafts/<path>
 ```
 
 (or `src.enrich.embed_index.search()` in place of `search` where the
@@ -179,9 +179,9 @@ Update only what actually changed:
 ```bash
 python -m src.citation_gate content/drafts/<path>
 python -m src.references content/drafts/<path>          # .md drafts; see --heading below
-python3 -m src.render_output content/drafts/<path> --format tex
-python3 -m src.render_output content/drafts/<path> --format pdf
-python3 -m src.render_output content/drafts/<path> --format md
+python -m src.render_output content/drafts/<path> --format tex
+python -m src.render_output content/drafts/<path> --format pdf
+python -m src.render_output content/drafts/<path> --format md
 ```
 
 Fix and re-run until the gate reports `OK`. **Never present a draft that
@@ -215,7 +215,7 @@ Before presenting, offer this -- don't run it silently, and never make it
 a condition of presenting:
 
 ```bash
-python3 -m src.review verbatim scan content/drafts/<path>
+python -m src.review verbatim scan content/drafts/<path>
 ```
 
 It reports wording the draft shares with **any** parsed source, cited or
@@ -242,7 +242,7 @@ verbatim -- what changes is how the work is found.
 ### R1. Read the report as data
 
 ```bash
-python3 -m src.dossier status content/drafts/<path> --json
+python -m src.dossier status content/drafts/<path> --json
 ```
 
 Or take the payload from a `--all --json` sweep the user already has. The
@@ -271,7 +271,7 @@ this section exists to prevent.
 **`missing` is a defect.** The draft stands on a paper the corpus no
 longer has; `citation_gate` already disagrees with the draft. Always
 actioned, whatever else the revision is about. Each entry maps a citekey
-to the sections citing it, and `python3 -m src.dossier sections
+to the sections citing it, and `python -m src.dossier sections
 content/drafts/<path>` turns those into line ranges, so the edit stays as
 scoped as any other. Look for the replacement in this order, and stop at
 the first that supports the claim:
@@ -284,7 +284,7 @@ the first that supports the claim:
 3. A fresh search -- here it *is* right, unlike the candidate path,
    because a claim left unsupported is genuinely new ground:
    ```bash
-   python3 -m src.retrieval search "<the claim>" --k 15 --log content/drafts/<path>
+   python -m src.retrieval search "<the claim>" --k 15 --log content/drafts/<path>
    ```
 
 If none of the three supports it, **remove the claim** and say so. Not a
@@ -304,12 +304,12 @@ re-running `search` for that query pays for fifteen snippets to be handed
 back the same fifteen citekeys:
 
 ```bash
-python3 -m src.retrieval evidence "<the query from the report>" \
+python -m src.retrieval evidence "<the query from the report>" \
     --citekey <candidate> --log content/drafts/<path>
 ```
 
 What the report lacks is text to judge on, and that is what `evidence` is
-for. Keep `python3 -m src.retrieval search "<query>" --k 15 --log <draft>`
+for. Keep `python -m src.retrieval search "<query>" --k 15 --log <draft>`
 for the case where the revision opens ground the dossier never covered --
 a query not already in `retrieval.md`, which by definition could not have
 produced a candidate.
@@ -402,11 +402,11 @@ Drafts written before `src/dossier.py` existed have none, and so do
 drafts written by hand. Bootstrap rather than refusing:
 
 ```bash
-python3 -m src.dossier init content/drafts/<path> --genre <genre>
+python -m src.dossier init content/drafts/<path> --genre <genre>
 ```
 
 Then fill in what the draft itself can tell you -- `sections.md` from
-`python3 -m src.dossier sections`, and `scope.md`'s reader/covers/excludes
+`python -m src.dossier sections`, and `scope.md`'s reader/covers/excludes
 from the draft's own scope paragraph if it has one. Leave `evidence.md`
 and `rejected.md` empty and **say so in chat**: the first revision of a
 bootstrapped draft cannot check a claim against recorded evidence, and
@@ -430,7 +430,7 @@ citekey.
 - **Never refuse a wide pass either.** The scoped default is an economy,
   not a rule about what the user is allowed to want. Hand off to
   `corpus-reviser` rather than arguing.
-- **Never run `python -m src.sync` or `src/enrich/__main__.py`.**
+- **Never run `python -m src.sync` or `python -m src.enrich`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
 - **Never silently change scope, reader or terminology.**

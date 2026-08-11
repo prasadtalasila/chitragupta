@@ -62,7 +62,7 @@ sequenceDiagram
 
     rect rgba(250,245,255,0.6)
     Note over Ref,Ren: PUBLISH
-    Skill->>Ref: python3 -m src.references <draft>
+    Skill->>Ref: python -m src.references <draft>
     Ref->>Led: bib_fields for exactly the cited citekeys
     Ref-->>Skill: a ## References section, numbered by first appearance
     Skill->>Ren: render_output --format pdf

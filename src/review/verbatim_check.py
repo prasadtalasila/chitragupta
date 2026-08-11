@@ -15,11 +15,11 @@ without doing anything. See docs/ARCHITECTURE.md on why every layer's
 command surface stays one level deep.
 
 Three modes:
-    python3 -m src.review verbatim overlap <draft.md> <citekey> [--n 8]
+    python -m src.review verbatim overlap <draft.md> <citekey> [--n 8]
         report the longest verbatim word-n-gram runs shared between the
         draft's sentences citing <citekey> and that source's parsed text.
 
-    python3 -m src.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
+    python -m src.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
                                        [--limit N] [--write] [--formats md,tex,pdf]
         slide the WHOLE draft across the WHOLE corpus index (src/overlap_index.py),
         not just the sources a paragraph happens to cite -- catches verbatim
@@ -28,7 +28,7 @@ Three modes:
         report under content/review/, beside the same draft's provenance
         and coverage reports.
 
-    python3 -m src.review verbatim locate <citekey> "<phrase>" [more phrases...]
+    python -m src.review verbatim locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
         appears on, for fact-checking page numbers.
 
@@ -457,7 +457,7 @@ def render_scan_markdown(draft, findings, min_run, gap, limit):
     # findings on stdout but not the file -- which is what a reader
     # holding the file wants to regenerate. `--formats` is left out; it
     # selects renders *of* this report and changes nothing in it.
-    command = ["python3", "-m", "src.review", "verbatim", "scan", str(draft),
+    command = ["python", "-m", "src.review", "verbatim", "scan", str(draft),
                "--min-run", str(min_run), "--gap", str(gap)]
     if limit is not None:
         command += ["--limit", str(limit)]

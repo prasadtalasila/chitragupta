@@ -17,7 +17,7 @@ layer: deterministic, safe to run unattended).
 - `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
   `sync` reads it, it is never regenerated
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python3 -m src.retrieval search "<q>" --k 15 --log <draft>`,
+- `src/retrieval.py` -- `python -m src.retrieval search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -37,7 +37,7 @@ you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
 is the full design.
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `src/enrich/__main__.py` or any `src/enrich/*` build stage.** Both belong to the
+run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -47,7 +47,7 @@ build one.
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python3 -m src.ledger
+python -m src.ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
@@ -103,7 +103,7 @@ collapse them for the sake of a cleaner narrative.
    omission from an oversight. Then create the dossier and record the same
    decisions there:
    ```
-   python3 -m src.dossier init content/drafts/<slug>.md --genre survey
+   python -m src.dossier init content/drafts/<slug>.md --genre survey
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a survey for
@@ -122,7 +122,7 @@ collapse them for the sake of a cleaner narrative.
 1. **Retrieve broadly, over-fetching on purpose.** Break the requested topic
    into 2-4 sub-themes if it's broad. For each:
    ```
-   python3 -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<slug>.md
+   python -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<slug>.md
    ```
    Pull more candidates than you expect to use. This is a keyword-overlap
    ranker, not embeddings (unless `src/enrich/embed_index.py` has been built
@@ -143,7 +143,7 @@ collapse them for the sake of a cleaner narrative.
    Where a snippet is not enough to decide on a source you are minded to
    keep, read more of that one document:
    ```
-   python3 -m src.retrieval evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
+   python -m src.retrieval evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
    ```
    Use it to be **more careful about something you are about to cite** -- not
    as a routine second pass over everything. `docs/REJECTION.md` explains why
@@ -213,7 +213,7 @@ collapse them for the sake of a cleaner narrative.
    `content/drafts/<slug>.md` first if you haven't already, then derive
    the map rather than writing it by hand:
    ```
-   python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+   python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
    ```
    It joins each heading's line range to the citekeys cited inside it and
    writes the dossier's `sections.md`, so a later revision can tell which
@@ -235,7 +235,7 @@ collapse them for the sake of a cleaner narrative.
     ```
     python -m src.references content/drafts/<slug>.md
     ```
-    Stdlib-only, like the citation gate — bare `python3`, no venv. Writes
+    Stdlib-only, like the citation gate — bare `python`, no venv. Writes
     numbered IEEE-style entries (`[1] J. Doe and R. Roe, "A Paper," *IEEE
     Trans. Testing*, vol. 3, pp. 1–9, 2024. \`doe_paper_2024\``) from
     `content/ledger.sqlite`, ordered by first appearance so the numbers
@@ -249,9 +249,9 @@ collapse them for the sake of a cleaner narrative.
 11. **Render tex and pdf.** Once the gate passes and the references section
     is built, also render the other three formats:
     ```
-    python3 -m src.render_output content/drafts/<slug>.md --format tex
-    python3 -m src.render_output content/drafts/<slug>.md --format pdf
-    python3 -m src.render_output content/drafts/<slug>.md --format md
+    python -m src.render_output content/drafts/<slug>.md --format tex
+    python -m src.render_output content/drafts/<slug>.md --format pdf
+    python -m src.render_output content/drafts/<slug>.md --format md
     ```
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
@@ -261,7 +261,7 @@ collapse them for the sake of a cleaner narrative.
     reader who won't open one. The draft itself keeps its `[@citekey]`
     markers.
 
-    This needs only bare `python3` plus `pandoc`/`pdflatex` on PATH — no
+    This needs only bare `python` plus `pandoc`/`pdflatex` on PATH — no
     enrich group required. If either command reports `[missing-binary]` or
     `[error]`, print a one-line warning in chat with that message and
     continue anyway — a rendering failure never blocks presenting the
@@ -279,7 +279,7 @@ collapse them for the sake of a cleaner narrative.
 14. **Offer the verbatim scan.** Before presenting, offer this — don't run
     it silently, and never make it a condition of presenting:
     ```
-    python3 -m src.review verbatim scan content/drafts/<slug>.md
+    python -m src.review verbatim scan content/drafts/<slug>.md
     ```
     It reports wording the draft shares with **any** parsed source, cited
     or not — including a source the citing paragraph never names, and
@@ -297,7 +297,7 @@ collapse them for the sake of a cleaner narrative.
     Tell the user where the dossier is, that changes to this draft should
     go through `draft-reviser` rather than another run of this skill, and
     that `content/drafts/` and `content/dossiers/` are gitignored -- so
-    `python3 -m src.dossier export <slug>` is how a draft and its working
+    `python -m src.dossier export <slug>` is how a draft and its working
     state get backed up.
 
 ## Sources

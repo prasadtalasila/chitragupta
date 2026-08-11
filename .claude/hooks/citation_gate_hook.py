@@ -65,7 +65,7 @@ def main() -> int:
         return 0  # not a genre-skill draft -- nothing to gate
 
     result = subprocess.run(
-        ["python3", "-m", "src.citation_gate", str(file_path)],
+        ["python", "-m", "src.citation_gate", str(file_path)],
         cwd=repo_root,
         capture_output=True,
         text=True,

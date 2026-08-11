@@ -17,7 +17,7 @@ layer (generative, on-demand, user-reviewed) -- distinct from
   point the thesis document's `\addbibresource` (biblatex) or `\bibliography`
   (bibtex) at this file directly rather than a copy
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python3 -m src.retrieval search "<q>" --k 15 --log <draft>`,
+- `src/retrieval.py` -- `python -m src.retrieval search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -44,7 +44,7 @@ revision reads (reader, scope, glossary, rejected candidates and why,
 steering). Two shapes for two readers, one directory per draft.
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `src/enrich/__main__.py` or any `src/enrich/*` build stage.** Both belong to the
+run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -54,7 +54,7 @@ build one.
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python3 -m src.ledger
+python -m src.ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
@@ -105,7 +105,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    the slug it will be saved under. Then create the dossier and record
    the same decisions there:
    ```
-   python3 -m src.dossier init content/drafts/<slug>.tex --genre thesis-chapter
+   python -m src.dossier init content/drafts/<slug>.tex --genre thesis-chapter
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "the methods
@@ -129,7 +129,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    component concepts -- over-fetch rather than assuming the top few hits
    are automatically the right ones:
    ```
-   python3 -m src.retrieval search "<concept>" --k 15 --log content/drafts/<slug>.tex
+   python -m src.retrieval search "<concept>" --k 15 --log content/drafts/<slug>.tex
    ```
    `--log` records the query and the call's size in the dossier's
    `retrieval.md`. **Pass it on every call.** It is what makes the run's
@@ -175,7 +175,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `content/drafts/<slug>.tex` first, then derive the map rather than
    writing it by hand:
    ```
-   python3 -m src.dossier sections content/drafts/<slug>.tex --citekeys --write
+   python -m src.dossier sections content/drafts/<slug>.tex --citekeys --write
    ```
    It reads `\citep`/`\citet` as readily as `[@key]` and tracks
    `verbatim`/`lstlisting`/`minted`, so a `\section`-like line inside a
@@ -197,14 +197,14 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     from that same fragment (pandoc's LaTeX reader handles a preamble-less
     fragment fine):
     ```
-    python3 -m src.render_output content/drafts/<slug>.tex --format md
-    python3 -m src.render_output content/drafts/<slug>.tex --format pdf
+    python -m src.render_output content/drafts/<slug>.tex --format md
+    python -m src.render_output content/drafts/<slug>.tex --format pdf
     ```
     Both previews land beside the fragment: a draft at
     `content/drafts/<topic>/<name>.tex` renders to
     `content/rendered/<topic>/<name>.{md,pdf}`, so one topic directory
     holds the chapter, its dossier and its previews.
-    This needs only bare `python3` plus `pandoc`/`pdflatex` on PATH -- don't
+    This needs only bare `python` plus `pandoc`/`pdflatex` on PATH -- don't
     assume either is present or absent without checking; probe (or just try
     the command and read the result) rather than assuming from a prior run
     on a different host. If either command reports `[missing-binary]` or
@@ -242,7 +242,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 13. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
     ```
-    python3 -m src.review verbatim scan content/drafts/<slug>.tex
+    python -m src.review verbatim scan content/drafts/<slug>.tex
     ```
     It reports wording the chapter shares with **any** parsed source,
     cited or not -- including a source the citing paragraph never names,
@@ -259,7 +259,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     if it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of
     this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python3 -m src.dossier export <slug>` is how a draft
+    gitignored -- so `python -m src.dossier export <slug>` is how a draft
     and its working state get backed up.
 
 ## Sources

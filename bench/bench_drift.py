@@ -1,4 +1,4 @@
-"""Wall-clock cost of `python3 -m src.dossier status --all`.
+"""Wall-clock cost of `python -m src.dossier status --all`.
 
 The sweep's design turns on one claim -- that throwing the BM25 index
 away after each scan is affordable, because a warm cache makes the scan
@@ -27,7 +27,7 @@ pages by itself.
     python3 bench/bench_drift.py --out bench/results/<date>-drift/drift.json
 
 Stdlib only and no GPU, like the module it measures -- this one runs
-under bare `python3`.
+under bare `python`.
 """
 
 import argparse
@@ -231,7 +231,7 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
             config.RETRIEVAL_INDEX_PATH.unlink(missing_ok=True)
             result["cold"][str(count)] = _time(lambda: sweep(subset), repeats)
 
-            # Warm: the cache `python3 -m src.retrieval` leaves behind.
+            # Warm: the cache `python -m src.retrieval` leaves behind.
             # Built once here through the real indexer, then reused
             # read-only.
             retrieval.search("digital twin", k=1)

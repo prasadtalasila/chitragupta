@@ -24,12 +24,12 @@ should still be there next month, and diffable against the next
 revision's.
 
 Stdlib-only (reuses src.retrieval and src.citation_gate.extract_citekeys_from_line,
-both already stdlib-only) -- runs with bare `python3`, no venv, same as
+both already stdlib-only) -- runs with bare `python`, no venv, same as
 citation_gate.py/references.py.
 
 Usage:
-    python3 -m src.review coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
-    python3 -m src.review coverage <draft.md> --query "topic one" --write
+    python -m src.review coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
+    python -m src.review coverage <draft.md> --query "topic one" --write
 """
 
 import argparse
@@ -120,7 +120,7 @@ def _command(draft_path: Path, queries: list[str], k: int) -> str:
     it selects renders *of* the report and changes nothing in the
     Markdown this header sits in.
     """
-    parts = ["python3", "-m", "src.review", "coverage", str(draft_path)]
+    parts = ["python", "-m", "src.review", "coverage", str(draft_path)]
     for query in queries:
         parts += ["--query", query]
     parts += ["--k", str(k), "--write"]

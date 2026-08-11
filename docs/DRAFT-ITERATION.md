@@ -166,7 +166,7 @@ disagrees with the draft hands `draft-reviser` the wrong section for a
 citation.
 
 ```bash
-python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
 ```
 
 builds it instead, from both citation syntaxes, skipping fenced code and
@@ -218,7 +218,7 @@ written, plus a 12-character digest of that set:
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
 ```
 
-`python3 -m src.dossier status` recomputes it. If it differs, the corpus
+`python -m src.dossier status` recomputes it. If it differs, the corpus
 has moved, and the command names the citekeys that appear nowhere in the
 dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
@@ -261,7 +261,7 @@ transcription put it there.
 `sections.md`, and the dispatch prompt carries one line:
 
 ```
-Your evidence: python3 -m src.dossier brief <draft> --section "2. Failure modes"
+Your evidence: python -m src.dossier brief <draft> --section "2. Failure modes"
 ```
 
 An estimated ~40 output tokens per writer, ~0.8k equivalents for the
@@ -467,15 +467,15 @@ branches on the contents, not on the status code.
 The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
 
-1. `python3 -m src.dossier status <draft>` -- what is on disk, and has
-   the corpus moved? Then `python3 -m src.dossier mark-revision <draft>`,
+1. `python -m src.dossier status <draft>` -- what is on disk, and has
+   the corpus moved? Then `python -m src.dossier mark-revision <draft>`,
    before any retrieval call, so `retrieval.md` can tell this revision's
    cost apart from the last one -- its rows otherwise carry only a date,
    and two revisions on the same day would merge into one figure.
 2. Read `scope.md` and `steering.md`. These bound what the revision may
    change: a request that contradicts the recorded scope is a scope
    change, and gets said out loud rather than silently applied.
-3. `python3 -m src.dossier sections <draft>` -- heading to line range.
+3. `python -m src.dossier sections <draft>` -- heading to line range.
 4. Read *only* the affected sections, at those line ranges, and edit
    inside them.
 5. Re-search only if the change genuinely opens new ground, consulting
@@ -596,14 +596,14 @@ What replaces version control is an explicit bundle:
 
 ```bash
 # everything
-python3 -m src.dossier export
+python -m src.dossier export
 
 # one topic, including rendered PDFs
-python3 -m src.dossier export digital-twins-for-software-engineers --with-rendered
+python -m src.dossier export digital-twins-for-software-engineers --with-rendered
 
 # restore -- a dry run that reports what it would write
-python3 -m src.dossier restore drafts-all-2026-08-06.tar.gz
-python3 -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
+python -m src.dossier restore drafts-all-2026-08-06.tar.gz
+python -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 Three properties worth knowing:

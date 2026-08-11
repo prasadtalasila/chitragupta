@@ -66,7 +66,7 @@ class and 1-inch margins via the geometry package -- overridable per
 call, but those are the project's fixed defaults.
 
 `python -m src.render_output <file> --format tex|pdf|...` runs standalone
-with bare `python3` (no enrich group) -- it depends only on stdlib plus
+with bare `python` (no enrich group) -- it depends only on stdlib plus
 `src.config`/`src.citation_gate`/`src.references` (all three stdlib-only,
 same as this module), deliberately independent of `src/enrich/__main__.py`,
 which drags in the full corpus build and the docling/embed/topic_model
@@ -333,7 +333,7 @@ def _output_dir(input_path: Path) -> Path:
     written out again here. It lives in `config` because this module's
     docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python3`, which rules out importing `src/dossier.py`.
+    under bare `python`, which rules out importing `src/dossier.py`.
     What stays here is the *policy* -- fall back flat, and refuse to
     write outside `content/` -- which is this module's to decide.
 
@@ -551,7 +551,7 @@ def main() -> int:
     multi-GB `.venv-full` for a stage that itself only needs stdlib +
     `src.config` + `src.citation_gate`. Genre skills that just want a
     tex/pdf rendering of a draft should be able to run this with bare
-    `python3`, no enrich group required.
+    `python`, no enrich group required.
     """
     parser = argparse.ArgumentParser(description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.")
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")

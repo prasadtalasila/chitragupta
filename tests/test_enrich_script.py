@@ -508,7 +508,7 @@ class TestLogging:
     def test_the_run_is_logged_when_the_entrypoint_asks_for_it(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
     ):
-        """What `python3 -m src.enrich` actually does: the stage table
+        """What `python -m src.enrich` actually does: the stage table
         it prints also lands in logs/pipeline.log, tagged with this
         script's logger name so it can be told apart from sync's lines in
         the shared file."""

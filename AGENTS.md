@@ -105,7 +105,7 @@ enrichment layer is optional and nothing above it needs it.
   the same edit discipline over a full retrieval pass -- it still keeps
   the dossier. Never re-run a genre skill to change an existing draft --
   see docs/DRAFT-ITERATION.md.
-- **Layer 3, the enrichment layer -- optional** (`src/enrich/__main__.py`):
+- **Layer 3, the enrichment layer -- optional** (`python -m src.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
   generative, everything it writes is a corpus artefact, and it takes the
@@ -120,7 +120,7 @@ enrichment layer is optional and nothing above it needs it.
   verdict** -- every one exits 0 whether it finds something or not, and
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
-  corpus, so it keeps working during a `sync`, like `python3 -m
+  corpus, so it keeps working during a `sync`, like `python -m
   src.ledger` and retrieval. Input is a draft under `content/`; output is
   `content/review/`, mirroring the draft's path under `content/drafts/`
   the way `content/rendered/` and `content/dossiers/` do, with
@@ -164,5 +164,5 @@ reference.
 
 `python -m src.citation_gate` needs no venv -- it only reads
 `content/ledger.sqlite` through stdlib `sqlite3` and runs with bare
-`python3`. `python -m src.sync` does need the venv, and must be run
+`python`. `python -m src.sync` does need the venv, and must be run
 through the installed one rather than the bare system interpreter.

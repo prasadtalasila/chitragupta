@@ -453,7 +453,7 @@ including the conclusions later ones overturned.
 ## What a drift sweep costs
 
 Everything above is the corpus layer -- `sync` and the enrichment
-stages, where a run is measured in minutes. `python3 -m src.dossier
+stages, where a run is measured in minutes. `python -m src.dossier
 status --all` sits in the drafting layer and is measured in seconds, but
 it is worth pricing here for one reason: it is meant to be run **after
 every sync**, so "cheap enough to be habitual" is a requirement, not a
@@ -465,7 +465,7 @@ to the ledger and rewrite `content/retrieval_index.json` every time an
 inspection ran. [DRAFT-ITERATION.md](DRAFT-ITERATION.md#why-the-new-papers-are-not-found-with-search)
 is the argument; this is the price.
 
-Multi-GPU machine, bare `python3` (no venv -- `src.dossier` is
+Multi-GPU machine, bare `python` (no venv -- `src.dossier` is
 stdlib-only), no GPU involved. Medians of 5 runs over this project's own
 corpus: 646 ledger rows, 47.4 MB of parsed text. The drift scan never
 opens a PDF, so what it costs depends on the parsed text and the row

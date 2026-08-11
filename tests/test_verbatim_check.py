@@ -1,6 +1,6 @@
 """src/review/verbatim_check.py: the review layer's verbatim-overlap,
 whole-corpus scan and page-locator aid -- advisory over a finished
-draft, never a gate. Reached as `python3 -m src.review verbatim <mode>`;
+draft, never a gate. Reached as `python -m src.review verbatim <mode>`;
 the module has no __main__ block of its own.
 
 BIB/PARSED_DIR are module-level constants resolved from src.config at
@@ -886,7 +886,7 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 0
-        assert "usage: python3 -m src.review verbatim" in result.stdout
+        assert "usage: python -m src.review verbatim" in result.stdout
 
     def test_overlap_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
@@ -895,7 +895,7 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: python3 -m src.review verbatim overlap" in result.stderr
+        assert "usage: python -m src.review verbatim overlap" in result.stderr
 
     def test_scan_mode_missing_draft_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
@@ -904,7 +904,7 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: python3 -m src.review verbatim scan" in result.stderr
+        assert "usage: python -m src.review verbatim scan" in result.stderr
 
     def test_overlap_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
         # Regression: a third positional argument used to be silently
@@ -991,4 +991,4 @@ class TestCliDispatch:
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: python3 -m src.review verbatim locate" in result.stderr
+        assert "usage: python -m src.review verbatim locate" in result.stderr

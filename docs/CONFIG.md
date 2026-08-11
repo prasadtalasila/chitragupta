@@ -559,7 +559,7 @@ Edit `[enrich].embedding_model`, or set `EMBEDDING_MODEL=...` for a single
 run, then rebuild the index:
 
 ```bash
-python3 -m src.enrich --stages embed
+python -m src.enrich --stages embed
 ```
 
 The model downloads on first use (needs network), and Chroma's existing

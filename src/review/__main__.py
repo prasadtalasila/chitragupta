@@ -1,15 +1,15 @@
-"""The review layer's single entry point: `python3 -m src.review <aid>`.
+"""The review layer's single entry point: `python -m src.review <aid>`.
 
 Three aids, run by hand over a finished draft. None of them is a gate,
 none takes the write lock, and nothing invokes them automatically:
 
-    python3 -m src.review provenance <draft>
+    python -m src.review provenance <draft>
         what in each cited source supports the claim citing it.
 
-    python3 -m src.review coverage <draft> --query "..."
+    python -m src.review coverage <draft> --query "..."
         retrieval surfaced these sources -- did the draft cite them?
 
-    python3 -m src.review verbatim overlap|scan|locate ...
+    python -m src.review verbatim overlap|scan|locate ...
         how much wording the draft shares with a cited source, with any
         parsed source, and which page a phrase is on.
 
@@ -49,16 +49,21 @@ AIDS = {
     "coverage": (citation_coverage, "retrieval surfaced it -- did the draft cite it?"),
 }
 
-assert set(AIDS) == set(review.AIDS), (
-    "the entry point's subcommands and review.AIDS have drifted apart: "
-    f"{sorted(set(AIDS) ^ set(review.AIDS))}. AIDS owns the report suffixes, "
-    "so a subcommand missing from it would write a report nothing can find."
-)
+# A raise rather than an assert: `python -O` strips assertions, and this
+# is the one check standing between a mistyped subcommand and a report
+# filed under a name the rest of the layer cannot find. An invariant
+# worth stating is worth stating in every interpreter mode.
+if set(AIDS) != set(review.AIDS):
+    raise RuntimeError(
+        "the entry point's subcommands and review.AIDS have drifted apart: "
+        f"{sorted(set(AIDS) ^ set(review.AIDS))}. AIDS owns the report suffixes, "
+        "so a subcommand missing from it would write a report nothing can find."
+    )
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="python3 -m src.review",
+        prog="python -m src.review",
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

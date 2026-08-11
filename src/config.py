@@ -475,7 +475,7 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
 
     Lives here rather than in either caller because `src/render_output.py`
     is committed to stdlib plus `config`/`citation_gate`/`references` so a
-    genre skill can render under bare `python3` -- it cannot import
+    genre skill can render under bare `python` -- it cannot import
     `src/dossier.py`, and before this the rule was written out three times
     and missed in a fourth place (`citation_provenance`), which is how
     two drafts named `survey.md` came to share one report.
