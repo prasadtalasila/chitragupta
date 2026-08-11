@@ -261,13 +261,6 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           candidates, steering, revision log) as Markdown under content/dossiers/,
                           mirroring the draft's path; plus tar.gz backup/restore. Read-only over the
                           corpus layer, never a gate -- see docs/DRAFT-ITERATION.md
-  review.py                 the review layer's shared output contract -- report path (content/review/,
-                          mirroring the draft), the "not a gate" banner, the header, and the
-                          write-md-then-render routine all three commands use. No timestamp, so a
-                          report diffs across revisions
-  citation_coverage.py      review layer: retrieval-candidates-vs-actually-cited report, not a gate
-  citation_provenance.py    review layer: what in each cited source supports the claim citing it, not a gate
-                            (scores claims against passages.py's ladder; see docs/CITATION-PROVENANCE.md)
   references.py             auto-generates a draft's "## References" section from its own cited citekeys,
                           as numbered IEEE entries ordered by first appearance -- the same order (and
                           so the same numbers) pandoc's citeproc assigns when the draft is rendered
@@ -275,15 +268,29 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           needed, which is why it sits here and not in src/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
+src/review/                the review layer -- one command, `python -m src.review <aid>`, three aids
+  __init__.py               the layer's shared output contract -- report path (content/review/,
+                          mirroring the draft), the "not a gate" banner, the header, and the
+                          write-md-then-render routine all three aids use. No timestamp, so a
+                          report diffs across revisions
+  __main__.py               the layer's single entry point: one parser, three subcommands, each
+                          wired to its aid's own build_parser()/run(). The aids below carry no
+                          __main__ block of their own -- see docs/ARCHITECTURE.md on why a layer's
+                          command surface stays one level deep
+  citation_coverage.py      `coverage` -- retrieval-candidates-vs-actually-cited report, not a gate
+  citation_provenance.py    `provenance` -- what in each cited source supports the claim citing it,
+                          not a gate (scores claims against passages.py's ladder; see
+                          docs/CITATION-PROVENANCE.md)
+  verbatim_check.py         `verbatim` -- per-citekey overlap, whole-draft x whole-corpus scan, and
+                          page-locating checks against sources
 src/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetry group), optional
+  __main__.py               the layer's entry point, `python -m src.enrich --stages …`; orchestrates
+                          the stages below, which carry no __main__ block of their own
   corpus.py                 the enrichment layer's view of the ledger -- one CorpusDoc per bib item,
                           so every enriched document is citable, keyed by its citekey
   docling_parse.py, embed_index.py, topic_model.py
-scripts/
+scripts/                   dev tooling only -- no layer entry point lives here
   install_full_pipeline.sh  single staged install path (os-deps/python-deps/dev-deps/all) for host + Docker
-  enrich.py                 orchestrates src/enrich/* stages -- the enrichment layer's entry point
-  verbatim_check.py          review layer: per-citekey overlap, whole-draft x whole-corpus scan, and
-                          page-locating checks against sources
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)
@@ -386,7 +393,7 @@ Full design rationale, including the measurements behind those choices:
 Running this pipeline on a schedule was the long-standing goal here.
 **Most of it now exists**, as of 3.4.0: a rotating log file (added as
 `logs/sync.log`, and renamed to `logs/pipeline.log` once
-`src/enrich/__main__.py` started sharing it -- see `src/logging_setup.py`),
+the enrichment layer started sharing it -- see `src/logging_setup.py`),
 a pages/s throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
 [docs/CLI.md](docs/CLI.md#running-sync-on-a-schedule) -- including the

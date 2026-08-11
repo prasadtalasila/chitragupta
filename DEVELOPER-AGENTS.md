@@ -33,10 +33,11 @@ What a part *does* and what it *costs to install* are separate axes:
 the `enrich` group, which is why it sits in `src/` rather than
 `src/enrich/`. (The first three layers were called "job 1", "job 2" and
 "the heavy pipeline" until 3.0.0; *heavy* now names nothing here. The
-fourth, **review**, was "review aids, in no layer" until 4.0.0. One
-residue of the same directory-vs-cost confusion is still open:
-`src/review/verbatim_check.py` is review-layer code sitting where the
-enrichment layer's entry point lives.)
+fourth, **review**, was "review aids, in no layer" until 4.0.0. The last
+residue of the same directory-vs-cost confusion closed in 5.0.0, when
+`verbatim_check.py` left `scripts/` -- where the enrichment layer's entry
+point then lived -- for `src/review/`, beside the two aids it belongs
+with.)
 
 ## Environment constraints on this host
 

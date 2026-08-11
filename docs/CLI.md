@@ -49,9 +49,13 @@ below is the whole migration.
 
 Every flag, exit code and output path is unchanged, so a script that
 only needed its command string edited needs nothing else. `python -m
-src.review` and `python -m src.enrich` with no arguments each print
-their layer's usage and exit 0, which is the fastest way to check a
-spelling.
+src.review` with no arguments prints the layer's usage and exits 0,
+which is the quickest way to check a spelling.
+
+**Do not use `python -m src.enrich` the same way.** With no arguments it
+does not print usage -- it runs every stage over the whole corpus, under
+the write lock, which is its documented default and can take a long
+time. Ask it for help explicitly: `python -m src.enrich --help`.
 
 **The docs also say `python` now, not `python3`.** That is a change of
 spelling in the documentation, not of behaviour: these docs used both
@@ -109,10 +113,10 @@ directly -- they need no venv, and unlike the stages they replace they do
 not wait on `sync`'s write lock:
 
 ```bash
-# was: .venv-full/bin/python -m src.enrich --stages provenance --input <draft>
+# was: .venv-full/bin/python scripts/enrich.py --stages provenance --input <draft>
 python -m src.review provenance <draft>
 
-# was: .venv-full/bin/python -m src.enrich --stages render --input <draft>
+# was: .venv-full/bin/python scripts/enrich.py --stages render --input <draft>
 python -m src.render_output <draft> --format pdf
 ```
 

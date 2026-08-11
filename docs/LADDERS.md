@@ -576,8 +576,9 @@ rather than interleaving writes to `content/`.
 
 Review's "none" is load-bearing rather than incidental: the layer is
 read-only over the corpus and must keep working during a `sync`. Two
-rows of this table were false until 4.0.0, for one reason -- `enrich.py`
-hosted a `provenance` and a `render` stage inside its lock, so a review
+rows of this table were false until 4.0.0, for one reason -- the
+enrichment layer hosted a `provenance` and a `render` stage inside its
+lock, so a review
 aid and a drafting-layer render each took a lock their own layer says
 they do not. Removing the stages made the table true rather than
 aspirational.

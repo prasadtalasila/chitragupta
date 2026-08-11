@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Orchestrates the full enrichment layer:
 
     Docling -> sentence-transformers/Chroma -> BERTopic

@@ -261,7 +261,7 @@ level = "INFO"
 [provenance]
 # The citation-provenance tool's own thresholds, not the review layer's --
 # the section keeps the tool's name, not the layer's.
-# src/citation_provenance.py bands the fraction of a citing sentence's
+# src/review/citation_provenance.py bands the fraction of a citing sentence's
 # distinctive words found in the best-matching source passage. Below
 # weak_score a finding reads "no support found", which means "go look at
 # this one first" -- never "this citation is wrong". At or above

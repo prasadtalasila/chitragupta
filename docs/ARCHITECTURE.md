@@ -51,11 +51,11 @@ another:
 ```
 corpus (sync) ──ledger, parsed/──▶ drafting (skills + gate chain) ──draft──▶ review
      │                                    ▲                                    │
-     └──▶ enrichment (enrich.py) ──docling/, chroma/, passages──┘              │
+     └──▶ enrichment (-m src.enrich) ─docling/, chroma/, passages──┘              │
                         └───────────────── passages ────────────────────────────┘
 ```
 
-Until 4.0.0 that was not quite true in code: `src/enrich/__main__.py` hosted
+Until 4.0.0 that was not quite true in code: the enrichment layer hosted
 a `provenance` and a `render` stage, each a three-line wrapper around a
 tier-1 command, so the enrichment layer imported the review and drafting
 layers. Both stages are gone -- run `python -m src.review provenance
@@ -553,7 +553,7 @@ literature behind them.
 
 ## One writer at a time
 
-`sync` and `enrich.py` take the same lock over `content/`
+`sync` and the enrichment layer take the same lock over `content/`
 (`content/pipeline.lock.db`), because the unsafe overlap is any writer
 against any other writer, not just sync against sync. The second one to
 start exits `2` rather than interleaving, and the lock releases itself if

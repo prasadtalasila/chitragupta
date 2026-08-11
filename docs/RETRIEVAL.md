@@ -170,7 +170,7 @@ the bib file, and those hits came back with an empty citekey and could
 never be cited; that second source is gone.) The way to make a paper
 searchable here is therefore the same as everywhere else in this
 repository: catalogue it in your reference manager, re-export, and re-run
-`sync`. `enrich.py` prints what it is about to work on at the top of
+`sync`. `python -m src.enrich` prints what it is about to work on at the top of
 every run, before any stage touches it:
 
 ```

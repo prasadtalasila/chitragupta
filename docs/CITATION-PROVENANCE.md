@@ -71,12 +71,17 @@ surfaced for a query, which ones did the draft actually cite?* That
 finds sources you missed. It says nothing about whether the ones you did
 cite support what you wrote.
 
-`src/review/verbatim_check.py` is closer but needs you to already know the
-answer's shape. Both its modes take the citekey as an argument:
+The `verbatim` aid is closer but needs you to already know the answer's
+shape. Two of its three modes take the citekey as an argument, so they
+answer a question you have to have asked first:
 
 - `overlap <draft> <citekey>` -- longest verbatim word runs shared
   between the paragraphs citing that key and the source.
 - `locate <citekey> "<phrase>"` -- which page a phrase appears on.
+
+(The third, `scan`, takes no citekey: it slides the whole draft across
+the whole corpus. That is a different question -- *did I reuse anyone's
+wording anywhere* -- and docs/PLAGIARISM.md is where it belongs.)
 
 So it verifies a suspicion you have already formed about a specific
 citekey. It cannot tell you *which* of a draft's forty citations deserve
@@ -405,7 +410,7 @@ which reports a real page and refuses to quote. The combination that once
 helped least -- Docling in the corpus layer with no enrichment stage --
 is now the one that gives you the most for a single parse.
 
-`src/review/verbatim_check.py locate` benefits from the same change: it
+`python -m src.review verbatim locate` benefits from the same change: it
 splits `content/parsed/<citekey>.txt` on form feeds, so it reports the
 page a phrase actually sits on rather than `pdf p.1` for every hit.
 

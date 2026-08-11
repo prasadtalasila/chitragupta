@@ -240,7 +240,7 @@ would remove documents from the corpus permanently.
 
 ### One writer at a time
 
-`sync` and `enrich.py` share a lock over `content/`, because the
+`sync` and the enrichment layer share a lock over `content/`, because the
 unsafe overlap is any-writer-against-any-writer: `sync` writes parsed
 text non-atomically and the enrichment layer reads those same files.
 

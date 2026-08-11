@@ -53,20 +53,22 @@ def _run(*argv):
 
 
 class TestTheSubcommandsAreTheAids:
-    def test_the_subcommands_are_exactly_the_aid_names(self):
-        """`review.AIDS` owns the report suffixes -- a subcommand that
-        drifted out of it would write a report under a name the rest of
-        the layer cannot find, and `dossier` would stop recognising it
-        (src/dossier.py checks `stem.suffix in review.AIDS`)."""
-        assert set(entrypoint.AIDS) == set(review.AIDS)
+    # No "the sets are equal" test here, deliberately. `__main__.py`
+    # raises on drift at import time, so the import at the top of this
+    # file would fail during collection and such an assertion could
+    # never be the thing that reports it. What follows tests the guard
+    # instead, which is the only falsifiable form of that claim.
 
     def test_a_drifted_subcommand_set_is_refused_at_import(self, monkeypatch):
-        """And refused loudly, in every interpreter mode.
+        """`review.AIDS` owns the report suffixes, so a subcommand that
+        drifted out of it would write a report under a name the rest of
+        the layer cannot find -- `dossier` checks `stem.suffix in
+        review.AIDS`.
 
-        The check is a raise rather than an assert because `python -O`
-        strips assertions -- which would have left the invariant above
-        stated but unenforced exactly when someone had optimised the
-        interpreter and stopped watching.
+        The guard is a raise rather than an assert because `python -O`
+        strips assertions, which would leave the invariant stated but
+        unenforced exactly when someone had optimised the interpreter
+        and stopped watching.
         """
         monkeypatch.setitem(review.AIDS, "invented", "Not a real aid")
         try:

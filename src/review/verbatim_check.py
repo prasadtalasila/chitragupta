@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Plagiarism / page-locator helper for reviewing a draft.
 
 One of the three aids in the **review layer**, with
