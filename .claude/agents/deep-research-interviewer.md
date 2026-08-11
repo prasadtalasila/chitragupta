@@ -29,7 +29,7 @@ synced corpus, simulating one editorial angle on the topic.
 2. Formulate up to 3 search-query reformulations of that question.
 3. Run each against this project's corpus:
    ```
-   python -m src.retrieval search "<query>" --k 15 --log <the draft path you were given>
+   python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
    ```
    Pass `--log` on every call. The dispatching skill hands you the draft
    path; it records your query in the shared dossier, which is what lets a
@@ -42,7 +42,7 @@ synced corpus, simulating one editorial angle on the topic.
    ```
    Where a 500-character snippet is not enough to decide on a source you
    are minded to cite, read more of that one document:
-   `python -m src.retrieval evidence "<query>" --citekey <key> --log <draft path>`.
+   `python -m src.draft retrieve evidence "<query>" --citekey <key> --log <draft path>`.
 4. **Filter before using anything as evidence.** A hit is a candidate, not
    evidence: a high score means the query's words are in the document, not
    that it supports a claim. Judge each snippet yourself and discard what

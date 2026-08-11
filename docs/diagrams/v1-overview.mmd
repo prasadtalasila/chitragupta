@@ -9,9 +9,9 @@ flowchart LR
 
   P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>src.citation_gate</code><br/>Is every citekey<br/>in the ledger?"}}
+  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>src.draft gate</code><br/>Is every citekey<br/>in the ledger?"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>src.references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>render_output --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>src.draft references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>src.draft render --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
   FIX["<b>DISCARD DRAFT</b><br/><br/>The skill throws the bad claim away<br/>and drafts again — you never see this.<br/><br/><small>“Fix and re-run until <code>OK</code>.”<br/>A FAIL is treated like a failing test,<br/>not a lint warning.</small>"]
 

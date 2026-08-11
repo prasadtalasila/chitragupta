@@ -286,7 +286,7 @@ class TestRun:
 class TestCliEntrypoint:
     def test_no_args_prints_usage_and_exits_2(self, isolated_config):
         result = subprocess.run(
-            [sys.executable, "-m", "src.citation_gate"],
+            [sys.executable, "-m", "src.draft", "gate"],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -301,7 +301,7 @@ class TestCliEntrypoint:
         Help goes to stdout and exits 0; the no-args *error* keeps
         stderr and exit 2."""
         result = subprocess.run(
-            [sys.executable, "-m", "src.citation_gate", flag],
+            [sys.executable, "-m", "src.draft", "gate", flag],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -321,7 +321,7 @@ class TestCliEntrypoint:
 
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [system_python, "-m", "src.citation_gate", str(draft)],
+            [system_python, "-m", "src.draft", "gate", str(draft)],
             cwd=str(repo_root),
             capture_output=True, text=True,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},

@@ -66,9 +66,9 @@ flowchart LR
 
   P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>src.citation_gate</code><br/>Is every citekey<br/>in the ledger?"}}
+  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>src.draft gate</code><br/>Is every citekey<br/>in the ledger?"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>src.references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>render_output --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>src.draft references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>src.draft render --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
   FIX["<b>DISCARD DRAFT</b><br/><br/>The skill throws the bad claim away<br/>and drafts again — you never see this.<br/><br/><small>“Fix and re-run until <code>OK</code>.”<br/>A FAIL is treated like a failing test,<br/>not a lint warning.</small>"]
 
@@ -128,7 +128,7 @@ flowchart TB
 
   F["<b>6 · Ask for a draft</b><br/><i>“write a survey section on digital twin composability”</i><br/><small>in Claude Code. The matching skill in <code>.claude/skills/</code><br/>picks it up and runs its own gate → references → render chain,<br/><b>looping on the gate until it exits 0</b> before showing you anything.</small>"]
 
-  G["<b>7 · Or drive that chain by hand</b><br/><code>python -m src.citation_gate &lt;draft&gt;</code> &nbsp;<i>← fix and repeat until OK</i><br/><code>python -m src.references &lt;draft&gt;</code><br/><code>python -m src.render_output &lt;draft&gt; --format pdf</code><br/><small>bare <code>python</code> — none of these need the venv</small>"]
+  G["<b>7 · Or drive that chain by hand</b><br/><code>python -m src.draft gate &lt;draft&gt;</code> &nbsp;<i>← fix and repeat until OK</i><br/><code>python -m src.draft references &lt;draft&gt;</code><br/><code>python -m src.draft render &lt;draft&gt; --format pdf</code><br/><small>bare <code>python</code> — none of these need the venv</small>"]
 
   DONE(["<b>content/rendered/&lt;slug&gt;.pdf</b>"])
 
@@ -230,15 +230,15 @@ flowchart TB
   end
 
   %% ─────────────── 5 · GATE ───────────────
-  GATE{{"<b>THE CITATION GATE</b> · <code>python -m src.citation_gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
+  GATE{{"<b>THE CITATION GATE</b> · <code>python -m src.draft gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
   ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
   %% ─────────────── 6 · PUBLISH ───────────────
   subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
     direction TB
-    REFS["<b>python -m src.references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
-    REND["<b>python -m src.render_output</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
+    REFS["<b>python -m src.draft references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
+    REND["<b>python -m src.draft render</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
     OUT[/"<b>content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md</b>"/]
     REFS --> REND --> OUT
   end
@@ -383,8 +383,8 @@ flowchart TB
   DOC -- "src/passages.py<br/>quotable passages — rung 1" --> DRF
   CPS -- "src/passages.py<br/>quotable passages — rung 2" --> DRF
   LED -- "src/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>src.citation_gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
-  DRF -- "src.render_output<br/><small>only after the gate passes</small>" --> REN
+  DRF == "<b>src.draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
+  DRF -- "src.draft render<br/><small>only after the gate passes</small>" --> REN
   DRF -- "the review layer<br/><small>src.review provenance · verbatim scan --write<br/>src.review coverage --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
@@ -466,7 +466,7 @@ flowchart TB
   AGG -- yes --> E1["<b>exit 1</b><br/>corpus not in sync,<br/>human attention needed"]
 
   E0 --> GATEIN(["a skill drafts against this corpus"])
-  GATEIN --> G{"<b>src.citation_gate</b><br/>every citekey resolvable?"}
+  GATEIN --> G{"<b>src.draft gate</b><br/>every citekey resolvable?"}
   G -- "yes · <b>exit 0</b>" --> GOOD["references → render<br/><small>the only path to a rendered draft</small>"]
   G -- "no · <b>exit 1</b>" --> GBAD["<b>the write is blocked.</b><br/><small>Treated like a failing test,<br/>not a lint warning.</small>"]
   GBAD --> GLOOP["<b>the skill re-drafts and re-runs the gate</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft<br/>that hasn't passed.” — all five SKILL.md files.<br/>This exit 1 is the only one nobody has to see:<br/>the loop is inside the skill, not in front of you.</small>"]
@@ -597,7 +597,7 @@ five genre skills in `.claude/skills/` use very different amounts of it.
 The enrichment layer in particular is worth building for two of them,
 largely wasted on two others, and reduced to a preview step for the fifth.
 
-| Genre | Skills | Retrieval | Enrichment stages | `src.references` |
+| Genre | Skills | Retrieval | Enrichment stages | `src.draft references` |
 |---|---|---|---|---|
 | [Genre A: corpus-led](#genre-a-corpus-led) | `survey-writer`, `deep-research` | BM25 **or** `embed_index` | `docling` + `embed`, both worth it | yes |
 | [Genre B: teaching](#genre-b-teaching) | `tutorial-writer`, `textbook-chapter-writer` | BM25 only | none | yes (custom heading) |
@@ -639,11 +639,11 @@ flowchart LR
 
   P2["<b>3 · DRAFT</b><br/><i>every sentence is a cited claim</i><br/><br/><b>survey-writer</b> — over-fetch <code>k=15</code>,<br/>hand-cluster into 2-4 sub-themes,<br/>comparison table + gap analysis<br/><br/><b>deep-research</b> — perspectives,<br/>parallel interviews, contradiction map,<br/>then cited sections<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.draft gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>swap the key for one retrieval<br/>actually returned, or drop the claim.<br/>Never invent one.</small>"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code> → IEEE list<br/><code>render_output --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><br/><code>src.draft references</code> → IEEE list<br/><code>src.draft render --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
   AID["<b>LAYER 4 · REVIEW — afterwards, by you, never a gate</b><br/><code>src.review provenance</code> · <code>src.review verbatim</code><br/><code>src.review coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 
@@ -710,15 +710,15 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m src.render_output</code> — it was never<br/>enrichment work, and stopped being a stage in 4.0.0</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m src.draft render</code> — it was never<br/>enrichment work, and stopped being a stage in 4.0.0</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small><b>May legitimately pass with<br/>zero citations.</b> Both SKILL.md<br/>files say so explicitly — this is<br/>the one genre where an empty<br/>reference list is correct.</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.draft gate</code><br/><br/><small><b>May legitimately pass with<br/>zero citations.</b> Both SKILL.md<br/>files say so explicitly — this is<br/>the one genre where an empty<br/>reference list is correct.</small>"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>drop the claim; the lesson<br/>rarely needed it in the first place</small>"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code><br/><small><b>tutorial-writer</b> passes<br/><code>--heading &quot;Further reading&quot;</code>,<br/>which then survives into the render<br/>instead of being stripped</small><br/><br/><code>render_output --format pdf</code>"]
+  P4["<b>5 · PUBLISH</b><br/><br/><code>src.draft references</code><br/><small><b>tutorial-writer</b> passes<br/><code>--heading &quot;Further reading&quot;</code>,<br/>which then survives into the render<br/>instead of being stripped</small><br/><br/><code>src.draft render --format pdf</code>"]
 
   RISK["<b>the real failure mode here isn't a bad citekey</b><br/><small>It is writing the wrong genre: a tutorial that explains<br/>instead of instructing, or a chapter that instructs instead<br/>of explaining. Both SKILL.md files open by warning about<br/>exactly that — and no gate in this repository can catch it.<br/><b>You are the check.</b></small>"]
 
@@ -760,13 +760,13 @@ your own thesis document -- so rendering produces a *preview*, not the
 artifact that matters. A rendering failure
 never blocks presenting the draft.
 
-It is also the only skill that **deliberately skips `src.references`**.
+It is also the only skill that **deliberately skips `src.draft references`**.
 Your thesis owns its own bibliography; a second reference list inside the
 fragment would collide with it. That exception is easy to miss when
-reading the README's `citation_gate -> references -> render_output` chain,
-which is why it gets its own diagram.
+reading the README's `gate -> references -> render` chain, which is why
+it gets its own diagram.
 
-The gate is not relaxed for LaTeX: `src.citation_gate` reads
+The gate is not relaxed for LaTeX: `src.draft gate` reads
 `\citep`/`\citet` as readily as Markdown `[@key]`, and the loop-until-`OK`
 rule is worded identically to the other four skills.
 
@@ -781,11 +781,11 @@ flowchart LR
 
   P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.draft gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>“Fix and re-run until <code>OK</code>.<br/>Never present a draft<br/>that hasn't passed.”</small>"]
 
-  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>render_output --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
+  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.draft references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>src.draft render --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
 
   OUT["<b>the actual output</b><br/><code>\\input{chapter-4}</code><br/><small>into your own thesis, compiled by your own<br/>LaTeX toolchain against your own .bib</small>"]
 
@@ -842,9 +842,9 @@ sequenceDiagram
     participant Ret as src.retrieval<br/>+ src.passages
     participant Skill as genre skill<br/>(.claude/skills/)
     participant Hook as PostToolUse hook
-    participant Gate as src.citation_gate
-    participant Ref as src.references
-    participant Ren as render_output<br/>(pandoc / TeX Live)
+    participant Gate as src.draft gate
+    participant Ref as src.draft references
+    participant Ren as src.draft render<br/>(pandoc / TeX Live)
 
     rect rgba(255,247,237,0.6)
     Note over You,Z: CURATE — the only step that adds a paper
@@ -894,10 +894,10 @@ sequenceDiagram
 
     rect rgba(250,245,255,0.6)
     Note over Ref,Ren: PUBLISH
-    Skill->>Ref: python -m src.references <draft>
+    Skill->>Ref: python -m src.draft references <draft>
     Ref->>Led: bib_fields for exactly the cited citekeys
     Ref-->>Skill: a ## References section, numbered by first appearance
-    Skill->>Ren: render_output --format pdf
+    Skill->>Ren: src.draft render --format pdf
     Ren-->>You: content/rendered/<slug>.pdf
     end
 
@@ -945,7 +945,7 @@ stateDiagram-v2
 
     note right of parsed
         Only this state makes the citekey citable.
-        citation_gate resolves a citekey against
+        src.draft gate resolves a citekey against
         the ledger, so a row that is not here
         cannot appear in a draft that renders.
     end note

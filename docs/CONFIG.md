@@ -213,9 +213,9 @@ The values in full:
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
-  write lock. Commands that don't take that lock -- `src.retrieval`,
-  `src.citation_gate`, `src.references`, `src.dossier` and the rest of
-  the drafting-layer CLIs -- write to stdout only and are not logged.
+  write lock. Commands that don't take that lock -- `src.draft` (all five
+  drafting-layer CLIs: gate, dossier, retrieve, references, render) --
+  write to stdout only and are not logged.
 
 The log file's own location, `logs/` beside the repo root, has no
 `config.toml` key -- but does still honor a `LOGS_DIR` environment

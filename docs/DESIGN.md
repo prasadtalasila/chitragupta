@@ -30,7 +30,7 @@ The repository is designed around a few hard constraints that strongly shape the
 
 1. **Never fabricate a citekey**
    - Citekeys must come from `papers/bibliography.bib` and be synchronized into `content/ledger.sqlite`.
-   - Drafts must pass `python -m src.citation_gate` before being considered valid.
+   - Drafts must pass `python -m src.draft gate` before being considered valid.
    - This is the repo's primary safety invariant.
 
 2. **Three layers**

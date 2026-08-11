@@ -26,7 +26,7 @@ self-contained section of the final report from pre-vetted source material.
 - **A command that prints your evidence**, rather than the evidence
   itself:
   ```
-  python -m src.dossier brief <draft path> --section "<your heading>"
+  python -m src.draft dossier brief <draft path> --section "<your heading>"
   ```
   Run it first, before writing anything. It prints one block per citekey
   the orchestrator assigned to your section -- the supporting facts and
@@ -83,13 +83,13 @@ above is what matters most for a section written in parallel with others.
 You may re-search this project's corpus for a subpoint that needs more than
 what you were given:
 ```
-python -m src.retrieval search "<query>" --k 15 --log <the draft path you were given>
+python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
 ```
 (or `src.enrich.embed_index.search()` if `content/chroma/` exists). Filter
 what comes back the same way the interviewers do -- read the snippet and
 judge relevance yourself, don't just take the top hit. Where a snippet is
 not enough to decide on a source you mean to cite, read more of that one
-document with `python -m src.retrieval evidence "<query>" --citekey <key> --log <draft path>`. Report any citekey you used this
+document with `python -m src.draft retrieve evidence "<query>" --citekey <key> --log <draft path>`. Report any citekey you used this
 way in a trailing `### Sources added` block so the orchestrator can include
 it in the final references.
 

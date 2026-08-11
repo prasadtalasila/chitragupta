@@ -11,7 +11,7 @@ than being re-read from the bib file here.
 Only ever lists citekeys the draft already cites (found with
 `citation_gate`'s own extraction regexes), so it can never introduce a
 citekey that hasn't already passed the gate. Run this *after*
-`python -m src.citation_gate` has reported `OK`. A cited key with no
+`python -m src.draft gate` has reported `OK`. A cited key with no
 matching ledger row is a hard error (AGENTS.md's citekey invariant), not
 something to silently drop.
 
@@ -33,7 +33,7 @@ pandoc resolves, and a numbered body would leave the gate reporting
 "0 citations ... OK" on a draft it can no longer check at all.
 
 Usage:
-    python -m src.references <file.md> [--heading TEXT]
+    python -m src.draft references <file.md> [--heading TEXT]
 Appends a References section, or replaces one if this was already run on
 the file (idempotent) -- built from exactly the citekeys `<file.md>`
 cites.
@@ -267,7 +267,7 @@ def build_section(citekeys: list[str], con, heading: str = "References",
     if missing:
         raise KeyError(
             "citekey(s) cited in the draft but missing from the ledger -- "
-            "run `python -m src.sync`, or re-check `python -m src.citation_gate` "
+            "run `python -m src.sync`, or re-check `python -m src.draft gate` "
             f"was run and passed first: {', '.join(missing)}"
         )
 
@@ -452,16 +452,17 @@ def apply(path: Path, heading: str = "References") -> str:
     return f"{path}: wrote References section with {len(keys)} citekey(s)"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Append/replace a References section built from a Markdown draft's own cited citekeys."
+        prog="python -m src.draft references",
+        description="Append/replace a References section built from a Markdown draft's own cited citekeys.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown)")
     parser.add_argument(
         "--heading", default="References",
         help='Heading text, e.g. "6. References" to match a draft\'s own numbered headings (default: "References")',
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
         print(apply(Path(args.input), args.heading))
@@ -473,7 +474,3 @@ def main() -> int:
         print(f"[error] {exc}", file=sys.stderr)
         return 1
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

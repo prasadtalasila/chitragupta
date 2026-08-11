@@ -23,7 +23,7 @@ A **citekey** is the identifier BibTeX assigns an entry -- for example
 `larsen_engineering_2024`. In a draft it appears as `[@larsen_engineering_2024]`.
 The project's one hard rule is that **a citekey may only be used if it
 came from the bib file**, because fabricated references have made it into
-real published papers before. `python -m src.citation_gate` enforces this
+real published papers before. `python -m src.draft gate` enforces this
 mechanically: it extracts every citekey from a draft and fails if any is
 absent from the ledger. That is a *gate* -- drafting is blocked until it
 passes.

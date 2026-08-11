@@ -9,7 +9,7 @@
 [tool.poetry]
 package-mode = false
 name = "chitragupta"
-version = "5.0.0"
+version = "5.1.0"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
@@ -19,7 +19,7 @@ python = "^3.12"
 # The one dependency the otherwise-stdlib core pipeline needs
 # (src/bib_reader.py, used by `python -m src.sync`): hand-rolling a
 # correct BibTeX parser (nested braces, LaTeX escapes, multi-line
-# values) isn't worth it. `python -m src.citation_gate` needs none of
+# values) isn't worth it. `python -m src.draft gate` needs none of
 # this and still runs with the bare system interpreter, no venv at all.
 bibtexparser = ">=1.4,<2.0"
 # <2.0 is load-bearing, not just a style choice: bibtexparser v2 replaces

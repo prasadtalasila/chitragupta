@@ -1,6 +1,6 @@
 ---
 name: survey-writer
-description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via src.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m src.citation_gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m src.sync` first) if the ledger is empty.
+description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via src.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m src.sync` first) if the ledger is empty.
 tags: [survey, literature-review, citation]
 ---
 
@@ -17,7 +17,7 @@ layer: deterministic, safe to run unattended).
 - `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
   `sync` reads it, it is never regenerated
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python -m src.retrieval search "<q>" --k 15 --log <draft>`,
+- `src/retrieval.py` -- `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -103,7 +103,7 @@ collapse them for the sake of a cleaner narrative.
    omission from an oversight. Then create the dossier and record the same
    decisions there:
    ```
-   python -m src.dossier init content/drafts/<slug>.md --genre survey
+   python -m src.draft dossier init content/drafts/<slug>.md --genre survey
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a survey for
@@ -122,7 +122,7 @@ collapse them for the sake of a cleaner narrative.
 1. **Retrieve broadly, over-fetching on purpose.** Break the requested topic
    into 2-4 sub-themes if it's broad. For each:
    ```
-   python -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<slug>.md
+   python -m src.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<slug>.md
    ```
    Pull more candidates than you expect to use. This is a keyword-overlap
    ranker, not embeddings (unless `src/enrich/embed_index.py` has been built
@@ -143,7 +143,7 @@ collapse them for the sake of a cleaner narrative.
    Where a snippet is not enough to decide on a source you are minded to
    keep, read more of that one document:
    ```
-   python -m src.retrieval evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
+   python -m src.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
    ```
    Use it to be **more careful about something you are about to cite** -- not
    as a routine second pass over everything. `docs/REJECTION.md` explains why
@@ -213,7 +213,7 @@ collapse them for the sake of a cleaner narrative.
    `content/drafts/<slug>.md` first if you haven't already, then derive
    the map rather than writing it by hand:
    ```
-   python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+   python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
    ```
    It joins each heading's line range to the citekeys cited inside it and
    writes the dossier's `sections.md`, so a later revision can tell which
@@ -225,7 +225,7 @@ collapse them for the sake of a cleaner narrative.
 9. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
    (this is the canonical, source-of-truth format), then run:
    ```
-   python -m src.citation_gate content/drafts/<slug>.md
+   python -m src.draft gate content/drafts/<slug>.md
    ```
    If it reports `FAIL`, fix the offending line(s) — either correct the citekey
    or remove the claim — and re-run until it reports `OK`. Never show the user
@@ -233,7 +233,7 @@ collapse them for the sake of a cleaner narrative.
 10. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
     ```
-    python -m src.references content/drafts/<slug>.md
+    python -m src.draft references content/drafts/<slug>.md
     ```
     Stdlib-only, like the citation gate — bare `python`, no venv. Writes
     numbered IEEE-style entries (`[1] J. Doe and R. Roe, "A Paper," *IEEE
@@ -249,9 +249,9 @@ collapse them for the sake of a cleaner narrative.
 11. **Render tex and pdf.** Once the gate passes and the references section
     is built, also render the other three formats:
     ```
-    python -m src.render_output content/drafts/<slug>.md --format tex
-    python -m src.render_output content/drafts/<slug>.md --format pdf
-    python -m src.render_output content/drafts/<slug>.md --format md
+    python -m src.draft render content/drafts/<slug>.md --format tex
+    python -m src.draft render content/drafts/<slug>.md --format pdf
+    python -m src.draft render content/drafts/<slug>.md --format md
     ```
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
@@ -297,7 +297,7 @@ collapse them for the sake of a cleaner narrative.
     Tell the user where the dossier is, that changes to this draft should
     go through `draft-reviser` rather than another run of this skill, and
     that `content/drafts/` and `content/dossiers/` are gitignored -- so
-    `python -m src.dossier export <slug>` is how a draft and its working
+    `python -m src.draft dossier export <slug>` is how a draft and its working
     state get backed up.
 
 ## Sources

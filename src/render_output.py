@@ -26,7 +26,7 @@ style vendored at `assets/csl/ieee.csl` (`config.CSL_STYLE_PATH`,
 where they're implemented: the collapsing needs one attribute upstream
 IEEE omits, injected into a temp copy by `_collapsed_csl` so the vendored
 file stays byte-identical to upstream; and a draft's own citekey-labeled
-References section (added by `python -m src.references`) has its entries
+References section (added by `python -m src.draft references`) has its entries
 swapped out in the temp copy by `_swap_manual_refs_for_citeproc` --
 heading kept, entries replaced by the anchor citeproc fills in -- so
 citeproc's bibliography is the only one in the output, and it appears
@@ -65,7 +65,7 @@ variables so a tex/pdf output always opens with a 12pt, a4paper article
 class and 1-inch margins via the geometry package -- overridable per
 call, but those are the project's fixed defaults.
 
-`python -m src.render_output <file> --format tex|pdf|...` runs standalone
+`python -m src.draft render <file> --format tex|pdf|...` runs standalone
 with bare `python` (no enrich group) -- it depends only on stdlib plus
 `src.config`/`src.citation_gate`/`src.references` (all three stdlib-only,
 same as this module), deliberately independent of `src/enrich/__main__.py`,
@@ -129,7 +129,7 @@ def _safe_render_inputs(input_path: Path, bib_path: Path, tmp_dir: Path) -> tupl
 
     Two independent fixups, both applied only to temp copies -- the draft
     and the real bibliography.bib are never modified:
-      - a `python -m src.references` References section has its entries
+      - a `python -m src.draft references` References section has its entries
         replaced by citeproc's own placement anchor, keeping the draft's
         heading (see _swap_manual_refs_for_citeproc);
       - a citekey containing "--" is aliased in both files, in the input
@@ -246,7 +246,7 @@ _REFS_ANCHOR = "::: {#refs}\n:::\n"
 
 
 def _swap_manual_refs_for_citeproc(text: str) -> str:
-    """Replaces a `python -m src.references` section's *entries* with an
+    """Replaces a `python -m src.draft references` section's *entries* with an
     anchor citeproc fills in, keeping the draft's own heading.
 
     Only ever applied to the temp copy handed to pandoc, never to the
@@ -262,7 +262,7 @@ def _swap_manual_refs_for_citeproc(text: str) -> str:
 
     The heading stays because it is the draft's own: a genre skill may
     have numbered it to match its other headings (`## 6. References`, via
-    `src.references --heading`), and citeproc emits no heading of its own,
+    `src.draft references --heading`), and citeproc emits no heading of its own,
     so dropping the whole section left the rendered bibliography
     untitled.
     """
@@ -543,7 +543,7 @@ def render(
     return out_path
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entry point -- deliberately independent of src/enrich/__main__.py.
 
     That script imports docling/embed/topic_model at module load and
@@ -553,7 +553,10 @@ def main() -> int:
     tex/pdf rendering of a draft should be able to run this with bare
     `python`, no enrich group required.
     """
-    parser = argparse.ArgumentParser(description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.")
+    parser = argparse.ArgumentParser(
+        prog="python -m src.draft render",
+        description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.",
+    )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
     parser.add_argument("--format", dest="output_format", default="pdf", help="Output format (default: pdf)")
     parser.add_argument("--documentclass", default="article", help="LaTeX documentclass (default: article)")
@@ -572,7 +575,7 @@ def main() -> int:
         help="Render a consecutive run as [3], [4], [5], [6] instead of [3]-[6] "
              "-- i.e. leave the CSL style exactly as it is on disk",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
         out_path = render(
@@ -608,7 +611,3 @@ def main() -> int:
 
     print(str(out_path))
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

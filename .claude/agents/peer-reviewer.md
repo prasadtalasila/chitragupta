@@ -32,7 +32,7 @@ more than one self-critique pass.
   - **domain-accuracy** -- for every claim that carries a citation, re-read
     the actual cited source (`Read` on `content/parsed/<citekey>.txt` /
     `content/docling/<citekey>.md` if it exists, or a fresh
-    `python -m src.retrieval search "<query>" --k 15 --log <DRAFT PATH>` /
+    `python -m src.draft retrieve search "<query>" --k 15 --log <DRAFT PATH>` /
     `src.enrich.embed_index.search()` call -- pass `--log` on every
     retrieval call, same as every other dispatch site, so this role's
     reads are measured too) and check whether the source actually supports
@@ -78,7 +78,7 @@ Never run `python -m src.sync`, `python -m src.enrich`, or any `src/enrich/*`
 build stage. Both take the pipeline's write lock and can run for tens of
 minutes, and several of you run in parallel. Use `content/chroma/` only if
 it already exists; if it doesn't, fall back to
-`python -m src.retrieval search "<query>" --k 15 --log <DRAFT PATH>` and
+`python -m src.draft retrieve search "<query>" --k 15 --log <DRAFT PATH>` and
 say so in your packet -- do not build one.
 
 You write no files at all. In particular you never write into

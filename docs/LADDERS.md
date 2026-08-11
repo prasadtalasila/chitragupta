@@ -160,9 +160,9 @@ flowchart TB
 
   subgraph DRAFTING["drafting layer -- generative, reviewed by you"]
     SKILL["a genre skill<br/><small>survey · thesis · textbook · tutorial · deep-research</small>"]
-    GATE{"python -m src.citation_gate<br/><b>hard gate</b>"}
-    REFS["python -m src.references"]
-    RENDER["python -m src.render_output"]
+    GATE{"python -m src.draft gate<br/><b>hard gate</b>"}
+    REFS["python -m src.draft references"]
+    RENDER["python -m src.draft render"]
     DRAFT[("content/drafts/ · content/rendered/")]
   end
 
@@ -291,7 +291,7 @@ corpus layer writes no bitmaps), and for artefacts older than their PDF.
 supports it, and may it be quoted?
 
 **Where:** [`src/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py), read by
-`src.review provenance` and (not yet) `src.retrieval`.
+`src.review provenance` and (not yet) `src.draft retrieve`.
 
 | # | Rung | Written by | Quotable? |
 |---|---|---|---|
@@ -430,7 +430,7 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.passages` |
+| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.ledger`, `src.review` (all three aids), `src.passages` |
 | 2 | a venv with `bibtexparser` | `python -m src.sync` |
 | 3 | a venv with the `enrich` group | `python -m src.enrich` |
 
@@ -443,7 +443,7 @@ through `getattr` and never imports the library. See
 
 ### Tier 3: Render format
 
-**Set by:** `--format` on `python -m src.render_output`.
+**Set by:** `--format` on `python -m src.draft render`.
 
 | Format | Needs | Note |
 |---|---|---|

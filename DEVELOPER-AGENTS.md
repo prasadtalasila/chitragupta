@@ -46,7 +46,7 @@ every host, regardless of root access. **This matters for the corpus
 layer too**: `python -m src.sync` needs `bibtexparser` (parsing
 `bibliography.bib` correctly -- nested braces, LaTeX escapes -- isn't
 worth hand-rolling), so it must be run via the installed venv, not the
-bare system interpreter. `python -m src.citation_gate` is the exception
+bare system interpreter. `python -m src.draft gate` is the exception
 (see [AGENTS.md](AGENTS.md)).
 
 **Probe for a toolchain; never assume one, in either direction.** An

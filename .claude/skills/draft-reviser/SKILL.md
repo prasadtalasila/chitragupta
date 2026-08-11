@@ -1,6 +1,6 @@
 ---
 name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.citation_gate` before presenting and never invents a citekey.
+description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.draft gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
@@ -52,7 +52,7 @@ break:
 ### 1. Locate the draft and read its state
 
 ```bash
-python -m src.dossier status content/drafts/<path>
+python -m src.draft dossier status content/drafts/<path>
 ```
 
 This prints which dossier files are filled in, the draft's section count,
@@ -72,7 +72,7 @@ Mark the start of this revision session in `retrieval.md`, before any
 retrieval call:
 
 ```bash
-python -m src.dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
+python -m src.draft dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
 ```
 
 `retrieval.md` rows otherwise carry only a date, and two revisions on the
@@ -92,7 +92,7 @@ scope change made without saying so is not.
 ### 3. Map the change onto sections
 
 ```bash
-python -m src.dossier sections content/drafts/<path>
+python -m src.draft dossier sections content/drafts/<path>
 ```
 
 Read **only** the sections the change touches, using the printed line
@@ -118,8 +118,8 @@ Most revisions don't. Before any retrieval call:
 Search only when the change opens genuinely new ground. If it does:
 
 ```bash
-python -m src.retrieval search "<query>" --k 15 --log content/drafts/<path>
-python -m src.retrieval evidence "<query>" --citekey <key> --log content/drafts/<path>
+python -m src.draft retrieve search "<query>" --k 15 --log content/drafts/<path>
+python -m src.draft retrieve evidence "<query>" --citekey <key> --log content/drafts/<path>
 ```
 
 (or `src.enrich.embed_index.search()` in place of `search` where the
@@ -177,11 +177,11 @@ Update only what actually changed:
 ### 7. Gate, reference, render
 
 ```bash
-python -m src.citation_gate content/drafts/<path>
-python -m src.references content/drafts/<path>          # .md drafts; see --heading below
-python -m src.render_output content/drafts/<path> --format tex
-python -m src.render_output content/drafts/<path> --format pdf
-python -m src.render_output content/drafts/<path> --format md
+python -m src.draft gate content/drafts/<path>
+python -m src.draft references content/drafts/<path>          # .md drafts; see --heading below
+python -m src.draft render content/drafts/<path> --format tex
+python -m src.draft render content/drafts/<path> --format pdf
+python -m src.draft render content/drafts/<path> --format md
 ```
 
 Fix and re-run until the gate reports `OK`. **Never present a draft that
@@ -192,7 +192,7 @@ Two things the genre decides, which a reviser has to look up rather than
 assume:
 
 - **`--heading`, if the draft's references section isn't called
-  "References".** `src.references` finds the existing section by heading
+  "References".** `src.draft references` finds the existing section by heading
   and replaces it; miss it and you append a second one. A tutorial calls
   it `## Further reading` (pass `--heading "Further reading"`), and a
   numbered textbook chapter calls it `## N. References` (pass
@@ -242,7 +242,7 @@ verbatim -- what changes is how the work is found.
 ### R1. Read the report as data
 
 ```bash
-python -m src.dossier status content/drafts/<path> --json
+python -m src.draft dossier status content/drafts/<path> --json
 ```
 
 Or take the payload from a `--all --json` sweep the user already has. The
@@ -271,7 +271,7 @@ this section exists to prevent.
 **`missing` is a defect.** The draft stands on a paper the corpus no
 longer has; `citation_gate` already disagrees with the draft. Always
 actioned, whatever else the revision is about. Each entry maps a citekey
-to the sections citing it, and `python -m src.dossier sections
+to the sections citing it, and `python -m src.draft dossier sections
 content/drafts/<path>` turns those into line ranges, so the edit stays as
 scoped as any other. Look for the replacement in this order, and stop at
 the first that supports the claim:
@@ -284,7 +284,7 @@ the first that supports the claim:
 3. A fresh search -- here it *is* right, unlike the candidate path,
    because a claim left unsupported is genuinely new ground:
    ```bash
-   python -m src.retrieval search "<the claim>" --k 15 --log content/drafts/<path>
+   python -m src.draft retrieve search "<the claim>" --k 15 --log content/drafts/<path>
    ```
 
 If none of the three supports it, **remove the claim** and say so. Not a
@@ -304,12 +304,12 @@ re-running `search` for that query pays for fifteen snippets to be handed
 back the same fifteen citekeys:
 
 ```bash
-python -m src.retrieval evidence "<the query from the report>" \
+python -m src.draft retrieve evidence "<the query from the report>" \
     --citekey <candidate> --log content/drafts/<path>
 ```
 
 What the report lacks is text to judge on, and that is what `evidence` is
-for. Keep `python -m src.retrieval search "<query>" --k 15 --log <draft>`
+for. Keep `python -m src.draft retrieve search "<query>" --k 15 --log <draft>`
 for the case where the revision opens ground the dossier never covered --
 a query not already in `retrieval.md`, which by definition could not have
 produced a candidate.
@@ -364,7 +364,7 @@ Finish with step 7 and change nothing about it. `missing` is computed
 from the dossier's own `evidence.md` and `sections.md`, not from the
 draft body, so a citekey the draft cites that was never recorded in the
 dossier will not appear in the report at all. `python -m
-src.citation_gate` is the check that reads the draft, and it is what
+src.draft gate` is the check that reads the draft, and it is what
 decides the draft is presentable. A clean drift report never does.
 
 Expect the draft to keep showing candidates in the next sweep, and say
@@ -402,11 +402,11 @@ Drafts written before `src/dossier.py` existed have none, and so do
 drafts written by hand. Bootstrap rather than refusing:
 
 ```bash
-python -m src.dossier init content/drafts/<path> --genre <genre>
+python -m src.draft dossier init content/drafts/<path> --genre <genre>
 ```
 
 Then fill in what the draft itself can tell you -- `sections.md` from
-`python -m src.dossier sections`, and `scope.md`'s reader/covers/excludes
+`python -m src.draft dossier sections`, and `scope.md`'s reader/covers/excludes
 from the draft's own scope paragraph if it has one. Leave `evidence.md`
 and `rejected.md` empty and **say so in chat**: the first revision of a
 bootstrapped draft cannot check a claim against recorded evidence, and

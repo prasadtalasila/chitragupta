@@ -59,7 +59,7 @@ Until 4.0.0 that was not quite true in code: the enrichment layer hosted
 a `provenance` and a `render` stage, each a three-line wrapper around a
 tier-1 command, so the enrichment layer imported the review and drafting
 layers. Both stages are gone -- run `python -m src.review provenance
-<draft>` and `python -m src.render_output <draft> --format pdf`
+<draft>` and `python -m src.draft render <draft> --format pdf`
 directly, which need no venv and take no lock.
 
 ```mermaid
@@ -75,7 +75,7 @@ flowchart TB
   subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
     direction TB
     SKILL["<b>.claude/skills/</b> — five genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
-    CHAIN["<b>the chain, on every draft</b><br/><code>python -m src.citation_gate</code> — <b>hard gate</b><br/><code>python -m src.references</code><br/><code>python -m src.render_output</code><br/><small><b>bare python, no venv</b> — by design</small>"]
+    CHAIN["<b>the chain, on every draft</b><br/><code>python -m src.draft gate</code> — <b>hard gate</b><br/><code>python -m src.draft references</code><br/><code>python -m src.draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
     SKILL --> CHAIN
   end
 
@@ -121,7 +121,7 @@ Two properties carry the safety argument, and both are visible above:
 - **The bibliography is the only entrance.** Citekeys come from your own
   BibTeX export. The pipeline never fetches a paper, never invents a
   citekey, and never renames one.
-- **The gate is the only exit.** `src.citation_gate` consults
+- **The gate is the only exit.** `src.draft gate` consults
   `content/ledger.sqlite` and nothing else, so a citekey no `sync` ever put
   there cannot survive into a rendered draft.
 
@@ -169,14 +169,14 @@ literature they come from, are in
 Each skill retrieves from the corpus layer, drafts into
 `content/drafts/`, then runs the same three commands on its own output:
 
-1. `python -m src.citation_gate <draft>` -- the hard gate. The skill
+1. `python -m src.draft gate <draft>` -- the hard gate. The skill
    loops here, fixing and re-running until it exits 0, and presents
    nothing before that.
-2. `python -m src.references <draft>` -- an IEEE reference list built from
+2. `python -m src.draft references <draft>` -- an IEEE reference list built from
    exactly the citekeys the draft cites, numbered by first appearance.
    Skipped for thesis `.tex` fragments, where the surrounding LaTeX owns
    the bibliography.
-3. `python -m src.render_output <draft> --format pdf` -- the
+3. `python -m src.draft render <draft> --format pdf` -- the
    rendered output. Citations render IEEE-style: numeric `[1]` markers,
    `[3]-[6]` for a consecutive run, over a numbered bibliography built
    from the citekeys actually cited.
@@ -229,7 +229,7 @@ ever reads what it produced.
 **Two stages left in 4.0.0**, and it is worth knowing why if you have a
 command that names them. `provenance` and `render` were three-line
 wrappers around `python -m src.review provenance` and `python -m
-src.render_output` -- this page already called them conveniences rather
+src.draft render` -- this page already called them conveniences rather
 than enrichment work. Hosting them here had two costs: it made the
 enrichment layer *import* the review and drafting layers, the one cycle
 in the four-layer picture; and because the lock wraps every stage, it
@@ -290,7 +290,7 @@ Nothing invokes them automatically, and none of them gates anything:
 | `python -m src.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
 
 **Advisory, not a gate**, and named accordingly. *Review* rather than
-*verification* because `src.citation_gate` is verification, it lives in
+*verification* because `src.draft gate` is verification, it lives in
 the drafting layer, and it is that layer's only exit -- a "verification
 layer" that excluded the gate would split the concept across two layers.
 The contrast is the point, not a competition.
@@ -462,17 +462,17 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `citation_gate`, `references`, `render_output`, `ledger`, `src.review` (all three aids) |
+| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `ledger`, `src.review` (all three aids) |
 | 2 | venv + `bibtexparser` | `src.sync` |
 | 3 | venv + the `enrich` group | `python -m src.enrich` |
 
-**The gate chain is deliberately in tier 1.** `citation_gate` ->
-`references` -> `render_output` runs on the system interpreter with no
-third-party import anywhere in it, so the pipeline's one safety guarantee
-cannot be blocked by a virtual environment that is broken, absent, or
-built for a different Python. That matters more than it sounds: PEP 668
-blocks `pip install` outside a venv on most current distributions, so "the
-venv is broken" is not always a five-second fix.
+**The gate chain is deliberately in tier 1.** `src.draft gate` ->
+`src.draft references` -> `src.draft render` runs on the system
+interpreter with no third-party import anywhere in it, so the pipeline's
+one safety guarantee cannot be blocked by a virtual environment that is
+broken, absent, or built for a different Python. That matters more than
+it sounds: PEP 668 blocks `pip install` outside a venv on most current
+distributions, so "the venv is broken" is not always a five-second fix.
 
 Tier 2 is one package. `src.sync` needs `bibtexparser` because parsing
 BibTeX correctly -- nested braces, LaTeX escapes, multi-line values -- is
@@ -497,18 +497,29 @@ which directory it lives in, and always was.
 
 **One entry point per layer, one level deep.** Every layer is reached
 through a single `python -m src.<layer>`: `src.sync` for the corpus
-layer, `src.enrich --stages …` for enrichment, `src.review <aid>` for
-review. A layer's package may nest as deep as its code wants; its
-*command surface* does not. The submodules inside `src/enrich/` and
-`src/review/` carry no `__main__` block, so `python -m src.enrich.docling_parse`
-or `python -m src.review.verbatim_check` imports a module and exits 0
-having done nothing -- a trap, but a silent and harmless one, and the
-price of there being exactly one `--help` per layer.
+layer, `src.draft <verb>` for drafting, `src.enrich --stages …` for
+enrichment, `src.review <aid>` for review. A layer's package may nest as
+deep as its code wants; its *command surface* does not. The submodules
+inside `src/enrich/` and `src/review/` carry no `__main__` block, so
+`python -m src.enrich.docling_parse` or `python -m src.review.verbatim_check`
+imports a module and exits 0 having done nothing -- a trap, but a silent
+and harmless one, and the price of there being exactly one `--help` per
+layer. The drafting layer's five commands carry the same trap without
+moving into a package: `citation_gate.py`, `dossier.py`, `references.py`,
+`render_output.py` and `retrieval.py` stayed flat in `src/` --
+`src/draft.py` beside them is what dropped their `__main__` blocks and
+gave the layer its one front door -- so `python -m src.dossier` (or any
+of the other four) is the same silent no-op as the nested form above,
+without a directory move that would have rewritten every `from src
+import dossier`-style import across `src/`, `tests/` and `bench/` for no
+benefit: unlike the review aids, these five share little beyond
+`src/config.py`, so there was no cluster to name a package after.
 
 The two-level form was tried once, as `src.heavy.render_output`, and
 reverted with the directory that held it; `docs/CLI.md` still carries the
-migration row. `tests/test_review_entrypoint.py` pins the rule now,
-rather than leaving it to a reader comparing files by eye.
+migration row. `tests/test_review_entrypoint.py` and
+`tests/test_draft_entrypoint.py` pin the rule now, rather than leaving it
+to a reader comparing files by eye.
 
 ## Ladders and tiers
 

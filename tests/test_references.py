@@ -392,7 +392,7 @@ class TestMainCli:
 
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [system_python, "-m", "src.references", str(draft)],
+            [system_python, "-m", "src.draft", "references", str(draft)],
             cwd=str(repo_root),
             capture_output=True, text=True,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},

@@ -285,7 +285,7 @@ No skill fabricates one, ever, and none may "fix" a gate failure by
 inventing a plausible-looking key -- it corrects the key or removes the
 claim.
 
-**The gate is the only exit.** `python -m src.citation_gate` runs on the
+**The gate is the only exit.** `python -m src.draft gate` runs on the
 skill's own output, and no draft is presented until it reports `OK`.
 
 **The corpus is read-only.** No skill runs `python -m src.sync` or any

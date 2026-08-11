@@ -13,7 +13,7 @@ must never be allowed to invent a citekey; it may only cite what is in
 the ledger.
 
 Usage:
-    python -m src.citation_gate <file> [<file> ...]
+    python -m src.draft gate <file> [<file> ...]
 
 Recognizes any LaTeX/biblatex/natbib command whose name contains "cite"
 (\\cite, \\citep, \\citealp, \\footcite, \\nocite, capitalized biblatex
@@ -235,7 +235,7 @@ def run(paths: list[str]) -> int:
     return 0 if all_ok else 1
 
 
-USAGE = """usage: python -m src.citation_gate <file> [<file> ...]
+USAGE = """usage: python -m src.draft gate <file> [<file> ...]
 
 Fail if a draft cites a citekey the ledger doesn't hold. Exit 0 = every
 citation verified, 1 = at least one unresolved citekey, 2 = bad usage.
@@ -245,17 +245,18 @@ content/ledger.sqlite via stdlib sqlite3, so it runs under a bare
 python3 with no venv."""
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> int:
     # Deliberately not argparse: this takes no options, and the whole
     # tool is a stdlib-only gate that several callers invoke on a list of
     # paths. But -h/--help still has to be answered, because a tool this
     # central is the first thing someone tries it on -- without this it
     # treated "--help" as a filename and died with a FileNotFoundError
     # traceback.
-    if len(sys.argv) < 2:
+    argv = sys.argv[1:] if argv is None else argv
+    if len(argv) < 1:
         print(USAGE, file=sys.stderr)
-        raise SystemExit(2)
-    if sys.argv[1] in ("-h", "--help"):
+        return 2
+    if argv[0] in ("-h", "--help"):
         print(USAGE)
-        raise SystemExit(0)
-    raise SystemExit(run(sys.argv[1:]))
+        return 0
+    return run(argv)

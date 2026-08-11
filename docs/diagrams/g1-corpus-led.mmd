@@ -11,11 +11,11 @@ flowchart LR
 
   P2["<b>3 · DRAFT</b><br/><i>every sentence is a cited claim</i><br/><br/><b>survey-writer</b> — over-fetch <code>k=15</code>,<br/>hand-cluster into 2-4 sub-themes,<br/>comparison table + gap analysis<br/><br/><b>deep-research</b> — perspectives,<br/>parallel interviews, contradiction map,<br/>then cited sections<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.draft gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>swap the key for one retrieval<br/>actually returned, or drop the claim.<br/>Never invent one.</small>"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code> → IEEE list<br/><code>render_output --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><br/><code>src.draft references</code> → IEEE list<br/><code>src.draft render --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
   AID["<b>LAYER 4 · REVIEW — afterwards, by you, never a gate</b><br/><code>src.review provenance</code> · <code>src.review verbatim</code><br/><code>src.review coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 

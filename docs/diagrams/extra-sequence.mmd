@@ -10,9 +10,9 @@ sequenceDiagram
     participant Ret as src.retrieval<br/>+ src.passages
     participant Skill as genre skill<br/>(.claude/skills/)
     participant Hook as PostToolUse hook
-    participant Gate as src.citation_gate
-    participant Ref as src.references
-    participant Ren as render_output<br/>(pandoc / TeX Live)
+    participant Gate as src.draft gate
+    participant Ref as src.draft references
+    participant Ren as src.draft render<br/>(pandoc / TeX Live)
 
     rect rgba(255,247,237,0.6)
     Note over You,Z: CURATE — the only step that adds a paper
@@ -62,10 +62,10 @@ sequenceDiagram
 
     rect rgba(250,245,255,0.6)
     Note over Ref,Ren: PUBLISH
-    Skill->>Ref: python -m src.references <draft>
+    Skill->>Ref: python -m src.draft references <draft>
     Ref->>Led: bib_fields for exactly the cited citekeys
     Ref-->>Skill: a ## References section, numbered by first appearance
-    Skill->>Ren: render_output --format pdf
+    Skill->>Ren: src.draft render --format pdf
     Ren-->>You: content/rendered/<slug>.pdf
     end
 

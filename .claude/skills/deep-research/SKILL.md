@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m src.citation_gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m src.sync` if the ledger is empty, rather than syncing itself.
+description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m src.draft gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m src.sync` if the ledger is empty, rather than syncing itself.
 tags: [deep-research, multi-perspective, storm, citation]
 ---
 
@@ -85,7 +85,7 @@ transcribed it, it is gone when the phase closes.
 hands each section writer a command that reads its rows back:
 
 ```bash
-python -m src.dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
+python -m src.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
 Pasting the same claims into four dispatch prompts spends them as
@@ -177,7 +177,7 @@ the user has to make? a chapter's background?) and what it will and won't
 cover, then create the dossier:
 
 ```
-python -m src.dossier init content/drafts/deep-research-<slug>.md --genre deep-research
+python -m src.draft dossier init content/drafts/deep-research-<slug>.md --genre deep-research
 ```
 
 Give it the same path Phase 7(d) will save to -- the dossier mirrors its
@@ -315,7 +315,7 @@ Phase 4 already chose each section's citekeys and wrote them into
 resolve to transcribed evidence:
 
 ```bash
-python -m src.dossier brief content/drafts/deep-research-<slug>.md \
+python -m src.draft dossier brief content/drafts/deep-research-<slug>.md \
   --section "<section heading>" --check
 ```
 
@@ -331,7 +331,7 @@ its section outline fragment, and the one line that stands in for the
 evidence:
 
 ```
-Your evidence: python -m src.dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
+Your evidence: python -m src.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
 **Do not paste the kept claims into the prompt.** That is the whole of
@@ -431,7 +431,7 @@ not the dossier: the JSON maps section -> citekey for tooling, while the
 dossier holds the working state a human or a later revision reads. Write
 both. Then:
 ```
-python -m src.citation_gate content/drafts/deep-research-<slug>.md
+python -m src.draft gate content/drafts/deep-research-<slug>.md
 ```
 Fix and re-run until `OK`. Never present a draft that hasn't passed.
 
@@ -440,16 +440,16 @@ Fix and re-run until `OK`. Never present a draft that hasn't passed.
 section (reference.md §5's template) from exactly the gated citekeys,
 rather than hand-assembling it:
 ```
-python -m src.references content/drafts/deep-research-<slug>.md
+python -m src.draft references content/drafts/deep-research-<slug>.md
 ```
 Stdlib-only, like the citation gate -- bare `python`, no venv. It writes
 numbered IEEE-style entries; leave the body's inline citations as
 `[@citekey]` rather than hand-numbering them to `[1]`, since pandoc
 assigns the numbers at render time. Then render the other three formats:
 ```
-python -m src.render_output content/drafts/deep-research-<slug>.md --format tex
-python -m src.render_output content/drafts/deep-research-<slug>.md --format pdf
-python -m src.render_output content/drafts/deep-research-<slug>.md --format md
+python -m src.draft render content/drafts/deep-research-<slug>.md --format tex
+python -m src.draft render content/drafts/deep-research-<slug>.md --format pdf
+python -m src.draft render content/drafts/deep-research-<slug>.md --format md
 ```
 All three land beside the draft: a draft at
 `content/drafts/<topic>/<name>.md` renders to
@@ -472,7 +472,7 @@ a rendering failure never blocks presenting the `.md` report.
   listed and uncited. Replace the plan with what the report actually
   cites, derived rather than corrected by hand:
   ```bash
-  python -m src.dossier sections content/drafts/deep-research-<slug>.md \
+  python -m src.draft dossier sections content/drafts/deep-research-<slug>.md \
       --citekeys --write
   ```
   It overwrites the file with the heading -> citekey relation read out of
@@ -519,7 +519,7 @@ that changes to this report should go through `draft-reviser` rather than
 another run of this skill -- seven phases and a dozen subagents is the
 wrong price for an edit -- and that `content/drafts/` and
 `content/dossiers/` are gitignored, so
-`python -m src.dossier export deep-research-<slug>` is how the report and
+`python -m src.draft dossier export deep-research-<slug>` is how the report and
 its working state get backed up.
 
 ## Guardrails
