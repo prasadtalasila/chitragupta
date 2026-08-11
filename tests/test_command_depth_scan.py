@@ -57,17 +57,29 @@ _GUARDS = (
     "imports the module",
 )
 
-# How far either side of a match to look for a guard. Measured against
-# every occurrence in the tree: the furthest a guard sits *before* its
-# match is 72 characters, and *after*, 43. 200 is comfortable headroom
-# on both without spanning the paragraph break that would let one
-# warned-about mention license an unwarned one further down.
-_GUARD_WINDOW = 200
+# How far *back* from a match to look for a guard. Measured against
+# every occurrence in the tree: the furthest a guard sits before its
+# match is 72 characters. 120 is headroom without spanning a sentence.
+#
+# Backwards only, and that is the whole point. The construction this
+# accepts always puts the guard first -- "X carries no `__main__` block,
+# so `python -m X.y` does nothing" -- so looking forward buys nothing and
+# costs the check its teeth: with a symmetric window, a warned-about
+# mention licenses any *real* invocation that lands within the window
+# after it, which is exactly how someone appending an example to that
+# paragraph would slip one through. There is a test for it below.
+_GUARD_WINDOW = 120
 
 
 def _doc_files():
-    """The prose a reader actually reads: docs/, the top-level guides,
-    and everything under .claude/.
+    """Everything a reader copies a command out of.
+
+    Not only Markdown: `config.toml.example` is shipped as the file you
+    copy to `config.toml` and is read as documentation, and
+    `scripts/install_full_pipeline.sh` is the install path whose header
+    comment lists commands. Both carry invocations, so both are in
+    scope; restricting this to `*.md` would leave the two non-Markdown
+    files anyone actually runs unchecked.
 
     Roots are enumerated rather than swept with a recursive glob from
     the repository root. `.gitignore` lists `content/drafts/`,
@@ -81,6 +93,8 @@ def _doc_files():
             list((REPO_ROOT / "docs").glob("**/*.md"))
             + list(REPO_ROOT.glob("*.md"))
             + list((REPO_ROOT / ".claude").glob("**/*.md"))
+            + list((REPO_ROOT / "scripts").glob("*.sh"))
+            + [REPO_ROOT / "config.toml.example"]
         )
     )
 
@@ -108,9 +122,7 @@ def unguarded(text):
     """
     found = []
     for match in _NESTED.finditer(text):
-        window = text[
-            max(0, match.start() - _GUARD_WINDOW): match.end() + _GUARD_WINDOW
-        ]
+        window = text[max(0, match.start() - _GUARD_WINDOW): match.start()]
         if not any(guard in window for guard in _GUARDS):
             found.append((match.start(), match.group(0)))
     return found
@@ -184,6 +196,34 @@ def test_a_nested_invocation_is_allowed_when_the_prose_disarms_it():
     assert not unguarded(
         "`src/draft/dossier.py` carries no `__main__` block, so "
         "`python -m src.draft.dossier` imports the module and exits 0."
+    )
+
+
+def test_a_guard_does_not_license_a_real_invocation_after_it():
+    """The failure this check would otherwise have.
+
+    A symmetric window makes any warned-about mention a shelter: append
+    a genuine example to the paragraph that disarms the nested form, and
+    it inherits that paragraph's guard. Since the guarded paragraphs are
+    exactly where someone editing this topic is already typing, that is
+    the likeliest way a real violation would ever land.
+    """
+    assert unguarded(
+        "Submodules carry no `__main__` block, so "
+        "`python -m src.enrich.docling_parse` imports the module and exits 0. "
+        + "x" * 80
+        + " For a one-off run, try `python -m src.draft.dossier init` instead."
+    )
+
+
+def test_two_mentions_sharing_one_guard_are_both_allowed():
+    """The converse, and why the window is not zero: one sentence
+    legitimately disarms two spellings at once, which is what
+    docs/ARCHITECTURE.md actually does."""
+    assert not unguarded(
+        "The submodules inside `src/enrich/` and `src/review/` carry no "
+        "`__main__` block, so `python -m src.enrich.docling_parse` or "
+        "`python -m src.review.verbatim_check` imports a module and exits 0."
     )
 
 
