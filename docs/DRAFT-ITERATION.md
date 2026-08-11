@@ -104,7 +104,7 @@ depth was asked for.
 
 `content/rendered/` mirrors the same path, so a topic directory names a
 draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together --
-[CLI.md](CLI.md#python3--m-srcrender_output) has the detail. That is
+[CLI.md](CLI.md#python--m-srcrender_output) has the detail. That is
 what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.

@@ -87,7 +87,24 @@ markdown_extensions:
       permalink: true
       slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
   - pymdownx.details
-  - pymdownx.superfences
+  # The `mermaid` custom fence is what makes ```mermaid blocks render as
+  # diagrams instead of as source. Without it superfences hands them to
+  # pymdownx.highlight below, which is doing its job correctly -- the
+  # result is a syntax-highlighted listing of the diagram's source, with
+  # line numbers, which looks enough like "a code block someone meant to
+  # show" that it does not read as a bug until you compare the page
+  # against GitHub's rendering of the same file.
+  #
+  # docs/DIAGRAMS.md calls the fenced blocks "the source of truth" and
+  # eleven of them carry the pipeline's only visual explanation, so this
+  # is the difference between that page working and that page being a
+  # wall of Mermaid syntax. Material bundles Mermaid.js and loads it on
+  # seeing this class; nothing needs adding to `extra_javascript`.
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       linenums: true
       use_pygments: true
