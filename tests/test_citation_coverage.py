@@ -223,6 +223,20 @@ class TestWrite:
         assert "Not necessarily a problem" in text
         assert "`b2023`" in text
 
+    def test_the_recorded_command_regenerates_the_file(self, ledger_con, isolated_config, capsys):
+        """The header records the invocation so a reader can re-run it.
+        Without `--write` the recorded command prints to stdout and writes
+        nothing -- it reproduces the *findings* but not the file, which is
+        the one thing someone holding the file wants."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        citation_coverage.main([str(draft), "--query", "digital twin",
+                                "--write", "--formats", "md"])
+
+        text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
+        assert "--write" in text
+
     def test_two_runs_over_unchanged_input_are_byte_identical(
         self, ledger_con, isolated_config, capsys
     ):

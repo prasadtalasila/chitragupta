@@ -450,10 +450,16 @@ def render_scan_markdown(draft, findings, min_run, gap, limit):
     months is read next to the same draft's provenance and coverage
     reports and should look like them.
     """
+    # `--write` is part of the invocation: this function is only reached
+    # under that flag, and a recorded command without it reproduces the
+    # findings on stdout but not the file -- which is what a reader
+    # holding the file wants to regenerate. `--formats` is left out; it
+    # selects renders *of* this report and changes nothing in it.
     command = ["python3", "scripts/verbatim_check.py", "scan", str(draft),
                "--min-run", str(min_run), "--gap", str(gap)]
     if limit is not None:
         command += ["--limit", str(limit)]
+    command += ["--write"]
 
     lines = review.header(Path(draft), "verbatim", shlex.join(command))
     lines += [

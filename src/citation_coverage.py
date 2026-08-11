@@ -112,11 +112,18 @@ def _command(draft_path: Path, queries: list[str], k: int) -> str:
     Recorded in full because a coverage report is meaningless without
     its queries: "62% covered" says nothing until you know 62% of what
     was asked for.
+
+    `--write` is part of it. This function is only ever reached under
+    that flag, and a recorded command without it reproduces the findings
+    on stdout but not the file -- which is the one thing a reader holding
+    the file wants to regenerate. `--formats` is deliberately left out:
+    it selects renders *of* the report and changes nothing in the
+    Markdown this header sits in.
     """
     parts = ["python3", "-m", "src.citation_coverage", str(draft_path)]
     for query in queries:
         parts += ["--query", query]
-    parts += ["--k", str(k)]
+    parts += ["--k", str(k), "--write"]
     return shlex.join(parts)
 
 

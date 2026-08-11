@@ -714,6 +714,16 @@ class TestScanWrite:
         text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
         assert "--limit 1" in text
 
+    def test_the_recorded_command_regenerates_the_file(self, ledger_con, isolated_config, tmp_path, capsys):
+        """Same as the coverage report: the header is only useful as a
+        re-run if it includes the flag that produced the file."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert "--write" in text
+
     def test_two_runs_over_unchanged_input_are_byte_identical(
         self, ledger_con, isolated_config, tmp_path, capsys
     ):
