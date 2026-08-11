@@ -1,7 +1,7 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Three commands make up the review layer -- `src/citation_provenance.py`,
-`src/citation_coverage.py` and `scripts/verbatim_check.py`. Each reads a
+Three commands make up the review layer -- `src/review/citation_provenance.py`,
+`src/review/citation_coverage.py` and `src/review/verbatim_check.py`. Each reads a
 draft plus the corpus and produces evidence for a human judgement. None
 gates, none runs automatically, none takes the write lock, and all three
 are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4: the review

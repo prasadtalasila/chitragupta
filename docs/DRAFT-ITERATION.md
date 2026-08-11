@@ -43,7 +43,7 @@ Half of this pipeline already survives a session ending, and half of it
 doesn't.
 
 `src/citation_gate.py`, `src/references.py`, `src/render_output.py` and
-`src/citation_provenance.py` are all stateless with respect to *how* a
+`src/review/citation_provenance.py` are all stateless with respect to *how* a
 draft was written. Hand any of them a `.md` file from last month and they
 work: the gate re-checks its citekeys, `references` rebuilds the
 bibliography, `render_output` produces the PDF, `citation_provenance`
@@ -104,7 +104,7 @@ depth was asked for.
 
 `content/rendered/` mirrors the same path, so a topic directory names a
 draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together --
-[CLI.md](CLI.md#python3--m-srcrender_output) has the detail. That is
+[CLI.md](CLI.md#python--m-srcrender_output) has the detail. That is
 what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.
@@ -141,7 +141,7 @@ code.
 
 The cost of that choice is real: there is no schema, so nothing validates
 that `evidence.md` is well-formed. This is accepted deliberately, on the
-same principle as `src/citation_provenance.py` -- a check that blocked on
+same principle as `src/review/citation_provenance.py` -- a check that blocked on
 something it cannot verify exactly would train people to work around it.
 A malformed dossier makes the next revision less efficient. It cannot
 make a draft wrong, because the citation gate still stands between any
@@ -166,7 +166,7 @@ disagrees with the draft hands `draft-reviser` the wrong section for a
 citation.
 
 ```bash
-python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
 ```
 
 builds it instead, from both citation syntaxes, skipping fenced code and
@@ -218,7 +218,7 @@ written, plus a 12-character digest of that set:
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
 ```
 
-`python3 -m src.dossier status` recomputes it. If it differs, the corpus
+`python -m src.dossier status` recomputes it. If it differs, the corpus
 has moved, and the command names the citekeys that appear nowhere in the
 dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
@@ -261,7 +261,7 @@ transcription put it there.
 `sections.md`, and the dispatch prompt carries one line:
 
 ```
-Your evidence: python3 -m src.dossier brief <draft> --section "2. Failure modes"
+Your evidence: python -m src.dossier brief <draft> --section "2. Failure modes"
 ```
 
 An estimated ~40 output tokens per writer, ~0.8k equivalents for the
@@ -467,15 +467,15 @@ branches on the contents, not on the status code.
 The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
 
-1. `python3 -m src.dossier status <draft>` -- what is on disk, and has
-   the corpus moved? Then `python3 -m src.dossier mark-revision <draft>`,
+1. `python -m src.dossier status <draft>` -- what is on disk, and has
+   the corpus moved? Then `python -m src.dossier mark-revision <draft>`,
    before any retrieval call, so `retrieval.md` can tell this revision's
    cost apart from the last one -- its rows otherwise carry only a date,
    and two revisions on the same day would merge into one figure.
 2. Read `scope.md` and `steering.md`. These bound what the revision may
    change: a request that contradicts the recorded scope is a scope
    change, and gets said out loud rather than silently applied.
-3. `python3 -m src.dossier sections <draft>` -- heading to line range.
+3. `python -m src.dossier sections <draft>` -- heading to line range.
 4. Read *only* the affected sections, at those line ranges, and edit
    inside them.
 5. Re-search only if the change genuinely opens new ground, consulting
@@ -596,14 +596,14 @@ What replaces version control is an explicit bundle:
 
 ```bash
 # everything
-python3 -m src.dossier export
+python -m src.dossier export
 
 # one topic, including rendered PDFs
-python3 -m src.dossier export digital-twins-for-software-engineers --with-rendered
+python -m src.dossier export digital-twins-for-software-engineers --with-rendered
 
 # restore -- a dry run that reports what it would write
-python3 -m src.dossier restore drafts-all-2026-08-06.tar.gz
-python3 -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
+python -m src.dossier restore drafts-all-2026-08-06.tar.gz
+python -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 Three properties worth knowing:
@@ -646,7 +646,7 @@ efficiency and can never make a draft wrong.
 **It does not verify that a dossier matches its draft.** `sections.md`
 can disagree with the draft's actual headings if someone edits by hand.
 The reviser rebuilds the section map from the draft rather than trusting
-the file, and `src/citation_provenance.py` already reconciles a draft
+the file, and `src/review/citation_provenance.py` already reconciles a draft
 against its sources independently.
 
 **It does not itself cut what enters the orchestrator's context.** That is

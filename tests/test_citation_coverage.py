@@ -1,9 +1,10 @@
-"""src/citation_coverage.py: how much of retrieval's candidates actually
+"""src/review/citation_coverage.py: how much of retrieval's candidates actually
 made it into a draft's citations. Informational only, not a gate."""
 
 from pathlib import Path
 
-from src import citation_coverage, config, ledger
+from src import config, ledger
+from src.review import citation_coverage
 
 from tests.conftest import make_reference
 

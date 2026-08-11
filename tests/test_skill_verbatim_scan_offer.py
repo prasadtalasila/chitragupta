@@ -33,7 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 GENRE_DOC = REPO_ROOT / "docs" / "GENRE.md"
 
-_OFFER = re.compile(r"verbatim_check\.py scan\b")
+_OFFER = re.compile(r"-m src\.review verbatim scan\b")
 
 # The caveat has to travel with the offer, not merely exist somewhere in
 # the file -- a skill that mentions paraphrase in an unrelated paragraph
@@ -67,7 +67,7 @@ def test_every_drafting_skill_offers_the_verbatim_scan():
 
     missing = [p.parent.name for p in files if not _OFFER.search(_normalised(p))]
     assert not missing, (
-        "these skills never mention `verbatim_check.py scan`, so a draft they "
+        "these skills never mention `-m src.review verbatim scan`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
         "docs/GENRE.md's \"What all seven have in common\" claims otherwise."
     )
@@ -85,7 +85,7 @@ def test_every_offer_says_what_the_scan_cannot_see():
                 offenders.setdefault(path.parent.name, []).append(match.start())
 
     assert not offenders, (
-        f"`verbatim_check.py scan` is offered without {_CAVEAT!r} nearby in "
+        f"`-m src.review verbatim scan` is offered without {_CAVEAT!r} nearby in "
         f"{sorted(offenders)}. An exact-tier scan cannot see paraphrase, and "
         "these drafts are LLM-written, so a clean run must never be presented "
         "as a clean bill of health -- see docs/PLAGIARISM.md."

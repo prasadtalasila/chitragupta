@@ -3,7 +3,7 @@
 Status: **implemented, one detection tier of a planned three.** Written
 2026-08-10.
 
-**Written for** someone deciding whether `scripts/verbatim_check.py`'s
+**Written for** someone deciding whether `src/review/verbatim_check.py`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
 a synced corpus (`python -m src.sync`) and a citekey-verified draft
@@ -24,7 +24,7 @@ This pipeline draws citekeys from a synced bibliography and gates on
 them (`src/citation_gate.py`): a draft cannot cite a source that isn't
 real. That answers "is every citation genuine" and says nothing about
 "does the wording around a citation actually belong to whoever it credits,
-or to someone else". `scripts/verbatim_check.py`'s two modes exist to
+or to someone else". `src/review/verbatim_check.py`'s two modes exist to
 answer the second question, mechanically, over what is currently checked
 verbatim word-n-gram reuse.
 

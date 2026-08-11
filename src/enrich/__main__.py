@@ -1,10 +1,16 @@
-#!/usr/bin/env python3
 """Orchestrates the full enrichment layer:
 
     Docling -> sentence-transformers/Chroma -> BERTopic
 
-One script for both the host and the Docker target (docker/Dockerfile) --
-the two don't need separate implementations. Each stage probes its own
+The enrichment layer's single entry point, one level deep like every
+other layer's: `python -m src.enrich`, as the corpus layer has
+`python -m src.sync`. The stage modules beside this one have no
+`__main__` block, so `python -m src.enrich.docling_parse` imports a
+module and exits 0 without doing anything -- `--stages` is the only way
+to run them, and docs/ARCHITECTURE.md states the invariant.
+
+One entry point for both the host and the Docker target
+(docker/Dockerfile) -- the two don't need separate implementations. Each stage probes its own
 prerequisites (pandoc/pdflatex on PATH) and reports a real per-stage
 status instead of assuming the target implies availability. On a plain
 host that's missing TeX Live, some stages report
@@ -21,8 +27,8 @@ takes the same write lock as `python -m src.sync`. Until 4.0.0 it also
 carried two stages that did not: `provenance` (a review-layer report) and
 `render` (the drafting layer's publish step), each a three-line wrapper
 around a command you can run directly. Both are gone -- run
-`python3 -m src.citation_provenance <draft>` and
-`python3 -m src.render_output <draft> --format pdf` instead, which need
+`python -m src.review provenance <draft>` and
+`python -m src.render_output <draft> --format pdf` instead, which need
 no venv at all, and neither of which should ever have been made to wait
 on a running sync.
 
@@ -31,9 +37,9 @@ enrichment layer now reads corpus artefacts and writes corpus artefacts,
 and does not import the drafting or review layers.
 
 Usage:
-    python scripts/enrich.py --target host
-    python scripts/enrich.py --stages embed,bertopic
-    python scripts/enrich.py --for-draft content/drafts/chapter.md
+    python -m src.enrich --target host
+    python -m src.enrich --stages embed,bertopic
+    python -m src.enrich --for-draft content/drafts/chapter.md
 """
 
 import argparse
@@ -41,8 +47,6 @@ import json
 import logging
 import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.enrich import corpus, docling_parse, embed_index, topic_model
 # citation_gate is read, not called into: draft_citekeys() below uses its
@@ -52,14 +56,12 @@ from src.enrich import corpus, docling_parse, embed_index, topic_model
 # src/ outside the corpus path is imported here.
 from src import citation_gate, config, logging_setup, runlock
 
-# A fixed name, not __name__: this file is run as a script
-# (`python scripts/enrich.py`), so Python sets __name__ to "__main__",
-# which sits outside the logger trees logging_setup.configure() pins --
-# exactly the trap src/sync.py documents at its own getLogger call. The
-# "scripts" root is the second tree that function's _this_project_only
-# filter accepts; without it every line here would reach the log file
-# and be silently dropped from the console.
-logger = logging.getLogger("scripts.enrich")
+# A fixed name, not __name__: this file is the layer's entry point, so
+# Python sets __name__ to "__main__", which sits outside the logger tree
+# logging_setup.configure() pins -- exactly the trap src/sync.py
+# documents at its own getLogger call. Without the fixed name every line
+# here would reach the log file and be silently dropped from the console.
+logger = logging.getLogger("src.enrich")
 
 STAGE_ORDER = ["docling", "embed", "bertopic"]
 
@@ -134,7 +136,10 @@ STAGE_FUNCS = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    # prog, because argparse would otherwise derive "__main__.py" from
+    # sys.argv[0] and print a usage line nobody can type.
+    parser = argparse.ArgumentParser(prog="python -m src.enrich", description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--target", choices=["host", "docker"], default="host",
                          help="Informational only -- stages self-probe regardless of this flag.")
     # default=None, not the joined list, so main() can tell "the user
@@ -214,8 +219,8 @@ def main(configure_logging: bool = False) -> int:
                   f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
                   "artefact, and a partial one is indistinguishable from a complete one. Run "
                   "them as separate commands:\n"
-                  f"      python scripts/enrich.py --for-draft {args.for_draft} --stages docling\n"
-                  f"      python scripts/enrich.py --stages {','.join(refused)}")
+                  f"      python -m src.enrich --for-draft {args.for_draft} --stages docling\n"
+                  f"      python -m src.enrich --stages {','.join(refused)}")
             return EXIT_BAD_SCOPE
 
         draft_path = Path(args.for_draft)

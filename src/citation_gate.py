@@ -121,7 +121,7 @@ class GateResult:
 def extract_citekeys_from_line(line: str) -> list[str]:
     """Back-compat, single-line-scoped wrapper around extract_citekeys().
 
-    Kept for src/citation_coverage.py (the remaining caller that only ever
+    Kept for src/review/citation_coverage.py (the remaining caller that only ever
     hands this one line at a time -- src/references.py was switched to
     call extract_citekeys() directly in this same change) and for the
     existing test suite, which exercises this shape extensively.

@@ -444,7 +444,7 @@ class TestSeamWithCitationProvenance:
         """`citation_provenance` is a consumer of this module now, not the
         owner -- but it stays the import site its own callers already use,
         so the extraction isn't a breaking change for them."""
-        from src import citation_provenance as cp
+        from src.review import citation_provenance as cp
 
         assert cp.source_passages is passages.source_passages
         assert cp.Passage is passages.Passage

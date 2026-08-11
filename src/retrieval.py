@@ -15,7 +15,7 @@ Two boundaries worth knowing, because they're easy to assume otherwise.
 This module reads the ledger's `parsed_path` -- `content/parsed/*.txt` --
 and never `content/docling/`, so running the enrichment layer's Docling
 stage does not change what BM25 ranks or what its snippets say; only `[parser].backend`
-does. And nothing in `scripts/enrich.py` imports this module, so
+does. And nothing in `src/enrich/__main__.py` imports this module, so
 the enrichment layer neither uses nor updates this index.
 
 Ranking is Okapi BM25 (stdlib-only: no rank_bm25 dependency), not raw
@@ -387,9 +387,9 @@ def evidence(
 
 
 # ---------------------------------------------------------------------
-# CLI: `python3 -m src.retrieval`
+# CLI: `python -m src.retrieval`
 #
-# Its own entrypoint rather than the `python3 -c "from src import
+# Its own entrypoint rather than the `python -c "from src import
 # retrieval; [print(r.citekey, r.snippet) for r in ...]"` one-liner the
 # skills used to carry. Three reasons, all about the caller's context
 # rather than convenience: the one-liner's output shape was whatever the
@@ -415,7 +415,7 @@ def main(argv: "list[str] | None" = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python3 -m src.retrieval",
+        prog="python -m src.retrieval",
         description="BM25 retrieval over the synced corpus. Read-only, takes no "
                     "lock, and runs with the bare system python3.",
         epilog="`search` ranks the corpus and hands back a snippet to judge each "

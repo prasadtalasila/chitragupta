@@ -33,10 +33,11 @@ What a part *does* and what it *costs to install* are separate axes:
 the `enrich` group, which is why it sits in `src/` rather than
 `src/enrich/`. (The first three layers were called "job 1", "job 2" and
 "the heavy pipeline" until 3.0.0; *heavy* now names nothing here. The
-fourth, **review**, was "review aids, in no layer" until 4.0.0. One
-residue of the same directory-vs-cost confusion is still open:
-`scripts/verbatim_check.py` is review-layer code sitting where the
-enrichment layer's entry point lives.)
+fourth, **review**, was "review aids, in no layer" until 4.0.0. The last
+residue of the same directory-vs-cost confusion closed in 5.0.0, when
+`verbatim_check.py` left `scripts/` -- where the enrichment layer's entry
+point then lived -- for `src/review/`, beside the two aids it belongs
+with.)
 
 ## Environment constraints on this host
 
@@ -61,7 +62,7 @@ durable rule is the probe:
 - **When they're absent:** don't hang, stack-trace, or silently skip
   without saying so. Every `src/enrich/*` stage already self-probes its
   own prerequisites and reports honestly (`ok`/`skipped`/`missing-binary`)
-  via `scripts/enrich.py` rather than assuming the target implies
+  via `src/enrich/__main__.py` rather than assuming the target implies
   availability -- keep any new stage consistent with that pattern instead
   of inventing a new fallback policy.
 
@@ -89,7 +90,7 @@ withheld). **It has still not been built or run in this environment** (no
 Docker daemon here) -- treat it as a draft to validate, not a tested
 artifact.
 
-## The enrichment layer (`src/enrich/`, `scripts/enrich.py`)
+## The enrichment layer (`src/enrich/`, `src/enrich/__main__.py`)
 
 Implements Docling -> sentence-transformers/Chroma ->
 BERTopic -> Pandoc/LaTeX, one script for both host and Docker. Each stage

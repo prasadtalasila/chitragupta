@@ -68,14 +68,14 @@ other genre -- in a survey they'd delete the deliverable.
 - `src/retrieval.py` -- `search(query, k, snippet_chars)`
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
+run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
 help and none exists, say so and use `src.retrieval.search()`; do not
 build one.
 
-If `python3 -m src.ledger` reports an empty ledger, say so before you
+If `python -m src.ledger` reports an empty ledger, say so before you
 start. Citations are optional in this genre, so the draft is still
 possible -- but it will carry none, and that is the user's call to make,
 not something to discover at the end. Ask whether to proceed uncited or to
@@ -119,7 +119,7 @@ the lesson design is the part worth keeping either way.
    Then, once the artifact and the draft's path are settled and before any
    retrieval or drafting, create the dossier:
    ```
-   python3 -m src.dossier init content/drafts/<slug>.md --genre tutorial
+   python -m src.dossier init content/drafts/<slug>.md --genre tutorial
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a lab for
@@ -211,7 +211,7 @@ the lesson design is the part worth keeping either way.
    Same retrieval discipline as the other skills if you do search:
    over-fetch
    ```
-   python3 -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   python -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
    ```
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
    every call**, even here where citing is optional -- it is what a later
@@ -263,7 +263,7 @@ the lesson design is the part worth keeping either way.
     reads the file and reports `No such draft` if it isn't on disk yet. Then
     derive `sections.md` rather than writing it by hand:
     ```
-    python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+    python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
     ```
     It writes one row per heading, and it skips fenced code -- which matters
     more here than anywhere else, since a `# Step 1: ...` comment inside a
@@ -292,7 +292,7 @@ the lesson design is the part worth keeping either way.
     ```
     python -m src.references content/drafts/<slug>.md --heading "Further reading"
     ```
-    Stdlib-only, bare `python3`, no venv. Entries are numbered IEEE-style;
+    Stdlib-only, bare `python`, no venv. Entries are numbered IEEE-style;
     leave the inline citations as `[@citekey]` rather than hand-numbering
     them. `--heading "Further reading"` suits this genre better than the
     bare `## References` default; use whatever heading the draft's own
@@ -309,9 +309,9 @@ the lesson design is the part worth keeping either way.
 
 13. **Render tex, pdf, and numbered md.**
     ```
-    python3 -m src.render_output content/drafts/<slug>.md --format tex
-    python3 -m src.render_output content/drafts/<slug>.md --format pdf
-    python3 -m src.render_output content/drafts/<slug>.md --format md
+    python -m src.render_output content/drafts/<slug>.md --format tex
+    python -m src.render_output content/drafts/<slug>.md --format pdf
+    python -m src.render_output content/drafts/<slug>.md --format md
     ```
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
@@ -321,7 +321,7 @@ the lesson design is the part worth keeping either way.
     reader who won't open one. The draft itself keeps its `[@citekey]`
     markers.
 
-    Bare `python3` plus `pandoc`/`pdflatex` on PATH -- no enrich group. If
+    Bare `python` plus `pandoc`/`pdflatex` on PATH -- no enrich group. If
     either reports `[missing-binary]` or `[error]`, print a one-line warning
     in chat with that message and continue anyway; a rendering failure never
     blocks presenting the `.md` draft.
@@ -336,7 +336,7 @@ the lesson design is the part worth keeping either way.
 15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
     ```
-    python3 scripts/verbatim_check.py scan content/drafts/<slug>.md
+    python -m src.review verbatim scan content/drafts/<slug>.md
     ```
     It reports wording the tutorial shares with **any** parsed source,
     cited or not. That matters here even though this genre barely cites:
@@ -356,7 +356,7 @@ the lesson design is the part worth keeping either way.
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of
     this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python3 -m src.dossier export <slug>` is how a lesson
+    gitignored -- so `python -m src.dossier export <slug>` is how a lesson
     and its working state get backed up.
 
 ## Self-check before presenting

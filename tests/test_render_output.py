@@ -297,7 +297,7 @@ class TestOutputDir:
 
         3.19.2 made `PROVENANCE_DIR` a second source root so a report's
         renders would follow the report. 4.0.0 replaced that with
-        `render(output_dir=...)`: `src/review.py` says where its renders
+        `render(output_dir=...)`: `src/review/__init__.py` says where its renders
         go, and this function is left answering only "where does a
         *draft* render to". Reaching here with a report at all means the
         caller forgot to pass `output_dir`, and the flat fallback is the
@@ -887,7 +887,7 @@ class TestInputsAreConfinedToContent:
 
 
 class TestOutputDirOverride:
-    """`render(output_dir=...)` -- how src/review.py lands a report's
+    """`render(output_dir=...)` -- how src/review/__init__.py lands a report's
     renders beside the report instead of in content/rendered/."""
 
     def test_the_caller_s_directory_is_used_verbatim(self, isolated_config, monkeypatch):

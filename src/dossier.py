@@ -56,18 +56,18 @@ everything else here, it writes nothing: see `_ephemeral_index` for why
 `src.retrieval.search()` cannot be used to do the matching.
 
 Stdlib only (re/sqlite3/tarfile/hashlib), like citation_gate.py,
-references.py and citation_provenance.py -- runs with bare `python3`, no
+references.py and citation_provenance.py -- runs with bare `python`, no
 venv, on a machine where the corpus was never built.
 
 Usage:
-    python3 -m src.dossier init content/drafts/<name>.md --genre survey
-    python3 -m src.dossier status content/drafts/<name>.md
-    python3 -m src.dossier status --all [--json]
-    python3 -m src.dossier sections content/drafts/<name>.md
-    python3 -m src.dossier brief content/drafts/<name>.md --section "2. Failure modes"
-    python3 -m src.dossier list
-    python3 -m src.dossier export [<name> ...] [--out FILE] [--with-rendered]
-    python3 -m src.dossier restore <archive.tar.gz> [--force]
+    python -m src.dossier init content/drafts/<name>.md --genre survey
+    python -m src.dossier status content/drafts/<name>.md
+    python -m src.dossier status --all [--json]
+    python -m src.dossier sections content/drafts/<name>.md
+    python -m src.dossier brief content/drafts/<name>.md --section "2. Failure modes"
+    python -m src.dossier list
+    python -m src.dossier export [<name> ...] [--out FILE] [--with-rendered]
+    python -m src.dossier restore <archive.tar.gz> [--force]
 """
 
 import argparse
@@ -491,7 +491,7 @@ class Section:
 
 # Headings for *outline extraction*: where does each section start and
 # stop, so a revision can Read and Edit one section instead of the whole
-# file. src/citation_provenance.py has a similar-looking pair of regexes
+# file. src/review/citation_provenance.py has a similar-looking pair of regexes
 # doing a different job -- segmenting claim-bearing blocks for scoring --
 # and the two are deliberately not shared: that module needs list items
 # and table rows to be blocks, which would be noise in an outline.
@@ -662,8 +662,8 @@ pipeline. Genre: {genre}.
 This directory is gitignored, like the draft it describes. Back it up and
 restore it with:
 
-    python3 -m src.dossier export {name}
-    python3 -m src.dossier restore <archive.tar.gz> --force
+    python -m src.dossier export {name}
+    python -m src.dossier restore <archive.tar.gz> --force
 
 A bundle carries drafts and dossiers, not the corpus: `content/ledger.sqlite`
 is regenerable with `python -m src.sync`, and `papers/bibliography.bib` is
@@ -750,7 +750,7 @@ _REVISIONS_TEMPLATE = """# Revisions
 
 _RETRIEVAL_TEMPLATE = """# Retrieval calls
 
-<!-- Appended by `python3 -m src.retrieval ... --log <draft>`, never by
+<!-- Appended by `python -m src.retrieval ... --log <draft>`, never by
      hand.
 
      `asked` is how much that call requested -- `--k` for search,
@@ -760,7 +760,7 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      counts, this is what turns "retrieval is where the tokens go" from
      an estimate into a measurement for a particular draft.
 
-     A row with mode `revision` is not a call: `python3 -m src.dossier
+     A row with mode `revision` is not a call: `python -m src.dossier
      mark-revision` writes one, at the start of each draft-reviser pass,
      so `dossier status` can total retrieval cost per revision instead of
      only as one lifetime figure -- the date column alone can't tell two
@@ -854,7 +854,7 @@ def log_retrieval(
 
 
 # `log_retrieval`'s `mode` is always "search" or "evidence" -- the two
-# `python3 -m src.retrieval` subcommands. "revision" can't collide with a
+# `python -m src.retrieval` subcommands. "revision" can't collide with a
 # real logged call; it exists only so `retrieval_cost_by_revision` has
 # something to split on.
 _REVISION_MARKER_MODE = "revision"
@@ -1788,7 +1788,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
     report = status(Path(args.draft))
     if not report.dossier.is_dir():
         print(f"No dossier at {draft_relpath(report.dossier)}.")
-        print(f"Create one with `python3 -m src.dossier init {args.draft} --genre <genre>`.")
+        print(f"Create one with `python -m src.dossier init {args.draft} --genre <genre>`.")
         return 1
 
     print(f"Dossier: {draft_relpath(report.dossier)}")
@@ -1957,7 +1957,7 @@ def _cmd_brief(args: argparse.Namespace) -> int:
     target = _resolve_dossier(Path(args.draft))
     if not target.is_dir():
         print(f"No dossier at {draft_relpath(target)}. Create one with "
-              f"`python3 -m src.dossier init {args.draft} --genre <genre>`.",
+              f"`python -m src.dossier init {args.draft} --genre <genre>`.",
               file=sys.stderr)
         return 1
 
@@ -2034,7 +2034,7 @@ def _cmd_export(args: argparse.Namespace) -> int:
     size = written.stat().st_size
     print(f"  {written}  ({count} file(s), {size / 1024:.1f} KiB)")
     print("\n  Restore with:")
-    print(f"    python3 -m src.dossier restore {written} --force")
+    print(f"    python -m src.dossier restore {written} --force")
     return 0
 
 
@@ -2059,13 +2059,13 @@ def _cmd_restore(args: argparse.Namespace) -> int:
         print(f"    ... and {len(plan.overwrite) - 10} more")
     if not plan.performed:
         print("\n  Dry run. Re-run with --force to write:")
-        print(f"    python3 -m src.dossier restore {archive} --force")
+        print(f"    python -m src.dossier restore {archive} --force")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python3 -m src.dossier",
+        prog="python -m src.dossier",
         description="The working state behind a draft: create it, inspect it, "
                     "back it up, restore it. Stdlib only; never writes to the "
                     "corpus layer.",

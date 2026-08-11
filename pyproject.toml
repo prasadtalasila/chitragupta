@@ -9,7 +9,7 @@
 [tool.poetry]
 package-mode = false
 name = "chitragupta"
-version = "4.0.0"
+version = "5.0.0"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
@@ -29,7 +29,7 @@ bibtexparser = ">=1.4,<2.0"
 # relax this ceiling without rewriting that module against v2's API first.
 
 # Optional group (`poetry install --with enrich`): everything src/enrich/*
-# (the Docling/embeddings/Pandoc pipeline, scripts/enrich.py)
+# (the Docling/embeddings/Pandoc pipeline, src/enrich/__main__.py)
 # needs. All of the below were installed and import-verified in a host
 # venv on 2026-07-28 (docker/requirements-full.txt, since replaced by this
 # group); sentence-transformers/chromadb/bertopic/docling were also

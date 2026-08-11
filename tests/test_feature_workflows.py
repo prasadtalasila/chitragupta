@@ -581,7 +581,7 @@ def _run_scan(draft, *args):
     step -- long after every test has passed, with a message
     (`Can't combine statement coverage data with branch data`) that names
     nothing connected to the test that caused it. That happened for real
-    on PR #114. `scripts/verbatim_check.py` is covered in process by
+    on PR #114. `src/review/verbatim_check.py` is covered in process by
     tests/test_verbatim_check.py, so nothing is lost by not measuring
     these children.
     """
@@ -592,14 +592,14 @@ def _run_scan(draft, *args):
     }
     env["CONTENT_DIR"] = str(config.CONTENT_DIR)
     return subprocess.run(
-        [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), *args],
+        [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), *args],
         cwd=str(Path(__file__).resolve().parent.parent),
         capture_output=True, text=True, env=env,
     )
 
 
 class TestVerbatimScanEndToEnd:
-    """`python3 scripts/verbatim_check.py scan <draft>` over a real
+    """`python -m src.review verbatim scan <draft>` over a real
     mini-ledger: index build -> disk cache -> findings, through the entry
     point README's step 7 and the seven skills now point at.
 
@@ -834,7 +834,7 @@ class TestVerbatimScanEndToEnd:
         self, planted_draft, system_python
     ):
         """docs/CLI.md files `scan` in interpreter tier 1 -- bare
-        `python3`, stdlib only, no venv. Everything above runs it on
+        `python`, stdlib only, no venv. Everything above runs it on
         `sys.executable`, which is the venv's interpreter and so cannot
         tell that claim from a false one. This is the same check
         `citation_gate`/`references`/`render_output` already get, applied
@@ -848,7 +848,7 @@ class TestVerbatimScanEndToEnd:
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
         result = subprocess.run(
-            [system_python, "scripts/verbatim_check.py", "scan", str(planted_draft)],
+            [system_python, "-m", "src.review", "verbatim", "scan", str(planted_draft)],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True, env=env,
         )
@@ -889,8 +889,8 @@ class TestOneDraftsReviewArtefactsLandTogether:
         return draft
 
     def test_all_three_reports_share_one_mirrored_directory(self, isolated_config, capsys):
-        import scripts.verbatim_check as vc
-        from src import citation_coverage, citation_provenance
+        from src.review import verbatim_check as vc
+        from src.review import citation_coverage, citation_provenance
 
         draft = self._draft(isolated_config)
 
@@ -908,7 +908,7 @@ class TestOneDraftsReviewArtefactsLandTogether:
         """A review artefact in `content/rendered/` is the layer smear
         this issue removed -- 3.19.2 rendered a report's `.tex`/`.pdf`
         there, because `render()` had no way to be told otherwise."""
-        from src import citation_provenance
+        from src.review import citation_provenance
 
         draft = self._draft(isolated_config)
         citation_provenance.write_report(draft, ["md"])
@@ -921,8 +921,8 @@ class TestOneDraftsReviewArtefactsLandTogether:
         """The banner has to be in the file, not only in the docs: a
         report found on disk months later is the case the docs can't
         reach."""
-        import scripts.verbatim_check as vc
-        from src import citation_coverage, citation_provenance
+        from src.review import verbatim_check as vc
+        from src.review import citation_coverage, citation_provenance
 
         draft = self._draft(isolated_config)
         citation_provenance.write_report(draft, ["md"])
@@ -936,8 +936,8 @@ class TestOneDraftsReviewArtefactsLandTogether:
     def test_the_bundle_carries_them_and_restores_them(self, isolated_config, tmp_path, capsys):
         """`dossier export` is the tool the findability property is *for*
         -- #114's own rationale for confining everything to `content/`."""
-        import scripts.verbatim_check as vc
-        from src import citation_provenance
+        from src.review import verbatim_check as vc
+        from src.review import citation_provenance
 
         draft = self._draft(isolated_config)
         dossier.init(draft, "survey")

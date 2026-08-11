@@ -2,7 +2,7 @@
 everything that holds the pipeline write lock.
 
 These cases moved here from tests/test_sync.py when configure() was
-lifted out of src/sync.py so scripts/enrich.py could share it -- the
+lifted out of src/sync.py so src/enrich/__main__.py could share it -- the
 behaviour they pin (level applies to the file and not the console,
 third-party records reach the file only, `file_only` suppresses the
 console copy) is now a property of the shared module rather than of
@@ -66,7 +66,7 @@ class TestConfigure:
         self, isolated_config, monkeypatch, capsys, src_logger
     ):
         """The hazard the single shared module introduced: two
-        entrypoints now import this, and scripts/enrich.py runs several
+        entrypoints now import this, and src/enrich/__main__.py runs several
         stages in one process. An unguarded second call would double
         every subsequent line in both the file and the console, which
         reads as corrupt output rather than as a configuration bug."""
@@ -157,35 +157,57 @@ class TestConfigure:
         err = capsys.readouterr().err
         assert "a third-party warning" not in err
 
-    def test_a_scripts_logger_reaches_the_console_like_a_src_one(
+    def test_the_enrich_entrypoints_logger_reaches_the_console(
         self, isolated_config, monkeypatch, capsys
     ):
-        """scripts/enrich.py is outside the src package, so its logger
-        is named "scripts.enrich". When this filter matched only "src*"
-        -- as it did while sync was the sole caller -- every enrich line
-        landed in the file and vanished from the console: a half-failure
-        much harder to notice than no logging at all."""
+        """The other entrypoint that holds the lock logs as `src.enrich`.
+
+        It logged as `scripts.enrich` until 5.0.0, when the enrichment
+        layer's entry point moved from scripts/enrich.py into the package
+        as src/enrich/__main__.py and _TREES collapsed from
+        ("src", "scripts") to ("src",). What this pins is unchanged by
+        that move: an enrich line must reach both the file and the
+        console. The bug it guards against -- every enrich line landing
+        in the file and vanishing from the console -- was a half-failure
+        much harder to notice than no logging at all.
+        """
         monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
         logging_setup.configure()
-        logging.getLogger("scripts.enrich").info("an enrich line")
+        logging.getLogger("src.enrich").info("an enrich line")
 
         assert "an enrich line" in (config.LOGS_DIR / "pipeline.log").read_text()
         assert "an enrich line" in capsys.readouterr().err
 
-    def test_a_scripts_logger_is_pinned_permissive_like_the_src_tree(
+    def test_the_enrich_entrypoints_logger_is_pinned_permissive(
         self, isolated_config, monkeypatch, capsys
     ):
-        """The console-vs-file split has to hold for the "scripts" tree
-        too, not just "src" -- pinning one tree to DEBUG and leaving the
-        other at the root's level would reintroduce exactly the bug
+        """The console-vs-file split has to hold for the enrichment
+        entrypoint too, not just for sync: leaving it at the root's level
+        would reintroduce exactly the bug
         test_console_output_ignores_logging_level covers, but only for
         enrich."""
         monkeypatch.setattr(config, "LOGGING_LEVEL", "CRITICAL")
         logging_setup.configure()
-        logging.getLogger("scripts.enrich").info("enrich progress")
+        logging.getLogger("src.enrich").info("enrich progress")
 
         assert "enrich progress" not in (config.LOGS_DIR / "pipeline.log").read_text()
         assert "enrich progress" in capsys.readouterr().err
+
+    def test_a_logger_outside_the_src_tree_stays_off_the_console(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """_TREES lost its "scripts" root in 5.0.0. Nothing in this repo
+        logs under that name any more, so a record that still arrives
+        under it is by definition not ours and belongs with the
+        third-party chatter -- on the console's far side of the filter.
+        This is the assertion that would fail if the collapse had been
+        done by widening the match rather than by narrowing the roots."""
+        monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
+        logging_setup.configure()
+        logging.getLogger("scripts.enrich").warning("a stale-tree line")
+
+        assert "a stale-tree line" in (config.LOGS_DIR / "pipeline.log").read_text()
+        assert "a stale-tree line" not in capsys.readouterr().err
 
     def test_a_file_only_record_reaches_the_file_but_not_the_console(
         self, isolated_config, monkeypatch, capsys, src_logger

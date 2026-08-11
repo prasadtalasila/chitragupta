@@ -289,7 +289,7 @@ claim.
 skill's own output, and no draft is presented until it reports `OK`.
 
 **The corpus is read-only.** No skill runs `python -m src.sync` or any
-`scripts/enrich.py` stage. Both take the pipeline's write lock and can
+`python -m src.enrich` stage. Both take the pipeline's write lock and can
 run for tens of minutes; they are yours to run. If the ledger is empty or
 nothing is `parsed`, the skill says exactly what it checked and what it
 found and stops, rather than drafting around it.
@@ -311,7 +311,7 @@ anyway.
 
 **The verbatim scan is offered, never run silently and never a gate.**
 Once the gate has passed and the renders are done, and before presenting,
-each skill offers `python3 scripts/verbatim_check.py scan
+each skill offers `python -m src.review verbatim scan
 content/drafts/<path>` -- which reports wording the draft shares with
 *any* parsed source, cited or not. It cannot block a draft and no skill
 treats it as a condition of presenting. The offer carries its own

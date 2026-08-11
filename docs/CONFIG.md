@@ -98,12 +98,13 @@ used as given.
   `ledger.sqlite` and `parsed/`, the drafting layer's `drafts/`,
   `dossiers/` and `rendered/`, the review layer's `review/`, and
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
-  Since 3.17.0 it is also what six of the seven tier-1 tools will
-  *accept*: `citation_gate`, `references` and `render_output` each
-  refuse a path that resolves outside it, and since 4.0.0 so do the
-  three review commands. The seventh, `ledger`, takes no path argument
-  at all -- its CLI only ever addresses rows by citekey or status -- so
-  the rule applies to it vacuously rather than needing a check. This one
+  Since 3.17.0 it is also what every tier-1 command that takes a path
+  will *accept*: `citation_gate`, `references` and `render_output` each
+  refuse a path that resolves outside it, and since 4.0.0 so do all
+  three of `src.review`'s aids. `ledger` is the one that takes no path
+  argument at all -- its CLI only ever addresses rows by citekey or
+  status -- so the rule applies to it vacuously rather than needing a
+  check. This one
   directory is then the whole record of the work, and a copy of it is
   complete.
 
@@ -206,8 +207,8 @@ The values in full:
   [CLI.md's "Running sync on a schedule"](CLI.md#running-sync-on-a-schedule).
 
   **One file, shared.** Both `python -m src.sync` and
-  `scripts/enrich.py` write here, and each line names its source
-  (`src.sync`, `scripts.enrich`, `src.enrich.docling_parse`), so
+  `src/enrich/__main__.py` write here, and each line names its source
+  (`src.sync`, `src.enrich`, `src.enrich.docling_parse`), so
   `grep 'src\.sync' logs/pipeline.log` recovers a per-command view. The
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
@@ -228,7 +229,7 @@ script (or a test) that needs it somewhere else.
 | `weak_score` | `PROVENANCE_WEAK_SCORE` | number, a fraction 0.0-1.0 | `0.20` |
 | `good_score` | `PROVENANCE_GOOD_SCORE` | number, a fraction 0.0-1.0 | `0.50` |
 
-`src/citation_provenance.py` (the review layer) bands the fraction of a citing sentence's
+`src/review/citation_provenance.py` (the review layer) bands the fraction of a citing sentence's
 distinctive words found in the best-matching source passage. Below
 `weak_score` a finding reads "no support found", which means *go look at
 this one first* -- never "this citation is wrong". At or above
@@ -294,7 +295,7 @@ removed through that same seam.
 | `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#parserbackend----pdftotext-or-docling) |
 
 **Page boundaries are not cosmetic, which is why both backends now keep
-them.** `scripts/verbatim_check.py` reports which PDF page a verbatim run
+them.** `src/review/verbatim_check.py` reports which PDF page a verbatim run
 came from by splitting on those form feeds; before `docling` asked for
 them, a citekey parsed that way reported `pdf p.1` for every hit
 regardless of where the text sat.
@@ -558,7 +559,7 @@ Edit `[enrich].embedding_model`, or set `EMBEDDING_MODEL=...` for a single
 run, then rebuild the index:
 
 ```bash
-python scripts/enrich.py --stages embed
+python -m src.enrich --stages embed
 ```
 
 The model downloads on first use (needs network), and Chroma's existing

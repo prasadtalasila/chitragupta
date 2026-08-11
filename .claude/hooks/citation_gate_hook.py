@@ -64,8 +64,16 @@ def main() -> int:
     if not file_path.is_relative_to(drafts_dir) or file_path.suffix not in GATED_EXTENSIONS:
         return 0  # not a genre-skill draft -- nothing to gate
 
+    # sys.executable, not a bare "python"/"python3" off PATH. This hook is
+    # the gate's only automatic enforcement point, and an interpreter name
+    # that does not resolve raises FileNotFoundError here -- which exits
+    # non-zero *without* the exit-2 that blocks the write, so the draft
+    # lands ungated. A hard gate that degrades to advisory depending on
+    # whether a host has `python` as well as `python3` is the worst of the
+    # available failure modes. The interpreter already running this hook
+    # is known to exist and is the one settings.json chose.
     result = subprocess.run(
-        ["python3", "-m", "src.citation_gate", str(file_path)],
+        [sys.executable, "-m", "src.citation_gate", str(file_path)],
         cwd=repo_root,
         capture_output=True,
         text=True,

@@ -1,7 +1,7 @@
 """Builds a "## References" section for a genre draft's Markdown source,
 sourced only from `content/ledger.sqlite` (populated by `sync` from
 `bibliography.bib`, the source of truth). Stdlib-only (`sqlite3`, `json`),
-like `citation_gate.py`, so it runs with bare `python3` -- no
+like `citation_gate.py`, so it runs with bare `python` -- no
 `bibtexparser`/venv needed. Deliberately doesn't read `bibliography.bib`
 itself; `src/bib_reader.py` is the only module that does (AGENTS.md), which
 is why the fields an entry needs beyond title/year (authors, venue, volume,

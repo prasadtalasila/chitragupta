@@ -1,4 +1,4 @@
-"""src/review.py: the review layer's shared output contract -- where a
+"""src/review/__init__.py: the review layer's shared output contract -- where a
 report goes, what it opens with, and what it must never contain."""
 
 import pytest
@@ -102,11 +102,11 @@ class TestRequireReviewable:
 class TestHeader:
     def test_carries_the_banner_the_draft_and_the_command(self, isolated_config):
         draft = config.DRAFTS_DIR / "dt" / "survey.md"
-        text = "\n".join(review.header(draft, "provenance", "python3 -m src.x --flag v"))
+        text = "\n".join(review.header(draft, "provenance", "python -m src.x --flag v"))
 
         assert "Review aid, not a gate" in text
         assert str(draft) in text
-        assert "python3 -m src.x --flag v" in text
+        assert "python -m src.x --flag v" in text
         assert "chitragupta " in text
 
     def test_a_draft_path_with_a_space_stays_re_runnable(self, isolated_config):
@@ -116,7 +116,7 @@ class TestHeader:
         all -- so two drafts called `survey.md` in different topics wrote
         headers that read identically, the confusion the mirrored path
         exists to prevent, reintroduced inside the file."""
-        from src import citation_provenance
+        from src.review import citation_provenance
 
         draft = config.DRAFTS_DIR / "my topic" / "survey.md"
         draft.parent.mkdir(parents=True)

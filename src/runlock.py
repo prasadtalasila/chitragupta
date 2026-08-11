@@ -1,6 +1,6 @@
 """One writer at a time across content/.
 
-`sync` and `scripts/enrich.py` both write there, and the planned
+`sync` and `src/enrich/__main__.py` both write there, and the planned
 cron job makes overlap a matter of time rather than bad luck. Two runs
 overlapping is not merely wasteful: sync's parsed-text writes are not
 atomic, so a concurrent enrichment run can read a half-written

@@ -42,7 +42,7 @@ sentence; being wrongly wide costs the tokens, and the user did not
 agree to spend them.
 
 **Read-only over the corpus layer**, exactly as everywhere else. Never
-run `python -m src.sync` and never run `scripts/enrich.py`: both take the
+run `python -m src.sync` and never run `python -m src.enrich`: both take the
 pipeline's write lock and can run for tens of minutes, and they are the
 user's to run.
 
@@ -64,7 +64,7 @@ through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same
 edit discipline, the same dossier write-back and the same exit.
 
-**Step 3 becomes a whole-draft read.** `python3 -m src.dossier sections
+**Step 3 becomes a whole-draft read.** `python -m src.dossier sections
 content/drafts/<path>` still gives the outline, but here it is a work
 list rather than a filter: you read every section, because a wide pass
 is judging the whole draft against the corpus, not one claim.
@@ -80,8 +80,8 @@ doesn't, which is the case for any draft written before `--log` was
 passed. One search each:
 
 ```bash
-python3 -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<path>
-python3 -m src.retrieval evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
+python -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<path>
+python -m src.retrieval evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
 ```
 
 `evidence` stays optional and stays for deepening an acceptance -- reach
@@ -119,7 +119,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   was wide and why.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m src.citation_gate`.
-- **Offer the verbatim scan** -- `python3 scripts/verbatim_check.py scan
+- **Offer the verbatim scan** -- `python -m src.review verbatim scan
   content/drafts/<path>` -- before presenting. Don't run it silently and
   never make it a condition of presenting. It reports wording the draft
   shares with **any** parsed source, cited or not, which earns its place
@@ -141,7 +141,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   can happen without anyone asking for it.
 - **Never re-run the genre skill.** If the request truly needs a new
   draft, say that and hand off explicitly.
-- **Never run `python -m src.sync` or `scripts/enrich.py`.**
+- **Never run `python -m src.sync` or `python -m src.enrich`.**
 - **Never treat a wide search as permission to re-judge `rejected.md`.**
 - **Never silently change scope, reader or terminology.**
 - **Report what the pass actually changed** -- including the sections you

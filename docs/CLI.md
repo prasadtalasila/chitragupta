@@ -8,6 +8,7 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Upgrading from 4.x: one command per layer](#upgrading-from-4x-one-command-per-layer)
 - [Upgrading from 3.19.x: `content/provenance/` is now `content/review/`](#upgrading-from-319x-contentprovenance-is-now-contentreview)
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
 - [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
@@ -16,20 +17,68 @@ short path; this is the full set.
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
   - [`src.sync`](#python--m-srcsync)
-  - [`src.ledger`](#python3--m-srcledger)
-  - [`src.citation_gate`](#python3--m-srccitation_gate)
-  - [`src.references`](#python3--m-srcreferences)
-  - [`src.dossier`](#python3--m-srcdossier)
-  - [`src.retrieval`](#python3--m-srcretrieval)
-  - [`src.citation_coverage`](#python3--m-srccitation_coverage)
-  - [`src.citation_provenance`](#python3--m-srccitation_provenance)
-  - [`src.render_output`](#python3--m-srcrender_output)
-  - [`scripts/enrich.py`](#scriptsenrichpy)
-  - [`scripts/verbatim_check.py`](#scriptsverbatim_checkpy)
+  - [`src.ledger`](#python--m-srcledger)
+  - [`src.citation_gate`](#python--m-srccitation_gate)
+  - [`src.references`](#python--m-srcreferences)
+  - [`src.dossier`](#python--m-srcdossier)
+  - [`src.retrieval`](#python--m-srcretrieval)
+  - [`src.review coverage`](#python--m-srcreview-coverage)
+  - [`src.review provenance`](#python--m-srcreview-provenance)
+  - [`src.review verbatim`](#python--m-srcreview-verbatim)
+  - [`src.render_output`](#python--m-srcrender_output)
+  - [`src.enrich`](#python--m-srcenrich)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Upgrading from 4.x: one command per layer
+
+**Four command strings changed. Nothing they do changed.** 5.0.0 gave
+every layer a single entry point, one level deep, so the review and
+enrichment layers now read like `python -m src.sync` always has. There
+are no compatibility shims: the old spellings are gone, and the table
+below is the whole migration.
+
+| Before (4.x) | Now (5.0.0) |
+|---|---|
+| `python3 -m src.citation_provenance <draft>` | `python -m src.review provenance <draft>` |
+| `python3 -m src.citation_coverage <draft> --query …` | `python -m src.review coverage <draft> --query …` |
+| `python3 scripts/verbatim_check.py overlap\|scan\|locate …` | `python -m src.review verbatim overlap\|scan\|locate …` |
+| `python3 scripts/enrich.py --stages …` | `python -m src.enrich --stages …` |
+
+Every flag, exit code and output path is unchanged, so a script that
+only needed its command string edited needs nothing else. `python -m
+src.review` with no arguments prints the layer's usage and exits 0,
+which is the quickest way to check a spelling.
+
+**Do not use `python -m src.enrich` the same way.** With no arguments it
+does not print usage -- it runs every stage over the whole corpus, under
+the write lock, which is its documented default and can take a long
+time. Ask it for help explicitly: `python -m src.enrich --help`.
+
+**The docs also say `python` now, not `python3`.** That is a change of
+spelling in the documentation, not of behaviour: these docs used both
+interchangeably before -- `python -m src.sync` beside `python3 -m
+src.dossier` -- and now use one. Nothing checks which name you type. If
+your machine has only `python3` -- Debian and Ubuntu without the
+`python-is-python3` package are the common case -- then `python3` works
+exactly as before, everywhere these docs write `python`.
+
+Two consequences worth knowing:
+
+- **`scripts/` no longer holds a layer entry point.** `verbatim_check.py`
+  moved to `src/review/`, `enrich.py` to `src/enrich/__main__.py`. What
+  is left there is dev tooling: `install_full_pipeline.sh` and
+  `release.py`.
+- **A review report records the command that produced it**, in its
+  header. Reports written before 5.0.0 name the old invocation. They are
+  regenerable output -- re-run the aid and the header updates -- and
+  nothing reads that line back, so a stale one is cosmetic.
+
+This is the same kind of change as `src.heavy.render_output` ->
+`src.render_output` in 3.0.0, and for the same reason: where a command
+lives stopped matching what it is.
 
 ## Upgrading from 3.19.x: `content/provenance/` is now `content/review/`
 
@@ -53,7 +102,7 @@ A report's `.tex`/`.pdf` now land **beside its `.md`** rather than in
 regenerable, gitignored output, so re-running is the whole migration:
 
 ```bash
-python3 -m src.citation_provenance content/drafts/<topic>/<slug>.md
+python -m src.review provenance content/drafts/<topic>/<slug>.md
 rm -r content/provenance/                    # the old directory
 rm content/rendered/**/*.provenance.tex content/rendered/**/*.provenance.pdf
 ```
@@ -65,10 +114,10 @@ not wait on `sync`'s write lock:
 
 ```bash
 # was: .venv-full/bin/python scripts/enrich.py --stages provenance --input <draft>
-python3 -m src.citation_provenance <draft>
+python -m src.review provenance <draft>
 
 # was: .venv-full/bin/python scripts/enrich.py --stages render --input <draft>
-python3 -m src.render_output <draft> --format pdf
+python -m src.render_output <draft> --format pdf
 ```
 
 `--input`, `--output-format` and `--documentclass` went with them.
@@ -101,7 +150,7 @@ once, `python -m src.sync --reparse` still re-extracts everything.
 ## Upgrading from 3.11 or earlier: the log file moved
 
 `logs/sync.log` is now **`logs/pipeline.log`**. It is the same file doing
-the same job, renamed because `scripts/enrich.py` now writes to it too
+the same job, renamed because `src/enrich/__main__.py` now writes to it too
 and the old name had stopped being true.
 
 Nothing about how you *invoke* anything changed, and `[logging].level`
@@ -121,7 +170,7 @@ each line is for:
 
 ```bash
 grep 'src\.sync' logs/pipeline.log        # just the corpus layer
-grep 'scripts\.enrich' logs/pipeline.log  # just the enrichment layer
+grep 'src\.enrich' logs/pipeline.log     # just the enrichment layer
 ```
 
 ## Upgrading from 2.x
@@ -132,8 +181,8 @@ changed. Old spellings do not work -- there are no compatibility shims:
 
 | 2.x | 3.0.0 |
 |---|---|
-| `python3 -m src.heavy.render_output` | `python3 -m src.render_output` |
-| `python scripts/full_pipeline.py` | `python scripts/enrich.py` |
+| `python -m src.heavy.render_output` | `python -m src.render_output` |
+| `python scripts/full_pipeline.py` | `python -m src.enrich` |
 | `poetry install --with heavy` | `poetry install --with enrich` |
 | `config.toml`'s `[heavy]` table | `[enrich]` |
 | `src/heavy/` | `src/enrich/`, and `render_output.py` moved up to `src/` |
@@ -145,7 +194,7 @@ names, and so does every `DOCLING_*` environment variable.
 
 `render_output` moving out of the package is the one rename that fixes a
 mistake rather than a label: it is the drafting layer's publish step, runs
-on bare `python3`, and never needed a package from that dependency group.
+on bare `python`, and never needed a package from that dependency group.
 Living under `src/heavy/` said the opposite.
 
 To upgrade: rename the `[heavy]` header in your `config.toml` to
@@ -156,11 +205,18 @@ and update any script of your own that calls the two commands above.
 
 Three tiers. Commands below are written with the interpreter they need.
 
+`python` throughout means "your Python 3 interpreter". Nothing here
+inspects the name, so `python3` is equally correct if that is what your
+machine provides -- on Debian and Ubuntu without `python-is-python3`,
+it is the only one. What the tiers distinguish is not the *name* but
+**which environment**: a bare interpreter from `PATH` for tier 1,
+against the project's venv for tiers 2 and 3.
+
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python3`** -- stdlib only, no venv | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.citation_provenance`, `src.citation_coverage`, `src.dossier`, `src.retrieval`, `scripts/verbatim_check.py` |
+| 1 | **`python`** -- stdlib only, no venv | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.dossier`, `src.retrieval` |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.sync` |
-| 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `scripts/enrich.py` |
+| 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m src.enrich` |
 
 Tier 1 is deliberate, not incidental. The chain that enforces the one rule
 -- `citation_gate` -> `references` -> `render_output` -- imports nothing
@@ -176,15 +232,15 @@ Two commands look like they belong in a higher tier and don't:
   `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
   dependencies. (It was `src.heavy.render_output` until 3.0.0, which made
   it look like part of the enrichment layer; it never was.)
-- `src.citation_coverage` and `scripts/verbatim_check.py` are review-layer
-  commands built on `src.retrieval` and `src.config`, both stdlib.
-  `verbatim_check` calls the `pdftotext` binary, again an OS package, and
-  lives under `scripts/` only for historical reasons -- it is no heavier
-  than the other two.
+- `src.review`'s `coverage` and `verbatim` aids are built on
+  `src.retrieval` and `src.config`, both stdlib. `verbatim` calls the
+  `pdftotext` binary, again an OS package. It lived under `scripts/`
+  until 5.0.0, next to the enrichment layer's entry point, which made it
+  look heavier than its siblings; it never was, and it doesn't any more.
 
 Using the wrong interpreter is the most likely first error you will hit:
 `ModuleNotFoundError: No module named 'bibtexparser'` means you ran
-`python3 -m src.sync` instead of `.venv-full/bin/python -m src.sync`.
+`python -m src.sync` instead of `.venv-full/bin/python -m src.sync`.
 
 ## The full first run, step by step
 
@@ -229,24 +285,24 @@ bash scripts/install_full_pipeline.sh python-deps  # .venv-full/ + the enrich gr
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python3 -m src.ledger
-# python3 -m src.ledger --list
-# python3 -m src.ledger --status parse_failed
-# python3 -m src.ledger --citekey talasila_composable_2025
+python -m src.ledger
+# python -m src.ledger --list
+# python -m src.ledger --status parse_failed
+# python -m src.ledger --citekey talasila_composable_2025
 
 # 5. Optional, and only when you want it: the enrichment layer.
 #    Layout-aware parsing, semantic search and topic clustering over the
 #    whole corpus. Nothing below needs it, and no skill builds it for you
 #    -- RETRIEVAL.md says which stage is worth your time. Takes the same
 #    write lock as sync.
-.venv-full/bin/python scripts/enrich.py --stages docling,embed
-# .venv-full/bin/python scripts/enrich.py --stages docling --for-draft content/drafts/<slug>.md
+.venv-full/bin/python -m src.enrich --stages docling,embed
+# .venv-full/bin/python -m src.enrich --stages docling --for-draft content/drafts/<slug>.md
 
 # 6. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
 #    cost can be totalled later -- omit it for a one-off look.
-python3 -m src.retrieval search "digital twin composability" --k 15
-python3 -m src.retrieval evidence "calibration" --citekey talasila_composable_2025 \
+python -m src.retrieval search "digital twin composability" --k 15
+python -m src.retrieval evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
 # 7. In Claude Code, ask for a draft, e.g.:
@@ -261,28 +317,28 @@ python3 -m src.retrieval evidence "calibration" --citekey talasila_composable_20
 # 8. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
 #    refused, so that one directory stays the whole record of the work.
-python3 -m src.citation_gate content/drafts/<slug>.md
-python3 -m src.references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
-python3 -m src.render_output content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
-python3 -m src.render_output content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
-python3 -m src.render_output content/drafts/<slug>.md --format docx  #       --margin (--help for all)
-python3 -m src.render_output content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
+python -m src.citation_gate content/drafts/<slug>.md
+python -m src.references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
+python -m src.render_output content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
+python -m src.render_output content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
+python -m src.render_output content/drafts/<slug>.md --format docx  #       --margin (--help for all)
+python -m src.render_output content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
 
 # 9. Read and maintain the draft's dossier -- what was kept, what was
 #    rejected and why, and whether the corpus has moved under it since.
-python3 -m src.dossier list
-python3 -m src.dossier brief content/drafts/<slug>.md
-python3 -m src.dossier sections content/drafts/<slug>.md --citekeys --write
-python3 -m src.dossier status --all --json
-python3 -m src.dossier export <slug>
+python -m src.dossier list
+python -m src.dossier brief content/drafts/<slug>.md
+python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+python -m src.dossier status --all --json
+python -m src.dossier export <slug>
 
 # 10. Check the draft against its sources. Review aids, not gates: none of
 #     these runs automatically, and none of them can block a draft.
-python3 -m src.citation_provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
-python3 scripts/verbatim_check.py overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
-python3 scripts/verbatim_check.py scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
-python3 scripts/verbatim_check.py locate <citekey> "a phrase to find"  # which pdf page a phrase is on
-python3 -m src.citation_coverage content/drafts/<slug>.md --query "digital twin composability"
+python -m src.review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
+python -m src.review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
+python -m src.review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
+python -m src.review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
+python -m src.review coverage content/drafts/<slug>.md --query "digital twin composability"
 # add --write to any of the three to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -295,7 +351,7 @@ repository rather than drafting with it:
 bash scripts/install_full_pipeline.sh dev-deps   # pytest + pytest-cov, only to run the test suite
 .venv-full/bin/python -m pytest                  # the suite itself
 
-python3 scripts/release.py                       # bundles release/chitragupta-<version>.zip
+python scripts/release.py                       # bundles release/chitragupta-<version>.zip
 ```
 
 ## Every command and flag
@@ -324,7 +380,7 @@ than waiting.
 #             2 = another run holds the lock.
 ```
 
-### `python3 -m src.ledger`
+### `python -m src.ledger`
 
 Read-only view of the corpus layer. **Takes no lock**, so it works while
 a sync is running. With no flags it prints a summary.
@@ -337,14 +393,14 @@ a sync is running. With no flags it prints a summary.
 | `--citekey CITEKEY` | -- | Show one item in full |
 
 ```bash
-python3 -m src.ledger
-# python3 -m src.ledger --list
-# python3 -m src.ledger --status parse_failed
-# python3 -m src.ledger --status no_pdf
-# python3 -m src.ledger --citekey talasila_composable_2025
+python -m src.ledger
+# python -m src.ledger --list
+# python -m src.ledger --status parse_failed
+# python -m src.ledger --status no_pdf
+# python -m src.ledger --citekey talasila_composable_2025
 ```
 
-### `python3 -m src.citation_gate`
+### `python -m src.citation_gate`
 
 The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 **Takes no options** -- every argument is a file to check.
@@ -355,8 +411,8 @@ The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 | `<file> [<file> ...]` | One or more drafts to check |
 
 ```bash
-python3 -m src.citation_gate content/drafts/survey.md
-# python3 -m src.citation_gate content/drafts/*.md      # several at once
+python -m src.citation_gate content/drafts/survey.md
+# python -m src.citation_gate content/drafts/*.md      # several at once
 
 # Exit codes: 0 = every citation verified,
 #             1 = at least one unresolved citekey, or a file outside content/,
@@ -370,7 +426,7 @@ one unusable path must not hide the others. It exits 1 rather than the
 usage code 2 for the same reason: it is a document that did not pass,
 alongside the rest.
 
-### `python3 -m src.references`
+### `python -m src.references`
 
 Append or replace a `References` section built from a draft's own cited
 citekeys.
@@ -397,11 +453,11 @@ title and year until the next `python -m src.sync`.
 | `--heading HEADING` | `References` | Heading text, e.g. `"6. References"` to match a draft's own numbered headings |
 
 ```bash
-python3 -m src.references content/drafts/survey.md
-# python3 -m src.references content/drafts/thesis.md --heading "6. References"
+python -m src.references content/drafts/survey.md
+# python -m src.references content/drafts/thesis.md --heading "6. References"
 ```
 
-### `python3 -m src.dossier`
+### `python -m src.dossier`
 
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
@@ -425,7 +481,7 @@ and the other isn't:
 | No ledger, or an unreadable one | Reports the dossier as usual, says the drift check is unavailable, **exits 0** |
 | No dossier for this draft | Prints the `init` command to create one, **exits 1** |
 
-So `python3 -m src.dossier status <draft> >/dev/null` is a usable test for
+So `python -m src.dossier status <draft> >/dev/null` is a usable test for
 "does this draft have a dossier yet", while a machine with no corpus built
 still gets a full report of what it has.
 
@@ -509,32 +565,32 @@ never transcribed it, and that material is gone rather than mislaid.
 | `--force` | `restore` | Actually write, overwriting what is already there |
 
 ```bash
-python3 -m src.dossier init content/drafts/survey.md --genre survey
-python3 -m src.dossier status content/drafts/survey.md
-python3 -m src.dossier sections content/drafts/survey.md
+python -m src.dossier init content/drafts/survey.md --genre survey
+python -m src.dossier status content/drafts/survey.md
+python -m src.dossier sections content/drafts/survey.md
 # Derive the section -> citekey map instead of writing it by hand
-python3 -m src.dossier sections content/drafts/survey.md --citekeys --write
+python -m src.dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
-python3 -m src.dossier mark-revision content/drafts/survey.md --label "shorten intro"
+python -m src.dossier mark-revision content/drafts/survey.md --label "shorten intro"
 
 # Before dispatching a section writer: do this section's rows resolve?
-python3 -m src.dossier brief content/drafts/survey.md --section "2. Failure modes" --check
+python -m src.dossier brief content/drafts/survey.md --section "2. Failure modes" --check
 # What the writer itself runs
-python3 -m src.dossier brief content/drafts/survey.md --section "2. Failure modes"
-python3 -m src.dossier brief content/drafts/survey.md talasila_composable_2025
+python -m src.dossier brief content/drafts/survey.md --section "2. Failure modes"
+python -m src.dossier brief content/drafts/survey.md talasila_composable_2025
 
 # After a sync: which drafts went stale, and what specifically
-python3 -m src.dossier status --all
-python3 -m src.dossier status --all --json
+python -m src.dossier status --all
+python -m src.dossier status --all --json
 
 # Back up everything, then one topic with its PDFs
-python3 -m src.dossier export
-python3 -m src.dossier export digital-twins-for-software-engineers --with-rendered
+python -m src.dossier export
+python -m src.dossier export digital-twins-for-software-engineers --with-rendered
 
 # Restore: look first, then commit to it
-python3 -m src.dossier restore drafts-all-2026-08-06.tar.gz
-python3 -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
+python -m src.dossier restore drafts-all-2026-08-06.tar.gz
+python -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 A bundle carries `drafts/`, `dossiers/` and optionally `rendered/`, with
@@ -547,7 +603,7 @@ pipeline copies). Restore refuses the whole archive -- rather than
 skipping a member -- if any entry is a link or device node, escapes the
 extraction directory, or sits outside those three directories.
 
-### `python3 -m src.retrieval`
+### `python -m src.retrieval`
 
 BM25 retrieval over the synced corpus. Read-only, takes no lock, needs no
 venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
@@ -572,15 +628,15 @@ withdrawn.
 | `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
 
 ```bash
-python3 -m src.retrieval search "digital twin architecture" --k 15 \
+python -m src.retrieval search "digital twin architecture" --k 15 \
     --log content/drafts/survey.md
-python3 -m src.retrieval evidence "digital twin architecture" \
+python -m src.retrieval evidence "digital twin architecture" \
     --citekey ferko_architecting_2022 --log content/drafts/survey.md
 ```
 
 `--log` appends to `retrieval.md` in that draft's dossier, which is what
 turns "retrieval is where the tokens go" into a number for a particular
-draft (`python3 -m src.dossier status` totals it). A `--log` path that
+draft (`python -m src.dossier status` totals it). A `--log` path that
 isn't under `content/drafts/`, or a filesystem error while writing, is
 reported on stderr and skipped -- the measurement never fails the search
 it was measuring.
@@ -588,7 +644,7 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
-### `python3 -m src.citation_coverage`
+### `python -m src.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
 citations. **Informational, not a gate**, and unlike the gate it never
@@ -605,7 +661,7 @@ it reuses `src.retrieval`, which is itself stdlib.
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report -- so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python3 -m src.citation_coverage content/drafts/survey.md \
+python -m src.review coverage content/drafts/survey.md \
     --query "digital twin composability" \
     --query "runtime verification"
 # ... --k 10
@@ -615,7 +671,7 @@ python3 -m src.citation_coverage content/drafts/survey.md \
 A written report records the whole invocation in its header, queries
 included: a coverage figure means nothing without knowing 62% *of what*.
 
-### `python3 -m src.citation_provenance`
+### `python -m src.review provenance`
 
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
@@ -632,12 +688,101 @@ with its `.tex`/`.pdf` renders beside it.
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python3 -m src.citation_provenance content/drafts/survey.md
-# python3 -m src.citation_provenance content/drafts/survey.md --formats md
-# python3 -m src.citation_provenance content/drafts/survey.md --formats md,tex,pdf
+python -m src.review provenance content/drafts/survey.md
+# python -m src.review provenance content/drafts/survey.md --formats md
+# python -m src.review provenance content/drafts/survey.md --formats md,tex,pdf
 ```
 
-### `python3 -m src.render_output`
+### `python -m src.review verbatim`
+
+Layer 4, the review layer, with three subcommands: verbatim overlap
+between a draft and one cited source, a whole-draft x whole-corpus scan,
+and page location for a phrase. Stdlib-only -- but `locate` shells out to
+the `pdftotext` binary, so that subcommand needs poppler-utils on `PATH`.
+`overlap` and `scan` read already-parsed text via `src/overlap_index.py`'s
+cache instead. Run with no arguments to print its usage.
+
+[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
+section: what `overlap`/`scan` catch and don't (verbatim only --
+paraphrase is a later, unbuilt detection tier), the fingerprinting
+technique and its literature sources, and a measured
+`docling`-vs-`pdftotext` backend comparison.
+
+| Subcommand | Arguments | What it does |
+|---|---|---|
+| `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
+| `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
+
+**Exit codes**, shared with the other two review aids: `0` on every
+successful invocation, findings or not -- advisory, never a gate. `1` for
+a draft this layer will not read (missing, or resolving outside
+`content/`). `2` for a malformed invocation, the usual CLI-usage error,
+not a verdict.
+
+```bash
+python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
+# python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
+python -m src.review verbatim scan content/drafts/survey.md
+# python -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
+# python -m src.review verbatim scan content/drafts/survey.md --write --formats md
+# python -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
+```
+
+**What `scan` does not see, and why that matters more than it sounds.**
+`scan` is the **exact tier** of three planned detection tiers, and the
+other two are not built. It matches word n-grams, so literal
+paraphrase -- the same sentence skeleton with a synonym swapped every few
+words -- is invisible to it *by construction*, not by omission. Because
+the drafts this pipeline produces are LLM-written, and that is an LLM's
+normal failure mode when it drifts too close to a source, the reuse mode
+`scan` cannot see is the dominant one. Read a clean run as "no exact or
+near-exact copying found", never "no borrowed wording found". An
+unbuilt tier contributes nothing and nothing in the output says so -- see
+[PLAGIARISM.md](PLAGIARISM.md) and
+[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
+for the three-tier plan.
+
+**The disk cache, and what the first run costs.** `scan` builds a
+corpus-wide index the first time it runs -- `content/overlap/index.bin`
+plus an `index.json` header -- merged from the per-document fingerprints
+in `content/overlap/docs/<citekey>.fpr`. That first build is the only
+slow part (~27s over this project's 497-document corpus); every later
+scan over an unchanged corpus reloads the merged index and is
+sub-second. The header key covers the n-gram size, the tokenizer version
+and, per document, its `pdf_hash` *together with the parsed file's own
+size and mtime* -- so a `sync` that changes one PDF re-fingerprints that
+one document and re-merges, rather than rebuilding from scratch. Both
+halves of that per-document key earn their place: re-parsing the corpus
+under a different `[parser].backend` rewrites the text without touching
+the PDF, and the parsed-file stat is the only part that notices. The
+whole directory is a cache, not an output:
+delete it and the next run rebuilds whatever it needs. See
+[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
+
+`scan` groups a match's `(citekey, page, diagonal)` -- the source position
+minus the draft position, held constant across a run -- and merges runs on
+the same diagonal within `--gap` words of each other, so a single edited
+word inside an otherwise-verbatim passage still reports as one run. It
+cannot merge a run across a page break in the *source*: the fingerprint
+cache's token position resets there, so a genuine lift spanning one is
+reported as two (or more) shorter findings, and a short remainder stranded
+alone on the far side of the break can fall under `--min-run` and vanish
+entirely. Each finding reports whether the containing draft paragraph
+actually cites that source (`UNCITED SOURCE` if not) and whether the run
+sits inside quote delimiters -- both informational; `scan` doesn't decide
+severity, it produces the findings a later gate would be tuned against.
+
+`locate` reports page numbers by splitting on the form-feed characters
+between pages. Both backends emit them, so a page number here is a page
+you can turn to whichever one parsed the citekey -- see
+[CONFIG.md](CONFIG.md#backend-pdftotext-or-docling). One limit: `docling`
+writes a break between consecutive pages that carry text, so a page with
+no extracted items at all shifts the numbering after it. The passage
+sidecar records each item's own page and is not affected; where the two
+disagree, believe `python -m src.review provenance`.
+
+### `python -m src.render_output`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
 for PDF) on `PATH`, but no Python package from the enrich group.
@@ -714,15 +859,15 @@ converting a thesis fragment's `\citep{...}` genuinely is a format
 conversion.
 
 ```bash
-python3 -m src.render_output content/drafts/survey.md --format pdf
-# python3 -m src.render_output content/drafts/survey.md --format tex
-# python3 -m src.render_output content/drafts/survey.md --format docx
-# python3 -m src.render_output content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
-# python3 -m src.render_output content/drafts/thesis.md \
+python -m src.render_output content/drafts/survey.md --format pdf
+# python -m src.render_output content/drafts/survey.md --format tex
+# python -m src.render_output content/drafts/survey.md --format docx
+# python -m src.render_output content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
+# python -m src.render_output content/drafts/thesis.md \
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
-### `scripts/enrich.py`
+### `python -m src.enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma -> BERTopic
 -> provenance -> render. **Needs the venv.** Each stage probes its own
@@ -738,14 +883,14 @@ correct answer rather than a bug.
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
 
 ```bash
-.venv-full/bin/python scripts/enrich.py
-# .venv-full/bin/python scripts/enrich.py --stages docling
-# .venv-full/bin/python scripts/enrich.py --stages embed,bertopic
-# .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
+.venv-full/bin/python -m src.enrich
+# .venv-full/bin/python -m src.enrich --stages docling
+# .venv-full/bin/python -m src.enrich --stages embed,bertopic
+# .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
 # The provenance and render stages left in 4.0.0 -- run the tier-1
 # commands directly instead (no venv, no lock):
-# python3 -m src.citation_provenance content/drafts/survey.md
-# python3 -m src.render_output content/drafts/survey.md --format pdf
+# python -m src.review provenance content/drafts/survey.md
+# python -m src.render_output content/drafts/survey.md --format pdf
 ```
 
 #### Enriching one draft's papers
@@ -757,7 +902,7 @@ cites, read out of the draft with the same reader the citation gate uses
 papers costs twenty-three parses rather than the whole library:
 
 ```console
-$ .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
+$ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
 Target: host
 Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/drafts/digital-twins.md
 
@@ -775,17 +920,17 @@ With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
 this is usually for. (Before 4.0.0 you could add `--stages
 docling,provenance` to carry on into the draft's own report; that stage
-is gone -- run `python3 -m src.citation_provenance <draft>`.) `--input` already pointed at the
+is gone -- run `python -m src.review provenance <draft>`.) `--input` already pointed at the
 draft, so it needs naming only when you want a *different* document
 rendered.
 
 Two stages refuse the scope rather than honouring it:
 
 ```console
-$ .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md --stages embed
+$ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md --stages embed
   --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
-      python scripts/enrich.py --for-draft content/drafts/digital-twins.md --stages docling
-      python scripts/enrich.py --stages embed
+      python -m src.enrich --for-draft content/drafts/digital-twins.md --stages docling
+      python -m src.enrich --stages embed
 ```
 
 That is a tier, not a ladder ([LADDERS.md](LADDERS.md)): `embed` writes a
@@ -822,95 +967,6 @@ it, which stays searchable by title through `src/retrieval.py` and not by
 meaning. Ctrl+C is safe: every chunk upserted before the interrupt is
 already in `content/chroma/`, the stage says how far it got, and re-running
 picks up from there.
-
-### `scripts/verbatim_check.py`
-
-Layer 4, the review layer, with three subcommands: verbatim overlap
-between a draft and one cited source, a whole-draft x whole-corpus scan,
-and page location for a phrase. Stdlib-only -- but `locate` shells out to
-the `pdftotext` binary, so that subcommand needs poppler-utils on `PATH`.
-`overlap` and `scan` read already-parsed text via `src/overlap_index.py`'s
-cache instead. Run with no arguments to print its usage.
-
-[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
-section: what `overlap`/`scan` catch and don't (verbatim only --
-paraphrase is a later, unbuilt detection tier), the fingerprinting
-technique and its literature sources, and a measured
-`docling`-vs-`pdftotext` backend comparison.
-
-| Subcommand | Arguments | What it does |
-|---|---|---|
-| `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
-| `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
-
-**Exit codes**, shared with the other two review commands: `0` on every
-successful invocation, findings or not -- advisory, never a gate. `1` for
-a draft this layer will not read (missing, or resolving outside
-`content/`). `2` for a malformed invocation, the usual CLI-usage error,
-not a verdict.
-
-```bash
-python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025
-# python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025 --n 12
-python3 scripts/verbatim_check.py scan content/drafts/survey.md
-# python3 scripts/verbatim_check.py scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
-# python3 scripts/verbatim_check.py scan content/drafts/survey.md --write --formats md
-# python3 scripts/verbatim_check.py locate talasila_composable_2025 "a digital twin is"
-```
-
-**What `scan` does not see, and why that matters more than it sounds.**
-`scan` is the **exact tier** of three planned detection tiers, and the
-other two are not built. It matches word n-grams, so literal
-paraphrase -- the same sentence skeleton with a synonym swapped every few
-words -- is invisible to it *by construction*, not by omission. Because
-the drafts this pipeline produces are LLM-written, and that is an LLM's
-normal failure mode when it drifts too close to a source, the reuse mode
-`scan` cannot see is the dominant one. Read a clean run as "no exact or
-near-exact copying found", never "no borrowed wording found". An
-unbuilt tier contributes nothing and nothing in the output says so -- see
-[PLAGIARISM.md](PLAGIARISM.md) and
-[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
-for the three-tier plan.
-
-**The disk cache, and what the first run costs.** `scan` builds a
-corpus-wide index the first time it runs -- `content/overlap/index.bin`
-plus an `index.json` header -- merged from the per-document fingerprints
-in `content/overlap/docs/<citekey>.fpr`. That first build is the only
-slow part (~27s over this project's 497-document corpus); every later
-scan over an unchanged corpus reloads the merged index and is
-sub-second. The header key covers the n-gram size, the tokenizer version
-and, per document, its `pdf_hash` *together with the parsed file's own
-size and mtime* -- so a `sync` that changes one PDF re-fingerprints that
-one document and re-merges, rather than rebuilding from scratch. Both
-halves of that per-document key earn their place: re-parsing the corpus
-under a different `[parser].backend` rewrites the text without touching
-the PDF, and the parsed-file stat is the only part that notices. The
-whole directory is a cache, not an output:
-delete it and the next run rebuilds whatever it needs. See
-[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
-
-`scan` groups a match's `(citekey, page, diagonal)` -- the source position
-minus the draft position, held constant across a run -- and merges runs on
-the same diagonal within `--gap` words of each other, so a single edited
-word inside an otherwise-verbatim passage still reports as one run. It
-cannot merge a run across a page break in the *source*: the fingerprint
-cache's token position resets there, so a genuine lift spanning one is
-reported as two (or more) shorter findings, and a short remainder stranded
-alone on the far side of the break can fall under `--min-run` and vanish
-entirely. Each finding reports whether the containing draft paragraph
-actually cites that source (`UNCITED SOURCE` if not) and whether the run
-sits inside quote delimiters -- both informational; `scan` doesn't decide
-severity, it produces the findings a later gate would be tuned against.
-
-`locate` reports page numbers by splitting on the form-feed characters
-between pages. Both backends emit them, so a page number here is a page
-you can turn to whichever one parsed the citekey -- see
-[CONFIG.md](CONFIG.md#backend-pdftotext-or-docling). One limit: `docling`
-writes a break between consecutive pages that carry text, so a page with
-no extracted items at all shifts the numbering after it. The passage
-sidecar records each item's own page and is not affected; where the two
-disagree, believe `python3 -m src.citation_provenance`.
 
 ### `scripts/install_full_pipeline.sh`
 
@@ -973,7 +1029,7 @@ things: exit codes an unattended caller can branch on without parsing
 any text, and `logs/pipeline.log` (rotated; see `[logging]` in
 `config.toml.example`) as a persistent transcript to check afterwards.
 
-`scripts/enrich.py` writes to the same file, so a host that schedules
+`src/enrich/__main__.py` writes to the same file, so a host that schedules
 both has one transcript rather than two. Each line names its source, so
 `grep 'src\.sync' logs/pipeline.log` narrows it back down when that is
 what you want -- and the interleaved view is often the useful one, since

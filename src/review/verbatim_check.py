@@ -1,21 +1,25 @@
-#!/usr/bin/env python3
 """Plagiarism / page-locator helper for reviewing a draft.
 
-One of the three commands in the **review layer**, with
-src/citation_provenance.py and src/citation_coverage.py -- run by hand on
-a finished draft, never automatically, never a gate, and never holding
-the write lock. src/review.py owns where a written report goes
-(`content/review/<topic>/<stem>.verbatim.md`, mirroring the draft's path)
-and what its header looks like.
+One of the three aids in the **review layer**, with
+src/review/citation_provenance.py and src/review/citation_coverage.py --
+run by hand on a finished draft, never automatically, never a gate, and
+never holding the write lock. src/review/__init__.py owns where a written
+report goes (`content/review/<topic>/<stem>.verbatim.md`, mirroring the
+draft's path) and what its header looks like.
+
+Reached through the layer's single entry point, src/review/__main__.py,
+never as `python -m src.review.verbatim_check`: this module has no
+__main__ block of its own, so that invocation would import it and exit 0
+without doing anything. See docs/ARCHITECTURE.md on why every layer's
+command surface stays one level deep.
 
 Three modes:
-
-    verbatim_check.py overlap <draft.md> <citekey> [--n 8]
+    python -m src.review verbatim overlap <draft.md> <citekey> [--n 8]
         report the longest verbatim word-n-gram runs shared between the
         draft's sentences citing <citekey> and that source's parsed text.
 
-    verbatim_check.py scan <draft.md> [--min-run 8] [--gap 1] [--limit N]
-                             [--write] [--formats md,tex,pdf]
+    python -m src.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
+                                       [--limit N] [--write] [--formats md,tex,pdf]
         slide the WHOLE draft across the WHOLE corpus index (src/overlap_index.py),
         not just the sources a paragraph happens to cite -- catches verbatim
         reuse from an uncited source, and reuse in connective prose that
@@ -23,7 +27,7 @@ Three modes:
         report under content/review/, beside the same draft's provenance
         and coverage reports.
 
-    verbatim_check.py locate <citekey> "<phrase>" [more phrases...]
+    python -m src.review verbatim locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
         appears on, for fact-checking page numbers.
 
@@ -41,10 +45,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
-
-from src import citation_gate, config, overlap_index, references, review  # noqa: E402 -- needs REPO on sys.path first
+from src import citation_gate, config, overlap_index, references, review
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
@@ -455,7 +456,7 @@ def render_scan_markdown(draft, findings, min_run, gap, limit):
     # findings on stdout but not the file -- which is what a reader
     # holding the file wants to regenerate. `--formats` is left out; it
     # selects renders *of* this report and changes nothing in it.
-    command = ["python3", "scripts/verbatim_check.py", "scan", str(draft),
+    command = ["python", "-m", "src.review", "verbatim", "scan", str(draft),
                "--min-run", str(min_run), "--gap", str(gap)]
     if limit is not None:
         command += ["--limit", str(limit)]
@@ -564,12 +565,19 @@ def _bounded_int(minimum, name):
     return parse
 
 
-def build_parser():
-    parser = argparse.ArgumentParser(
-        prog="verbatim_check.py",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def build_parser(parser=None):
+    """The `verbatim` aid's three modes.
+
+    `parser` is passed by src/review/__main__.py, which has already
+    created this aid's subparser and needs the modes hung off *that*
+    rather than off a fresh top-level parser -- so the flags are declared
+    once, here, and the entry point never restates them.
+    """
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description=__doc__,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
     sub = parser.add_subparsers(dest="mode")
 
     p_overlap = sub.add_parser("overlap", help="per-citekey verbatim runs")
@@ -597,6 +605,10 @@ def build_parser():
     p_locate.add_argument("citekey", help="The source to search")
     p_locate.add_argument("phrases", nargs="+", help="Phrases to locate")
 
+    # So run() can print this aid's own help when no mode was given,
+    # whether it was reached directly or through the entry point's
+    # `verbatim` subparser -- which is a different parser object.
+    parser.set_defaults(_parser=parser)
     return parser
 
 
@@ -610,9 +622,18 @@ def main(argv=None):
     me how to use this" request as `--help`, not an error.
     """
     parser = build_parser()
-    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    return run(parser.parse_args(sys.argv[1:] if argv is None else argv))
+
+
+def run(args):
+    """Dispatch already-parsed arguments.
+
+    Split from main() so src/review/__main__.py can hand over the args it
+    parsed with this module's own build_parser(), rather than re-slicing
+    argv and parsing it twice.
+    """
     if args.mode is None:
-        parser.print_help()
+        args._parser.print_help()
         return 0
 
     if args.mode == "locate":
@@ -641,7 +662,3 @@ def main(argv=None):
         print(exc, file=sys.stderr)
         return 2
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

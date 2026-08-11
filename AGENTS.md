@@ -105,7 +105,7 @@ enrichment layer is optional and nothing above it needs it.
   the same edit discipline over a full retrieval pass -- it still keeps
   the dossier. Never re-run a genre skill to change an existing draft --
   see docs/DRAFT-ITERATION.md.
-- **Layer 3, the enrichment layer -- optional** (`scripts/enrich.py`):
+- **Layer 3, the enrichment layer -- optional** (`python -m src.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
   generative, everything it writes is a corpus artefact, and it takes the
@@ -113,18 +113,18 @@ enrichment layer is optional and nothing above it needs it.
   skill. It imports nothing from the drafting or review layers: until
   4.0.0 it carried a `provenance` and a `render` stage that did, which
   was the one cycle in this picture.
-- **Layer 4, the review layer -- advisory** (`src/citation_provenance.py`,
-  `scripts/verbatim_check.py`, `src/citation_coverage.py`): run by hand on
+- **Layer 4, the review layer -- advisory** (`src/review/citation_provenance.py`,
+  `src/review/verbatim_check.py`, `src/review/citation_coverage.py`): run by hand on
   a finished draft, never invoked automatically. Each reads a draft plus
   the corpus and produces **evidence for a human judgement, never a
   verdict** -- every one exits 0 whether it finds something or not, and
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
-  corpus, so it keeps working during a `sync`, like `python3 -m
+  corpus, so it keeps working during a `sync`, like `python -m
   src.ledger` and retrieval. Input is a draft under `content/`; output is
   `content/review/`, mirroring the draft's path under `content/drafts/`
   the way `content/rendered/` and `content/dossiers/` do, with
-  `src/review.py` owning that contract.
+  `src/review/__init__.py` owning that contract.
 
   *Review*, not *verification*: `citation_gate` is verification, it lives
   in the drafting layer, and it is that layer's only exit. The gate
@@ -164,5 +164,5 @@ reference.
 
 `python -m src.citation_gate` needs no venv -- it only reads
 `content/ledger.sqlite` through stdlib `sqlite3` and runs with bare
-`python3`. `python -m src.sync` does need the venv, and must be run
+`python`. `python -m src.sync` does need the venv, and must be run
 through the installed one rather than the bare system interpreter.

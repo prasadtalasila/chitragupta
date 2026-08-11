@@ -36,7 +36,7 @@ The repository is designed around a few hard constraints that strongly shape the
 2. **Three layers**
    - Corpus layer: deterministic content maintenance (`python -m src.sync`).
    - Drafting layer: generative drafting via the Claude Code skills.
-   - Enrichment layer: optional heavier processing (`scripts/enrich.py`).
+   - Enrichment layer: optional heavier processing (`python -m src.enrich`).
    - Ad-hoc review tools remain outside the automatic chain.
 
 3. **Config and host variability are first-class concerns**
@@ -240,7 +240,7 @@ would remove documents from the corpus permanently.
 
 ### One writer at a time
 
-`sync` and `enrich.py` share a lock over `content/`, because the
+`sync` and the enrichment layer share a lock over `content/`, because the
 unsafe overlap is any-writer-against-any-writer: `sync` writes parsed
 text non-atomically and the enrichment layer reads those same files.
 

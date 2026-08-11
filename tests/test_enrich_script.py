@@ -1,4 +1,4 @@
-"""scripts/enrich.py: the orchestrator -- Docling -> embed -> BERTopic.
+"""src/enrich/__main__.py: the orchestrator -- Docling -> embed -> BERTopic.
 Each stage_* wrapper's ok/partial/skipped/missing-binary shaping is
 tested directly against mocked underlying module calls; main()'s
 stage-selection and per-stage exception isolation are tested against a
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-import scripts.enrich as enrich_script
+from src.enrich import __main__ as enrich_script
 from src import config
 from src.enrich import docling_parse, embed_index, topic_model
 from src.enrich.corpus import CorpusDoc
@@ -493,7 +493,7 @@ class TestLogging:
             if handler not in before:
                 root.removeHandler(handler)
                 handler.close()
-        logging.getLogger("scripts").setLevel(logging.NOTSET)
+        logging.getLogger("src").setLevel(logging.NOTSET)
 
     def _run_one_stage(self, monkeypatch, **kwargs):
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
@@ -508,14 +508,14 @@ class TestLogging:
     def test_the_run_is_logged_when_the_entrypoint_asks_for_it(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
     ):
-        """What `python scripts/enrich.py` actually does: the stage table
+        """What `python -m src.enrich` actually does: the stage table
         it prints also lands in logs/pipeline.log, tagged with this
         script's logger name so it can be told apart from sync's lines in
         the shared file."""
         assert self._run_one_stage(monkeypatch, configure_logging=True) == 0
 
         log_text = (config.LOGS_DIR / "pipeline.log").read_text()
-        assert "scripts.enrich" in log_text
+        assert "src.enrich" in log_text
         assert "=== embed ===" in log_text
         assert "Corpus: 1 doc(s)" in log_text
 

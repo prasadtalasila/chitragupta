@@ -68,7 +68,7 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
     """Whether an env var would make a child process start its own coverage.
 
     Stripped from the hook's environment because the hook runs
-    `python3 -m src.citation_gate` with `cwd` set to *its* repo root --
+    `python -m src.citation_gate` with `cwd` set to *its* repo root --
     the temp one, under this fixture. Coverage started there finds no
     config file, so it records statement-only data while the parent
     records branch data, and the run dies at combine time with
@@ -76,9 +76,9 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
     every test has passed.
 
     Whether it happens at all depends on the pytest-cov version and on
-    what `python3` resolves to: pytest-cov 6.x ships a `.pth` that
+    what `python` resolves to: pytest-cov 6.x ships a `.pth` that
     instruments every subprocess, 7.x does not, and the hook spawns a
-    literal `python3` rather than `sys.executable`, so a venv on PATH
+    literal `python` rather than `sys.executable`, so a venv on PATH
     (what `poetry run` gives CI) is instrumented while a bare system
     interpreter is not. Stripping these makes every combination behave
     the same. Nothing is lost: the in-process tests already cover

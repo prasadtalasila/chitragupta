@@ -66,7 +66,7 @@ flowchart TB
   LED -- "src/references.py<br/>bib_fields → IEEE entries" --> DRF
   DRF == "<b>src.citation_gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
   DRF -- "src.render_output<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>citation_provenance · verbatim_check scan --write<br/>citation_coverage --write</small>" --> RVW
+  DRF -- "the review layer<br/><small>src.review provenance · verbatim scan --write<br/>src.review coverage --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef corpus fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b

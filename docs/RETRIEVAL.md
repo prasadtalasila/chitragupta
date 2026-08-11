@@ -8,7 +8,7 @@ different question entirely. This document says which is which, so you can
 decide what is worth building.
 
 **Written for** someone choosing whether to run
-`scripts/enrich.py --stages embed,bertopic`, or wondering why a
+`python -m src.enrich --stages embed,bertopic`, or wondering why a
 draft cited a paper they didn't expect. **Assumed:** you have run
 `python -m src.sync` and have a populated ledger. **Not covered:** how to
 tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
@@ -24,7 +24,7 @@ tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 | Method | Okapi BM25 over whitespace tokens | dense vectors, cosine distance | UMAP then HDBSCAN over one vector per document |
 | Unit of a hit | a whole document | a 200-word chunk | a whole document |
 | Corpus | ledger rows only, so every hit is citable | *the same* | *the same* |
-| Needs | stdlib, bare `python3` | venv + `enrich` group + a model download | venv + `enrich` group |
+| Needs | stdlib, bare `python` | venv + `enrich` group + a model download | venv + `enrich` group |
 | Used by | every genre skill, by default | `survey-writer`, `deep-research` (only if built) | **nothing in this repository** |
 
 ```mermaid
@@ -121,7 +121,7 @@ rejection.
 ### `evidence` -- zooming in on one document
 
 ```bash
-python3 -m src.retrieval evidence "<query>" --citekey <key>
+python -m src.retrieval evidence "<query>" --citekey <key>
 ```
 
 Returns the passages of that one document which bear on the query --
@@ -170,7 +170,7 @@ the bib file, and those hits came back with an empty citekey and could
 never be cited; that second source is gone.) The way to make a paper
 searchable here is therefore the same as everywhere else in this
 repository: catalogue it in your reference manager, re-export, and re-run
-`sync`. `enrich.py` prints what it is about to work on at the top of
+`sync`. `python -m src.enrich` prints what it is about to work on at the top of
 every run, before any stage touches it:
 
 ```

@@ -39,7 +39,7 @@ Two other terms used here:
 - **Parser backend** -- how a PDF becomes text. `pdftotext` (fast, the
   default) or `docling` (slow, layout-aware). Set in `config.toml`.
 - **The enrichment layer** -- optional, opt-in stages under `src/enrich/`
-  run by `scripts/enrich.py`: layout-aware Docling parsing,
+  run by `python -m src.enrich`: layout-aware Docling parsing,
   embeddings, topic modelling, and rendering to PDF/LaTeX.
 
 ## The problem
@@ -66,17 +66,22 @@ would catch -- a claim that drifted away from its source during drafting
 The repository already had two of these commands, and neither answers
 this question.
 
-`src/citation_coverage.py` asks the inverse: *of the sources retrieval
+`src/review/citation_coverage.py` asks the inverse: *of the sources retrieval
 surfaced for a query, which ones did the draft actually cite?* That
 finds sources you missed. It says nothing about whether the ones you did
 cite support what you wrote.
 
-`scripts/verbatim_check.py` is closer but needs you to already know the
-answer's shape. Both its modes take the citekey as an argument:
+The `verbatim` aid is closer but needs you to already know the answer's
+shape. Two of its three modes take the citekey as an argument, so they
+answer a question you have to have asked first:
 
 - `overlap <draft> <citekey>` -- longest verbatim word runs shared
   between the paragraphs citing that key and the source.
 - `locate <citekey> "<phrase>"` -- which page a phrase appears on.
+
+(The third, `scan`, takes no citekey: it slides the whole draft across
+the whole corpus. That is a different question -- *did I reuse anyone's
+wording anywhere* -- and docs/PLAGIARISM.md is where it belongs.)
 
 So it verifies a suspicion you have already formed about a specific
 citekey. It cannot tell you *which* of a draft's forty citations deserve
@@ -101,7 +106,7 @@ part of any automatic chain.
 ## The solution, as built
 
 ```
-python -m src.citation_provenance content/drafts/<slug>.md
+python -m src.review provenance content/drafts/<slug>.md
 ```
 
 Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
@@ -115,7 +120,7 @@ same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 `survey.verbatim.md` and `survey.coverage.md`. A draft directly in
 `content/drafts/`, or outside it altogether, has no path to mirror and
 keeps the flat directory; a draft resolving outside `content/` is
-refused. `src/review.py` owns that contract for all three review-layer
+refused. `src/review/__init__.py` owns that contract for all three review-layer
 commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer).
 
 Two things about that changed recently and are worth knowing if you have
@@ -171,7 +176,7 @@ form feeds, which means page resolution works regardless of which parser
 backend produced `content/parsed/`. That indirection is worth keeping.
 
 **Stdlib only.** `citation_gate.py`, `references.py` and
-`citation_coverage.py` all run under bare `python3` with no venv. This
+`citation_coverage.py` all run under bare `python` with no venv. This
 tool reuses `citation_gate.extract_citekeys` (which returns
 `(line_number, citekey)` pairs -- the line numbers are exactly what the
 report needs) plus `verbatim_check`'s `pages()` and `norm()`, all of
@@ -405,7 +410,7 @@ which reports a real page and refuses to quote. The combination that once
 helped least -- Docling in the corpus layer with no enrichment stage --
 is now the one that gives you the most for a single parse.
 
-`scripts/verbatim_check.py locate` benefits from the same change: it
+`python -m src.review verbatim locate` benefits from the same change: it
 splits `content/parsed/<citekey>.txt` on form feeds, so it reports the
 page a phrase actually sits on rather than `pdf p.1` for every hit.
 
@@ -535,7 +540,7 @@ document syntax the code did not actually model.
 
 | Piece | Actual |
 |---|---|
-| `src/citation_provenance.py` | ~250 lines |
+| `src/review/citation_provenance.py` | ~250 lines |
 | `src/passages.py` | ~150 lines |
 | `_passage_records` in `src/enrich/docling_parse.py` | ~35 lines |
 | Tests | ~55 cases |

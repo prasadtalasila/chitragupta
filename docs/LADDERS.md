@@ -51,7 +51,7 @@ them and what they are allowed to do*.
 |---|---|---|
 | **1. Corpus** | `python -m src.sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
-| **3. Enrichment** | `scripts/enrich.py` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
+| **3. Enrichment** | `python -m src.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
 | **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`. Advisory over a finished draft -- never automatic, never a gate. | When you ask, after a draft exists |
 
 The numbers are introduction order, not a dependency rank.
@@ -160,14 +160,14 @@ flowchart TB
 
   subgraph DRAFTING["drafting layer -- generative, reviewed by you"]
     SKILL["a genre skill<br/><small>survey · thesis · textbook · tutorial · deep-research</small>"]
-    GATE{"python3 -m src.citation_gate<br/><b>hard gate</b>"}
-    REFS["python3 -m src.references"]
-    RENDER["python3 -m src.render_output"]
+    GATE{"python -m src.citation_gate<br/><b>hard gate</b>"}
+    REFS["python -m src.references"]
+    RENDER["python -m src.render_output"]
     DRAFT[("content/drafts/ · content/rendered/")]
   end
 
   subgraph ENRICH["enrichment layer -- optional, same lock as sync"]
-    ENR["python scripts/enrich.py --stages ..."]
+    ENR["python -m src.enrich --stages ..."]
     ART[("content/docling/ · content/chroma/ · content/topics.json")]
   end
 
@@ -200,7 +200,7 @@ corpus, not the papers a draft happens to cite.** One flag changes that,
 for one of the five stages; the rest of this section is what it does and
 does not reach.
 
-`scripts/enrich.py` calls `corpus.build_corpus()`, which returns **every
+`src/enrich/__main__.py` calls `corpus.build_corpus()`, which returns **every
 row in the ledger, and nothing else.** `ledger.all_items()` is a bare
 `SELECT * FROM items`, so this is every citekey your BibTeX export
 produced, including entries whose reference-manager record has no PDF
@@ -291,7 +291,7 @@ corpus layer writes no bitmaps), and for artefacts older than their PDF.
 supports it, and may it be quoted?
 
 **Where:** [`src/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py), read by
-`src.citation_provenance` and (not yet) `src.retrieval`.
+`src.review provenance` and (not yet) `src.retrieval`.
 
 | # | Rung | Written by | Quotable? |
 |---|---|---|---|
@@ -397,7 +397,7 @@ here.
 Three here, four in
 [ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)'s tier-set table,
 and both are right. The fourth is the **detection tiers** behind
-`scripts/verbatim_check.py`'s `scan`, and it has no section here because
+`src/review/verbatim_check.py`'s `scan`, and it has no section here because
 this page's question -- *where does the pipeline choose, and what does it
 choose between?* -- has no answer for it: nothing picks a detection tier,
 every built one runs, and the findings are unioned. It is a tier set only
@@ -430,9 +430,9 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python3`, stdlib only | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.citation_provenance`, `src.citation_coverage`, `src.passages`, `scripts/verbatim_check.py` |
+| 1 | bare `python`, stdlib only | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.passages` |
 | 2 | a venv with `bibtexparser` | `python -m src.sync` |
-| 3 | a venv with the `enrich` group | `scripts/enrich.py` |
+| 3 | a venv with the `enrich` group | `python -m src.enrich` |
 
 Tier 1 is a design constraint, not an accident: the citation gate is the
 one thing that must run everywhere, including as a hook on a machine that
@@ -443,7 +443,7 @@ through `getattr` and never imports the library. See
 
 ### Tier 3: Render format
 
-**Set by:** `--format` on `python3 -m src.render_output`.
+**Set by:** `--format` on `python -m src.render_output`.
 
 | Format | Needs | Note |
 |---|---|---|
@@ -568,7 +568,7 @@ And the same decisions against the layer that makes them:
 |---|---|---|---|
 | 1. Corpus (`src.sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
 | 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
-| 3. Enrichment (`scripts/enrich.py`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
+| 3. Enrichment (`python -m src.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
 | 4. Review (the three aids) | evidence passages, detection tiers | interpreter 1, render format | none |
 
 The two lock-holders never run at once: the second to start exits `2`
@@ -576,8 +576,9 @@ rather than interleaving writes to `content/`.
 
 Review's "none" is load-bearing rather than incidental: the layer is
 read-only over the corpus and must keep working during a `sync`. Two
-rows of this table were false until 4.0.0, for one reason -- `enrich.py`
-hosted a `provenance` and a `render` stage inside its lock, so a review
+rows of this table were false until 4.0.0, for one reason -- the
+enrichment layer hosted a `provenance` and a `render` stage inside its
+lock, so a review
 aid and a drafting-layer render each took a lock their own layer says
 they do not. Removing the stages made the table true rather than
 aspirational.

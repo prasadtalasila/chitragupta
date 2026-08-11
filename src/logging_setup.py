@@ -1,7 +1,7 @@
 """One log file for everything that holds the pipeline write lock.
 
 `logs/pipeline.log`, shared by `python -m src.sync` and
-`scripts/enrich.py`. One file rather than one per entrypoint, for a
+`python -m src.enrich`. One file rather than one per entrypoint, for a
 reason that is structural rather than a matter of taste:
 `RotatingFileHandler` is not safe for two processes to hold open on the
 same file at once (a rotation from one can land mid-write from the
@@ -41,9 +41,12 @@ import sys
 from src import config
 
 
-# The roots of this project's own logger trees: "src" for the package,
-# "scripts" for scripts/enrich.py, which sits outside it.
-_TREES = ("src", "scripts")
+# The root of this project's own logger tree. One tree, because every
+# entrypoint now lives inside the `src` package: until 5.0.0 there was a
+# second, "scripts", for scripts/enrich.py, which sat outside it. That
+# file is src/enrich/__main__.py now and logs as `src.enrich`, so the
+# second tree has nothing left to match.
+_TREES = ("src",)
 
 # Silence the stdlib's `logging.lastResort` fallback for these trees.
 #
@@ -106,8 +109,8 @@ def _already_attached(path) -> bool:
     swallowed it silently and sent those records to the first call's
     file, which is the confusing failure this project would rather not
     have. A second call with the same target is the no-op case that
-    matters: two entrypoints share this module, and scripts/enrich.py
-    runs several stages in one process, so an unguarded repeat would
+    matters: two entrypoints share this module, and the enrichment
+    layer runs several stages in one process, so an unguarded repeat would
     duplicate every subsequent line in both the file and the console --
     output that reads as corruption rather than as a config bug.
     """
@@ -139,12 +142,14 @@ def _this_project_only(record: logging.LogRecord) -> bool:
     console, which is the one thing this project's own output was never
     supposed to include.
 
-    Two trees, not one: `scripts/enrich.py` is outside the `src`
-    package, so its natural logger name is `scripts.enrich`. Matching
-    only `src*` (as this did when it lived in src/sync.py and sync was
-    the only caller) would have sent every enrich line to the file and
-    silently dropped it from the console -- a half-failure much harder
-    to notice than no logging at all.
+    One tree, because every entrypoint lives in the `src` package. It
+    took two between 4.0.0 and 5.0.0, when the enrichment layer's entry
+    point was `scripts/enrich.py` and so logged as `scripts.enrich`;
+    matching only `src*` then would have sent every enrich line to the
+    file and silently dropped it from the console -- a half-failure much
+    harder to notice than no logging at all. `_TREES` is still a tuple,
+    and this still loops, so a second root outside `src` costs one entry
+    rather than a rewrite.
     """
     return any(
         record.name == root or record.name.startswith(root + ".")
@@ -163,7 +168,7 @@ def say(
 
     Printed *and* logged, rather than logged alone, for callers whose
     stdout is a human-facing report or a documented CLI contract --
-    `scripts/enrich.py`'s stage table, the enrichment stages' summary
+    `src/enrich/__main__.py`'s stage table, the enrichment stages' summary
     lines. The console handler writes to stderr, so a plain
     `logger.info` would move those lines to a different stream and
     break both the tests that assert on them and anything piping the
@@ -193,7 +198,7 @@ def say(
 
     `log_as` is for when the terminal and the file genuinely want
     different renderings of the same thing. The motivating case is
-    `scripts/enrich.py`'s stage detail: a human reading the terminal
+    `src/enrich/__main__.py`'s stage detail: a human reading the terminal
     wants `json.dumps(..., indent=2)`, and a person grepping the log
     wants that same object on one line. Pass the compact form here and
     the pretty one as `message`; the alternative -- picking one -- makes

@@ -140,7 +140,7 @@ subject of
 ["What the dossier actually recovers"](#what-the-dossier-actually-recovers)
 below is careful about which part of it a dossier can and cannot remove.
 The half that could be removed now has been: Phase 5 dispatches through
-`python3 -m src.dossier brief` rather than pasting the packets into four
+`python -m src.dossier brief` rather than pasting the packets into four
 prompts. The residency itself is untouched, and the reason it cannot be
 touched from inside a run is the subject of that section.
 
@@ -227,7 +227,7 @@ resident pool:
 That last row is the one #74 could actually collect, and it is why the
 answer is a file rather than better summarising. **Implemented** in
 3.10.0: the pasted material is now the one line
-`python3 -m src.dossier brief <draft> --section "<heading>"`, an
+`python -m src.dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
 **An estimated 15k equivalents saved, in the 5x direction**, which is the
 same order as the entire resident cost the issue set out to attack,
@@ -427,7 +427,7 @@ reason is worth knowing because it is narrower than "the module is safe".
 
 There is one path that *can* produce concurrent writers, and it is worth
 naming because it was found by writing this document rather than by
-anything failing. `python3 -m src.retrieval ... --log <draft>` appends to
+anything failing. `python -m src.retrieval ... --log <draft>` appends to
 the dossier's `retrieval.md`, and subagents can run Bash. Today only
 `survey-writer` and `draft-reviser` pass `--log`, and both are single
 orchestrators -- but give `--log` to six parallel interviewers and it is
@@ -611,9 +611,9 @@ by four. No new run required.
 
 ### Already instrumented: `retrieval.md`
 
-`python3 -m src.retrieval ... --log <draft>` appends one row per call --
+`python -m src.retrieval ... --log <draft>` appends one row per call --
 mode, query, `k`, results, characters -- to the dossier's `retrieval.md`,
-and `python3 -m src.dossier status` totals it. That is characters rather
+and `python -m src.dossier status` totals it. That is characters rather
 than tokens and covers retrieval only, but it is the one number this
 repository already collects on a real corpus, it is comparable between
 runs, and it costs nothing beyond passing a flag.
@@ -641,7 +641,7 @@ replaces it on the other.
 | | Characters |
 |---|---|
 | Evidence a Phase 5 dispatch would have pasted, all sections | **15,660** |
-| Dispatch lines that replace it (`Your evidence: python3 -m src.dossier brief ... --section "..."`) | **901** |
+| Dispatch lines that replace it (`Your evidence: python -m src.dossier brief ... --section "..."`) | **901** |
 | Ratio | **17.4x** |
 
 At the documented conversions -- four characters per token, output at 5x

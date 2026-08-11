@@ -66,9 +66,9 @@ class and 1-inch margins via the geometry package -- overridable per
 call, but those are the project's fixed defaults.
 
 `python -m src.render_output <file> --format tex|pdf|...` runs standalone
-with bare `python3` (no enrich group) -- it depends only on stdlib plus
+with bare `python` (no enrich group) -- it depends only on stdlib plus
 `src.config`/`src.citation_gate`/`src.references` (all three stdlib-only,
-same as this module), deliberately independent of `scripts/enrich.py`,
+same as this module), deliberately independent of `src/enrich/__main__.py`,
 which drags in the full corpus build and the docling/embed/topic_model
 imports for stages this one doesn't need. The genre-writing skills under
 `.claude/skills/` call this CLI directly.
@@ -90,7 +90,7 @@ class MissingBinary(RuntimeError):
 
 
 # Re-exported: this name shipped here in 3.16.0, and
-# src/citation_provenance.py catches it as `render_output.OutsideContentDir`.
+# src/review/citation_provenance.py catches it as `render_output.OutsideContentDir`.
 # It moved to src/config.py in 3.17.0, when src/citation_gate.py and
 # src/references.py started raising it too and needed a home neither of
 # them could import from -- render_output already imports citation_gate
@@ -333,14 +333,14 @@ def _output_dir(input_path: Path) -> Path:
     written out again here. It lives in `config` because this module's
     docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python3`, which rules out importing `src/dossier.py`.
+    under bare `python`, which rules out importing `src/dossier.py`.
     What stays here is the *policy* -- fall back flat, and refuse to
     write outside `content/` -- which is this module's to decide.
 
     **One mirror source, and a caller that can say otherwise.** This
     function answers "where does a *draft* render to", so `DRAFTS_DIR` is
     the only source root it knows. A caller rendering something that is
-    not a draft -- `src/review.py`, turning a review report into
+    not a draft -- `src/review/__init__.py`, turning a review report into
     `.tex`/`.pdf` beside the report -- passes `render(output_dir=...)`
     and never reaches here.
 
@@ -424,7 +424,7 @@ def render(
 
     `output_dir` overrides that, for a caller rendering something that is
     not a draft and so has no business in `content/rendered/`:
-    `src/review.py` passes the review report's own directory so a
+    `src/review/__init__.py` passes the review report's own directory so a
     report's `.tex`/`.pdf` land beside its `.md` rather than in the
     drafting layer's publish output. It is confined to `content/` like
     every other path this module writes, and it is the caller's whole
@@ -544,14 +544,14 @@ def render(
 
 
 def main() -> int:
-    """CLI entry point -- deliberately independent of scripts/enrich.py.
+    """CLI entry point -- deliberately independent of src/enrich/__main__.py.
 
     That script imports docling/embed/topic_model at module load and
     builds the whole corpus before any stage runs, which drags in the
     multi-GB `.venv-full` for a stage that itself only needs stdlib +
     `src.config` + `src.citation_gate`. Genre skills that just want a
     tex/pdf rendering of a draft should be able to run this with bare
-    `python3`, no enrich group required.
+    `python`, no enrich group required.
     """
     parser = argparse.ArgumentParser(description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.")
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")

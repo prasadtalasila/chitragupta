@@ -641,7 +641,7 @@ if __name__ == "__main__":
             # other). The lock already serializes actual sync work; this
             # makes it serialize handler creation too, so at most one
             # process ever has a live handler on the file. The same
-            # constraint is why scripts/enrich.py -- which shares both
+            # constraint is why src/enrich/__main__.py -- which shares both
             # this lock and this log file -- configures in the same
             # place; see src/logging_setup.py's own docstring.
             logging_setup.configure()
