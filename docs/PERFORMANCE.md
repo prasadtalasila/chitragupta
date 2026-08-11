@@ -453,7 +453,7 @@ including the conclusions later ones overturned.
 ## What a drift sweep costs
 
 Everything above is the corpus layer -- `sync` and the enrichment
-stages, where a run is measured in minutes. `python -m src.dossier
+stages, where a run is measured in minutes. `python -m src.draft dossier
 status --all` sits in the drafting layer and is measured in seconds, but
 it is worth pricing here for one reason: it is meant to be run **after
 every sync**, so "cheap enough to be habitual" is a requirement, not a

@@ -1,6 +1,6 @@
 ---
 name: tutorial-writer
-description: Drafts a Diataxis-style tutorial -- a hands-on lesson that a learner follows at a keyboard, start to finish, to a working result they can see. Concrete, single-path, minimally explained, and verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they already know what they want and just need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via src.retrieval.search()) but only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m src.citation_gate` before the draft is presented -- never a fabricated citekey.
+description: Drafts a Diataxis-style tutorial -- a hands-on lesson that a learner follows at a keyboard, start to finish, to a working result they can see. Concrete, single-path, minimally explained, and verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they already know what they want and just need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via src.retrieval.search()) but only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m src.draft gate` before the draft is presented -- never a fabricated citekey.
 tags: [tutorial, diataxis, hands-on, lesson, teaching]
 ---
 
@@ -119,7 +119,7 @@ the lesson design is the part worth keeping either way.
    Then, once the artifact and the draft's path are settled and before any
    retrieval or drafting, create the dossier:
    ```
-   python -m src.dossier init content/drafts/<slug>.md --genre tutorial
+   python -m src.draft dossier init content/drafts/<slug>.md --genre tutorial
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a lab for
@@ -211,7 +211,7 @@ the lesson design is the part worth keeping either way.
    Same retrieval discipline as the other skills if you do search:
    over-fetch
    ```
-   python -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   python -m src.draft retrieve search "<topic>" --k 15 --log content/drafts/<slug>.md
    ```
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
    every call**, even here where citing is optional -- it is what a later
@@ -263,7 +263,7 @@ the lesson design is the part worth keeping either way.
     reads the file and reports `No such draft` if it isn't on disk yet. Then
     derive `sections.md` rather than writing it by hand:
     ```
-    python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+    python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
     ```
     It writes one row per heading, and it skips fenced code -- which matters
     more here than anywhere else, since a `# Step 1: ...` comment inside a
@@ -279,7 +279,7 @@ the lesson design is the part worth keeping either way.
 11. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`. If
     it contains any `[@citekey]`, run:
     ```
-    python -m src.citation_gate content/drafts/<slug>.md
+    python -m src.draft gate content/drafts/<slug>.md
     ```
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save the file.
@@ -290,7 +290,7 @@ the lesson design is the part worth keeping either way.
 
 12. **Build the References section**, only if the draft cites anything:
     ```
-    python -m src.references content/drafts/<slug>.md --heading "Further reading"
+    python -m src.draft references content/drafts/<slug>.md --heading "Further reading"
     ```
     Stdlib-only, bare `python`, no venv. Entries are numbered IEEE-style;
     leave the inline citations as `[@citekey]` rather than hand-numbering
@@ -309,9 +309,9 @@ the lesson design is the part worth keeping either way.
 
 13. **Render tex, pdf, and numbered md.**
     ```
-    python -m src.render_output content/drafts/<slug>.md --format tex
-    python -m src.render_output content/drafts/<slug>.md --format pdf
-    python -m src.render_output content/drafts/<slug>.md --format md
+    python -m src.draft render content/drafts/<slug>.md --format tex
+    python -m src.draft render content/drafts/<slug>.md --format pdf
+    python -m src.draft render content/drafts/<slug>.md --format md
     ```
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
@@ -356,7 +356,7 @@ the lesson design is the part worth keeping either way.
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of
     this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python -m src.dossier export <slug>` is how a lesson
+    gitignored -- so `python -m src.draft dossier export <slug>` is how a lesson
     and its working state get backed up.
 
 ## Self-check before presenting

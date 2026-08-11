@@ -17,7 +17,7 @@ skills in .claude/skills/.
 
 Needs `bibtexparser` installed -- run scripts/install_full_pipeline.sh
 first (creates .venv-full/ on a bare host), then run this via that
-venv's python. python -m src.citation_gate does not need it and still
+venv's python. python -m src.draft gate does not need it and still
 runs with the bare system interpreter.
 """
 

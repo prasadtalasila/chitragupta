@@ -71,7 +71,7 @@ inside the container:
 ```bash
 python -m src.sync
 python -m src.enrich --stages embed,bertopic
-python -m src.citation_gate content/drafts/<slug>.md
+python -m src.draft gate content/drafts/<slug>.md
 ```
 
 To run the test suite inside the container, add the `dev` group:

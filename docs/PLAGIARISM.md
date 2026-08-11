@@ -7,7 +7,7 @@ Status: **implemented, one detection tier of a planned three.** Written
 `overlap`/`scan` modes are enough review before presenting a draft, or
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
 a synced corpus (`python -m src.sync`) and a citekey-verified draft
-(`python -m src.citation_gate`). **Not covered:** how to invoke the tools
+(`python -m src.draft gate`). **Not covered:** how to invoke the tools
 day to day -- that is [CLI.md](CLI.md)'s job.
 
 The three tiers below are the one **tier set** in this project whose

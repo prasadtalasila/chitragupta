@@ -387,7 +387,7 @@ def evidence(
 
 
 # ---------------------------------------------------------------------
-# CLI: `python -m src.retrieval`
+# CLI: `python -m src.draft retrieve`
 #
 # Its own entrypoint rather than the `python -c "from src import
 # retrieval; [print(r.citekey, r.snippet) for r in ...]"` one-liner the
@@ -415,7 +415,7 @@ def main(argv: "list[str] | None" = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python -m src.retrieval",
+        prog="python -m src.draft retrieve",
         description="BM25 retrieval over the synced corpus. Read-only, takes no "
                     "lock, and runs with the bare system python3.",
         epilog="`search` ranks the corpus and hands back a snippet to judge each "
@@ -501,7 +501,3 @@ def main(argv: "list[str] | None" = None) -> int:
         else:
             print(f"  Logged to {path}")
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

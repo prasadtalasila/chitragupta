@@ -28,7 +28,7 @@ carried two stages that did not: `provenance` (a review-layer report) and
 `render` (the drafting layer's publish step), each a three-line wrapper
 around a command you can run directly. Both are gone -- run
 `python -m src.review provenance <draft>` and
-`python -m src.render_output <draft> --format pdf` instead, which need
+`python -m src.draft render <draft> --format pdf` instead, which need
 no venv at all, and neither of which should ever have been made to wait
 on a running sync.
 

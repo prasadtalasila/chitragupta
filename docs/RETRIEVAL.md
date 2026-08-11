@@ -121,7 +121,7 @@ rejection.
 ### `evidence` -- zooming in on one document
 
 ```bash
-python -m src.retrieval evidence "<query>" --citekey <key>
+python -m src.draft retrieve evidence "<query>" --citekey <key>
 ```
 
 Returns the passages of that one document which bear on the query --

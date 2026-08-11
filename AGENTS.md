@@ -24,7 +24,7 @@ by `python -m src.sync`.
 
 All five genre skills (`survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research` in
-`.claude/skills/`) must run `python -m src.citation_gate <file>` on its
+`.claude/skills/`) must run `python -m src.draft gate <file>` on its
 own output and only present the draft once it exits 0. This is a gate,
 not a lint suggestion -- treat a `FAIL` the same way you'd treat a
 failing test. It binds the two teaching genres too, where citations are
@@ -126,7 +126,7 @@ enrichment layer is optional and nothing above it needs it.
   the way `content/rendered/` and `content/dossiers/` do, with
   `src/review/__init__.py` owning that contract.
 
-  *Review*, not *verification*: `citation_gate` is verification, it lives
+  *Review*, not *verification*: `src.draft gate` is verification, it lives
   in the drafting layer, and it is that layer's only exit. The gate
   answers a question with one correct answer and may block; these three
   answer questions of judgement and may not.
@@ -162,7 +162,7 @@ overridable by an env var of the same name (e.g.
 `BIB_FILE=/other/path.bib python -m src.sync`). docs/CONFIG.md is the
 reference.
 
-`python -m src.citation_gate` needs no venv -- it only reads
+`python -m src.draft gate` needs no venv -- it only reads
 `content/ledger.sqlite` through stdlib `sqlite3` and runs with bare
 `python`. `python -m src.sync` does need the venv, and must be run
 through the installed one rather than the bare system interpreter.

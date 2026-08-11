@@ -64,8 +64,8 @@ flowchart TB
   DOC -- "src/passages.py<br/>quotable passages — rung 1" --> DRF
   CPS -- "src/passages.py<br/>quotable passages — rung 2" --> DRF
   LED -- "src/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>src.citation_gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
-  DRF -- "src.render_output<br/><small>only after the gate passes</small>" --> REN
+  DRF == "<b>src.draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
+  DRF -- "src.draft render<br/><small>only after the gate passes</small>" --> REN
   DRF -- "the review layer<br/><small>src.review provenance · verbatim scan --write<br/>src.review coverage --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407

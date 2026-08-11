@@ -211,7 +211,7 @@ What is valuable regardless of whether retrieval is split in two:
   irreproducible, and it now serves one-stage `search()` too. Every
   caller in the repository is better off, including callers that never
   triage.
-- **The retrieval CLI.** `python -m src.retrieval` replaced
+- **The retrieval CLI.** `python -m src.draft retrieve` replaced
   `python -c "from src import retrieval; ..."` one-liners whose output
   shape was whatever each skill's author happened to write, and which had
   nowhere to hang a flag.

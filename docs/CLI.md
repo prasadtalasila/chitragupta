@@ -8,6 +8,7 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Upgrading from 5.0.0: one command for the drafting layer](#upgrading-from-500-one-command-for-the-drafting-layer)
 - [Upgrading from 4.x: one command per layer](#upgrading-from-4x-one-command-per-layer)
 - [Upgrading from 3.19.x: `content/provenance/` is now `content/review/`](#upgrading-from-319x-contentprovenance-is-now-contentreview)
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
@@ -18,19 +19,68 @@ short path; this is the full set.
 - [Every command and flag](#every-command-and-flag)
   - [`src.sync`](#python--m-srcsync)
   - [`src.ledger`](#python--m-srcledger)
-  - [`src.citation_gate`](#python--m-srccitation_gate)
-  - [`src.references`](#python--m-srcreferences)
-  - [`src.dossier`](#python--m-srcdossier)
-  - [`src.retrieval`](#python--m-srcretrieval)
+  - [`src.draft gate`](#python--m-srcdraft-gate)
+  - [`src.draft references`](#python--m-srcdraft-references)
+  - [`src.draft dossier`](#python--m-srcdraft-dossier)
+  - [`src.draft retrieve`](#python--m-srcdraft-retrieve)
   - [`src.review coverage`](#python--m-srcreview-coverage)
   - [`src.review provenance`](#python--m-srcreview-provenance)
   - [`src.review verbatim`](#python--m-srcreview-verbatim)
-  - [`src.render_output`](#python--m-srcrender_output)
+  - [`src.draft render`](#python--m-srcdraft-render)
   - [`src.enrich`](#python--m-srcenrich)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Upgrading from 5.0.0: one command for the drafting layer
+
+**Five command strings changed. Nothing they do changed.** 5.1.0 gave the
+drafting layer the same treatment 5.0.0 gave review and enrichment: a
+single entry point, one level deep. There are no compatibility shims: the
+old spellings are gone, and the table below is the whole migration.
+
+| Before (5.0.0) | Now (5.1.0) |
+|---|---|
+| `python -m src.citation_gate <file> [<file> ...]` | `python -m src.draft gate <file> [<file> ...]` |
+| `python -m src.dossier <command> ...` | `python -m src.draft dossier <command> ...` |
+| `python -m src.retrieval search\|evidence ...` | `python -m src.draft retrieve search\|evidence ...` |
+| `python -m src.references <file.md> [--heading TEXT]` | `python -m src.draft references <file.md> [--heading TEXT]` |
+| `python -m src.render_output <file> --format tex\|pdf\|...` | `python -m src.draft render <file> --format tex\|pdf\|...` |
+
+Every flag, exit code and output path is unchanged, so a script that only
+needed its command string edited needs nothing else. `python -m src.draft`
+with no arguments prints the layer's usage and exits 0, which is the
+fastest way to check a spelling.
+
+**None of the five old spellings errors -- each one now silently does
+nothing.** `citation_gate.py`, `dossier.py`, `references.py`,
+`render_output.py` and `retrieval.py` lost their `__main__` blocks, so
+`python -m src.citation_gate <draft>` (or any of the other four) imports
+the module and exits 0 with empty stdout, the same trap
+`python -m src.review.verbatim_check` has carried since 5.0.0. For every
+other command that is a harmless no-op; for the gate it is the one case
+worth calling out by name, because a script or CI step still pointed at
+the old spelling gets a **silent, unconditional pass** on a draft it
+never actually checked, not an error telling you to fix the invocation.
+
+Unlike the other four, `retrieval`'s verb isn't its own module name:
+`retrieve` was chosen over `retrieval` because every other verb in this
+layer is already an imperative (`gate`, `render`) or a noun standing in
+for one (`dossier`, `references`), and there was no existing vocabulary
+to inherit. That naming was this PR's to make, unlike the review layer's,
+which already had `review.AIDS` fixing its subcommand names to a report
+suffix (see `src/draft.py`'s own docstring for the full reasoning).
+
+**`.claude/hooks/citation_gate_hook.py` changed with it.** The hook that
+enforces the gate on every write under `content/drafts/` now spawns
+`python -m src.draft gate`, not the old module path -- nothing to do on
+your end unless you have tooling of your own that shells out to the old
+spelling directly.
+
+This is the same kind of change as the review and enrichment layers got
+in 5.0.0, and for the same reason: five scattered commands with no shared
+front door, tightened to one.
 
 ## Upgrading from 4.x: one command per layer
 
@@ -117,7 +167,7 @@ not wait on `sync`'s write lock:
 python -m src.review provenance <draft>
 
 # was: .venv-full/bin/python scripts/enrich.py --stages render --input <draft>
-python -m src.render_output <draft> --format pdf
+python -m src.draft render <draft> --format pdf
 ```
 
 `--input`, `--output-format` and `--documentclass` went with them.
@@ -214,20 +264,20 @@ against the project's venv for tiers 2 and 3.
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python`** -- stdlib only, no venv | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.dossier`, `src.retrieval` |
+| 1 | **`python`** -- stdlib only, no venv | `src.draft` (all five commands), `src.ledger`, `src.review` (all three aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m src.enrich` |
 
 Tier 1 is deliberate, not incidental. The chain that enforces the one rule
--- `citation_gate` -> `references` -> `render_output` -- imports nothing
-outside the standard library, so it cannot be blocked by a virtual
-environment that is broken, missing, or built for a different Python.
-`docs/ARCHITECTURE.md` has the [full
+-- `src.draft gate` -> `src.draft references` -> `src.draft render` --
+imports nothing outside the standard library, so it cannot be blocked by
+a virtual environment that is broken, missing, or built for a different
+Python. `docs/ARCHITECTURE.md` has the [full
 reasoning](ARCHITECTURE.md#which-interpreter-and-why).
 
 Two commands look like they belong in a higher tier and don't:
 
-- `src.render_output` needs only stdlib plus
+- `src.draft render` (`src/render_output.py`) needs only stdlib plus
   `src.config`/`src.citation_gate`/`src.references`. It shells out to the
   `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
   dependencies. (It was `src.heavy.render_output` until 3.0.0, which made
@@ -301,8 +351,8 @@ python -m src.ledger
 # 6. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
 #    cost can be totalled later -- omit it for a one-off look.
-python -m src.retrieval search "digital twin composability" --k 15
-python -m src.retrieval evidence "calibration" --citekey talasila_composable_2025 \
+python -m src.draft retrieve search "digital twin composability" --k 15
+python -m src.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
 # 7. In Claude Code, ask for a draft, e.g.:
@@ -311,26 +361,26 @@ python -m src.retrieval evidence "calibration" --citekey talasila_composable_202
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own citation_gate -> references -> render_output chain,
+# including its own gate -> references -> render chain (python -m src.draft <verb>),
 # and writes a dossier beside the draft as it goes.
 
 # 8. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
 #    refused, so that one directory stays the whole record of the work.
-python -m src.citation_gate content/drafts/<slug>.md
-python -m src.references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
-python -m src.render_output content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
-python -m src.render_output content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
-python -m src.render_output content/drafts/<slug>.md --format docx  #       --margin (--help for all)
-python -m src.render_output content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
+python -m src.draft gate content/drafts/<slug>.md
+python -m src.draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
+python -m src.draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
+python -m src.draft render content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
+python -m src.draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
+python -m src.draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
 
 # 9. Read and maintain the draft's dossier -- what was kept, what was
 #    rejected and why, and whether the corpus has moved under it since.
-python -m src.dossier list
-python -m src.dossier brief content/drafts/<slug>.md
-python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
-python -m src.dossier status --all --json
-python -m src.dossier export <slug>
+python -m src.draft dossier list
+python -m src.draft dossier brief content/drafts/<slug>.md
+python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
+python -m src.draft dossier status --all --json
+python -m src.draft dossier export <slug>
 
 # 10. Check the draft against its sources. Review aids, not gates: none of
 #     these runs automatically, and none of them can block a draft.
@@ -400,7 +450,7 @@ python -m src.ledger
 # python -m src.ledger --citekey talasila_composable_2025
 ```
 
-### `python -m src.citation_gate`
+### `python -m src.draft gate`
 
 The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 **Takes no options** -- every argument is a file to check.
@@ -411,8 +461,8 @@ The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 | `<file> [<file> ...]` | One or more drafts to check |
 
 ```bash
-python -m src.citation_gate content/drafts/survey.md
-# python -m src.citation_gate content/drafts/*.md      # several at once
+python -m src.draft gate content/drafts/survey.md
+# python -m src.draft gate content/drafts/*.md      # several at once
 
 # Exit codes: 0 = every citation verified,
 #             1 = at least one unresolved citekey, or a file outside content/,
@@ -426,7 +476,7 @@ one unusable path must not hide the others. It exits 1 rather than the
 usage code 2 for the same reason: it is a document that did not pass,
 alongside the rest.
 
-### `python -m src.references`
+### `python -m src.draft references`
 
 Append or replace a `References` section built from a draft's own cited
 citekeys.
@@ -453,11 +503,11 @@ title and year until the next `python -m src.sync`.
 | `--heading HEADING` | `References` | Heading text, e.g. `"6. References"` to match a draft's own numbered headings |
 
 ```bash
-python -m src.references content/drafts/survey.md
-# python -m src.references content/drafts/thesis.md --heading "6. References"
+python -m src.draft references content/drafts/survey.md
+# python -m src.draft references content/drafts/thesis.md --heading "6. References"
 ```
 
-### `python -m src.dossier`
+### `python -m src.draft dossier`
 
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
@@ -481,7 +531,7 @@ and the other isn't:
 | No ledger, or an unreadable one | Reports the dossier as usual, says the drift check is unavailable, **exits 0** |
 | No dossier for this draft | Prints the `init` command to create one, **exits 1** |
 
-So `python -m src.dossier status <draft> >/dev/null` is a usable test for
+So `python -m src.draft dossier status <draft> >/dev/null` is a usable test for
 "does this draft have a dossier yet", while a machine with no corpus built
 still gets a full report of what it has.
 
@@ -565,32 +615,32 @@ never transcribed it, and that material is gone rather than mislaid.
 | `--force` | `restore` | Actually write, overwriting what is already there |
 
 ```bash
-python -m src.dossier init content/drafts/survey.md --genre survey
-python -m src.dossier status content/drafts/survey.md
-python -m src.dossier sections content/drafts/survey.md
+python -m src.draft dossier init content/drafts/survey.md --genre survey
+python -m src.draft dossier status content/drafts/survey.md
+python -m src.draft dossier sections content/drafts/survey.md
 # Derive the section -> citekey map instead of writing it by hand
-python -m src.dossier sections content/drafts/survey.md --citekeys --write
+python -m src.draft dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
-python -m src.dossier mark-revision content/drafts/survey.md --label "shorten intro"
+python -m src.draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
 
 # Before dispatching a section writer: do this section's rows resolve?
-python -m src.dossier brief content/drafts/survey.md --section "2. Failure modes" --check
+python -m src.draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
 # What the writer itself runs
-python -m src.dossier brief content/drafts/survey.md --section "2. Failure modes"
-python -m src.dossier brief content/drafts/survey.md talasila_composable_2025
+python -m src.draft dossier brief content/drafts/survey.md --section "2. Failure modes"
+python -m src.draft dossier brief content/drafts/survey.md talasila_composable_2025
 
 # After a sync: which drafts went stale, and what specifically
-python -m src.dossier status --all
-python -m src.dossier status --all --json
+python -m src.draft dossier status --all
+python -m src.draft dossier status --all --json
 
 # Back up everything, then one topic with its PDFs
-python -m src.dossier export
-python -m src.dossier export digital-twins-for-software-engineers --with-rendered
+python -m src.draft dossier export
+python -m src.draft dossier export digital-twins-for-software-engineers --with-rendered
 
 # Restore: look first, then commit to it
-python -m src.dossier restore drafts-all-2026-08-06.tar.gz
-python -m src.dossier restore drafts-all-2026-08-06.tar.gz --force
+python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz
+python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 A bundle carries `drafts/`, `dossiers/` and optionally `rendered/`, with
@@ -603,7 +653,7 @@ pipeline copies). Restore refuses the whole archive -- rather than
 skipping a member -- if any entry is a link or device node, escapes the
 extraction directory, or sits outside those three directories.
 
-### `python -m src.retrieval`
+### `python -m src.draft retrieve`
 
 BM25 retrieval over the synced corpus. Read-only, takes no lock, needs no
 venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
@@ -628,15 +678,15 @@ withdrawn.
 | `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
 
 ```bash
-python -m src.retrieval search "digital twin architecture" --k 15 \
+python -m src.draft retrieve search "digital twin architecture" --k 15 \
     --log content/drafts/survey.md
-python -m src.retrieval evidence "digital twin architecture" \
+python -m src.draft retrieve evidence "digital twin architecture" \
     --citekey ferko_architecting_2022 --log content/drafts/survey.md
 ```
 
 `--log` appends to `retrieval.md` in that draft's dossier, which is what
 turns "retrieval is where the tokens go" into a number for a particular
-draft (`python -m src.dossier status` totals it). A `--log` path that
+draft (`python -m src.draft dossier status` totals it). A `--log` path that
 isn't under `content/drafts/`, or a filesystem error while writing, is
 reported on stderr and skipped -- the measurement never fails the search
 it was measuring.
@@ -782,7 +832,7 @@ no extracted items at all shifts the numbering after it. The passage
 sidecar records each item's own page and is not affected; where the two
 disagree, believe `python -m src.review provenance`.
 
-### `python -m src.render_output`
+### `python -m src.draft render`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
 for PDF) on `PATH`, but no Python package from the enrich group.
@@ -790,7 +840,7 @@ for PDF) on `PATH`, but no Python package from the enrich group.
 Citations render IEEE-style -- `[1]`, and `[3]–[6]` for a consecutive run
 -- over a numbered bibliography of complete entries, via the CSL style
 vendored at `assets/csl/ieee.csl`. In the copy handed to pandoc, the
-draft's own References section (if `python -m src.references` added one)
+draft's own References section (if `python -m src.draft references` added one)
 keeps its heading but has its entries replaced by citeproc's placement
 anchor, so the output carries exactly one bibliography -- citeproc's,
 the one that can be numbered consistently with the inline markers --
@@ -859,11 +909,11 @@ converting a thesis fragment's `\citep{...}` genuinely is a format
 conversion.
 
 ```bash
-python -m src.render_output content/drafts/survey.md --format pdf
-# python -m src.render_output content/drafts/survey.md --format tex
-# python -m src.render_output content/drafts/survey.md --format docx
-# python -m src.render_output content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
-# python -m src.render_output content/drafts/thesis.md \
+python -m src.draft render content/drafts/survey.md --format pdf
+# python -m src.draft render content/drafts/survey.md --format tex
+# python -m src.draft render content/drafts/survey.md --format docx
+# python -m src.draft render content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
+# python -m src.draft render content/drafts/thesis.md \
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
@@ -890,7 +940,7 @@ correct answer rather than a bug.
 # The provenance and render stages left in 4.0.0 -- run the tier-1
 # commands directly instead (no venv, no lock):
 # python -m src.review provenance content/drafts/survey.md
-# python -m src.render_output content/drafts/survey.md --format pdf
+# python -m src.draft render content/drafts/survey.md --format pdf
 ```
 
 #### Enriching one draft's papers

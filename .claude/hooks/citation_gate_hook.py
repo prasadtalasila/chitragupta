@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PostToolUse hook: enforce the citekey gate on genre-skill drafts.
 
-AGENTS.md calls python -m src.citation_gate "a gate, not a lint
+AGENTS.md calls python -m src.draft gate "a gate, not a lint
 suggestion" and every genre skill's prose instructs the agent to run it
 before presenting a draft -- but until this hook existed, nothing
 mechanically enforced that instruction; an agent could just skip the
@@ -73,7 +73,7 @@ def main() -> int:
     # available failure modes. The interpreter already running this hook
     # is known to exist and is the one settings.json chose.
     result = subprocess.run(
-        [sys.executable, "-m", "src.citation_gate", str(file_path)],
+        [sys.executable, "-m", "src.draft", "gate", str(file_path)],
         cwd=repo_root,
         capture_output=True,
         text=True,

@@ -142,7 +142,7 @@ confidence scores, weakest link, bias check, missing perspective, overall
 grade, no panel verdicts row.>
 
 ## References
-<Leave this heading bare -- `python -m src.references` (SKILL.md Phase 7d)
+<Leave this heading bare -- `python -m src.draft references` (SKILL.md Phase 7d)
 fills it in automatically from exactly the citekeys cited above, as
 numbered IEEE entries ("[1] J. Doe and R. Roe, "A Paper," *IEEE Trans.
 Testing*, vol. 3, pp. 1-9, 2024. `doe_paper_2024`"), pulled from

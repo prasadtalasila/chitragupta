@@ -1,6 +1,6 @@
 ---
 name: thesis-chapter-writer
-description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via src.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m src.citation_gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m src.sync` has been run.
+description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via src.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m src.sync` has been run.
 tags: [thesis, dissertation, latex, citation]
 ---
 
@@ -17,7 +17,7 @@ layer (generative, on-demand, user-reviewed) -- distinct from
   point the thesis document's `\addbibresource` (biblatex) or `\bibliography`
   (bibtex) at this file directly rather than a copy
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python -m src.retrieval search "<q>" --k 15 --log <draft>`,
+- `src/retrieval.py` -- `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -105,7 +105,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    the slug it will be saved under. Then create the dossier and record
    the same decisions there:
    ```
-   python -m src.dossier init content/drafts/<slug>.tex --genre thesis-chapter
+   python -m src.draft dossier init content/drafts/<slug>.tex --genre thesis-chapter
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "the methods
@@ -129,7 +129,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    component concepts -- over-fetch rather than assuming the top few hits
    are automatically the right ones:
    ```
-   python -m src.retrieval search "<concept>" --k 15 --log content/drafts/<slug>.tex
+   python -m src.draft retrieve search "<concept>" --k 15 --log content/drafts/<slug>.tex
    ```
    `--log` records the query and the call's size in the dossier's
    `retrieval.md`. **Pass it on every call.** It is what makes the run's
@@ -175,7 +175,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `content/drafts/<slug>.tex` first, then derive the map rather than
    writing it by hand:
    ```
-   python -m src.dossier sections content/drafts/<slug>.tex --citekeys --write
+   python -m src.draft dossier sections content/drafts/<slug>.tex --citekeys --write
    ```
    It reads `\citep`/`\citet` as readily as `[@key]` and tracks
    `verbatim`/`lstlisting`/`minted`, so a `\section`-like line inside a
@@ -188,7 +188,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    (this remains the canonical deliverable -- the one meant to be `\input`-ed),
    then run:
    ```
-   python -m src.citation_gate content/drafts/<slug>.tex
+   python -m src.draft gate content/drafts/<slug>.tex
    ```
    Fix and re-run until `OK`. Never present a draft that hasn't passed.
 10. **Render md and pdf previews.** The `.tex` fragment stays the canonical
@@ -197,8 +197,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     from that same fragment (pandoc's LaTeX reader handles a preamble-less
     fragment fine):
     ```
-    python -m src.render_output content/drafts/<slug>.tex --format md
-    python -m src.render_output content/drafts/<slug>.tex --format pdf
+    python -m src.draft render content/drafts/<slug>.tex --format md
+    python -m src.draft render content/drafts/<slug>.tex --format pdf
     ```
     Both previews land beside the fragment: a draft at
     `content/drafts/<topic>/<name>.tex` renders to
@@ -213,7 +213,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     `.tex` fragment.
 
     Unlike the Markdown-native genre skills, don't run `python -m
-    src.references` on this fragment and don't add a manual References
+    src.draft references` on this fragment and don't add a manual References
     section to it -- the fragment is designed to inherit the thesis's own
     document-wide `\addbibresource`/`\bibliography` (the shared corpus
     layer above), and a per-chapter list would duplicate that. The `.pdf`
@@ -259,7 +259,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     if it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of
     this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python -m src.dossier export <slug>` is how a draft
+    gitignored -- so `python -m src.draft dossier export <slug>` is how a draft
     and its working state get backed up.
 
 ## Sources

@@ -43,7 +43,7 @@ RUN scripts/install_full_pipeline.sh os-deps && rm -rf /var/lib/apt/lists/*
 
 # Stage 2: Python deps -- same script + pyproject.toml/poetry.lock as
 # the host (Poetry itself came from stage 1's os-deps, which apt-installs
-# python3-poetry). python -m src.citation_gate doesn't need any of this
+# python3-poetry). python -m src.draft gate doesn't need any of this
 # and still runs with the bare python3 from stage 1; python -m src.sync
 # needs bibtexparser, the one dependency the rest of the core pipeline
 # can't avoid.

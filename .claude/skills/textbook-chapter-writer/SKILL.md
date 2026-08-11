@@ -1,6 +1,6 @@
 ---
 name: textbook-chapter-writer
-description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via src.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m src.citation_gate` before the draft is presented -- never a fabricated citekey.
+description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via src.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m src.draft gate` before the draft is presented -- never a fabricated citekey.
 tags: [textbook, teaching, undergraduate, pedagogy, explanation]
 ---
 
@@ -123,7 +123,7 @@ candidate for the chapter.
    already know ("Audience first" above), and what it will and won't cover.
    Then create the dossier and record those decisions there:
    ```
-   python -m src.dossier init content/drafts/<slug>.md --genre textbook-chapter
+   python -m src.draft dossier init content/drafts/<slug>.md --genre textbook-chapter
    ```
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a book
@@ -160,7 +160,7 @@ candidate for the chapter.
    If you search the synced corpus for a motivating example, use the same
    retrieval discipline as the other skills: over-fetch
    ```
-   python -m src.retrieval search "<topic>" --k 15 --log content/drafts/<slug>.md
+   python -m src.draft retrieve search "<topic>" --k 15 --log content/drafts/<slug>.md
    ```
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
    every call**, even here where citing is optional -- it is what a later
@@ -225,7 +225,7 @@ candidate for the chapter.
 9. **Map the chapter's sections.** Once the draft is saved, derive the
    dossier's `sections.md` rather than writing it by hand:
    ```
-   python -m src.dossier sections content/drafts/<slug>.md --citekeys --write
+   python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
    ```
    so a later revision can find the section that owns a change without
    reading the whole chapter. It skips fenced code, so a `# Step 1`
@@ -236,7 +236,7 @@ candidate for the chapter.
 10. **Never write a citekey you didn't get from `search()`.** If you do include
     any citations, save the draft as `content/drafts/<slug>.md` and gate it:
     ```
-    python -m src.citation_gate content/drafts/<slug>.md
+    python -m src.draft gate content/drafts/<slug>.md
     ```
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save to
@@ -244,7 +244,7 @@ candidate for the chapter.
 11. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
     ```
-    python -m src.references content/drafts/<slug>.md
+    python -m src.draft references content/drafts/<slug>.md
     ```
     Stdlib-only, like the citation gate -- bare `python`, no venv. Writes
     numbered IEEE-style entries from `content/ledger.sqlite`, ordered by
@@ -262,9 +262,9 @@ candidate for the chapter.
 12. **Render tex and pdf.** Once saved (and gated/referenced, if it has
     citations), also render the other three formats:
     ```
-    python -m src.render_output content/drafts/<slug>.md --format tex
-    python -m src.render_output content/drafts/<slug>.md --format pdf
-    python -m src.render_output content/drafts/<slug>.md --format md
+    python -m src.draft render content/drafts/<slug>.md --format tex
+    python -m src.draft render content/drafts/<slug>.md --format pdf
+    python -m src.draft render content/drafts/<slug>.md --format md
     ```
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
@@ -310,7 +310,7 @@ candidate for the chapter.
     dossier is, that changes to this chapter should go through
     `draft-reviser` rather than another run of this skill, and that
     `content/drafts/` and `content/dossiers/` are gitignored -- so
-    `python -m src.dossier export <slug>` is how a draft and its working
+    `python -m src.draft dossier export <slug>` is how a draft and its working
     state get backed up.
 
 ## House style for this genre

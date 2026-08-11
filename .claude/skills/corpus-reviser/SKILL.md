@@ -1,6 +1,6 @@
 ---
 name: corpus-reviser
-description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m src.citation_gate` before presenting.
+description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m src.draft gate` before presenting.
 tags: [revision, dossier, citation, corpus]
 ---
 
@@ -64,7 +64,7 @@ through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same
 edit discipline, the same dossier write-back and the same exit.
 
-**Step 3 becomes a whole-draft read.** `python -m src.dossier sections
+**Step 3 becomes a whole-draft read.** `python -m src.draft dossier sections
 content/drafts/<path>` still gives the outline, but here it is a work
 list rather than a filter: you read every section, because a wide pass
 is judging the whole draft against the corpus, not one claim.
@@ -80,8 +80,8 @@ doesn't, which is the case for any draft written before `--log` was
 passed. One search each:
 
 ```bash
-python -m src.retrieval search "<sub-theme>" --k 15 --log content/drafts/<path>
-python -m src.retrieval evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
+python -m src.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<path>
+python -m src.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
 ```
 
 `evidence` stays optional and stays for deepening an acceptance -- reach
@@ -118,7 +118,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   `steering.md`, and a `revisions.md` entry saying plainly that this pass
   was wide and why.
 - **The gate is the exit.** Never present a draft that hasn't passed
-  `python -m src.citation_gate`.
+  `python -m src.draft gate`.
 - **Offer the verbatim scan** -- `python -m src.review verbatim scan
   content/drafts/<path>` -- before presenting. Don't run it silently and
   never make it a condition of presenting. It reports wording the draft

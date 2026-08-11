@@ -11,11 +11,11 @@ flowchart LR
 
   P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>src.citation_gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>src.draft gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
 
   FIX["<b>DISCARD DRAFT</b><br/><small>“Fix and re-run until <code>OK</code>.<br/>Never present a draft<br/>that hasn't passed.”</small>"]
 
-  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>render_output --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
+  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>src.draft references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>src.draft render --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
 
   OUT["<b>the actual output</b><br/><code>\\input{chapter-4}</code><br/><small>into your own thesis, compiled by your own<br/>LaTeX toolchain against your own .bib</small>"]
 

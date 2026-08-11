@@ -39,7 +39,7 @@ dir = "content"
 
 
 [render]
-# How `python -m src.render_output` formats citations. Used by
+# How `python -m src.draft render` formats citations. Used by
 # nothing else -- not by sync, not by the citation gate.
 
 # The CSL style pandoc's --citeproc formats citations and the
@@ -248,9 +248,9 @@ min_tokens = 200
 #
 # One file for both `python -m src.sync` and `python -m src.enrich`: each
 # line names its source, so `grep 'src\.sync' logs/pipeline.log` splits
-# them back apart. The drafting-layer CLIs (src.retrieval,
-# src.citation_gate, src.references, src.dossier) print to stdout and
-# are not logged here -- see docs/CONFIG.md for why.
+# them back apart. The drafting-layer CLIs (src.draft gate/dossier/
+# retrieve/references/render) print to stdout and are not logged here --
+# see docs/CONFIG.md for why.
 #
 # Only affects the file. Terminal output (stdout/stderr) is unchanged by
 # this setting -- the per-document progress and summary lines print

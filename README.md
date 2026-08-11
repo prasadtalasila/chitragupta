@@ -57,7 +57,7 @@ Two properties of that picture do all the work:
 - **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export. The pipeline never fetches a paper, never
   invents a citekey, and never renames one.
-- **Phase 4 is the only exit.** `src.citation_gate` sits on the single
+- **Phase 4 is the only exit.** `src.draft gate` sits on the single
   path between a draft and a rendered document. There is no arrow around
   it, and a `FAIL` is treated like a failing test rather than a lint
   warning.
@@ -160,7 +160,7 @@ python -m src.ledger
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own citation_gate -> references -> render_output chain
+# including its own gate -> references -> render chain (python -m src.draft <verb>)
 ```
 
 Every command that chain runs, every way to re-run one by hand, and all
