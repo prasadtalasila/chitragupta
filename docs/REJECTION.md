@@ -338,7 +338,7 @@ exists to prevent.
 The right way to cut `deep-research`'s cost is where it actually spends:
 the interview packets held resident across Phases 3-7
 ([#74](https://github.com/prasadtalasila/chitragupta/issues/74)), not the
-retrieval inside Phase 2. That was done in 3.10.0, with one correction to
+retrieval inside Phase 2. That has since been done, with one correction to
 the diagnosis worth carrying back here -- the residency itself could not
 be undone from inside a run, so what the fix collects is the *re-emission*
 of those packets into four dispatch prompts, in the output pool. See

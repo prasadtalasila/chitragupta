@@ -144,12 +144,10 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # the .tex/.pdf renders of each. See src/review/__init__.py and
 # docs/ARCHITECTURE.md's "Layer 4: the review layer".
 #
-# Was content/provenance/ until 4.0.0, when it held only
-# citation_provenance's report -- a name that described one of the three
-# review aids rather than the layer, and that the genre skills' own
-# section-to-citekey JSON had also been sharing. That JSON is drafting
-# state, not a review artefact, and moved into the dossier directory in
-# the same release.
+# Named for the layer, not for one of its three aids: all three write
+# here. The genre skills' own section-to-citekey JSON is not a review
+# artefact and does not -- it is drafting state, and lives in the
+# dossier directory.
 REVIEW_DIR = CONTENT_DIR / "review"
 # Where a genre skill saves its draft, and where src/dossier.py keeps the
 # working state that produced it -- one dossier directory per draft,

@@ -34,6 +34,13 @@ other dict that also owns a file-naming contract -- there was no existing
 vocabulary here to inherit (the modules share little beyond
 `src/config.py`), so `VERBS` is where the vocabulary is decided, once.
 
+Four of the five verbs are their module's own name. `retrieve` is not:
+it was chosen over `retrieval` because every other verb here is already
+an imperative (`gate`, `render`) or a noun standing in for one
+(`dossier`, `references`), and a layer whose commands read as a mix of
+the two would be harder to guess at than one that picks a form and
+keeps it.
+
 Each module already parses its own arguments -- `dossier` and `retrieval`
 built their own `argparse.ArgumentParser` with their own subcommands
 before this file existed, `render_output` and `references` had their own

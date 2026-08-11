@@ -14,8 +14,8 @@ is generative, no genre skill runs it, and every artefact it writes
 reading of the same papers -- which is also why src/enrich/__main__.py takes
 the same write lock as sync.
 
-`src/render_output.py` used to live here, as src/heavy/render_output.py.
-It never belonged: it is the drafting layer's publish step, needs no
-package from this group, and runs on the bare system python3. It moved to
-src/ in 3.0.0, when "heavy" stopped being used as a name for this layer.
+`src/render_output.py` is deliberately not here. It is the drafting
+layer's publish step, needs no package from this group, and runs on the
+bare system python3 -- what a module costs to install is a different
+axis from which layer it belongs to.
 """

@@ -42,10 +42,9 @@ from src import config
 
 
 # The root of this project's own logger tree. One tree, because every
-# entrypoint now lives inside the `src` package: until 5.0.0 there was a
-# second, "scripts", for scripts/enrich.py, which sat outside it. That
-# file is src/enrich/__main__.py now and logs as `src.enrich`, so the
-# second tree has nothing left to match.
+# entrypoint lives inside the `src` package -- the enrichment layer's is
+# src/enrich/__main__.py, and logs as `src.enrich`. Kept as a tuple: see
+# _from_our_trees below for why a second root stays cheap to add.
 _TREES = ("src",)
 
 # Silence the stdlib's `logging.lastResort` fallback for these trees.
@@ -142,14 +141,13 @@ def _this_project_only(record: logging.LogRecord) -> bool:
     console, which is the one thing this project's own output was never
     supposed to include.
 
-    One tree, because every entrypoint lives in the `src` package. It
-    took two between 4.0.0 and 5.0.0, when the enrichment layer's entry
-    point was `scripts/enrich.py` and so logged as `scripts.enrich`;
-    matching only `src*` then would have sent every enrich line to the
-    file and silently dropped it from the console -- a half-failure much
-    harder to notice than no logging at all. `_TREES` is still a tuple,
-    and this still loops, so a second root outside `src` costs one entry
-    rather than a rewrite.
+    One tree, because every entrypoint lives in the `src` package. That
+    has not always been true: an entry point under `scripts/` logged as
+    `scripts.<name>`, and matching only `src*` would have sent its every
+    line to the file while silently dropping it from the console -- a
+    half-failure much harder to notice than no logging at all. `_TREES`
+    is therefore still a tuple and this still loops, so a second root
+    outside `src` costs one entry rather than a rewrite.
     """
     return any(
         record.name == root or record.name.startswith(root + ".")

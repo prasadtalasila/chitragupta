@@ -13,7 +13,7 @@
 #                present. Poetry is a dependency/lockfile manager here
 #                only -- package-mode = false in pyproject.toml, nothing
 #                is published or pip-installable from this repo.
-#   os-deps      -- apt-get the system packages the heavy pipeline needs
+#   os-deps      -- apt-get the system packages the full pipeline needs
 #                (TeX Live, Pandoc, poppler-utils, Poetry itself,
 #                git/curl/unzip, and OpenCV's runtime libraries). Needs
 #                root; auto-sudo's if not already root. Opt-in -- not

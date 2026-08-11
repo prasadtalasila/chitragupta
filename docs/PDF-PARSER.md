@@ -37,7 +37,7 @@ This is the best fit when the PDF's structure matters: headings, tables, reading
 
 **The ~42x figure predates the OCR default.** It was measured with
 Docling's OCR stage on, which is Docling's default but has not been this
-project's since 0.12.0 (`config.toml`'s `[parser].ocr = false`). Measured
+project's (`config.toml`'s `[parser].ocr = false`). Measured
 over the whole corpus rather than a sample, turning OCR off is **2.08x**
 faster serially and up to **4.79x** at 24 workers, so the current default
 sits well below 42x. Treat 42x as the OCR-on ceiling from a 5-PDF sample,

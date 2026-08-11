@@ -59,9 +59,10 @@ The numbers are introduction order, not a dependency rank.
 **Stage.** One step within a layer, with its own name and its own status.
 The enrichment layer is the only one that literally enumerates them
 (`--stages docling,embed,bertopic`, each reporting `ok`, `partial`,
-`skipped`, `missing-binary` or `error`). It had five until 4.0.0; the
-two that went were per-draft wrappers around tier-1 commands, and neither
-wrote a corpus artefact.
+`skipped`, `missing-binary` or `error`). There are three, and every one
+of them writes a corpus artefact -- which is why the layer takes the same
+write lock as `sync`, and why its unit of work is the corpus rather than
+a draft.
 
 **Artefact.** A file a stage writes, under `content/`. Artefacts are how
 the layers communicate: no layer calls into another, they read each
@@ -197,7 +198,7 @@ Every command above and the flags it takes are in
 Worth stating plainly, because the natural assumption is the expensive
 one and it is wrong: **by default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
-for one of the five stages; the rest of this section is what it does and
+for one of the three stages; the rest of this section is what it does and
 does not reach.
 
 `src/enrich/__main__.py` calls `corpus.build_corpus()`, which returns **every
@@ -252,11 +253,9 @@ is fewer than it sounds:
 | `docling` | scoped | Per-document by nature. Its artefacts are keyed by citekey and its cache is per-document, so eleven of them is a subset of the corpus-wide result, not a different one |
 | `embed` | **refused** | The Chroma collection records nothing about how much of the corpus it covers, and every skill that reads it decides by asking only whether `content/chroma/` exists. A partial index would answer as though it were complete |
 | `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus -- one added document can move every assignment -- so a scoped run would replace a topic model with something that isn't one |
-| `provenance` | unaffected | Reads `--input`, never the corpus. Already per-draft |
-| `render` | unaffected | Likewise |
 
-So the filter changes the behaviour of exactly one stage, and the other
-four are either already per-draft or deliberately out of reach.
+So the filter changes the behaviour of exactly one stage of the three,
+and the other two are deliberately out of reach.
 
 The two refusals are a **tier**, not a ladder, in this page's vocabulary,
 and they are the reason the flag is safe to offer at all. Asked to scope
@@ -575,13 +574,12 @@ The two lock-holders never run at once: the second to start exits `2`
 rather than interleaving writes to `content/`.
 
 Review's "none" is load-bearing rather than incidental: the layer is
-read-only over the corpus and must keep working during a `sync`. Two
-rows of this table were false until 4.0.0, for one reason -- the
-enrichment layer hosted a `provenance` and a `render` stage inside its
-lock, so a review
-aid and a drafting-layer render each took a lock their own layer says
-they do not. Removing the stages made the table true rather than
-aspirational.
+read-only over the corpus and must keep working during a `sync`. It is
+also the row easiest to make false by accident: an enrichment stage
+wrapping `provenance` or `render` would sit inside that layer's lock, so
+a review aid and a drafting-layer render would each take a lock their own
+layer says they do not. Keeping those two out of the stage list is what
+keeps this table true rather than aspirational.
 
 ## See also
 

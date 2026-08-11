@@ -8,17 +8,11 @@ short path; this is the full set.
 
 ## Table of contents
 
-- [Upgrading from 5.1.0: one command for the corpus layer](#upgrading-from-510-one-command-for-the-corpus-layer)
-- [Upgrading from 5.0.0: one command for the drafting layer](#upgrading-from-500-one-command-for-the-drafting-layer)
-- [Upgrading from 4.x: one command per layer](#upgrading-from-4x-one-command-per-layer)
-- [Upgrading from 3.19.x: `content/provenance/` is now `content/review/`](#upgrading-from-319x-contentprovenance-is-now-contentreview)
-- [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
-- [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
-- [Upgrading from 2.x](#upgrading-from-2x)
 - [Which interpreter](#which-interpreter)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
   - [`src.corpus sync`](#python--m-srccorpus-sync)
+  - [When `sync` re-parses a document it already parsed](#when-sync-re-parses-a-document-it-already-parsed)
   - [`src.corpus ledger`](#python--m-srccorpus-ledger)
   - [`src.draft gate`](#python--m-srcdraft-gate)
   - [`src.draft references`](#python--m-srcdraft-references)
@@ -33,270 +27,6 @@ short path; this is the full set.
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
-
-## Upgrading from 5.1.0: one command for the corpus layer
-
-**Two command strings changed. Nothing they do changed.** 5.2.0 gave the
-corpus layer the single entry point every other layer already had, so the
-invariant "one entry point per layer, one level deep" is now true of all
-four. There are no compatibility shims: the old spellings are gone, and
-the table below is the whole migration.
-
-| Before (5.1.0) | Now (5.2.0) |
-|---|---|
-| `python -m src.sync [--reparse] [--remove-stale]` | `python -m src.corpus sync [--reparse] [--remove-stale]` |
-| `python -m src.ledger [--list] [--status S] [--citekey K]` | `python -m src.corpus ledger [--list] [--status S] [--citekey K]` |
-
-Every flag, exit code and output path is unchanged, so a script that only
-needed its command string edited needs nothing else. `python -m
-src.corpus` with no arguments prints the layer's usage and exits 0, which
-is the fastest way to check a spelling.
-
-> **If you run `sync` on a schedule, this is the one migration in this
-> document that can pass silently.** `sync.py` and `ledger.py` lost their
-> `__main__` blocks, so `python -m src.sync` now imports the module and
-> **exits 0 with empty stdout** rather than erroring — the same trap the
-> drafting and review layers already carry. For every other command in
-> this project that no-op is harmless, because a human is watching. This
-> one is not: an unedited crontab line or systemd unit goes on reporting
-> success, `logs/pipeline.log` gains no new lines, and the corpus quietly
-> stops tracking the bibliography. The systemd unit under [Running sync
-> on a schedule](#running-sync-on-a-schedule) sets `SuccessExitStatus=2`,
-> so nothing there would flag it either.
->
-> **Edit the command string in every crontab, systemd unit, Docker
-> invocation and wrapper script you have, and confirm the next scheduled
-> run appears in `logs/pipeline.log`.** No in-repo change can reach those
-> files; this paragraph is the whole mitigation.
-
-`ledger` keeps its bare-`python` tier — it still needs only the standard
-library, and still takes no lock, so it still works *during* a sync. That
-survives the shared front door because `src/corpus.py` imports the verb
-you asked for and not the other one; `sync`'s `bibtexparser` dependency is
-never paid by a `ledger` invocation. See [Which
-interpreter](#which-interpreter).
-
-This is the same kind of change the other three layers got in 5.0.0 and
-5.1.0, and closes the last case where a layer's command surface didn't
-match its shape.
-
-## Upgrading from 5.0.0: one command for the drafting layer
-
-**Five command strings changed. Nothing they do changed.** 5.1.0 gave the
-drafting layer the same treatment 5.0.0 gave review and enrichment: a
-single entry point, one level deep. There are no compatibility shims: the
-old spellings are gone, and the table below is the whole migration.
-
-| Before (5.0.0) | Now (5.1.0) |
-|---|---|
-| `python -m src.citation_gate <file> [<file> ...]` | `python -m src.draft gate <file> [<file> ...]` |
-| `python -m src.dossier <command> ...` | `python -m src.draft dossier <command> ...` |
-| `python -m src.retrieval search\|evidence ...` | `python -m src.draft retrieve search\|evidence ...` |
-| `python -m src.references <file.md> [--heading TEXT]` | `python -m src.draft references <file.md> [--heading TEXT]` |
-| `python -m src.render_output <file> --format tex\|pdf\|...` | `python -m src.draft render <file> --format tex\|pdf\|...` |
-
-Every flag, exit code and output path is unchanged, so a script that only
-needed its command string edited needs nothing else. `python -m src.draft`
-with no arguments prints the layer's usage and exits 0, which is the
-fastest way to check a spelling.
-
-**None of the five old spellings errors -- each one now silently does
-nothing.** `citation_gate.py`, `dossier.py`, `references.py`,
-`render_output.py` and `retrieval.py` lost their `__main__` blocks, so
-`python -m src.citation_gate <draft>` (or any of the other four) imports
-the module and exits 0 with empty stdout, the same trap
-`python -m src.review.verbatim_check` has carried since 5.0.0. For every
-other command that is a harmless no-op; for the gate it is the one case
-worth calling out by name, because a script or CI step still pointed at
-the old spelling gets a **silent, unconditional pass** on a draft it
-never actually checked, not an error telling you to fix the invocation.
-
-Unlike the other four, `retrieval`'s verb isn't its own module name:
-`retrieve` was chosen over `retrieval` because every other verb in this
-layer is already an imperative (`gate`, `render`) or a noun standing in
-for one (`dossier`, `references`), and there was no existing vocabulary
-to inherit. That naming was this PR's to make, unlike the review layer's,
-which already had `review.AIDS` fixing its subcommand names to a report
-suffix (see `src/draft.py`'s own docstring for the full reasoning).
-
-**`.claude/hooks/citation_gate_hook.py` changed with it.** The hook that
-enforces the gate on every write under `content/drafts/` now spawns
-`python -m src.draft gate`, not the old module path -- nothing to do on
-your end unless you have tooling of your own that shells out to the old
-spelling directly.
-
-This is the same kind of change as the review and enrichment layers got
-in 5.0.0, and for the same reason: five scattered commands with no shared
-front door, tightened to one.
-
-## Upgrading from 4.x: one command per layer
-
-**Four command strings changed. Nothing they do changed.** 5.0.0 gave
-every layer a single entry point, one level deep, so the review and
-enrichment layers now read like `python -m src.sync` did then. There
-are no compatibility shims: the old spellings are gone, and the table
-below is the whole migration.
-
-| Before (4.x) | Now (5.0.0) |
-|---|---|
-| `python3 -m src.citation_provenance <draft>` | `python -m src.review provenance <draft>` |
-| `python3 -m src.citation_coverage <draft> --query …` | `python -m src.review coverage <draft> --query …` |
-| `python3 scripts/verbatim_check.py overlap\|scan\|locate …` | `python -m src.review verbatim overlap\|scan\|locate …` |
-| `python3 scripts/enrich.py --stages …` | `python -m src.enrich --stages …` |
-
-Every flag, exit code and output path is unchanged, so a script that
-only needed its command string edited needs nothing else. `python -m
-src.review` with no arguments prints the layer's usage and exits 0,
-which is the quickest way to check a spelling.
-
-**Do not use `python -m src.enrich` the same way.** With no arguments it
-does not print usage -- it runs every stage over the whole corpus, under
-the write lock, which is its documented default and can take a long
-time. Ask it for help explicitly: `python -m src.enrich --help`.
-
-**The docs also say `python` now, not `python3`.** That is a change of
-spelling in the documentation, not of behaviour: these docs used both
-interchangeably before -- `python -m src.sync` beside `python3 -m
-src.dossier` -- and now use one. Nothing checks which name you type. If
-your machine has only `python3` -- Debian and Ubuntu without the
-`python-is-python3` package are the common case -- then `python3` works
-exactly as before, everywhere these docs write `python`.
-
-Two consequences worth knowing:
-
-- **`scripts/` no longer holds a layer entry point.** `verbatim_check.py`
-  moved to `src/review/`, `enrich.py` to `src/enrich/__main__.py`. What
-  is left there is dev tooling: `install_full_pipeline.sh` and
-  `release.py`.
-- **A review report records the command that produced it**, in its
-  header. Reports written before 5.0.0 name the old invocation. They are
-  regenerable output -- re-run the aid and the header updates -- and
-  nothing reads that line back, so a stale one is cosmetic.
-
-This is the same kind of change as `src.heavy.render_output` ->
-`src.render_output` in 3.0.0, and for the same reason: where a command
-lives stopped matching what it is.
-
-## Upgrading from 3.19.x: `content/provenance/` is now `content/review/`
-
-Since 4.0.0 the three review commands are a named layer with one shared
-output contract. Two things moved.
-
-**Review reports.** `content/provenance/` is gone, replaced by
-`content/review/`, and all three commands write there -- mirroring the
-draft's path, as 3.19.2 taught the provenance report to do:
-
-```
-content/drafts/<topic>/survey.md
-  -> content/review/<topic>/survey.provenance.md
-     content/review/<topic>/survey.verbatim.md      (new: scan --write)
-     content/review/<topic>/survey.coverage.md      (new: --write)
-```
-
-A report's `.tex`/`.pdf` now land **beside its `.md`** rather than in
-`content/rendered/`, which is the drafting layer's publish output.
-`content/provenance/` and `content/rendered/*.provenance.*` are
-regenerable, gitignored output, so re-running is the whole migration:
-
-```bash
-python -m src.review provenance content/drafts/<topic>/<slug>.md
-rm -r content/provenance/                    # the old directory
-rm content/rendered/**/*.provenance.tex content/rendered/**/*.provenance.pdf
-```
-
-**Two enrichment stages are gone.** `--stages provenance` and
-`--stages render` were wrappers around tier-1 commands. Call those
-directly -- they need no venv, and unlike the stages they replace they do
-not wait on `sync`'s write lock:
-
-```bash
-# was: .venv-full/bin/python scripts/enrich.py --stages provenance --input <draft>
-python -m src.review provenance <draft>
-
-# was: .venv-full/bin/python scripts/enrich.py --stages render --input <draft>
-python -m src.draft render <draft> --format pdf
-```
-
-`--input`, `--output-format` and `--documentclass` went with them.
-
-**The genre skills' provenance JSON moved too**, from
-`content/provenance/<slug>.json` to
-`content/dossiers/<draft path minus suffix>/provenance.json`. It is
-drafting state, not a review report, and nothing reads it back -- so
-there is nothing to migrate unless you have tooling of your own pointed
-at the old path.
-
-## Upgrading a corpus parsed by an earlier version
-
-If you already ran `sync` with `[parser].backend = "docling"`, those
-citekeys were parsed before this project kept Docling's page breaks and
-passage records, and their PDFs haven't changed -- so the ledger would
-normally skip them forever.
-
-It doesn't. `sync` now treats a document it calls `parsed` whose passage
-sidecar is missing as one that needs parsing again, so the next run
-upgrades exactly those documents and nothing else. It costs one re-parse
-each, once (6.65s per PDF serial, 0.62s at twelve workers -- see
-[PERFORMANCE.md](PERFORMANCE.md)), and the run reports them the way it
-reports any other parse. The same check restores a `.txt` or a sidecar
-you delete by hand.
-
-Nothing to do, in other words -- but if you would rather force it all at
-once, `python -m src.corpus sync --reparse` still re-extracts everything.
-
-## Upgrading from 3.11 or earlier: the log file moved
-
-`logs/sync.log` is now **`logs/pipeline.log`**. It is the same file doing
-the same job, renamed because `src/enrich/__main__.py` now writes to it too
-and the old name had stopped being true.
-
-Nothing about how you *invoke* anything changed, and `[logging].level`
-means exactly what it meant before. But two things need a hand:
-
-- **Anything naming the old path** -- a cron wrapper, a systemd unit's
-  redirect, a log shipper, a runbook -- keeps pointing at a file nothing
-  writes to any more, and will go quiet without erroring. Point it at
-  `logs/pipeline.log`.
-- **An existing `logs/sync.log` and its rotated backups are orphaned,
-  not migrated.** Rotation only ever touches the current name, so those
-  files sit there indefinitely. Read anything you still want out of
-  them, then delete them.
-
-Telling the two commands apart in the shared file is what `%(name)s` in
-each line is for:
-
-```bash
-grep 'src\.sync' logs/pipeline.log        # just the corpus layer
-grep 'src\.enrich' logs/pipeline.log     # just the enrichment layer
-```
-
-## Upgrading from 2.x
-
-3.0.0 renamed the enrichment layer's identifiers to match the vocabulary
-the documentation uses. Nothing else about how any command behaves
-changed. Old spellings do not work -- there are no compatibility shims:
-
-| 2.x | 3.0.0 |
-|---|---|
-| `python -m src.heavy.render_output` | `python -m src.render_output` |
-| `python scripts/full_pipeline.py` | `python -m src.enrich` |
-| `poetry install --with heavy` | `poetry install --with enrich` |
-| `config.toml`'s `[heavy]` table | `[enrich]` |
-| `src/heavy/` | `src/enrich/`, and `render_output.py` moved up to `src/` |
-
-Two things deliberately did **not** change, because renaming them would
-invalidate work you already have on disk for no conceptual gain:
-`content/docling/`, `content/chroma/` and `content/topics.json` keep their
-names, and so does every `DOCLING_*` environment variable.
-
-`render_output` moving out of the package is the one rename that fixes a
-mistake rather than a label: it is the drafting layer's publish step, runs
-on bare `python`, and never needed a package from that dependency group.
-Living under `src/heavy/` said the opposite.
-
-To upgrade: rename the `[heavy]` header in your `config.toml` to
-`[enrich]`, re-run `bash scripts/install_full_pipeline.sh python-deps`,
-and update any script of your own that calls the two commands above.
 
 ## Which interpreter
 
@@ -327,13 +57,10 @@ Two commands look like they belong in a higher tier and don't:
 - `src.draft render` (`src/render_output.py`) needs only stdlib plus
   `src.config`/`src.citation_gate`/`src.references`. It shells out to the
   `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
-  dependencies. (It was `src.heavy.render_output` until 3.0.0, which made
-  it look like part of the enrichment layer; it never was.)
+  dependencies.
 - `src.review`'s `coverage` and `verbatim` aids are built on
   `src.retrieval` and `src.config`, both stdlib. `verbatim` calls the
-  `pdftotext` binary, again an OS package. It lived under `scripts/`
-  until 5.0.0, next to the enrichment layer's entry point, which made it
-  look heavier than its siblings; it never was, and it doesn't any more.
+  `pdftotext` binary, again an OS package.
 
 Using the wrong interpreter is the most likely first error you will hit:
 `ModuleNotFoundError: No module named 'bibtexparser'` means you ran
@@ -477,6 +204,25 @@ than waiting.
 #             2 = another run holds the lock.
 ```
 
+### When `sync` re-parses a document it already parsed
+
+A PDF whose bytes haven't changed is not re-parsed -- that is what makes
+the second run nearly free. There is one exception, and it is deliberate:
+`sync` treats a document it calls `parsed` whose **passage sidecar is
+missing** as one that needs parsing again.
+
+That covers two cases. A corpus parsed with `[parser].backend = "docling"`
+before this project kept Docling's page breaks and passage records would
+otherwise be skipped forever, its PDFs being unchanged; instead the next
+run upgrades exactly those documents and nothing else. And a `.txt` or a
+sidecar you delete by hand is restored by the same check.
+
+It costs one re-parse each, once (6.65s per PDF serial, 0.62s at twelve
+workers -- see [PERFORMANCE.md](PERFORMANCE.md)), and the run reports
+them the way it reports any other parse. Nothing to do, in other words --
+but `python -m src.corpus sync --reparse` forces it all at once if you
+would rather not wait for the next run.
+
 ### `python -m src.corpus ledger`
 
 Read-only view of the corpus layer. **Takes no lock**, so it works while
@@ -522,6 +268,17 @@ contract is that you hand it several drafts and get a verdict on each, so
 one unusable path must not hide the others. It exits 1 rather than the
 usage code 2 for the same reason: it is a document that did not pass,
 alongside the rest.
+
+**Check the spelling in any script or CI step that runs this.**
+`src/citation_gate.py` carries no `__main__` block -- the drafting layer
+has one entry point, and this is it (see
+[ARCHITECTURE.md](ARCHITECTURE.md#which-interpreter-and-why)). So
+`python -m src.citation_gate <draft>` does not error: it imports the
+module and exits **0** with empty stdout. For every other command in this
+layer that trap is a harmless no-op, but for the gate it means an
+automated caller gets a **silent, unconditional pass** on a draft nothing
+ever checked. `python -m src.draft` with no arguments prints the layer's
+usage and exits 0, which is the fastest way to confirm a spelling.
 
 ### `python -m src.draft references`
 
@@ -913,8 +670,8 @@ is what lets `dossier export <topic> --with-rendered` find them. A flat
 always has, and an input under `content/` but outside `content/drafts/`
 (`content/loose.md`, say) has no path to mirror and lands flat too.
 
-**Both reading and writing are confined to `content/`.** Since 3.17.0
-the input must resolve under the content directory -- a draft kept
+**Both reading and writing are confined to `content/`.** The input must
+resolve under the content directory -- a draft kept
 outside it is refused by name rather than rendered, so that one directory
 stays the whole record of the work. Every path this command *writes*,
 resolves inside `content/`: only the part of a draft's path below
@@ -984,8 +741,9 @@ correct answer rather than a bug.
 # .venv-full/bin/python -m src.enrich --stages docling
 # .venv-full/bin/python -m src.enrich --stages embed,bertopic
 # .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
-# The provenance and render stages left in 4.0.0 -- run the tier-1
-# commands directly instead (no venv, no lock):
+
+# A review report and a draft render are tier-1 commands, not stages --
+# no venv, no lock:
 # python -m src.review provenance content/drafts/survey.md
 # python -m src.draft render content/drafts/survey.md --format pdf
 ```
@@ -1015,11 +773,9 @@ Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/draft
 
 With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
-this is usually for. (Before 4.0.0 you could add `--stages
-docling,provenance` to carry on into the draft's own report; that stage
-is gone -- run `python -m src.review provenance <draft>`.) `--input` already pointed at the
-draft, so it needs naming only when you want a *different* document
-rendered.
+this is usually for. To carry on into the draft's own review report, run
+`python -m src.review provenance <draft>` afterwards: it is a tier-1
+command, so it needs no venv and waits on no lock.
 
 Two stages refuse the scope rather than honouring it:
 
@@ -1127,10 +883,18 @@ any text, and `logs/pipeline.log` (rotated; see `[logging]` in
 `config.toml.example`) as a persistent transcript to check afterwards.
 
 `src/enrich/__main__.py` writes to the same file, so a host that schedules
-both has one transcript rather than two. Each line names its source, so
-`grep 'src\.sync' logs/pipeline.log` narrows it back down when that is
-what you want -- and the interleaved view is often the useful one, since
-the enrichment layer's docling stage reuses whatever the corpus layer
+both has one transcript rather than two. Each line names its source in
+`%(name)s` -- the module, so `sync` logs as `src.sync` whatever the
+command that started it is spelled -- and either layer can be narrowed
+back out:
+
+```bash
+grep 'src\.sync' logs/pipeline.log      # just the corpus layer
+grep 'src\.enrich' logs/pipeline.log    # just the enrichment layer
+```
+
+The interleaved view is often the useful one, though, since the
+enrichment layer's docling stage reuses whatever the corpus layer
 already parsed.
 
 **Don't hand-roll a log redirect for most of this.** `logs/pipeline.log`
