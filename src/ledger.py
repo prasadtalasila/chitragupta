@@ -444,6 +444,12 @@ def all_items(con: sqlite3.Connection) -> list[sqlite3.Row]:
 # `sync` needs bibtexparser, while reading the ledger needs only sqlite3,
 # so this runs under the bare system interpreter like citation_gate and
 # references do.
+#
+# No `config.require_inside_content` call here, unlike those two: its
+# arguments below are `--list` (a flag), `--status` (a status name) and
+# `--citekey` (a citekey looked up in the DB) -- none is a filesystem
+# path, so the tier-1 confinement rule applies vacuously rather than
+# needing a check.
 # ---------------------------------------------------------------------
 
 _STATUS_LABELS = {
