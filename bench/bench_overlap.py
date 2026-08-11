@@ -1,4 +1,4 @@
-"""Wall-clock cost of `scripts/verbatim_check.py`'s `overlap` and `scan`
+"""Wall-clock cost of `src/review/verbatim_check.py`'s `overlap` and `scan`
 modes (src/overlap_index.py, #110/#111), against a real draft and a
 real corpus.
 
@@ -16,7 +16,7 @@ hand does today) versus one `scan` call, cold and warm corpus index. It
 does not reproduce the historical pdftotext-subprocess baseline `overlap`
 had before #110 -- that code no longer exists on `main`; reproduce it by
 checking out the commit before #110 merged (18f9f4b2) and timing
-`cmd_overlap` from `scripts/verbatim_check.py` there instead.
+`cmd_overlap` from `src/review/verbatim_check.py` there instead.
 
     python3 bench/bench_overlap.py --draft path/to/draft.md
     python3 bench/bench_overlap.py --draft path/to/draft.md --out bench/results/<date>-overlap/overlap.json
@@ -49,7 +49,7 @@ def _timed(fn, *a, **kw):
 
 
 def run(draft: Path) -> dict:
-    import scripts.verbatim_check as vc
+    from src.review import verbatim_check as vc
 
     citekeys = sorted({key for _, key in citation_gate.extract_citekeys(draft.read_text())})
     if not citekeys:

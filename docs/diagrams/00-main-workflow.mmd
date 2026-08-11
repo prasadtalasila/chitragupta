@@ -60,7 +60,7 @@ flowchart TB
   end
 
   %% ─────────────── ENRICHMENT (side branch) ───────────────
-  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>scripts/enrich.py --stages …</code> · same run lock"]
+  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>python3 -m src.enrich --stages …</code> · same run lock"]
     direction TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
@@ -71,9 +71,9 @@ flowchart TB
   %% ─────────────── AIDS (side branch) ───────────────
   subgraph SA["<b>REVIEW AIDS</b> — you run these; none of them is a gate"]
     direction TB
-    A1["<b>src.citation_provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>scripts/verbatim_check.py</b><br/><small>verbatim overlap · locate a phrase by page</small>"]
-    A3["<b>src.citation_coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
+    A1["<b>src.review provenance</b><br/><small>what in the source supports this claim?</small>"]
+    A2["<b>src.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page</small>"]
+    A3["<b>src.review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
   end
 
   %% ─────────────── SPINE ───────────────

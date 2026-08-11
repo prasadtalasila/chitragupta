@@ -44,7 +44,7 @@ revision reads (reader, scope, glossary, rejected candidates and why,
 steering). Two shapes for two readers, one directory per draft.
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
+run `src/enrich/__main__.py` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -242,7 +242,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 13. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
     ```
-    python3 scripts/verbatim_check.py scan content/drafts/<slug>.tex
+    python3 -m src.review verbatim scan content/drafts/<slug>.tex
     ```
     It reports wording the chapter shares with **any** parsed source,
     cited or not -- including a source the citing paragraph never names,

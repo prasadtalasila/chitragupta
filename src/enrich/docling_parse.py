@@ -521,7 +521,7 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     else:
         out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
 
-    # Written for every doc, images on or off: src/citation_provenance.py
+    # Written for every doc, images on or off: src/review/citation_provenance.py
     # reads it to quote a real passage rather than a window sliced out of
     # column-spliced flat text. Cheap next to the parse that produced it.
     # Same records the corpus layer writes, from src/passages.py's one
@@ -621,7 +621,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     step. A script that calls this must therefore guard its top level
     with `if __name__ == "__main__":`, or every worker re-runs it on
     startup and the pool dies with BrokenProcessPool.
-    scripts/enrich.py and src/sync.py both do; an ad-hoc script
+    src/enrich/__main__.py and src/sync.py both do; an ad-hoc script
     that doesn't will fail immediately rather than subtly.
     """
     cache = _load_cache()

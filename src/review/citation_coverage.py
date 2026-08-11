@@ -11,10 +11,10 @@ problem (it's likely explained by a different query the skill also ran)
 but worth showing so the report isn't misread as a gap-finder.
 
 One of the three commands in the **review layer**, with
-src/citation_provenance.py and scripts/verbatim_check.py -- run by hand
+src/review/citation_provenance.py and src/review/verbatim_check.py -- run by hand
 on a finished draft, never automatically, never a gate, and never
 holding the write lock. Purely informational, unlike citation_gate.py.
-src/review.py owns where a written report goes
+src/review/__init__.py owns where a written report goes
 (`content/review/<topic>/<stem>.coverage.md`, mirroring the draft's
 path) and what its header looks like.
 
@@ -28,8 +28,8 @@ both already stdlib-only) -- runs with bare `python3`, no venv, same as
 citation_gate.py/references.py.
 
 Usage:
-    python -m src.citation_coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
-    python -m src.citation_coverage <draft.md> --query "topic one" --write
+    python3 -m src.review coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
+    python3 -m src.review coverage <draft.md> --query "topic one" --write
 """
 
 import argparse
@@ -120,7 +120,7 @@ def _command(draft_path: Path, queries: list[str], k: int) -> str:
     it selects renders *of* the report and changes nothing in the
     Markdown this header sits in.
     """
-    parts = ["python3", "-m", "src.citation_coverage", str(draft_path)]
+    parts = ["python3", "-m", "src.review", "coverage", str(draft_path)]
     for query in queries:
         parts += ["--query", query]
     parts += ["--k", str(k), "--write"]
@@ -183,8 +183,16 @@ def render_markdown(draft_path: Path, queries: list[str], k: int, result: Covera
     return "\n".join(lines)
 
 
-def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+def build_parser(parser=None):
+    """This aid's flags.
+
+    `parser` is passed by src/review/__main__.py, which has already
+    created the `coverage` subparser and needs the flags hung off *that*
+    -- so they are declared once, here, and the entry point never
+    restates them.
+    """
+    if parser is None:
+        parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("draft", help="Path to the draft to check")
     parser.add_argument("--query", action="append", required=True, dest="queries",
                          help="A retrieval query to check coverage for (repeatable)")
@@ -194,11 +202,20 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                              "draft's path. Off by default: printing is the usual use.")
     parser.add_argument("--formats", default="md,tex,pdf",
                         help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.")
-    return parser.parse_args(argv)
+    return parser
 
 
 def main(argv: list[str]) -> int:
-    args = parse_args(argv)
+    return run(build_parser().parse_args(argv))
+
+
+def run(args: argparse.Namespace) -> int:
+    """Dispatch already-parsed arguments.
+
+    Split from main() so src/review/__main__.py can hand over the args it
+    parsed with this module's own build_parser(), rather than re-slicing
+    argv and parsing it twice.
+    """
     try:
         draft_path = review.require_reviewable(Path(args.draft))
     except (FileNotFoundError, config.OutsideContentDir) as exc:
@@ -213,7 +230,3 @@ def main(argv: list[str]) -> int:
         body = render_markdown(draft_path, args.queries, args.k, result)
         review.print_written(review.write(draft_path, "coverage", body, formats))
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))

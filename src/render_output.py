@@ -68,7 +68,7 @@ call, but those are the project's fixed defaults.
 `python -m src.render_output <file> --format tex|pdf|...` runs standalone
 with bare `python3` (no enrich group) -- it depends only on stdlib plus
 `src.config`/`src.citation_gate`/`src.references` (all three stdlib-only,
-same as this module), deliberately independent of `scripts/enrich.py`,
+same as this module), deliberately independent of `src/enrich/__main__.py`,
 which drags in the full corpus build and the docling/embed/topic_model
 imports for stages this one doesn't need. The genre-writing skills under
 `.claude/skills/` call this CLI directly.
@@ -90,7 +90,7 @@ class MissingBinary(RuntimeError):
 
 
 # Re-exported: this name shipped here in 3.16.0, and
-# src/citation_provenance.py catches it as `render_output.OutsideContentDir`.
+# src/review/citation_provenance.py catches it as `render_output.OutsideContentDir`.
 # It moved to src/config.py in 3.17.0, when src/citation_gate.py and
 # src/references.py started raising it too and needed a home neither of
 # them could import from -- render_output already imports citation_gate
@@ -340,7 +340,7 @@ def _output_dir(input_path: Path) -> Path:
     **One mirror source, and a caller that can say otherwise.** This
     function answers "where does a *draft* render to", so `DRAFTS_DIR` is
     the only source root it knows. A caller rendering something that is
-    not a draft -- `src/review.py`, turning a review report into
+    not a draft -- `src/review/__init__.py`, turning a review report into
     `.tex`/`.pdf` beside the report -- passes `render(output_dir=...)`
     and never reaches here.
 
@@ -424,7 +424,7 @@ def render(
 
     `output_dir` overrides that, for a caller rendering something that is
     not a draft and so has no business in `content/rendered/`:
-    `src/review.py` passes the review report's own directory so a
+    `src/review/__init__.py` passes the review report's own directory so a
     report's `.tex`/`.pdf` land beside its `.md` rather than in the
     drafting layer's publish output. It is confined to `content/` like
     every other path this module writes, and it is the caller's whole
@@ -544,7 +544,7 @@ def render(
 
 
 def main() -> int:
-    """CLI entry point -- deliberately independent of scripts/enrich.py.
+    """CLI entry point -- deliberately independent of src/enrich/__main__.py.
 
     That script imports docling/embed/topic_model at module load and
     builds the whole corpus before any stage runs, which drags in the

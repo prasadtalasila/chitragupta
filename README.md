@@ -179,7 +179,7 @@ arguing your point in different words, and topic clustering over the whole
 corpus.
 
 ```bash
-.venv-full/bin/python scripts/enrich.py --stages docling,embed
+.venv-full/bin/python3 -m src.enrich --stages docling,embed
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in

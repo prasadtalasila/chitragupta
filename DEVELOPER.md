@@ -122,7 +122,7 @@ if __name__ == "__main__":
 ```
 
 Without it, every worker re-runs the script on startup and the pool dies
-with `BrokenProcessPool`. `scripts/enrich.py` and `src/sync.py`
+with `BrokenProcessPool`. `src/enrich/__main__.py` and `src/sync.py`
 are both guarded already; this only bites ad-hoc scripts, and it bites
 immediately rather than subtly.
 
@@ -183,8 +183,8 @@ docs/                     reference docs that ship in the release zip -- everyth
     *.mmd                     mermaid sources with a title line
     svg/*.svg                 rendered exports (mmdc -b white -w 1900). Exports only -- edit the
                               fenced block in DIAGRAMS.md, then re-render
-  CITATION-PROVENANCE.md    what src/citation_provenance.py reports and how to read it
-  PLAGIARISM.md             what scripts/verbatim_check.py's overlap/scan modes catch and don't
+  CITATION-PROVENANCE.md    what src/review/citation_provenance.py reports and how to read it
+  PLAGIARISM.md             what src/review/verbatim_check.py's overlap/scan modes catch and don't
                             (verbatim reuse only, paraphrase is a later tier), the n-gram
                             fingerprinting technique and its literature sources, and a measured
                             docling-vs-pdftotext backend comparison
@@ -252,7 +252,7 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           pages -> pdftotext) and whether it may be quoted -- shared by the consumers
                           that need to point at part of a source rather than all of it
   overlap_index.py          disk-cached word n-gram fingerprint index (content/overlap/) for
-                          scripts/verbatim_check.py's overlap and scan modes -- one .fpr file per citekey plus
+                          src/review/verbatim_check.py's overlap and scan modes -- one .fpr file per citekey plus
                           a merged, binary-searchable corpus-wide index.bin, both keyed by
                           (pdf_hash, parsed-file stat) so a re-run over an unchanged corpus costs no
                           re-fingerprinting. Read-only over the corpus layer, no writer lock
@@ -353,13 +353,13 @@ document the enrichment layer parses comes from the bib file (see
 
 ## Citation provenance
 
-`python -m src.citation_provenance content/drafts/<slug>.md` reports, for
+`python3 -m src.review provenance content/drafts/<slug>.md` reports, for
 every citation in a draft, what in the cited source supports it and where
 -- ordered worst match first. It writes
 `content/review/<the draft's path minus its suffix>.provenance.md` plus
 `.tex`/`.pdf` renders beside it. The report mirrors the draft's own place
 under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
-(`config.mirrored_dir`), and `src/review.py` owns that contract for all
+(`config.mirrored_dir`), and `src/review/__init__.py` owns that contract for all
 three review-layer commands.
 
 It was also an enrichment stage (`--stages provenance --input <draft>`)
@@ -386,7 +386,7 @@ Full design rationale, including the measurements behind those choices:
 Running this pipeline on a schedule was the long-standing goal here.
 **Most of it now exists**, as of 3.4.0: a rotating log file (added as
 `logs/sync.log`, and renamed to `logs/pipeline.log` once
-`scripts/enrich.py` started sharing it -- see `src/logging_setup.py`),
+`src/enrich/__main__.py` started sharing it -- see `src/logging_setup.py`),
 a pages/s throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
 [docs/CLI.md](docs/CLI.md#running-sync-on-a-schedule) -- including the

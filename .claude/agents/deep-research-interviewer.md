@@ -64,7 +64,7 @@ synced corpus, simulating one editorial angle on the topic.
 
 ## The corpus is read-only, and you don't own any file
 
-Never run `python -m src.sync`, `scripts/enrich.py`, or any `src/enrich/*`
+Never run `python -m src.sync`, `src/enrich/__main__.py`, or any `src/enrich/*`
 build stage. Both take the pipeline's write lock and can run for tens of
 minutes, and several of you run in parallel. Use `content/chroma/` only if
 it already exists; if it doesn't, fall back to `src.retrieval.search()` and

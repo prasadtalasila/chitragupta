@@ -491,7 +491,7 @@ class Section:
 
 # Headings for *outline extraction*: where does each section start and
 # stop, so a revision can Read and Edit one section instead of the whole
-# file. src/citation_provenance.py has a similar-looking pair of regexes
+# file. src/review/citation_provenance.py has a similar-looking pair of regexes
 # doing a different job -- segmenting claim-bearing blocks for scoring --
 # and the two are deliberately not shared: that module needs list items
 # and table rows to be blocks, which would be noise in an outline.

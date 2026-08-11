@@ -43,7 +43,7 @@ Half of this pipeline already survives a session ending, and half of it
 doesn't.
 
 `src/citation_gate.py`, `src/references.py`, `src/render_output.py` and
-`src/citation_provenance.py` are all stateless with respect to *how* a
+`src/review/citation_provenance.py` are all stateless with respect to *how* a
 draft was written. Hand any of them a `.md` file from last month and they
 work: the gate re-checks its citekeys, `references` rebuilds the
 bibliography, `render_output` produces the PDF, `citation_provenance`
@@ -141,7 +141,7 @@ code.
 
 The cost of that choice is real: there is no schema, so nothing validates
 that `evidence.md` is well-formed. This is accepted deliberately, on the
-same principle as `src/citation_provenance.py` -- a check that blocked on
+same principle as `src/review/citation_provenance.py` -- a check that blocked on
 something it cannot verify exactly would train people to work around it.
 A malformed dossier makes the next revision less efficient. It cannot
 make a draft wrong, because the citation gate still stands between any
@@ -646,7 +646,7 @@ efficiency and can never make a draft wrong.
 **It does not verify that a dossier matches its draft.** `sections.md`
 can disagree with the draft's actual headings if someone edits by hand.
 The reviser rebuilds the section map from the draft rather than trusting
-the file, and `src/citation_provenance.py` already reconciles a draft
+the file, and `src/review/citation_provenance.py` already reconciles a draft
 against its sources independently.
 
 **It does not itself cut what enters the orchestrator's context.** That is

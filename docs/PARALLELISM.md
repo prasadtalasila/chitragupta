@@ -57,7 +57,7 @@ serial, and is.
 Two entry points reach it, sharing the same machinery:
 
 ```
-  python -m src.sync                     scripts/enrich.py
+  python -m src.sync                     src/enrich/__main__.py
   (corpus layer: bib ──► text)           (enrichment layer, opt-in)
           │                                        │
           │ src/sync.py                            │ src/enrich/docling_parse.py

@@ -1,5 +1,5 @@
 """src/overlap_index.py: the disk-cached corpus-wide n-gram fingerprint
-index that scripts/verbatim_check.py's `overlap` mode is ported onto."""
+index that src/review/verbatim_check.py's `overlap` mode is ported onto."""
 
 import json
 from pathlib import Path

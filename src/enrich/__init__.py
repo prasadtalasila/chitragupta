@@ -11,7 +11,7 @@ layer is optional, and its absence costs recall, never correctness.
 It extends the *corpus* layer rather than the drafting one. Nothing here
 is generative, no genre skill runs it, and every artefact it writes
 (content/docling/, content/chroma/, content/topics.json) is a deeper
-reading of the same papers -- which is also why scripts/enrich.py takes
+reading of the same papers -- which is also why src/enrich/__main__.py takes
 the same write lock as sync.
 
 `src/render_output.py` used to live here, as src/heavy/render_output.py.

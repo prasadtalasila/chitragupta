@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 BENCH_DIR = Path(__file__).resolve().parent
-# Same shape as scripts/verbatim_check.py: running this as a file puts
+# Same shape as src/review/verbatim_check.py: running this as a file puts
 # bench/ on sys.path, not the repo root, so `from src import ...` needs
 # the root put back first.
 sys.path.insert(0, str(BENCH_DIR.parent))

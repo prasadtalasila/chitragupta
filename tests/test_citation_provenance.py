@@ -1,4 +1,4 @@
-"""src/citation_provenance.py: what in a cited source supports the claim
+"""src/review/citation_provenance.py: what in a cited source supports the claim
 citing it.
 
 The interesting cases here are the ones a synthetic fixture makes easy to
@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-from src import citation_provenance as cp
+from src.review import citation_provenance as cp
 from src import config, ledger
 
 

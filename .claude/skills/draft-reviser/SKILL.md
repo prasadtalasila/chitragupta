@@ -31,7 +31,7 @@ is shaped that way.
 | Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
 **Read-only over the corpus layer.** Never run `python -m src.sync` and
-never run `scripts/enrich.py`. Both take the pipeline's write lock and
+never run `src/enrich/__main__.py`. Both take the pipeline's write lock and
 can run for tens of minutes; they are the user's to run.
 
 ## Prose standards
@@ -215,7 +215,7 @@ Before presenting, offer this -- don't run it silently, and never make it
 a condition of presenting:
 
 ```bash
-python3 scripts/verbatim_check.py scan content/drafts/<path>
+python3 -m src.review verbatim scan content/drafts/<path>
 ```
 
 It reports wording the draft shares with **any** parsed source, cited or
@@ -430,7 +430,7 @@ citekey.
 - **Never refuse a wide pass either.** The scoped default is an economy,
   not a rule about what the user is allowed to want. Hand off to
   `corpus-reviser` rather than arguing.
-- **Never run `python -m src.sync` or `scripts/enrich.py`.**
+- **Never run `python -m src.sync` or `src/enrich/__main__.py`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
 - **Never silently change scope, reader or terminology.**

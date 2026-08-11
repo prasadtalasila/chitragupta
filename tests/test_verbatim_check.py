@@ -1,8 +1,13 @@
-"""scripts/verbatim_check.py: the review layer's verbatim-overlap,
-whole-corpus scan and page-locator command -- advisory over a finished
-draft, never a gate. REPO/BIB are module-level constants computed from
-Path(__file__) at import time; tests monkeypatch them directly to point
-at a throwaway fixture tree."""
+"""src/review/verbatim_check.py: the review layer's verbatim-overlap,
+whole-corpus scan and page-locator aid -- advisory over a finished
+draft, never a gate. Reached as `python3 -m src.review verbatim <mode>`;
+the module has no __main__ block of its own.
+
+BIB/PARSED_DIR are module-level constants resolved from src.config at
+import time; tests monkeypatch them directly to point at a throwaway
+fixture tree. There was a REPO constant beside them until 5.0.0, when
+the file moved into src/review/ and no longer needed a
+Path(__file__)-derived repo root to put on sys.path."""
 
 import argparse
 import os
@@ -13,14 +18,13 @@ from pathlib import Path
 
 import pytest
 
-import scripts.verbatim_check as vc
+from src.review import verbatim_check as vc
 from src import config, ledger
 from tests.conftest import make_reference
 
 
 @pytest.fixture
 def fixture_repo(tmp_path, monkeypatch):
-    monkeypatch.setattr(vc, "REPO", tmp_path)
     monkeypatch.setattr(vc, "BIB", tmp_path / "bibliography.bib")
     monkeypatch.setattr(vc, "PARSED_DIR", tmp_path / "content" / "parsed")
     return tmp_path
@@ -168,9 +172,6 @@ class TestPdfPath:
         # to find PDFs sitting right next to it.
         bib_dir = tmp_path / "elsewhere"
         bib_dir.mkdir()
-        repo_dir = tmp_path / "repo"
-        repo_dir.mkdir()
-        monkeypatch.setattr(vc, "REPO", repo_dir)
         monkeypatch.setattr(vc, "BIB", bib_dir / "bibliography.bib")
 
         pdf = bib_dir / "paper.pdf"
@@ -198,8 +199,9 @@ class TestPages:
     def test_parsed_fallback_respects_parsed_dir_override(self, tmp_path, monkeypatch):
         # Regression: the parsed-text fallback must look wherever
         # config.PARSED_DIR actually points (a CONTENT_DIR override) --
-        # not a hardcoded REPO/content/parsed that ignores it.
-        monkeypatch.setattr(vc, "REPO", tmp_path / "unrelated-repo")
+        # not at a repo-root-relative content/parsed that ignores it.
+        # The REPO constant that made that mistake possible is gone as of
+        # 5.0.0; this pins the behaviour that outlived it.
         monkeypatch.setattr(vc, "BIB", tmp_path / "bibliography.bib")
         custom_parsed_dir = tmp_path / "custom-content" / "parsed"
         monkeypatch.setattr(vc, "PARSED_DIR", custom_parsed_dir)
@@ -766,13 +768,48 @@ def _content_draft(tmp_path, text, name="draft.md"):
     return path
 
 
+class TestMainInProcess:
+    """`main(argv)` -- the in-process entry the other two aids' tests use
+    throughout (see tests/test_citation_coverage.py).
+
+    src/review/__main__.py does not go through it: it parses with this
+    module's build_parser() and calls run() with the result, so argv is
+    parsed once rather than sliced and re-parsed. main() is what a caller
+    holding an argv list uses instead, and it is the only path that
+    reaches build_parser() with no parser to hang the modes off.
+    """
+
+    def test_no_argv_prints_usage_and_exits_zero(self, capsys):
+        assert vc.main([]) == 0
+        assert "usage:" in capsys.readouterr().out
+
+    def test_dispatches_a_mode(self, isolated_config, tmp_path, capsys):
+        draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
+
+        assert vc.main(["scan", str(draft)]) == 0
+        assert "no verbatim run of >= 8 words found" in capsys.readouterr().out
+
+    def test_a_draft_outside_content_exits_one(self, isolated_config, tmp_path, capsys):
+        outside = tmp_path / "not-in-content.md"
+        outside.write_text("Anything.\n")
+
+        assert vc.main(["scan", str(outside)]) == 1
+
+    def test_an_unscannable_request_exits_two(self, isolated_config, tmp_path, capsys):
+        """--min-run below the index's own n-gram size: "this input can't
+        be scanned as asked" is a usage error, not a finding."""
+        draft = _content_draft(tmp_path, "Anything.\n")
+
+        assert vc.main(["scan", str(draft), "--min-run", "4"]) == 2
+
+
 class TestCliDispatch:
     def test_overlap_mode_via_subprocess(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         draft = _content_draft(tmp_path, "Some claim citing nonexistent_key_2024.\n")
 
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "overlap", str(draft), "nonexistent_key_2024"],
+            [sys.executable, "-m", "src.review", "verbatim", "overlap", str(draft), "nonexistent_key_2024"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -789,7 +826,7 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
 
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), "--min-run", "8", "--gap", "1"],
+            [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), "--min-run", "8", "--gap", "1"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -801,7 +838,7 @@ class TestCliDispatch:
         returns before `require_reviewable`, which has nothing to check."""
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "locate",
+            [sys.executable, "-m", "src.review", "verbatim", "locate",
              "nonexistent_key_2024", "a phrase"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
@@ -818,7 +855,7 @@ class TestCliDispatch:
         outside.write_text("Anything.\n")
 
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan", str(outside)],
+            [sys.executable, "-m", "src.review", "verbatim", "scan", str(outside)],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -828,41 +865,46 @@ class TestCliDispatch:
     def test_unknown_mode_is_a_usage_error(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "bogus-mode"],
+            [sys.executable, "-m", "src.review", "verbatim", "bogus-mode"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
         assert "invalid choice: 'bogus-mode'" in result.stderr
 
-    def test_no_arguments_prints_docstring_and_exits_zero(self, tmp_path):
+    def test_no_mode_prints_this_aids_usage_and_exits_zero(self, tmp_path):
         # Regression: sys.argv[1] on an empty invocation used to raise a
         # raw IndexError, contradicting this file's own "Run with no
         # arguments to print its usage" claim (docs/CLI.md).
+        #
+        # `verbatim` with no mode, not the bare module: since 5.0.0 this
+        # file has no __main__ block, so running it as a script cannot
+        # work by design -- test_the_aid_modules_are_not_invocable pins
+        # that. The claim under test is unchanged, only its spelling.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py"],
+            [sys.executable, "-m", "src.review", "verbatim"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 0
-        assert "Plagiarism / page-locator helper" in result.stdout
+        assert "usage: python3 -m src.review verbatim" in result.stdout
 
     def test_overlap_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "overlap", "only-one-arg"],
+            [sys.executable, "-m", "src.review", "verbatim", "overlap", "only-one-arg"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: verbatim_check.py overlap" in result.stderr
+        assert "usage: python3 -m src.review verbatim overlap" in result.stderr
 
     def test_scan_mode_missing_draft_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan"],
+            [sys.executable, "-m", "src.review", "verbatim", "scan"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: verbatim_check.py scan" in result.stderr
+        assert "usage: python3 -m src.review verbatim scan" in result.stderr
 
     def test_overlap_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
         # Regression: a third positional argument used to be silently
@@ -870,7 +912,7 @@ class TestCliDispatch:
         # reported as the typo it almost certainly is.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "overlap", "draft.md", "citekey", "extra"],
+            [sys.executable, "-m", "src.review", "verbatim", "overlap", "draft.md", "citekey", "extra"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -884,7 +926,7 @@ class TestCliDispatch:
         # in front of that).
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "overlap", "draft.md", "citekey", "--n", "0"],
+            [sys.executable, "-m", "src.review", "verbatim", "overlap", "draft.md", "citekey", "--n", "0"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -893,7 +935,7 @@ class TestCliDispatch:
     def test_scan_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan", "draft.md", "extra"],
+            [sys.executable, "-m", "src.review", "verbatim", "scan", "draft.md", "extra"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -905,7 +947,7 @@ class TestCliDispatch:
         # rather than raising) instead of being reported as nonsensical.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan", "draft.md", "--gap", "-1"],
+            [sys.executable, "-m", "src.review", "verbatim", "scan", "draft.md", "--gap", "-1"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -918,7 +960,7 @@ class TestCliDispatch:
         # usage error it is.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan", "draft.md", "--limit", "0"],
+            [sys.executable, "-m", "src.review", "verbatim", "scan", "draft.md", "--limit", "0"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -935,7 +977,7 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Anything.\n")
 
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "scan", str(draft), "--min-run", "4"],
+            [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), "--min-run", "4"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -945,8 +987,8 @@ class TestCliDispatch:
     def test_locate_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "scripts/verbatim_check.py", "locate", "only-one-arg"],
+            [sys.executable, "-m", "src.review", "verbatim", "locate", "only-one-arg"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: verbatim_check.py locate" in result.stderr
+        assert "usage: python3 -m src.review verbatim locate" in result.stderr

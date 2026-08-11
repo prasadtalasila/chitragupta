@@ -70,7 +70,7 @@ inside the container:
 
 ```bash
 python -m src.sync
-python scripts/enrich.py --stages embed,bertopic
+python3 -m src.enrich --stages embed,bertopic
 python -m src.citation_gate content/drafts/<slug>.md
 ```
 

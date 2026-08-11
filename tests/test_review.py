@@ -1,4 +1,4 @@
-"""src/review.py: the review layer's shared output contract -- where a
+"""src/review/__init__.py: the review layer's shared output contract -- where a
 report goes, what it opens with, and what it must never contain."""
 
 import pytest
@@ -116,7 +116,7 @@ class TestHeader:
         all -- so two drafts called `survey.md` in different topics wrote
         headers that read identically, the confusion the mirrored path
         exists to prevent, reintroduced inside the file."""
-        from src import citation_provenance
+        from src.review import citation_provenance
 
         draft = config.DRAFTS_DIR / "my topic" / "survey.md"
         draft.parent.mkdir(parents=True)

@@ -45,7 +45,7 @@ share one definition of what a passage is. It takes a Docling document by
 duck-typing (`getattr` only, no import), which is what lets a module with
 no venv dependency describe a document only a venv can build.
 
-Extracted from src/citation_provenance.py, which owned this ladder when
+Extracted from src/review/citation_provenance.py, which owned this ladder when
 it was the only consumer, and kept as its own seam for a second one that
 has not been built yet: `src/retrieval.py` still cuts its snippets as a
 character window straight out of `content/parsed/`. A snippet shown to a

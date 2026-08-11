@@ -244,7 +244,7 @@ flowchart TB
   end
 
   %% ─────────────── ENRICHMENT (side branch) ───────────────
-  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>scripts/enrich.py --stages …</code> · same run lock"]
+  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>python3 -m src.enrich --stages …</code> · same run lock"]
     direction TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
@@ -255,9 +255,9 @@ flowchart TB
   %% ─────────────── AIDS (side branch) ───────────────
   subgraph SA["<b>REVIEW AIDS</b> — you run these; none of them is a gate"]
     direction TB
-    A1["<b>src.citation_provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>scripts/verbatim_check.py</b><br/><small>verbatim overlap · locate a phrase by page</small>"]
-    A3["<b>src.citation_coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
+    A1["<b>src.review provenance</b><br/><small>what in the source supports this claim?</small>"]
+    A2["<b>src.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page</small>"]
+    A3["<b>src.review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
   end
 
   %% ─────────────── SPINE ───────────────
@@ -385,7 +385,7 @@ flowchart TB
   LED -- "src/references.py<br/>bib_fields → IEEE entries" --> DRF
   DRF == "<b>src.citation_gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
   DRF -- "src.render_output<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>citation_provenance · verbatim_check scan --write<br/>citation_coverage --write</small>" --> RVW
+  DRF -- "the review layer<br/><small>src.review provenance · verbatim scan --write<br/>src.review coverage --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef corpus fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
@@ -624,7 +624,7 @@ source that has to be discussed by title because it may not be cited.
 `bertopic` sits off to one side because **no skill calls it.** It is for
 you, deciding what the survey should be about before anything is drafted.
 
-Same reason, other direction: `src.citation_coverage` ("retrieval surfaced
+Same reason, other direction: `src.review`'s `coverage` aid ("retrieval surfaced
 this paper -- did the draft actually cite it?") is only a meaningful
 question in this genre.
 
@@ -635,7 +635,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — worth it for this genre</b><br/><code>enrich.py --stages docling,embed</code><br/><br/><b>docling</b> → layout-aware .md + .passages.json<br/><small>better quotable passages, so claims survive review</small><br/><br/><b>embed</b> → content/chroma/<br/><small>semantic recall: finds the paper that argues the<br/>point in different words. <b>Both skills name<br/><code>embed_index.search()</code> by hand.</b></small>"]
+  HEAVY["<b>ENRICHMENT — worth it for this genre</b><br/><code>-m src.enrich --stages docling,embed</code><br/><br/><b>docling</b> → layout-aware .md + .passages.json<br/><small>better quotable passages, so claims survive review</small><br/><br/><b>embed</b> → content/chroma/<br/><small>semantic recall: finds the paper that argues the<br/>point in different words. <b>Both skills name<br/><code>embed_index.search()</code> by hand.</b></small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>every sentence is a cited claim</i><br/><br/><b>survey-writer</b> — over-fetch <code>k=15</code>,<br/>hand-cluster into 2-4 sub-themes,<br/>comparison table + gap analysis<br/><br/><b>deep-research</b> — perspectives,<br/>parallel interviews, contradiction map,<br/>then cited sections<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -645,7 +645,7 @@ flowchart LR
 
   P4["<b>5 · PUBLISH</b><br/><br/><code>src.references</code> → IEEE list<br/><code>render_output --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
-  AID["<b>LAYER 4 · REVIEW — afterwards, by you, never a gate</b><br/><code>src.citation_provenance</code> · <code>verbatim_check.py</code><br/><code>src.citation_coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
+  AID["<b>LAYER 4 · REVIEW — afterwards, by you, never a gate</b><br/><code>src.review provenance</code> · <code>src.review verbatim</code><br/><code>src.review coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 
   BERT["<b>bertopic</b> → content/topics.json<br/><small>no skill calls this. It is for <i>you</i>, deciding what<br/>the survey should even be about.</small>"]
 
@@ -901,7 +901,7 @@ sequenceDiagram
     Ren-->>You: content/rendered/<slug>.pdf
     end
 
-    Note over You,Ren: Layer 4, the review layer — optional afterwards, never a gate:<br/>citation_provenance · verbatim_check · citation_coverage<br/>reports land in content/review/, mirroring the draft
+    Note over You,Ren: Layer 4, the review layer — optional afterwards, never a gate:<br/>src.review provenance · verbatim · coverage<br/>reports land in content/review/, mirroring the draft
 ```
 
 

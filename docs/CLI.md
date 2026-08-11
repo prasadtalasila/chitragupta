@@ -8,6 +8,7 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Upgrading from 4.x: one command per layer](#upgrading-from-4x-one-command-per-layer)
 - [Upgrading from 3.19.x: `content/provenance/` is now `content/review/`](#upgrading-from-319x-contentprovenance-is-now-contentreview)
 - [Upgrading a corpus parsed by an earlier version](#upgrading-a-corpus-parsed-by-an-earlier-version)
 - [Upgrading from 3.11 or earlier: the log file moved](#upgrading-from-311-or-earlier-the-log-file-moved)
@@ -21,15 +22,51 @@ short path; this is the full set.
   - [`src.references`](#python3--m-srcreferences)
   - [`src.dossier`](#python3--m-srcdossier)
   - [`src.retrieval`](#python3--m-srcretrieval)
-  - [`src.citation_coverage`](#python3--m-srccitation_coverage)
-  - [`src.citation_provenance`](#python3--m-srccitation_provenance)
+  - [`src.review coverage`](#python3--m-srcreview-coverage)
+  - [`src.review provenance`](#python3--m-srcreview-provenance)
   - [`src.render_output`](#python3--m-srcrender_output)
-  - [`scripts/enrich.py`](#scriptsenrichpy)
-  - [`scripts/verbatim_check.py`](#scriptsverbatim_checkpy)
+  - [`src.enrich`](#python3--m-srcenrich)
+  - [`src.review verbatim`](#python3--m-srcreview-verbatim)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Upgrading from 4.x: one command per layer
+
+**Four command strings changed. Nothing they do changed.** 5.0.0 gave
+every layer a single entry point, one level deep, so the review and
+enrichment layers now read like `python -m src.sync` always has. There
+are no compatibility shims: the old spellings are gone, and the table
+below is the whole migration.
+
+| Before (4.x) | Now (5.0.0) |
+|---|---|
+| `python3 -m src.citation_provenance <draft>` | `python3 -m src.review provenance <draft>` |
+| `python3 -m src.citation_coverage <draft> --query …` | `python3 -m src.review coverage <draft> --query …` |
+| `python3 scripts/verbatim_check.py overlap\|scan\|locate …` | `python3 -m src.review verbatim overlap\|scan\|locate …` |
+| `python3 scripts/enrich.py --stages …` | `python3 -m src.enrich --stages …` |
+
+Every flag, exit code and output path is unchanged, so a script that
+only needed its command string edited needs nothing else. `python3 -m
+src.review` and `python3 -m src.enrich` with no arguments each print
+their layer's usage and exit 0, which is the fastest way to check a
+spelling.
+
+Two consequences worth knowing:
+
+- **`scripts/` no longer holds a layer entry point.** `verbatim_check.py`
+  moved to `src/review/`, `enrich.py` to `src/enrich/__main__.py`. What
+  is left there is dev tooling: `install_full_pipeline.sh` and
+  `release.py`.
+- **A review report records the command that produced it**, in its
+  header. Reports written before 5.0.0 name the old invocation. They are
+  regenerable output -- re-run the aid and the header updates -- and
+  nothing reads that line back, so a stale one is cosmetic.
+
+This is the same kind of change as `src.heavy.render_output` ->
+`src.render_output` in 3.0.0, and for the same reason: where a command
+lives stopped matching what it is.
 
 ## Upgrading from 3.19.x: `content/provenance/` is now `content/review/`
 
@@ -53,7 +90,7 @@ A report's `.tex`/`.pdf` now land **beside its `.md`** rather than in
 regenerable, gitignored output, so re-running is the whole migration:
 
 ```bash
-python3 -m src.citation_provenance content/drafts/<topic>/<slug>.md
+python3 -m src.review provenance content/drafts/<topic>/<slug>.md
 rm -r content/provenance/                    # the old directory
 rm content/rendered/**/*.provenance.tex content/rendered/**/*.provenance.pdf
 ```
@@ -64,10 +101,10 @@ directly -- they need no venv, and unlike the stages they replace they do
 not wait on `sync`'s write lock:
 
 ```bash
-# was: .venv-full/bin/python scripts/enrich.py --stages provenance --input <draft>
-python3 -m src.citation_provenance <draft>
+# was: .venv-full/bin/python3 -m src.enrich --stages provenance --input <draft>
+python3 -m src.review provenance <draft>
 
-# was: .venv-full/bin/python scripts/enrich.py --stages render --input <draft>
+# was: .venv-full/bin/python3 -m src.enrich --stages render --input <draft>
 python3 -m src.render_output <draft> --format pdf
 ```
 
@@ -101,7 +138,7 @@ once, `python -m src.sync --reparse` still re-extracts everything.
 ## Upgrading from 3.11 or earlier: the log file moved
 
 `logs/sync.log` is now **`logs/pipeline.log`**. It is the same file doing
-the same job, renamed because `scripts/enrich.py` now writes to it too
+the same job, renamed because `src/enrich/__main__.py` now writes to it too
 and the old name had stopped being true.
 
 Nothing about how you *invoke* anything changed, and `[logging].level`
@@ -133,7 +170,7 @@ changed. Old spellings do not work -- there are no compatibility shims:
 | 2.x | 3.0.0 |
 |---|---|
 | `python3 -m src.heavy.render_output` | `python3 -m src.render_output` |
-| `python scripts/full_pipeline.py` | `python scripts/enrich.py` |
+| `python scripts/full_pipeline.py` | `python3 -m src.enrich` |
 | `poetry install --with heavy` | `poetry install --with enrich` |
 | `config.toml`'s `[heavy]` table | `[enrich]` |
 | `src/heavy/` | `src/enrich/`, and `render_output.py` moved up to `src/` |
@@ -158,9 +195,9 @@ Three tiers. Commands below are written with the interpreter they need.
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python3`** -- stdlib only, no venv | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.citation_provenance`, `src.citation_coverage`, `src.dossier`, `src.retrieval`, `scripts/verbatim_check.py` |
+| 1 | **`python3`** -- stdlib only, no venv | `src.citation_gate`, `src.references`, `src.render_output`, `src.ledger`, `src.review` (all three aids), `src.dossier`, `src.retrieval` |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.sync` |
-| 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `scripts/enrich.py` |
+| 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `src/enrich/__main__.py` |
 
 Tier 1 is deliberate, not incidental. The chain that enforces the one rule
 -- `citation_gate` -> `references` -> `render_output` -- imports nothing
@@ -176,8 +213,8 @@ Two commands look like they belong in a higher tier and don't:
   `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
   dependencies. (It was `src.heavy.render_output` until 3.0.0, which made
   it look like part of the enrichment layer; it never was.)
-- `src.citation_coverage` and `scripts/verbatim_check.py` are review-layer
-  commands built on `src.retrieval` and `src.config`, both stdlib.
+- `src.review`'s `coverage` and `verbatim` aids are built on
+  `src.retrieval` and `src.config`, both stdlib.
   `verbatim_check` calls the `pdftotext` binary, again an OS package, and
   lives under `scripts/` only for historical reasons -- it is no heavier
   than the other two.
@@ -239,8 +276,8 @@ python3 -m src.ledger
 #    whole corpus. Nothing below needs it, and no skill builds it for you
 #    -- RETRIEVAL.md says which stage is worth your time. Takes the same
 #    write lock as sync.
-.venv-full/bin/python scripts/enrich.py --stages docling,embed
-# .venv-full/bin/python scripts/enrich.py --stages docling --for-draft content/drafts/<slug>.md
+.venv-full/bin/python3 -m src.enrich --stages docling,embed
+# .venv-full/bin/python3 -m src.enrich --stages docling --for-draft content/drafts/<slug>.md
 
 # 6. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
@@ -278,11 +315,11 @@ python3 -m src.dossier export <slug>
 
 # 10. Check the draft against its sources. Review aids, not gates: none of
 #     these runs automatically, and none of them can block a draft.
-python3 -m src.citation_provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
-python3 scripts/verbatim_check.py overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
-python3 scripts/verbatim_check.py scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
-python3 scripts/verbatim_check.py locate <citekey> "a phrase to find"  # which pdf page a phrase is on
-python3 -m src.citation_coverage content/drafts/<slug>.md --query "digital twin composability"
+python3 -m src.review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
+python3 -m src.review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
+python3 -m src.review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
+python3 -m src.review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
+python3 -m src.review coverage content/drafts/<slug>.md --query "digital twin composability"
 # add --write to any of the three to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -588,7 +625,7 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
-### `python3 -m src.citation_coverage`
+### `python3 -m src.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
 citations. **Informational, not a gate**, and unlike the gate it never
@@ -605,7 +642,7 @@ it reuses `src.retrieval`, which is itself stdlib.
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report -- so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python3 -m src.citation_coverage content/drafts/survey.md \
+python3 -m src.review coverage content/drafts/survey.md \
     --query "digital twin composability" \
     --query "runtime verification"
 # ... --k 10
@@ -615,7 +652,7 @@ python3 -m src.citation_coverage content/drafts/survey.md \
 A written report records the whole invocation in its header, queries
 included: a coverage figure means nothing without knowing 62% *of what*.
 
-### `python3 -m src.citation_provenance`
+### `python3 -m src.review provenance`
 
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
@@ -632,9 +669,9 @@ with its `.tex`/`.pdf` renders beside it.
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python3 -m src.citation_provenance content/drafts/survey.md
-# python3 -m src.citation_provenance content/drafts/survey.md --formats md
-# python3 -m src.citation_provenance content/drafts/survey.md --formats md,tex,pdf
+python3 -m src.review provenance content/drafts/survey.md
+# python3 -m src.review provenance content/drafts/survey.md --formats md
+# python3 -m src.review provenance content/drafts/survey.md --formats md,tex,pdf
 ```
 
 ### `python3 -m src.render_output`
@@ -722,7 +759,7 @@ python3 -m src.render_output content/drafts/survey.md --format pdf
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
-### `scripts/enrich.py`
+### `python3 -m src.enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma -> BERTopic
 -> provenance -> render. **Needs the venv.** Each stage probes its own
@@ -738,13 +775,13 @@ correct answer rather than a bug.
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
 
 ```bash
-.venv-full/bin/python scripts/enrich.py
-# .venv-full/bin/python scripts/enrich.py --stages docling
-# .venv-full/bin/python scripts/enrich.py --stages embed,bertopic
-# .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
+.venv-full/bin/python3 -m src.enrich
+# .venv-full/bin/python3 -m src.enrich --stages docling
+# .venv-full/bin/python3 -m src.enrich --stages embed,bertopic
+# .venv-full/bin/python3 -m src.enrich --for-draft content/drafts/digital-twins.md
 # The provenance and render stages left in 4.0.0 -- run the tier-1
 # commands directly instead (no venv, no lock):
-# python3 -m src.citation_provenance content/drafts/survey.md
+# python3 -m src.review provenance content/drafts/survey.md
 # python3 -m src.render_output content/drafts/survey.md --format pdf
 ```
 
@@ -757,7 +794,7 @@ cites, read out of the draft with the same reader the citation gate uses
 papers costs twenty-three parses rather than the whole library:
 
 ```console
-$ .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md
+$ .venv-full/bin/python3 -m src.enrich --for-draft content/drafts/digital-twins.md
 Target: host
 Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/drafts/digital-twins.md
 
@@ -775,17 +812,17 @@ With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
 this is usually for. (Before 4.0.0 you could add `--stages
 docling,provenance` to carry on into the draft's own report; that stage
-is gone -- run `python3 -m src.citation_provenance <draft>`.) `--input` already pointed at the
+is gone -- run `python3 -m src.review provenance <draft>`.) `--input` already pointed at the
 draft, so it needs naming only when you want a *different* document
 rendered.
 
 Two stages refuse the scope rather than honouring it:
 
 ```console
-$ .venv-full/bin/python scripts/enrich.py --for-draft content/drafts/digital-twins.md --stages embed
+$ .venv-full/bin/python3 -m src.enrich --for-draft content/drafts/digital-twins.md --stages embed
   --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
-      python scripts/enrich.py --for-draft content/drafts/digital-twins.md --stages docling
-      python scripts/enrich.py --stages embed
+      python3 -m src.enrich --for-draft content/drafts/digital-twins.md --stages docling
+      python3 -m src.enrich --stages embed
 ```
 
 That is a tier, not a ladder ([LADDERS.md](LADDERS.md)): `embed` writes a
@@ -823,7 +860,7 @@ meaning. Ctrl+C is safe: every chunk upserted before the interrupt is
 already in `content/chroma/`, the stage says how far it got, and re-running
 picks up from there.
 
-### `scripts/verbatim_check.py`
+### `python3 -m src.review verbatim`
 
 Layer 4, the review layer, with three subcommands: verbatim overlap
 between a draft and one cited source, a whole-draft x whole-corpus scan,
@@ -851,12 +888,12 @@ a draft this layer will not read (missing, or resolving outside
 not a verdict.
 
 ```bash
-python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025
-# python3 scripts/verbatim_check.py overlap content/drafts/survey.md talasila_composable_2025 --n 12
-python3 scripts/verbatim_check.py scan content/drafts/survey.md
-# python3 scripts/verbatim_check.py scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
-# python3 scripts/verbatim_check.py scan content/drafts/survey.md --write --formats md
-# python3 scripts/verbatim_check.py locate talasila_composable_2025 "a digital twin is"
+python3 -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
+# python3 -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
+python3 -m src.review verbatim scan content/drafts/survey.md
+# python3 -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
+# python3 -m src.review verbatim scan content/drafts/survey.md --write --formats md
+# python3 -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
 
 **What `scan` does not see, and why that matters more than it sounds.**
@@ -910,7 +947,7 @@ you can turn to whichever one parsed the citekey -- see
 writes a break between consecutive pages that carry text, so a page with
 no extracted items at all shifts the numbering after it. The passage
 sidecar records each item's own page and is not affected; where the two
-disagree, believe `python3 -m src.citation_provenance`.
+disagree, believe `python3 -m src.review provenance`.
 
 ### `scripts/install_full_pipeline.sh`
 
@@ -973,7 +1010,7 @@ things: exit codes an unattended caller can branch on without parsing
 any text, and `logs/pipeline.log` (rotated; see `[logging]` in
 `config.toml.example`) as a persistent transcript to check afterwards.
 
-`scripts/enrich.py` writes to the same file, so a host that schedules
+`src/enrich/__main__.py` writes to the same file, so a host that schedules
 both has one transcript rather than two. Each line names its source, so
 `grep 'src\.sync' logs/pipeline.log` narrows it back down when that is
 what you want -- and the interleaved view is often the useful one, since

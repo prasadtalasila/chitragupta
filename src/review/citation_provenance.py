@@ -8,9 +8,9 @@ away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
 One of the three commands in the **review layer**, with
-src/citation_coverage.py and scripts/verbatim_check.py -- run by hand on
+src/review/citation_coverage.py and src/review/verbatim_check.py -- run by hand on
 a finished draft, never automatically, never a gate, and never holding
-the write lock. src/review.py owns what the three have in common: where
+the write lock. src/review/__init__.py owns what the three have in common: where
 the report goes (`content/review/`, mirroring the draft's path) and what
 its header looks like.
 
@@ -30,8 +30,8 @@ Stdlib only (sqlite3/re), like citation_gate.py and references.py --
 runs with bare `python3`, no venv.
 
 Usage:
-    python -m src.citation_provenance content/drafts/<slug>.md
-    python -m src.citation_provenance <draft.md> --formats md,tex,pdf
+    python3 -m src.review provenance content/drafts/<slug>.md
+    python3 -m src.review provenance <draft.md> --formats md,tex,pdf
 """
 
 import argparse
@@ -284,7 +284,7 @@ def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | N
     Overlap rather than verbatim n-grams: a correct paraphrase keeps most
     of its content words while changing order and function words, so it
     scores well here and scores *zero* under the >=8-word exact runs that
-    scripts/verbatim_check.py's `overlap` mode uses. That mode is looking
+    src/review/verbatim_check.py's `overlap` mode uses. That mode is looking
     for borrowed wording; this one is looking for support, and paraphrase
     is the normal case rather than the exception.
     """
@@ -350,7 +350,7 @@ def render_markdown(report: Report) -> str:
         # would otherwise be recorded as two arguments, so the header
         # would name an invocation that doesn't reproduce the report.
         # The other two review commands already quote theirs.
-        shlex.join(["python3", "-m", "src.citation_provenance", str(report.draft)]),
+        shlex.join(["python3", "-m", "src.review", "provenance", str(report.draft)]),
     ) + [
         "## How to read this",
         "",
@@ -439,7 +439,7 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
 
     The report lands in `content/review/`, mirroring the draft's own
     place under `content/drafts/`, with its `.tex`/`.pdf` renders beside
-    it -- `src/review.py` owns both the path and the degrade-on-missing-
+    it -- `src/review/__init__.py` owns both the path and the degrade-on-missing-
     binary behaviour, shared with the other two review aids.
     """
     return review.write(
@@ -447,17 +447,37 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
     )
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Report what in each cited source supports the claim citing it.",
-    )
+def build_parser(parser=None):
+    """This aid's flags.
+
+    `parser` is passed by src/review/__main__.py, which has already
+    created the `provenance` subparser and needs the flags hung off
+    *that* -- so they are declared once, here, and the entry point never
+    restates them.
+    """
+    if parser is None:
+        parser = argparse.ArgumentParser(
+            description="Report what in each cited source supports the claim citing it.",
+        )
     parser.add_argument("draft", help="Markdown draft to check")
     parser.add_argument(
         "--formats", default="md,tex,pdf",
         help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.",
     )
-    args = parser.parse_args(argv)
+    return parser
 
+
+def main(argv: list[str] | None = None) -> int:
+    return run(build_parser().parse_args(argv))
+
+
+def run(args: argparse.Namespace) -> int:
+    """Dispatch already-parsed arguments.
+
+    Split from main() so src/review/__main__.py can hand over the args it
+    parsed with this module's own build_parser(), rather than re-slicing
+    argv and parsing it twice.
+    """
     try:
         draft_path = review.require_reviewable(Path(args.draft))
     except (FileNotFoundError, config.OutsideContentDir) as exc:
@@ -467,7 +487,3 @@ def main(argv: list[str] | None = None) -> int:
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
     review.print_written(write_report(draft_path, formats))
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

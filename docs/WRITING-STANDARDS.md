@@ -160,7 +160,7 @@ attribution under their licences; this section is that attribution.
 
 The prose in this file and in every `.claude/skills/*/SKILL.md` is written
 from scratch. A verbatim n-gram check against all three sources above
-(107,272 words of source; the algorithm is `scripts/verbatim_check.py`'s
+(107,272 words of source; the algorithm is `src/review/verbatim_check.py`'s
 `cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
 above five consecutive shared words anywhere. What is borrowed is the
 *ideas*, credited above; what is added is their translation into

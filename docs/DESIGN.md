@@ -36,7 +36,7 @@ The repository is designed around a few hard constraints that strongly shape the
 2. **Three layers**
    - Corpus layer: deterministic content maintenance (`python -m src.sync`).
    - Drafting layer: generative drafting via the Claude Code skills.
-   - Enrichment layer: optional heavier processing (`scripts/enrich.py`).
+   - Enrichment layer: optional heavier processing (`src/enrich/__main__.py`).
    - Ad-hoc review tools remain outside the automatic chain.
 
 3. **Config and host variability are first-class concerns**

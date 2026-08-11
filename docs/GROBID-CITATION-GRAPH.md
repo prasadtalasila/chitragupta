@@ -64,7 +64,7 @@ Two layers touch PDFs, and neither produces bibliographic structure:
   `_EXTRACTORS` to `pdftotext` (default) or `docling`. One file in, one
   text file out.
 - **The enrichment layer** (`src/enrich/docling_parse.py`, via
-  `scripts/enrich.py --stages docling`) always uses docling regardless
+  `src/enrich/__main__.py --stages docling`) always uses docling regardless
   of `[parser].backend`, producing `content/docling/<citekey>.md` plus a
   `.passages.json` sidecar of reading-ordered, quotable passages. This
   feeds embeddings and BERTopic.
@@ -83,7 +83,7 @@ one PDF in, one `.txt` out. GROBID's TEI is structurally different data
 through that table would mean either discarding everything but body text
 (defeating the point) or making `pdf_text.py` non-uniform in its return
 type. The right precedent is `docling_parse.py`: a corpus-wide stage
-under `src/enrich/`, run from `scripts/enrich.py`, independent of
+under `src/enrich/`, run from `src/enrich/__main__.py`, independent of
 `[parser].backend`.
 
 ## Why GROBID and docling, not GROBID instead of docling
@@ -122,7 +122,7 @@ flowchart TB
 
   BIB --> READER --> LEDGER --> CORPUS
 
-  subgraph EX["<b>ENRICHMENT LAYER</b> — <code>scripts/enrich.py --stages …</code> · one write lock"]
+  subgraph EX["<b>ENRICHMENT LAYER</b> — <code>src/enrich/__main__.py --stages …</code> · one write lock"]
     direction LR
     DOC["<code>docling_parse.py</code><br/><small>body text, reading order</small>"]
     GRO["<code>grobid_parse.py</code> <b>(NEW)</b><br/><small>header + reference lists</small>"]
@@ -175,7 +175,7 @@ It must follow the same three conventions every stage here follows:
   observably making progress -- `[done/total] <citekey>`, per
   [DESIGN.md](DESIGN.md)'s concurrency policy.
 
-Status vocabulary, matching `scripts/enrich.py`:
+Status vocabulary, matching `src/enrich/__main__.py`:
 
 | Condition | Report |
 |---|---|
@@ -250,7 +250,7 @@ That fits the existing container story ([DOCKER.md](../DOCKER.md)) as a
 sidecar. Invocation would extend `--stages`:
 
 ```bash
-.venv-full/bin/python scripts/enrich.py --stages grobid,citation_graph
+.venv-full/bin/python3 -m src.enrich --stages grobid,citation_graph
 ```
 
 ## Respecting the citekey invariant

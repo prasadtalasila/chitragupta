@@ -141,7 +141,7 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # mirroring the draft's own path under DRAFTS_DIR: a draft at
 # content/drafts/<topic>/survey.md has its provenance, verbatim and
 # coverage reports at content/review/<topic>/survey.<aid>.md, alongside
-# the .tex/.pdf renders of each. See src/review.py and
+# the .tex/.pdf renders of each. See src/review/__init__.py and
 # docs/ARCHITECTURE.md's "Layer 4: the review layer".
 #
 # Was content/provenance/ until 4.0.0, when it held only
@@ -353,7 +353,7 @@ LOGGING_LEVEL = _get_log_level("LOGGING_LEVEL", "logging", "level", default="INF
 # src/logging_setup.py for what lands here and why it is one file.
 LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(REPO_ROOT / "logs")))
 
-# src/citation_provenance.py band thresholds: the fraction of a citing
+# src/review/citation_provenance.py band thresholds: the fraction of a citing
 # sentence's distinctive words that must appear in the best-matching
 # source passage. Round numbers on purpose -- they set reading order for
 # a human, not a pass/fail line, so precision here would be false

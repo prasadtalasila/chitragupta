@@ -27,7 +27,7 @@ user asked for the other one. See "When to invoke".
   optional -- see step 3)
 
 **Read-only means read-only: never run `python -m src.sync`, and never
-run `scripts/enrich.py` or any `src/enrich/*` build stage.** Both belong to the
+run `src/enrich/__main__.py` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
@@ -290,7 +290,7 @@ candidate for the chapter.
 14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
     ```
-    python3 scripts/verbatim_check.py scan content/drafts/<slug>.md
+    python3 -m src.review verbatim scan content/drafts/<slug>.md
     ```
     It reports wording the chapter shares with **any** parsed source,
     cited or not -- including a source the citing paragraph never names,

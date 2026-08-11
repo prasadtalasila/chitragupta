@@ -1,6 +1,6 @@
 """Corpus-wide n-gram fingerprint index, cached on disk under content/overlap/.
 
-`scripts/verbatim_check.py`'s `overlap` mode used to fingerprint one source
+`src/review/verbatim_check.py`'s `overlap` mode used to fingerprint one source
 per invocation, from scratch, in memory, and throw the work away: a `gram ->
 page` dict rebuilt on every run, from text re-extracted by re-invoking
 `pdftotext` as a subprocess. Fine for "compare this draft against this one
@@ -41,12 +41,12 @@ Both caches are read/written with no writer lock (`src/runlock.py`): like
 run is in progress, and staleness is handled by the key comparison above,
 not by locking.
 
-Tokenization mirrors `scripts/verbatim_check.py`'s `WORD`/`norm` --
+Tokenization mirrors `src/review/verbatim_check.py`'s `WORD`/`norm` --
 lowercase `[a-z0-9]+` tokens -- so `grams_for_citekey` agrees with what
 that script's `overlap` mode reported before this module existed.
 Duplicated rather than imported: `src/` is the corpus layer `scripts/`
 consumes, not the reverse, and this is two lines that must not drift out
-of sync with the ones in `scripts/verbatim_check.py`.
+of sync with the ones in `src/review/verbatim_check.py`.
 
 A gram's hash is a 64-bit rolling polynomial hash over each word's
 `blake2b` digest, deterministic across processes and runs (unlike
@@ -75,7 +75,7 @@ from src import config
 
 DEFAULT_N = 8
 
-# Mirrors scripts/verbatim_check.py's WORD/norm -- see module docstring.
+# Mirrors src/review/verbatim_check.py's WORD/norm -- see module docstring.
 WORD = re.compile(r"[a-z0-9]+")
 
 
@@ -131,7 +131,7 @@ def gram_hashes(words: list[str], n: int) -> list[int]:
 
 
 def _pages_from_parsed_text(parsed_path: str) -> list[str]:
-    """Same convention as `scripts/verbatim_check.py::pages`'s fallback:
+    """Same convention as `src/review/verbatim_check.py::pages`'s fallback:
     strip stray control bytes, split on the form-feed page boundary."""
     raw = Path(parsed_path).read_text(encoding="utf-8", errors="replace")
     return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")
@@ -494,7 +494,7 @@ def postings_for_gram(index: CorpusIndex, gram_hash: int) -> list[tuple[str, int
     then page/position order).
 
     Unlike `pages_for_gram`, this keeps every occurrence rather than
-    collapsing to distinct pages: `scripts/verbatim_check.py`'s `scan`
+    collapsing to distinct pages: `src/review/verbatim_check.py`'s `scan`
     mode needs `token_position` to align a run across consecutive draft
     positions, which a deduplicated page list would throw away.
     """
