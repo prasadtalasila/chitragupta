@@ -29,6 +29,7 @@ sweep, and [PLAGIARISM.md](PLAGIARISM.md) for the detection tiers.
 - [The method, in autoresearch's own terms](#the-method-in-autoresearchs-own-terms)
 - [Mapping the method onto this pipeline](#mapping-the-method-onto-this-pipeline)
 - [Why provenance is excluded](#why-provenance-is-excluded)
+- [Why only a person may start it](#why-only-a-person-may-start-it)
 - [The amendment this needs](#the-amendment-this-needs)
 - [The software half](#the-software-half)
 - [What it would cost](#what-it-would-cost)
@@ -122,9 +123,9 @@ word for word, and as an aid it inherits `report_dir`, `report_path`,
 `write` and the exits-0-always posture for free. Reading the other three
 aids' output is an edge *within* layer 4.
 
-So: **the deterministic half is a fourth review aid; the generative half
-is a skill; and the human, not code, closes the loop between them.** That
-last clause is what keeps the graph acyclic -- a skill reading a review
+So the aid belongs in layer 4. The clause that matters is the last one in
+the specification's shape -- that the human, not code, closes the loop --
+because that is what keeps the graph acyclic: a skill reading a review
 report is the same act as a human reading one, which the layer already
 expects.
 
@@ -243,6 +244,51 @@ remains the only place that decision is taken. If #138 lands as specified,
 the squaring is that a registry may block a *book assembly* without any
 review aid blocking a *draft*.
 
+## Why only a person may start it
+
+The specification says the aid may be run by anyone at any time, that the
+skill's only trigger is a person asking, and that no hook, schedule or
+other skill may start it (R11). Each half of that has its own reason.
+
+**Why the aid is unrestricted.** It is free, deterministic, read-only and
+exits 0. There is no occasion on which running it is a mistake, so there
+is nothing to restrict.
+
+**Why not a PostToolUse hook.** One already exists, running the gate on
+every write under `content/drafts/`. The objection is not cost -- the
+agenda reads the aids' JSON rather than executing them, so a hooked
+agenda would run one command, not four. The objection is that it would
+put a review report in the path of a write. The gate belongs in that path
+*because it is a gate*; nothing in the review layer does, and a report
+that a write waits on is one short step from a report that blocks it.
+
+**Why not a genre skill at the end of its own run.** A draft just written
+has no review reports to read, so the agenda would be empty. More
+importantly, a skill repairing its own output is marking its own
+homework, which is why the existing gate loop discards an unsupported
+claim and writes again rather than "fixing" it.
+
+**Why not cron.** `sync` is safely scheduled because it is deterministic
+and idempotent. The skill is neither, and a scheduled reviser is the
+overnight posture
+[rejected above](#mapping-the-method-onto-this-pipeline).
+
+**Why R11 is a convention, not a mechanism.** Skills already hand off to
+one another in prose -- `draft-reviser` to `corpus-reviser` and back --
+and nothing enforces that mechanically. R11 is enforceable exactly as
+every other skill rule in this repository is, which is worth knowing
+rather than pretending otherwise. The hook half *is* mechanical: it
+requires an entry in `.claude/settings.json`, and not adding one is a
+decision someone would have to reverse deliberately.
+
+**Why SOUL.md is not part of the wiring.** It states the one invariant
+and what each layer may not do, and the loop changes neither. Its review
+bullet -- the layer "never blocks, and must not be made to" -- already
+covers the loop and survives the amendment intact. A proposal that has
+not been built also has no business in the file the assistant treats as
+its memory. If the loop ships, the sentence worth adding there is about
+the propose-and-accept asymmetry, not about the aid.
+
 ## The amendment this needs
 
 One documented rule this cannot satisfy. It is about *who may invoke* a
@@ -254,11 +300,11 @@ grep -rniE "never automatic|never invoked|invokes them automatically|reads it ba
   --include='*.md' --include='*.mmd' --include='*.py' .
 ```
 
-It is a starting point rather than the answer. It hits phrases with
+It is a starting point rather than the answer. It hits two phrases with
 nothing to do with the review layer -- `AGENTS.md`'s "reads it back out of
-the ledger", `docs/CLI.md`'s "nothing reads it back" about drafting state,
-a `tests/test_sync.py` docstring's "never invoked" -- and it hits these
-documents. **Twelve** of its matches are real statements of the rule:
+the ledger" and a `tests/test_sync.py` docstring's "never invoked" -- and
+it hits these documents. **Twelve** of its matches are real statements of
+the rule:
 
 | Site | Wording |
 |---|---|
@@ -275,12 +321,14 @@ documents. **Twelve** of its matches are real statements of the rule:
 | [CLI.md](CLI.md), the first-run walkthrough | "these runs automatically, and none of them can block a draft" |
 | [CLI.md](CLI.md), §coverage | "unlike the gate it never runs automatically" |
 
-**Two diagrams are borderline, and the honest answer is that they are in
-scope.** No `.mmd` source states the rule outright -- the one label that
-says "never automatic" is inline in ARCHITECTURE.md, so it is a text edit
-like the rest. But `00-main-workflow.mmd`'s "REVIEW AIDS -- you run these"
-and `g1-corpus-led.mmd`'s "afterwards, **by you**" are manual-invocation
-claims on exactly the axis the amendment abolishes. They are the cheapest
+**Three diagrams are borderline, and the honest answer is that they are
+in scope.** No `.mmd` source states the rule outright -- the one label
+that says "never automatic" is inline in ARCHITECTURE.md, so it is a text
+edit like the rest. But `00-main-workflow.mmd`'s "REVIEW AIDS -- you run
+these", `g1-corpus-led.mmd`'s "afterwards, **by you**" and
+`extra-sequence.mmd`'s "optional afterwards", which draws *You* invoking
+the aids, are manual-invocation claims on exactly the axis the amendment
+abolishes. They are the cheapest
 possible fix ("run these afterwards"), and each costs a re-render of its
 committed SVG under `docs/diagrams/svg/`. The "never a gate" text in both
 stays true and untouched.
@@ -382,9 +430,9 @@ pipeline layer, and neither should acquire one.
   skill?** It is "a change to an existing draft", which is that skill's
   charter -- the argument for separation is that its input is a file
   rather than a person.
-- **Does `agenda` strain the aid vocabulary?** `review.AIDS` values are
-  both report titles and filename suffixes, so this ships as
-  `survey.agenda.md`. What remains against it is real: the other three
+- **Does `agenda` strain the aid vocabulary?** A `review.AIDS` key is both
+  the subcommand and the report's filename suffix -- the values are the
+  human-readable titles -- so this ships as `survey.agenda.md`. What remains against it is real: the other three
   keys name an observed property of the draft, while this one names what
   to do next. It is also the first aid that reads other aids.
 

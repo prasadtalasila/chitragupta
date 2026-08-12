@@ -32,15 +32,18 @@ here is built; #103, #104 and #107 are the open issues that would build it.
 
 ## The rule that decides everything
 
-> **An unsupervised loop may only be pointed at a check whose satisfaction
-> is binary.** A continuous score invites the loop to optimise the score
-> instead of the draft.
+> **R3:** "An unattended item's check is **binary**. No continuous score
+> is ever the thing being optimised."
+>
+> -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#the-requirements), which
+> owns the wording
 
-This is stated as R3 in [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#the-requirements),
-and it is the whole reason prose can carry an unattended loop at all. It
-also explains why that document counts findings rather than scoring
-quality: a count of binary conformance failures is safe to drive to zero,
-and a quality score is not safe to maximise.
+The reason behind it is that a continuous score invites the loop to
+optimise the score instead of the draft -- and that is the whole reason
+prose can carry an unattended loop at all. It is also why the
+specification counts findings rather than scoring quality: a count of
+binary conformance failures is safe to drive to zero, and a quality score
+is not safe to maximise.
 
 Applied to language, the rule cuts the axis cleanly in two. "Apply §2" is
 binary -- "obviously" is present or it is not. "Improve the readability" is
@@ -77,7 +80,7 @@ they are conformance rules with a decidable answer:
 
 | Rule | Source in WRITING-STANDARDS | Decidable because |
 |---|---|---|
-| No defect markers: "obviously", "simply", "just", "of course", "clearly", "easy" | §2 | a literal string search, with §2's own caveat that "just" needs a human eye (adverb versus adjective) |
+| No defect markers: "obviously", "simply", "just", "of course", "clearly", "easy" | §2 | a literal string search -- though #107 adds the caveat, which §2 itself does not, that "just" needs a human eye (adverb versus adjective) |
 | Each term defined once, then used consistently | §2 | the dossier already carries a glossary |
 | Acronym expanded at first use, then not re-expanded | §2 | first occurrence is computable |
 | Short sentences, one idea each | §4 | *not* decidable -- see the next section |

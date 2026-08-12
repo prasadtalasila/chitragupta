@@ -28,7 +28,7 @@ is shaped that way.
 | A sync moved the corpus, or `dossier status --all` names this draft | Re-grounding mode (below), not the ordinary loop |
 | User asks to re-check the **whole** draft against the corpus, cost regardless | Hand off to `corpus-reviser` -- not this skill, and never the genre skill |
 | User asks for a different genre of the same topic | That's a new draft -- use the genre skill |
-| Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
+| Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.corpus sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
 **Read-only over the corpus layer.** Never run `python -m src.corpus sync` and
 never run `python -m src.enrich`. Both take the pipeline's write lock and

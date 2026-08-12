@@ -34,6 +34,7 @@ writes the ledger.
 - [3. The `agenda-reviser` skill](#3-the-agenda-reviser-skill)
 - [4. Acceptance and rollback](#4-acceptance-and-rollback)
 - [The requirements](#the-requirements)
+- [Who calls it, and when](#who-calls-it-and-when)
 - [How the loop is reached](#how-the-loop-is-reached)
 - [The cost ladder](#the-cost-ladder)
 - [What accumulates across drafts](#what-accumulates-across-drafts)
@@ -149,7 +150,7 @@ loop proposes and repairs; the human accepts.
 
 ## The requirements
 
-Ten obligations, each phrased so a reviewer can tell whether it has been
+Eleven obligations, each phrased so a reviewer can tell whether it has been
 met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#mapping-the-method-onto-this-pipeline)
 says where each comes from.
 
@@ -165,6 +166,38 @@ says where each comes from.
 | **R8** | Where a deletion and a rewrite both pass, the smaller diff wins. |
 | **R9** | The agenda taken before the pass is the recorded baseline, and the closing report is stated against it. |
 | **R10** | The aid is registered in both `review.AIDS` and `__main__.AIDS`; the skill's `description` names its triggers; and both appear in AGENTS.md's layer bullets, CLI.md, the README tables and `mkdocs.yml`. |
+| **R11** | No hook, no scheduled job and no other skill invokes the `agenda-reviser` skill. Its only trigger is a person asking. |
+
+## Who calls it, and when
+
+The two halves have different answers, and conflating them is how this
+design would go wrong.
+
+**The aid: anyone, at any time.** `python -m src.review agenda <draft>` is
+free, deterministic, read-only and exits 0. It has exactly the standing of
+the other three aids -- you run it because you want to know. No occasion is
+privileged and none is required.
+
+**The skill: only a person, and only on a draft they consider finished.**
+Its `SKILL.md` description is the whole trigger, so in practice it runs
+when a user says something like "clean up this draft" or "what is left to
+fix here". Three occasions to name in that description:
+
+- before rendering or submitting;
+- after a `sync` moved the corpus, when `dossier status --all` has named
+  this draft;
+- on picking a draft back up after weeks away.
+
+**Nothing else may call it** (R11): not a PostToolUse hook, not a
+scheduled job, not a genre skill at the end of its own run, and not
+`draft-reviser` on its own initiative.
+[Why each](AUTO-IMPROVEMENT-RATIONALE.md#why-only-a-person-may-start-it).
+
+**A stale input is reported, not merged.** Reports carry no timestamp --
+deliberately, so they diff cleanly -- so the check is file mtime. An aid
+report older than the draft is named as stale in the agenda's header and
+its findings marked, rather than presented as current; the header says to
+re-run that aid.
 
 ## How the loop is reached
 
@@ -178,25 +211,11 @@ registered is dead code.
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
 | Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
 | Both, for a human | [CLI.md](CLI.md) for the command and its flags; [GENRE.md](GENRE.md) for which reviser handles what; README's review-aid block | Undiscoverable outside the source |
-| The docs themselves | `mkdocs.yml` nav and the README documentation tables | Absent from nav is a `--strict` build failure |
+| The docs themselves | `mkdocs.yml` nav and the README documentation tables | Invisible in the site nav. Not a build failure: `nav.omitted_files` is INFO-level, and `mkdocs build --strict` still passes |
 
-**Two of those are load-bearing rather than administrative.** The
-`review.AIDS` / `__main__.AIDS` pair is what makes the aid exist as far as
-the code is concerned -- the report suffix and the subcommand come from the
-same dict by design, so registering in one place and not the other is
-caught at import. And the skill's `description` *is* its invocation
-contract: the only way a genre or reviser skill ever runs is a user's
-phrasing matching it, which is why the existing seven carry such long,
-trigger-heavy descriptions.
-
-**[SOUL.md](../SOUL.md) is deliberately not on that list.** It states the
-one invariant and what each layer may not do, and the loop changes neither:
-its review bullet -- the layer "never blocks, and must not be made to" --
-already covers the loop and survives the amendment intact
-([why](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs)). A proposal
-that has not been built has no business in the file the assistant treats as
-its memory. If the loop ships, the sentence worth adding there is about the
-propose-and-accept asymmetry, not about the aid.
+The first two rows are load-bearing rather than administrative, and
+[SOUL.md](../SOUL.md) is deliberately absent from the list --
+[why](AUTO-IMPROVEMENT-RATIONALE.md#why-only-a-person-may-start-it).
 
 ## The cost ladder
 
@@ -212,9 +231,10 @@ Do the free thing first, and pay only for what it could not decide --
 3. **A dispatched reviser**, only for items needing the surrounding
    argument in context. The expensive rung, and the short list.
 
-#75 is the fourth rung this would eventually want -- route the mechanical
-stages to a cheaper model tier. It is blocked on measurement (#76), which
-this loop would generate.
+Model tiering is the fourth rung. #75 settled the policy and #76 the
+measurement behind it, both closed; what is left is applying that policy
+to whatever mechanical stages this loop adds, which is a question for the
+build rather than a blocker on it.
 
 ## What accumulates across drafts
 

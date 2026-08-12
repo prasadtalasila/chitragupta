@@ -64,7 +64,7 @@ around it, do not sync, do not cite. Tell the user to run
 | User asks for a textbook chapter / lecture notes / worked examples | Use `textbook-chapter-writer` instead |
 | User asks for a hands-on tutorial the reader follows at a keyboard | Use `tutorial-writer` instead |
 | User asks to change a survey that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `src.sync` yourself |
+| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `src.corpus sync` yourself |
 
 ## Prose standards
 
