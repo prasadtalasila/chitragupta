@@ -421,7 +421,7 @@ Two costs, both worth knowing before turning it on:
   `docling_image_scale = 2.0` is roughly 144 DPI, enough to read a figure
   back without storing print-resolution files.
 
-## `[source_pdfs] dir` -- retired in 3.3.0
+## `[source_pdfs] dir` -- retired
 
 Nothing left to measure: the enrichment corpus is now the bibliography
 alone, so there is no second source to deduplicate against. A config file
@@ -515,7 +515,7 @@ vary.
 artifact by artifact, and `bench/RESULTS.md`'s 2026-08-07 section has the
 measurement. Both are stated once, there.
 
-Two corrections to figures that stood in this document until 3.3.3, kept
+Two corrections to figures that once stood in this document, kept
 because the retracted versions were quoted elsewhere: the earlier "6
 files differ, under 0.06%" understated the effect by counting bytes
 rather than passages, and "repeating a run at the same worker count

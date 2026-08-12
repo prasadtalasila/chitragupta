@@ -12,9 +12,8 @@ records what it would cost; the decision has not been taken.
 repository on 2026-08-01 -- which this proposal has to answer before it
 can argue anything else.
 
-Originally drafted 2026-08-07 against the pre-3.0.0 layout
-(`src/heavy/`, `scripts/full_pipeline.py`, "job 1"/"job 2"), and updated
-here for the current one.
+Originally drafted 2026-08-07, against an earlier layout of this
+repository, and updated here for the current one.
 
 ## Table of contents
 
@@ -268,13 +267,13 @@ draft:
   to.** The original draft justified this by analogy with `papers/pdfs/`,
   a directory of raw PDFs that were indexed but never citable. That
   directory, its config key and its `doc:<stem>` id namespace were all
-  removed in 3.3.0 precisely because a permanently non-citable case was a
+  removed precisely because a permanently non-citable case was a
   cost every downstream stage paid. **Reintroducing one here would undo
   that**, so external nodes must live in `citation_graph.json` alone --
   never in the ledger, never in Chroma, never anywhere a retrieval call
   can return them.
 - **A citekey is also a filename**, enforced by
-  `bib_reader.citekey_problem()` since 3.3.1. Anything writing
+  `bib_reader.citekey_problem()`. Anything writing
   `content/grobid/<citekey>.tei.xml` inherits that guarantee, and must not
   construct a path from a GROBID-derived string, which carries no such
   guarantee.

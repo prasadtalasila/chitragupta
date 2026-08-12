@@ -35,11 +35,9 @@ work on the repository itself ([DEVELOPER.md](../DEVELOPER.md)).
 Four layers: a deterministic **corpus layer**, a generative **drafting
 layer**, an optional **enrichment layer** that deepens the corpus for
 whoever wants it, and an advisory **review layer** you run by hand over a
-finished draft. (The first three were called "job 1", "job 2" and "the
-heavy pipeline" before 2026-08-06; older content and commit messages
-still use those names. The fourth was "review aids, in no layer" until
-4.0.0.) The diagram below adds the axis the workflow diagrams leave
-out: **which interpreter each part needs, and who holds the write lock.**
+finished draft. The diagram below adds the axis the workflow diagrams
+leave out: **which interpreter each part needs, and who holds the write
+lock.**
 
 The numbers are the order these are introduced, and the order you meet
 them: you need a corpus before a draft, and there is nothing to review
@@ -217,8 +215,9 @@ enrichment layer](#layer-3-the-enrichment-layer) below.
 ## Layer 3: the enrichment layer
 
 **It extends the corpus layer, not the drafting one.** That is worth
-saying plainly, because the old name for it -- "the heavy pipeline" --
-suggested otherwise. Nothing in it is generative and no skill runs it;
+saying plainly, because a layer this expensive sitting next to the
+generative one invites the opposite assumption. Nothing in it is
+generative and no skill runs it;
 every artefact it writes is a deeper reading of the same corpus, which is
 also why it takes the *same write lock* as `sync`. The drafting layer only
 ever reads what it produced.
@@ -236,16 +235,16 @@ ever reads what it produced.
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
 
-**Two stages left in 4.0.0**, and it is worth knowing why if you have a
-command that names them. `provenance` and `render` were three-line
+**Three stages, and no more than three.** A review report and a draft
+render are deliberately *not* among them, though both would be three-line
 wrappers around `python -m src.review provenance` and `python -m
-src.draft render` -- this page already called them conveniences rather
-than enrichment work. Hosting them here had two costs: it made the
-enrichment layer *import* the review and drafting layers, the one cycle
-in the four-layer picture; and because the lock wraps every stage, it
-made a review aid and a draft render wait on a running `sync`. Call the
-two commands directly instead. They need no venv at all, so the
-replacement is cheaper than what it replaces.
+src.draft render` -- conveniences rather than enrichment work. Hosting
+either here would cost two things: it would make the enrichment layer
+*import* the review and drafting layers, the one cycle the four-layer
+picture otherwise has none of; and because the lock wraps every stage, it
+would make a review aid and a draft render wait on a running `sync`.
+Called directly they need no venv at all, so the direct form is cheaper
+than the wrapper would be.
 
 The default unit of work is the whole corpus. `--for-draft` narrows it to
 the papers one draft cites, which reaches `docling` only: `embed` and
@@ -306,10 +305,11 @@ layer" that excluded the gate would split the concept across two layers.
 The contrast is the point, not a competition.
 
 **It takes no lock.** These are read-only over the corpus and must keep
-working during a `sync`, like `python -m src.corpus ledger` and retrieval. That
-was true of the commands before 4.0.0 and false of one entry point into
-them: `--stages provenance` on the enrichment layer ran a review aid
-holding sync's write lock, which is why that stage is gone.
+working during a `sync`, like `python -m src.corpus ledger` and
+retrieval. That is also why no enrichment stage wraps one: a
+`--stages provenance` would run a review aid while holding sync's write
+lock, making an advisory read-only report wait on a corpus rebuild for
+no reason.
 
 **One output contract**, mirroring the draft's path exactly as
 `content/rendered/` and `content/dossiers/` do, so a draft, its dossier,
@@ -331,8 +331,8 @@ reach -- and **carries no timestamp**, because the reason to write one is
 that it diffs cleanly against the next revision's. `src/review/__init__.py` owns
 all of that. A draft under `content/` but not under `content/drafts/`
 writes flat, matching `render_output._output_dir`; a draft resolving
-outside `content/` is refused, the tier-1 rule 3.17.0 set for the gate
-chain.
+outside `content/` is refused, the same tier-1 rule the gate chain
+follows.
 
 That they are *not* gates is the design, not an omission. The gate answers
 a question with one correct answer -- is this citekey in the ledger? --
@@ -488,17 +488,17 @@ Tier 2 is one package. `src.corpus sync` needs `bibtexparser` because parsing
 BibTeX correctly -- nested braces, LaTeX escapes, multi-line values -- is
 not worth hand-rolling.
 
-**Directory membership is not the same axis, and used to disagree with
-it.** `render_output.py` sat under `src/heavy/` until 3.0.0 while needing
-no package from that group at all -- it is the drafting layer's publish
-step. It now lives in `src/` beside the rest of that layer. The last
-residue of the same confusion went in 5.0.0: `verbatim_check.py` was a
-review-layer command living in `scripts/`, the directory that held the
-enrichment layer's entry point. It ran on bare `python` like the other
-two aids and was in no way heavier; only its path suggested otherwise.
-It is `src/review/verbatim_check.py` now, and `scripts/` holds no layer
-entry point at all -- `enrich.py` moved to `src/enrich/__main__.py` in
-the same release, leaving only genuine dev tooling behind.
+**Directory membership is not the same axis, and has twice disagreed
+with it.** `render_output.py` once sat in the enrichment layer's own
+directory while needing no package from that dependency group at all --
+it is the drafting layer's publish step, and it now lives in `src/`
+beside the rest of that layer. The last residue of the same confusion was
+`verbatim_check.py`, a review-layer command living in `scripts/`, the
+directory that then held the enrichment layer's entry point. It ran on
+bare `python` like the other two aids and was in no way heavier; only its
+path suggested otherwise. It is `src/review/verbatim_check.py` now, and
+`scripts/` holds no layer entry point at all, leaving only genuine dev
+tooling behind. Both moves were corrections of a label, not of a cost.
 
 What the aid needs is `pandoc` and `pdflatex`, which are operating-system
 packages, probed at runtime and reported as `missing-binary` when absent.
@@ -519,48 +519,62 @@ moving into a package: `citation_gate.py`, `dossier.py`, `references.py`,
 `render_output.py` and `retrieval.py` stayed flat in `src/` --
 `src/draft.py` beside them is what dropped their `__main__` blocks and
 gave the layer its one front door -- so `python -m src.dossier` (or any
-of the other four) is the same silent no-op as the nested form above,
-without a directory move that would have rewritten every `from src
-import dossier`-style import across `src/`, `tests/` and `bench/` for no
-benefit: unlike the review aids, these five share little beyond
-`src/config.py`, so there was no cluster to name a package after.
+of the other four) is the same silent no-op as the nested form above.
 
-The corpus layer was the last to get its front door, in 5.2.0, and it
-is flat for the same reason drafting is: `src/corpus.py` beside
-`sync.py` and `ledger.py`, rather than a `src/corpus/` package that
-would have rewritten every `from src import ledger` across `src/`,
-`tests/` and `bench/`. Two things about it are its own.
+**Why those two layers are flat while the other two are packages** is a
+question about code cohesion, and it is independent of the rule above:
+`python -m src.draft <verb>` and `python -m src.corpus <verb>` already
+satisfy it. What makes `src/enrich/` and `src/review/` packages is that
+their submodules form clusters -- `topic_model` imports `embed_index`
+imports `corpus`, and all three review aids share
+`src/review/__init__.py`'s output contract. The five drafting modules
+share little beyond `src/config.py`, so there is no cluster to name a
+package after. The dependencies also run the wrong way for one:
+`src/review/` imports four of the five, and `src/enrich/__main__.py`
+imports `citation_gate`, so an `src/draft/` package would have the review
+and enrichment layers importing the drafting layer by name -- the shape
+of the cycle that keeping `provenance` and `render` out of the stage list
+prevents. `src.retrieval` is additionally a documented *Python API*
+across the skills, which such a move would rename for no gain to a
+command surface that is already one level deep. Issue #147 has that
+argument in full.
+
+The corpus layer is flat for the same reason: `src/corpus.py` beside
+`sync.py` and `ledger.py`, rather than a `src/corpus/` package that would
+have rewritten every `from src import ledger` across `src/`, `tests/` and
+`bench/`. Two things about it are its own.
 
 It **imports the verb it was given and not the other one**. Everywhere
 else the dispatcher can import its whole layer at module scope, because
 every command in that layer sits on the same interpreter tier. Here they
 do not: `sync` needs `bibtexparser` (tier 2) and `ledger` needs only
 `sqlite3` (tier 1). A top-level `from src import sync` would have taken
-`ledger` off the bare-`python` rung silently — silently because it would
+`ledger` off the bare-`python` rung silently -- silently because it would
 still work on any host that has the venv, which is every host CI runs
 on. `tests/test_corpus_entrypoint.py` asserts on `sys.modules` rather
 than on the import lines, for that reason.
 
 And it is a shared **command surface, not a shared lock**. `sync` holds
 the write lock for its whole run; `ledger` takes none, which is what
-keeps it readable *during* a sync — the same property the review layer
+keeps it readable *during* a sync -- the same property the review layer
 and retrieval rely on, described above. The front door itself takes
 nothing.
 
-One thing the change does not settle: `src/ledger.py` is not corpus-layer
-code that only `sync` touches. All four layers import it as a library —
+One thing that does not settle: `src/ledger.py` is not corpus-layer
+code that only `sync` touches. All four layers import it as a library --
 `sync`, `citation_gate`, `references` and `retrieval`, `enrich/corpus`,
-`review/citation_provenance` — so it is closer to shared infrastructure
-than to a command `sync` owns. What moved under `src.corpus` is its
+`review/citation_provenance` -- so it is closer to shared infrastructure
+than to a command `sync` owns. What sits under `src.corpus` is its
 *command*, which is a claim about where a reader should look for it, not
 about who owns the module. Issue #143 has the full argument.
 
-The two-level form was tried once, as `src.heavy.render_output`, and
-reverted with the directory that held it; `docs/CLI.md` still carries the
-migration row. `tests/test_review_entrypoint.py`,
-`tests/test_draft_entrypoint.py` and `tests/test_corpus_entrypoint.py`
-pin the rule now, rather than leaving it to a reader comparing files by
-eye.
+The two-level form was tried once, as `src.heavy.render_output`, and was
+reverted with the directory that held it.
+`tests/test_review_entrypoint.py`, `tests/test_draft_entrypoint.py` and
+`tests/test_corpus_entrypoint.py` pin the rule in the code;
+`tests/test_command_depth_scan.py` pins it across these docs and the
+skills, so a nested invocation cannot reach a reader through prose
+either. None of it is left to someone comparing files by eye.
 
 ## Ladders and tiers
 

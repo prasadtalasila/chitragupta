@@ -23,18 +23,17 @@ corpus and drafting layers (python -m src.corpus sync, python -m src.draft gate)
 not depend on any of this and are unaffected either way.
 
 Every stage here writes a **corpus** artefact, which is why this layer
-takes the same write lock as `python -m src.corpus sync`. Until 4.0.0 it also
-carried two stages that did not: `provenance` (a review-layer report) and
-`render` (the drafting layer's publish step), each a three-line wrapper
-around a command you can run directly. Both are gone -- run
-`python -m src.review provenance <draft>` and
-`python -m src.draft render <draft> --format pdf` instead, which need
-no venv at all, and neither of which should ever have been made to wait
-on a running sync.
+takes the same write lock as `python -m src.corpus sync`. A per-draft
+stage would not, and there deliberately isn't one: a `provenance`
+(review-layer report) or `render` (drafting-layer publish) stage would be
+a three-line wrapper around `python -m src.review provenance <draft>` or
+`python -m src.draft render <draft> --format pdf`, both of which need no
+venv at all and neither of which should be made to wait on a running
+sync.
 
-That removal is also what makes the layer diagram acyclic: the
-enrichment layer now reads corpus artefacts and writes corpus artefacts,
-and does not import the drafting or review layers.
+That is also what keeps the layer diagram acyclic: the enrichment layer
+reads corpus artefacts and writes corpus artefacts, and does not import
+the drafting or review layers.
 
 Usage:
     python -m src.enrich --target host

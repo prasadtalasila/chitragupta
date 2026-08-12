@@ -29,10 +29,9 @@ absent from the ledger. That is a *gate* -- drafting is blocked until it
 passes.
 
 Some tools in the repo are gates. Others are **advisory**: they report
-something for a human to judge, and never block. Since 4.0.0 those three
-are a named layer -- the **review layer**, layer 4 -- rather than a group
-defined by what it is not. The distinction from the gate matters a lot
-below.
+something for a human to judge, and never block. Those three are a named
+layer -- the **review layer**, layer 4 -- rather than a group defined by
+what it is not. The distinction from the gate matters a lot below.
 
 Two other terms used here:
 
@@ -111,7 +110,7 @@ python -m src.review provenance content/drafts/<slug>.md
 
 Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
 renders of the same report beside it when `pandoc`/`pdflatex` are
-available.
+available. It needs no venv.
 
 The report mirrors the draft's own place under `content/drafts/`, the
 same rule `content/rendered/` and `content/dossiers/` follow: a draft at
@@ -122,20 +121,6 @@ same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 keeps the flat directory; a draft resolving outside `content/` is
 refused. `src/review/__init__.py` owns that contract for all three review-layer
 commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer).
-
-Two things about that changed recently and are worth knowing if you have
-a script or a habit built on the old shape. Before 3.19.2 the report was
-always flat, so two drafts named `survey.md` in different topic
-directories wrote one file and the second silently replaced the first.
-Before 4.0.0 the directory was `content/provenance/` and the `.tex`/`.pdf`
-renders landed in `content/rendered/` -- the drafting layer's publish
-output -- rather than beside the report.
-
-It was also a stage of the enrichment layer
-(`--stages provenance --input <draft>`) until 4.0.0. That stage is gone:
-hosting it there had the enrichment layer importing the review layer, and
-made this command wait on `sync`'s write lock for no reason. Run the
-command above, which needs no venv.
 
 For each citing passage in the draft, emit:
 
@@ -185,7 +170,7 @@ heavier.
 
 ### Prerequisite: already cleared
 
-This proposal was blocked until v0.9.0. `verbatim_check.pdf_path()`
+This proposal was blocked on the PDF resolver. `verbatim_check.pdf_path()`
 resolved only **305 of 501** PDFs, for two independent reasons -- it
 took the description segment of the bib `file` field instead of the path,
 and `bib_entry()` truncated entries at the first `\n}`, which also occurs
@@ -328,17 +313,15 @@ corpus layer's parser (`[parser].backend = "docling"`) and the enrichment
 layer's `docling` stage are separate consumers of the same library, and
 what each keeps decides what you can quote.
 
-**This section used to describe a gap, and now describes how it was
-closed.** Previously the corpus layer built the full document model --
-verified on a real 17-page paper, 336 of 336 text items carried a page
-number, a bounding box and a semantic label -- kept only
-`export_to_markdown()`, and discarded the object. Reading order survived
-inside the text; page numbers, labels and boxes did not. The consequence
-ran against intuition: choosing the better parser bought *worse*
-quotations, because Markdown carries no form feeds, so the passage ladder
-found a single "page", declined it, and fell through to a fresh
-`pdftotext` run -- the column-splicing tool the ladder exists to avoid
-quoting from.
+The corpus layer once built the full document model -- verified on a real
+17-page paper, 336 of 336 text items carried a page number, a bounding
+box and a semantic label -- kept only `export_to_markdown()`, and
+discarded the object. Reading order survived inside the text; page
+numbers, labels and boxes did not. The consequence ran against intuition:
+choosing the better parser bought *worse* quotations, because Markdown
+carries no form feeds, so the passage ladder found a single "page",
+declined it, and fell through to a fresh `pdftotext` run -- the
+column-splicing tool the ladder exists to avoid quoting from.
 
 Both halves of that are now kept:
 

@@ -19,10 +19,9 @@ than two scattered commands. docs/ARCHITECTURE.md states the invariant.
 
 That trap is a sharper one here than anywhere else it has been accepted,
 and it was accepted knowingly: `python -m src.sync` is the one command
-string in this project that plausibly exists *outside* this repository,
-in a crontab or a systemd unit no in-repo edit reaches. Such a schedule
-now succeeds while doing nothing, until its owner changes the command.
-docs/CLI.md's "Upgrading from 5.1.0" section is where that is paid for.
+string in this project that plausibly runs unattended, from a crontab or
+a systemd unit rather than from a terminal with someone watching. One
+front door per layer was judged worth it anyway.
 
 Two things are specific to this layer.
 

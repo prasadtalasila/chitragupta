@@ -89,9 +89,9 @@ class MissingBinary(RuntimeError):
     pass
 
 
-# Re-exported: this name shipped here in 3.16.0, and
+# Re-exported: this name shipped here first, and
 # src/review/citation_provenance.py catches it as `render_output.OutsideContentDir`.
-# It moved to src/config.py in 3.17.0, when src/citation_gate.py and
+# It now lives in src/config.py, because src/citation_gate.py and
 # src/references.py started raising it too and needed a home neither of
 # them could import from -- render_output already imports citation_gate
 # (`_PANDOC_CITE_RE` above), so a shared helper in either would close a

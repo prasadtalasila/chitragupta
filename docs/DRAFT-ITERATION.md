@@ -8,8 +8,9 @@ without re-running the pipeline that produced it.
 Related reading:
 
 - [TOKENS.md](TOKENS.md) -- where a run's tokens go, the two-pool
-  framing this document assumes, and how to measure any of it. The
-  arithmetic that used to be in "Where the tokens go" below.
+  framing this document assumes, and how to measure any of it. It holds
+  the arithmetic behind ["Where the tokens go"](#where-the-tokens-go)
+  below.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- the four layers this sits inside.
 - [RETRIEVAL.md](RETRIEVAL.md) -- how the corpus is ranked, and what a
   snippet actually contains.
@@ -65,10 +66,9 @@ it.
 
 ## Where the tokens go
 
-**Moved.** The token accounting that was here now lives in
-[TOKENS.md](TOKENS.md), together with the same argument from
-[REJECTION.md](REJECTION.md) and the two worked examples that were in
-neither. It is one subject and was being told in three places.
+The accounting lives in [TOKENS.md](TOKENS.md), together with the same
+argument from [REJECTION.md](REJECTION.md) and two worked examples --
+one subject, kept in one place.
 
 The part this document depends on, in one paragraph: costs split into
 two pools, **orchestrator-resident** (re-sent on every remaining turn of
@@ -184,18 +184,17 @@ where the plan is replaced by what the finished report actually cites.
 ### Why not merge the provenance JSON into the rest of the dossier
 
 `thesis-chapter-writer` and `deep-research` also write a `provenance.json`
-(and, for the thesis genre, an `evidence.json`). Since 4.0.0 both live
-**inside** the dossier directory --
-`content/dossiers/<draft path minus suffix>/provenance.json` -- rather
-than in a `content/provenance/` of their own, which has been removed. Two
+(and, for the thesis genre, an `evidence.json`). Both live **inside** the
+dossier directory --
+`content/dossiers/<draft path minus suffix>/provenance.json` -- for two
 reasons: they are drafting state, produced by the run that wrote the
 draft, so they belong with the rest of that run's state; and
 `dossier_dir()` mirrors the draft's path, so two drafts named `survey.md`
-in different topics stop sharing one file.
+in different topics do not share one file.
 
 They stay separate *files*, and neither replaces the other, because they
-answer different questions for different readers. That argument was
-always about Markdown-versus-JSON, not about directories:
+answer different questions for different readers. The argument for that
+is about Markdown-versus-JSON, not about directories:
 
 | | `provenance.json` | the dossier's Markdown |
 |---|---|---|

@@ -6,12 +6,15 @@ file pins only the dispatch, and the invariant the dispatch exists to
 serve: **one entry point per layer, one level deep**, the same shape
 `python -m src.corpus sync` gives the corpus layer.
 
-That invariant had no test before 5.0.0, and the review layer was one
-design review away from shipping `python -m src.review.verbatim_check`
-as this repo's first working nested command. The two-level form was
-tried once already, as `src.heavy.render_output`, and reverted in 3.0.0
--- docs/CLI.md still carries the migration row. Nothing noticed either
-time except a reader comparing files by eye.
+That invariant went untested for a long time, and the review layer was
+one design review away from shipping `python -m src.review.verbatim_check`
+as this repo's first working nested command. The two-level form had been
+tried once already, as `src.heavy.render_output`, and was reverted with
+the directory that held it. Nothing noticed either time except a reader
+comparing files by eye.
+
+The docs half is tests/test_command_depth_scan.py, which fails when a
+doc or a skill introduces a `python -m src.a.b` invocation in prose.
 """
 
 import importlib
