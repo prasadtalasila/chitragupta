@@ -165,6 +165,7 @@ nav:
       - Design constraints: docs/DESIGN.md
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
+      - Auto-improvement loop: docs/AUTO-IMPROVEMENT.md
       - Developing: DEVELOPER.md
       - Docker: DOCKER.md
       - Changing this repo: DEVELOPER-AGENTS.md
