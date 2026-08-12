@@ -197,7 +197,7 @@ the skill runs it again before presenting anything.
 
 **The skills never run the corpus layer for you.** They read it; they do
 not write `content/ledger.sqlite`, and they do not run `python -m
-src.sync` -- that command takes the write lock, and a first full-corpus
+src.corpus sync` -- that command takes the write lock, and a first full-corpus
 parse can run for tens of minutes, so starting one is your decision, not a
 side effect of asking for a draft. On an empty ledger the three
 citation-grounded genres (`survey-writer`, `thesis-chapter-writer`,

@@ -87,7 +87,7 @@ enrichment layer is optional and nothing above it needs it.
 - **Layer 2, the drafting layer -- generative** (the `.claude/skills/`): invoked on
   demand, reviewed by the user. **Read-only over the corpus layer**: they
   never write to `content/ledger.sqlite`, and they never run `python -m
-  src.sync` or the enrichment layer on the user's behalf. On an empty
+  src.corpus sync` or the enrichment layer on the user's behalf. On an empty
   ledger a skill says so and stops rather than regenerating anything --
   except the two teaching genres, where citations are optional:
   `textbook-chapter-writer` and `tutorial-writer` instead ask the user
