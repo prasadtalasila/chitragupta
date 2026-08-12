@@ -34,6 +34,7 @@ re-arrangement of evidence the ledger already holds.
 - [What it would cost](#what-it-would-cost)
 - [What this does not change](#what-this-does-not-change)
 - [Open questions](#open-questions)
+- [Naming, and the register the review layer may not use](#naming-and-the-register-the-review-layer-may-not-use)
 
 ## The gap: detection is built, remediation is not
 
@@ -505,20 +506,11 @@ pipeline layer, and neither should acquire one.
 
 - **Does `agenda` strain the aid vocabulary?** `review.AIDS` values are
   both report titles and filename suffixes, so this ships as
-  `survey.agenda.md`. The alternatives were weighed and each is worse:
-  `worklist` and `backlog` presume the items are accepted work, when
-  three of six classes are undecided; `remediation` names only the half
-  the aid does not do; `findings` is what all three existing aids
-  already emit; `docket` reads as a delivery note in the British
-  spelling this repository uses; and `triage` is spoken for --
-  [REJECTION.md](REJECTION.md) records a retrieval stage of that name
-  built and withdrawn. What remains against `agenda` is real, though:
-  the other three keys name an observed property of the draft, while
-  this one names what to do next, and the word literally means "things
-  that must be done" -- which slightly prejudges the surfaced classes
-  the banner and the licence column exist to protect. It is also the
-  first aid that reads other aids, and whether that belongs in the same
-  dict is its own question.
+  `survey.agenda.md`. What remains against it is real: the other three
+  keys name an observed property of the draft, while this one names
+  what to do next. It is also the first aid that reads other aids, and
+  whether that belongs in the same dict is its own question. The
+  alternatives are weighed in the section below.
 - **Should `missing-citekey` be acted on unattended at all?** Removing a
   citation the corpus no longer supports is objective in the sense that
   the gate will fail either way, but *what replaces the sentence* is not.
@@ -533,3 +525,49 @@ pipeline layer, and neither should acquire one.
   skill?** It is "a change to an existing draft", which is that skill's
   charter -- the argument for separation is that its input is a file
   rather than a person.
+
+## Naming, and the register the review layer may not use
+
+Recorded because settling it turned up a constraint that outlives this
+proposal.
+
+The obvious names for a report of everything still wrong with a draft
+come from the audit register: `audit` itself, `reckoning`, `arrears`.
+`audit` is the strongest candidate in the language for this repository
+-- it is the project's own defining verb ([SOUL.md](../SOUL.md): "keeps
+a ledger of every citekey and *audits* citations against it"), it is
+dialect-neutral, and it is unused as an identifier anywhere in the tree.
+
+**It is still wrong, and [NAME.md](NAME.md) is why.** That document maps
+the myth onto the code, and it spends its third and fourth points
+mapping exactly this register onto the **citation gate**: "a draft's
+claims are checked against the ledger at the moment of reckoning, and a
+`FAIL` is final -- a gate, not a suggestion", then "The audit is
+incorruptible, not well-intentioned." Naming a never-blocking aid
+`audit` would file the review layer's softest output under the word this
+project reserves for its hardest check.
+
+So there is a rule here, and it binds any future aid as much as this one:
+
+> **The judgement register belongs to the gate.** Audit, reckoning,
+> verdict, ruling -- an advisory aid may not borrow them, however well
+> they fit the myth. NAME.md's fifth point gives the review layer its
+> own slot instead: "Evidence, quoted" -- the deeds are *read out*, and
+> the reading is not the ruling.
+
+That disposes of a whole family at once, and what survives has to come
+from the deliberation register rather than the judgement one. Against
+`agenda`, the rest were weighed and each is worse: `worklist` and
+`backlog` presume the items are accepted work, when three of six classes
+are undecided; `remediation` names only the half the aid does not do;
+`findings` is what all three existing aids already emit; `digest`
+suggests condensing rather than prioritising; `snags` is exact but
+colloquial, and opaque outside British usage; `docket` reads as a
+delivery note in that same British usage; and `triage` is spoken for --
+[REJECTION.md](REJECTION.md) records a retrieval stage of that name
+built and withdrawn, and reusing it here would collide with a
+documented refusal.
+
+`agenda` wins on register: the ordered list of matters put before a
+decision-maker, none of them decided by the person who drew it up. That
+is the review layer's charter in one word.
