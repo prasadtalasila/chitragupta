@@ -326,7 +326,7 @@ def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
     before = gpu_state()
     started = time.perf_counter()
     proc = subprocess.run(
-        [*prefix, python, "-m", "src.sync"],
+        [*prefix, python, "-m", "src.corpus", "sync"],
         cwd=str(REPO_ROOT), env=env, capture_output=True, text=True,
     )
     wall = time.perf_counter() - started

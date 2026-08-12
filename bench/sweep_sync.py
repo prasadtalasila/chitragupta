@@ -155,7 +155,7 @@ class ResourceSampler:
 
 def one_run(workers: int, gpus: int, ocr: bool, python: str,
             keep_output: bool = False) -> dict:
-    """One full `src.sync` over the whole corpus, from an empty ledger."""
+    """One full `src.corpus sync` over the whole corpus, from an empty ledger."""
     content_dir = Path(tempfile.mkdtemp(prefix="bench-content-"))
     env = {
         **os.environ,
@@ -181,7 +181,7 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
             # long document imposes, and the gaps between are the
             # steady-state rate.
             proc = subprocess.Popen(
-                [python, "-m", "src.sync"], cwd=str(REPO_ROOT), env=env,
+                [python, "-m", "src.corpus", "sync"], cwd=str(REPO_ROOT), env=env,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             completions: list[float] = []
             err_lines: list[str] = []

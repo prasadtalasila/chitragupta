@@ -57,6 +57,11 @@ logger = logging.getLogger("src.sync")
 # stays one readable line.
 _MAX_NAMED_TIMEOUTS = 10
 
+# What running this module directly exits with. `EX_USAGE` from BSD's
+# sysexits -- chosen for what it is *not*: none of the three codes
+# docs/CLI.md publishes as `sync`'s API. See refuse_direct_invocation.
+EXIT_COMMAND_REMOVED = 64
+
 
 def _executor_for(workers: int):
     """Processes for docling, threads for pdftotext.
@@ -662,3 +667,55 @@ def main(argv: "list[str] | None" = None) -> int:
         # schedule"), not a failure worth persisting.
         print(f"  {exc}", file=sys.stderr)
         return runlock.EXIT_ALREADY_RUNNING
+
+
+def refuse_direct_invocation() -> int:
+    """`python -m src.sync` is not a command any more -- say so.
+
+    It was one until 5.2.0, which moved it behind `python -m src.corpus
+    sync` and dropped this module's `__main__` block. Dropping it did not
+    make the old spelling an error: `python -m src.sync` still imported
+    the module and exited 0, having done nothing. Everywhere else in this
+    project that trap is silent and harmless (docs/ARCHITECTURE.md
+    accepts it as the price of one `--help` per layer), and here it was
+    not: this is the one command in this project that plausibly runs
+    unattended, from a crontab or a systemd unit, where "exited 0" is the
+    only thing anyone ever reads.
+
+    #151 measured the cost. `bench/repro_check.py` and
+    `bench/sweep_sync.py` kept invoking the old spelling for a whole
+    release: both timed a sync that never ran, parsed no progress lines
+    out of its empty stdout, and recorded that as a result. A measurement
+    harness that succeeds having done nothing produces *wrong* data, not
+    missing data.
+
+    This is not a second entry point and does not reopen the invariant.
+    It parses no arguments, offers no `--help`, takes no lock and syncs
+    nothing -- there is still exactly one way into this layer.
+
+    **The exit code is 64, and the number is the point.** docs/CLI.md
+    publishes `sync`'s three codes as an API an unattended caller reads:
+    `0` clean, `1` a document failed, `2` another run holds the lock. The
+    obvious choice here -- `2`, argparse's usage error -- is the one
+    number that must not be used, because a scheduler that consults that
+    table reads `2` as "expected, do nothing" and goes on ignoring a
+    crontab line that has not synced anything since 5.2.0. That is the
+    failure this whole change exists to end, reintroduced by its own fix.
+    64 is `EX_USAGE` from BSD's sysexits, and matters here only for what
+    it is not: none of the three, and non-zero, so every wrapper that
+    checks at all sees a failure.
+
+    stderr rather than stdout for a related reason -- `sync`'s stdout is
+    a documented, diffable contract, and a reader parsing it should find
+    it empty rather than find a line that reads like a result.
+    """
+    print(
+        "python -m src.sync was removed in 5.2.0 and does nothing. "
+        "Use: python -m src.corpus sync",
+        file=sys.stderr,
+    )
+    return EXIT_COMMAND_REMOVED
+
+
+if __name__ == "__main__":
+    raise SystemExit(refuse_direct_invocation())

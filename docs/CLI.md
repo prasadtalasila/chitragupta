@@ -918,6 +918,16 @@ unattended.
 | `1` | At least one document failed, or a prior deterministic failure is still unresolved | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
 
+**A schedule written before 5.2.0 now fails instead of lying.** That
+release moved this command behind `python -m src.corpus sync` and left
+the old spelling importing a module and exiting **0** -- so an unedited
+crontab kept reporting success while syncing nothing, for a release. It
+now prints the line above and exits **64**, which is deliberately none of
+the three codes in the table: a caller that reads `2` as "expected, do
+nothing" must not read this as that. If a schedule of yours starts
+failing after upgrading, the message names the replacement; that is the
+whole fix.
+
 ### cron
 
 ```bash

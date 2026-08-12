@@ -134,11 +134,17 @@ STAGE_FUNCS = {
 }
 
 
+# What `--help` prints, deliberately *not* this module's docstring (#152)
+# -- see src/corpus.py's DESCRIPTION for the reasoning, which is the same
+# at every entry point in this project.
+DESCRIPTION = ("The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. "
+               "Each stage probes its own prerequisites and reports honestly.")
+
+
 def parse_args():
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
-    parser = argparse.ArgumentParser(prog="python -m src.enrich", description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(prog="python -m src.enrich", description=DESCRIPTION)
     parser.add_argument("--target", choices=["host", "docker"], default="host",
                          help="Informational only -- stages self-probe regardless of this flag.")
     # default=None, not the joined list, so main() can tell "the user

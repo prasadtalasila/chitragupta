@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from src import bib_reader, config, ledger, pdf_text, sync
+from src import bib_reader, config, ledger, pdf_text, runlock, sync
 from tests.conftest import make_reference
 
 
@@ -563,6 +563,28 @@ class TestCliEntrypoint:
         )
         assert result.returncode == 2
         assert "unrecognized arguments" in result.stderr
+
+
+class TestTheRemovedDirectInvocation:
+    """Running this module directly refuses (#153). What that spelling
+    *does* is pinned end-to-end in tests/test_corpus_entrypoint.py, which
+    runs it.
+    This is the same function called in-process, so the refusal stays
+    covered on a host whose pytest-cov does not instrument subprocesses
+    -- the pin is on the behaviour, not on a coverage side effect."""
+
+    def test_it_names_the_replacement_on_stderr(self, capsys):
+        assert sync.refuse_direct_invocation() == sync.EXIT_COMMAND_REMOVED
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "python -m src.corpus sync" in captured.err
+
+    def test_its_exit_code_is_none_of_the_ones_sync_publishes(self):
+        """docs/CLI.md's exit-code table is an API an unattended caller
+        reads. `2` there means "another run holds the lock -- do
+        nothing", so a refusal wearing it would be ignored by exactly the
+        scheduler this is for."""
+        assert sync.EXIT_COMMAND_REMOVED not in (0, 1, runlock.EXIT_ALREADY_RUNNING)
 
 
 MANY_BIB = "".join(f"""

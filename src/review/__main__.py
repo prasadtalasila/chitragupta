@@ -61,11 +61,16 @@ if set(AIDS) != set(review.AIDS):
     )
 
 
+# What `--help` prints, deliberately *not* this module's docstring (#152)
+# -- see src/corpus.py's DESCRIPTION for the reasoning, which is the same
+# at every entry point in this project.
+DESCRIPTION = "The review layer: three read-only aids over a finished draft. No gate."
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="python -m src.review",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=DESCRIPTION,
     )
     sub = parser.add_subparsers(dest="aid")
     for name, (module, help_text) in AIDS.items():

@@ -521,6 +521,32 @@ moving into a package: `citation_gate.py`, `dossier.py`, `references.py`,
 gave the layer its one front door -- so `python -m src.dossier` (or any
 of the other four) is the same silent no-op as the nested form above.
 
+**One module refuses instead: `src/sync.py`.** Silence is the right price
+everywhere above because nobody schedules those commands -- a no-op is
+seen by the person who typed it, in the second after they typed it.
+Running `src/sync.py` as a module is the exception: it was the corpus
+layer's entry point until 5.2.0, and it is the one spelling here that
+plausibly sits in a crontab or a systemd unit, where "exited 0" is all
+anyone ever reads. It ran that way for a release. Issue #151 found the
+cost in this repository's own `bench/`, where two measurement harnesses
+timed a sync that never happened and recorded the result -- wrong data,
+not missing data. So that module carries a `__main__` block that prints
+`python -m src.corpus sync` and exits **64** -- deliberately none of the
+three codes [CLI.md](CLI.md#running-sync-on-a-schedule) publishes as
+`sync`'s API, since a scheduler reads `2` there as "expected, do
+nothing" -- and #153 removed the old spelling from the documentation.
+It is not a second way in: it parses no
+arguments, offers no `--help`, takes no lock and syncs nothing. There is
+still exactly one `--help` per layer, which is what this invariant is
+about.
+
+`tests/test_removed_command_scan.py` keeps the old spelling out of the
+tree. It matches the *invocation* -- the `-m` flag and the module
+together, in prose and in the quoted argument-list form that got past
+#150's hand sweep -- rather than the module path, which is legitimate
+and common: `src.sync` is also the pinned logger name in every
+`logs/pipeline.log` line.
+
 **Why those two layers are flat while the other two are packages** is a
 question about code cohesion, and it is independent of the rule above:
 `python -m src.draft <verb>` and `python -m src.corpus <verb>` already

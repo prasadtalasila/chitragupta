@@ -287,5 +287,5 @@ def test_a_dotted_python_api_reference_is_not_flagged():
 def test_a_one_level_command_is_not_flagged():
     assert not unguarded(
         "Run `python -m src.draft gate content/drafts/survey.md`, then "
-        "`python -m src.review verbatim scan <draft>` and `python -m src.sync`."
+        "`python -m src.review verbatim scan <draft>` and `python -m src.enrich`."
     )

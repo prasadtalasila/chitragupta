@@ -71,11 +71,16 @@ VERBS = {
 }
 
 
+# What `--help` prints, deliberately *not* this module's docstring (#152)
+# -- see src/corpus.py's DESCRIPTION for the reasoning, which is the same
+# at every entry point in this project.
+DESCRIPTION = "The drafting layer: work on one draft -- gate it, cite it, render it."
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="python -m src.draft",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=DESCRIPTION,
     )
     parser.add_argument(
         "verb", choices=sorted(VERBS), nargs="?",

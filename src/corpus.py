@@ -11,17 +11,20 @@ Two commands over one subject -- the ledger and the parsed text beside it:
 
 **One entry point, one level deep**, like `python -m src.draft <verb>`
 for the drafting layer and `python -m src.review <aid>` for review.
-Neither `sync.py` nor `ledger.py` carries a `__main__` block any more, so
-`python -m src.sync` imports the module and exits 0 without doing
-anything -- the same trap `src/enrich/`'s, `src/review/`'s and the
-drafting layer's modules carry, and the reason this file exists rather
-than two scattered commands. docs/ARCHITECTURE.md states the invariant.
+Neither `sync.py` nor `ledger.py` carries a command of its own any more,
+which is the reason this file exists rather than two scattered ones.
+docs/ARCHITECTURE.md states the invariant.
 
-That trap is a sharper one here than anywhere else it has been accepted,
-and it was accepted knowingly: `python -m src.sync` is the one command
+`ledger.py` carries the usual price of that: no `__main__` block, so
+running it directly imports the module and exits 0 having done nothing --
+the same silent trap `src/enrich/`'s, `src/review/`'s and the drafting
+layer's modules carry. `sync.py` does not, and that is the one place
+this layer departs from the others. Its old spelling is the one command
 string in this project that plausibly runs unattended, from a crontab or
-a systemd unit rather than from a terminal with someone watching. One
-front door per layer was judged worth it anyway.
+a systemd unit rather than from a terminal with someone watching, so it
+refuses out loud instead of exiting 0 (#153) -- see
+`sync.refuse_direct_invocation`. That refusal is not a second entry
+point: it parses nothing, offers no `--help`, and runs nothing.
 
 Two things are specific to this layer.
 
@@ -71,12 +74,20 @@ VERBS = {
     "ledger": ("src.ledger", "read-only view of what that run recorded -- takes no lock"),
 }
 
+# What `--help` prints, deliberately *not* this module's docstring (#152).
+# The docstring is design commentary aimed at whoever opens the file: why
+# the verbs import lazily, why the two differ on the write lock, what the
+# invariant is. None of that answers "how do I run this", and printing it
+# buries the two lines that do under forty that don't. Every entry point
+# in this project draws the line the same way -- the file keeps its prose,
+# `--help` gets one sentence.
+DESCRIPTION = "The corpus layer: bring the ledger up to date, or read what it recorded."
+
 
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="python -m src.corpus",
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=DESCRIPTION,
     )
     parser.add_argument(
         "verb", choices=sorted(VERBS), nargs="?",
