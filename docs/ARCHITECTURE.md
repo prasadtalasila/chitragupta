@@ -472,7 +472,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `ledger`, `src.review` (all three aids) |
+| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids) |
 | 2 | venv + `bibtexparser` | `src.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m src.enrich` |
 

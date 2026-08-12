@@ -19,7 +19,7 @@ bug in this script.
 
 Needs the venv populated by `poetry install --with enrich` (see
 pyproject.toml, and .venv-full/ on the host this was developed on). The
-corpus and drafting layers (python -m src.corpus sync, src/citation_gate.py) do
+corpus and drafting layers (python -m src.corpus sync, python -m src.draft gate) do
 not depend on any of this and are unaffected either way.
 
 Every stage here writes a **corpus** artefact, which is why this layer
