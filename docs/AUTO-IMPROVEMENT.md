@@ -27,6 +27,7 @@ re-arrangement of evidence the ledger already holds.
 - [Where the loop sits, and the cycle that decides it](#where-the-loop-sits-and-the-cycle-that-decides-it)
 - [Proposed design](#proposed-design)
 - [Respecting the invariants](#respecting-the-invariants)
+- [What this borrows from karpathy/autoresearch](#what-this-borrows-from-karpathyautoresearch)
 - [The amendment this needs](#the-amendment-this-needs)
 - [Ordering, on #126's own rule](#ordering-on-126s-own-rule)
 - [The software half](#the-software-half)
@@ -168,13 +169,26 @@ uncited source is both a coverage finding and, if quoted, a verbatim
 one); the agenda merges them into one item, which is the cross-signal
 work no individual aid can do.
 
+**Every finding needs a stable identity.** The merge above, the
+"is this finding gone?" re-check in step 3, and the diffability the
+no-timestamp rule buys are all impossible without a key that survives a
+re-run: `(aid, class, section anchor, citekey, a hash of the matched
+span)` or similar. The aid is billed as deterministic and testable to
+this repository's 100% bar, so the key belongs in the JSON schema rather
+than in a consumer's head.
+
+**The order is a rule, not a preference**, for the same reason: class
+order as the table below lists it, then #128's severity bucket within a
+class, then position in the draft. Written down, it is testable; left
+implicit, two runs can disagree.
+
 **Item classes**, each with a different licence to act:
 
 | Class | Source | Kind | May be attempted unattended? |
 |---|---|---|---|
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
-| `verbatim-run` | verbatim scan | defect above a span threshold | yes, per #129's constrained rewrite |
-| `prose` | style check (#107), user request | no evidence delta | yes |
+| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves |
+| `prose` | style check (#107), `steering.md` | no evidence delta | only what #107 can mechanically re-check |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
@@ -185,41 +199,86 @@ is the whole safety argument: **the loop only ever acts unattended on the
 classes where the correct outcome is not a matter of opinion**, and the
 rest it ranks and hands over.
 
-The `prose` class is in the table because "improve the draft" is broader
-than "fix the citations", and an agenda that could not carry a badly
-written sentence would be structurally unable to do half the job. It has
-no consumer until #103's copy-edit branch and #107's `style_check.py`
-land; until then it is an empty list, which is honest rather than absent.
+Two of the "yes" cells are narrower than they look, and the safety
+argument is why:
 
-### 3. A `draft-improver` skill -- the generative half
+- **`verbatim-run` inherits #129's carve-out.** That issue reserves the
+  paraphrase-or-quote choice for the human on long runs, "not decided
+  silently". A blanket yes here would misquote the issue this step is
+  widening. Short runs are rewritten; long ones are surfaced with both
+  options.
+- **`prose` splits.** "A sentence that is badly written" is the
+  definition of a matter of opinion, so free-form prose quality is
+  surfaced like any other judgement. What the loop may fix unattended is
+  the mechanically re-checkable subset #107's `style_check.py` would
+  produce -- a dialect convention, a banned construction, a house-style
+  rule -- where "did the fix work?" has one answer. The class is in the
+  table at all because "improve the draft" is broader than "fix the
+  citations", and an agenda structurally unable to carry a sentence
+  would be doing half the job. It has no producer until #103 and #107
+  land; until then it is an empty list, which is honest rather than
+  absent.
+
+### 3. An `agenda-reviser` skill -- the generative half
 
 A skill, not a `src/` module: it is generative, it needs a model, and
-this repository intentionally ships no API key. It consumes
-`<stem>.agenda.json` and, per item:
+this repository intentionally ships no API key.
+
+**Named for its input, like the two revisers it joins.** `draft-reviser`
+revises from the dossier and `corpus-reviser` from a whole-corpus
+re-search; this one revises from the agenda, so the family's prefix
+keeps naming the evidence a revision works from. Not `draft-improver`:
+"improver" presumes the outcome, which is the verdict shape this layer
+refuses. Not `auto-reviser` either -- see [The
+amendment](#the-amendment-this-needs), which argues the axis that
+matters is advisory-versus-blocking, not manual-versus-automatic. A name
+built on `auto-` would re-enshrine in the vocabulary the very
+distinction the amendment dissolves, and would overclaim autonomy in a
+design where a human still accepts every diff.
+
+It consumes `<stem>.agenda.json` and, per item:
 
 - dispatches the existing `draft-reviser` discipline -- read `scope.md`
   and `steering.md` first, edit inside the named section with `Edit`,
   never a whole-file `Write`;
 - re-runs `python -m src.draft gate` **and** the aid that produced the
   finding, and accepts the edit only if both come back clean;
-- writes one `revisions.md` entry naming the item, what changed, and
-  which check confirmed it -- so edit provenance is as auditable as
-  citation provenance (#129's phrasing).
+- logs the attempt in `revisions.md` -- **including the ones that
+  failed**, naming the item, what was tried, and which check refused it.
+  A log of only the accepted edits hides where the loop is weak, which is
+  the half worth reading.
 
 **Termination is a rule, not a hope.** Each item is attempted at most
 twice; a second failure escalates it to the human as a surfaced item and
-the loop moves on. The loop never adds a claim -- it edits, removes, or
-re-grounds existing ones -- so it cannot grow the draft indefinitely. And
-it stops at the end of one agenda pass; a second pass is a second
-invocation, by a human.
+the loop moves on. The loop never adds a claim, and on the unattended
+classes it only removes or rewords existing ones, so it cannot grow the
+draft indefinitely. And it stops at the end of one agenda pass; a second
+pass is a second invocation, by a human.
 
 ### 4. Acceptance and rollback
 
-The loop runs against a `python -m src.draft dossier backup` taken first,
-so the existing backup/restore path is the rollback story and no new
-mechanism is needed. What the human is presented with at the end is a
-diff plus the `revisions.md` entries, not a fait accompli -- **the loop
-proposes and repairs; the human accepts.**
+**Two levels, because they undo different things.** Before the pass, one
+`python -m src.draft dossier export <slug>` -- the existing bundle path,
+and the only one available, since `content/drafts/` and
+`content/dossiers/` are both gitignored, so a user's own drafts are not
+in git and a branch-per-run has nothing to branch. Within the pass, the
+skill holds each section's pre-edit text and re-applies it when an item
+fails, because the export is a whole-tree snapshot: restoring it after
+item four fails would also throw away the three repairs that worked.
+Saying "no new mechanism is needed" would be overclaiming -- per-item
+revert is new, and it is what makes the bundle a belt rather than the
+only brace.
+
+**Nothing the loop learns is written where it becomes permanent.** A
+failed attempt goes in `revisions.md`, never into `rejected.md`:
+[REJECTION.md](REJECTION.md) is explicit that writing an unpursued
+candidate there manufactures a judgement that later runs then trust
+forever. A source the human turned down and an edit the machine could
+not land are different ledgers.
+
+What the human is presented with at the end is a diff plus the
+`revisions.md` entries, not a fait accompli -- **the loop proposes and
+repairs; the human accepts.**
 
 ## Respecting the invariants
 
@@ -237,6 +296,61 @@ proposes and repairs; the human accepts.**
 - **No machine outranks a human on a judgement call.** Three of the six
   item classes are surfaced rather than acted on, and `rejected.md` --
   the human's recorded "no" -- is consulted before anything is proposed.
+- **The checks are ground truth, and the loop may not touch them.** The
+  skill may edit the draft and append to `revisions.md`. It may not edit
+  an aid, the gate, #128's boilerplate allowlist, `rejected.md`,
+  `scope.md`, or anything under the corpus layer. This is the one rule
+  the design would otherwise be missing, and the failure mode is
+  concrete rather than theoretical: a rewrite that keeps failing the
+  re-scan can always be "fixed" by adding its phrase to the allowlist,
+  and a loop that can suppress its own findings is not improving a draft
+  but gaming a metric. Borrowed directly from
+  [autoresearch](#what-this-borrows-from-karpathyautoresearch), whose
+  agent may edit exactly one file and is told the evaluation harness is
+  read-only.
+- **A repair may not make the draft worse somewhere else.** A per-finding
+  re-check only proves the finding it was aimed at is gone. After each
+  accepted edit the loop re-runs *every* aid and requires the total count
+  of objective-class findings to be non-increasing; if it rose, the edit
+  is reverted and the item escalated. That is the nearest thing this
+  design has to a scalar that must go down, and the reason it is needed
+  is in the section below.
+
+## What this borrows from karpathy/autoresearch
+
+[karpathy/autoresearch](https://github.com/karpathy/autoresearch) (MIT,
+per its README) is the nearest published thing to what this proposes: an
+agent edits one file, trains for a fixed five minutes, keeps the change
+if validation bits-per-byte improved and `git reset`s if it did not, and
+loops overnight. It is worth reading before building this, and worth
+being precise about, because roughly half of what makes it work does not
+transfer.
+
+| Its design choice | Transfers? |
+|---|---|
+| **The evaluation harness is read-only ground truth** -- the agent edits `train.py` and may not touch `prepare.py` or `evaluate_bpb` | **Yes, and it is the rule this proposal most needed.** See the invariant above |
+| **Keep / discard / crash, one row per attempt** in `results.tsv` | **Yes, as discipline.** The failure rows outnumber the keeps and are where the learning is, which is why `revisions.md` logs refused attempts too. Not as a file: `revisions.md` already exists |
+| **Simplicity as the tie-breaker** -- "removing something and getting equal or better results is a great outcome" | **Yes.** Where a deletion and a rewrite both pass re-check, prefer the smaller diff, and prefer cutting a redundant claim to rewording it. That is [SOUL.md](../SOUL.md)'s substantive-editor posture already |
+| **Baseline first** -- the first run establishes the number everything else is measured against | **Yes.** The agenda taken before the pass is that baseline |
+| **One scalar metric that must go down (`val_bpb`)** | **Partly, and the gap is real.** The asymmetry is not boolean-versus-scalar, it is local-versus-global: `val_bpb` catches a regression *anywhere*, while a per-finding re-check cannot see that fixing one verbatim run introduced another. Hence the non-increasing objective-finding-count rule above -- a coarse scalar, but a global one |
+| **A fixed per-iteration budget** (five minutes, so runs are comparable) | **No, and it is not needed.** Its experiments are competing alternatives on one leaderboard, so they must be comparable. Agenda items are independent repairs that do not compete |
+| **A dedicated git branch, advanced or reset per experiment** | **No -- structurally unavailable.** `content/drafts/` and `content/dossiers/` are gitignored, so a user's drafts are not in git. What must transfer is its *granularity*: one experiment reverts alone, which is why step 4 adds per-item revert rather than relying on the whole-tree bundle |
+| **"NEVER STOP ... do NOT pause to ask the human"** | **No, and the opposite is correct here.** Four reasons, below |
+
+**On never stopping.** It is the most quotable thing in `program.md` and
+the least transferable. A discarded training run costs five GPU-minutes
+and the metric catches it; a wrong scholarly claim is silent and ships.
+Unattended looping is only safe under a metric that catches compounding
+damage, and this design's is coarse. Three of six item classes need a
+human whatever the loop does, so an indefinite loop either starves or
+creeps into judgement. And its per-iteration cost is fixed where this
+one's token cost is not. The bounded design is argued, not timid.
+
+Where this proposal may genuinely be too cautious is narrower: "one pass
+per invocation". A bounded-convergence variant -- keep passing while the
+objective-class count strictly falls, to a hard maximum -- still
+terminates deterministically and is closer to advance-while-improving.
+It is declined here for legibility, not safety, and could be revisited.
 
 ## The amendment this needs
 
@@ -245,15 +359,16 @@ review aid, and the loop's driver invokes them. This sweep surfaces the
 candidates:
 
 ```bash
-grep -rniE "never automatic|never invoked|reads it back|runs automatically" \
+grep -rniE "never automatic|never invoked|invokes them automatically|reads it back|runs automatically" \
   --include='*.md' --include='*.mmd' --include='*.py' .
 ```
 
-It is a starting point rather than the answer -- it also hits phrases
-that have nothing to do with the review layer (`AGENTS.md`'s "reads it
-back out of the ledger", a `tests/test_sync.py` docstring's "never
-invoked"), and it hits this document. **Twelve** of its matches are real
-statements of the rule:
+It is a starting point rather than the answer. It hits phrases with
+nothing to do with the review layer -- `AGENTS.md`'s "reads it back out
+of the ledger", `docs/CLI.md`'s "nothing reads it back" about drafting
+state, a `tests/test_sync.py` docstring's "never invoked" -- and it hits
+this document. **Twelve** of its matches are real statements of the
+rule:
 
 | Site | Wording |
 |---|---|
@@ -270,11 +385,15 @@ statements of the rule:
 | [CLI.md](CLI.md), the first-run walkthrough | "none of these runs automatically" |
 | [CLI.md](CLI.md), §coverage | "unlike the gate it never runs automatically" |
 
-**No diagram needs regenerating.** The `.mmd` sources say only "never a
-gate" and "you run these" -- both still true -- so the committed SVGs
-under `docs/diagrams/svg/` are unaffected. The one mermaid label that
-does carry "never automatic" is inline in ARCHITECTURE.md, so it is a
-text edit like the rest.
+**Two diagrams are borderline, and the honest answer is that they are in
+scope.** No `.mmd` source states the rule outright -- the one label that
+says "never automatic" is inline in ARCHITECTURE.md, so it is a text
+edit like the rest. But `00-main-workflow.mmd`'s "REVIEW AIDS -- you run
+these" and `g1-corpus-led.mmd`'s "afterwards, **by you**" are
+manual-invocation claims on exactly the axis the amendment abolishes.
+They are the cheapest possible fix ("run these afterwards"), and each
+costs a re-render of its committed SVG under `docs/diagrams/svg/`. The
+"never a gate" text in both stays true and untouched.
 
 The surviving invariant is the one that was always doing the work, and it
 is narrower than the current wording: **a review finding may be read, may
@@ -311,7 +430,7 @@ too narrow. Interleaved:
    repo's 100% bar, and useful on its own the day it lands -- a human
    with a ranked worklist is better off than a human with three reports,
    whether or not step 5 is ever built.
-5. **#129, widened** -- the `draft-improver` skill, over all defect
+5. **#129, widened** -- the `agenda-reviser` skill, over all defect
    classes rather than verbatim runs alone.
 6. **#103 and #107** -- the copy-edit branch and `style_check.py`, which
    give the `prose` class a producer and a consumer.
@@ -386,9 +505,20 @@ pipeline layer, and neither should acquire one.
 
 - **Does `agenda` strain the aid vocabulary?** `review.AIDS` values are
   both report titles and filename suffixes, so this ships as
-  `survey.agenda.md`. It reads as a report and it is evidence for a human
-  judgement -- but it is the first aid that reads other aids, and whether
-  that belongs in the same dict is a real question.
+  `survey.agenda.md`. The alternatives were weighed and each is worse:
+  `worklist` and `backlog` presume the items are accepted work, when
+  three of six classes are undecided; `remediation` names only the half
+  the aid does not do; `findings` is what all three existing aids
+  already emit; `docket` reads as a delivery note in the British
+  spelling this repository uses; and `triage` is spoken for --
+  [REJECTION.md](REJECTION.md) records a retrieval stage of that name
+  built and withdrawn. What remains against `agenda` is real, though:
+  the other three keys name an observed property of the draft, while
+  this one names what to do next, and the word literally means "things
+  that must be done" -- which slightly prejudges the surfaced classes
+  the banner and the licence column exist to protect. It is also the
+  first aid that reads other aids, and whether that belongs in the same
+  dict is its own question.
 - **Should `missing-citekey` be acted on unattended at all?** Removing a
   citation the corpus no longer supports is objective in the sense that
   the gate will fail either way, but *what replaces the sentence* is not.
