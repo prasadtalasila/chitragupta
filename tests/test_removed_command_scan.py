@@ -29,6 +29,8 @@ the same place for nested commands.
 import re
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # `-m src.sync` and `"-m", "src.sync"` are one pattern, not two: between
@@ -78,7 +80,13 @@ def _scanned_files():
             found.update((REPO_ROOT / root).glob(f"**/{pattern}"))
     for pattern in patterns:
         found.update(REPO_ROOT.glob(pattern))
+    # Two files anyone runs commands out of that no suffix glob reaches:
+    # `config.toml.example` is what you copy to `config.toml` and is read
+    # as documentation, and `docker/Dockerfile` has no extension at all.
+    # #151 names Docker among the places #150 rewrote command strings, so
+    # leaving it out would exempt one of the sites this exists for.
     found.add(REPO_ROOT / "config.toml.example")
+    found.add(REPO_ROOT / "docker" / "Dockerfile")
     results = REPO_ROOT / "bench" / "results"
     return sorted(
         path for path in found
@@ -116,15 +124,24 @@ class TestNothingInvokesTheRemovedCommand:
             + "\n".join(f"  {path}: {text!r}" for path, text in offenders)
         )
 
-    def test_the_bench_harnesses_are_in_scope(self):
-        """The two files #151 found, named rather than assumed.
-
-        A scan whose roots quietly stopped including `bench/` would keep
-        passing while checking nothing there -- the exact shape of the
-        bug it exists to catch."""
+    @pytest.mark.parametrize("path", [
+        # The two files #151 found.
+        "bench/repro_check.py",
+        "bench/sweep_sync.py",
+        # Extensionless, so no suffix glob reaches it, and named by #151
+        # among the places #150 rewrote command strings.
+        "docker/Dockerfile",
+        # The file a user copies to config.toml, and reads as docs.
+        "config.toml.example",
+        # The install path, whose header comment lists commands.
+        "scripts/install_full_pipeline.sh",
+    ])
+    def test_the_files_that_matter_are_in_scope(self, path):
+        """Named rather than assumed. A scan whose roots quietly stopped
+        covering one of these would keep passing while checking nothing
+        there -- the exact shape of the bug it exists to catch."""
         scanned = {p.relative_to(REPO_ROOT).as_posix() for p in _scanned_files()}
-        assert "bench/repro_check.py" in scanned
-        assert "bench/sweep_sync.py" in scanned
+        assert path in scanned
 
 
 class TestThePatternCatchesBothSpellings:
