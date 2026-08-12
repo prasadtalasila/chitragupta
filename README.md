@@ -297,7 +297,9 @@ split by who is asking.
 | [docs/DESIGN.md](docs/DESIGN.md) | Why does this refuse what it refuses? The hard constraints, the conflict policy when two runs collide, and the failure analysis behind both |
 | [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse actually work, what is each component for, and what is planned next? |
 | [docs/GROBID-CITATION-GRAPH.md](docs/GROBID-CITATION-GRAPH.md) | **A proposal, not a plan.** What would it take to build a corpus-internal citation graph, and is it worth a JDK and a long-running service? |
-| [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **A proposal, not a plan.** Every quality signal here ends in prose a human must act on. What would it take to let the pipeline assemble the worklist and attempt the mechanical repairs itself, and which documented rule does that break? |
+| [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **Unbuilt.** If the pipeline assembled its own worklist and attempted the mechanical repairs, what exactly would be built, and what would it have to satisfy? Normative, and carries no argument |
+| [docs/AUTO-IMPROVEMENT-RATIONALE.md](docs/AUTO-IMPROVEMENT-RATIONALE.md) | Why that loop, and where its line falls: why every quality signal here currently ends in prose a human must act on, what a machine may never repair, and the one documented rule this cannot satisfy without the user's approval |
+| [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
 | [DEVELOPER.md](DEVELOPER.md) | How do I run the tests, where does everything live, and what is unbuilt? |
 | [DOCKER.md](DOCKER.md) | How do I run this in a container? |
 | [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, commit/PR/release conventions |
