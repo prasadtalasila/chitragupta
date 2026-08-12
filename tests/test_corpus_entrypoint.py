@@ -44,6 +44,14 @@ BACKING_MODULES = {
     "ledger": "ledger",
 }
 
+# The backing modules that keep the silent-no-op trap docs/ARCHITECTURE.md
+# accepts: no `__main__` block, so running one directly imports it and
+# exits 0. `sync` is deliberately not among them -- `python -m src.sync`
+# was a real command until 5.2.0 and is the one spelling in this project
+# that plausibly sits in a crontab, so it refuses out loud instead (#153).
+# See TestTheRemovedSyncCommandRefuses.
+SILENT_NO_OP_MODULES = ["ledger"]
+
 # A real top-level entry-point block, anchored at column 0 -- not the
 # string wherever it appears. Same reasoning as test_draft_entrypoint.py:
 # a substring check can be fooled by a comment discussing
@@ -88,23 +96,65 @@ class TestTheVerbsAreTheCorpusLayersTwoCommands:
 class TestTheCommandSurfaceStaysOneLevelDeep:
     """The invariant this file exists for. See docs/ARCHITECTURE.md."""
 
-    @pytest.mark.parametrize("module", sorted(BACKING_MODULES.values()))
+    @pytest.mark.parametrize("module", sorted(SILENT_NO_OP_MODULES))
     def test_a_backing_module_has_no_main_block(self, module):
-        """`python -m src.sync` must not survive as a second, undocumented
-        way in. Without a __main__ block it imports the module and exits 0
-        having done nothing -- which is a trap, and for `sync` a louder one
-        than usual because that spelling is in users' crontabs. docs/CLI.md's
-        migration section is where that is paid for; the invariant is
-        that there is exactly one --help per layer."""
+        """A backing module must not survive as a second, undocumented way
+        in. Without a __main__ block it imports the module and exits 0
+        having done nothing -- a trap, but the silent and harmless one
+        docs/ARCHITECTURE.md accepts as the price of exactly one --help
+        per layer."""
         source = (REPO_ROOT / "src" / f"{module}.py").read_text(encoding="utf-8")
         assert not _MAIN_BLOCK.search(source)
 
-    @pytest.mark.parametrize("module", sorted(BACKING_MODULES.values()))
+    @pytest.mark.parametrize("module", sorted(SILENT_NO_OP_MODULES))
     def test_running_a_backing_module_directly_does_nothing(self, module):
         """The observable half of the assertion above."""
         result = _run("-m", f"src.{module}")
         assert result.returncode == 0
         assert result.stdout == ""
+
+
+class TestTheRemovedSyncCommandRefuses:
+    """`python -m src.sync` is gone, and says so.
+
+    5.2.0 dropped `src/sync.py`'s `__main__` block without replacing it,
+    which left the spelling exiting 0 while doing nothing -- the one
+    place in this project where that trap is not harmless, because that
+    command is what a crontab or a systemd unit runs unattended. #151
+    found the same silent success in `bench/`, where it turned two
+    measurement harnesses into producers of wrong data rather than no
+    data. So the module refuses instead (#153).
+
+    This is not a second entry point: it parses no arguments, has no
+    `--help`, takes no lock, and runs nothing. It is a signpost with an
+    exit code."""
+
+    def test_it_exits_nonzero_and_names_the_replacement(self):
+        result = _run("-m", "src.sync")
+        assert result.returncode != 0
+        assert "python -m src.corpus sync" in result.stderr
+
+    def test_it_avoids_every_exit_code_sync_publishes(self):
+        """docs/CLI.md publishes `0`, `1` and `2` as `sync`'s API, and
+        tells an unattended caller that `2` -- the lock is held -- means
+        do nothing. A refusal wearing that number would be ignored by the
+        very crontab this change exists to reach."""
+        result = _run("-m", "src.sync")
+        assert result.returncode not in (0, 1, runlock.EXIT_ALREADY_RUNNING)
+
+    def test_it_says_nothing_on_stdout(self):
+        """A refusal belongs on stderr. `sync`'s stdout is a documented,
+        diffable contract, and anything parsing it must see an empty one
+        rather than a line that reads like a result."""
+        result = _run("-m", "src.sync")
+        assert result.stdout == ""
+
+    def test_the_real_command_is_unaffected(self):
+        """The refusal lives in the `__main__` block, so dispatching
+        through src/corpus.py must not trip it."""
+        result = _run("-m", "src.corpus", "sync", "--help")
+        assert result.returncode == 0
+        assert "python -m src.corpus sync" in result.stdout
 
 
 class TestLedgerKeepsItsBarePythonTier:

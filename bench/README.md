@@ -126,7 +126,7 @@ being tested.
 | `bench_docling.py` | Times Docling per PDF; switches device (`cuda`/`cpu`) and converter reuse (`fresh`/`reused`) |
 | `estimate.py` | Extrapolates a sample's timings to the full corpus, two ways |
 | `run_parallel.py` | Runs N worker processes over G GPUs, reports aggregate throughput |
-| `sweep_sync.py` | Sweeps the **real** `src.sync` over worker/GPU/OCR settings -- the pool-level numbers |
+| `sweep_sync.py` | Sweeps the **real** `src.corpus sync` over worker/GPU/OCR settings -- the pool-level numbers |
 | `repro_check.py` | Asks whether two runs *agree*, not what they cost: parses one subset under two GPU counts and compares text, passage spans and passage texts |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 

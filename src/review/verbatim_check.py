@@ -574,9 +574,10 @@ def build_parser(parser=None):
     once, here, and the entry point never restates them.
     """
     if parser is None:
+        # A one-line description rather than this module's docstring, for
+        # the reason src/corpus.py's DESCRIPTION gives (#152).
         parser = argparse.ArgumentParser(
-            description=__doc__,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description="Report how much wording a draft shares with the sources it cites.",
         )
     sub = parser.add_subparsers(dest="mode")
 

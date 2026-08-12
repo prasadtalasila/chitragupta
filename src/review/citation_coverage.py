@@ -192,7 +192,11 @@ def build_parser(parser=None):
     restates them.
     """
     if parser is None:
-        parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+        # A one-line description rather than this module's docstring, for
+        # the reason src/corpus.py's DESCRIPTION gives (#152).
+        parser = argparse.ArgumentParser(
+            description="Report whether a draft cites the sources retrieval surfaces for a query.",
+        )
     parser.add_argument("draft", help="Path to the draft to check")
     parser.add_argument("--query", action="append", required=True, dest="queries",
                          help="A retrieval query to check coverage for (repeatable)")

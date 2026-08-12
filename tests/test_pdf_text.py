@@ -10,7 +10,9 @@ doesn't need the real package installed.
 import enum
 import importlib.machinery
 import importlib.util
+import io
 import json
+import logging
 import multiprocessing
 import pickle
 import shutil
@@ -1995,3 +1997,253 @@ class TestDoclingErrorMessage:
         message = str(excinfo.value)
         assert "reason 0" in message and "reason 2" in message
         assert "(+7 more)" in message
+
+
+class TestBackendChatterCarriesTheCitekey:
+    """#154: whose document is this OCR complaining about?
+
+    RapidOCR -- Docling's OCR engine when `[parser].ocr` is on -- reports
+    a page it could not read twice over, on two different channels: a
+    bare `print` ("RapidOCR returned empty result!") and a `logging`
+    warning ("The text detection result is empty"). Neither names a
+    document. In a real run they interleave with `sync`'s own
+    `[n/N] <citekey>` progress lines, and the reader's obvious inference
+    -- that a complaint belongs to the citekey printed above it -- is
+    wrong: `sync` opens that line *before* the slow call, and with
+    `[parser].workers > 1` several documents are in flight at once.
+
+    So the annotation is applied where the citekey is actually known, in
+    `extract_text`, around the backend call and nowhere wider. Both
+    channels, because the paste in #154 has both.
+    """
+
+    @pytest.fixture
+    def _fake_backend(self, isolated_config, monkeypatch, tmp_path):
+        """Installs `chatter` as the backend and returns a runner that
+        parses one document through it."""
+        monkeypatch.setattr(pdf_text, "is_available", lambda: True)
+        monkeypatch.setattr(config, "PARSER", "docling")
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+
+        def run(chatter, citekey="lin_utwin_2023"):
+            def extractor(pdf_path, out_path, threads):
+                chatter()
+                out_path.write_text("text", encoding="utf-8")
+                return None
+
+            monkeypatch.setitem(pdf_text._EXTRACTORS, "docling", extractor)
+            return pdf_text.extract_text(str(pdf), citekey)
+
+        return run
+
+    def test_a_bare_print_from_the_backend_is_prefixed(self, _fake_backend, capsys):
+        _fake_backend(lambda: print("RapidOCR returned empty result!"))
+        assert capsys.readouterr().out == "[lin_utwin_2023] RapidOCR returned empty result!\n"
+
+    def test_stderr_is_prefixed_too(self, _fake_backend, capsys):
+        """Docling's own chatter goes to stderr, and `sync` reads the two
+        streams separately -- annotating only one would leave half the
+        run unattributed."""
+        _fake_backend(lambda: print("empty page", file=sys.stderr))
+        assert capsys.readouterr().err == "[lin_utwin_2023] empty page\n"
+
+    def test_every_line_of_a_multi_line_write_is_prefixed(self, _fake_backend, capsys):
+        _fake_backend(lambda: print("first\nsecond"))
+        out = capsys.readouterr().out
+        assert out == "[lin_utwin_2023] first\n[lin_utwin_2023] second\n"
+
+    def test_a_line_built_across_several_writes_is_prefixed_once(self, _fake_backend, capsys):
+        """`print(..., end="")` is how a progress bar is drawn, and how
+        this project's own partial lines are built. Prefixing each write
+        would stripe the citekey through the middle of one line."""
+        def chatter():
+            print("loading ", end="")
+            print("models", end="")
+            print(" done")
+        _fake_backend(chatter)
+        assert capsys.readouterr().out == "[lin_utwin_2023] loading models done\n"
+
+    @pytest.fixture
+    def _foreign_logger(self, monkeypatch, request):
+        """A logger of its own with `sys.stderr` swapped for a buffer.
+
+        A real `logging.StreamHandler` on a real stream, because the
+        whole claim under test is about the stream a handler resolves --
+        `caplog` intercepts records before any of that and would pass
+        against an implementation that annotated nothing.
+
+        Its own name, `propagate` off, and handlers dropped afterwards:
+        a handler left on a shared logger outlives the test, and its next
+        write lands on a stream pytest has since closed. That is not
+        hypothetical -- it is how the first draft of these tests failed,
+        in a *different* test.
+        """
+        buffer = io.StringIO()
+        logger = logging.getLogger(f"FakeOCR.{request.node.name}")
+        logger.propagate = False
+        logger.setLevel(logging.WARNING)
+
+        def redirect():
+            """Called from the test *body*, not from this fixture.
+
+            pytest reassigns `sys.stderr` when the call phase begins, so
+            a swap made during fixture setup is silently undone before
+            the test runs -- and the test then passes or fails on
+            pytest's stream rather than on this buffer."""
+            monkeypatch.setattr(sys, "stderr", buffer)
+            return buffer
+
+        try:
+            yield logger, redirect
+        finally:
+            for handler in list(logger.handlers):
+                logger.removeHandler(handler)
+
+    def test_a_log_handler_built_during_the_parse_is_annotated(
+        self, _fake_backend, _foreign_logger
+    ):
+        """The second channel, and the reason one mechanism covers both:
+        a StreamHandler resolves `sys.stderr` when it is built, and every
+        OCR engine here is imported lazily *inside* the first parse -- so
+        what it captures is the annotating stream."""
+        logger, redirect = _foreign_logger
+        buffer = redirect()
+
+        def chatter():
+            logger.addHandler(logging.StreamHandler(sys.stderr))
+            logger.warning("The text detection result is empty")
+
+        _fake_backend(chatter)
+        assert buffer.getvalue() == "[lin_utwin_2023] The text detection result is empty\n"
+
+    def test_the_citekey_is_never_printed_twice_on_one_line(
+        self, _fake_backend, _foreign_logger
+    ):
+        """The bug a first attempt at this shipped: annotating the
+        `logging` record *and* the stream it is written to prefixes every
+        logged line twice, because the handler's output passes through
+        the stream as well. Caught by a real OCR run rather than by a
+        unit test -- so here is the unit test."""
+        logger, redirect = _foreign_logger
+        buffer = redirect()
+
+        def chatter():
+            logger.addHandler(logging.StreamHandler(sys.stderr))
+            logger.warning("empty result")
+
+        _fake_backend(chatter)
+        assert buffer.getvalue().count("[lin_utwin_2023]") == 1
+
+    def test_a_captured_stream_keeps_up_with_the_citekey(
+        self, _fake_backend, _foreign_logger
+    ):
+        """The property that makes the lazy imports safe. A handler built
+        while document A was parsing holds that wrapper for the rest of
+        the process; the citekey is read per write, so its next line says
+        B rather than going on saying A -- which is worse than saying
+        nothing, because it is confidently wrong."""
+        logger, redirect = _foreign_logger
+        buffer = redirect()
+        _fake_backend(
+            lambda: logger.addHandler(logging.StreamHandler(sys.stderr)),
+            citekey="doc_a",
+        )
+        _fake_backend(lambda: logger.warning("later chatter"), citekey="doc_b")
+        assert buffer.getvalue() == "[doc_b] later chatter\n"
+
+    def test_a_handler_bound_before_any_parse_is_left_alone(
+        self, _fake_backend, _foreign_logger
+    ):
+        """The documented limit, and the reason logs/pipeline.log is
+        safe: `sync` configures its own handlers up front, so this
+        project's log format -- which docs/CLI.md tells a scheduler to
+        grep -- is never rewritten."""
+        logger, redirect = _foreign_logger
+        buffer = redirect()
+        logger.addHandler(logging.StreamHandler(sys.stderr))
+        _fake_backend(lambda: logger.warning("a message of ours"))
+        assert buffer.getvalue() == "a message of ours\n"
+
+    def test_nothing_is_annotated_outside_the_backend_call(self, _fake_backend, capsys):
+        """The window is exactly the backend call. `sync`'s own stdout is
+        a documented, diffable contract -- a citekey leaking into it
+        afterwards would change what every reader of that contract sees."""
+        _fake_backend(lambda: None)
+        print("a line sync printed after the parse")
+        assert capsys.readouterr().out == "a line sync printed after the parse\n"
+
+    def test_a_progress_bar_redraw_is_prefixed_each_time(self, _fake_backend, capsys):
+        r"""`\r` redraws a line in place rather than continuing it, so it
+        starts a line and wants the prefix again. Docling loads its
+        weights behind a tqdm bar drawn exactly this way."""
+        def chatter():
+            sys.stderr.write("loading:  0%\rloading: 50%\rloading: 100%\n")
+        _fake_backend(chatter)
+        assert capsys.readouterr().err == (
+            "[lin_utwin_2023] loading:  0%\r"
+            "[lin_utwin_2023] loading: 50%\r"
+            "[lin_utwin_2023] loading: 100%\n"
+        )
+
+    def test_the_streams_are_restored_when_the_backend_raises(self, _fake_backend, capsys):
+        """Restored on the failing path too, or one unreadable PDF
+        prefixes the rest of the run with its citekey."""
+        def chatter():
+            raise pdf_text.ExtractionError("unreadable")
+        with pytest.raises(pdf_text.ExtractionError):
+            _fake_backend(chatter)
+        print("after the failure")
+        assert capsys.readouterr().out == "after the failure\n"
+
+
+class TestAnnotatedOutputOnItsOwn:
+    """The context manager `extract_text` uses, exercised directly for
+    the cases a backend fixture cannot reach."""
+
+    def test_it_nests_without_doubling_the_prefix(self, capsys):
+        """Not a shape `extract_text` produces today. It is pinned
+        because the restore is written as "put back what was there"
+        rather than "put back the real stream", and because a second
+        wrapper over the first would print two citekeys on one line."""
+        with pdf_text.annotated_output("outer"):
+            with pdf_text.annotated_output("inner"):
+                print("innermost")
+            print("back outside")
+        assert capsys.readouterr().out == (
+            "[inner] innermost\n"
+            "[outer] back outside\n"
+        )
+
+    def test_it_writes_through_untouched_outside_any_document(self, capsys):
+        """A stream a backend captured during a parse outlives the
+        `with`. Between documents it must be transparent, or `sync`'s own
+        output picks up a stray prefix."""
+        with pdf_text.annotated_output("k"):
+            captured = sys.stdout
+        captured.write("between documents\n")
+        assert capsys.readouterr().out == "between documents\n"
+
+    def test_it_delegates_unknown_attributes_to_the_real_stream(self, monkeypatch):
+        """Docling asks whether it is writing to a terminal before
+        drawing a progress bar. A wrapper that swallowed `isatty` would
+        change the backend's behaviour, not just its formatting."""
+        class Stub(io.StringIO):
+            def isatty(self):
+                return True
+
+        stub = Stub()
+        monkeypatch.setattr(sys, "stdout", stub)
+        with pdf_text.annotated_output("k"):
+            assert sys.stdout.isatty() is True
+            sys.stdout.write("a line\n")
+            sys.stdout.flush()
+        assert stub.getvalue() == "[k] a line\n"
+        assert sys.stdout is stub
+
+    def test_write_reports_the_length_it_was_given(self):
+        """`write` returns a character count, and something downstream
+        will eventually check it. Reporting the prefixed length would be
+        a lie about what the caller wrote."""
+        with pdf_text.annotated_output("k"):
+            assert sys.stdout.write("four") == 4
