@@ -1,6 +1,6 @@
 ---
 name: survey-writer
-description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via src.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m src.sync` first) if the ledger is empty.
+description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via src.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m src.corpus sync` first) if the ledger is empty.
 tags: [survey, literature-review, citation]
 ---
 
@@ -8,7 +8,7 @@ tags: [survey, literature-review, citation]
 
 Genre-specific drafting agent for survey-style output. This is the "generative
 drafting" half of the pipeline (the drafting layer) -- it runs on demand and its
-output is reviewed by the user, unlike `python -m src.sync` (the corpus
+output is reviewed by the user, unlike `python -m src.corpus sync` (the corpus
 layer: deterministic, safe to run unattended).
 
 ## Shared corpus layer (read, don't regenerate)
@@ -36,7 +36,7 @@ you search (step 0) and fill it in as you go -- not at the end, when what
 you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
 is the full design.
 
-**Read-only means read-only: never run `python -m src.sync`, and never
+**Read-only means read-only: never run `python -m src.corpus sync`, and never
 run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
@@ -47,13 +47,13 @@ build one.
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python -m src.ledger
+python -m src.corpus ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
 name what you checked and what you found -- and stop there. Do not draft
 around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m src.sync` and come back.
+`.venv-full/bin/python -m src.corpus sync` and come back.
 
 ## When to invoke
 

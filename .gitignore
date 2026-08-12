@@ -16,7 +16,7 @@ content/drafts/
 content/dossiers/
 
 # The pipeline's rotated log file (see config.toml's [logging]
-# section) -- written by python -m src.sync and scripts/enrich.py alike,
+# section) -- written by python -m src.corpus sync and scripts/enrich.py alike,
 # per-host, and the whole directory rather than *.log below,
 # since a rotated backup (pipeline.log.1, pipeline.log.2, ...) doesn't end in
 # .log.

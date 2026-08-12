@@ -5,7 +5,7 @@ flowchart LR
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>A handful of grounding papers is<br/>enough. Breadth buys you<br/>very little in this genre.<br/><br/><b>papers/bibliography.bib</b>"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m src.draft render</code> — it was never<br/>enrichment work, and stopped being a stage in 4.0.0</small>"]
 

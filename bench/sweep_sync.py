@@ -1,4 +1,4 @@
-"""Sweep the REAL `python -m src.sync` across worker/GPU/OCR settings.
+"""Sweep the REAL `python -m src.corpus sync` across worker/GPU/OCR settings.
 
 This is the harness that produces trustworthy pool-level numbers, and it
 exists because the two older tools cannot:
@@ -12,7 +12,7 @@ exists because the two older tools cannot:
 Neither answers "what does the shipped pipeline cost", which is the only
 question a user actually has. This runs the shipped pipeline.
 
-Three things it does that a hand-rolled `time python -m src.sync` does not:
+Three things it does that a hand-rolled `time python -m src.corpus sync` does not:
 
 1. **A fresh CONTENT_DIR per run.** The ledger skips any PDF whose bytes
    haven't changed, so a second run over the same output directory times

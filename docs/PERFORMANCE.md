@@ -224,7 +224,7 @@ a corpus parse fast.
 **The largest lever on a multi-core machine, and the code currently caps
 it well below where the curve flattens.**
 
-Measured 2026-08-04 with the real `python -m src.sync` over the **whole
+Measured 2026-08-04 with the real `python -m src.corpus sync` over the **whole
 501-PDF corpus** (13,400 pages), docling, OCR off, 4 GPUs. Each row is
 one run from an empty ledger; all reported 501 parsed, 0 failed:
 

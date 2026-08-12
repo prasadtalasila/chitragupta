@@ -69,7 +69,7 @@ venv prefix, since `/opt/venv` is already on `PATH` (and exported as
 inside the container:
 
 ```bash
-python -m src.sync
+python -m src.corpus sync
 python -m src.enrich --stages embed,bertopic
 python -m src.draft gate content/drafts/<slug>.md
 ```

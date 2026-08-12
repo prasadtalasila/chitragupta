@@ -240,7 +240,7 @@ per AGENTS.md's citekey invariant no draft may cite them -- and since
 `src/enrich/corpus.py` sources the enrichment corpus from the ledger and
 nothing else, there is nowhere to index them either. A discovered paper
 enters this project the way every other one does: catalogue it in your
-reference manager, re-export, and re-run `python -m src.sync`.
+reference manager, re-export, and re-run `python -m src.corpus sync`.
 
 Against that, the operational cost was a JDK 21 pinned exactly (its
 bundled Kotlin compiler cannot parse a JDK 25 version string), a
@@ -311,7 +311,7 @@ Diagnosed 2026-08-09. Fixed in the `os-deps` stage; recorded here because
 the error message points at nothing useful, and because a host provisioned
 some other way will hit it again.
 
-**The symptom.** With `[parser].backend = "docling"`, `python -m src.sync`
+**The symptom.** With `[parser].backend = "docling"`, `python -m src.corpus sync`
 prints a bare `sys.path` listing before the bibliography progress and then
 fails every document it had to parse:
 
@@ -372,7 +372,7 @@ the import then happens in-process, with no preload to swallow it and no
 second attempt to trigger the flag:
 
 ```console
-$ PARSER_WORKERS=1 python -m src.sync
+$ PARSER_WORKERS=1 python -m src.corpus sync
 ```
 
 **Why `opencv-python-headless` is not the fix.** It is the right wheel for

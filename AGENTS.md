@@ -20,7 +20,7 @@ invariant itself.
 
 Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
 (source of truth -- see below) and was picked up into `content/ledger.sqlite`
-by `python -m src.sync`.
+by `python -m src.corpus sync`.
 
 All five genre skills (`survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research` in
@@ -66,7 +66,7 @@ That rule is why a module needing bibliographic detail reads it back out
 of the ledger rather than re-opening the bib file.
 
 Adding or removing a paper is the user's job, not a skill's: change it in
-the reference manager, re-export, re-run `python -m src.sync`. There is no
+the reference manager, re-export, re-run `python -m src.corpus sync`. There is no
 watch/auto-export step. Removal is deliberately opt-in -- `sync` only
 *reports* a citekey that has dropped out of the bib file until it is
 re-run with `--remove-stale`, because a short export is more often a
@@ -80,7 +80,7 @@ meet them: you need a corpus before a draft, and there is nothing to
 review until a draft exists. They are not a dependency rank -- the
 enrichment layer is optional and nothing above it needs it.
 
-- **Layer 1, the corpus layer -- deterministic** (`python -m src.sync`): bib file
+- **Layer 1, the corpus layer -- deterministic** (`python -m src.corpus sync`): bib file
   read -> ledger update -> PDF text extraction -> duplicate-citekey check
   -> stale-citekey report. No LLM calls, no judgment calls, idempotent;
   safe to run unattended. docs/ARCHITECTURE.md has the stage detail.
@@ -121,7 +121,7 @@ enrichment layer is optional and nothing above it needs it.
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
   corpus, so it keeps working during a `sync`, like `python -m
-  src.ledger` and retrieval. Input is a draft under `content/`; output is
+  src.corpus ledger` and retrieval. Input is a draft under `content/`; output is
   `content/review/`, mirroring the draft's path under `content/drafts/`
   the way `content/rendered/` and `content/dossiers/` do, with
   `src/review/__init__.py` owning that contract.
@@ -159,10 +159,10 @@ quotable. See docs/LADDERS.md.
 
 Every setting lives in `config.toml` at the repo root, and every one is
 overridable by an env var of the same name (e.g.
-`BIB_FILE=/other/path.bib python -m src.sync`). docs/CONFIG.md is the
+`BIB_FILE=/other/path.bib python -m src.corpus sync`). docs/CONFIG.md is the
 reference.
 
 `python -m src.draft gate` needs no venv -- it only reads
 `content/ledger.sqlite` through stdlib `sqlite3` and runs with bare
-`python`. `python -m src.sync` does need the venv, and must be run
+`python`. `python -m src.corpus sync` does need the venv, and must be run
 through the installed one rather than the bare system interpreter.

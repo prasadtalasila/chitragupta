@@ -11,7 +11,7 @@ as two layers that never mix.
 
 **The corpus layer is deterministic and has no AI in it.** You export a
 `.bib` file
-from your reference manager. `python -m src.sync` reads it, records every
+from your reference manager. `python -m src.corpus sync` reads it, records every
 entry in a small SQLite "ledger" (`content/ledger.sqlite`), and extracts
 each attached PDF's text into `content/parsed/<citekey>.txt`. Nothing is
 generated; the bib file is the source of truth.

@@ -332,7 +332,7 @@ def _corpus_parse_available(doc: CorpusDoc) -> bool:
     `[parser].ocr` setting produced the corpus text. But that staleness
     already exists in `content/parsed/` the moment the setting changes --
     adopting it here propagates it rather than creating it, and the fix is
-    the same either way (`python -m src.sync --reparse`).
+    the same either way (`python -m src.corpus sync --reparse`).
     """
     if config.DOCLING_IMAGES or not doc.text_path:
         return False

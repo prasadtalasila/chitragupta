@@ -2,7 +2,7 @@
 
 Defaults live in config.toml (repo root); any value can be overridden
 with an environment variable of the same name (e.g.
-BIB_FILE=/path/to/other.bib python -m src.sync) without editing the file.
+BIB_FILE=/path/to/other.bib python -m src.corpus sync) without editing the file.
 tomllib is stdlib since Python 3.11, so this adds no dependency.
 """
 

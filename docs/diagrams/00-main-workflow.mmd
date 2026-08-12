@@ -14,7 +14,7 @@ flowchart TB
   end
 
   %% ─────────────── 2 · SYNC ───────────────
-  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.sync</code> · holds the run lock"]
+  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.corpus sync</code> · holds the run lock"]
     direction TB
     BR["<b>src/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]

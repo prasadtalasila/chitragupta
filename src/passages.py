@@ -257,7 +257,7 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
 
     row = _ledger_row(con, citekey)
     if row is None:
-        return [], "not in the ledger -- run `python -m src.sync`"
+        return [], "not in the ledger -- run `python -m src.corpus sync`"
 
     parsed_path, pdf_path, _title = row
     if parsed_path and Path(parsed_path).exists():

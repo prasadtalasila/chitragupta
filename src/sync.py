@@ -1,7 +1,7 @@
 """Deterministic pipeline entrypoint: bib file -> ledger -> parsed text.
 
 Safe to run unattended / on a schedule (idempotent, incremental):
-    python -m src.sync
+    python -m src.corpus sync
 
 A citekey that drops out of the bib file is only *reported* by default --
 pass --remove-stale to actually delete its content/ledger.sqlite row (see
@@ -35,15 +35,19 @@ from pathlib import Path
 from src import (bib_reader, config, dedup, ledger, logging_setup, pdf_text,
                  runlock)
 
-# A fixed name, not __name__: this module is also the CLI entrypoint
-# (python -m src.sync), and Python sets __name__ to "__main__" for
-# whichever module is run that way -- not "src.sync". A logger named
-# "__main__" would sit outside the "src" tree entirely, so
+# A fixed name, not __name__. Until 5.2.0 this module was itself the CLI
+# entrypoint (python -m src.sync), and Python sets __name__ to
+# "__main__" for whichever module is run that way -- not "src.sync". A
+# logger named "__main__" would sit outside the "src" tree entirely, so
 # logging_setup.configure()'s logging.getLogger("src").setLevel(...)
-# would silently never apply to it. Confirmed against a real `python -m
-# src.sync` run, not assumed: every test in this suite imports sync as a
-# plain submodule, where __name__ is already "src.sync" and this
-# distinction is invisible.
+# would silently never apply to it. Confirmed against a real run, not
+# assumed: every test in this suite imports sync as a plain submodule,
+# where __name__ is already "src.sync" and the distinction is invisible.
+# src/corpus.py is the entrypoint now, so __name__ here is always
+# "src.sync" -- but the name stays pinned rather than tracking whatever
+# imports it, because it is also the string that appears in every
+# logs/pipeline.log line and in the grep docs/CLI.md tells a scheduler
+# to use.
 logger = logging.getLogger("src.sync")
 
 # How many timed-out citekeys the summary names before falling back to
@@ -612,8 +616,11 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     return 1 if failed or backend_unavailable or kinds["deterministic"] else 0
 
 
-if __name__ == "__main__":
+def main(argv: "list[str] | None" = None) -> int:
+    """`python -m src.corpus sync`. Reached only through src/corpus.py,
+    which is why this file has no `__main__` block of its own."""
     parser = argparse.ArgumentParser(
+        prog="python -m src.corpus sync",
         description="Sync content/ledger.sqlite from the bib file "
                     "(the corpus layer -- deterministic)."
     )
@@ -626,7 +633,7 @@ if __name__ == "__main__":
         "--remove-stale", action="store_true",
         help="Delete ledger rows for citekeys no longer in the bib file (default: report only, don't delete)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     # Held for the whole run, and only at the entrypoint: run() itself
     # stays callable in-process (the tests do that) without fighting a
     # lock, and only an actual invocation contends for it.
@@ -645,7 +652,7 @@ if __name__ == "__main__":
             # this lock and this log file -- configures in the same
             # place; see src/logging_setup.py's own docstring.
             logging_setup.configure()
-            raise SystemExit(run(remove_stale=args.remove_stale, reparse=args.reparse))
+            return run(remove_stale=args.remove_stale, reparse=args.reparse)
     except runlock.AlreadyRunning as exc:
         # Deliberately still a bare print, not the logger: this is the
         # losing side of the race above and must not touch
@@ -654,4 +661,4 @@ if __name__ == "__main__":
         # under any real schedule (see docs/CLI.md's "Running sync on a
         # schedule"), not a failure worth persisting.
         print(f"  {exc}", file=sys.stderr)
-        raise SystemExit(runlock.EXIT_ALREADY_RUNNING) from None
+        return runlock.EXIT_ALREADY_RUNNING

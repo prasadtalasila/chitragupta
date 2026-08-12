@@ -1,6 +1,6 @@
 """One log file for everything that holds the pipeline write lock.
 
-`logs/pipeline.log`, shared by `python -m src.sync` and
+`logs/pipeline.log`, shared by `python -m src.corpus sync` and
 `python -m src.enrich`. One file rather than one per entrypoint, for a
 reason that is structural rather than a matter of taste:
 `RotatingFileHandler` is not safe for two processes to hold open on the

@@ -1,4 +1,4 @@
-"""`python -m src.ledger`: read-only status for the corpus layer.
+"""`python -m src.corpus ledger`: read-only status for the corpus layer.
 
 Deliberately its own entrypoint rather than a `sync --inspect` flag, for
 two reasons that are both about what a *reader* needs:
@@ -23,7 +23,7 @@ from tests.conftest import make_reference
 
 def _run(args=(), cwd=None):
     return subprocess.run(
-        [sys.executable, "-m", "src.ledger", *args],
+        [sys.executable, "-m", "src.corpus", "ledger", *args],
         capture_output=True, text=True, cwd=str(cwd or config.REPO_ROOT),
     )
 
@@ -74,7 +74,7 @@ class TestSummary:
 
     def test_an_empty_ledger_says_to_run_sync(self, isolated_config, capsys):
         assert ledger.main([]) == 0
-        assert "src.sync" in capsys.readouterr().out
+        assert "src.corpus sync" in capsys.readouterr().out
 
 
 class TestFilters:
@@ -129,7 +129,7 @@ class TestEdges:
         assert ledger.main([]) == 0
         out = capsys.readouterr().out
         assert "empty" in out.lower()
-        assert "src.sync" in out
+        assert "src.corpus sync" in out
 
     def test_transient_failures_are_reported_as_self_healing(
         self, isolated_config, ledger_con, tmp_path, capsys

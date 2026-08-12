@@ -26,7 +26,7 @@ general feature):
    or move the attachments folder, that relative path breaks silently
    (entries just show up as "without a PDF attachment" after `sync`, not
    as an error).
-5. Re-run `python -m src.sync`.
+5. Re-run `python -m src.corpus sync`.
 
 A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into to have it indexed:
@@ -38,7 +38,7 @@ it is gone. A PDF there is now simply ignored.)
 
 To add more papers later: add the entry in Zotero, re-export the same way
 (re-check **Export Files** so new attachments are included), then re-run
-`python -m src.sync`.
+`python -m src.corpus sync`.
 
 Removing a paper: delete the entry in Zotero, re-export, re-run `sync`.
 By default `sync` only *reports* citekeys that dropped out of the bib file
@@ -76,7 +76,7 @@ filename.
 
 All paths are configurable in `config.toml` (repo root), overridable
 per-run with an env var of the same name, e.g. `BIB_FILE=/path/to/other.bib
-python -m src.sync`. See [CONFIG.md](CONFIG.md) for the
+python -m src.corpus sync`. See [CONFIG.md](CONFIG.md) for the
 full settings reference.
 
 

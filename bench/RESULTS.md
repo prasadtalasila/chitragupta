@@ -120,7 +120,7 @@ A fourth fact, host-specific but a live trap for worker sizing:
 
 ## 2026-08-02: parallel `sync`, and the ceiling it hit
 
-Measured 2026-08-02 with the real `python -m src.sync`, not the bench
+Measured 2026-08-02 with the real `python -m src.corpus sync`, not the bench
 harness: 60 bib PDFs (1,166 pages), `parser.backend = "docling"`, OCR off,
 via `[parser].workers`.
 
@@ -222,7 +222,7 @@ so a fully-cached re-run loads no models at all.
 
 ## 2026-08-02: spreading workers across the four A40s
 
-Measured 2026-08-02 with the real `python -m src.sync` over the **whole
+Measured 2026-08-02 with the real `python -m src.corpus sync` over the **whole
 501-PDF corpus** (13,400 pages), `docling`, OCR off, 12 workers. The A/B
 is the same binary either way -- `CUDA_VISIBLE_DEVICES=0` confines every
 worker to one card, which is exactly the pre-v1.1.0 behaviour, since
@@ -436,7 +436,7 @@ of the start method).
 
 ## 2026-08-04: the full-corpus sweep
 
-Measured with the real `python -m src.sync` over **all 501 PDFs** rather
+Measured with the real `python -m src.corpus sync` over **all 501 PDFs** rather
 than a sample, on the same machine (4x A40, 48 CPUs available of 96 host
 logical CPUs), repository at `92c1420` (v2.1.0). Every run started from
 an empty `CONTENT_DIR` and reported 501 parsed, 0 failed. Raw records:

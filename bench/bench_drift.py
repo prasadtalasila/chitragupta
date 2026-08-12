@@ -274,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.real:
         real_ledger = Path(args.real_ledger) if args.real_ledger else REAL_LEDGER
         if not real_ledger.is_file():
-            print(f"No ledger at {real_ledger} -- run `python -m src.sync` first, "
+            print(f"No ledger at {real_ledger} -- run `python -m src.corpus sync` first, "
                   "or drop --real to generate a corpus.", file=sys.stderr)
             return 1
 

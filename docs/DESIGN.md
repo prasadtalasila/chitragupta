@@ -34,7 +34,7 @@ The repository is designed around a few hard constraints that strongly shape the
    - This is the repo's primary safety invariant.
 
 2. **Three layers**
-   - Corpus layer: deterministic content maintenance (`python -m src.sync`).
+   - Corpus layer: deterministic content maintenance (`python -m src.corpus sync`).
    - Drafting layer: generative drafting via the Claude Code skills.
    - Enrichment layer: optional heavier processing (`python -m src.enrich`).
    - Ad-hoc review tools remain outside the automatic chain.
