@@ -42,9 +42,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Linux. Same reason tests/test_review_entrypoint.py and
 # tests/test_skill_verbatim_scan_offer.py pin it.
 
-# A two-level invocation. `-m` with any whitespace after it, because
-# these files are hand-wrapped and the module can land on the next line.
-_NESTED = re.compile(r"-m\s+src\.\w+\.\w+")
+# A nested invocation: `src` plus *two or more* dotted segments. `-m`
+# with any whitespace after it, because these files are hand-wrapped and
+# the module can land on the next line.
+#
+# `{2,}` rather than a fixed two segments so the whole path is reported.
+# A fixed pattern still *detects* `-m src.a.b.c` -- it matches the
+# `src.a.b` prefix -- but it reports the offender truncated, which sends
+# whoever reads the failure looking for a module path that isn't the one
+# they wrote.
+_NESTED = re.compile(r"-m\s+src(?:\.\w+){2,}")
 
 # What makes a mention legal: prose saying, in the same breath, that the
 # command does nothing. Deliberately narrow. Looser phrases that occur
@@ -106,15 +113,25 @@ def _normalised(path):
     the line: a guard split as ``no `__main__`\\n    block`` is the same
     sentence as the unwrapped form and must not read as a missing guard.
 
-    The cost is line numbers -- offenders below are reported as
-    character offsets into the collapsed text, as
-    tests/test_skill_verbatim_scan_offer.py also does.
+    The cost is line numbers, so each offender is reported with the
+    surrounding sentence instead -- see `unguarded`. A character offset
+    into collapsed text is not something anyone can act on from a CI log.
     """
     return re.sub(r"\s+", " ", path.read_text(encoding="utf-8"))
 
 
+# How much text around an offender to quote back. Enough to recognise
+# the sentence and grep for it in the source file, short enough that a
+# handful of offenders stay readable in CI output.
+_SNIPPET_CHARS = 90
+
+
 def unguarded(text):
-    """Every nested invocation in `text` with no guard beside it.
+    """Every nested invocation in `text` with no guard before it.
+
+    Returns `(offset, command, snippet)` per offender. The snippet is
+    what makes a CI failure actionable: offsets are into the *collapsed*
+    text, so they match nothing you could search for in the file itself.
 
     Module-level and named without an underscore because the tests below
     exercise it directly on synthetic strings -- that is what makes this
@@ -123,27 +140,35 @@ def unguarded(text):
     found = []
     for match in _NESTED.finditer(text):
         window = text[max(0, match.start() - _GUARD_WINDOW): match.start()]
-        if not any(guard in window for guard in _GUARDS):
-            found.append((match.start(), match.group(0)))
+        if any(guard in window for guard in _GUARDS):
+            continue
+        start = max(0, match.start() - _SNIPPET_CHARS)
+        end = min(len(text), match.end() + _SNIPPET_CHARS)
+        snippet = ("..." if start else "") + text[start:end] + ("..." if end < len(text) else "")
+        found.append((match.start(), match.group(0).strip(), snippet))
     return found
 
 
 def test_no_doc_or_skill_hands_a_reader_a_two_level_command():
-    offenders = {}
+    report = []
     for path in _doc_files():
-        found = unguarded(_normalised(path))
-        if found:
-            offenders[str(path.relative_to(REPO_ROOT))] = found
+        for offset, command, snippet in unguarded(_normalised(path)):
+            report.append(
+                f"\n  {path.relative_to(REPO_ROOT)} (offset {offset})"
+                f"\n    command: {command}"
+                f"\n    context: {snippet}"
+            )
 
-    assert not offenders, (
-        f"Two-level `python -m src.a.b` invocations with nothing saying they "
-        f"do nothing: {offenders}. The command surface is one level deep -- "
-        "no submodule of a layer carries a `__main__` block, so what a reader "
-        "who types this gets is exit 0 and empty stdout, and for the gate that "
-        "is a silent pass on an unchecked draft. Use the layer's own entry "
-        "point (`python -m src.draft <verb>`, `python -m src.review <aid>`), "
-        "or say in the same sentence that the nested form does nothing. See "
-        "docs/ARCHITECTURE.md."
+    assert not report, (
+        "Nested `python -m src.a.b` invocations with nothing saying they do "
+        "nothing:" + "".join(report) + "\n\n"
+        "The command surface is one level deep -- no submodule of a layer "
+        "carries a `__main__` block, so what a reader who types this gets is "
+        "exit 0 and empty stdout, and for the gate that is a silent pass on "
+        "an unchecked draft. Use the layer's own entry point "
+        "(`python -m src.corpus <verb>`, `python -m src.draft <verb>`, "
+        "`python -m src.review <aid>`), or say in the same sentence that the "
+        "nested form does nothing. See docs/ARCHITECTURE.md."
     )
 
 
@@ -225,6 +250,29 @@ def test_two_mentions_sharing_one_guard_are_both_allowed():
         "`__main__` block, so `python -m src.enrich.docling_parse` or "
         "`python -m src.review.verbatim_check` imports a module and exits 0."
     )
+
+
+def test_a_deeper_path_is_flagged_and_reported_in_full():
+    """Three segments or more, not just two.
+
+    A fixed two-segment pattern would still catch this -- it matches the
+    `src.a.b` prefix -- but would report the command truncated, sending
+    whoever reads the failure looking for a path they never wrote.
+    """
+    found = unguarded("Run `python -m src.layer.sub1.sub2 init` to begin.")
+    assert found
+    assert found[0][1] == "-m src.layer.sub1.sub2"
+
+
+def test_an_offender_is_reported_with_enough_context_to_find_it():
+    """Offsets are into the collapsed text and match nothing greppable,
+    so the snippet is the part that makes a CI failure actionable."""
+    (_, _, snippet), = unguarded(
+        "The dossier is the working state behind a draft. "
+        "Run `python -m src.draft.dossier init` to create one."
+    )
+    assert "working state behind a draft" in snippet
+    assert "to create one" in snippet
 
 
 def test_a_dotted_python_api_reference_is_not_flagged():
