@@ -15,7 +15,7 @@ this document can stay a reference rather than an argument.
   - [Paths](#paths)
   - [`[render]` -- citation style](#render----citation-style)
   - [`[parser]` -- PDF text extraction](#parser----pdf-text-extraction)
-  - [`[logging]` -- sync's log file](#logging----syncs-log-file)
+  - [`[logging]` -- the pipeline log file](#logging----the-pipeline-log-file)
   - [`[provenance]` -- citation-support bands](#provenance----citation-support-bands)
   - [`[enrich]` -- the optional enrichment layer](#enrich----the-optional-enrichment-layer)
 - [How values are parsed](#how-values-are-parsed)
@@ -98,15 +98,20 @@ used as given.
   `ledger.sqlite` and `parsed/`, the drafting layer's `drafts/`,
   `dossiers/` and `rendered/`, the review layer's `review/`, and
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
-  Since 3.17.0 it is also what every tier-1 command that takes a path
-  will *accept*: `citation_gate`, `references` and `render_output` each
-  refuse a path that resolves outside it, and since 4.0.0 so do all
-  three of `src.review`'s aids. `ledger` is the one that takes no path
-  argument at all -- its CLI only ever addresses rows by citekey or
-  status -- so the rule applies to it vacuously rather than needing a
-  check. This one
+  It is also what every tier-1 command that takes a path will *accept*:
+  `citation_gate`, `references` and `render_output` each refuse a path
+  that resolves outside it, and so do all three of `src.review`'s aids.
+  `ledger` is the one that takes no path argument at all -- its CLI only
+  ever addresses rows by citekey or status -- so the rule applies to it
+  vacuously rather than needing a check. This one
   directory is then the whole record of the work, and a copy of it is
   complete.
+
+The enrichment layer's artefacts keep the names above --
+`content/docling/`, `content/chroma/`, `content/topics.json`, and every
+`DOCLING_*` environment variable -- and are not derived from the `[enrich]`
+table's name. Renaming them would invalidate work already on disk for no
+conceptual gain.
 
 There is no key for "extra PDFs to enrich": the enrichment layer indexes
 the bibliography and nothing else, so everything it can retrieve is

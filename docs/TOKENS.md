@@ -6,11 +6,11 @@ Where a drafting run's tokens actually go, which of the two pools each
 cost lands in, what the dossier does and does not recover -- and how to
 put a number on any of it without paying for a full seven-phase run.
 
-This document consolidates the token accounting that was previously
-spread across [DRAFT-ITERATION.md](DRAFT-ITERATION.md)'s "Where the
-tokens go" section and [REJECTION.md](REJECTION.md)'s cost argument.
-Those documents keep their subjects -- the dossier, and why a retrieval
-change was withdrawn -- and defer the arithmetic here.
+The token accounting lives here, in one place.
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) and
+[REJECTION.md](REJECTION.md) keep their own subjects -- the dossier, and
+why a retrieval change was withdrawn -- and defer the arithmetic to this
+document.
 
 Related reading:
 
@@ -225,8 +225,8 @@ resident pool:
   3.2k output = **16k equivalents**.
 
 That last row is the one #74 could actually collect, and it is why the
-answer is a file rather than better summarising. **Implemented** in
-3.10.0: the pasted material is now the one line
+answer is a file rather than better summarising. **Implemented**: the
+pasted material is now the one line
 `python -m src.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
 **An estimated 15k equivalents saved, in the 5x direction**, which is the
@@ -289,8 +289,8 @@ writer, one record, verifiable by reading one skill file -- and it is
 exactly the invariant that keeps
 [the synchronisation questions below](#who-writes-a-packet-down-and-when)
 answerable. It is written down here so the trade is visible, not because
-it is recommended, and 3.10.0 deliberately did not take it: `brief` only
-*reads* the dossier, and the three subagent definitions still carry no
+it is recommended, and it is deliberately not taken: `brief` only
+*reads* the dossier, and the three subagent definitions carry no
 `Write` tool.
 
 ## Why deep-research has no lever left
@@ -401,8 +401,8 @@ packets' worth of rejected citekeys. That used to be silent by
 construction, which is why the skill states the transcription as a rule
 of the skill rather than as a suggestion.
 
-Since 3.10.0 it is half-audible, and only because of a change made for a
-different reason. Phase 5 dispatches through `dossier brief`, which exits
+It is half-audible, and only because of a change made for a different
+reason. Phase 5 dispatches through `dossier brief`, which exits
 1 and names every citekey it has no block for, so a *kept* claim that was
 never transcribed surfaces at the moment the section that needs it is
 about to be written. A **rejected** citekey still fails silently: nothing

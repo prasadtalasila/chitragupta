@@ -110,9 +110,9 @@ enrichment layer is optional and nothing above it needs it.
   the *corpus* layer rather than the drafting one -- nothing in it is
   generative, everything it writes is a corpus artefact, and it takes the
   same write lock as `sync` for that reason. Run by a human, never by a
-  skill. It imports nothing from the drafting or review layers: until
-  4.0.0 it carried a `provenance` and a `render` stage that did, which
-  was the one cycle in this picture.
+  skill. It imports nothing from the drafting or review layers, which is
+  what keeps this picture free of a cycle -- a per-draft stage wrapping
+  either one would reintroduce it.
 - **Layer 4, the review layer -- advisory** (`src/review/citation_provenance.py`,
   `src/review/verbatim_check.py`, `src/review/citation_coverage.py`): run by hand on
   a finished draft, never invoked automatically. Each reads a draft plus

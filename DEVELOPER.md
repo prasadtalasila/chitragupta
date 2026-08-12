@@ -377,9 +377,9 @@ under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
 (`config.mirrored_dir`), and `src/review/__init__.py` owns that contract for all
 three review-layer commands.
 
-It was also an enrichment stage (`--stages provenance --input <draft>`)
-until 4.0.0, which had the enrichment layer importing the review layer
-and made this command wait on `sync`'s write lock. Run it directly.
+Run it directly rather than wrapping it in an enrichment stage: that
+would have the enrichment layer importing the review layer, and would
+make an advisory report wait on `sync`'s write lock.
 
 **Advisory, not a gate**, deliberately: matching is lexical, so it
 cannot tell "the source doesn't say this" from "the source says it in
@@ -399,10 +399,9 @@ Full design rationale, including the measurements behind those choices:
 ## Open questions and unbuilt features
 
 Running this pipeline on a schedule was the long-standing goal here.
-**Most of it now exists**, as of 3.4.0: a rotating log file (added as
-`logs/sync.log`, and renamed to `logs/pipeline.log` once
-the enrichment layer started sharing it -- see `src/logging_setup.py`),
-a pages/s throughput figure, exit codes an unattended caller can branch
+**Most of it now exists**: a rotating `logs/pipeline.log`, shared by the
+corpus and enrichment layers (see `src/logging_setup.py`), a pages/s
+throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
 [docs/CLI.md](docs/CLI.md#running-sync-on-a-schedule) -- including the
 absolute-interpreter-path detail that cron's minimal environment

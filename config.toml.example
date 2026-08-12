@@ -27,11 +27,11 @@ path = "papers/bibliography.bib"
 # and parsed/, the drafting layer's drafts/, dossiers/ and rendered/, the
 # review layer's review/, and the enrichment stages' docling/, chroma/,
 # topics.json.
-# Since 3.17.0 this is also what every tier-1 command that takes a path
-# will accept as an input: citation_gate, references and render_output
-# refuse a draft that resolves outside it, and since 4.0.0 so do all
-# three of src.review's aids. ledger takes no path argument at all, so
-# the rule applies to it vacuously.
+# This is also what every tier-1 command that takes a path will accept
+# as an input: citation_gate, references and render_output refuse a
+# draft that resolves outside it, and so do all three of src.review's
+# aids. ledger takes no path argument at all, so the rule applies to it
+# vacuously.
 # That one directory is then the whole record of the work, and a copy of
 # it is complete.
 # Relative to the repo root, or absolute.  Default: content
@@ -274,10 +274,10 @@ good_score = 0.50
 
 [enrich]
 # Used only by src/enrich/* (the "enrich" dependency group), never by sync
-# or the citation gate. This table was called [heavy] before 3.0.0, and
-# there is no fallback to the old name: a config.toml still spelling it
-# that way gets the defaults below, silently. See docs/CLI.md's
-# "Upgrading from 2.x".
+# or the citation gate. The table name is matched exactly and there is no
+# fallback: a config.toml spelling this header anything else -- [heavy] is
+# the one worth naming, since it is what this table used to be called --
+# gets the defaults below, silently, rather than an error.
 
 # Which sentence-transformers model backs semantic search.
 #
