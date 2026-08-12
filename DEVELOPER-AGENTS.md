@@ -43,7 +43,7 @@ with.)
 
 `pip install` outside a venv is blocked (PEP 668) -- unconditionally, on
 every host, regardless of root access. **This matters for the corpus
-layer too**: `python -m src.sync` needs `bibtexparser` (parsing
+layer too**: `python -m src.corpus sync` needs `bibtexparser` (parsing
 `bibliography.bib` correctly -- nested braces, LaTeX escapes -- isn't
 worth hand-rolling), so it must be run via the installed venv, not the
 bare system interpreter. `python -m src.draft gate` is the exception
@@ -130,7 +130,7 @@ nothing else, so every document it yields is citable and
 keyed by its citekey alone. Keep it that way -- the enrichment layer must never
 index a document a draft would not be allowed to cite. If a paper is
 worth enriching, it belongs in the reference manager: catalogue it,
-re-export, and re-run `python -m src.sync`.
+re-export, and re-run `python -m src.corpus sync`.
 
 ## Conventions a new stage has to follow
 

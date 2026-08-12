@@ -13,7 +13,7 @@ flowchart TB
   subgraph GEN["<b>GENERATED</b> — <code>content/</code>, all of it disposable: delete it and re-run"]
     direction TB
 
-    subgraph L1["written by <code>src.sync</code> — the corpus layer"]
+    subgraph L1["written by <code>src.corpus sync</code> — the corpus layer"]
       direction LR
       LED[("content/ledger.sqlite")]
       TXT[/"content/parsed/&lt;citekey&gt;.txt<br/><small>form feeds between pages, either backend</small>"/]

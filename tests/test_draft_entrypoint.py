@@ -5,7 +5,7 @@ files (tests/test_citation_gate.py, tests/test_dossier.py,
 tests/test_retrieval.py, tests/test_references.py,
 tests/test_render_output.py). This file pins only the dispatch, and the
 invariant the dispatch exists to serve: **one entry point per layer, one
-level deep**, the same shape `python -m src.sync` and `python -m
+level deep**, the same shape `python -m src.corpus sync` and `python -m
 src.review <aid>` already give their layers.
 
 Modeled closely on tests/test_review_entrypoint.py, which pinned the same

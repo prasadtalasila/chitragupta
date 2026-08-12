@@ -62,7 +62,7 @@ flowchart LR
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><b>papers/bibliography.bib</b><br/><small>nothing else may invent a citekey</small>"]
 
-  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/><code>python -m src.sync</code><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b><br/><small>idempotent · re-runs cost almost nothing</small>"]
+  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/><code>python -m src.corpus sync</code><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b><br/><small>idempotent · re-runs cost almost nothing</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -102,7 +102,7 @@ flowchart LR
 The same path as [the Quickstart](../README.md#quickstart), drawn with the
 two checkpoints that actually catch people: the **Export Files** tick box,
 which silently produces a bibliography with no PDFs attached to it, and
-the first `python -m src.ledger` after a sync, which is where you find
+the first `python -m src.corpus ledger` after a sync, which is where you find
 out whether anything became citable. Exit codes are on the diagram
 because at this stage they are the only feedback you have.
 
@@ -117,12 +117,12 @@ flowchart TB
 
   C["<b>3 · Install</b><br/><code>pipx install poetry</code><br/><code>bash scripts/install_full_pipeline.sh all</code><br/><small><b>all</b> = OS packages (pdftotext, TeX Live, Pandoc) + Python.<br/>No stage argument = Python only.</small>"]
 
-  D["<b>4 · Sync the corpus</b><br/><code>source .venv-full/bin/activate</code><br/><code>python -m src.sync</code><br/><small>needs the venv — this is the one command that does</small>"]
+  D["<b>4 · Sync the corpus</b><br/><code>source .venv-full/bin/activate</code><br/><code>python -m src.corpus sync</code><br/><small>needs the venv — this is the one command that does</small>"]
   D1{{"exit code?"}}
   DFAIL["<b>1</b> — something didn't parse.<br/><small>The summary names each one.<br/>Fix or remove it; re-running is cheap.</small>"]
   DBUSY["<b>2</b> — another run holds the lock.<br/><small>Nothing was lost. Try again later.</small>"]
 
-  E["<b>5 · Look at what it found</b><br/><code>python -m src.ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
+  E["<b>5 · Look at what it found</b><br/><code>python -m src.corpus ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
   E1{{"Rows with status<br/><code>parsed</code>?"}}
   EEMPTY["Nothing is citable yet.<br/><small>Almost always the Export Files trap above.<br/><code>--status no_pdf</code> tells you which entries and why.</small>"]
 
@@ -198,7 +198,7 @@ flowchart TB
   end
 
   %% ─────────────── 2 · SYNC ───────────────
-  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.sync</code> · holds the run lock"]
+  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m src.corpus sync</code> · holds the run lock"]
     direction TB
     BR["<b>src/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
@@ -332,7 +332,7 @@ flowchart TB
   subgraph GEN["<b>GENERATED</b> — <code>content/</code>, all of it disposable: delete it and re-run"]
     direction TB
 
-    subgraph L1["written by <code>src.sync</code> — the corpus layer"]
+    subgraph L1["written by <code>src.corpus sync</code> — the corpus layer"]
       direction LR
       LED[("content/ledger.sqlite")]
       TXT[/"content/parsed/&lt;citekey&gt;.txt<br/><small>form feeds between pages, either backend</small>"/]
@@ -425,7 +425,7 @@ reaches nobody, because the skill loops on it itself.
 ```mermaid
 flowchart TB
 
-  START(["<code>python -m src.sync</code>"]) --> Q2
+  START(["<code>python -m src.corpus sync</code>"]) --> Q2
 
   Q2{"<b>config.toml present?</b><br/><small>read once at import,<br/>before anything else happens</small>"}
   Q2 -- no --> EC["<b>refuses to import</b><br/><small>cp config.toml.example config.toml</small>"]
@@ -633,7 +633,7 @@ flowchart LR
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Breadth is the whole job here.<br/>A thin corpus shows up<br/>immediately as a thin survey.<br/><br/><b>papers/bibliography.bib</b><br/><small>the only source either skill can reach —<br/>everything retrieval returns is citable</small>"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — worth it for this genre</b><br/><code>-m src.enrich --stages docling,embed</code><br/><br/><b>docling</b> → layout-aware .md + .passages.json<br/><small>better quotable passages, so claims survive review</small><br/><br/><b>embed</b> → content/chroma/<br/><small>semantic recall: finds the paper that argues the<br/>point in different words. <b>Both skills name<br/><code>embed_index.search()</code> by hand.</b></small>"]
 
@@ -708,7 +708,7 @@ flowchart LR
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>A handful of grounding papers is<br/>enough. Breadth buys you<br/>very little in this genre.<br/><br/><b>papers/bibliography.bib</b>"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>src.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m src.draft render</code> — it was never<br/>enrichment work, and stopped being a stage in 4.0.0</small>"]
 
@@ -775,7 +775,7 @@ flowchart LR
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Depth over breadth: everything<br/>bearing on one research question.<br/><br/><b>papers/bibliography.bib</b><br/><small>this same .bib is very likely already<br/>your thesis's <code>\\bibliography</code> — which is<br/>why the two stay consistent for free</small>"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>SKILL.md names <code>src/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
 
@@ -837,7 +837,7 @@ sequenceDiagram
     autonumber
     actor You as You
     participant Z as Zotero
-    participant Sync as src.sync<br/>(corpus layer)
+    participant Sync as src.corpus sync<br/>(corpus layer)
     participant Led as content/<br/>ledger.sqlite
     participant Ret as src.retrieval<br/>+ src.passages
     participant Skill as genre skill<br/>(.claude/skills/)
@@ -854,7 +854,7 @@ sequenceDiagram
 
     rect rgba(238,242,255,0.6)
     Note over Sync,Led: SYNC — deterministic, incremental, holds the run lock
-    You->>Sync: python -m src.sync
+    You->>Sync: python -m src.corpus sync
     Sync->>Sync: take content/pipeline.lock.db
     Sync->>Led: upsert one row per citekey
     Led-->>Sync: which PDFs actually changed

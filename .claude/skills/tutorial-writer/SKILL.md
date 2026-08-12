@@ -67,7 +67,7 @@ other genre -- in a survey they'd delete the deliverable.
 - `content/parsed/<citekey>.txt` -- extracted PDF text
 - `src/retrieval.py` -- `search(query, k, snippet_chars)`
 
-**Read-only means read-only: never run `python -m src.sync`, and never
+**Read-only means read-only: never run `python -m src.corpus sync`, and never
 run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
@@ -75,7 +75,7 @@ index. They are the user's to run, not yours. If a semantic index would
 help and none exists, say so and use `src.retrieval.search()`; do not
 build one.
 
-If `python -m src.ledger` reports an empty ledger, say so before you
+If `python -m src.corpus ledger` reports an empty ledger, say so before you
 start. Citations are optional in this genre, so the draft is still
 possible -- but it will carry none, and that is the user's call to make,
 not something to discover at the end. Ask whether to proceed uncited or to

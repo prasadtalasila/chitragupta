@@ -548,7 +548,7 @@ class TestRun:
 class TestCliEntrypoint:
     def test_remove_stale_flag_is_registered(self, isolated_config):
         result = subprocess.run(
-            [sys.executable, "-m", "src.sync", "--help"],
+            [sys.executable, "-m", "src.corpus", "sync", "--help"],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -557,7 +557,7 @@ class TestCliEntrypoint:
 
     def test_unknown_flag_is_rejected(self, isolated_config):
         result = subprocess.run(
-            [sys.executable, "-m", "src.sync", "--bogus-flag"],
+            [sys.executable, "-m", "src.corpus", "sync", "--bogus-flag"],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -1255,7 +1255,7 @@ class TestReparse:
     def test_reparse_is_registered_on_the_cli(self, isolated_config):
         import subprocess
         out = subprocess.run(
-            [sys.executable, "-m", "src.sync", "--help"],
+            [sys.executable, "-m", "src.corpus", "sync", "--help"],
             capture_output=True, text=True, cwd=str(config.REPO_ROOT),
         ).stdout
         assert "--reparse" in out

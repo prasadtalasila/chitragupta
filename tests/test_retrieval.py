@@ -391,7 +391,7 @@ class TestCli:
 
     def test_no_ledger_exits_nonzero_with_the_fix(self, isolated_config, capsys):
         assert retrieval.main(["search", "anything"]) == 1
-        assert "src.sync" in capsys.readouterr().err
+        assert "src.corpus sync" in capsys.readouterr().err
 
     def test_no_results_is_not_an_error(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)

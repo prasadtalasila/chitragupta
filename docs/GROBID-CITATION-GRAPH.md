@@ -58,7 +58,7 @@ and is the main cost weighed in [What it would cost](#what-it-would-cost).
 
 Two layers touch PDFs, and neither produces bibliographic structure:
 
-- **The corpus layer** (`src/pdf_text.py`, via `python -m src.sync`)
+- **The corpus layer** (`src/pdf_text.py`, via `python -m src.corpus sync`)
   extracts plain text per citekey to `content/parsed/<citekey>.txt`,
   feeding BM25 retrieval in `src/retrieval.py`. It dispatches through
   `_EXTRACTORS` to `pdftotext` (default) or `docling`. One file in, one

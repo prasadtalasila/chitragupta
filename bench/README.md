@@ -47,7 +47,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 
 | Question | Tool |
 |---|---|
-| What does the **shipped pipeline** cost at these settings? | **`sweep_sync.py`** -- runs the real `python -m src.sync` |
+| What does the **shipped pipeline** cost at these settings? | **`sweep_sync.py`** -- runs the real `python -m src.corpus sync` |
 | How does Docling itself behave per document? | `bench_docling.py` |
 | How does the workload spread across N processes and G cards? | `run_parallel.py` |
 | What would the whole corpus cost, from a sample? | `estimate.py` -- **but see its docstring: it understates** |
@@ -88,7 +88,7 @@ processes and cards", not "what does the shipped pool cost".
 
 So every **pool-level** figure in `RESULTS.md` -- worker counts,
 per-worker GPU assignment, and `[parser].start_method` -- was measured
-with the real `python -m src.sync`, not with this harness. `sweep_sync.py`
+with the real `python -m src.corpus sync`, not with this harness. `sweep_sync.py`
 now automates that; the equivalent by hand is:
 
 ```bash
@@ -102,7 +102,7 @@ for method in spawn forkserver; do
       env CONTENT_DIR=/tmp/bench-content BIB_FILE=/path/to/subset.bib \
           PARSER=docling PARSER_OCR=false \
           PARSER_WORKERS=4 PARSER_START_METHOD=$method \
-      .venv-full/bin/python -m src.sync > /dev/null
+      .venv-full/bin/python -m src.corpus sync > /dev/null
   done
 done
 ```

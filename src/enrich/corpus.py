@@ -1,6 +1,6 @@
 """The enrichment layer's view of the corpus: the bibliography, nothing else.
 
-Every document here comes from the ledger that `python -m src.sync`
+Every document here comes from the ledger that `python -m src.corpus sync`
 populates from the bib file, so every document is citable, and its
 citekey is its whole identity -- whatever citekey the exported bib file
 assigned (src/bib_reader.py; the bib file is the source of truth, this
@@ -18,7 +18,7 @@ two id namespaces apart -- all to index evidence that no draft was ever
 allowed to cite. Sourcing the corpus from the bibliography alone deletes
 that case at its origin rather than handling it five times over: if a
 paper is worth indexing, catalogue it in your reference manager,
-re-export, and re-run `python -m src.sync`.
+re-export, and re-run `python -m src.corpus sync`.
 """
 
 from dataclasses import dataclass

@@ -107,7 +107,7 @@ _MIGRATIONS: list[tuple[tuple[str, str], ...]] = [
         # NULL means "synced before this column existed". references.py
         # falls back to the title/year columns for those rather than
         # failing, so an existing ledger keeps working until the next
-        # `python -m src.sync` backfills it.
+        # `python -m src.corpus sync` backfills it.
         ("bib_fields", "ALTER TABLE items ADD COLUMN bib_fields TEXT"),
     ),
 ]
@@ -434,7 +434,7 @@ def all_items(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 # ---------------------------------------------------------------------
-# Read-only CLI: `python -m src.ledger`
+# Read-only CLI: `python -m src.corpus ledger`
 #
 # Its own entrypoint rather than a `sync --inspect` flag, for two reasons
 # that are both about what a *reader* needs. `sync` takes the pipeline
@@ -473,7 +473,7 @@ def main(argv: "list[str] | None" = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python -m src.ledger",
+        prog="python -m src.corpus ledger",
         description="Show what the corpus layer holds. Read-only, takes no lock, "
                     "and runs with the bare system python3.",
     )
@@ -485,7 +485,7 @@ def main(argv: "list[str] | None" = None) -> int:
 
     if not config.LEDGER_PATH.exists():
         print(f"No ledger at {config.LEDGER_PATH}.")
-        print("Run `python -m src.sync` to build it from your bib file.")
+        print("Run `python -m src.corpus sync` to build it from your bib file.")
         return 0
 
     # Opened read-only, NOT via connect(): connect() runs the schema and
@@ -525,7 +525,7 @@ def main(argv: "list[str] | None" = None) -> int:
         total = sum(counts.values())
         if not total:
             print(f"Ledger at {config.LEDGER_PATH} is empty.")
-            print("Run `python -m src.sync` to populate it from your bib file.")
+            print("Run `python -m src.corpus sync` to populate it from your bib file.")
             return 0
 
         print(f"Ledger: {config.LEDGER_PATH}   ({total} item(s) from "
@@ -538,13 +538,13 @@ def main(argv: "list[str] | None" = None) -> int:
             kinds = failure_counts(con)
         except sqlite3.OperationalError:
             # A ledger written before failure_kind existed. Read-only, so
-            # it cannot be migrated here -- `python -m src.sync` does that.
+            # it cannot be migrated here -- `python -m src.corpus sync` does that.
             kinds = {"deterministic": 0, "transient": 0}
         if kinds["deterministic"]:
             print(f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
                   "automatically.\n  Fix or remove the PDF, or re-run "
-                  "`python -m src.sync --reparse`.")
-            print("  See which: python -m src.ledger --status parse_failed")
+                  "`python -m src.corpus sync --reparse`.")
+            print("  See which: python -m src.corpus ledger --status parse_failed")
         elif kinds["transient"]:
             print(f"\n  {kinds['transient']} item(s) failed for a transient reason "
                   "and will be retried on the next sync.")
@@ -554,6 +554,3 @@ def main(argv: "list[str] | None" = None) -> int:
     finally:
         con.close()
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())

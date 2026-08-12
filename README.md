@@ -139,14 +139,14 @@ bash scripts/install_full_pipeline.sh all
 #    list -- not needed on a first run. docs/ZOTERO.md has the full
 #    semantics and why the default is to report rather than delete.
 source .venv-full/bin/activate
-python -m src.sync
+python -m src.corpus sync
 
 # ...and only once you've read the stale list it prints, and agree with it:
-# python -m src.sync --remove-stale
+# python -m src.corpus sync --remove-stale
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python -m src.ledger
+python -m src.corpus ledger
 
 # 5. Optional, and only when you want it: the enrichment layer -- layout-aware
 #    parsing, semantic search and topic clustering over the whole corpus.

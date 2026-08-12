@@ -18,7 +18,7 @@ phase-by-phase record of it, which had stopped being a plan.
 Five rules, each of which was learned by getting it wrong:
 
 1. **Measure the thing you ship.** Every pool-level figure must come from
-   the real `python -m src.sync` (`sweep_sync.py`), not from a harness
+   the real `python -m src.corpus sync` (`sweep_sync.py`), not from a harness
    that approximates it. `run_parallel.py` launches independent processes
    and shares none of the pool's machinery; it answers a different
    question.

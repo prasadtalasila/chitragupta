@@ -8,7 +8,7 @@
 #
 # Any value can be overridden per-run by an environment variable of the
 # same name, without editing this file:
-#     BIB_FILE=/path/to/other.bib python -m src.sync
+#     BIB_FILE=/path/to/other.bib python -m src.corpus sync
 #
 # Full reference -- accepted values, defaults, and how each value is
 # parsed:                                         docs/CONFIG.md
@@ -18,7 +18,7 @@
 # The BibTeX export -- the source of truth for citekeys and bibliographic
 # metadata. A manual, point-in-time export from your reference manager,
 # not continuously auto-synced: re-export after adding papers, then
-# re-run `python -m src.sync`. Gitignored, per-host data.
+# re-run `python -m src.corpus sync`. Gitignored, per-host data.
 # Relative to the repo root, or absolute.  Default: papers/bibliography.bib
 path = "papers/bibliography.bib"
 
@@ -72,7 +72,7 @@ csl = "assets/csl/ieee.csl"
 collapse_citations = true
 
 [parser]
-# Which backend `python -m src.sync` uses to turn a PDF into
+# Which backend `python -m src.corpus sync` uses to turn a PDF into
 # content/parsed/<citekey>.txt.
 #
 #   "pdftotext"  default -- fast, needs poppler-utils on PATH, no Python
@@ -115,7 +115,7 @@ backend = "pdftotext"
 #                                                          Default: false
 ocr = false
 
-# How many documents `python -m src.sync` parses at once.
+# How many documents `python -m src.corpus sync` parses at once.
 #
 #   1        default, and the historical behaviour: one document at a
 #            time, no pool, no subprocesses. Nothing about a run changes
@@ -246,7 +246,7 @@ min_tokens = 200
 # gitignored -- created on first run). One of Python's own level names:
 # DEBUG, INFO, WARNING, ERROR, CRITICAL. Case-insensitive.
 #
-# One file for both `python -m src.sync` and `python -m src.enrich`: each
+# One file for both `python -m src.corpus sync` and `python -m src.enrich`: each
 # line names its source, so `grep 'src\.sync' logs/pipeline.log` splits
 # them back apart. The drafting-layer CLIs (src.draft gate/dossier/
 # retrieve/references/render) print to stdout and are not logged here --

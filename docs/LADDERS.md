@@ -49,7 +49,7 @@ them and what they are allowed to do*.
 
 | Layer | What it is | Runs when |
 |---|---|---|
-| **1. Corpus** | `python -m src.sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
+| **1. Corpus** | `python -m src.corpus sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
 | **3. Enrichment** | `python -m src.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
 | **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`. Advisory over a finished draft -- never automatic, never a gate. | When you ask, after a draft exists |
@@ -153,7 +153,7 @@ flowchart TB
   BIB(["papers/bibliography.bib<br/><small>exported from your reference manager</small>"])
 
   subgraph CORPUS["corpus layer -- deterministic, holds the lock"]
-    SYNC["python -m src.sync"]
+    SYNC["python -m src.corpus sync"]
     LEDGER[("content/ledger.sqlite")]
     PARSED[("content/parsed/&lt;citekey&gt;.txt<br/>+ .passages.json")]
   end
@@ -215,7 +215,7 @@ of raw PDFs into the corpus under ids the citation gate would always
 reject, which cost every stage downstream a permanently non-citable case
 in exchange for indexing evidence no draft was ever allowed to use. If a
 paper is worth indexing it is worth cataloguing: put it in your reference
-manager, re-export, and re-run `python -m src.sync`.
+manager, re-export, and re-run `python -m src.corpus sync`.
 
 Every stage then receives that whole list, and unless you say otherwise
 nothing filters it by draft, by reference list, or by citation: a draft
@@ -430,8 +430,8 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.ledger`, `src.review` (all three aids), `src.passages` |
-| 2 | a venv with `bibtexparser` | `python -m src.sync` |
+| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids), `src.passages` |
+| 2 | a venv with `bibtexparser` | `python -m src.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m src.enrich` |
 
 Tier 1 is a design constraint, not an accident: the citation gate is the
@@ -566,7 +566,7 @@ And the same decisions against the layer that makes them:
 
 | Layer | Ladders it walks | Tiers it obeys | Lock |
 |---|---|---|---|
-| 1. Corpus (`src.sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
+| 1. Corpus (`src.corpus sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
 | 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
 | 3. Enrichment (`python -m src.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
 | 4. Review (the three aids) | evidence passages, detection tiers | interpreter 1, render format | none |

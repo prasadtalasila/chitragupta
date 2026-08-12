@@ -1,5 +1,5 @@
 """The enrichment layer: Docling -> sentence-transformers/Chroma ->
-BERTopic, over the same corpus `python -m src.sync` maintains.
+BERTopic, over the same corpus `python -m src.corpus sync` maintains.
 
 Everything in here needs pyproject.toml's "enrich" Poetry group
 (`poetry install --with enrich`), installed in a venv (PEP 668 blocks

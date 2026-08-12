@@ -27,7 +27,7 @@
 # Host usage:
 #   bash scripts/install_full_pipeline.sh all
 #   bash scripts/install_full_pipeline.sh dev-deps   # optional, to run tests
-#   then: .venv-full/bin/python -m src.sync
+#   then: .venv-full/bin/python -m src.corpus sync
 #         .venv-full/bin/python -m src.enrich
 #         .venv-full/bin/python -m pytest
 #
@@ -129,7 +129,7 @@ install_os_deps() {
     # discards it, and cv2's own loader leaves `sys.OpenCV_LOADER` set
     # when its bootstrap dies partway -- so every worker forked afterwards
     # reports 'recursion is detected during loading of "cv2" binary
-    # extensions' instead, and `python -m src.sync` fails every document
+    # extensions' instead, and `python -m src.corpus sync` fails every document
     # with a message naming neither PDFs nor the missing library. See
     # docs/PDF-PARSER.md's troubleshooting entry.
     # Pinning opencv-python-headless instead does not work: rapidocr
@@ -191,7 +191,7 @@ install_python_deps() {
 
     echo
     echo "Installed. Run pipeline scripts via:"
-    echo "  $bin_dir/python -m src.sync"
+    echo "  $bin_dir/python -m src.corpus sync"
     echo "  $bin_dir/python -m src.enrich"
 }
 

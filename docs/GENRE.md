@@ -288,7 +288,7 @@ claim.
 **The gate is the only exit.** `python -m src.draft gate` runs on the
 skill's own output, and no draft is presented until it reports `OK`.
 
-**The corpus is read-only.** No skill runs `python -m src.sync` or any
+**The corpus is read-only.** No skill runs `python -m src.corpus sync` or any
 `python -m src.enrich` stage. Both take the pipeline's write lock and can
 run for tens of minutes; they are yours to run. If the ledger is empty or
 nothing is `parsed`, the skill says exactly what it checked and what it

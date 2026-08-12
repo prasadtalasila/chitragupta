@@ -110,7 +110,7 @@ the next one is checked too.
 
 ## Writing a script that drives the enrichment layer
 
-`src.enrich.docling_parse.parse_corpus` and `python -m src.sync` both use
+`src.enrich.docling_parse.parse_corpus` and `python -m src.corpus sync` both use
 a worker pool when `[parser].workers` is above 1, and every start method
 they can pick (`forkserver` or `spawn` -- see `[parser].start_method`)
 re-imports the calling program's `__main__` in each worker. Any script of
@@ -134,7 +134,7 @@ bench/                    parser measurement (dev-only, not shipped) -- see "Ben
                           above; corpus.json/sample*.json are generated and gitignored, results/ is
                           committed evidence
   bench_docling.py          backend extraction timings, one process
-  sweep_sync.py             the real `python -m src.sync` swept over worker/GPU counts -- the harness
+  sweep_sync.py             the real `python -m src.corpus sync` swept over worker/GPU counts -- the harness
                             every pool-level figure must come from
   run_parallel.py           independent-process baseline; answers a different question to sweep_sync.py
   make_corpus.py            builds the gitignored work lists from your own bib file
@@ -230,7 +230,8 @@ mkdocs.yml                the documentation site published at prasad.talasila.in
 src/                      the corpus and drafting layers (sync needs bibtexparser;
                           citation_gate/references need nothing)
   config.py                 loads config.toml, env var overrides
-  runlock.py                one-writer-at-a-time lock over content/, held by both entrypoints;
+  runlock.py                one-writer-at-a-time lock over content/, held by `src.corpus sync` and
+                          `src.enrich` -- the only two commands that write to it;
                           a dedicated sqlite file, so a killed holder releases it with no
                           staleness check and readers are never blocked
   bib_reader.py             parses bibliography.bib -- the only citekey source
@@ -239,8 +240,15 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           entry's formatting-relevant BibTeX fields (bib_fields, JSON), so references.py
                           can build a full bibliography entry without reading the bib file itself
   pdf_text.py               PDF text extraction, dispatched to pdftotext/docling by config.PARSER; also the parse-quality guard
-  sync.py                   orchestrates the above -- the corpus-layer entrypoint; --remove-stale opts into
+  sync.py                   orchestrates the above -- the corpus layer's `sync` verb; --remove-stale opts into
                           deleting stale ledger rows (default: report only, see README's "Removing a paper")
+  corpus.py                 the corpus layer's single entry point, `python -m src.corpus sync|ledger`.
+                          sync.py and ledger.py carry no __main__ block of their own. Imports the verb
+                          it was given rather than both, so asking for `ledger` never pays for sync's
+                          bibtexparser -- see docs/ARCHITECTURE.md on why that one is not like the
+                          other dispatchers
+  draft.py                  the drafting layer's single entry point, `python -m src.draft
+                          gate|dossier|retrieve|references|render`; same rule, same reasons
   dedup.py                  advisory near-duplicate citekey detection (shared DOI/title), called from sync
   retrieval.py              BM25 search over the corpus layer, backed by a cached term-frequency index.
                           `search` ranks and returns a snippet -- the best-covering passage for the

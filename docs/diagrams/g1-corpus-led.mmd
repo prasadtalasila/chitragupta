@@ -5,7 +5,7 @@ flowchart LR
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Breadth is the whole job here.<br/>A thin corpus shows up<br/>immediately as a thin survey.<br/><br/><b>papers/bibliography.bib</b><br/><small>the only source either skill can reach —<br/>everything retrieval returns is citable</small>"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m src.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
   HEAVY["<b>ENRICHMENT — worth it for this genre</b><br/><code>-m src.enrich --stages docling,embed</code><br/><br/><b>docling</b> → layout-aware .md + .passages.json<br/><small>better quotable passages, so claims survive review</small><br/><br/><b>embed</b> → content/chroma/<br/><small>semantic recall: finds the paper that argues the<br/>point in different words. <b>Both skills name<br/><code>embed_index.search()</code> by hand.</b></small>"]
 

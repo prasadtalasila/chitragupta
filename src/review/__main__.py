@@ -13,7 +13,7 @@ none takes the write lock, and nothing invokes them automatically:
         how much wording the draft shares with a cited source, with any
         parsed source, and which page a phrase is on.
 
-**One entry point, one level deep**, like `python -m src.sync` for the
+**One entry point, one level deep**, like `python -m src.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
 so `python -m src.review.verbatim_check` imports a module and exits 0
 without doing anything -- the same trap `src/enrich/`'s submodules carry,

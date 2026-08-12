@@ -666,7 +666,7 @@ restore it with:
     python -m src.draft dossier restore <archive.tar.gz> --force
 
 A bundle carries drafts and dossiers, not the corpus: `content/ledger.sqlite`
-is regenerable with `python -m src.sync`, and `papers/bibliography.bib` is
+is regenerable with `python -m src.corpus sync`, and `papers/bibliography.bib` is
 your reference manager's export, which belongs in that tool's backup rather
 than in a copy this pipeline keeps.
 
@@ -1754,7 +1754,7 @@ def _cmd_status_all(reports: list[Drift], as_json: bool) -> int:
     if unknown:
         print(f"  {len(unknown)} of {len(reports)} dossier(s) could not be checked: "
               f"no readable ledger at {config.LEDGER_PATH}.")
-        print("  Run `python -m src.sync` to build one; until then drift is unknown,")
+        print("  Run `python -m src.corpus sync` to build one; until then drift is unknown,")
         print("  not absent.")
     if not stale:
         if not unknown:

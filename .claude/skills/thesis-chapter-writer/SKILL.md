@@ -1,6 +1,6 @@
 ---
 name: thesis-chapter-writer
-description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via src.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m src.sync` has been run.
+description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via src.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m src.corpus sync` has been run.
 tags: [thesis, dissertation, latex, citation]
 ---
 
@@ -8,7 +8,7 @@ tags: [thesis, dissertation, latex, citation]
 
 Genre-specific drafting agent for thesis-chapter output. The drafting
 layer (generative, on-demand, user-reviewed) -- distinct from
-`python -m src.sync` (the corpus layer: deterministic, unattended-safe).
+`python -m src.corpus sync` (the corpus layer: deterministic, unattended-safe).
 
 ## Shared corpus layer (read, don't regenerate)
 
@@ -43,7 +43,7 @@ record used for audit, beside the human-readable working state a later
 revision reads (reader, scope, glossary, rejected candidates and why,
 steering). Two shapes for two readers, one directory per draft.
 
-**Read-only means read-only: never run `python -m src.sync`, and never
+**Read-only means read-only: never run `python -m src.corpus sync`, and never
 run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
@@ -54,13 +54,13 @@ build one.
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python -m src.ledger
+python -m src.corpus ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
 name what you checked and what you found -- and stop there. Do not draft
 around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m src.sync` and come back.
+`.venv-full/bin/python -m src.corpus sync` and come back.
 
 ## When to invoke
 

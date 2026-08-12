@@ -224,7 +224,7 @@ dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
 
 The ledger is opened read-only with `timeout=0`, exactly as
-`python -m src.ledger` does: this is an inspection, and it must not take
+`python -m src.corpus ledger` does: this is an inspection, and it must not take
 a write lock, run a migration, or block behind a sync that is mid-run.
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers
@@ -320,7 +320,7 @@ changes, the command is already there.
 
 `status <draft>` answers "did the corpus move under this one draft?",
 which is only useful if you already suspect it did. The corpus half of
-the bottleneck is the one nobody is watching: `src.sync` adds papers and
+the bottleneck is the one nobody is watching: `src.corpus sync` adds papers and
 `--remove-stale` drops them, and every draft written before that moment
 silently drifts. `status --all` is the sweep that makes it visible --
 one report over every dossier under `content/dossiers/`, always exiting
@@ -625,7 +625,7 @@ Three properties worth knowing:
 ### What a bundle does not carry
 
 `content/ledger.sqlite` and `papers/bibliography.bib`. The ledger is
-regenerable with `python -m src.sync`, and the bib file is your reference
+regenerable with `python -m src.corpus sync`, and the bib file is your reference
 manager's export -- AGENTS.md's invariant is that the bib file is the
 source of truth *and not this pipeline's to own*, so a bundle does not
 start keeping copies of it. Back it up where you back up that tool.
