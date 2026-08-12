@@ -67,10 +67,10 @@ the point, and the `prose` item class below is what would fill it.
 
 | Signal | What it finds | What it emits | Who acts on it |
 |---|---|---|---|
-| `draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
-| `review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
-| `review verbatim scan` | wording shared with a parsed source | Markdown report | human, by hand |
-| `review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
+| `python -m src.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
+| `python -m src.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
+| `python -m src.review verbatim scan` | wording shared with a parsed source | Markdown report | human, by hand |
+| `python -m src.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
 | *nothing* | a sentence that is simply badly written | -- | human, by hand |
 
 Two things stand out. **Only the drift sweep is machine-readable** --
