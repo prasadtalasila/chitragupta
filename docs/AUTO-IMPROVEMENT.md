@@ -3,7 +3,7 @@
 Status: **a proposal, not a plan.** Written 2026-08-11.
 
 Nothing described here is built. `python -m src.review agenda` is not a
-command that exists, and no aid emits JSON. This document argues a case,
+command that exists, and no review aid emits JSON. This document argues a case,
 names where each piece would sit, and records the one documented rule it
 cannot satisfy without an amendment the user has to approve. The decision
 has not been taken.
@@ -241,13 +241,19 @@ proposes and repairs; the human accepts.**
 ## The amendment this needs
 
 One documented rule this cannot satisfy. It is about *who may invoke* a
-review aid, and the loop's driver invokes them. This sweep:
+review aid, and the loop's driver invokes them. This sweep surfaces the
+candidates:
 
 ```bash
-grep -rniE "never automatic|never invoked|reads it back|runs automatically" --include='*.md' --include='*.mmd' --include='*.py' .
+grep -rniE "never automatic|never invoked|reads it back|runs automatically" \
+  --include='*.md' --include='*.mmd' --include='*.py' .
 ```
 
-finds **twelve** statements of it:
+It is a starting point rather than the answer -- it also hits phrases
+that have nothing to do with the review layer (`AGENTS.md`'s "reads it
+back out of the ledger", a `tests/test_sync.py` docstring's "never
+invoked"), and it hits this document. **Twelve** of its matches are real
+statements of the rule:
 
 | Site | Wording |
 |---|---|
