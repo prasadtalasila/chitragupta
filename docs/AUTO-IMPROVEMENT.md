@@ -238,9 +238,12 @@ proposes and repairs; the human accepts.**
 ## The amendment this needs
 
 One documented rule this cannot satisfy. It is about *who may invoke* a
-review aid, and the loop's driver invokes them. A sweep for it
-(`grep -rniE "never automatic|never invoked|reads it back|runs
-automatically" --include='*.md' --include='*.mmd' --include='*.py' .`)
+review aid, and the loop's driver invokes them. This sweep:
+
+```bash
+grep -rniE "never automatic|never invoked|reads it back|runs automatically" --include='*.md' --include='*.mmd' --include='*.py' .
+```
+
 finds **twelve** statements of it:
 
 | Site | Wording |
