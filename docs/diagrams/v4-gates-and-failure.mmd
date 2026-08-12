@@ -3,7 +3,7 @@ title: "Level 4 — gates and exit codes: what makes a run stop"
 ---
 flowchart TB
 
-  START(["<code>python -m src.sync</code>"]) --> Q2
+  START(["<code>python -m src.corpus sync</code>"]) --> Q2
 
   Q2{"<b>config.toml present?</b><br/><small>read once at import,<br/>before anything else happens</small>"}
   Q2 -- no --> EC["<b>refuses to import</b><br/><small>cp config.toml.example config.toml</small>"]

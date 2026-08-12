@@ -10,7 +10,7 @@ decide what is worth building.
 **Written for** someone choosing whether to run
 `python -m src.enrich --stages embed,bertopic`, or wondering why a
 draft cited a paper they didn't expect. **Assumed:** you have run
-`python -m src.sync` and have a populated ledger. **Not covered:** how to
+`python -m src.corpus sync` and have a populated ledger. **Not covered:** how to
 tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 [PERFORMANCE.md](PERFORMANCE.md) for what each costs.
 

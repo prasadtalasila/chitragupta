@@ -11,12 +11,12 @@ flowchart TB
 
   C["<b>3 · Install</b><br/><code>pipx install poetry</code><br/><code>bash scripts/install_full_pipeline.sh all</code><br/><small><b>all</b> = OS packages (pdftotext, TeX Live, Pandoc) + Python.<br/>No stage argument = Python only.</small>"]
 
-  D["<b>4 · Sync the corpus</b><br/><code>source .venv-full/bin/activate</code><br/><code>python -m src.sync</code><br/><small>needs the venv — this is the one command that does</small>"]
+  D["<b>4 · Sync the corpus</b><br/><code>source .venv-full/bin/activate</code><br/><code>python -m src.corpus sync</code><br/><small>needs the venv — this is the one command that does</small>"]
   D1{{"exit code?"}}
   DFAIL["<b>1</b> — something didn't parse.<br/><small>The summary names each one.<br/>Fix or remove it; re-running is cheap.</small>"]
   DBUSY["<b>2</b> — another run holds the lock.<br/><small>Nothing was lost. Try again later.</small>"]
 
-  E["<b>5 · Look at what it found</b><br/><code>python -m src.ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
+  E["<b>5 · Look at what it found</b><br/><code>python -m src.corpus ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
   E1{{"Rows with status<br/><code>parsed</code>?"}}
   EEMPTY["Nothing is citable yet.<br/><small>Almost always the Export Files trap above.<br/><code>--status no_pdf</code> tells you which entries and why.</small>"]
 

@@ -92,7 +92,7 @@ def main(argv: "list[str] | None" = None) -> int:
         print(f"No draft at {draft}", file=sys.stderr)
         return 1
     if not config.LEDGER_PATH.exists():
-        print(f"No ledger at {config.LEDGER_PATH} -- run `python -m src.sync` first.", file=sys.stderr)
+        print(f"No ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync` first.", file=sys.stderr)
         return 1
 
     root = Path(tempfile.mkdtemp(prefix="bench-overlap-"))

@@ -8,6 +8,7 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Upgrading from 5.1.0: one command for the corpus layer](#upgrading-from-510-one-command-for-the-corpus-layer)
 - [Upgrading from 5.0.0: one command for the drafting layer](#upgrading-from-500-one-command-for-the-drafting-layer)
 - [Upgrading from 4.x: one command per layer](#upgrading-from-4x-one-command-per-layer)
 - [Upgrading from 3.19.x: `content/provenance/` is now `content/review/`](#upgrading-from-319x-contentprovenance-is-now-contentreview)
@@ -17,8 +18,8 @@ short path; this is the full set.
 - [Which interpreter](#which-interpreter)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
-  - [`src.sync`](#python--m-srcsync)
-  - [`src.ledger`](#python--m-srcledger)
+  - [`src.corpus sync`](#python--m-srccorpus-sync)
+  - [`src.corpus ledger`](#python--m-srccorpus-ledger)
   - [`src.draft gate`](#python--m-srcdraft-gate)
   - [`src.draft references`](#python--m-srcdraft-references)
   - [`src.draft dossier`](#python--m-srcdraft-dossier)
@@ -32,6 +33,52 @@ short path; this is the full set.
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Upgrading from 5.1.0: one command for the corpus layer
+
+**Two command strings changed. Nothing they do changed.** 5.2.0 gave the
+corpus layer the single entry point every other layer already had, so the
+invariant "one entry point per layer, one level deep" is now true of all
+four. There are no compatibility shims: the old spellings are gone, and
+the table below is the whole migration.
+
+| Before (5.1.0) | Now (5.2.0) |
+|---|---|
+| `python -m src.sync [--reparse] [--remove-stale]` | `python -m src.corpus sync [--reparse] [--remove-stale]` |
+| `python -m src.ledger [--list] [--status S] [--citekey K]` | `python -m src.corpus ledger [--list] [--status S] [--citekey K]` |
+
+Every flag, exit code and output path is unchanged, so a script that only
+needed its command string edited needs nothing else. `python -m
+src.corpus` with no arguments prints the layer's usage and exits 0, which
+is the fastest way to check a spelling.
+
+> **If you run `sync` on a schedule, this is the one migration in this
+> document that can pass silently.** `sync.py` and `ledger.py` lost their
+> `__main__` blocks, so `python -m src.sync` now imports the module and
+> **exits 0 with empty stdout** rather than erroring — the same trap the
+> drafting and review layers already carry. For every other command in
+> this project that no-op is harmless, because a human is watching. This
+> one is not: an unedited crontab line or systemd unit goes on reporting
+> success, `logs/pipeline.log` gains no new lines, and the corpus quietly
+> stops tracking the bibliography. The systemd unit under [Running sync
+> on a schedule](#running-sync-on-a-schedule) sets `SuccessExitStatus=2`,
+> so nothing there would flag it either.
+>
+> **Edit the command string in every crontab, systemd unit, Docker
+> invocation and wrapper script you have, and confirm the next scheduled
+> run appears in `logs/pipeline.log`.** No in-repo change can reach those
+> files; this paragraph is the whole mitigation.
+
+`ledger` keeps its bare-`python` tier — it still needs only the standard
+library, and still takes no lock, so it still works *during* a sync. That
+survives the shared front door because `src/corpus.py` imports the verb
+you asked for and not the other one; `sync`'s `bibtexparser` dependency is
+never paid by a `ledger` invocation. See [Which
+interpreter](#which-interpreter).
+
+This is the same kind of change the other three layers got in 5.0.0 and
+5.1.0, and closes the last case where a layer's command surface didn't
+match its shape.
 
 ## Upgrading from 5.0.0: one command for the drafting layer
 
@@ -86,7 +133,7 @@ front door, tightened to one.
 
 **Four command strings changed. Nothing they do changed.** 5.0.0 gave
 every layer a single entry point, one level deep, so the review and
-enrichment layers now read like `python -m src.sync` always has. There
+enrichment layers now read like `python -m src.sync` did then. There
 are no compatibility shims: the old spellings are gone, and the table
 below is the whole migration.
 
@@ -195,7 +242,7 @@ reports any other parse. The same check restores a `.txt` or a sidecar
 you delete by hand.
 
 Nothing to do, in other words -- but if you would rather force it all at
-once, `python -m src.sync --reparse` still re-extracts everything.
+once, `python -m src.corpus sync --reparse` still re-extracts everything.
 
 ## Upgrading from 3.11 or earlier: the log file moved
 
@@ -264,8 +311,8 @@ against the project's venv for tiers 2 and 3.
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python`** -- stdlib only, no venv | `src.draft` (all five commands), `src.ledger`, `src.review` (all three aids) |
-| 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.sync` |
+| 1 | **`python`** -- stdlib only, no venv | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids) |
+| 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m src.enrich` |
 
 Tier 1 is deliberate, not incidental. The chain that enforces the one rule
@@ -290,7 +337,7 @@ Two commands look like they belong in a higher tier and don't:
 
 Using the wrong interpreter is the most likely first error you will hit:
 `ModuleNotFoundError: No module named 'bibtexparser'` means you ran
-`python -m src.sync` instead of `.venv-full/bin/python -m src.sync`.
+`python -m src.corpus sync` instead of `.venv-full/bin/python -m src.corpus sync`.
 
 ## The full first run, step by step
 
@@ -329,16 +376,16 @@ bash scripts/install_full_pipeline.sh python-deps  # .venv-full/ + the enrich gr
 
 # 3. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
 #    venv, and holds the write lock.
-.venv-full/bin/python -m src.sync
-# .venv-full/bin/python -m src.sync --reparse         # re-extract text even if the PDF is unchanged
-# .venv-full/bin/python -m src.sync --remove-stale    # only after reading the stale list it prints
+.venv-full/bin/python -m src.corpus sync
+# .venv-full/bin/python -m src.corpus sync --reparse         # re-extract text even if the PDF is unchanged
+# .venv-full/bin/python -m src.corpus sync --remove-stale    # only after reading the stale list it prints
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python -m src.ledger
-# python -m src.ledger --list
-# python -m src.ledger --status parse_failed
-# python -m src.ledger --citekey talasila_composable_2025
+python -m src.corpus ledger
+# python -m src.corpus ledger --list
+# python -m src.corpus ledger --status parse_failed
+# python -m src.corpus ledger --citekey talasila_composable_2025
 
 # 5. Optional, and only when you want it: the enrichment layer.
 #    Layout-aware parsing, semantic search and topic clustering over the
@@ -408,7 +455,7 @@ python scripts/release.py                       # bundles release/chitragupta-<v
 
 Defaults shown are the value used when the flag is omitted.
 
-### `python -m src.sync`
+### `python -m src.corpus sync`
 
 Bibliography -> ledger -> parsed text. **Needs the venv.** Takes the
 write lock, so only one run at a time; a second run exits **2** rather
@@ -421,16 +468,16 @@ than waiting.
 | `--remove-stale` | off (report only) | Delete ledger rows for citekeys no longer in the bib file. Without it they are only *reported* |
 
 ```bash
-.venv-full/bin/python -m src.sync
-# .venv-full/bin/python -m src.sync --reparse
-# .venv-full/bin/python -m src.sync --remove-stale
-# .venv-full/bin/python -m src.sync --reparse --remove-stale
+.venv-full/bin/python -m src.corpus sync
+# .venv-full/bin/python -m src.corpus sync --reparse
+# .venv-full/bin/python -m src.corpus sync --remove-stale
+# .venv-full/bin/python -m src.corpus sync --reparse --remove-stale
 
 # Exit codes: 0 = clean, 1 = at least one parse failed,
 #             2 = another run holds the lock.
 ```
 
-### `python -m src.ledger`
+### `python -m src.corpus ledger`
 
 Read-only view of the corpus layer. **Takes no lock**, so it works while
 a sync is running. With no flags it prints a summary.
@@ -443,11 +490,11 @@ a sync is running. With no flags it prints a summary.
 | `--citekey CITEKEY` | -- | Show one item in full |
 
 ```bash
-python -m src.ledger
-# python -m src.ledger --list
-# python -m src.ledger --status parse_failed
-# python -m src.ledger --status no_pdf
-# python -m src.ledger --citekey talasila_composable_2025
+python -m src.corpus ledger
+# python -m src.corpus ledger --list
+# python -m src.corpus ledger --status parse_failed
+# python -m src.corpus ledger --status no_pdf
+# python -m src.corpus ledger --citekey talasila_composable_2025
 ```
 
 ### `python -m src.draft gate`
@@ -494,7 +541,7 @@ markers are still `[@citekey]`:
 Authors, venue, volume and pages come from the ledger's `bib_fields`
 column, which `sync` populates from the bib file. A row synced before
 that column existed has no fields to format, so its entry degrades to
-title and year until the next `python -m src.sync`.
+title and year until the next `python -m src.corpus sync`.
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -646,7 +693,7 @@ python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz --force
 A bundle carries `drafts/`, `dossiers/` and optionally `rendered/`, with
 paths relative to `content/` so it restores into a checkout whose
 `[content].dir` points elsewhere. It does **not** carry
-`content/ledger.sqlite` (regenerate with `python -m src.sync`) or
+`content/ledger.sqlite` (regenerate with `python -m src.corpus sync`) or
 `papers/bibliography.bib` (your reference manager's export, which
 AGENTS.md keeps as the source of truth rather than something this
 pipeline copies). Restore refuses the whole archive -- rather than
@@ -1072,7 +1119,7 @@ archive. Every prose document ships: `docs/`, `README.md`, `SOUL.md`,
 
 ## Running sync on a schedule
 
-`python -m src.sync` is deterministic, idempotent, and takes its own
+`python -m src.corpus sync` is deterministic, idempotent, and takes its own
 write lock (`src.runlock`) -- it was already safe to run unattended.
 What makes it worth *actually* putting on a schedule is the other two
 things: exit codes an unattended caller can branch on without parsing
@@ -1112,7 +1159,7 @@ unattended.
 ```bash
 # crontab -e -- runs hourly, on the hour. cd into the repo first: sync
 # resolves config.toml and papers/bibliography.bib relative to it.
-0 * * * * cd /path/to/chitragupta && .venv-full/bin/python -m src.sync
+0 * * * * cd /path/to/chitragupta && .venv-full/bin/python -m src.corpus sync
 ```
 
 cron's own default, with no `MAILTO` set, is to mail stdout/stderr to
@@ -1134,7 +1181,7 @@ Description=Chitragupta corpus sync
 [Service]
 Type=oneshot
 WorkingDirectory=/path/to/chitragupta
-ExecStart=/path/to/chitragupta/.venv-full/bin/python -m src.sync
+ExecStart=/path/to/chitragupta/.venv-full/bin/python -m src.corpus sync
 # Exit 2 (another run still holds the lock) is an expected, harmless
 # outcome under this schedule, not a service failure -- don't let
 # systemd treat it as one.
@@ -1175,15 +1222,15 @@ a command line:
 
 ```bash
 # Point at a different bibliography or output directory for one run
-# BIB_FILE=/path/to/other.bib .venv-full/bin/python -m src.sync
-# CONTENT_DIR=/tmp/scratch-content .venv-full/bin/python -m src.sync
+# BIB_FILE=/path/to/other.bib .venv-full/bin/python -m src.corpus sync
+# CONTENT_DIR=/tmp/scratch-content .venv-full/bin/python -m src.corpus sync
 
 # Keep config.toml somewhere else entirely
-# CONFIG_PATH=/etc/research/config.toml .venv-full/bin/python -m src.sync
+# CONFIG_PATH=/etc/research/config.toml .venv-full/bin/python -m src.corpus sync
 
 # Try the higher-fidelity parser with some parallelism, without editing the file
-# PARSER=docling PARSER_WORKERS=auto .venv-full/bin/python -m src.sync
+# PARSER=docling PARSER_WORKERS=auto .venv-full/bin/python -m src.corpus sync
 
 # Confine a docling run to one GPU (no config setting for this, by design)
-# CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python -m src.sync
+# CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python -m src.corpus sync
 ```

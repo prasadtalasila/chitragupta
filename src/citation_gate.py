@@ -204,7 +204,7 @@ def run(paths: list[str]) -> int:
 
     if not known:
         print(
-            "WARNING: ledger is empty -- run `python -m src.sync` first. "
+            "WARNING: ledger is empty -- run `python -m src.corpus sync` first. "
             "Every citekey will be reported as unknown.",
             file=sys.stderr,
         )

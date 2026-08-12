@@ -21,7 +21,7 @@ Five commands, run by hand or by a genre skill over one draft:
         the drafting layer's publish step: Pandoc/LaTeX rendering to
         tex/pdf/docx.
 
-**One entry point, one level deep**, like `python -m src.sync` for the
+**One entry point, one level deep**, like `python -m src.corpus sync` for the
 corpus layer and `python -m src.review <aid>` for the review layer. None
 of the five modules beside this one carries a `__main__` block any more,
 so `python -m src.dossier` (or any of the other four) imports the module

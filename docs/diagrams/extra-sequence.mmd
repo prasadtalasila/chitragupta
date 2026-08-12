@@ -5,7 +5,7 @@ sequenceDiagram
     autonumber
     actor You as You
     participant Z as Zotero
-    participant Sync as src.sync<br/>(corpus layer)
+    participant Sync as src.corpus sync<br/>(corpus layer)
     participant Led as content/<br/>ledger.sqlite
     participant Ret as src.retrieval<br/>+ src.passages
     participant Skill as genre skill<br/>(.claude/skills/)
@@ -22,7 +22,7 @@ sequenceDiagram
 
     rect rgba(238,242,255,0.6)
     Note over Sync,Led: SYNC — deterministic, incremental, holds the run lock
-    You->>Sync: python -m src.sync
+    You->>Sync: python -m src.corpus sync
     Sync->>Sync: take content/pipeline.lock.db
     Sync->>Led: upsert one row per citekey
     Led-->>Sync: which PDFs actually changed

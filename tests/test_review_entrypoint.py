@@ -4,7 +4,7 @@ What the three aids *compute* is covered in tests/test_citation_provenance.py,
 tests/test_citation_coverage.py and tests/test_verbatim_check.py. This
 file pins only the dispatch, and the invariant the dispatch exists to
 serve: **one entry point per layer, one level deep**, the same shape
-`python -m src.sync` gives the corpus layer.
+`python -m src.corpus sync` gives the corpus layer.
 
 That invariant had no test before 5.0.0, and the review layer was one
 design review away from shipping `python -m src.review.verbatim_check`

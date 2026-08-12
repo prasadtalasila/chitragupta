@@ -67,7 +67,7 @@ flowchart TB
 
   subgraph J1["<b>LAYER 1 · CORPUS</b> — deterministic, no LLM, safe unattended"]
     direction TB
-    SYNC["<code>python -m src.sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
+    SYNC["<code>python -m src.corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
     OUT1[/"<b>content/ledger.sqlite</b> · <b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     SYNC --> OUT1
   end
@@ -127,9 +127,14 @@ Two properties carry the safety argument, and both are visible above:
 
 ## Layer 1: the corpus layer
 
-One command: `python -m src.sync`. It reads `papers/bibliography.bib`,
-updates one ledger row per citekey, resolves each PDF from the entry's
-`file` field, and extracts text to `content/parsed/<citekey>.txt`.
+One entry point, `python -m src.corpus`, with two verbs: `sync` does the
+work and `ledger` reads back what it did. Until 5.2.0 this section said
+"one command" and meant it — `src.ledger` sat outside as a second bare
+command, which is the gap issue #143 closed.
+
+`sync` reads `papers/bibliography.bib`, updates one ledger row per
+citekey, resolves each PDF from the entry's `file` field, and extracts
+text to `content/parsed/<citekey>.txt`.
 
 Three checks ride along, and none of them is fatal: near-duplicate
 citekeys, a parse-quality warning when a backend starts losing word
@@ -140,6 +145,11 @@ It is idempotent and incremental -- a PDF whose bytes haven't changed is
 not re-parsed -- which is what makes the second run nearly free. Exit
 codes: `0` clean, `1` at least one parse failed, `2` another writer holds
 the lock.
+
+`ledger` is the other half, and deliberately unlike the first: read-only,
+taking no lock, on the bare-`python` tier, so it answers "what does the
+corpus hold?" *while* a sync is running. Exit codes: `0` on any
+successful read, `1` for a citekey the ledger doesn't hold.
 
 ## Layer 2: the drafting layer
 
@@ -296,7 +306,7 @@ layer" that excluded the gate would split the concept across two layers.
 The contrast is the point, not a competition.
 
 **It takes no lock.** These are read-only over the corpus and must keep
-working during a `sync`, like `python -m src.ledger` and retrieval. That
+working during a `sync`, like `python -m src.corpus ledger` and retrieval. That
 was true of the commands before 4.0.0 and false of one entry point into
 them: `--stages provenance` on the enrichment layer ran a review aid
 holding sync's write lock, which is why that stage is gone.
@@ -462,8 +472,8 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `ledger`, `src.review` (all three aids) |
-| 2 | venv + `bibtexparser` | `src.sync` |
+| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids) |
+| 2 | venv + `bibtexparser` | `src.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m src.enrich` |
 
 **The gate chain is deliberately in tier 1.** `src.draft gate` ->
@@ -474,7 +484,7 @@ broken, absent, or built for a different Python. That matters more than
 it sounds: PEP 668 blocks `pip install` outside a venv on most current
 distributions, so "the venv is broken" is not always a five-second fix.
 
-Tier 2 is one package. `src.sync` needs `bibtexparser` because parsing
+Tier 2 is one package. `src.corpus sync` needs `bibtexparser` because parsing
 BibTeX correctly -- nested braces, LaTeX escapes, multi-line values -- is
 not worth hand-rolling.
 
@@ -496,9 +506,9 @@ That axis -- which binaries a command shells out to -- is independent of
 which directory it lives in, and always was.
 
 **One entry point per layer, one level deep.** Every layer is reached
-through a single `python -m src.<layer>`: `src.sync` for the corpus
-layer, `src.draft <verb>` for drafting, `src.enrich --stages …` for
-enrichment, `src.review <aid>` for review. A layer's package may nest as
+through a single `python -m src.<layer>`: `src.corpus <verb>` for the
+corpus layer, `src.draft <verb>` for drafting, `src.enrich --stages …`
+for enrichment, `src.review <aid>` for review. A layer's package may nest as
 deep as its code wants; its *command surface* does not. The submodules
 inside `src/enrich/` and `src/review/` carry no `__main__` block, so
 `python -m src.enrich.docling_parse` or `python -m src.review.verbatim_check`
@@ -515,11 +525,42 @@ import dossier`-style import across `src/`, `tests/` and `bench/` for no
 benefit: unlike the review aids, these five share little beyond
 `src/config.py`, so there was no cluster to name a package after.
 
+The corpus layer was the last to get its front door, in 5.2.0, and it
+is flat for the same reason drafting is: `src/corpus.py` beside
+`sync.py` and `ledger.py`, rather than a `src/corpus/` package that
+would have rewritten every `from src import ledger` across `src/`,
+`tests/` and `bench/`. Two things about it are its own.
+
+It **imports the verb it was given and not the other one**. Everywhere
+else the dispatcher can import its whole layer at module scope, because
+every command in that layer sits on the same interpreter tier. Here they
+do not: `sync` needs `bibtexparser` (tier 2) and `ledger` needs only
+`sqlite3` (tier 1). A top-level `from src import sync` would have taken
+`ledger` off the bare-`python` rung silently — silently because it would
+still work on any host that has the venv, which is every host CI runs
+on. `tests/test_corpus_entrypoint.py` asserts on `sys.modules` rather
+than on the import lines, for that reason.
+
+And it is a shared **command surface, not a shared lock**. `sync` holds
+the write lock for its whole run; `ledger` takes none, which is what
+keeps it readable *during* a sync — the same property the review layer
+and retrieval rely on, described above. The front door itself takes
+nothing.
+
+One thing the change does not settle: `src/ledger.py` is not corpus-layer
+code that only `sync` touches. All four layers import it as a library —
+`sync`, `citation_gate`, `references` and `retrieval`, `enrich/corpus`,
+`review/citation_provenance` — so it is closer to shared infrastructure
+than to a command `sync` owns. What moved under `src.corpus` is its
+*command*, which is a claim about where a reader should look for it, not
+about who owns the module. Issue #143 has the full argument.
+
 The two-level form was tried once, as `src.heavy.render_output`, and
 reverted with the directory that held it; `docs/CLI.md` still carries the
-migration row. `tests/test_review_entrypoint.py` and
-`tests/test_draft_entrypoint.py` pin the rule now, rather than leaving it
-to a reader comparing files by eye.
+migration row. `tests/test_review_entrypoint.py`,
+`tests/test_draft_entrypoint.py` and `tests/test_corpus_entrypoint.py`
+pin the rule now, rather than leaving it to a reader comparing files by
+eye.
 
 ## Ladders and tiers
 
@@ -570,7 +611,7 @@ against any other writer, not just sync against sync. The second one to
 start exits `2` rather than interleaving, and the lock releases itself if
 its holder is killed.
 
-Readers are never blocked: `python -m src.ledger`, the citation gate,
+Readers are never blocked: `python -m src.corpus ledger`, the citation gate,
 retrieval and **the whole review layer** all run happily while a sync is
 in progress. The review layer's exemption is deliberate and stated in its
 own section -- reviewing a finished draft is exactly the kind of work

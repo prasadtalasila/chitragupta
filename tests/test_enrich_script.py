@@ -362,7 +362,7 @@ class TestForDraftScope:
 
         assert rc == enrich_script.EXIT_BAD_SCOPE
         assert "nothing to enrich" in out
-        assert "python -m src.sync" in out
+        assert "python -m src.corpus sync" in out
         assert recorded_stages == {}
 
     def test_every_stage_now_reads_the_corpus_so_an_empty_scope_always_stops(

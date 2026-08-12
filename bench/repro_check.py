@@ -300,7 +300,7 @@ def _as_int(value: str) -> "int | None":
 
 def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
              content_dir: Path, python: str) -> dict:
-    """One `python -m src.sync` over `bib`, into `content_dir`, kept.
+    """One `python -m src.corpus sync` over `bib`, into `content_dir`, kept.
 
     The environment is set per run rather than via config.toml so that a
     single checkout can produce every arm without being edited between

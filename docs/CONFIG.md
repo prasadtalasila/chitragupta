@@ -40,10 +40,10 @@ worse failure than one that refuses to start.
   `config.toml` mid-run changes nothing until the next run.
 - Every setting can be overridden per-run by an **environment variable**
   of the same name, without editing the file:
-  `BIB_FILE=/path/to/other.bib python -m src.sync`. The environment
+  `BIB_FILE=/path/to/other.bib python -m src.corpus sync`. The environment
   always wins.
 - Set **`CONFIG_PATH`** to keep the file elsewhere:
-  `CONFIG_PATH=/etc/research/config.toml python -m src.sync`.
+  `CONFIG_PATH=/etc/research/config.toml python -m src.corpus sync`.
 - **Every key is optional.** Anything absent falls back to the default in
   the tables below, so your file only needs the settings you want to
   change.
@@ -206,7 +206,7 @@ The values in full:
   count haven't needed to vary per host. See
   [CLI.md's "Running sync on a schedule"](CLI.md#running-sync-on-a-schedule).
 
-  **One file, shared.** Both `python -m src.sync` and
+  **One file, shared.** Both `python -m src.corpus sync` and
   `src/enrich/__main__.py` write here, and each line names its source
   (`src.sync`, `src.enrich`, `src.enrich.docling_parse`), so
   `grep 'src\.sync' logs/pipeline.log` recovers a per-command view. The

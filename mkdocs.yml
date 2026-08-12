@@ -80,7 +80,7 @@ markdown_extensions:
   # GitHub's own slug algorithm, not Python-Markdown's. Every in-page
   # link in these documents was written against a heading as GitHub
   # renders it -- `docs/CLI.md` alone has nine links to headings like
-  # "`python -m src.sync`", which GitHub slugs `#python--m-srcsync` and
+  # "`python -m src.corpus sync`", which GitHub slugs `#python--m-srccorpus-sync` and
   # Python-Markdown slugs differently. Without this the anchors silently
   # land nowhere on the site while still working in the repository.
   - toc:

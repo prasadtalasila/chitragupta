@@ -449,7 +449,7 @@ def main(argv: "list[str] | None" = None) -> int:
 
     if not config.LEDGER_PATH.exists():
         print(f"No ledger at {config.LEDGER_PATH}.", file=sys.stderr)
-        print("Run `python -m src.sync` to build it from your bib file.", file=sys.stderr)
+        print("Run `python -m src.corpus sync` to build it from your bib file.", file=sys.stderr)
         return 1
 
     if args.command == "evidence":

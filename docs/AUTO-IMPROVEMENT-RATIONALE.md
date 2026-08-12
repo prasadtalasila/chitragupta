@@ -272,7 +272,7 @@ documents. **Twelve** of its matches are real statements of the rule:
 | [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer), §Layer 4 | "Nothing invokes them automatically" |
 | [ARCHITECTURE.md](ARCHITECTURE.md), inline mermaid label | "advisory, never automatic, never a gate" |
 | [LADDERS.md](LADDERS.md), the layer table | "never automatic, never a gate" |
-| [CLI.md](CLI.md), the first-run walkthrough | "none of these runs automatically" |
+| [CLI.md](CLI.md), the first-run walkthrough | "these runs automatically, and none of them can block a draft" |
 | [CLI.md](CLI.md), §coverage | "unlike the gate it never runs automatically" |
 
 **Two diagrams are borderline, and the honest answer is that they are in

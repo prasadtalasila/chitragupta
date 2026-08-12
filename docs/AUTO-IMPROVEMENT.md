@@ -149,7 +149,7 @@ loop proposes and repairs; the human accepts.
 
 ## The requirements
 
-Nine obligations, each phrased so a reviewer can tell whether it has been
+Ten obligations, each phrased so a reviewer can tell whether it has been
 met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#mapping-the-method-onto-this-pipeline)
 says where each comes from.
 

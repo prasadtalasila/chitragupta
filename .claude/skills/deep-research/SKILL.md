@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m src.draft gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m src.sync` if the ledger is empty, rather than syncing itself.
+description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m src.draft gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m src.corpus sync` if the ledger is empty, rather than syncing itself.
 tags: [deep-research, multi-perspective, storm, citation]
 ---
 
@@ -108,7 +108,7 @@ dossier is the human-readable working state: reader, scope, glossary,
 kept evidence, rejected candidates and why, contradictions, and the
 user's steering.
 
-**Read-only means read-only: never run `python -m src.sync`, and never
+**Read-only means read-only: never run `python -m src.corpus sync`, and never
 run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
@@ -119,13 +119,13 @@ build one.
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python -m src.ledger
+python -m src.corpus ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
 name what you checked and what you found -- and stop there. Do not draft
 around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m src.sync` and come back.
+`.venv-full/bin/python -m src.corpus sync` and come back.
 
 ## When to invoke
 

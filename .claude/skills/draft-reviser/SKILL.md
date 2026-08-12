@@ -30,7 +30,7 @@ is shaped that way.
 | User asks for a different genre of the same topic | That's a new draft -- use the genre skill |
 | Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `src.sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
-**Read-only over the corpus layer.** Never run `python -m src.sync` and
+**Read-only over the corpus layer.** Never run `python -m src.corpus sync` and
 never run `python -m src.enrich`. Both take the pipeline's write lock and
 can run for tens of minutes; they are the user's to run.
 
@@ -233,7 +233,7 @@ provenance and coverage reports for the same draft.
 
 ## Re-grounding after the corpus moves
 
-When `python -m src.sync` adds papers or drops stale ones, every existing
+When `python -m src.corpus sync` adds papers or drops stale ones, every existing
 draft moves with it and nothing says so. `dossier status --all` is what
 notices; this is what acts on it. It is the same loop entered from a
 report instead of a request, so steps 5, 6 and 7 above still apply
@@ -258,7 +258,7 @@ anything else:
 - **`corpus_available` is `false`.** The ledger could not be read, so
   every finding list is empty because the check never ran, not because
   there is nothing to find. Say what you checked, point the user at
-  `python -m src.sync`, and stop. Do not report the draft as current.
+  `python -m src.corpus sync`, and stop. Do not report the draft as current.
 - **The dossier does not exist.** `--json` returns an almost-empty entry
   and still exits 0. Go to "When there is no dossier", bootstrap, and
   come back.
@@ -430,7 +430,7 @@ citekey.
 - **Never refuse a wide pass either.** The scoped default is an economy,
   not a rule about what the user is allowed to want. Hand off to
   `corpus-reviser` rather than arguing.
-- **Never run `python -m src.sync` or `python -m src.enrich`.**
+- **Never run `python -m src.corpus sync` or `python -m src.enrich`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
 - **Never silently change scope, reader or terminology.**

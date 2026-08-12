@@ -212,7 +212,7 @@ class TestConfigure:
     def test_a_file_only_record_reaches_the_file_but_not_the_console(
         self, isolated_config, monkeypatch, capsys, src_logger
     ):
-        """Confirmed against a real `python -m src.sync` run: without
+        """Confirmed against a real `python -m src.corpus sync` run: without
         this filter, run()'s summary line -- already printed to stdout
         -- prints a second time via the console handler, once for each
         handler on the same logger call."""

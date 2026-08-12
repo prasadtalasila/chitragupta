@@ -42,7 +42,7 @@ sentence; being wrongly wide costs the tokens, and the user did not
 agree to spend them.
 
 **Read-only over the corpus layer**, exactly as everywhere else. Never
-run `python -m src.sync` and never run `python -m src.enrich`: both take the
+run `python -m src.corpus sync` and never run `python -m src.enrich`: both take the
 pipeline's write lock and can run for tens of minutes, and they are the
 user's to run.
 
@@ -141,7 +141,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   can happen without anyone asking for it.
 - **Never re-run the genre skill.** If the request truly needs a new
   draft, say that and hand off explicitly.
-- **Never run `python -m src.sync` or `python -m src.enrich`.**
+- **Never run `python -m src.corpus sync` or `python -m src.enrich`.**
 - **Never treat a wide search as permission to re-judge `rejected.md`.**
 - **Never silently change scope, reader or terminology.**
 - **Report what the pass actually changed** -- including the sections you

@@ -267,7 +267,7 @@ def build_section(citekeys: list[str], con, heading: str = "References",
     if missing:
         raise KeyError(
             "citekey(s) cited in the draft but missing from the ledger -- "
-            "run `python -m src.sync`, or re-check `python -m src.draft gate` "
+            "run `python -m src.corpus sync`, or re-check `python -m src.draft gate` "
             f"was run and passed first: {', '.join(missing)}"
         )
 
@@ -277,7 +277,7 @@ def build_section(citekeys: list[str], con, heading: str = "References",
         # A row written before the bib_fields column existed stores NULL;
         # a value that isn't valid JSON would mean a hand-edited ledger.
         # Both fall back to the title/year columns rather than failing --
-        # the next `python -m src.sync` repopulates either one.
+        # the next `python -m src.corpus sync` repopulates either one.
         try:
             fields = json.loads(bib_fields) if bib_fields else {}
         except (TypeError, ValueError):

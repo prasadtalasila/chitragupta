@@ -4,7 +4,7 @@
 
 The enrichment layer's single entry point, one level deep like every
 other layer's: `python -m src.enrich`, as the corpus layer has
-`python -m src.sync`. The stage modules beside this one have no
+`python -m src.corpus sync`. The stage modules beside this one have no
 `__main__` block, so `python -m src.enrich.docling_parse` imports a
 module and exits 0 without doing anything -- `--stages` is the only way
 to run them, and docs/ARCHITECTURE.md states the invariant.
@@ -19,11 +19,11 @@ bug in this script.
 
 Needs the venv populated by `poetry install --with enrich` (see
 pyproject.toml, and .venv-full/ on the host this was developed on). The
-corpus and drafting layers (python -m src.sync, src/citation_gate.py) do
+corpus and drafting layers (python -m src.corpus sync, python -m src.draft gate) do
 not depend on any of this and are unaffected either way.
 
 Every stage here writes a **corpus** artefact, which is why this layer
-takes the same write lock as `python -m src.sync`. Until 4.0.0 it also
+takes the same write lock as `python -m src.corpus sync`. Until 4.0.0 it also
 carried two stages that did not: `provenance` (a review-layer report) and
 `render` (the drafting layer's publish step), each a three-line wrapper
 around a command you can run directly. Both are gone -- run
@@ -250,7 +250,7 @@ def main(configure_logging: bool = False) -> int:
             print(f"  no citations found in {draft_path} -- nothing to scope the run to. "
                   "Drop --for-draft to enrich the whole corpus.")
             return EXIT_BAD_SCOPE
-    # Same lock as `python -m src.sync`: every stage here writes a corpus
+    # Same lock as `python -m src.corpus sync`: every stage here writes a corpus
     # artefact, and
     # sync's parsed-text writes are not atomic, so an enrichment run
     # overlapping a sync can read a half-written .txt. One lock rather
@@ -303,7 +303,7 @@ def _run_stages(args, selected, scope: set[str] | None = None) -> int:
                  f"enriched: {', '.join(unknown)}", level=logging.WARNING)
         if not docs and selected & set(CORPUS_STAGES):
             _say("  nothing to enrich -- re-export your bibliography and run "
-                 "`python -m src.sync` first.", level=logging.WARNING)
+                 "`python -m src.corpus sync` first.", level=logging.WARNING)
             return EXIT_BAD_SCOPE
 
     results = {}
