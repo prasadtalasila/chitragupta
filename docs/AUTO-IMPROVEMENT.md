@@ -27,7 +27,10 @@ re-arrangement of evidence the ledger already holds.
 - [Where the loop sits, and the cycle that decides it](#where-the-loop-sits-and-the-cycle-that-decides-it)
 - [Proposed design](#proposed-design)
 - [Respecting the invariants](#respecting-the-invariants)
-- [What this borrows from karpathy/autoresearch](#what-this-borrows-from-karpathyautoresearch)
+- [The method, in autoresearch's own terms](#the-method-in-autoresearchs-own-terms)
+- [Mapping the method onto this pipeline](#mapping-the-method-onto-this-pipeline)
+- [What can improve without supervision](#what-can-improve-without-supervision)
+- [Across many drafts: what accumulates](#across-many-drafts-what-accumulates)
 - [The amendment this needs](#the-amendment-this-needs)
 - [Ordering, on #126's own rule](#ordering-on-126s-own-rule)
 - [The software half](#the-software-half)
@@ -306,7 +309,7 @@ repairs; the human accepts.**
   re-scan can always be "fixed" by adding its phrase to the allowlist,
   and a loop that can suppress its own findings is not improving a draft
   but gaming a metric. Borrowed directly from
-  [autoresearch](#what-this-borrows-from-karpathyautoresearch), whose
+  [autoresearch](#the-method-in-autoresearchs-own-terms), whose
   agent may edit exactly one file and is told the evaluation harness is
   read-only.
 - **A repair may not make the draft worse somewhere else.** A per-finding
@@ -317,15 +320,68 @@ repairs; the human accepts.**
   design has to a scalar that must go down, and the reason it is needed
   is in the section below.
 
-## What this borrows from karpathy/autoresearch
+## The method, in autoresearch's own terms
 
 [karpathy/autoresearch](https://github.com/karpathy/autoresearch) (MIT,
-per its README) is the nearest published thing to what this proposes: an
-agent edits one file, trains for a fixed five minutes, keeps the change
-if validation bits-per-byte improved and `git reset`s if it did not, and
-loops overnight. It is worth reading before building this, and worth
-being precise about, because roughly half of what makes it work does not
-transfer.
+per its README) is the nearest published thing to what this proposes, and
+it is worth stating properly rather than gesturing at, because the parts
+that make it work are not the parts it is famous for.
+
+**Three files, and the split between them is the design.**
+`prepare.py` holds the constants, the data preparation and -- decisively
+-- the evaluation function; it is read-only. `train.py` holds the model,
+the optimiser and the training loop; it is the *only* file the agent
+edits, and within it everything is fair game. `program.md` holds the
+agent's instructions, and it is the only file the *human* edits. The
+README is explicit that this inversion is the point: "you're not touching
+any of the Python files like you normally would as a researcher. Instead,
+you are programming the `program.md` Markdown files that provide context
+to the AI agents and set up your autonomous research org." `program.md`
+is, in its own words, "essentially a super lightweight skill".
+
+**One number, one budget.** Training always runs for exactly five minutes
+of wall clock, and the score is `val_bpb` -- validation bits per byte,
+lower better, and vocabulary-size-independent so that architectural
+changes compare fairly. The fixed budget is a control variable, not a
+resource cap: it is what makes two experiments answers to the same
+question rather than to different ones.
+
+**The loop, as `program.md` states it.** Branch (`autoresearch/<tag>`);
+establish a baseline by running the code unmodified; then repeat: hack
+`train.py` with one idea, commit, run redirecting all output to a log
+(explicitly *not* to the terminal, so the transcript does not flood the
+agent's context), grep two numbers back out of that log, and decide. If
+`val_bpb` fell, advance the branch and keep the commit. If it did not,
+`git reset` back to where the iteration started. Every attempt gets one
+row in `results.tsv`: commit, score, memory, `status` of
+**`keep` / `discard` / `crash`**, and a one-line description of what was
+tried. Crashes are diagnosed from the log's tail, fixed if the fault is
+trivial, abandoned if the idea itself is broken. A run exceeding double
+its budget is killed and treated as a failure.
+
+**Two rules that are easy to miss.** The first is a tie-breaker: *all
+else being equal, simpler is better* -- an improvement bought with twenty
+lines of hacky code is probably not worth it, while an equal result from
+*deleting* code is a win outright. The second is the posture: **"NEVER
+STOP"** -- once the loop has begun, do not ask the human whether to
+continue, because "the human might be asleep", and the loop runs "until
+the human interrupts you, period".
+
+## Mapping the method onto this pipeline
+
+Component for component, the correspondence is close enough to be useful
+and different enough to be dangerous.
+
+| autoresearch | Here | Note |
+|---|---|---|
+| `train.py` -- the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
+| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the three review aids, `src.draft gate`, #128's allowlist | The loop may run them and may not edit them |
+| `program.md` -- edited by the human, not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | See [Across many drafts](#across-many-drafts-what-accumulates) |
+| `val_bpb` -- one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule below |
+| the fixed five-minute budget | *nothing, deliberately* | Its runs compete; agenda items do not |
+| `results.tsv`, one row per attempt | `revisions.md`, including refused attempts | Same keep/discard/crash discipline, existing file |
+| branch advance-or-`git reset` | `dossier export` + per-item revert | Drafts are gitignored; the granularity is what transfers |
+| "NEVER STOP" | two attempts per item, one pass, hand back | Inverted, for the reasons below |
 
 | Its design choice | Transfers? |
 |---|---|
@@ -352,6 +408,135 @@ per invocation". A bounded-convergence variant -- keep passing while the
 objective-class count strictly falls, to a hard maximum -- still
 terminates deterministically and is closer to advance-while-improving.
 It is declined here for legibility, not safety, and could be revisited.
+
+### The requirements that follow
+
+Everything above lands as nine obligations on whoever builds this. Each
+is stated so that a reviewer can tell whether it has been met, and each
+comes from a row of the mapping table rather than from taste.
+
+| | Requirement | From |
+|---|---|---|
+| **R1** | The skill's write-set is exactly the draft and `revisions.md`. It may execute an aid, the gate and `style_check`; it may not edit them, nor #128's allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. | read-only harness |
+| **R2** | Every finding carries an identity stable across runs, so "this finding is gone" and cross-aid dedup are both decidable. | `val_bpb` is re-computable; a finding must be too |
+| **R3** | An unattended item's check is **binary**. No continuous score is ever the thing being optimised. | see below |
+| **R4** | After each accepted edit, every aid re-runs and the total objective-class count must not rise, else the edit reverts. | `val_bpb` is global |
+| **R5** | Reverting one item leaves every earlier accepted item intact. | `git reset` granularity |
+| **R6** | Every attempt is logged with its outcome, refusals included, and no machine outcome is ever written to `rejected.md`. | `results.tsv`; [REJECTION.md](REJECTION.md) |
+| **R7** | Two attempts per item, one pass per invocation, then hand back. | "NEVER STOP", inverted |
+| **R8** | Where a deletion and a rewrite both pass, the smaller diff wins. | the simplicity tie-breaker |
+| **R9** | The agenda taken before the pass is the recorded baseline, and the closing report is stated against it. | baseline-first |
+
+## What can improve without supervision
+
+The honest answer is that it depends entirely on one property of the
+check, and naming that property is more useful than any list.
+
+> **An unsupervised loop may only be pointed at a check whose
+> satisfaction is binary.** A continuous score invites the loop to
+> optimise the score instead of the draft.
+
+This is why "improve the readability" is a trap and "apply §2" is not.
+A readability index -- Flesch-Kincaid and its relatives -- is a number to
+be maximised, and a loop maximising it will shorten sentences past sense
+and strip the technical vocabulary that made the draft accurate, scoring
+better while reading worse. [WRITING-STANDARDS.md](WRITING-STANDARDS.md)
+§2 and §4, by contrast, are conformance rules: "obviously" is present or
+it is not; an acronym is expanded at first use or it is not; a paragraph
+leads with its point or it does not. Nothing is being maximised, so there
+is nothing to game. R3 exists to keep that line, and it is the same
+reason R4 counts findings rather than scoring quality.
+
+**Language is therefore the axis that autoresearches best**, which is
+the reverse of the intuition that prose is the soft part. The repository
+is already most of the way there: §2's defect markers ("obviously",
+"simply", "just", "of course", "clearly", "easy") and §4's rules are
+written as mechanical tests, #104 would record the draft's dialect in
+`scope.md` where a later pass can read it, and #107 would compute
+dialect consistency and banned-word counts in stdlib, exit-0, as a review
+aid. That is a detector, a recorded target and a re-check -- the whole
+apparatus an unattended loop needs, and none of it costs a token.
+
+**Provenance is the axis that cannot, and the reason is mechanical
+rather than principled.** It is tempting to say a machine may not judge
+whether a source supports a sentence because SOUL.md forbids it. The
+stronger reason is that **the loop cannot detect its own failure here.**
+A paraphrase that subtly misstates what a paper claims passes the gate,
+because the citekey is still real; passes the verbatim scan, because the
+wording now differs -- which is precisely what "fixing" an overlap
+*means*; and passes provenance, if the source remains topically related.
+Every check the loop owns returns clean on its worst output. What can
+improve unattended on that axis is ordering and surfacing -- which
+sections are least supported, which citations rest on the thinnest
+passage -- never the fix.
+
+Between those poles:
+
+| Property | Binary? | Unattended? |
+|---|---|---|
+| Dialect conformance against `scope.md`'s `language:` | yes | yes (#104, #107) |
+| §2's defect markers | yes | yes |
+| Acronym expanded at first use; term defined once | yes, given the dossier glossary | yes |
+| Terminology and notation used consistently | yes, given a registry | yes (#138's detectors) |
+| Cross-references resolve | yes | yes (#138) |
+| Duplicate or near-duplicate sentences across sections | yes, at a threshold | yes (`src/overlap_index.py` already indexes n-grams) |
+| A section citing nothing at all | yes | surfaced -- the fix is evidence, not wording |
+| Reference-list consistency | yes | already deterministic (`src/references.py`) |
+| Verbatim overlap with a source | yes, at a threshold | yes, minus #129's long runs |
+| Sentence length, hedging density, passive voice | **no -- these are scores** | surfaced only |
+| Readability index | **no** | never an objective |
+| Does this source support this claim | no | never |
+
+**One reconciliation.** #138 proposes those registries as "deterministic,
+**blocking** global checks ... beside the citation gate". This proposal
+borrows its *detectors* and declines its blocking posture: nothing here
+becomes a gate, and #130 remains the only place that decision is taken.
+If #138 lands as specified the two must be squared, and the squaring is
+that a registry may block a *book assembly* without any review aid
+blocking a *draft*.
+
+## Across many drafts: what accumulates
+
+The request that autoresearch answers best is not the one about a single
+draft. Its real inversion is that **the human edits `program.md`, not the
+Python** -- the thing iterated over a lifetime is the research org, not
+any one experiment. Here the draft is `train.py`; `program.md` is the
+skills plus the standing preferences, and today almost nothing flows back
+into them.
+
+Five things a user writing many documents already generates and nobody
+reads across drafts:
+
+- **Which retrieval queries paid.** The dossier's `retrieval.md` logs
+  every call; `evidence.md` and `rejected.md` say which candidates were
+  kept and turned down. Across drafts that is a record of which query
+  shapes yield kept evidence, which is exactly the evidence #63's parked
+  evaluation harness wants and currently has to synthesise.
+- **Which item classes the human accepts.** Every pass produces
+  accepted and reverted items by class -- a labelled record of the
+  loop's own reliability. **This is the highest-value item here**,
+  because #130 says the gating threshold must be tuned against real
+  reports rather than guessed, and this is those reports.
+- **Recurring refusals becoming a standing preference.** A user who
+  declines the same kind of source in four drafts has a policy, not four
+  coincidences. #104 already establishes the precedent that a preference
+  belongs on disk rather than being restated every session.
+- **The allowlist and the glossary crossing drafts.** A phrase waved
+  through #128's allowlist once should not be re-flagged in the next
+  draft, and an author writing a thesis, a survey and a textbook chapter
+  should not define "digital twin" three different ways -- the dossier
+  glossary exists per draft and nothing reconciles them.
+- **Where the money went.** `dossier status` already totals retrieval
+  cost per revision; across drafts that is the measurement
+  [TOKENS.md](TOKENS.md) currently has to estimate.
+
+**The asymmetry has to survive the altitude change.** Karpathy's human
+edits `program.md`; the agent never does. The same rule holds here, and
+more strongly: a loop that rewrote its own skills, standards or standing
+preferences from its own accepted-edit statistics would be a machine
+revising the terms of its own supervision. It proposes; the human
+accepts. That is the same sentence as everywhere else in this document,
+one level up.
 
 ## The amendment this needs
 
@@ -489,6 +674,45 @@ pipeline layer, and neither should acquire one.
 - **The risk is alarm fatigue, not correctness.** An agenda that is
   mostly boilerplate verbatim hits gets ignored, which is why #128
   precedes the aid rather than following it.
+
+### Tokens are not free, so the loop is a ladder
+
+autoresearch can afford to be indifferent to the cost of a wrong idea:
+five GPU-minutes, on hardware the user already owns, at a price fixed
+before the run starts. A wrong idea here is billed per token, and the
+bill scales with the draft. That makes cost a design constraint rather
+than an afterthought, and [LADDERS.md](LADDERS.md) already names the
+shape of the answer: **do the free thing first, and pay only for what it
+could not decide.**
+
+Three rungs, cheapest first:
+
+1. **Detection and rejection, at zero tokens.** Every aid, `style_check`
+   and the gate are stdlib, deterministic and modelless. This is the rung
+   that matters most, and the reason is easy to miss: a deterministic
+   check does not only *find* the problem for free, it **refuses a bad
+   rewrite for free**. Without it, deciding whether an edit worked means
+   paying a model to judge -- and paying a model to grade its own
+   homework, which is worth even less than it costs.
+2. **A single-shot edit** for an item whose fix is local and whose
+   re-check is binary -- a dialect slip, a defect marker, an acronym.
+   No subagent, no retrieval, no dossier read: the finding already names
+   the section and the span.
+3. **A dispatched reviser** only for items needing the surrounding
+   argument in context. This is the expensive rung and it should be the
+   short list.
+
+Two consequences worth stating. **Rung 1 must run to exhaustion before
+rung 2 starts**, or the loop pays a model to find what a `grep` would
+have. And the classes that autoresearch best -- the language ones -- are
+exactly the classes that sit on rungs 1 and 2, so the axis with the
+strongest safety argument is also the cheapest. That is a happy
+coincidence rather than a design achievement, but it is the reason to
+build the language half first.
+
+#75, parked, is the fourth rung this would eventually want: route the
+mechanical stages to a cheaper model tier. It is explicitly blocked on
+measurement (#76), and this loop would generate exactly that.
 
 ## What this does not change
 
