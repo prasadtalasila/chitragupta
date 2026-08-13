@@ -443,7 +443,10 @@ mechanism is worth stating precisely, because the obvious reading --
 cases.
 
 - **`test_removed_command_scan.py`** allowlists the three files that may
-  legitimately name the removed `python -m src.sync`: `src/sync.py` (the
+  legitimately name the command removed in 5.2.0 (the direct `src.sync`
+  entry point, since replaced by `python -m src.corpus sync`) --
+  spelled indirectly here, because that scan reads this file too and is
+  right to: `src/sync.py` (the
   refusal), `tests/test_corpus_entrypoint.py` (which runs it), and
   itself. `_ALLOWED` holds **exact relative paths**, so the same file at
   `.claude/worktrees/<name>/src/sync.py` is a different path, misses the

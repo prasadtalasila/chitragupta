@@ -50,8 +50,19 @@ def _rules():
 
 
 def _matches(pattern):
-    """Paths in the working tree matching one OCR path glob."""
-    return glob.glob(pattern, root_dir=str(REPO_ROOT), recursive=True)
+    """Repo-relative POSIX paths in the working tree matching one OCR glob.
+
+    `as_posix()` rather than what `glob` returns: on the Windows CI leg it
+    yields `src\\sync.py`, which never equals the `src/sync.py` the
+    assertions below name -- and OCR's own globs are POSIX-spelled
+    regardless of host. Caught by that leg after passing on Linux, which
+    is the same asymmetry `tests/test_code_standards_scan.py` pins
+    `encoding="utf-8"` for.
+    """
+    return [
+        Path(match).as_posix()
+        for match in glob.glob(pattern, root_dir=str(REPO_ROOT), recursive=True)
+    ]
 
 
 def test_the_rule_file_is_valid_json_with_the_two_top_level_keys():
