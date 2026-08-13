@@ -13,12 +13,12 @@ because it is a review aid and review aids report. Everything after that
 the claim, checking the rewrite did not make things worse -- was left to
 a person. That is the tedious half, and the half that gets skipped.
 
-It is the exact tier of a stack whose paraphrase tiers are unbuilt:
-**paraphrase is not detected**, and these drafts are LLM-written, which
-makes literal paraphrase the *likely* reuse mode rather than an edge
-case. So an empty findings list is not an achievement, and repairing
-every finding is not a clean bill of health. Say so when you present,
-every time.
+That scan is the exact tier of a stack whose paraphrase tiers are
+unbuilt: **paraphrase is not detected**, and these drafts are
+LLM-written, which makes literal paraphrase the *likely* reuse mode
+rather than an edge case. So an empty findings list is not an
+achievement, and repairing every finding is not a clean bill of health.
+Say so when you present, every time.
 
 This skill does the half that was left over. It is not a better scan and
 it does not decide anything the scan was careful not to decide: what it
@@ -106,13 +106,19 @@ Uncapped -- **never pass `--limit` to a baseline**. A capped payload lists
 only the longest findings, so it cannot say what was absent, and
 `recheck` refuses it for that reason.
 
+If the scan reports nothing, say so and stop. There is nothing here to
+do -- and the draft is not thereby clean, because **paraphrase is not
+detected** by the exact tier this baseline came from.
+
 This files the payload at `content/review/<topic>/<stem>.verbatim.json`.
 That file is the recorded baseline: every claim you make at the end is
 stated against it, not against a re-scan you took later.
 
-If the scan reports nothing, say so and stop. There is nothing here to
-do -- and the draft is not thereby clean, because **paraphrase is not
-detected** by the exact tier this baseline came from.
+Take a fresh one at the start of every pass rather than reusing whatever
+is already at that path. An existing payload may predate the draft's last
+edit, or a release that changed what counts as one finding -- `recheck`
+prints a `note:` line naming the baseline's version when it is not this
+one, and that note means re-scan, not proceed carefully.
 
 ### 3. Triage
 

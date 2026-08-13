@@ -1085,15 +1085,17 @@ def recheck_command(draft, baseline):
 def recheck_payload(draft, baseline_path, baseline, groups, counts, command):
     """The comparison as data -- the form the remediation loop reads.
 
-    Carries the baseline's path and floor as well as the three groups: a
-    verdict whose basis is not recorded beside it is one nobody can check
-    later, which is the same reason `scan_payload` carries `min_run`.
+    Carries the baseline's path, version and floor as well as the three
+    groups: a verdict whose basis is not recorded beside it is one nobody
+    can check later, which is the same reason `scan_payload` carries
+    `min_run`. See `_version_note` for what the version is doing here.
     """
     resolved, persisting, new = groups
     before, after = counts
     payload = review.envelope(Path(draft), "verbatim", command)
     payload.update({
         "baseline": str(baseline_path),
+        "baseline_version": baseline.get("version"),
         "min_run": baseline["min_run"],
         "gap": baseline["gap"],
         "objective_before": before,
@@ -1106,6 +1108,32 @@ def recheck_payload(draft, baseline_path, baseline, groups, counts, command):
     return payload
 
 
+def _version_note(baseline):
+    """A line naming the baseline's version when it isn't this one, and
+    nothing when it is.
+
+    Reported rather than refused. What counts as *one finding* can change
+    between releases -- a scan that learns to merge two runs into one
+    produces a different `id` for wording nobody touched -- and comparing
+    across such a change reads as a repair that never happened. But most
+    releases change nothing here, and refusing every mismatched baseline
+    would make the comparison unusable the day after any upgrade. So this
+    says which version the baseline came from and leaves the judgement
+    where it belongs, next to the person who knows what they changed.
+
+    A warning that fires on the normal case is one nobody reads, which is
+    why it is silent when the versions agree.
+    """
+    recorded = baseline.get("version")
+    if recorded is None or recorded == review.version():
+        return None
+    return (
+        f"note:     baseline version {recorded}, running {review.version()}. "
+        "What counts as one finding can differ between releases; re-scan "
+        "to take a baseline this version wrote."
+    )
+
+
 def format_recheck(baseline_path, baseline, groups, counts):
     """The plain-text form, for stdout."""
     resolved, persisting, new = groups
@@ -1113,8 +1141,11 @@ def format_recheck(baseline_path, baseline, groups, counts):
     lines = [
         f"baseline: {baseline_path}",
         f"floor:    --min-run {baseline['min_run']} --gap {baseline['gap']} (from the baseline)",
-        "",
     ]
+    note = _version_note(baseline)
+    if note:
+        lines.append(note)
+    lines.append("")
     for label, items in (("resolved", resolved), ("persisting", persisting), ("new", new)):
         lines.append(f"  {label} ({len(items)}):")
         if not items:

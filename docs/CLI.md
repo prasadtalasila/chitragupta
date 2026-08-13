@@ -680,6 +680,16 @@ not JSON. That third case is the likeliest of them -- a payload filed by
 an earlier version sits at exactly the path a caller is told to look at
 -- so it names the remedy rather than raising.
 
+A baseline written by a *different but recent* version is **reported, not
+refused**: the payload carries `baseline_version` and the text form
+prints a `note:` line. What counts as one finding can change between
+releases -- a scan that learns to merge two runs into one produces a
+different `id` for wording nobody touched -- and comparing across such a
+change reads as a repair that never happened. Most releases change
+nothing here, though, so refusing every mismatch would make the
+comparison unusable the day after any upgrade. Take a fresh baseline if
+the note appears and the numbers look surprising.
+
 There is no `--write`. A scan report is kept beside the draft because it
 is read again months later; a comparison against one particular baseline
 is consumed by whoever asked for it and stale the next time the draft is

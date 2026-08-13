@@ -1802,6 +1802,55 @@ class TestRecheck:
 
         assert "2 -> 2" in capsys.readouterr().out
 
+    def test_a_baseline_from_another_version_is_reported_as_such(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """Reported, not refused. What counts as one finding can change
+        between releases -- a scan that learns to merge two runs into one
+        produces a different `id` for the same borrowed wording -- and a
+        comparison across that reads as a repair nobody made. Most
+        version bumps change nothing here, so refusing every one would
+        make the comparison useless; saying which version the baseline
+        came from lets the caller decide."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload["version"] = "0.0.1-from-the-past"
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["baseline_version"] == "0.0.1-from-the-past"
+        assert result["version"] != "0.0.1-from-the-past"
+
+    def test_a_same_version_baseline_says_nothing_about_versions(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """The note is a warning, and a warning that fires on the normal
+        case is one nobody reads."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        vc.cmd_recheck(str(draft), str(baseline))
+        out = capsys.readouterr().out
+
+        assert "baseline version" not in out
+
+    def test_the_text_form_warns_about_a_version_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload["version"] = "0.0.1-from-the-past"
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        vc.cmd_recheck(str(draft), str(baseline))
+
+        out = capsys.readouterr().out
+        assert "0.0.1-from-the-past" in out
+        assert "re-scan" in out
+
     def test_the_payload_carries_the_envelope_every_aid_shares(
         self, ledger_con, tmp_path, capsys
     ):
