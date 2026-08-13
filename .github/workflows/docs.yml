@@ -25,11 +25,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
   build:
+    # Job-level rather than workflow-level (Sonar S8264): a workflow-level
+    # grant reaches every job, including future ones added without
+    # thinking about permissions. `deploy` below already carries its own
+    # block, so scoping this one to `build` leaves nothing inheriting by
+    # default.
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,9 +61,18 @@ jobs:
       # mkdocs-same-dir is what makes mkdocs.yml's `docs_dir: .` legal,
       # which is why this site needs no staging step and no link
       # rewriting. See that file's header comment.
+      #
+      # Poetry itself is pinned and wheels-only (Sonar S8544/S8541: an
+      # unpinned install resolves to whatever PyPI serves that day, and an
+      # sdist fallback runs arbitrary setup scripts), mirroring ci.yml's
+      # Windows-leg install -- bump both together. `installer.only-binary`
+      # extends the same refusal to the docs group itself: every package
+      # in it ships a wheel, so a source build here could only ever be a
+      # substituted artefact, and refusing it costs nothing.
       - name: Install the docs toolchain
         run: |
-          pip install poetry
+          pip install --only-binary ':all:' poetry==2.4.1
+          poetry config installer.only-binary :all:
           poetry install --only docs --no-root
 
       # --strict turns MkDocs' warnings into failures. What it actually

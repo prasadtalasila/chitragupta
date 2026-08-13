@@ -91,10 +91,17 @@ jobs:
       # CI rather than added to the shared script (a real end user's
       # Windows host isn't necessarily bootstrapping Poetry via CI's
       # exact mechanism).
+      #
+      # Pinned to an exact version, wheels only (Sonar S8544/S8541: an
+      # unpinned `pip install` resolves to whatever PyPI serves that day,
+      # and an sdist fallback would run arbitrary setup scripts at install
+      # time). 2.4.1 is what "latest" resolved to while this leg was
+      # green; bump it deliberately, the way the pinned action SHAs below
+      # are bumped, rather than tracking latest silently.
       - name: Install Poetry (non-Linux only -- os-deps' apt-get is Linux-specific)
         if: runner.os != 'Linux'
         shell: bash
-        run: pip install poetry
+        run: pip install --only-binary ':all:' poetry==2.4.1
 
       # os-deps (apt-get: poppler-utils, TeX Live, Pandoc) is
       # Linux-only -- Windows gets the pure-Python python-deps stage
@@ -241,8 +248,18 @@ jobs:
       # inside the functions that need them, which is the documented lazy
       # pattern `import-outside-toplevel` is disabled for, so pylint never
       # resolves them and never needs to.
+      #
+      # Both pins are Sonar S8544 (don't install unpinned): pylint at what
+      # "latest" resolved to while this job was green, bibtexparser at
+      # poetry.lock's resolved version, so the linter sees the same
+      # library the pipeline runs. No `--only-binary` here, unlike the
+      # Poetry installs: bibtexparser 1.4.x ships only an sdist, so a
+      # wheels-only install cannot resolve it at all. The `--upgrade pip`
+      # that used to lead this line is gone for the same rule -- it was an
+      # unpinned moving target, and the runner's own pip installs two
+      # pinned packages fine.
       - name: Install pylint and the runtime dependency
-        run: python -m pip install --upgrade pip pylint "bibtexparser>=1.4,<2.0"
+        run: python -m pip install pylint==4.0.7 bibtexparser==1.4.4
 
       - name: pylint
         run: pylint --rcfile=.pylintrc src scripts
@@ -251,8 +268,12 @@ jobs:
         with:
           node-version: "20"
 
+      # Pinned (Sonar S8543) and `--ignore-scripts` (S6505): npm runs any
+      # package's install/postinstall hooks by default, which is arbitrary
+      # code from the registry; markdownlint-cli2 needs none to work as a
+      # CLI, so refusing them costs nothing. Bump the pin deliberately.
       - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2
+        run: npm install -g --ignore-scripts markdownlint-cli2@0.23.2
 
       # Same globs as .markdownlint.yaml's own "Run it with" comment, so
       # what CI checks and what a contributor runs cannot drift apart.
