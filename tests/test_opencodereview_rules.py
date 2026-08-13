@@ -111,11 +111,19 @@ def test_the_source_rule_states_the_citekey_invariant():
     assert "bib_reader" in src_rule["rule"]
 
 
-def test_per_host_and_generated_trees_are_excluded():
-    """`content/` is the user's own work and `papers/` is their personal
-    bibliography export -- neither is this repository's code, and sending
-    either to a third-party LLM endpoint for review is not something a
-    review tool should do by default."""
+def test_the_users_own_work_is_excluded():
+    """`content/` is the user's drafts and corpus, `papers/` their personal
+    bibliography export. Neither is this repository's code, and shipping
+    either to a third-party LLM endpoint because a review tool swept the
+    directory is the one thing this file must not allow.
+
+    Only those two are pinned. The rest of `exclude` is housekeeping --
+    build output, lockfiles, vendored CSL -- and a future maintainer
+    dropping one of those is making a choice, not causing a defect.
+    """
     excluded = set(_rules()["exclude"])
-    for tree in ("content/**", "papers/**", "site/**"):
-        assert tree in excluded
+    for tree in ("content/**", "papers/**"):
+        assert tree in excluded, (
+            f"{tree} must stay excluded: it is the user's own work, not "
+            "this repository's code."
+        )

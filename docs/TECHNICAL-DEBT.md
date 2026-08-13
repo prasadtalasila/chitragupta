@@ -432,39 +432,49 @@ blocks carrying at least one field, which is what the repaired test in
 4.1 now does -- so the test and the warning currently disagree, and the
 test is the one that is right.
 
-### 4.3 The tree-walking scans descend into nested git worktrees
+### 4.3 A git worktree under `.claude/` breaks two tree-walking scans
 
-Three tests walk this repository's own tree --
-`test_code_standards_scan.py`, `test_removed_command_scan.py` and
-`test_skill_retrieval_logging.py` -- and each uses the *working tree*
-rather than `git ls-files`, deliberately, so an untracked scratch file
-under `src/` is scanned and can fail the suite.
+`.claude/` is a scanned root for the tests that police this repository's
+own tree. Claude Code creates its worktrees at
+`.claude/worktrees/<name>/`, which puts a **second complete copy of the
+repository inside a scanned root**. Two scans then misfire, and the
+mechanism is worth stating precisely, because the obvious reading --
+"they are finding stale code from an old commit" -- is wrong in both
+cases.
 
-A nested `git worktree` is not that. It is a checkout of a *different
-commit of this same repository*, complete with the code as it was on
-that branch. On a machine with any worktree open, two of those three
-scans fail on findings that are real for an old commit and irrelevant to
-the current one: `python -m src.sync` invocations from before 5.2.0
-removed the command, and a `docs/RETRIEVAL.md` example from before the
-`--log` flag was required. On this review's host there were seven, all
-on branches long since merged, and the suite was red for that reason
-alone.
+- **`test_removed_command_scan.py`** allowlists the three files that may
+  legitimately name the removed `python -m src.sync`: `src/sync.py` (the
+  refusal), `tests/test_corpus_entrypoint.py` (which runs it), and
+  itself. `_ALLOWED` holds **exact relative paths**, so the same file at
+  `.claude/worktrees/<name>/src/sync.py` is a different path, misses the
+  allowlist, and is reported. The copy is not stale; it is the same
+  refusal machinery, at a path the allowlist cannot name.
+- **`test_skill_retrieval_logging.py`** globs `.claude/**/*.md` and
+  requires every `src.draft retrieve` invocation to carry `--log`. That
+  rule is for *skill and agent protocol files*, where a missing flag
+  means a drafting run's cost goes unmeasured. A worktree drags the whole
+  repository under that glob, so `docs/RETRIEVAL.md` -- user
+  documentation showing the command's general form, correctly outside the
+  scan on `main`, and identical there today -- gets held to a rule that
+  was never meant for it.
 
-Nothing is wrong with the code and nothing is wrong with the scans'
-intent -- `git ls-files` would not list a worktree's contents either.
-The gap is that "the working tree" was taken to mean "every file
-underneath", and a nested checkout is neither this tree nor a stray file.
+So neither is a finding about old code. Both are one defect: **a scan
+scoped to `.claude/` cannot tell a skill file from a nested checkout of
+everything.** On this review's host there were seven worktrees, all on
+branches long since merged, and the suite was red for that reason alone
+while CI stayed green -- CI's `actions/checkout` has no worktrees.
 
 Two fixes, and the cheap one is not the repository's:
 
 - **`git worktree prune`, plus removing the locked ones by hand.** If
   they are stale, this is the whole fix and costs nothing.
-- **Teach the three scans to skip a nested checkout** -- a directory
-  carrying its own `.git`. This is the durable fix, since anyone using
-  worktrees will hit it again, but it touches three modules that each
-  walk the tree their own way, which is its own small refactor and
-  belongs in its own PR against this entry rather than inside an
-  unrelated diff.
+- **Exclude `.claude/worktrees/` from both scans' roots.** One line
+  each, and the durable fix, since anyone using Claude Code worktrees on
+  this repository will hit it again. Left out of this change because it
+  is a behaviour change to two guard tests and belongs in its own diff
+  against this entry, not inside a documentation PR -- the same Boy Scout
+  reconciliation [CODE-STANDARDS.md](CODE-STANDARDS.md#the-boy-scout-rule-and-surgical-changes)
+  makes for `src/`.
 
 ## Reviewing with OpenCodeReview
 
