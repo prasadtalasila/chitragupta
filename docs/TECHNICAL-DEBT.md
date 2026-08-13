@@ -575,6 +575,25 @@ a run happens where one is expected.
 
 ### 5.2 `pylint`: a measured baseline
 
+**Adopted and enforced in 5.8.0.** `ci.yml`'s `lint` job runs
+`pylint --rcfile=.pylintrc src scripts` at a binary zero-messages bar.
+The residue below is fixed rather than suppressed: 3.1's encoding sites
+first (the whole item, not pylint's visible seven), then the long lines,
+then the two context-manager names into `good-names` and the four
+miscellaneous findings. The categories listed as decisions are now in
+`.pylintrc`'s own `disable=`, each with its reason beside it, so this
+table and that file cannot drift into disagreeing.
+
+Two consequences worth carrying forward. Wrapping the long lines **grew
+ten registered files** -- `line-too-long` and the C2 length ratchet pull
+against each other, and C0301 won; the counts in
+`tests/test_code_standards_scan.py` moved with it. And the enrich group's
+third-party imports are in `ignored-modules`, because they are lazy
+imports that pylint still resolves statically, so a lint job that does not
+download torch would otherwise report `import-error` against every one.
+
+The measurement that produced all of that follows, unchanged.
+
 [CODE-STANDARDS.md's build order](CODE-STANDARDS.md#build-order) puts a
 linter first and declines to adopt one without "a measured baseline and a
 `per-file-ignores` register of the same shape as this one". This is that
@@ -607,16 +626,16 @@ now [3.7](#37-the-bibtex-author-name-grammar-exists-twice)),
 `protected-access`, `global-statement`, `unused-argument`,
 `attribute-defined-outside-init`, `redefined-outer-name`, `cyclic-import`.
 
-**Why it is not wired into CI in this change.** Two of the four residue
-rows are the two things that must not be papered over. Fixing pylint's 7
-`unspecified-encoding` sites while leaving 3.1's other 25 would close the
-detector on the register's top item without closing the item. And
-DEVELOPER-AGENTS.md forbids shipping a check that has not been made to
-pass. So the honest sequence is [3.1](#31-text-io-on-the-locale-codec)
-first, then the 31 long lines, then pylint enabled at a **binary** bar --
-zero messages, never a `fail-under` score, because
-[R3](AUTO-IMPROVEMENT.md#the-requirements) rules out driving a number.
-`.pylintrc` is in the tree so the baseline is reproducible.
+**Why it was not wired into CI in the change that measured it.** Two of
+the four residue rows are the two things that must not be papered over.
+Fixing pylint's 7 `unspecified-encoding` sites while leaving 3.1's other
+25 would close the detector on the register's top item without closing the
+item. And DEVELOPER-AGENTS.md forbids shipping a check that has not been
+made to pass. So the honest sequence was
+[3.1](#31-text-io-on-the-locale-codec) first, then the 31 long lines, then
+pylint enabled at a **binary** bar -- zero messages, never a `fail-under`
+score, because [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out
+driving a number. That sequence is what 5.8.0 carried out, in that order.
 
 Two side effects worth having, once it lands: the 11 inert `# noqa:
 BLE001` markers ([Tier 2](#the-11-inert--noqa-ble001-markers)) become
@@ -625,6 +644,26 @@ live `# pylint: disable=broad-exception-caught` suppressions, and
 to.
 
 ### 5.3 `markdownlint`: a measured baseline
+
+**Adopted and enforced in 5.8.0**, at the same binary bar, over the same
+globs. The judgement this section left open -- what to do about `MD060` --
+was taken as **disable**: 839 of the 947 findings, table cell padding, and
+the alternative was a diff touching every table in the documentation to
+move spaces around, changing no rendered output. Everything else was
+fixed, including four prose lines that began with an issue reference
+(`#126 already fixes...`) which a naive `--fix` rewrote into H1 headings
+before the corruption was caught and reverted.
+
+One inherited config bug fell out of the adoption: the `overrides:` block
+was **inert**. It is a markdownlint-**cli2** feature read from
+`.markdownlint-cli2.yaml`, and a plain `.markdownlint.yaml` ignores the
+key silently -- doubly inert here, since it named `.github/` paths the
+lint globs never reach. Per-file exceptions are inline directives now, at
+the single site that needs one.
+
+The measurement follows, unchanged apart from the count: the baseline was
+re-taken at **947** on the current tree, against the 927 recorded when
+this section was written.
 
 Same shape, with `.markdownlint.yaml` inherited from the same source, run
 over this repository's own prose (root `*.md` plus `docs/`; `content/` is

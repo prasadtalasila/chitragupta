@@ -282,7 +282,8 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
             # as warn-and-continue rather than a crash; do the same here
             # so one unrenderable format doesn't take out the md/tex
             # formats that did succeed.
-            print(f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}", file=sys.stderr)
+            print(f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}",
+                  file=sys.stderr)
     return written
 
 

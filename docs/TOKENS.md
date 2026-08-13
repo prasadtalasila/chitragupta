@@ -87,7 +87,7 @@ easily lose.
 
 The quantity that matters is not how many tokens a phase produces but
 
-```
+```text
 resident cost = tokens entering context x turns remaining in the run
 ```
 
@@ -336,7 +336,7 @@ this repository, and a user who wants cheaper subagents needs nothing from
 here to get them:
 
 ```console
-$ export CLAUDE_CODE_SUBAGENT_MODEL=haiku
+export CLAUDE_CODE_SUBAGENT_MODEL=haiku
 ```
 
 Claude Code resolves a subagent's model from that environment variable

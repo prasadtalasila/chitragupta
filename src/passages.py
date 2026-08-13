@@ -126,7 +126,7 @@ def passage_records(dl_doc) -> list[dict]:
     """
     records = []
     for item in getattr(dl_doc, "texts", []):
-        label = str(getattr(item, "label", "")).split(".")[-1].lower()
+        label = str(getattr(item, "label", "")).rsplit(".", maxsplit=1)[-1].lower()
         text = (getattr(item, "text", "") or "").strip()
         if label not in PASSAGE_LABELS or not text:
             continue

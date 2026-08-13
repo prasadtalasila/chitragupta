@@ -4,16 +4,25 @@ Status: **reasoning document.** Written 2026-08-02.
 
 ## Short summary
 
-This repository needs PDF processing that balances speed, text quality, structure preservation, and portability.
+This repository needs PDF processing that balances speed, text quality,
+structure preservation, and portability.
 
 The main candidates are:
+
 - `pdftotext`
 - `markitdown` -- **removed 2026-08-01**, see ["Why markitdown was removed"](#why-markitdown-was-removed)
 - `docling`
 
-`grobid` was evaluated as a fourth candidate and **removed from the repo on 2026-08-01**. It is kept in the comparison below as a record of that decision, not as an available backend -- see ["Why GROBID was removed"](#why-grobid-was-removed). A separate proposal to bring it back in a *different* role -- alongside docling rather than instead of it, for a citation graph -- is in [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md).
+`grobid` was evaluated as a fourth candidate and **removed from the repo on
+2026-08-01**. It is kept in the comparison below as a record of that decision,
+not as an available backend -- see ["Why GROBID was
+removed"](#why-grobid-was-removed). A separate proposal to bring it back in a
+*different* role -- alongside docling rather than instead of it, for a citation
+graph -- is in [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md).
 
-Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**) were surveyed in 2026-08 and none adopted; the analysis is in ["Four newer backends, evaluated and not adopted"](#four-newer-backends-evaluated-and-not-adopted).
+Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**) were
+surveyed in 2026-08 and none adopted; the analysis is in ["Four newer backends,
+evaluated and not adopted"](#four-newer-backends-evaluated-and-not-adopted).
 
 ## Comparison table
 
@@ -27,13 +36,23 @@ Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**) were sur
 ## Likely behavior in practice
 
 ### `pdftotext`
-This is the fastest option and the easiest to operate. It is well suited to the repo's lightweight corpus layer when the goal is to get searchable text into the ledger and retrieval index.
+
+This is the fastest option and the easiest to operate. It is well suited to the
+repo's lightweight corpus layer when the goal is to get searchable text into the
+ledger and retrieval index.
 
 ### `markitdown`
-A general conversion tool rather than a scholarly parser, and meaningfully slower than `pdftotext` (~17x measured). Measurement on this repo's own corpus later showed it loses word boundaries here, which is why it is no longer a backend -- see below.
+
+A general conversion tool rather than a scholarly parser, and meaningfully
+slower than `pdftotext` (~17x measured). Measurement on this repo's own corpus
+later showed it loses word boundaries here, which is why it is no longer a
+backend -- see below.
 
 ### `docling`
-This is the best fit when the PDF's structure matters: headings, tables, reading order, and section boundaries. It is much slower and heavier (~42x measured), but the output is more useful for later chunking, retrieval, and topic modeling.
+
+This is the best fit when the PDF's structure matters: headings, tables, reading
+order, and section boundaries. It is much slower and heavier (~42x measured),
+but the output is more useful for later chunking, retrieval, and topic modeling.
 
 **The ~42x figure predates the OCR default.** It was measured with
 Docling's OCR stage on, which is Docling's default but has not been this
@@ -76,7 +95,10 @@ and one that announces itself in a thoroughly misleading way -- see
 ["docling fails every document with an OpenCV recursion error"](#docling-fails-every-document-with-an-opencv-recursion-error).
 
 ### `grobid`
-GROBID is most valuable for reference extraction and scholarly structure. It was never a drop-in replacement for the other tools, and is no longer part of this repo -- see below.
+
+GROBID is most valuable for reference extraction and scholarly structure. It was
+never a drop-in replacement for the other tools, and is no longer part of this
+repo -- see below.
 
 ## Recommended use in this repository
 
@@ -86,6 +108,7 @@ A practical tiered strategy:
 2. **`docling`** for high-quality structured parsing
 
 That tiering matches the repository's design philosophy:
+
 - probe first
 - degrade gracefully
 - keep the corpus layer usable even when the enrich group is absent
@@ -93,20 +116,29 @@ That tiering matches the repository's design philosophy:
 ## Quality tradeoff for this repo
 
 ### If speed is the priority
+
 Use `pdftotext`.
 
 ### If PDF structure is the priority
+
 Use `docling`.
 
 ### If references and scholarly metadata are the priority
-`papers/bibliography.bib` already supplies these -- it is the source of truth for title, authors, year, and DOI (see [CONFIG.md](CONFIG.md)). No parser needs to re-derive them.
+
+`papers/bibliography.bib` already supplies these -- it is the source of truth
+for title, authors, year, and DOI (see [CONFIG.md](CONFIG.md)). No parser needs
+to re-derive them.
 
 ## Notes on cross-platform support
 
-- `pdftotext` depends on an external system package, so it is not the most portable option.
-- `docling` is the heaviest option and may be the hardest to support consistently across operating systems.
+- `pdftotext` depends on an external system package, so it is not the most
+  portable option.
+- `docling` is the heaviest option and may be the hardest to support
+  consistently across operating systems.
 
-If cross-platform support is important, the best approach is to treat these as **optional backends** and keep a fallback ladder rather than relying on a single tool.
+If cross-platform support is important, the best approach is to treat these as
+**optional backends** and keep a fallback ladder rather than relying on a single
+tool.
 
 ## Suggested architecture
 
@@ -116,6 +148,7 @@ A robust design for this repo would be:
 - enrichment (structured) path: `docling`
 
 That gives a good balance of:
+
 - speed
 - fidelity
 - portability
@@ -124,10 +157,12 @@ That gives a good balance of:
 ## Conclusion
 
 For this repository:
+
 - `pdftotext` is the fastest and simplest
 - `docling` is the best structured PDF parser
 
-The best overall outcome is not choosing one tool, but combining them in a layered backend strategy.
+The best overall outcome is not choosing one tool, but combining them in a
+layered backend strategy.
 
 ## Four newer backends, evaluated and not adopted
 
@@ -207,7 +242,7 @@ architecture.
    undocumented caption linking, the heaviest system-dependency
    footprint, and the least certain GPU story.
 
-### Conclusion
+### Conclusion of the alternatives review
 
 **Stay on docling.** Its weaknesses -- speed, and non-determinism under
 concurrency -- are known, measured and written down
@@ -262,7 +297,7 @@ tokens)** against `pdftotext`'s **9 (0.01%)** -- a factor of 400 -- and
 23% fewer total words, because words were being *fused* rather than
 dropped. It is visible directly in retrieval snippets:
 
-```
+```text
 isaninputtooranoutputfromafunction
 AnnualReviewsinControl51(2021)357-373
 theapplicationofthevery same principles
@@ -315,7 +350,7 @@ some other way will hit it again.
 prints a bare `sys.path` listing before the bibliography progress and then
 fails every document it had to parse:
 
-```
+```text
 ['/workspace', '/usr/lib/python313.zip', ..., '/workspace/.venv-full/lib/python3.13/site-packages']
 [497/497] noauthor_logical_nodate
 FAILED  shao_use_2021: ERROR: recursion is detected during loading of "cv2" binary extensions. Check OpenCV installation.
@@ -364,7 +399,7 @@ confirmed is the mask mechanism (reproduced below) and the remedy.
 `bash scripts/install_full_pipeline.sh os-deps` covers it. By hand:
 
 ```console
-$ sudo apt-get install -y libgl1 libglib2.0-0t64   # libglib2.0-0 before Ubuntu 24.04 / Debian 13
+sudo apt-get install -y libgl1 libglib2.0-0t64   # libglib2.0-0 before Ubuntu 24.04 / Debian 13
 ```
 
 **To see the real error rather than the mask,** run the parse serially --
@@ -372,7 +407,7 @@ the import then happens in-process, with no preload to swallow it and no
 second attempt to trigger the flag:
 
 ```console
-$ PARSER_WORKERS=1 python -m src.corpus sync
+PARSER_WORKERS=1 python -m src.corpus sync
 ```
 
 **Why `opencv-python-headless` is not the fix.** It is the right wheel for

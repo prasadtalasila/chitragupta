@@ -202,3 +202,52 @@ jobs:
         run: |
           export VIRTUAL_ENV="$PWD/.venv-full"
           poetry check
+
+  # Both linters at a binary zero-messages bar, never a fail-under score:
+  # AUTO-IMPROVEMENT.md's R3 rules out driving a number, and a score can
+  # improve while the thing you cared about gets worse. They ride in one
+  # job because neither needs the corpus, the venv or a GPU -- pylint
+  # needs the project's dependencies importable and nothing more, and
+  # markdownlint needs only node.
+  #
+  # Ubuntu only, deliberately: unlike the test matrix these check the
+  # source rather than its behaviour on a platform, so a second leg would
+  # re-report the same findings and halve nothing.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same reason as the test job: src/config.py reads config.toml at
+      # import time, and pylint imports what it lints.
+      - name: Create config.toml from the tracked example
+        shell: bash
+        run: cp config.toml.example config.toml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # The runtime dependency (bibtexparser) has to be importable or
+      # pylint reports import-error against every module that uses it.
+      # The enrich group is deliberately absent -- those imports are
+      # inside the functions that need them, which is the documented lazy
+      # pattern `import-outside-toplevel` is disabled for, so pylint never
+      # resolves them and never needs to.
+      - name: Install pylint and the runtime dependency
+        run: python -m pip install --upgrade pip pylint "bibtexparser>=1.4,<2.0"
+
+      - name: pylint
+        run: pylint --rcfile=.pylintrc src scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+
+      # Same globs as .markdownlint.yaml's own "Run it with" comment, so
+      # what CI checks and what a contributor runs cannot drift apart.
+      - name: markdownlint
+        run: markdownlint-cli2 "*.md" "docs/**/*.md"

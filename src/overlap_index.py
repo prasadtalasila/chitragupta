@@ -414,7 +414,8 @@ def _load_corpus_index(n: int, corpus_key: str) -> "CorpusIndex | None":
     positions: "array[int]" = array("I")
     positions.frombytes(raw[offset:offset + count * 4])
     return CorpusIndex(
-        n=n, citekeys=citekeys, grams=grams, citekey_ids=citekey_ids, pages=pages, positions=positions
+        n=n, citekeys=citekeys, grams=grams, citekey_ids=citekey_ids,
+        pages=pages, positions=positions
     )
 
 
@@ -452,7 +453,8 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
     index is re-merged from all of them.
     """
     items = _ledger_items()
-    doc_keys = [(citekey, _fingerprint_key(pdf_hash, parsed_path)) for citekey, pdf_hash, parsed_path in items]
+    doc_keys = [(citekey, _fingerprint_key(pdf_hash, parsed_path))
+                for citekey, pdf_hash, parsed_path in items]
     corpus_key = _corpus_key(doc_keys)
 
     cached = _load_corpus_index(n, corpus_key)

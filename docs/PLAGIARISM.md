@@ -50,7 +50,8 @@ a thin result and a thorough one look identical.
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
 | Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after |
 
-Both belong to the **review layer** and are advisory, not gates: a successful run exits 0 whether it
+Both belong to the **review layer** and are advisory, not gates: a successful
+run exits 0 whether it
 found anything or not, and neither is wired into a hook or blocks a
 draft. (A malformed invocation -- a bad flag, a missing argument --
 exits 2, ordinary CLI-usage error handling, not a verdict on the draft.)
@@ -144,7 +145,8 @@ the run actually *starts* on, equal for an ordinary single-page run,
 `end_page > page` for one that spans a source page break -- though not
 the converse: a remainder shorter than the index's own n-gram size has no
 gram starting on its page, so it is recovered into the run's word content
-without moving `end_page`), whether the containing paragraph actually cites that source (`UNCITED SOURCE` if
+without moving `end_page`), whether the containing paragraph actually cites that
+source (`UNCITED SOURCE` if
 not), whether the run sits inside quote delimiters (straight/curly double
 quotes or a Markdown blockquote line -- a deterministic bit, not a
 severity judgment), and `tier: "exact"` -- one key now, reserved for the
@@ -159,7 +161,8 @@ gate built on top of `scan`: a tolerable false-positive rate.
 longest-first, unchanged -- it's read once, in a terminal, mid-review.
 `--write`'s Markdown report instead groups findings **most-damning-first**
 into three sections: *long* verbatim runs (`LONG_RUN_WORDS`, currently
-15 words, is the boundary), *short* ones, and *quoted* ones. A run demotes to the low-priority *quoted* group only when
+15 words, is the boundary), *short* ones, and *quoted* ones. A run demotes to
+the low-priority *quoted* group only when
 it is **both** inside quote delimiters **and** cites the source it
 matched -- a quoted run from a source the paragraph does *not* cite is
 still the finding `overlap` structurally cannot make, so it is grouped by

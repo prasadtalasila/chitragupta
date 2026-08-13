@@ -61,7 +61,8 @@ def _get_float(env_var: str, *toml_path: str, default: float) -> float:
     return default
 
 
-def _get_optional_float(env_var: str, *toml_path: str, default: "float | None" = None) -> "float | None":
+def _get_optional_float(env_var: str, *toml_path: str,
+                        default: "float | None" = None) -> "float | None":
     """A positive duration in seconds, or None for "no limit".
 
     _get_float can't express this: it requires a float default, and
@@ -319,8 +320,10 @@ PARSER_STALL_TIMEOUT = _get_optional_float(
 # match against. Measured over the same 10 PDFs, pdftotext produced
 # 0.01% such tokens and a since-removed backend produced 4.19% -- three
 # orders of magnitude apart -- so 1% sits well clear of both.
-PARSE_LONG_WORD_CHARS = int(_get_float("PARSE_LONG_WORD_CHARS", "parser", "long_word_chars", default=20))
-PARSE_LONG_WORD_RATIO = _get_float("PARSE_LONG_WORD_RATIO", "parser", "long_word_ratio", default=0.01)
+PARSE_LONG_WORD_CHARS = int(_get_float("PARSE_LONG_WORD_CHARS", "parser",
+                                       "long_word_chars", default=20))
+PARSE_LONG_WORD_RATIO = _get_float("PARSE_LONG_WORD_RATIO", "parser",
+                                   "long_word_ratio", default=0.01)
 # Below this many words the ratio is too noisy to mean anything (a
 # cover page, or a scan that yielded almost no text).
 PARSE_MIN_TOKENS = int(_get_float("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200))
@@ -366,8 +369,10 @@ LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(REPO_ROOT / "logs")))
 # a human, not a pass/fail line, so precision here would be false
 # precision. Below WEAK a finding is reported as "no support found",
 # which means "go look", never "this citation is wrong".
-PROVENANCE_WEAK_SCORE = _get_float("PROVENANCE_WEAK_SCORE", "provenance", "weak_score", default=0.20)
-PROVENANCE_GOOD_SCORE = _get_float("PROVENANCE_GOOD_SCORE", "provenance", "good_score", default=0.50)
+PROVENANCE_WEAK_SCORE = _get_float("PROVENANCE_WEAK_SCORE", "provenance",
+                                   "weak_score", default=0.20)
+PROVENANCE_GOOD_SCORE = _get_float("PROVENANCE_GOOD_SCORE", "provenance",
+                                   "good_score", default=0.50)
 
 # Heavier optional pipeline (pyproject.toml's "enrich" Poetry group), per src/enrich/.
 DOCLING_DIR = CONTENT_DIR / "docling"
@@ -384,7 +389,8 @@ DOCLING_CACHE_PATH = CONTENT_DIR / "docling_cache.json"
 DOCLING_IMAGES = _get_bool("DOCLING_IMAGES", "enrich", "docling_images", default=False)
 # Render scale for those bitmaps; 2.0 is ~144 DPI, legible for reading a
 # figure back while checking a draft without storing print-resolution PNGs.
-DOCLING_IMAGE_SCALE = _get_float("DOCLING_IMAGE_SCALE", "enrich", "docling_image_scale", default=2.0)
+DOCLING_IMAGE_SCALE = _get_float("DOCLING_IMAGE_SCALE", "enrich",
+                                 "docling_image_scale", default=2.0)
 CHROMA_DIR = CONTENT_DIR / "chroma"
 
 TOPICS_PATH = CONTENT_DIR / "topics.json"

@@ -80,7 +80,7 @@ def _describe_holder(path) -> "tuple[int, str, str, float] | None":
     message presents them as advisory and nothing depends on them.
     """
     try:
-        data = json.loads(Path(str(path) + ".holder").read_text())
+        data = json.loads(Path(str(path) + ".holder").read_text(encoding="utf-8"))
         started = datetime.fromisoformat(data["started_at"])
         return (data["pid"], data["host"], data["started_at"],
                 (datetime.now(timezone.utc) - started).total_seconds())
@@ -151,7 +151,7 @@ class pipeline_lock:
                 "pid": os.getpid(),
                 "host": socket.gethostname(),
                 "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            }))
+            }), encoding="utf-8")
         except OSError:
             pass
 

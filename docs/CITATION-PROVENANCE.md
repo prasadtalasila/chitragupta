@@ -104,7 +104,7 @@ part of any automatic chain.
 
 ## The solution, as built
 
-```
+```bash
 python -m src.review provenance content/drafts/<slug>.md
 ```
 
@@ -140,7 +140,8 @@ three.
 ### Design decisions
 
 **Advisory, not a gate.** This mirrors `citation_coverage.py`'s
-stated position exactly -- it is why the two share a layer. The reason is not caution for its own sake: a
+stated position exactly -- it is why the two share a layer. The reason is not
+caution for its own sake: a
 lexical matcher cannot tell "this claim is unsupported" from "this claim
 is supported in vocabulary the matcher didn't recognise". Anything that
 *blocks* on that distinction would train people to work around it, which
@@ -220,7 +221,7 @@ The real argument is different, and it exposes a hole in the plan above.
 reading order. On a two-column paper that means two unrelated columns
 share each output line:
 
-```
+```text
 Ning and Wang provided an architecture of Future Internet    sequences transduce into different power management plan
 of Things (IoT) using human neural network structure [10].   sequences. They used Moore's machine to represent power
 ```

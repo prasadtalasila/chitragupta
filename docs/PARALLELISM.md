@@ -48,7 +48,7 @@ module all of this is built on.
 Only the PDF parse is parallel. Everything else is fast enough to be
 serial, and is.
 
-```
+```text
   bib file ──► ledger ──► PARSE ──► retrieval ──► drafting ──► render
                             ▲
                             └── the only parallel stage
@@ -56,7 +56,7 @@ serial, and is.
 
 Two entry points reach it, sharing the same machinery:
 
-```
+```text
   python -m src.corpus sync                     python -m src.enrich
   (corpus layer: bib ──► text)           (enrichment layer, opt-in)
           │                                        │
@@ -78,7 +78,7 @@ method, which GPU" is answered in exactly one place.
 
 ## The parse path, end to end
 
-```
+```text
                      ┌────────────────────────────────────────────┐
   MAIN PROCESS       │ 1. prestart_pool()                         │
   holds:             │    forkserver begins importing torch       │
@@ -127,7 +127,7 @@ All in `src/pdf_text.py` unless noted.
 
 ### `resolve_workers(n_docs) -> (workers, complaint)`
 
-```
+```text
    what you asked for ──┐
    what the machine     ├──► min(…) ──► max(1, …) ──► workers
      can sustain      ──┤
@@ -174,7 +174,7 @@ because it buys throughput.
 
 Chooses the start method and configures it:
 
-```
+```text
    auto ──► forkserver, if the platform has it and CUDA is untouched
         └─► spawn otherwise (Windows, or CUDA already initialised)
 ```
@@ -189,7 +189,7 @@ It also measured no faster than `forkserver`.
 Starts the forkserver *before* the caller reads the bibliography, so its
 torch/docling import overlaps work that has to happen anyway.
 
-```
+```text
    without:  ├─ read bib 2.5s ─┤├─ preload 3.4s ─┤├─ pool ready
    with:     ├─ read bib 2.5s ─┤├─ pool ready
              ├─ preload 3.4s (background) ──┤
@@ -202,7 +202,7 @@ whose ceiling is 1 regardless of what was asked for.
 
 Pool initialiser. Each worker claims one CUDA device round-robin:
 
-```
+```text
    shared counter ──(under lock)──► i ──► cuda:devices[i % len(devices)]
 ```
 
@@ -281,7 +281,7 @@ document takes 246s. A warning fires at half the budget first.
 
 What a cold worker pays before producing anything:
 
-```
+```text
   forkserver:  fork ──► imports inherited ──► build converter ──► 1st convert
                ~0s          ~0s                    0.13s            5.17s
                                                               └─ models load here
@@ -300,7 +300,7 @@ is why `forkserver` is worth a fixed 1–2s rather than a multiple.
 
 ## How the worker count is decided
 
-```
+```text
   [parser].workers = 1       ──► strictly serial: no pool, no subprocess,
                                   no pickling. The default.
   [parser].workers = <int>   ──┐
@@ -342,7 +342,7 @@ incrementally and synchronously: whatever finished is already on disk.
 A separate mechanism for a separate problem — two *runs* overlapping, not
 two documents.
 
-```
+```text
   run A ──► content/pipeline.lock.db ──► BEGIN IMMEDIATE ──► holds it
   run B ──► SQLITE_BUSY ──► exit 2, naming the holder's pid, host and age
   readers (citation_gate, retrieval, ledger) ──► unaffected throughout

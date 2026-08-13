@@ -636,7 +636,8 @@ def main(argv: "list[str] | None" = None) -> int:
     )
     parser.add_argument(
         "--remove-stale", action="store_true",
-        help="Delete ledger rows for citekeys no longer in the bib file (default: report only, don't delete)",
+        help="Delete ledger rows for citekeys no longer in the bib file "
+             "(default: report only, don't delete)",
     )
     args = parser.parse_args(argv)
     # Held for the whole run, and only at the entrypoint: run() itself

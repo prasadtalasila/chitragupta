@@ -93,7 +93,6 @@ flowchart LR
   class FIX bad
 ```
 
-
 ### 2. Your first run
 
 **Written for:** Someone installing it today.
@@ -158,11 +157,11 @@ flowchart TB
   class DONE done
 ```
 
-
 ### 3. The full workflow
 
 **Written for:** Someone reading the source.
-**Answers:** what actually runs, what does it write, and where does the module I'm looking at fit?
+**Answers:** what actually runs, what does it write, and where does the module
+I'm looking at fit?
 
 The reference diagram. Everything in `src/` appears here exactly once.
 [ARCHITECTURE.md](ARCHITECTURE.md) is the prose companion to it -- the
@@ -297,7 +296,6 @@ flowchart TB
   class H1,H2,H3,EMB heavy
 ```
 
-
 ### 4. Everything on disk
 
 **Written for:** Someone deciding what to back up, or debugging a wrong file.
@@ -402,7 +400,6 @@ flowchart TB
   class LCK lock
 ```
 
-
 ### 5. Gates and exit codes
 
 **Written for:** Someone whose run just failed, or who is scripting it.
@@ -487,11 +484,11 @@ flowchart TB
   class GBAD hard
 ```
 
-
 ### 6. Inside one parse
 
 **Written for:** Someone tuning `[parser].workers`, or changing the pool.
-**Answers:** what does a worker pool actually do here, and what happens when part of it dies?
+**Answers:** what does a worker pool actually do here, and what happens when
+part of it dies?
 
 The deepest view, and the only part of the repository that runs work in
 parallel. Everything else -- retrieval, gating, rendering -- is
@@ -676,7 +673,6 @@ flowchart LR
   class AID,BERT aid
 ```
 
-
 ### Genre B: teaching
 
 **Skills:** `tutorial-writer`, `textbook-chapter-writer`
@@ -748,7 +744,6 @@ flowchart LR
   class HEAVY off
   class RISK risk
 ```
-
 
 ### Genre C: LaTeX-native
 
@@ -903,7 +898,6 @@ sequenceDiagram
 
     Note over You,Ren: Layer 4, the review layer — optional afterwards, never a gate:<br/>src.review provenance · verbatim · coverage<br/>reports land in content/review/, mirroring the draft
 ```
-
 
 ### The life of a single citekey
 

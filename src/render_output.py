@@ -138,17 +138,17 @@ def _safe_render_inputs(input_path: Path, bib_path: Path, tmp_dir: Path) -> tupl
 
     Returns the original paths untouched when neither applies.
     """
-    original = input_path.read_text()
+    original = input_path.read_text(encoding="utf-8")
     text = _swap_manual_refs_for_citeproc(original)
     bad_keys = {m.group(1) for m in _PANDOC_CITE_RE.finditer(text) if "--" in m.group(1)}
     if not bad_keys:
         if text == original:
             return input_path, bib_path
         safe_md = tmp_dir / input_path.name
-        safe_md.write_text(text)
+        safe_md.write_text(text, encoding="utf-8")
         return safe_md, bib_path
 
-    bib_text = bib_path.read_text()
+    bib_text = bib_path.read_text(encoding="utf-8")
     for key in bad_keys:
         alias = _alias_for(key)
         text = re.sub(
@@ -168,8 +168,8 @@ def _safe_render_inputs(input_path: Path, bib_path: Path, tmp_dir: Path) -> tupl
 
     safe_md = tmp_dir / input_path.name
     safe_bib = tmp_dir / bib_path.name
-    safe_md.write_text(text)
-    safe_bib.write_text(bib_text)
+    safe_md.write_text(text, encoding="utf-8")
+    safe_bib.write_text(bib_text, encoding="utf-8")
     return safe_md, safe_bib
 
 
@@ -224,7 +224,7 @@ def _collapsed_csl(csl_path: Path, tmp_dir: Path) -> Path:
     author made a deliberate choice, and overriding it would silently
     change how someone's own style renders.
     """
-    text = csl_path.read_text()
+    text = csl_path.read_text(encoding="utf-8")
     match = _CSL_CITATION_TAG_RE.search(text)
     if match is None or "collapse=" in (match.group(1) or ""):
         return csl_path
@@ -235,7 +235,7 @@ def _collapsed_csl(csl_path: Path, tmp_dir: Path) -> Path:
         + text[match.end():]
     )
     out = tmp_dir / csl_path.name
-    out.write_text(patched)
+    out.write_text(patched, encoding="utf-8")
     return out
 
 
@@ -394,7 +394,7 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
     (absolute, or `..`-escaping) -- a draft's image references are never a
     reason to write outside `dest_dir`.
     """
-    for ref in _local_image_refs(input_path.read_text()):
+    for ref in _local_image_refs(input_path.read_text(encoding="utf-8")):
         ref_path = Path(ref)
         if ref_path.is_absolute() or ".." in ref_path.parts:
             continue
@@ -558,14 +558,18 @@ def main(argv: list[str] | None = None) -> int:
         description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
-    parser.add_argument("--format", dest="output_format", default="pdf", help="Output format (default: pdf)")
-    parser.add_argument("--documentclass", default="article", help="LaTeX documentclass (default: article)")
+    parser.add_argument("--format", dest="output_format", default="pdf",
+                        help="Output format (default: pdf)")
+    parser.add_argument("--documentclass", default="article",
+                        help="LaTeX documentclass (default: article)")
     parser.add_argument("--fontsize", default="12pt", help="LaTeX font size (default: 12pt)")
     parser.add_argument(
         "--papersize", default="a4",
         help='LaTeX paper size, without the "paper" suffix pandoc appends itself (default: a4)',
     )
-    parser.add_argument("--margin", default="1in", help="Page margin, passed to the geometry package (default: 1in)")
+    parser.add_argument("--margin", default="1in",
+                        help="Page margin, passed to the geometry package "
+                             "(default: 1in)")
     parser.add_argument(
         "--csl", default=None,
         help=f"CSL style for citations and the bibliography (default: {config.CSL_STYLE_PATH})",

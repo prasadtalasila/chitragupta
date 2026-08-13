@@ -165,7 +165,8 @@ def _full_text(item: sqlite3.Row) -> str:
     text_parts = [item["title"] or ""]
     if item["parsed_path"]:
         try:
-            text_parts.append(Path(item["parsed_path"]).read_text(errors="ignore"))
+            text_parts.append(
+                Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore"))
         except OSError:
             pass
     return "\n".join(text_parts)
