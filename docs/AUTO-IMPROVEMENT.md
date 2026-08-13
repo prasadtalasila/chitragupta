@@ -2,7 +2,7 @@
 
 Status: **specification of mostly unbuilt work.** Written 2026-08-11;
 step 1 partly built in 5.4.0, step 3 in 5.5.0, and step 5 built narrow
-(verbatim runs only) in 5.6.0 -- see [Build order](#build-order).
+(verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
 
 `python -m src.review agenda` is not a command and no skill consumes
 anything below. Of the review aids, `verbatim scan` emits JSON as of
@@ -287,7 +287,7 @@ sequence.
    whether or not step 5 follows.
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect
    classes rather than verbatim runs alone. *Built narrow first, in
-   5.6.0: `overlap-reviser` is #129 as filed, over the `verbatim-run`
+   5.7.0: `overlap-reviser` is #129 as filed, over the `verbatim-run`
    class alone, consuming `verbatim scan --json` directly rather than an
    agenda. It did not wait for steps 2 and 4 because it did not need to
    -- one aid's JSON already existed, and a loop that repairs one class
