@@ -11,6 +11,13 @@ once, cache the fingerprint keyed by that item's own change-detection
 state, and merge the per-document fingerprints into one corpus-wide index a
 future scan can binary-search.
 
+`src/overlap_skipgram.py` (tier 2, #133) mirrors this shape for its own,
+fully independent cache -- own files, own `_TOKENIZER_VERSION`/
+`_HEADER_VERSION` -- and imports `_parse_cached_postings` and
+`_parse_corpus_index_binary` from here rather than duplicating them,
+since those two are the tier-agnostic validate-and-parse mechanics with
+no cache-invalidation state of their own (see their own docstrings).
+
 Two independent caches, both under `config.OVERLAP_DIR` (gitignored,
 regenerable, like every other content/ artifact):
 
@@ -187,6 +194,37 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
     os.replace(tmp_path, path)
 
 
+def _parse_cached_postings(
+    data: object, key: list, n: int, tokenizer_version: int
+) -> "list[tuple[int, int, int]] | None":
+    """The shape-and-freshness check a doc-level postings cache needs,
+    shared with `overlap_skipgram.py` (tier 2): `None` for an unexpected
+    shape, a tokenizer/n mismatch, or a stale key -- all cache misses,
+    handled identically by both tiers.
+
+    Shared because it was, byte for byte, the one piece of `_load_doc_cache`
+    that carried no tier-specific state -- `tokenizer_version` is passed in
+    rather than read off a module global for exactly that reason. The two
+    tiers' cache *files* stay fully independent (own path, own version
+    constant, own dataclass): sharing this validation step doesn't change
+    that, since neither tier's cache key or invalidation depends on the
+    other's `tokenizer_version` argument here.
+    """
+    if not isinstance(data, dict):
+        return None
+    if data.get("tokenizer_version") != tokenizer_version or data.get("n") != n:
+        return None
+    if data.get("key") != key:
+        return None
+    postings = data.get("postings")
+    if not isinstance(postings, list):
+        return None
+    try:
+        return [(int(h), int(p), int(pos)) for h, p, pos in postings]
+    except (TypeError, ValueError):
+        return None
+
+
 def _load_doc_cache(citekey: str, key: list, n: int) -> "DocFingerprint | None":
     """`None` for any cache miss: absent file, corrupt JSON, an
     unexpected shape, a tokenizer/n mismatch, or a stale key -- all treated
@@ -196,18 +234,8 @@ def _load_doc_cache(citekey: str, key: list, n: int) -> "DocFingerprint | None":
             data = json.load(f)
     except (OSError, json.JSONDecodeError):
         return None
-    if not isinstance(data, dict):
-        return None
-    if data.get("tokenizer_version") != _TOKENIZER_VERSION or data.get("n") != n:
-        return None
-    if data.get("key") != key:
-        return None
-    postings = data.get("postings")
-    if not isinstance(postings, list):
-        return None
-    try:
-        parsed_postings = [(int(h), int(p), int(pos)) for h, p, pos in postings]
-    except (TypeError, ValueError):
+    parsed_postings = _parse_cached_postings(data, key, n, _TOKENIZER_VERSION)
+    if parsed_postings is None:
         return None
     return DocFingerprint(citekey=citekey, key=key, n=n, postings=parsed_postings)
 
@@ -373,17 +401,17 @@ def _corpus_key(doc_keys: list[tuple[str, list]]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _load_corpus_index(n: int, corpus_key: str) -> "CorpusIndex | None":
-    try:
-        with open(_index_header_path(), encoding="utf-8") as f:
-            header = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return None
+def _checked_corpus_index_header(
+    header: object, corpus_key: str, n: int, tokenizer_version: int, header_version: int
+) -> "tuple[list, int] | None":
+    """`(citekeys, count)` if `header` is fresh, else `None`. Split out of
+    `_parse_corpus_index_binary` to keep each half under the C1 statement
+    limit -- see that function for why this pair is shared at all."""
     if not isinstance(header, dict):
         return None
     if (
-        header.get("version") != _HEADER_VERSION
-        or header.get("tokenizer_version") != _TOKENIZER_VERSION
+        header.get("version") != header_version
+        or header.get("tokenizer_version") != tokenizer_version
         or header.get("n") != n
         or header.get("key") != corpus_key
     ):
@@ -392,13 +420,19 @@ def _load_corpus_index(n: int, corpus_key: str) -> "CorpusIndex | None":
     count = header.get("count")
     if not isinstance(citekeys, list) or not isinstance(count, int) or count < 0:
         return None
-    try:
-        raw = _index_bin_path().read_bytes()
-    except OSError:
-        return None
-    # 'Q' (grams) is 8 bytes/entry; the three 'I' postings arrays are 4
-    # bytes/entry each -- a length mismatch means a truncated or otherwise
-    # corrupt .bin, so rebuild rather than risk misreading it.
+    return citekeys, count
+
+
+def _unpack_index_arrays(raw: bytes, count: int) -> "tuple[array, array, array, array] | None":
+    """`(grams, citekey_ids, pages, positions)` unpacked from `raw`, the
+    `.bin` file's contents -- `None` if the length doesn't match `count`
+    (a truncated or otherwise corrupt `.bin`, so rebuild rather than risk
+    misreading it). Split out of `_parse_corpus_index_binary` for the same
+    reason as `_checked_corpus_index_header`.
+
+    'Q' (grams) is 8 bytes/entry; the three 'I' postings arrays are 4
+    bytes/entry each.
+    """
     expected_len = count * (8 + 4 + 4 + 4)
     if len(raw) != expected_len:
         return None
@@ -413,6 +447,59 @@ def _load_corpus_index(n: int, corpus_key: str) -> "CorpusIndex | None":
     offset += count * 4
     positions: "array[int]" = array("I")
     positions.frombytes(raw[offset:offset + count * 4])
+    return grams, citekey_ids, pages, positions
+
+
+def _parse_corpus_index_binary(
+    header: object,
+    corpus_key: str,
+    n: int,
+    tokenizer_version: int,
+    header_version: int,
+    bin_path: Path,
+) -> "tuple[list, array, array, array, array] | None":
+    """The header-and-binary validation `_load_corpus_index` needs,
+    shared with `overlap_skipgram.py` (tier 2) for the same reason
+    `_parse_cached_postings` is: this is the tier-agnostic half of
+    loading a `(header.json, index.bin)` pair -- version/key checks and
+    the four-array binary unpack -- parameterized on the two version
+    constants that actually differ per tier rather than read off a
+    module global. `header_version` and `tokenizer_version` keep each
+    tier's own cache-invalidation rule intact; only the parsing
+    mechanics are shared.
+
+    Returns `(citekeys, grams, citekey_ids, pages, positions)`, or
+    `None` for any cache miss -- absent/unreadable `.bin`, a version or
+    key mismatch, or a length that doesn't match a truncated-or-corrupt
+    `.bin` -- so the caller only has to construct its own dataclass.
+    """
+    checked = _checked_corpus_index_header(header, corpus_key, n, tokenizer_version, header_version)
+    if checked is None:
+        return None
+    citekeys, count = checked
+    try:
+        raw = bin_path.read_bytes()
+    except OSError:
+        return None
+    unpacked = _unpack_index_arrays(raw, count)
+    if unpacked is None:
+        return None
+    grams, citekey_ids, pages, positions = unpacked
+    return citekeys, grams, citekey_ids, pages, positions
+
+
+def _load_corpus_index(n: int, corpus_key: str) -> "CorpusIndex | None":
+    try:
+        with open(_index_header_path(), encoding="utf-8") as f:
+            header = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    parsed = _parse_corpus_index_binary(
+        header, corpus_key, n, _TOKENIZER_VERSION, _HEADER_VERSION, _index_bin_path()
+    )
+    if parsed is None:
+        return None
+    citekeys, grams, citekey_ids, pages, positions = parsed
     return CorpusIndex(
         n=n, citekeys=citekeys, grams=grams, citekey_ids=citekey_ids,
         pages=pages, positions=positions

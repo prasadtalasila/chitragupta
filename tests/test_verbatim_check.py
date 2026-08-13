@@ -363,6 +363,22 @@ class TestMergeRuns:
         assert vc._merge_runs([5, 5, 5], gap=0, n=8) == [[5]]
 
 
+class TestMergeSpans:
+    def test_adjacent_spans_merge(self):
+        assert vc._merge_spans([(0, 5, 1), (5, 9, 1)], gap=0) == [(0, 9, [(0, 5, 1), (5, 9, 1)])]
+
+    def test_spans_within_gap_merge(self):
+        result = vc._merge_spans([(0, 5, 1), (7, 12, 1)], gap=2)
+        assert result == [(0, 12, [(0, 5, 1), (7, 12, 1)])]
+
+    def test_spans_beyond_gap_stay_separate(self):
+        result = vc._merge_spans([(0, 5, 1), (20, 25, 1)], gap=2)
+        assert result == [(0, 5, [(0, 5, 1)]), (20, 25, [(20, 25, 1)])]
+
+    def test_a_single_span_is_its_own_run(self):
+        assert vc._merge_spans([(3, 8, 2)], gap=1) == [(3, 8, [(3, 8, 2)])]
+
+
 class TestQuoteCharSpans:
     def test_straight_double_quotes_detected(self):
         spans = vc._quote_char_spans('before "a quoted phrase" after')
@@ -850,6 +866,36 @@ class TestMaskAllowlisted:
         assert mask == [True, True, True]
 
 
+class TestMaskAllowlistedStemmed:
+    """`_mask_allowlisted_stemmed` -- tier 2's allowlist masking, matched
+    after the same stem-and-drop-stopwords reduction as skip-gram
+    hashing, not the literal words `_mask_allowlisted` compares."""
+
+    def test_masks_a_stemmed_contiguous_occurrence(self):
+        # "Internets" stems to the same root as the allowlisted
+        # "internet" -- a literal-word check would miss this.
+        words = ["the", "internets", "of", "things", "is", "growing"]
+        mask = vc._mask_allowlisted_stemmed(words, [("internet", "of", "things")])
+        assert mask == [False, True, True, True, False, False]
+
+    def test_a_phrase_that_stems_to_nothing_is_skipped(self):
+        # Every word of the phrase is a stopword, so it reduces to an
+        # empty stemmed sequence -- must not match (and must not error)
+        # against any span.
+        words = ["alpha", "beta"]
+        assert vc._mask_allowlisted_stemmed(words, [("the", "of")]) == [False, False]
+
+    def test_a_phrase_longer_than_the_span_is_skipped_not_erroring(self):
+        words = ["alpha", "beta"]
+        assert vc._mask_allowlisted_stemmed(
+            words, [("alpha", "beta", "gamma")]
+        ) == [False, False]
+
+    def test_no_match_returns_all_false(self):
+        words = ["alpha", "beta", "gamma"]
+        assert vc._mask_allowlisted_stemmed(words, [("delta", "epsilon")]) == [False, False, False]
+
+
 class TestLoadAllowlistPhrases:
     def test_missing_file_returns_empty_list(self, isolated_config):
         assert vc._load_allowlist_phrases() == []
@@ -952,6 +998,26 @@ class TestAllowlistSuppression:
         assert "20 words" in out
         assert "suppressed" not in out
 
+    def test_a_skipgram_finding_entirely_covered_by_the_allowlist_is_suppressed(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # Nine distinct content words, none a stopword: the even family
+        # (5 members, DEFAULT_N) produces exactly one skip-gram window
+        # covering the whole span, and allowlisting the identical phrase
+        # covers that whole span too, so what's left after masking (0
+        # words) cannot clear min_run.
+        words = "alpha bexo gamov delka epsilo zenith etaro thelos iotara".split()
+        text = " ".join(words)
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", text)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"[@cited_2024] {text} end.\n")
+        self._write_allowlist(text)
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "no verbatim run" in out
+        assert "suppressed by the allowlist" in out
+
     def test_a_malformed_allowlist_is_a_usage_error_not_a_silent_empty_list(
         self, isolated_config, tmp_path
     ):
@@ -963,8 +1029,16 @@ class TestAllowlistSuppression:
 
 
 class TestBucket:
-    def _finding(self, span_words, quoted, cites_source):
-        return {"span_words": span_words, "quoted": quoted, "cites_source": cites_source}
+    def _finding(self, matched_words, quoted, cites_source):
+        # span_words is deliberately way larger than matched_words here --
+        # bucketing must key off matched_words (the real evidence), not the
+        # raw span a skip-gram window can stretch across (#133 review fix).
+        return {
+            "span_words": matched_words + 100,
+            "matched_words": matched_words,
+            "quoted": quoted,
+            "cites_source": cites_source,
+        }
 
     def test_a_run_at_or_above_the_threshold_is_long(self):
         assert vc._bucket(self._finding(vc.LONG_RUN_WORDS, quoted=False, cites_source=True)) == "long"
@@ -986,10 +1060,10 @@ class TestBucket:
 
 class TestBucketTitle:
     def test_long(self):
-        assert vc._bucket_title("long") == f"Long verbatim runs (>= {vc.LONG_RUN_WORDS} words)"
+        assert vc._bucket_title("long") == f"Long runs (>= {vc.LONG_RUN_WORDS} matched words)"
 
     def test_short(self):
-        assert vc._bucket_title("short") == "Short verbatim runs"
+        assert vc._bucket_title("short") == "Short runs"
 
     def test_quoted(self):
         assert vc._bucket_title("quoted") == "Quoted runs"
@@ -1086,7 +1160,7 @@ class TestScanWrite:
         vc.cmd_scan(str(draft), write=True, formats=["md"])
 
         text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
-        assert "### Short verbatim runs" in text
+        assert "### Short runs" in text
         assert "### Long verbatim runs" not in text
         assert "### Quoted runs" not in text
 
@@ -1100,7 +1174,7 @@ class TestScanWrite:
         vc.cmd_scan(str(draft), write=True, formats=["md"])
 
         text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
-        assert f"### Long verbatim runs (>= {vc.LONG_RUN_WORDS} words)" in text
+        assert f"### Long runs (>= {vc.LONG_RUN_WORDS} matched words)" in text
         assert "### Short verbatim runs" not in text
 
     def test_a_quoted_and_cited_run_lands_under_the_quoted_heading(self, ledger_con, tmp_path):

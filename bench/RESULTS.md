@@ -28,6 +28,7 @@ if it is obvious which is which, so:
 | [2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy) | **Partly superseded** | Its cold/warm figures still stand -- re-measured at 26.8s after #131 bumped the tokenizer version, which was expected to make them stale and did not. Its claim that `scan`'s findings are the input a gating decision would be tuned against is what the 2026-08-13 section actually tests |
 | [2026-08-13: what an `overlap_gate` would block, and how much of it would be wrong (#130)](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130) | **Current** | The first false-positive measurement of the gate #130 proposes, over a real 15-chapter book. Found References masking broken for book-numbered headings (72x the gateable population) and no threshold with a true positive at any width |
 | [2026-08-13b: does a gram's corpus document frequency separate boilerplate from reuse?](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse) | **Current** | Follows the section above, which found the discriminating feature and quantified it only partly. Measured at gram rather than finding granularity it explains 12 of 14, against that section's 8 |
+| [2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses) | **Current, capability arm only** | Confirms the every-Nth-word design works synthetically. The precision arm (real-corpus false positives, the harder and more important question) was not run -- this environment had no synced corpus -- and is not evidence either way |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1278,3 +1279,79 @@ python3 bench/bench_overlap_df.py --tag <date>-overlap-df \
 
 Labels are shared with `bench_overlap_gate.py` rather than duplicated --
 the same findings, the same hand-authored file.
+
+## 2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?
+
+Discussion #115 and docs/PLAGIARISM.md call for "start advisory, promote
+with evidence" before the skip-gram tier is trusted with anything. This
+is the first evidence, and only the easier half of it.
+
+### Capability arm: synthetic every-Nth-word paraphrase
+
+`bench_overlap_skipgram.py` swaps a synonym at a fixed stride across a
+28-word source sentence and checks whether the skip-gram tier (`n=5`
+stemmed content words) still matches it against the unedited source, at
+strides 2 through 14:
+
+```
+stride  caught
+     2     yes
+     4     yes
+     6     yes
+     8     yes
+    10     yes
+    12     yes
+    14     yes
+```
+
+Every even stride is caught, matching the design: an even-stride
+substitution always lands on one fixed original-index parity (odd
+indices for these strides, since each is `stride - 1` and `stride` is
+even), so the untouched family's skip-grams survive intact regardless of
+how sparse or dense the substitutions are. `self_check()` confirms the
+sweep is not vacuously "caught everything": swapping *every* word
+(stride 1) is asserted to fail, since neither family survives that.
+
+This is the same property `tests/test_overlap_skipgram.py::TestGradedParaphraseDetection`
+and `tests/test_feature_workflows.py::TestVerbatimScanEndToEnd::test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier`
+pin as tests -- this run is the sweep across strides rather than four
+fixed cases, kept here as the reproducible record.
+
+### Precision arm: not run
+
+The harder and more important question -- how many false positives the
+skip-gram tier produces on real, organic prose, the same measurement
+[2026-08-13's overlap-gate section](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130)
+made for the exact tier -- **was not measured**. This environment has no
+`papers/` and no synced `content/ledger.sqlite`, so `bench_overlap_skipgram.py --drafts`
+was never run. Do not read the clean capability sweep above as evidence
+about precision: a tier that never misses a synthetic word-swap can
+still flag every shared canonical definition in a real corpus, the same
+way the exact tier did before References masking was fixed.
+
+**What this does not measure**, beyond the precision arm above: embedding-
+level paraphrase (tier 3, #134, unbuilt) -- restatement in genuinely new
+sentence structure rather than a word-for-word swap. See docs/PLAGIARISM.md.
+
+Nor is **cold-build cost** measured. `scan` now builds two corpus
+indices instead of one, and `overlap_skipgram.stem()` runs pure-Python
+Porter stemming over every content word in every document. Tier 1's
+cold build is a measured 26.8s/497 docs (see
+["2026-08-13: what an overlap_gate would block"](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130));
+tier 2's is unknown and plausibly a multiple of it, since stemming has
+no C-extension equivalent to tier 1's hashing here. `bench_overlap.py`
+is the natural place to extend with a tier-2 timing arm later -- not
+done here, so the number stays absent rather than guessed.
+
+Reproduce:
+
+```bash
+python3 bench/bench_overlap_skipgram.py --tag <date>-skipgram-capability
+
+# Once a corpus is synced, the arm this section could not run:
+python3 bench/bench_overlap_skipgram.py --tag <date>-skipgram \
+    --drafts content/drafts/books/<book-slug>
+```
+
+The capability sweep's raw output is committed at
+`results/2026-08-13-skipgram-capability/skipgram_capability.json`.

@@ -573,7 +573,11 @@ def _add_scan_paper(citekey, text, pdf_bytes=b"%PDF-1.4 fixture"):
 
 _FINDING_RE = re.compile(
     r"\s+\[(?P<span>\d+) words(?:, (?P<matched>\d+) matched)?, "
-    r"pdf p\.(?P<page>\d+)\] (?P<citekey>\S+) \(tier=(?P<tier>\w+)\)(?P<flags>.*)"
+    # `[\w-]+`, not `\w+`: a tier name can carry a hyphen ("skip-gram"),
+    # which `\w` never matches -- with `\w+` this line simply fails to
+    # match at all, and the finding silently vanishes from _findings()'s
+    # result instead of raising anywhere near the mistake.
+    r"pdf p\.(?P<page>\d+)\] (?P<citekey>\S+) \(tier=(?P<tier>[\w-]+)\)(?P<flags>.*)"
 )
 
 
@@ -712,33 +716,42 @@ class TestVerbatimScanEndToEnd:
         result = _run_scan(planted_draft)
 
         assert result.returncode == 0, result.stderr
-        findings = {f["citekey"]: f for f in _findings(result.stdout)}
-        assert set(findings) == {"dt_arch_2024", "cloud_infra_2023", "calib_2025"}
+        # Keyed by (citekey, page), not citekey alone: dt_arch_2024 now
+        # carries two findings -- this one on page 2, plus the
+        # skip-gram tier's paraphrase finding on page 1 (see
+        # test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier)
+        # -- and a citekey-only dict would let the second overwrite the
+        # first.
+        findings = {(f["citekey"], f["page"]): f for f in _findings(result.stdout)}
+        assert {citekey for citekey, _page in findings} == {
+            "dt_arch_2024", "cloud_infra_2023", "calib_2025"
+        }
 
         # (a) The paragraph cites the source it borrowed from: reported,
         # with the page it came from, and deliberately not flagged.
-        cited = findings["dt_arch_2024"]
+        cited = findings["dt_arch_2024", 2]
         assert cited["fragment"] == SCAN_RUN_CITED
         assert cited["page"] == 2, "the run was planted on the source's second page"
         assert cited["tier"] == "exact"
         assert "UNCITED SOURCE" not in cited["flags"]
 
         # (b) Borrowed from a source the paragraph never names.
-        uncited = findings["cloud_infra_2023"]
+        uncited = findings["cloud_infra_2023", 2]
         assert uncited["fragment"] == SCAN_RUN_UNCITED
         assert uncited["page"] == 2
         assert "UNCITED SOURCE" in uncited["flags"]
 
         # (c) Borrowed into prose that cites nothing whatsoever.
-        connective = findings["calib_2025"]
+        connective = findings["calib_2025", 2]
         assert connective["fragment"] == SCAN_RUN_CONNECTIVE
         assert connective["page"] == 2
         assert "UNCITED SOURCE" in connective["flags"]
 
-    def test_lightly_paraphrased_run_is_not_reported_by_the_exact_tier(
+    def test_lightly_paraphrased_run_is_missed_by_the_exact_tier_alone(
         self, planted_draft
     ):
-        """A deliberate negative control, not a coverage gap.
+        """The exact tier's own boundary, still pinned after #133: taken
+        on its own, `_exact_tier_findings` cannot see this passage.
 
         `SCAN_PARAPHRASE_IN_DRAFT` is `SCAN_PARAPHRASE_IN_SOURCE` with a
         synonym swapped at every fourth word -- the signature of an LLM
@@ -753,22 +766,60 @@ class TestVerbatimScanEndToEnd:
         `test_clean_paraphrase_does_not_flag` in
         tests/test_verbatim_check.py: that fixture is a clean rewrite,
         which nobody expects an n-gram index to catch. This one is
-        near-verbatim and still missed, which is the documented boundary
-        of the exact tier and the reason README, docs/CLI.md and all
-        seven skills say a clean scan is not a clean bill of health.
+        near-verbatim and still missed *by this one tier*, which is the
+        documented boundary of exact matching and the reason README,
+        docs/CLI.md and all seven skills say a clean *exact-tier* scan
+        is not a clean bill of health.
 
-        When the deterministic skip-gram tier lands (discussion #115),
-        this is the fixture that must flip from missed to caught. Invert
-        the assertion then -- don't delete it.
+        Originally named
+        `test_lightly_paraphrased_run_is_not_reported_by_the_exact_tier`
+        and asserted on `scan`'s whole output, back when the exact tier
+        was the only one built; its docstring said this fixture must
+        flip from missed to caught once the skip-gram tier landed
+        (discussion #115) -- see
+        `test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier`,
+        below, for that flip. This half survives, narrowed to the one
+        tier it was always really pinning, because "the exact tier
+        cannot see a paraphrase" is still true and still worth a test on
+        its own -- `scan`'s combined output moving on is not evidence
+        that claim stopped holding.
         """
         result = _run_scan(planted_draft)
 
         assert result.returncode == 0, result.stderr
         assert not [
             f for f in _findings(result.stdout)
-            if f["citekey"] == "dt_arch_2024" and f["page"] == 1
+            if f["citekey"] == "dt_arch_2024" and f["page"] == 1 and f["tier"] == "exact"
         ], "the exact tier reported the paraphrased passage on the source's first page"
-        assert "validation" not in result.stdout
+
+    def test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier(
+        self, planted_draft
+    ):
+        """The flip discussion #115 and #133 promised: the deterministic
+        skip-gram tier (`src/overlap_skipgram.py`) catches the same
+        every-fourth-word paraphrase the test above shows the exact tier
+        missing.
+
+        An every-fourth-word substitution always lands on words at the
+        same original-index parity (4 is even, so every swapped index
+        shares one parity class) -- see `overlap_skipgram`'s module
+        docstring for why splitting into even/odd families *before*
+        stemming and stopword-filtering, rather than after, is what
+        makes the untouched family's skip-grams survive every
+        substitution intact.
+        """
+        result = _run_scan(planted_draft)
+
+        assert result.returncode == 0, result.stderr
+        skipgram_findings = [
+            f for f in _findings(result.stdout)
+            if f["citekey"] == "dt_arch_2024" and f["page"] == 1
+        ]
+        assert skipgram_findings, (
+            "the skip-gram tier did not report the paraphrased passage"
+        )
+        assert all(f["tier"] == "skip-gram" for f in skipgram_findings)
+        assert "validation" in result.stdout
 
     def test_clean_draft_reports_nothing_and_still_exits_zero(self, corpus):
         """A review aid, so "found nothing" is a successful run."""

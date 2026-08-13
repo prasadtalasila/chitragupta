@@ -66,8 +66,8 @@ code -- exactly what the ratchet exists to avoid.
 
 ## Tier 1: the debt the ratchet already holds
 
-`tests/test_code_standards_scan.py` freezes **28 functions** over C1 (25
-statements) and **12 modules** over C2 (250 code lines), each with its
+`tests/test_code_standards_scan.py` freezes **26 functions** over C1 (25
+statements) and **13 modules** over C2 (250 code lines), each with its
 current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
 
@@ -106,7 +106,7 @@ ambiguous. By line range it is already four modules stacked:
 | 1505-1670 | Archive bundle / export / restore (`tarfile`, member checking) |
 | 1670-2149 | The `argparse` CLI: eleven `_cmd_*` functions plus `main` |
 
-Four of the register's 28 C1 offenders (`_cmd_status`, `main`,
+Four of the register's 26 C1 offenders (`_cmd_status`, `main`,
 `_cmd_brief`, `_cmd_status_all`, `_print_drift`) sit in that last block,
 which is the shape CODE-STANDARDS.md predicts: "a `main()` that parses
 arguments, does the work, and formats the output -- most of the C1
@@ -141,28 +141,32 @@ suppressed set is the *right* set. Build-order item 2 anticipates exactly
 this ("the register above and ruff's ignore list are two debt lists; they
 should be one") -- it just assumes ruff arrives first. It has not.
 
-### Type annotations: 288 of 383, and one module at zero
+### Type annotations: 394 of 433
 
-Build-order item 3 says "`src/` is partly annotated." It is 75%
-(288 of 383 `def`s carry a return annotation), and the distribution is
+Build-order item 3 says "`src/` is partly annotated." It is 91%
+(394 of 433 `def`s carry a return annotation), and the distribution is
 the finding rather than the total:
 
 | Module | Annotated |
 |---|---|
-| `src/review/verbatim_check.py` | **0 / 47** |
+| `src/review/verbatim_check.py` | **60 / 60** -- resolved #133 |
 | `src/review/citation_provenance.py` | 16 / 17 |
 | `src/review/citation_coverage.py` | 11 / 12 |
 | `src/review/__init__.py` | 10 / 10 |
 | `src/runlock.py` | 3 / 7 |
 | `src/sync.py` | 4 / 8 |
-| `src/dossier.py` | 62 / 65 |
+| `src/dossier.py` | 64 / 65 |
 
-`verbatim_check.py` is the second-largest module in the repository and
-the only one in the tree with no annotations at all, sitting beside three
-siblings that are effectively complete. That is the
-[Be consistent](CODE-STANDARDS.md#understandability) rule -- which that
-document calls "the highest-value one in this list" -- and it is a
-review finding today, independent of whether a checker is ever adopted.
+**`verbatim_check.py` no longer holds the tree's only zero.** It was
+the second-largest module in the repository with no annotations at all,
+against three siblings that were effectively complete -- the
+[Be consistent](CODE-STANDARDS.md#understandability) rule, which that
+document calls "the highest-value one in this list." Annotated in full
+while #133 (the skip-gram detection tier) was already touching every
+function in the file, no behaviour change, per [What to take
+first](#what-to-take-first) item 4 below. `runlock.py` and `sync.py`
+remain the two real partial modules; nothing here claims those are
+resolved.
 
 ## Tier 3: found by review, tracked nowhere
 
@@ -930,8 +934,13 @@ Ordered by what breaks if it is left, not by size:
 3. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
    this list -- one workflow job against 56 lines currently verified by
    nothing.
-4. **[Tier 2] Annotate `src/review/verbatim_check.py`.** 47 functions,
-   no behaviour change, and it removes the tree's only zero.
+4. **[Tier 2] Annotate `src/review/verbatim_check.py`.** ~~47 functions,
+   no behaviour change, and it removes the tree's only zero.~~ **Done**,
+   in #133: 58/58 functions now annotated (the count grew from 47 to 53
+   while that PR was adding tier 2's finders, then to 58 when three of
+   them were split to bring cognitive complexity under SonarQube's
+   threshold). See [Type
+   annotations](#type-annotations-394-of-433).
 5. **[Tier 1] Split `src/dossier.py`** along the four ranges above, and
    delist whatever comes back under C1 in the same PR.
 6. **[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
