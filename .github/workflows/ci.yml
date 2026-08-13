@@ -221,24 +221,17 @@ jobs:
   # text, so a Windows leg would find precisely what the Linux leg found
   # anyway. The matrix above is untouched by this job; the Windows leg
   # keeps running the suite exactly as before.
+  #
+  # No `if:` guard on the job. "Pull requests and commits on main" is
+  # already exactly what the `on:` block at the top of this file selects,
+  # and for the reason stated there: `branches: [main]` on the `push`
+  # trigger is what stops a PR branch's push starting a second run beside
+  # its `pull_request` one. A job-level condition repeating that would be
+  # a second place to keep in sync with the first. `workflow_dispatch` can
+  # still aim this at a feature branch, which is what a manual dispatch is
+  # for -- Sonar records that as a branch analysis, not as a PR.
   sonarqube:
     name: SonarQube
-    # `on: push:` at the top of this file is `tags-ignore`, not
-    # `branches` -- deliberately, so a feature branch gets the test matrix
-    # before any PR exists. Sonar wants the narrower set the request asked
-    # for: pull requests, and commits that landed on main. This gate is
-    # where that narrowing belongs, because doing it by adding
-    # `branches: [main]` to `on: push:` would take the test matrix off
-    # feature branches too.
-    #
-    # It also stops a double analysis. A push to a branch that already has
-    # an open PR triggers this workflow twice, and the `concurrency` group
-    # above cannot collapse the pair: the two runs carry different
-    # `github.ref` values (`refs/heads/<branch>` versus
-    # `refs/pull/N/merge`), so they land in different groups and neither
-    # cancels the other. Without the gate that is two scans racing for one
-    # commit -- the case the paragraph above says must not happen.
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 0, against the default depth-1 clone, because Sonar
