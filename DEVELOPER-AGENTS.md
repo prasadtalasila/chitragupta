@@ -402,8 +402,12 @@ governs what may land in your diff.
 Title line: imperative mood, concise, describes the change's effect (not
 "updated files" or "misc fixes"). PRs are squash-merged (see "Pull
 requests" below), so write commits and PR titles as if either one could
-become the commit title on `main`, and don't add the PR number by hand --
-GitHub appends it (e.g. `Fix reconcile drift detection (#42)`).
+become the commit title on `main`. Don't add the PR number by hand in the
+*PR title or a branch commit* -- GitHub appends it when it composes the
+squash title itself (e.g. `Fix reconcile drift detection (#42)`). The one
+exception is merging with an explicit `--subject`, where GitHub takes the
+string verbatim and appends nothing, so the `(#N)` has to be in it; see
+[Merging](#merging).
 
 **Which of the two GitHub actually uses is a repository setting, and this
 repository's setting means it depends on your branch.**
@@ -449,12 +453,19 @@ rather than accepting what GitHub composes:
 
 ```bash
 gh pr merge <N> --squash \
-  --subject "$(gh pr view <N> --json title --jq .title)" \
-  --body-file <(git log origin/main..HEAD --reverse --pretty=format:%b)
+  --subject "$(gh pr view <N> --json title --jq .title) (#<N>)" \
+  --body-file <path to a body in the shape above>
 ```
 
-The point is not the exact incantation -- edit the body to the bulleted
-shape above before passing it. The point is that the format becomes
+**The `(#N)` is written in here on purpose**, and it is the one place
+that is true: GitHub appends the number only when it composes the title
+itself. Given an explicit `--subject` it takes the string verbatim, so
+omitting it lands a commit on `main` that cannot be traced back to its
+PR -- the opposite of what "don't add it by hand" is protecting.
+
+The point is not the exact incantation -- write the body to a file in the
+bulleted shape above rather than piping raw branch commits through it,
+which just reproduces the `*`-concatenated default by another route. The point is that the format becomes
 something a command produces, not something a person has to remember at
 the end of a long session, in a browser, after CI has gone green. That is
 this project's standing answer to guidance that does not stick: the
