@@ -62,10 +62,17 @@ class TestGramHashes:
 
 class TestFingerprintDocument:
     def test_builds_postings_with_page_and_position(self, isolated_config, tmp_path):
+        # Global token position (#131): the document is tokenized as one
+        # continuous stream, not page by page, so the two grams that
+        # straddle the page1/page2 boundary ("too short" alone is too
+        # short to start a gram of its own at n=4) are hashed too --
+        # attributed to page 1, the page their first word falls on.
         parsed = tmp_path / "smith_2024.txt"
         parsed.write_text("alpha beta gamma delta\ftoo short")
         fp = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
-        assert fp.postings == [(overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0], 1, 0)]
+        words = ["alpha", "beta", "gamma", "delta", "too", "short"]
+        hashes = overlap_index.gram_hashes(words, 4)
+        assert fp.postings == [(hashes[0], 1, 0), (hashes[1], 1, 1), (hashes[2], 1, 2)]
 
     def test_cache_file_is_written(self, isolated_config, tmp_path):
         parsed = tmp_path / "smith_2024.txt"
@@ -129,7 +136,7 @@ class TestFingerprintDocument:
         cache_path = config.OVERLAP_DIR / "docs" / "smith_2024.fpr"
         cache_path.parent.mkdir(parents=True)
         cache_path.write_text(json.dumps(
-            {"tokenizer_version": 1, "n": 4, "key": key, "postings": "nope"}
+            {"tokenizer_version": overlap_index._TOKENIZER_VERSION, "n": 4, "key": key, "postings": "nope"}
         ))
         fp = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert len(fp.postings) == 1
@@ -141,7 +148,8 @@ class TestFingerprintDocument:
         cache_path = config.OVERLAP_DIR / "docs" / "smith_2024.fpr"
         cache_path.parent.mkdir(parents=True)
         cache_path.write_text(json.dumps(
-            {"tokenizer_version": 1, "n": 4, "key": key, "postings": [["not-an-int", 1, 0]]}
+            {"tokenizer_version": overlap_index._TOKENIZER_VERSION, "n": 4, "key": key,
+             "postings": [["not-an-int", 1, 0]]}
         ))
         fp = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert len(fp.postings) == 1

@@ -528,7 +528,10 @@ def _line_at(newlines, pos):
 
 def finding_id(citekey, page, fragment):
     """A finding's name, stable across runs and across edits elsewhere in
-    the draft.
+    the draft. `page` is the run's start page (`scan_findings` passes
+    `min(run_pages)`, not `end_page`) -- a run that merges differently on
+    a later scan can land on a different start page and so get a
+    different id, which is correct: the finding really did change.
 
     Deliberately position-free. `start` moves whenever anything above a
     finding is edited, so an identity built on it would rename every
@@ -547,19 +550,19 @@ def finding_id(citekey, page, fragment):
 
 def scan_findings(draft, min_run=None, gap=1, limit=None):
     """Slide `draft`'s whole normalized text across the corpus-wide index,
-    grouping matches by `(citekey, page, diagonal)` and merging each
-    group into maximal same-diagonal runs (see `_merge_runs`). Returns
-    `(findings, min_run, suppressed)`, `findings` longest run first;
-    `suppressed` is how many runs the allowlist (see `_load_allowlist_phrases`)
-    dropped. This function never raises for "nothing found" and returns
-    an empty list in that case -- this is a review aid, not a gate, and
-    it is not wired into anything that treats a nonzero exit as a
-    failure. It does raise `ValueError` for a request it cannot honor at
-    all -- `min_run` below the corpus index's own n-gram size (see
-    below), or a malformed allowlist file -- that is not "no findings",
-    it is "this input can't be scanned as asked", and the `scan` CLI
-    (below) turns it into the same stderr-plus-exit-2 usage error as its
-    other malformed invocations, e.g. `--gap` with no value.
+    grouping matches by `(citekey, diagonal)` and merging each group into
+    maximal same-diagonal runs (see `_merge_runs`). Returns `(findings,
+    min_run, suppressed)`, `findings` longest run first; `suppressed` is
+    how many runs the allowlist (see `_load_allowlist_phrases`) dropped.
+    This function never raises for "nothing found" and returns an empty
+    list in that case -- this is a review aid, not a gate, and it is not
+    wired into anything that treats a nonzero exit as a failure. It does
+    raise `ValueError` for a request it cannot honor at all -- `min_run`
+    below the corpus index's own n-gram size (see below), or a malformed
+    allowlist file -- that is not "no findings", it is "this input can't
+    be scanned as asked", and the `scan` CLI (below) turns it into the
+    same stderr-plus-exit-2 usage error as its other malformed
+    invocations, e.g. `--gap` with no value.
 
     A finding is dropped, not just flagged, when the allowlist accounts
     for enough of it that what's left would not itself have cleared
@@ -569,17 +572,14 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     whole thing would hide the real overlap the allowlist was never
     meant to excuse.
 
-    Known limitation, not fixed here: `src/overlap_index.py`'s
-    `token_position` resets to 0 at every page break in the *source*, so
-    a run can never merge across one -- a genuine verbatim lift that
-    straddles a page break in the parsed source is reported as two
-    (or more) separate, shorter findings instead of one. Most of the time
-    both halves still individually clear `--min-run` and the reuse is
-    still visible, just split; but a short remainder stranded alone on
-    the far side of the break (fewer words than `--min-run` on that page)
-    is invisible, same as if it were never there. Fixing this needs a
-    global (not per-page) token position in the fingerprint cache, which
-    changes the `.fpr` cache format and is out of scope for this PR.
+    A run can span a page break in the source: `src/overlap_index.py`'s
+    `token_position` is a global offset into the document (#131), not
+    reset per page, so `diagonal` (`src_pos - draft_pos`) stays constant
+    across the boundary and the two halves merge into one run the same
+    way a same-diagonal gap does. Each finding reports `page` and
+    `end_page` -- equal for an ordinary single-page run, `end_page >
+    page` for one that straddles a break -- rather than picking one side
+    and losing the other.
     """
     if min_run is None:
         min_run = overlap_index.DEFAULT_N
@@ -601,23 +601,30 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     n = index.n
     draft_hashes = overlap_index.gram_hashes(word_strs, n)
 
-    # (citekey, page, diagonal) -> draft positions whose n-gram matched a
-    # posting on that diagonal (src_pos - draft_pos constant) -- two
+    # (citekey, diagonal) -> {draft position: source page} for every
+    # n-gram match on that diagonal (src_pos - draft_pos constant) -- two
     # matches on the same diagonal are still "in step" even with
     # non-matching words between them, which is exactly what makes a
     # gap-tolerant merge (below) a same-diagonal 1-D problem rather than a
-    # general alignment one.
+    # general alignment one. `page` is not part of the group key: a run
+    # that truly spans a source page break has postings attributed to two
+    # different pages but the same diagonal (global token positions,
+    # #131), and grouping on page too would split it right back apart.
+    # One write per (group, j): a fixed j and diagonal pin src_pos
+    # (`src_pos = diagonal + j`), and a document fingerprint has exactly
+    # one posting per position, so no second write ever competes for the
+    # same key.
     groups = {}
     for j, gh in enumerate(draft_hashes):
         for citekey, page, src_pos in overlap_index.postings_for_gram(index, gh):
-            groups.setdefault((citekey, page, src_pos - j), []).append(j)
+            groups.setdefault((citekey, src_pos - j), {})[j] = page
 
     allowlist = _load_allowlist_phrases()
 
     findings = []
     suppressed = 0
-    for (citekey, page, _diagonal), positions in groups.items():
-        for run in _merge_runs(positions, gap, n):
+    for (citekey, _diagonal), pos_pages in groups.items():
+        for run in _merge_runs(list(pos_pages), gap, n):
             start, end = run[0], run[-1] + n
             span_words = end - start
             if span_words < min_run:
@@ -638,10 +645,13 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
             # does cite this source, or vice versa.
             run_paragraphs = {w.paragraph for w in run_words}
             cites_source = any(citekey in paragraph_citekeys[p] for p in run_paragraphs)
+            run_pages = [pos_pages[p] for p in run]
+            page = min(run_pages)
             findings.append({
                 "id": finding_id(citekey, page, fragment),
                 "citekey": citekey,
                 "page": page,
+                "end_page": max(run_pages),
                 "span_words": span_words,
                 "matched_words": matched_words,
                 "start": start,
@@ -684,6 +694,14 @@ def _matched_note(finding):
     if finding["matched_words"] == finding["span_words"]:
         return ""
     return f", {finding['matched_words']} matched"
+
+
+def _page_range(finding):
+    """`p.N` for an ordinary single-page run, `p.N-M` for one that
+    straddles a source page break (#131) -- never silently reports just
+    one side of a multi-page run."""
+    page, end_page = finding["page"], finding["end_page"]
+    return f"p.{page}" if page == end_page else f"p.{page}-{end_page}"
 
 
 # A run at or above this many words is "long" for bucketing purposes
@@ -730,7 +748,7 @@ def format_scan(findings, min_run, suppressed=0):
             flags = _flags(f)
             flag_text = f" [{', '.join(flags)}]" if flags else ""
             lines.append(
-                f"  [{f['span_words']} words{_matched_note(f)}, pdf p.{f['page']}] "
+                f"  [{f['span_words']} words{_matched_note(f)}, pdf {_page_range(f)}] "
                 f"{f['citekey']} (tier={f['tier']}){flag_text}"
             )
             lines.append(f"      {f['fragment']}")
@@ -751,9 +769,9 @@ def format_scan(findings, min_run, suppressed=0):
 # become part of a published contract that #128's severity buckets and
 # #129's remediation loop consume.
 _PAYLOAD_FIELDS = (
-    "id", "citekey", "page", "tier", "span_words", "matched_words",
-    "start", "line", "char_start", "char_end", "draft_text",
-    "fragment", "context", "cites_source", "quoted",
+    "id", "citekey", "page", "end_page", "tier", "span_words",
+    "matched_words", "start", "line", "char_start", "char_end",
+    "draft_text", "fragment", "context", "cites_source", "quoted",
 )
 
 
@@ -940,7 +958,7 @@ def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0)
             flag_text = f" -- **{', '.join(flags)}**" if flags else ""
             lines += [
                 f"#### {f['span_words']} words{_matched_note(f)} -- `{f['citekey']}` "
-                f"p.{f['page']}{flag_text}",
+                f"{_page_range(f)}{flag_text}",
                 "",
                 f"> {f['fragment']}",
                 "",
@@ -1012,7 +1030,7 @@ def load_baseline(path):
     """A `scan` payload read back off disk, refused if it cannot serve as
     a comparison basis.
 
-    Refuses rather than degrades in four cases, all of which would
+    Refuses rather than degrades in five cases, all of which would
     otherwise produce a confident and wrong answer:
 
     - not this aid's payload. The review layer's aids share `envelope()`,
@@ -1025,10 +1043,16 @@ def load_baseline(path):
     - a payload written before `id` and the locators existed. One of
       those is sitting at the canonical report path for every draft
       scanned by an earlier version, which is exactly where a caller is
-      told to look, so this is the likeliest bad baseline of the four and
+      told to look, so this is the likeliest bad baseline of the five and
       the one that most deserves a remedy rather than a `KeyError`. An
       empty findings list is not this case: a draft repaired to clean is
       a legitimate baseline, and has no finding to carry an `id`.
+    - a payload from a different release series (`_series`, below). What
+      counts as one finding can change between series -- #131 made a run
+      that used to report as two merge into one, which changes that
+      finding's `id` (`finding_id`'s `page` argument) even though nothing
+      in the draft or the source moved -- so a cross-series comparison
+      could report a repair that never happened.
     - unreadable or not JSON at all.
     """
     try:
@@ -1195,7 +1219,7 @@ def format_recheck(baseline_path, baseline, groups, counts):
         for f in items:
             lines.append(
                 f"      {f['id']}  [{f['span_words']} words, {f['severity']}] "
-                f"{f['citekey']} p.{f['page']} line {f['line']}"
+                f"{f['citekey']} {_page_range(f)} line {f['line']}"
             )
         lines.append("")
     lines.append(

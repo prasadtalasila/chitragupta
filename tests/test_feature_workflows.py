@@ -583,14 +583,10 @@ def _run_scan(draft, *args):
     nothing connected to the test that caused it. That happened for real
     on PR #114. `src/review/verbatim_check.py` is covered in process by
     tests/test_verbatim_check.py, so nothing is lost by not measuring
-    these children.
+    these children. The environment itself -- coverage variables
+    stripped, `CONTENT_DIR` set -- is `_run_verbatim`'s job; this just
+    names the mode.
     """
-    env = {
-        key: value for key, value in os.environ.items()
-        if not key.startswith("COV_CORE_")
-        and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
-    }
-    env["CONTENT_DIR"] = str(config.CONTENT_DIR)
     return _run_verbatim("scan", str(draft), *args)
 
 
