@@ -29,6 +29,10 @@ document owns the arrears. A thing that was never built is not a debt.
 - [Tier 1: the debt the ratchet already holds](#tier-1-the-debt-the-ratchet-already-holds)
 - [Tier 2: the debt CODE-STANDARDS.md already named](#tier-2-the-debt-code-standardsmd-already-named)
 - [Tier 3: found by review, tracked nowhere](#tier-3-found-by-review-tracked-nowhere)
+- [Tier 4: the test suite](#tier-4-the-test-suite)
+- [Reviewing with OpenCodeReview](#reviewing-with-opencodereview)
+- [The standing-instruction budget](#the-standing-instruction-budget)
+- [Process debt: the formats that are not adhered to](#process-debt-the-formats-that-are-not-adhered-to)
 - [What is not debt](#what-is-not-debt)
 - [What to take first](#what-to-take-first)
 
@@ -355,6 +359,266 @@ impossible to get wrong.
 Lowest-value item here, listed because leaving it out would mean the next
 reviewer finds it again.
 
+## Tier 4: the test suite
+
+21,780 lines across 40 modules, against `src/`'s 13,379 -- the suite is
+1.6x the code it tests, holds 100% line and branch coverage, and is in
+better shape than the code. A full review found no dead helper, no
+order-dependent test, no network access, no `xfail`, no bare
+`pytest.raises(Exception)`, and no test writing outside `tmp_path`. Most
+of what a checklist would flag here is deliberate and stated: duplicated
+setup (a test that reads top to bottom beats a DRY one), long modules
+(C2 does not cover tests, for a stated reason), several asserts per test
+(one *behaviour* per test), and five assertion-free tests that are each a
+documented "does not raise".
+
+Two real findings, both **fixed in the change that adds this section**
+rather than left on the list, because both were making the suite fail on
+a maintainer's machine while passing in CI -- the worst direction for a
+test to be wrong in.
+
+### 4.1 Tests that assert against un-versioned per-host data
+
+`config.toml` and `papers/bibliography.bib` are gitignored, per-host, and
+different on every machine. Two tests depended on them:
+
+- **`tests/test_config.py::test_parser_ocr_defaults_off`** called
+  `importlib.reload(config)` after deleting the `PARSER_OCR` environment
+  variable. Every sibling test in that class *sets* its variable, which
+  wins over the TOML, so none of them care which `config.toml` the reload
+  picks up. Deleting it made this the only test in the class that fell
+  through to the file -- so a developer with `ocr = true` in their own
+  `config.toml` got a failure reading "PARSER_OCR is not False" and
+  meaning "you enabled OCR". CI never saw it, because CI copies
+  `config.toml.example`. Fixed by pointing `CONFIG_PATH` at an empty TOML,
+  which is the only way to assert the *code's* default rather than the
+  example's.
+- **`tests/test_feature_workflows.py::TestRealBibliographySmoke`**
+  asserted `len(refs) == 646` against the maintainer's real
+  bibliography. The class self-skips wherever that file is absent, so
+  this assertion could only ever run on a maintainer's machine, and could
+  only ever fail there -- on the ordinary act of adding a paper. It was
+  at 642 when this review ran.
+
+The second was worse than brittle: it *competed with a real detector*.
+`src/bib_reader.py` already warns when bibtexparser silently drops an
+entry it cannot parse, and that gap -- not the total -- is the thing
+worth failing on, because a dropped entry is a paper the user believes
+is citable and is not. The fix derives the expectation from the file
+itself, so it holds at any library size.
+
+**The general rule, now in `.opencodereview/rule.json`'s `tests` entry:**
+flag any assertion whose truth depends on a file the repository does not
+track. It is invisible to CI by construction, so it can only be caught by
+review.
+
+### 4.2 `bib_reader`'s dropped-entry warning counts contentless stubs
+
+Found while fixing 4.1, and not fixed here because it is a `src/` change
+and this is a documentation PR.
+
+`src/bib_reader.py:234` compares `len(bib_database.entries)` against
+`_count_raw_entries(raw_text)`, which counts every `@` block. Zotero
+exports a contentless `@misc{key,\n}` stub for an attachment with no
+metadata, and bibtexparser correctly drops it -- there is no title,
+author or year to lose. The maintainer's library has two, so the warning
+fires on every `sync`, reporting "2 may have been silently dropped" on a
+library that is entirely fine.
+
+A guard that cries wolf on a healthy corpus is worse than none: the run
+it needs to be believed on is the one where a real entry has unbalanced
+braces, and by then the message is furniture. The fix is to count only
+blocks carrying at least one field, which is what the repaired test in
+4.1 now does -- so the test and the warning currently disagree, and the
+test is the one that is right.
+
+### 4.3 The tree-walking scans descend into nested git worktrees
+
+Three tests walk this repository's own tree --
+`test_code_standards_scan.py`, `test_removed_command_scan.py` and
+`test_skill_retrieval_logging.py` -- and each uses the *working tree*
+rather than `git ls-files`, deliberately, so an untracked scratch file
+under `src/` is scanned and can fail the suite.
+
+A nested `git worktree` is not that. It is a checkout of a *different
+commit of this same repository*, complete with the code as it was on
+that branch. On a machine with any worktree open, two of those three
+scans fail on findings that are real for an old commit and irrelevant to
+the current one: `python -m src.sync` invocations from before 5.2.0
+removed the command, and a `docs/RETRIEVAL.md` example from before the
+`--log` flag was required. On this review's host there were seven, all
+on branches long since merged, and the suite was red for that reason
+alone.
+
+Nothing is wrong with the code and nothing is wrong with the scans'
+intent -- `git ls-files` would not list a worktree's contents either.
+The gap is that "the working tree" was taken to mean "every file
+underneath", and a nested checkout is neither this tree nor a stray file.
+
+Two fixes, and the cheap one is not the repository's:
+
+- **`git worktree prune`, plus removing the locked ones by hand.** If
+  they are stale, this is the whole fix and costs nothing.
+- **Teach the three scans to skip a nested checkout** -- a directory
+  carrying its own `.git`. This is the durable fix, since anyone using
+  worktrees will hit it again, but it touches three modules that each
+  walk the tree their own way, which is its own small refactor and
+  belongs in its own PR against this entry rather than inside an
+  unrelated diff.
+
+## Reviewing with OpenCodeReview
+
+`.opencodereview/rule.json` now carries seven per-tree rules, so `ocr`
+reviews this repository against its own standards rather than against
+generic Python advice.
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#reviewing-before-you-push-opencodereview-if-it-is-installed)
+says when to run it. Two limits belong on this list rather than in that
+document, because they are costs rather than instructions:
+
+- **The rules are prose handed to a model, and nothing checks that they
+  are obeyed.** They are an aid with the same standing as the review
+  layer, not a gate, and a run that reports clean is not evidence of
+  anything. `tests/test_opencodereview_rules.py` pins only that the file
+  parses and that every glob still reaches the tree -- which matters
+  because an orphaned glob fails *open*, silently returning that tree to
+  OCR's built-in rule while every command still exits 0.
+- **The schema is undocumented and was established by probing.** The
+  published docs URL 404s, so the two fields OCR actually reads (`path`
+  and `rule`) were found by feeding its unmarshaller wrong-typed values
+  and reading the Go struct fields it named. Anything else in an entry is
+  ignored without complaint. A future OCR release could rename either and
+  the only symptom would be rules quietly ceasing to match; the pinned
+  field names in that test are what turns it into a failure.
+
+## The standing-instruction budget
+
+An assessment, requested rather than found: **are the developer-facing
+documents too long to be followed?**
+
+### What a session actually carries
+
+| Document | Words | ~Tokens | When loaded |
+|---|---|---|---|
+| `CLAUDE.md` | 533 | 710 | Always -- it is the router |
+| `SOUL.md` | 613 | 820 | As the stated tie-breaker |
+| `AGENTS.md` | 1,529 | 2,040 | Drafting sessions only |
+| `DEVELOPER-AGENTS.md` | 3,772 | 5,030 | Code sessions only |
+| `docs/CODE-STANDARDS.md` | 3,999 | 5,330 | "Before a non-trivial change" |
+
+A code session that follows the router reads roughly **11,900 tokens**
+before it reads a line of code. The whole prose corpus, if something
+loaded all of it, is about 141,000 tokens -- which is why the router
+exists.
+
+### The answer is: not on the axis you would expect
+
+**It is not a capacity problem.** 11,900 tokens is about 5% of a modern
+context window. Nothing is being pushed out, and the split by task
+already prevents the worst case -- a drafting session does not carry the
+release process, and a refactoring session does not carry the dossier
+format. That design is sound and should not be undone.
+
+**It is a position problem, and the evidence is in the git log.** Rank
+the sections of `DEVELOPER-AGENTS.md` by where they sit, then by whether
+they are actually obeyed:
+
+| Section | Depth into file | Adhered to |
+|---|---|---|
+| Behavioural rules, module boundaries, the probe pattern | 5-38% | Yes, visibly and consistently |
+| Conventions a new stage follows, test-driven process | 50-65% | Yes |
+| Commit messages | 73% | Body shape: 22 of 30 |
+| Issues and pull requests | 81% | Mixed |
+| Versioning | 86% | Yes |
+| Shipping cycle | 92% | Partly -- 4 of 28 landed without a PR |
+
+Everything in the first two-thirds holds. The wobble is concentrated in
+the last quarter. That correlation is real and worth knowing.
+
+**But it is not the cause of the symptom that prompted the question, and
+saying so is more useful than agreeing.** The single worst-adhered rule
+-- the commit body shape, missing from 14 of the last 30 -- is not
+forgotten. It is *unreachable*: GitHub composes that body from the
+repository's `squash_merge_commit_message` setting, and no amount of
+reading a document changes what a server-side default produces. See
+[Process debt](#process-debt-the-formats-that-are-not-adhered-to). A
+shorter `DEVELOPER-AGENTS.md` would not have moved that number by one.
+
+### What follows from that
+
+1. **Do not shorten by deleting rationale.** It is the same trap
+   [the comment rules](CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid)
+   describe: the *why* is the part that cannot be reconstructed, and an
+   agent that "tightens" these files destroys the most valuable thing in
+   them. Length is not the defect.
+2. **Shorten by moving, where a rule fires late.** The commit, PR, merge
+   and release rules are needed at the *end* of a session and stored at
+   73-92% of a file read at the beginning. Turning each into a command
+   the session runs -- rather than a paragraph it must still be holding
+   -- is the change that would help, and is what the new `Merging`
+   section does.
+3. **Prefer a mechanism to a sentence.** This project's own position,
+   stated twice already (the citation gate, the C1/C2 ratchet): "an agent
+   cannot talk its way past a failing test, and a future session that has
+   never read this document still cannot land a 40-statement function."
+   Every rule that can become a setting or a check should, and the prose
+   should then say less, not more.
+4. **Watch the trend, not the total.** This PR grew
+   `DEVELOPER-AGENTS.md` by 26% (2,983 to 3,772 words). That is a real
+   cost, accepted here because it replaces guidance that demonstrably was
+   not working with a command and a setting. It would not be worth paying
+   twice.
+
+**Not recommended:** a word budget. It is a continuous score, and
+[R3](AUTO-IMPROVEMENT.md#the-requirements) rules those out for exactly
+the reason that applies here -- it would be met by deleting the
+explanations rather than by moving the rules.
+
+## Process debt: the formats that are not adhered to
+
+Measured over the **last 30 commits on `main`**:
+
+| Rule | Violations | Cause |
+|---|---|---|
+| Body is a bulleted list, no preamble | 14 carry a leading `* <title>` | GitHub's `COMMIT_MESSAGES` squash default |
+| Body is a bulleted list, no preamble | 8 are prose paragraphs | Authoring |
+| Squash-merged through a PR | 4 of 28 have no `(#N)` | Pushed to `main` directly |
+| PR number not added by hand | 1 reads `(#144) (#148)` | Authoring |
+| Title in imperative mood | 1 noun phrase | Authoring |
+
+**The dominant cause is a repository setting, not discipline.**
+`squash_merge_commit_message` is `COMMIT_MESSAGES`, which builds the
+squash body by concatenating the branch's commit messages with `*`
+bullets. The documented shape therefore survives only if whoever merges
+hand-edits the body in the web UI, every time. Restating the rule more
+firmly cannot fix a default; that is why this is debt and not a lapse.
+
+A second, quieter defect: `squash_merge_commit_title` is
+`COMMIT_OR_PR_TITLE`, so GitHub uses the PR title on a multi-commit
+branch and the *commit's* title on a single-commit one.
+`DEVELOPER-AGENTS.md` asserted the PR title unconditionally, which was
+simply wrong for the one-commit case -- corrected in this change.
+
+**The fix is three settings**, recorded in
+[DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#merging)
+with the exact command. They need admin rights, so they are the
+maintainer's to apply:
+
+- `squash_merge_commit_title=PR_TITLE`
+- `squash_merge_commit_message=PR_BODY` -- and
+  `.github/pull_request_template.md` already shapes that body
+- `allow_merge_commit=false`, `allow_rebase_merge=false`, so "Merge
+  method: squash" is a property of the repository rather than a sentence
+
+That is roughly 15 of the ~20 violations above closed by configuration,
+permanently, for every future contributor and every future session.
+
+**What deliberately is not proposed:** a test over `git log`. It is the
+obvious move in this repository's idiom, and it does not work here --
+`actions/checkout` fetches depth 1, so CI has no history to walk, and a
+scan that self-skipped when history is absent would be green on the one
+host that never has it. The settings are strictly better: they prevent
+rather than detect.
+
 ## What is not debt
 
 The other half of this document's job. Every item below looks like a
@@ -373,6 +637,8 @@ worse.
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
 | Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#tests): a test that reads top to bottom is worth more than a DRY one |
 | `tests/test_pdf_text.py` at 1806 code lines | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
+| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
+| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
 | `src/citation_gate.py:191` reads the draft with no `encoding=` | Real, and on the list at [3.1](#31-text-io-on-the-locale-codec) -- but *not* a way to break the gate. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
@@ -380,6 +646,11 @@ worse.
 
 Ordered by what breaks if it is left, not by size:
 
+0. **[Process] The three merge settings.** Not first because it is the
+   most important, but because it is the only item here that costs one
+   command, needs no review, and closes roughly 15 of the ~20 format
+   violations permanently. It needs admin rights, which is the only
+   reason it is not already done.
 1. **[3.1] `encoding="utf-8"` at 32 call sites.** The only item in this
    document with a *demonstrated* crash on ordinary input -- a CJK or
    Cyrillic author name, rendered on a cp1252 host. Mechanical, testable,
@@ -394,6 +665,9 @@ Ordered by what breaks if it is left, not by size:
    no behaviour change, and it removes the tree's only zero.
 5. **[Tier 1] Split `src/dossier.py`** along the four ranges above, and
    delist whatever comes back under C1 in the same PR.
+6. **[4.2] Count only entries with fields** in `bib_reader`'s
+   dropped-entry warning, so it stops firing on every healthy Zotero
+   export. Small, and it restores a guard that currently reads as noise.
 
 Everything below that is real but can wait. Each of the five is one PR:
 "several small, reviewable PRs over one large one" applies to this

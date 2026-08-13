@@ -123,7 +123,37 @@ class TestRealBibliographySmoke:
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
         refs = bib_reader.read_library()
-        assert len(refs) == 646
+
+        # Asserted against the file rather than against a number written
+        # here. A hardcoded count (it was 646) is a claim about how many
+        # papers this developer happens to have catalogued, on a file
+        # that is gitignored per-host data -- so it failed on the
+        # ordinary act of adding a paper, and could only ever fail on a
+        # maintainer's own machine, since the class self-skips wherever
+        # the file is absent.
+        #
+        # What is worth asserting is the thing a count was standing in
+        # for: bibtexparser skips an entry it cannot parse (unbalanced
+        # braces or quotes) without raising, so a paper can leave the
+        # corpus silently. Every entry that carries fields must survive.
+        #
+        # "Carries fields" is the discriminator, and it is not pedantry:
+        # Zotero exports a contentless `@misc{key,\n}` stub for an
+        # attachment with no metadata, and this library has two. Dropping
+        # those is correct -- they have no title, author or year to lose
+        # -- so counting every `@` block instead would assert that a real
+        # export is broken. `src/bib_reader.py`'s own warning counts them,
+        # which is why it reports 2 dropped on a library that is fine.
+        raw = real_bib.read_text(encoding="utf-8")
+        blocks = re.split(r"^@", raw, flags=re.M)[1:]
+        with_fields = [b for b in blocks if "=" in b]
+        assert len(refs) == len(with_fields), (
+            f"{len(with_fields)} bibliography entries carry fields but "
+            f"{len(refs)} parsed -- bibtexparser skipped one it could not "
+            "parse, without raising, so that paper is silently out of the "
+            "corpus. Find the citekey missing from the parse and fix the "
+            "braces or quotes in its entry."
+        )
 
         citekeys = {r.citekey for r in refs}
         assert len(citekeys) == len(refs), "citekeys must be unique"

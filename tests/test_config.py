@@ -268,7 +268,27 @@ class TestModuleReloadWithEnvOverrides:
         importlib.reload(config)
         assert config.BIB_FILE_PATH == config.REPO_ROOT / "/tmp/other.bib"
 
-    def test_parser_ocr_defaults_off(self, monkeypatch):
+    def test_parser_ocr_defaults_off(self, monkeypatch, tmp_path):
+        """The code's default, not this developer's setting.
+
+        Every sibling test in this class sets its env var, which wins
+        over the TOML -- so none of them care which config.toml the
+        reload picks up. This one deletes the variable instead, and that
+        makes it the only test here that falls through to the file. Left
+        unpinned it read the repo's real config.toml, which is gitignored
+        per-host data (v1.0.0): a developer with `ocr = true` got a
+        failure that says "PARSER_OCR is not False" and means "you
+        enabled OCR". CI never saw it, because CI copies the example.
+
+        An empty TOML rather than config.toml.example: the example ships
+        `ocr = false`, so pinning to it would assert what the example
+        says while claiming to assert what the code defaults to. With no
+        `[parser]` table at all, `_get_bool`'s own default is the only
+        thing left to answer.
+        """
+        empty_toml = tmp_path / "config.toml"
+        empty_toml.write_text("", encoding="utf-8")
+        monkeypatch.setenv("CONFIG_PATH", str(empty_toml))
         monkeypatch.delenv("PARSER_OCR", raising=False)
         importlib.reload(config)
         assert config.PARSER_OCR is False

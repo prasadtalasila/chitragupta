@@ -272,14 +272,65 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
+## Reviewing before you push: OpenCodeReview, if it is installed
+
+`ocr` ([OpenCodeReview](https://open-codereview.ai)) is a per-host
+developer tool, not a dependency of this repository and not part of CI.
+**If it is on PATH, run it on the diff before opening the PR**; if it is
+not, skip it and say so rather than installing it mid-task:
+
+```bash
+ocr review --audience agent                 # staged + unstaged + untracked
+ocr review --audience agent --from main --to HEAD    # the whole branch
+```
+
+`.opencodereview/rule.json` is what makes it worth running here. OCR's
+built-in rule is generic Python review and is wrong about this tree in
+both directions -- it would flag the dense *why*-comments, the f-string
+`PRAGMA`, and the deliberately duplicated pool builders, and it does not
+know the citekey invariant, the layer boundaries, C1/C2 counted in
+statements, or the `encoding="utf-8"` rule. The project file replaces it
+per tree (`src/`, `tests/`, `scripts/`, `bench/`, `.github/`, `docs/`,
+and the root prose documents) and excludes `content/` and `papers/`,
+which are the user's own work and their personal bibliography rather than
+this repository's code.
+
+Two things to know before trusting a run:
+
+- **It needs an LLM endpoint** (`OCR_LLM_URL`/`OCR_LLM_TOKEN`/`OCR_LLM_MODEL`,
+  `~/.opencodereview/config.json`, or `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`).
+  With none configured it exits on `resolve LLM endpoint`, and the only
+  thing that still works is `ocr delegate`, which emits the resolved rules
+  for a host agent to review against and calls no model itself. That is a
+  usable fallback, but it is the agent reviewing, not the tool -- say
+  which one happened.
+- **It is an aid, not a gate.** Same standing as the review layer
+  ([SOUL.md](SOUL.md)): nothing here blocks on it, `python -m src.draft
+  gate` remains the only gate, and a finding is a claim to agree or
+  disagree with. Judge each one against
+  [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) rather than adopting it
+  because a tool said so -- a change made only to silence a reviewer is
+  the failure mode that document's R3 is about.
+
+`tests/test_opencodereview_rules.py` pins the rule file, because a path
+glob that matches nothing fails *open*: OCR silently falls back to its
+built-in rule and still exits 0.
+
 ## Commit messages
 
 Title line: imperative mood, concise, describes the change's effect (not
 "updated files" or "misc fixes"). PRs are squash-merged (see "Pull
-requests" below), and GitHub uses the PR's title as the resulting commit
-title on `main`, appending the PR number automatically (e.g. `Fix reconcile
-drift detection (#42)`) -- so write commits and PR titles as if either one
-could become that commit title, and don't add the number by hand.
+requests" below), so write commits and PR titles as if either one could
+become the commit title on `main`, and don't add the PR number by hand --
+GitHub appends it (e.g. `Fix reconcile drift detection (#42)`).
+
+**Which of the two GitHub actually uses is a repository setting, and this
+repository's setting means it depends on your branch.**
+`squash_merge_commit_title` is `COMMIT_OR_PR_TITLE`: with two or more
+commits on the branch GitHub takes the PR title, with exactly one it takes
+that commit's title. So a one-commit branch whose commit title has drifted
+from the PR title lands the commit's, not the PR's. Keep them the same, or
+merge with an explicit subject -- see [Merging](#merging).
 
 Body: a blank line, then a bulleted list of the specific, concrete changes,
 each bullet starting with a present-tense verb (Fix, Add, Remove, Migrate,
@@ -299,6 +350,58 @@ Fix reconcile drift detection, secret handling, and stale config warnings
   dead code no longer reachable after the above.
 ```
 
+**This body shape is not what lands on `main` by default, and that is the
+single biggest reason it is not adhered to.** Measured over the last 30
+commits: 14 carry a leading `* <branch commit title>` line, and 8 have a
+prose body rather than bullets. Neither is an authoring mistake. The
+repository's `squash_merge_commit_message` is GitHub's default,
+`COMMIT_MESSAGES`, which builds the squash body by concatenating the
+branch's commit messages with `*` bullets -- so the shape above survives
+only if whoever merges hand-edits the body in the web UI, every time,
+forever. Writing the rule down more emphatically cannot fix a default.
+[Merging](#merging) is where it is fixed.
+
+## Merging
+
+Squash, always. Do it with a command that *states* the title and body
+rather than accepting what GitHub composes:
+
+```bash
+gh pr merge <N> --squash \
+  --subject "$(gh pr view <N> --json title --jq .title)" \
+  --body-file <(git log origin/main..HEAD --reverse --pretty=format:%b)
+```
+
+The point is not the exact incantation -- edit the body to the bulleted
+shape above before passing it. The point is that the format becomes
+something a command produces, not something a person has to remember at
+the end of a long session, in a browser, after CI has gone green. That is
+this project's standing answer to guidance that does not stick: the
+ratchet, the citation gate, and this are the same move
+([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#why-a-ratchet-suits-this-project-specifically)).
+
+**Three repository settings would make it structural instead**, and are
+the actual fix -- they need a maintainer with admin rights, so they are
+recorded here rather than done:
+
+```bash
+gh api -X PATCH repos/prasadtalasila/chitragupta \
+  -f squash_merge_commit_title=PR_TITLE \
+  -f squash_merge_commit_message=PR_BODY \
+  -F allow_merge_commit=false -F allow_rebase_merge=false
+```
+
+- `PR_TITLE` makes "GitHub uses the PR title" true unconditionally,
+  rather than only on a multi-commit branch.
+- `PR_BODY` makes the squash body the PR description -- which
+  `.github/pull_request_template.md` already shapes -- and retires the
+  `*`-concatenated default that produced 14 of the last 30 bodies.
+- Disabling the other two merge methods makes "Merge method: squash" a
+  fact about the repository rather than a sentence in this file.
+
+Until they are set, the `gh pr merge` form above is the workaround, and
+the rule genuinely is harder to follow than it reads.
+
 ## Issues and pull requests
 
 Templates live in `.github/`, where GitHub picks them up automatically --
@@ -313,10 +416,10 @@ describes the effect. The template's **Test plan** section is not a
 formality -- fill it from what you actually ran (see "Before claiming a
 task complete" above), not from what you intended to run.
 
-Merge method: squash. Each PR becomes exactly one commit on `main`, titled
-from the PR title (see "Commit messages" above) -- keep the PR title
-accurate even when the branch itself carries several intermediate
-commits.
+Merge method: squash -- see [Merging](#merging) for the command and for
+why the default does not produce the documented shape. Each PR becomes
+exactly one commit on `main`, so keep the PR title accurate even when the
+branch itself carries several intermediate commits.
 
 ## Versioning and releases
 
