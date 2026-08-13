@@ -166,6 +166,15 @@ RETRIEVAL_INDEX_PATH = CONTENT_DIR / "retrieval_index.json"
 # index. Both are keyed by (pdf_hash, parsed-file size/mtime_ns), the same
 # stat-before-hash shape as RETRIEVAL_INDEX_PATH above.
 OVERLAP_DIR = CONTENT_DIR / "overlap"
+# Boilerplate phrases (acronyms, fixed phrasing, defined terms, whole
+# paragraphs) src/review/verbatim_check.py's `scan` should never flag --
+# see docs/PLAGIARISM.md. Per-host, hand-edited data, like content/library.bib:
+# gitignored, absent on a fresh clone (scan treats that as "no
+# suppressions configured", not an error), and never what one host waved
+# through is not another host's decision to make. Fixed under CONTENT_DIR
+# rather than independently relocatable like BIB_FILE_PATH -- there's no
+# case for pointing this at a second location.
+VERBATIM_ALLOWLIST_PATH = CONTENT_DIR / "verbatim_allowlist.toml"
 # Mutex for anything that writes content/ -- see src/runlock.py. A
 # dedicated sqlite file rather than the ledger, so that locking a run
 # doesn't force the ledger's five commit points into one transaction.

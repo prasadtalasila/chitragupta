@@ -156,10 +156,16 @@ artefact that nothing reconciles across drafts:
   a survey and a textbook chapter on the same subject should not define
   "digital twin" three different ways, and nothing today notices that they
   have.
-- **The boilerplate allowlist.** #128's allowlist is content under version
-  control precisely so that what was waved through is auditable. A phrase
-  waved through once should not be re-flagged in the next draft -- but a
-  per-draft allowlist would re-flag it every time.
+- **The boilerplate allowlist.** #128 built this one already, and not
+  quite as first framed here: `content/verbatim_allowlist.toml` is
+  per-host, gitignored data, the same footing as `config.toml`, not
+  version-controlled. A phrase waved through once still does not get
+  re-flagged in the next draft on the *same* host -- the file is one
+  per clone, not one per draft, so it persists across everything that
+  clone drafts -- but "auditable" now means "in this host's own file,"
+  not "visible in the project's git history to every contributor." See
+  [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist) for the
+  shipped design and why.
 - **Recurring refusals.** A user who declines the same kind of source in
   four drafts has a policy, not four coincidences. `rejected.md` records
   each refusal with a reason; nothing reads those reasons across drafts to

@@ -3,6 +3,7 @@ content/ledger.sqlite
 content/pipeline.lock.db
 content/pipeline.lock.db.holder
 content/library.bib
+content/verbatim_allowlist.toml
 content/review/
 content/docling/
 content/docling_cache.json

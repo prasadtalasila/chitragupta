@@ -656,6 +656,161 @@ class TestCmdScan:
         assert "w25" not in out.split("in:")[0]  # the 5-word tail never becomes its own finding
 
 
+class TestMaskAllowlisted:
+    """`_mask_allowlisted` in isolation -- no corpus/ledger fixtures
+    needed, it's a pure function over word lists."""
+
+    def test_masks_a_contiguous_occurrence(self):
+        words = ["the", "internet", "of", "things", "is", "growing"]
+        mask = vc._mask_allowlisted(words, [("internet", "of", "things")])
+        assert mask == [False, True, True, True, False, False]
+
+    def test_no_match_returns_all_false(self):
+        words = ["alpha", "beta", "gamma"]
+        assert vc._mask_allowlisted(words, [("delta", "epsilon")]) == [False, False, False]
+
+    def test_a_phrase_longer_than_the_span_is_skipped_not_erroring(self):
+        words = ["alpha", "beta"]
+        assert vc._mask_allowlisted(words, [("alpha", "beta", "gamma")]) == [False, False]
+
+    def test_an_empty_phrase_is_skipped(self):
+        assert vc._mask_allowlisted(["alpha"], [()]) == [False]
+
+    def test_overlapping_phrases_or_together_without_double_counting(self):
+        # A whole paragraph allowlisted alongside a phrase that also
+        # occurs inside it -- both should mark the same words, which a
+        # naive sum (rather than boolean OR) would double count.
+        words = ["alpha", "beta", "gamma"]
+        mask = vc._mask_allowlisted(words, [("alpha", "beta", "gamma"), ("beta",)])
+        assert mask == [True, True, True]
+
+
+class TestLoadAllowlistPhrases:
+    def test_missing_file_returns_empty_list(self, isolated_config):
+        assert vc._load_allowlist_phrases() == []
+
+    def test_flattens_all_four_categories(self, isolated_config):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text(
+            'acronyms = ["IoT"]\n'
+            'phrases = ["software defined networking"]\n'
+            'definitions = ["A digital twin is a virtual copy."]\n'
+            'paragraphs = ["Some longer boilerplate paragraph text here."]\n'
+        )
+        phrases = vc._load_allowlist_phrases()
+        assert ("iot",) in phrases
+        assert ("software", "defined", "networking") in phrases
+        assert ("a", "digital", "twin", "is", "a", "virtual", "copy") in phrases
+        assert ("some", "longer", "boilerplate", "paragraph", "text", "here") in phrases
+
+    def test_a_category_that_normalizes_to_nothing_is_dropped(self, isolated_config):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text('phrases = ["!!!", "alpha"]\n')
+        assert vc._load_allowlist_phrases() == [("alpha",)]
+
+    def test_missing_categories_default_to_empty(self, isolated_config):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text('phrases = ["alpha"]\n')
+        assert vc._load_allowlist_phrases() == [("alpha",)]
+
+    def test_malformed_toml_raises(self, isolated_config):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text("not valid toml [[[")
+        with pytest.raises(ValueError, match="malformed TOML"):
+            vc._load_allowlist_phrases()
+
+    def test_a_non_string_entry_raises(self, isolated_config):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text("phrases = [1, 2]\n")
+        with pytest.raises(ValueError, match="'phrases' must be a list of strings"):
+            vc._load_allowlist_phrases()
+
+
+class TestAllowlistSuppression:
+    """End to end through `cmd_scan`: the allowlist is consulted inside
+    `scan_findings`, so both stdout and a written report see the same
+    post-suppression findings."""
+
+    def _write_allowlist(self, *phrases):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        joined = ", ".join(f'"{p}"' for p in phrases)
+        config.VERBATIM_ALLOWLIST_PATH.write_text(f"phrases = [{joined}]\n")
+
+    def test_a_finding_entirely_covered_by_the_allowlist_is_suppressed(
+        self, ledger_con, tmp_path, capsys
+    ):
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text("[@cited_2024] alpha beta gamma delta epsilon zeta eta theta end.\n")
+        self._write_allowlist("alpha beta gamma delta epsilon zeta eta theta")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "no verbatim run" in out
+        assert "1 finding(s) suppressed by the allowlist" in out
+
+    def test_a_short_allowlisted_phrase_inside_a_much_longer_run_does_not_suppress_it(
+        self, ledger_con, tmp_path, capsys
+    ):
+        words = [f"w{i}" for i in range(20)]
+        words[9:12] = ["alpha", "beta", "gamma"]
+        source_text = " ".join(words)
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", source_text)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"[@cited_2024] {source_text} end.\n")
+        self._write_allowlist("alpha beta gamma")
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "20 words" in out
+        assert "suppressed" not in out
+
+    def test_a_malformed_allowlist_is_a_usage_error_not_a_silent_empty_list(
+        self, isolated_config, tmp_path
+    ):
+        draft = _content_draft(tmp_path, "Anything.\n")
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text("not valid toml [[[")
+
+        assert vc.main(["scan", str(draft)]) == 2
+
+
+class TestBucket:
+    def _finding(self, span_words, quoted, cites_source):
+        return {"span_words": span_words, "quoted": quoted, "cites_source": cites_source}
+
+    def test_a_run_at_or_above_the_threshold_is_long(self):
+        assert vc._bucket(self._finding(vc.LONG_RUN_WORDS, quoted=False, cites_source=True)) == "long"
+
+    def test_a_run_below_the_threshold_is_short(self):
+        assert vc._bucket(self._finding(vc.LONG_RUN_WORDS - 1, quoted=False, cites_source=True)) == "short"
+
+    def test_quoted_and_cited_is_the_quoted_bucket_regardless_of_length(self):
+        assert vc._bucket(self._finding(50, quoted=True, cites_source=True)) == "quoted"
+
+    def test_quoted_but_uncited_buckets_by_length_instead(self):
+        # A quoted run from an uncited source is still the finding
+        # `overlap` structurally cannot make -- it must not be buried
+        # under the low-priority `quoted` bucket just for sitting inside
+        # quote marks.
+        assert vc._bucket(self._finding(50, quoted=True, cites_source=False)) == "long"
+        assert vc._bucket(self._finding(5, quoted=True, cites_source=False)) == "short"
+
+
+class TestBucketTitle:
+    def test_long(self):
+        assert vc._bucket_title("long") == f"Long verbatim runs (>= {vc.LONG_RUN_WORDS} words)"
+
+    def test_short(self):
+        assert vc._bucket_title("short") == "Short verbatim runs"
+
+    def test_quoted(self):
+        assert vc._bucket_title("quoted") == "Quoted runs"
+
+
 class TestScanWrite:
     """`scan --write` files the report in content/review/, mirroring the
     draft's path, so it sits beside the same draft's provenance and
@@ -741,6 +896,83 @@ class TestScanWrite:
 
         assert report.read_bytes() == first
 
+    def test_a_short_run_lands_under_the_short_heading(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)  # an 8-word run, below LONG_RUN_WORDS
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert "### Short verbatim runs" in text
+        assert "### Long verbatim runs" not in text
+        assert "### Quoted runs" not in text
+
+    def test_a_long_run_lands_under_the_long_heading(self, ledger_con, tmp_path):
+        source_text = " ".join(f"tok{i}" for i in range(20))
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", source_text)
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(f"[@cited_2024] {source_text} end.\n")
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
+        assert f"### Long verbatim runs (>= {vc.LONG_RUN_WORDS} words)" in text
+        assert "### Short verbatim runs" not in text
+
+    def test_a_quoted_and_cited_run_lands_under_the_quoted_heading(self, ledger_con, tmp_path):
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta",
+        )
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(
+            'As [@cited_2024] puts it, "alpha beta gamma delta epsilon zeta eta theta" exactly.\n'
+        )
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
+        assert "### Quoted runs" in text
+        assert "### Short verbatim runs" not in text
+
+    def test_report_names_the_allowlist_file_when_none_is_configured(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert "Allowlist: none configured" in text
+
+    def test_report_records_the_allowlist_path_and_suppressed_count(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text(
+            'phrases = ["alpha beta gamma delta epsilon zeta eta theta"]\n'
+        )
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert str(config.VERBATIM_ALLOWLIST_PATH) in text
+        assert "1 finding(s) suppressed" in text
+
+    def test_report_caveats_when_limit_truncated_before_bucketing(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), limit=1, write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert "capped at `--limit 1`" in text
+
+    def test_report_has_no_limit_caveat_when_limit_is_unset(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        assert "capped at" not in text
+
 
 class TestScanCommand:
     """The invocation recorded in both the report header and the payload
@@ -815,10 +1047,11 @@ class TestScanPayload:
         assert json.loads(capsys.readouterr().out)["min_run"] == overlap_index.DEFAULT_N
 
     def test_a_finding_carries_exactly_the_published_fields(self, ledger_con, tmp_path, capsys):
-        """Pinned deliberately: #128's severity buckets and #129's
-        remediation loop consume these, so a field added to
-        `scan_findings`' working dicts must not silently become part of a
-        published contract."""
+        """Pinned deliberately: a field added to `scan_findings`' working
+        dicts for some later internal purpose must not silently become
+        part of a published contract -- only `_PAYLOAD_FIELDS` plus the
+        one deliberately derived addition, `severity` (#128's bucket,
+        added by name in `scan_payload`, not by widening the projection)."""
         draft = self._planted(ledger_con, tmp_path)
 
         vc.cmd_scan(str(draft), as_json=True)
@@ -826,7 +1059,7 @@ class TestScanPayload:
         finding = json.loads(capsys.readouterr().out)["findings"][0]
         assert list(finding) == [
             "citekey", "page", "tier", "span_words", "matched_words", "start",
-            "fragment", "context", "cites_source", "quoted",
+            "fragment", "context", "cites_source", "quoted", "severity",
         ]
 
     def test_the_flags_are_booleans_not_the_printed_labels(self, ledger_con, tmp_path, capsys):
@@ -869,14 +1102,16 @@ class TestScanPayload:
         about agreement rather than about spelling."""
         draft = self._planted(ledger_con, tmp_path)
 
-        findings, min_run = vc.scan_findings(str(draft))
+        findings, min_run, suppressed = vc.scan_findings(str(draft))
         vc.cmd_scan(str(draft), as_json=True)
         payload = json.loads(capsys.readouterr().out)
 
+        assert payload["suppressed"] == suppressed
         assert len(payload["findings"]) == len(findings)
         for serialised, finding in zip(payload["findings"], findings):
             assert serialised["fragment"] == finding["fragment"]
             assert serialised["span_words"] == finding["span_words"]
+            assert serialised["severity"] == vc._bucket(finding)
             expected = vc._flags(finding)
             assert (not serialised["cites_source"]) == ("UNCITED SOURCE" in expected)
             assert serialised["quoted"] == ("quoted" in expected)

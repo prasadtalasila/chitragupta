@@ -98,7 +98,13 @@ used as given.
   `ledger.sqlite` and `parsed/`, the drafting layer's `drafts/`,
   `dossiers/` and `rendered/`, the review layer's `review/`, and
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
-  It is also what every tier-1 command that takes a path will *accept*:
+  One exception lives here too, hand-edited rather than pipeline-written:
+  `verbatim_allowlist.toml`, the per-host boilerplate allowlist
+  `src.review verbatim scan` consults -- see
+  [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist). Fixed at
+  `<dir>/verbatim_allowlist.toml`, not independently configurable, same
+  as the enrichment caches below it. It is also what every tier-1 command
+  that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
   that resolves outside it, and so do all three of `src.review`'s aids.
   `ledger` is the one that takes no path argument at all -- its CLI only

@@ -585,18 +585,22 @@ python -m src.review verbatim scan content/drafts/survey.md
 ```
 
 **`--json`, and who it is for.** The findings were text and nothing else
-until 5.4.0, so everything consuming them programmatically -- severity
-bucketing, a remediation loop, an eventual overlap gate -- had to
-regex the printed lines back into data. `--json` prints the same findings
-list as a payload instead: the envelope every review aid's JSON carries
-(a notice that this is not a verdict, the aid, the draft, the exact
-command, the version), the three flags that set the reporting floor
-(`min_run`, `gap`, `limit`), and one object per finding with `citekey`,
-`page`, `tier`, `span_words`, `matched_words`, `start`, `fragment`,
-`context`, `cites_source` and `quoted`. It is an additional serialisation
-of what the printed form already shows, never a second computation, so
-the two cannot disagree about what was found. A clean draft emits
-`"findings": []` and still exits 0 -- "nothing found" is data too.
+until 5.4.0, so a programmatic consumer external to this module --
+a remediation loop, an eventual overlap gate -- had to regex the printed
+lines back into data. `--json` prints the same findings list as a payload
+instead: the envelope every review aid's JSON carries (a notice that this
+is not a verdict, the aid, the draft, the exact command, the version),
+the three flags that set the reporting floor (`min_run`, `gap`, `limit`),
+how many findings the allowlist suppressed (`suppressed`, see below), and
+one object per finding with `citekey`, `page`, `tier`, `span_words`,
+`matched_words`, `start`, `fragment`, `context`, `cites_source`,
+`quoted`, and `severity` -- the same `long`/`short`/`quoted` bucket the
+written report groups by (see below), so a consumer of the payload reads
+the same severity a human reviewer sees. It is an additional
+serialisation of what `scan` already computed, never a second
+computation, so the payload and the two printed forms cannot disagree
+about what was found. A clean draft emits `"findings": []` and still
+exits 0 -- "nothing found" is data too.
 
 `cites_source: false` is the printed form's `UNCITED SOURCE`, and
 `quoted: true` its `quoted`: booleans rather than those labels, because a
@@ -666,8 +670,20 @@ reported as two (or more) shorter findings, and a short remainder stranded
 alone on the far side of the break can fall under `--min-run` and vanish
 entirely. Each finding reports whether the containing draft paragraph
 actually cites that source (`UNCITED SOURCE` if not) and whether the run
-sits inside quote delimiters -- both informational; `scan` doesn't decide
-severity, it produces the findings a later gate would be tuned against.
+sits inside quote delimiters -- both informational on stdout; `--write`'s
+report goes one step further and *groups* findings most-damning-first
+(long runs, then short, then quoted) so a reviewer reads the worst one
+first, though the underlying findings are the same ones `scan` produces
+for a later gate to be tuned against.
+
+**The allowlist.** `scan` also consults `content/verbatim_allowlist.toml`
+if present -- a per-host, gitignored list of acronyms, phrases,
+definitions and whole paragraphs its owner has decided are boilerplate,
+never a project-tracked file. A finding is dropped only when discounting
+its allowlisted words leaves less than `--min-run`; a short allowlisted
+phrase sitting inside a much longer, otherwise-unexplained lift is kept.
+See [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist) for the file
+format and the reasoning.
 
 `locate` reports page numbers by splitting on the form-feed characters
 between pages. Both backends emit them, so a page number here is a page
