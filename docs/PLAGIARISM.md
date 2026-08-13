@@ -109,12 +109,14 @@ over an unchanged draft and corpus diff to nothing.
 
 `--json` prints the same findings as data instead of as text, and
 `--write` files them as the report's `.json` sibling; both carry the same
-not-a-verdict notice and the same absence of a timestamp. That is what
-everything downstream in this track consumes -- the severity bucketing
-below, a remediation loop, an eventual gate -- rather than regex-parsing
-the printed lines. The fields, and the one that is easy to misread
-(`start` is a word offset into the normalised stream, not a position in
-the draft file), are in
+not-a-verdict notice and the same absence of a timestamp. Each payload
+finding also carries `severity` -- the same `long`/`short`/`quoted`
+bucket the written report below groups by, derived the same way, so a
+programmatic consumer -- a remediation loop, an eventual gate -- reads
+the same severity a human reviewer sees, rather than regex-parsing the
+printed lines or recomputing the threshold itself. The fields, and the
+one that is easy to misread (`start` is a word offset into the
+normalised stream, not a position in the draft file), are in
 [CLI.md](CLI.md#python--m-srcreview-verbatim).
 
 Matches are grouped by `(citekey, page, diagonal)`, where `diagonal =
@@ -144,6 +146,85 @@ side of the break is shorter than `--min-run`, that side is invisible --
 not truncated, just never reported. Fixing this needs a global (not
 per-page) token position in the fingerprint cache, a `.fpr` format
 change deliberately left out of scope for issue #111's `scan` work.
+
+## Severity buckets, and the boilerplate allowlist
+
+Two additions from issue #128, both aimed at the same goal as any future
+gate built on top of `scan`: a tolerable false-positive rate.
+
+**Severity buckets, in the written report only.** stdout stays
+longest-first, unchanged -- it's read once, in a terminal, mid-review.
+`--write`'s Markdown report instead groups findings **most-damning-first**
+into three sections: *long* verbatim runs (`LONG_RUN_WORDS`, currently
+15 words, is the boundary), *short* ones, and *quoted* ones. A run demotes to the low-priority *quoted* group only when
+it is **both** inside quote delimiters **and** cites the source it
+matched -- a quoted run from a source the paragraph does *not* cite is
+still the finding `overlap` structurally cannot make, so it is grouped by
+length like any other uncited run, not buried under `quoted` just for
+sitting in quote marks. `--limit` truncates the longest-first list
+*before* grouping, so a capped report can show only the `long` section
+with `short`/`quoted` empty or absent; the report says so when `--limit`
+is set, rather than letting an empty section read as "none exist."
+
+### The boilerplate allowlist
+
+Every corpus accumulates boilerplate a verbatim scan will always flag
+and a reviewer will always wave through -- a standard's own name, an
+acronym expansion, a field's fixed defined-term sentence, a dataset's
+boilerplate methodology paragraph. Re-reviewing the same non-finding in
+every draft is friction with no signal in it.
+
+`scan` reads `content/verbatim_allowlist.toml` if present -- **per-host,
+gitignored data**, like `config.toml`: never committed, never shared
+across clones, and absent on a fresh clone is the normal state, not an
+error (no suppressions configured). The file has four categories, purely
+for whoever edits it to record *why* something is allowlisted -- all four
+feed the same suppression mechanism:
+
+```toml
+# content/verbatim_allowlist.toml -- per-host, gitignored.
+acronyms = [
+    "IoT",
+]
+phrases = [
+    "software defined networking",
+]
+definitions = [
+    "A digital twin is a virtual representation of a physical asset that is kept synchronized with it.",
+]
+paragraphs = [
+    """
+    This dataset was collected in accordance with the methodology
+    described in ISO/IEC 25010, using a stratified sampling approach
+    across three sites.
+    """,
+]
+```
+
+**Suppression is mask-and-remeasure, not exact-match.** `scan` cannot
+simply drop a finding whose text equals an allowlisted phrase: the
+gap-tolerant merge above means the same boilerplate phrase produces a
+different-length fragment depending on what non-matching prose happens
+to sit next to it, so exact equality would rarely fire twice, and it
+could never touch the common real case -- a short standard's name sitting
+*inside* a much longer, otherwise-unexplained lift. Instead, every word
+in a finding covered by a contiguous allowlisted phrase is masked out,
+and the finding is dropped only if what's *left* would no longer clear
+`--min-run` on its own. A 40-word lift that happens to contain a 3-word
+defined term still shows up -- the allowlist only excuses a finding that,
+once boilerplate is discounted, is nothing.
+
+A present-but-malformed allowlist file (bad TOML, or a category that
+isn't a list of strings) is a usage error (`scan` exits 2), not a silent
+fallback to "no suppressions" -- a policy file that quietly stopped
+working is the kind of failure that surfaces months later as "why did
+this stop suppressing," not as a clean scan.
+
+The written report records the allowlist's path and how many findings it
+suppressed as a header line, since the allowlist isn't part of the
+recorded, re-runnable command (it's per-host config, not a flag) -- a
+report has to say what it consulted, or "what was waved through" stops
+being visible from the report's own side.
 
 ## Measured: does the corpus's parser backend change the answer?
 

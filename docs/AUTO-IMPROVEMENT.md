@@ -277,7 +277,11 @@ sequence.
 2. **#127, widened** to all three aids. Hard prerequisite for everything
    below. *Done for `verbatim scan` in 5.4.0, on layer-level plumbing the
    other two aids reuse; they are the remainder of this step.*
-3. **#128** -- severity buckets and the boilerplate allowlist.
+3. **#128** -- severity buckets and the boilerplate allowlist. *Done in
+   5.5.0 -- the allowlist shipped as per-host, gitignored data (like
+   `config.toml`), not version-controlled as first framed in
+   [HOUSE-STYLE.md](HOUSE-STYLE.md); the constraints above (read-only to
+   the loop, etc.) hold either way.*
 4. **`agenda`, the fourth aid.** New. Useful on its own the day it lands,
    whether or not step 5 follows.
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect

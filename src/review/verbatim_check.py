@@ -46,6 +46,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -317,19 +318,112 @@ def _merge_runs(positions, gap, n):
     return runs
 
 
+# ---------------------------------------------------------------------
+# allowlist: per-host boilerplate (acronyms, fixed phrasing, defined
+# terms, whole paragraphs) this draft's owner has decided `scan` should
+# never flag. config.VERBATIM_ALLOWLIST_PATH is gitignored, per-host
+# data -- see docs/PLAGIARISM.md and config.py's own comment on it.
+# ---------------------------------------------------------------------
+
+_ALLOWLIST_KEYS = ("acronyms", "phrases", "definitions", "paragraphs")
+
+
+def _load_allowlist_phrases():
+    """Every phrase across the allowlist file's four categories,
+    normalized into word tuples via `norm()` -- the same tokenization
+    `scan` itself uses on the draft, so a phrase matches regardless of
+    how it's capitalized or spaced in the file.
+
+    No file -> no suppressions: the normal state for a fresh clone, since
+    nothing ever commits this file (see config.VERBATIM_ALLOWLIST_PATH).
+    A *present* file that isn't valid TOML, that this process cannot read
+    (permissions, or the path is a directory), whose category isn't a
+    list of strings, or that carries a key outside the four documented
+    ones (a typo like `pharses`), raises ValueError rather than
+    degrading to "no suppressions" -- a policy file that silently
+    stopped suppressing is exactly the failure that surfaces months
+    later as "why did this stop working," not as "no findings today."
+    An unknown key is exactly that failure mode: without the check, a
+    misspelled category loads as an empty list, no phrases suppress, and
+    nothing says why. `run()` only catches `ValueError` as a usage error
+    (`OSError` would otherwise escape as an unhandled traceback instead
+    of the same clean exit 2), so both open() and parsing are wrapped.
+    """
+    path = config.VERBATIM_ALLOWLIST_PATH
+    if not path.exists():
+        return []
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"{path}: malformed TOML -- {exc}") from None
+    except OSError as exc:
+        raise ValueError(f"{path}: cannot read allowlist -- {exc}") from None
+
+    unknown = sorted(set(data) - set(_ALLOWLIST_KEYS))
+    if unknown:
+        raise ValueError(
+            f"{path}: unknown key(s) {unknown} -- expected only "
+            f"{list(_ALLOWLIST_KEYS)}"
+        )
+
+    phrases = []
+    for key in _ALLOWLIST_KEYS:
+        values = data.get(key, [])
+        if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+            raise ValueError(f"{path}: {key!r} must be a list of strings")
+        phrases.extend(values)
+
+    normalized = (tuple(norm(p)) for p in phrases)
+    return [words for words in normalized if words]
+
+
+def _mask_allowlisted(span_word_strs, allowlist_tuples):
+    """Boolean mask, one entry per word in `span_word_strs`, True where
+    that position is covered by a contiguous occurrence of any
+    allowlisted phrase.
+
+    A phrase can occur more than once in one span, and two allowlisted
+    phrases can overlap (a whole paragraph allowlisted alongside a
+    phrase that also appears inside it) -- ORing into one mask handles
+    both without double-counting a word twice.
+    """
+    n = len(span_word_strs)
+    masked = [False] * n
+    for phrase in allowlist_tuples:
+        length = len(phrase)
+        if length == 0 or length > n:
+            continue
+        for i in range(n - length + 1):
+            if tuple(span_word_strs[i:i + length]) == phrase:
+                for j in range(i, i + length):
+                    masked[j] = True
+    return masked
+
+
 def scan_findings(draft, min_run=None, gap=1, limit=None):
     """Slide `draft`'s whole normalized text across the corpus-wide index,
     grouping matches by `(citekey, page, diagonal)` and merging each
     group into maximal same-diagonal runs (see `_merge_runs`). Returns
-    `(findings, min_run)`, longest run first; this function never raises
-    for "nothing found" and returns an empty list in that case -- this is
-    a review aid, not a gate, and it is not wired into anything that
-    treats a nonzero exit as a failure. It does raise `ValueError` for a request
-    it cannot honor at all, e.g. `min_run` below the corpus index's own
-    n-gram size (see below) -- that is not "no findings", it is "this
-    input can't be scanned as asked", and the `scan` CLI (below) turns it
-    into the same stderr-plus-exit-2 usage error as its other malformed
-    invocations, e.g. `--gap` with no value.
+    `(findings, min_run, suppressed)`, `findings` longest run first;
+    `suppressed` is how many runs the allowlist (see `_load_allowlist_phrases`)
+    dropped. This function never raises for "nothing found" and returns
+    an empty list in that case -- this is a review aid, not a gate, and
+    it is not wired into anything that treats a nonzero exit as a
+    failure. It does raise `ValueError` for a request it cannot honor at
+    all -- `min_run` below the corpus index's own n-gram size (see
+    below), or a malformed allowlist file -- that is not "no findings",
+    it is "this input can't be scanned as asked", and the `scan` CLI
+    (below) turns it into the same stderr-plus-exit-2 usage error as its
+    other malformed invocations, e.g. `--gap` with no value.
+
+    A finding is dropped, not just flagged, when the allowlist accounts
+    for enough of it that what's left would not itself have cleared
+    `min_run` -- e.g. a run that is entirely one allowlisted standard's
+    name. A run that merely *contains* a short allowlisted phrase inside
+    a much longer otherwise-unexplained lift is kept: suppressing the
+    whole thing would hide the real overlap the allowlist was never
+    meant to excuse.
 
     Known limitation, not fixed here: `src/overlap_index.py`'s
     `token_position` resets to 0 at every page break in the *source*, so
@@ -373,13 +467,21 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
         for citekey, page, src_pos in overlap_index.postings_for_gram(index, gh):
             groups.setdefault((citekey, page, src_pos - j), []).append(j)
 
+    allowlist = _load_allowlist_phrases()
+
     findings = []
+    suppressed = 0
     for (citekey, page, _diagonal), positions in groups.items():
         for run in _merge_runs(positions, gap, n):
             start, end = run[0], run[-1] + n
             span_words = end - start
             if span_words < min_run:
                 continue
+            if allowlist:
+                mask = _mask_allowlisted(word_strs[start:end], allowlist)
+                if span_words - sum(mask) < min_run:
+                    suppressed += 1
+                    continue
             matched_words = len({idx for p in run for idx in range(p, p + n)})
             run_words = words[start:end]
             # Paragraphs *plural*: _tokenize_draft's word stream is flat
@@ -412,7 +514,7 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     findings.sort(key=lambda f: (-f["span_words"], f["citekey"], f["start"]))
     if limit is not None:
         findings = findings[:limit]
-    return findings, min_run
+    return findings, min_run, suppressed
 
 
 def _flags(finding):
@@ -430,21 +532,62 @@ def _matched_note(finding):
     return f", {finding['matched_words']} matched"
 
 
-def format_scan(findings, min_run):
+# A run at or above this many words is "long" for bucketing purposes
+# (see `_bucket`) -- a fixed policy constant, not a flag: the threshold
+# is project-wide reading guidance, not a per-invocation choice.
+LONG_RUN_WORDS = 15
+
+# Most-damning-first: an uncited long run first, then an uncited short
+# one, and only then a quoted-and-cited run, which is the likeliest to be
+# a deliberate, legitimate quotation.
+BUCKET_ORDER = ("long", "short", "quoted")
+
+
+def _bucket(finding):
+    """Which severity bucket the written report groups `finding` under.
+
+    `quoted` only demotes a run to the low-priority `quoted` bucket when
+    it *also* cites its source -- a quoted-but-uncited run is still the
+    finding `overlap` structurally cannot make and `_flags` calls "the
+    one most worth reading first" (see below); burying it under `quoted`
+    just because it happens to sit inside quote marks would contradict
+    that. It buckets by length like any other uncited run instead.
+    """
+    if finding["quoted"] and finding["cites_source"]:
+        return "quoted"
+    return "long" if finding["span_words"] >= LONG_RUN_WORDS else "short"
+
+
+def _bucket_title(bucket):
+    if bucket == "long":
+        return f"Long verbatim runs (>= {LONG_RUN_WORDS} words)"
+    if bucket == "short":
+        return "Short verbatim runs"
+    return "Quoted runs"
+
+
+def format_scan(findings, min_run, suppressed=0):
     """The plain-text form, for stdout."""
     if not findings:
-        return f"no verbatim run of >= {min_run} words found anywhere in the draft"
-    lines = []
-    for f in findings:
-        flags = _flags(f)
-        flag_text = f" [{', '.join(flags)}]" if flags else ""
-        lines.append(
-            f"  [{f['span_words']} words{_matched_note(f)}, pdf p.{f['page']}] "
-            f"{f['citekey']} (tier={f['tier']}){flag_text}"
+        base = f"no verbatim run of >= {min_run} words found anywhere in the draft"
+    else:
+        lines = []
+        for f in findings:
+            flags = _flags(f)
+            flag_text = f" [{', '.join(flags)}]" if flags else ""
+            lines.append(
+                f"  [{f['span_words']} words{_matched_note(f)}, pdf p.{f['page']}] "
+                f"{f['citekey']} (tier={f['tier']}){flag_text}"
+            )
+            lines.append(f"      {f['fragment']}")
+            lines.append(f"      in: {f['context']}...")
+        base = "\n".join(lines)
+    if suppressed:
+        base += (
+            f"\n\n{suppressed} finding(s) suppressed by the allowlist "
+            f"({config.VERBATIM_ALLOWLIST_PATH.name})."
         )
-        lines.append(f"      {f['fragment']}")
-        lines.append(f"      in: {f['context']}...")
-    return "\n".join(lines)
+    return base
 
 
 # The finding fields the JSON payload publishes, in the order they are
@@ -469,7 +612,11 @@ def scan_command(draft, min_run, gap, limit, write, as_json):
     very differently from an uncapped one, and a recorded command without
     `--write` reproduces the findings on stdout but not the file. Only
     `--formats` is left out -- it selects renders *of* the Markdown
-    report and changes nothing in it or in the payload.
+    report and changes nothing in it or in the payload. The allowlist is
+    left out too, on both the command and the payload: it's per-host
+    config, not a flag, so it can't join a re-runnable invocation -- its
+    path and effect are recorded separately (see `render_scan_markdown`'s
+    header bullet and `scan_payload`'s `suppressed` field).
     """
     command = ["python", "-m", "src.review", "verbatim", "scan", str(draft),
                "--min-run", str(min_run), "--gap", str(gap)]
@@ -482,13 +629,18 @@ def scan_command(draft, min_run, gap, limit, write, as_json):
     return shlex.join(command)
 
 
-def scan_payload(draft, findings, min_run, gap, limit, command):
+def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
     """The same findings as data: `review.envelope`'s provenance, the
-    three flags that set the reporting floor, and one object per finding.
+    three flags that set the reporting floor, how many findings the
+    allowlist suppressed, and one object per finding.
 
     An additional serialisation of the list `scan_findings` already
     returned, never a second computation -- so the printed form and this
-    one cannot disagree about what was found.
+    one cannot disagree about what was found. `severity` is likewise
+    derived, not stored: `_bucket` is a pure function of fields already in
+    `_PAYLOAD_FIELDS`, so a consumer that wants the written report's
+    long/short/quoted grouping gets it here instead of reimplementing the
+    threshold.
 
     `start` is a **word** offset into the draft's normalised word stream
     (`_tokenize_draft`: masked, citation markers stripped, lowercased,
@@ -508,20 +660,37 @@ def scan_payload(draft, findings, min_run, gap, limit, command):
         "min_run": min_run,
         "gap": gap,
         "limit": limit,
-        "findings": [{field: f[field] for field in _PAYLOAD_FIELDS} for f in findings],
+        "suppressed": suppressed,
+        "findings": [
+            {**{field: f[field] for field in _PAYLOAD_FIELDS}, "severity": _bucket(f)}
+            for f in findings
+        ],
     })
     return payload
 
 
-def render_scan_markdown(draft, findings, min_run, command):
+def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0):
     """The same findings as a Markdown report, for `--write`.
 
     Kept beside `format_scan` rather than replacing it: stdout is read in
     a terminal mid-review and wants no syntax, while a file kept for
     months is read next to the same draft's provenance and coverage
     reports and should look like them.
+
+    `command` is built once, by `scan_command`, and handed to both this
+    function and `scan_payload` -- so the Markdown header and the JSON
+    envelope cannot disagree about what produced them.
     """
+    allowlist_path = config.VERBATIM_ALLOWLIST_PATH
+    if not allowlist_path.exists():
+        allowlist_line = f"- Allowlist: none configured (`{allowlist_path}` not found)"
+    else:
+        allowlist_line = (
+            f"- Allowlist: `{allowlist_path}` ({suppressed} finding(s) suppressed)"
+        )
+
     lines = review.header(Path(draft), "verbatim", command)
+    lines = lines[:-1] + [allowlist_line, ""]
     lines += [
         "## How to read this",
         "",
@@ -538,6 +707,18 @@ def render_scan_markdown(draft, findings, min_run, command):
         "  make, and the one most worth reading first.",
         "- **quoted** -- the whole run sits inside quote delimiters, so it is",
         "  most likely a deliberate quotation.",
+        "",
+        "Findings below are grouped most-damning-first: long runs, then short",
+        "ones, then quoted runs -- but a quoted run only drops into the last",
+        "group when it also cites the source it matched. A quoted run from an",
+        "uncited source is still grouped by length, not buried under `quoted`.",
+        "",
+        "The allowlist bullet above names a per-host, gitignored file",
+        "(`content/verbatim_allowlist.toml`, see docs/PLAGIARISM.md) of",
+        "boilerplate this host's owner has decided never to flag -- a run is",
+        "only dropped when what's left after discounting the allowlisted text",
+        "would no longer clear `--min-run` on its own, so a real lift that",
+        "merely contains a defined term still shows up below.",
         "",
         "**A clean run is not a clean bill of health.** This is the exact",
         "detection tier; the paraphrase tiers beside it are unbuilt, so this",
@@ -556,19 +737,37 @@ def render_scan_markdown(draft, findings, min_run, command):
         ]
         return "\n".join(lines)
 
-    lines += [f"{len(findings)} run(s), longest first.", ""]
-    for f in findings:
-        flags = _flags(f)
-        flag_text = f" -- **{', '.join(flags)}**" if flags else ""
+    lines += [f"{len(findings)} run(s), grouped most-damning-first.", ""]
+    if limit is not None:
         lines += [
-            f"### {f['span_words']} words{_matched_note(f)} -- `{f['citekey']}` "
-            f"p.{f['page']}{flag_text}",
-            "",
-            f"> {f['fragment']}",
-            "",
-            f"In context: {f['context']}...",
+            f"This report was capped at `--limit {limit}` finding(s), taken from",
+            "the longest-first list *before* grouping into the buckets below --",
+            "a bucket may look emptier here than an uncapped scan would show, or",
+            "be absent entirely, because its findings were cut before grouping.",
             "",
         ]
+
+    buckets = {key: [] for key in BUCKET_ORDER}
+    for f in findings:
+        buckets[_bucket(f)].append(f)
+
+    for key in BUCKET_ORDER:
+        bucket_findings = buckets[key]
+        if not bucket_findings:
+            continue
+        lines += [f"### {_bucket_title(key)}", ""]
+        for f in bucket_findings:
+            flags = _flags(f)
+            flag_text = f" -- **{', '.join(flags)}**" if flags else ""
+            lines += [
+                f"#### {f['span_words']} words{_matched_note(f)} -- `{f['citekey']}` "
+                f"p.{f['page']}{flag_text}",
+                "",
+                f"> {f['fragment']}",
+                "",
+                f"In context: {f['context']}...",
+                "",
+            ]
     return "\n".join(lines)
 
 
@@ -595,7 +794,7 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
     is only ever the payload and `scan --json --write > findings.json` is
     a valid JSON file -- the discipline `dossier brief` already follows.
     """
-    findings, min_run = scan_findings(draft, min_run, gap, limit)
+    findings, min_run, suppressed = scan_findings(draft, min_run, gap, limit)
 
     # The default path prints text and stops. Returning here rather than
     # falling through keeps the payload's cost off it entirely -- a
@@ -603,19 +802,19 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
     # `review.version()` does for the envelope -- none of which the
     # printed form uses.
     if not (as_json or write):
-        print(format_scan(findings, min_run))
+        print(format_scan(findings, min_run, suppressed))
         return
 
     command = scan_command(draft, min_run, gap, limit, write, as_json)
-    payload = scan_payload(draft, findings, min_run, gap, limit, command)
+    payload = scan_payload(draft, findings, min_run, gap, limit, suppressed, command)
 
     # Same `indent=2`, same key order, no trailing difference: what this
     # prints is byte-for-byte what `write_json` files, so a caller may
     # redirect stdout or read the sibling and get the same bytes.
-    print(json.dumps(payload, indent=2) if as_json else format_scan(findings, min_run))
+    print(json.dumps(payload, indent=2) if as_json else format_scan(findings, min_run, suppressed))
 
     if write:
-        body = render_scan_markdown(draft, findings, min_run, command)
+        body = render_scan_markdown(draft, findings, min_run, limit, command, suppressed)
         written = review.write(Path(draft), "verbatim", body, list(formats))
         written["json"] = review.write_json(Path(draft), "verbatim", payload)
         review.print_written(written, stream=sys.stderr if as_json else sys.stdout)
