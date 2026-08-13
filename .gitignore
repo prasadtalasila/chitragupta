@@ -41,6 +41,11 @@ env/
 # `.coverage` entry doesn't catch them and they land as untracked junk
 # a `git add -A` will happily commit.
 .coverage.*
+# `--cov-report=xml`, which .github/workflows/ci.yml passes so Codecov has
+# something to upload. Not caught by either entry above: the file is
+# `coverage.xml`, with no leading dot, so `.coverage.*` misses it. Anyone
+# reproducing CI's exact pytest invocation locally generates one.
+coverage.xml
 htmlcov/
 *.egg-info/
 *.log

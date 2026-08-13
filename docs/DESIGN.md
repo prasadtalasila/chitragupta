@@ -33,11 +33,14 @@ The repository is designed around a few hard constraints that strongly shape the
    - Drafts must pass `python -m src.draft gate` before being considered valid.
    - This is the repo's primary safety invariant.
 
-2. **Three layers**
+2. **Four layers**
    - Corpus layer: deterministic content maintenance (`python -m src.corpus sync`).
    - Drafting layer: generative drafting via the Claude Code skills.
    - Enrichment layer: optional heavier processing (`python -m src.enrich`).
-   - Ad-hoc review tools remain outside the automatic chain.
+   - Review layer: advisory aids over a finished draft (`python -m src.review`),
+     run by hand and never blocking. They stay outside the automatic chain.
+   - [ARCHITECTURE.md](ARCHITECTURE.md#the-four-layers) is the map; this
+     lists them only to say what the constraint is.
 
 3. **Config and host variability are first-class concerns**
    - `config.toml` is the single source of configuration.

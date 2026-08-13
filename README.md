@@ -250,7 +250,10 @@ publisher = {GitHub}
 
 This file is the overview: what the pipeline is, how to get it running,
 and what it needs. Everything else lives in one document per question,
-split by who is asking.
+split by what you are doing -- using the pipeline, or working on it.
+Which of those you are doing can change within a session, and the split
+follows the task rather than the person; [CLAUDE.md](CLAUDE.md) is the
+one-screen router for exactly that.
 
 ### Using it
 
@@ -259,6 +262,7 @@ split by who is asking.
 | Document | Answers |
 |---|---|
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
+| [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
 | [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the seven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
@@ -304,37 +308,20 @@ split by who is asking.
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
 | [DEVELOPER.md](DEVELOPER.md) | How do I run the tests, where does everything live, and what is unbuilt? |
 | [DOCKER.md](DOCKER.md) | How do I run this in a container? |
-| [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, commit/PR/release conventions |
+| [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
+| [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
+| [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and -- where the licence requires it -- what was deliberately not |
 
 Every prose document ships in the release archive -- everything under
-`docs/`, plus `SOUL.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md` and
-`DEVELOPER.md` -- as do `.claude/`'s genre skills. Only this repo's own
+`docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
+and `DEVELOPER.md` -- as do `.claude/`'s genre skills. Only this repo's own
 machinery stays behind: `tests/`, `bench/` (the measurement harness and its
 raw timings), `.github/` and `.gitignore`.
 
 ## Acknowledgements
 
-- **[hadufer/claude-storm](https://github.com/hadufer/claude-storm)** (MIT
-  License) -- the `.claude/skills/deep-research/` skill and its
-  `deep-research-interviewer`/`deep-research-writer` subagents adapt its
-  7-phase pipeline (perspective discovery, parallel grounded interviews,
-  contradiction mapping, outline, cited writing, synthesis, self peer-review).
-  Retooled here for a closed, citekey-grounded local corpus instead of live
-  web sources -- see `reference.md` in that skill's directory for exactly
-  what changed and why.
-- **[stanford-oval/storm](https://github.com/stanford-oval/storm)** -- the
-  original STORM method claude-storm implements: "Assisting in Writing
-  Wikipedia-like Articles From Scratch with Large Language Models" (Shao,
-  Jiang, Kanell, Xu, Khattab, Lam; NAACL 2024; arXiv:2402.14207).
-- Nav Toor's (@heynavtoor) 4-prompt adaptation, fused into claude-storm's
-  pipeline and carried through into `deep-research`'s synthesis-briefing
-  and single-reviewer (`quick` depth) peer-review phases.
-- **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**
-  -- the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
-  (an independent multi-reviewer panel including a dedicated adversarial
-  reviewer, reconciled against a concession threshold) is credited to that
-  project's Stage-3 peer-review design. That project is licensed CC-BY-NC
-  4.0; **no text from it was copied** -- `.claude/agents/peer-reviewer.md`
-  and `.claude/skills/deep-research/reference.md` §7 are written from
-  scratch, adapting only the concept of an independent panel plus a
-  Devil's Advocate role, not its implementation.
+This project borrows from several others -- the deep-research skill's
+7-phase method, the clean-code checklist its own code standard is written
+against, and the harness-engineering reading list behind much of
+`.claude/`. Each is credited, with what was taken and what deliberately
+was not, in **[docs/INSPIRATION.md](docs/INSPIRATION.md)**.
