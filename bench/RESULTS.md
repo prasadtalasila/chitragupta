@@ -27,6 +27,7 @@ if it is obvious which is which, so:
 | [2026-08-08: what a drift sweep costs](#2026-08-08-what-a-drift-sweep-costs) | **Current** | The first measurement of `dossier status --all`, on the real corpus |
 | [2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy) | **Partly superseded** | Its cold/warm figures still stand -- re-measured at 26.8s after #131 bumped the tokenizer version, which was expected to make them stale and did not. Its claim that `scan`'s findings are the input a gating decision would be tuned against is what the 2026-08-13 section actually tests |
 | [2026-08-13: what an `overlap_gate` would block, and how much of it would be wrong (#130)](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130) | **Current** | The first false-positive measurement of the gate #130 proposes, over a real 15-chapter book. Found References masking broken for book-numbered headings (72x the gateable population) and no threshold with a true positive at any width |
+| [2026-08-13b: does a gram's corpus document frequency separate boilerplate from reuse?](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse) | **Current** | Follows the section above, which found the discriminating feature and quantified it only partly. Measured at gram rather than finding granularity it explains 12 of 14, against that section's 8 |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1154,3 +1155,126 @@ The labels are an input, hand-authored and committed as
 gateable finding it cannot find a label for. The detector check above is
 a one-off, not a bench tool: copy the two `bench/fixtures/`
 cloud-computing drafts under `content/drafts/` and scan each.
+
+## 2026-08-13b: does a gram's corpus document frequency separate boilerplate from reuse?
+
+Run: `bench/bench_overlap_df.py`, record in
+`results/2026-08-13-overlap-df/overlap_df.json`. Same corpus as the
+section above -- 497 documents, 6,534,874 distinct 8-grams, corpus key
+`25e79db2...`, tokenizer version 2, docling backend.
+
+[The section above](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130)
+ends on an unfinished observation. Having shown that span length does not
+separate the two populations, it notes that one feature partly does --
+"the two large false-positive clusters are each matched by **4 distinct
+citekeys** ... where the planted true positive matches exactly **1**" --
+and then bounds it: "It explains 8 of the 14, and no more."
+
+That count is at *finding* granularity: how many citekeys produced a
+finding for this passage. The same idea measured one level down -- for
+every 8-gram in the run, how many distinct corpus documents contain it,
+read straight off `overlap_index.postings_for_gram` -- explains **12 of
+the 14**. Nothing new is stored to get there. Document frequency is a
+projection of the index #110 already built.
+
+### The statistic, and two artefacts that force the choice
+
+The number reported per finding is the **median** DF over the run's
+8-grams. Not the minimum, for a reason that is measurable in the table
+below: a gap-merged run contains draft grams present in no source at all,
+and a run reconstructed across a source page break (#131) has one window
+straddling the join that matches nothing. Both put a 0 or a 1 into a
+profile whose every other gram sits at 4. `f0f4fd3982b7` is the visible
+case -- min 0, median 1, max 1 -- and a minimum-based rule would read that
+artefact as evidence.
+
+A second trap is worth recording because it fails silently. The grams
+must be read off the finding's `fragment`, never its `draft_text`:
+`fragment` is the normalised, space-joined word stream the index is keyed
+on, and `draft_text` is the draft as written, newlines and hyphenation
+intact. Hashing `draft_text` returns an all-zero profile that reads
+exactly like "this run appears in no corpus paper" -- for a run that
+demonstrably matched one. `bench_overlap_df.py::self_check` asserts
+against that shape on every invocation.
+
+### What DF suppresses, and what it costs
+
+`median_df >= D`, over the 14 gateable findings, with the planted
+`aguzzi_cloud_2020` lift as the recall arm:
+
+```
+  D  suppressed   fp  unlab  remaining  tp_lost  of_tp
+  1          14   14      0          0        1      1
+  2          12   12      0          2        0      1
+  3          11   11      0          3        0      1
+  4           8    8      0          6        0      1
+  5           0    0      0         14        0      1
+```
+
+`D = 1` is degenerate -- every matched gram is in at least one document
+by construction -- and is swept to show that end rather than to start
+after it. `D = 4` reproduces the earlier section's 8 exactly, which is
+the arithmetic check that the two measurements are the same feature at
+two granularities.
+
+**The recall arm is one finding.** "0 of 1 true positive lost" is the
+truthful phrasing of the `tp_lost` column and the only one this data
+supports; it is not a false-negative rate. The book contains no genuine
+uncredited reuse, which is why the control fixture exists at all -- over
+the book alone every row above would report a flawless rule.
+
+### DF measures what the labeller was seeing
+
+Grouped by the hand-authored class from the section above:
+
+| Class | Findings | median DF |
+|---|---|---|
+| `canonical-definition` | 4 | 3-4 |
+| `third-party-echo` | 9 | 1-4 |
+| `attributed-quotation` | 3 | 1 |
+
+The first two classes are the ones whose rationale is "many corpus papers
+reproduce this", and DF finds them. The third sits at exactly 1 and DF is
+blind to it -- correctly, since an attributed quotation *is* verbatim from
+a single source. That population is already exempt from #130's predicate
+through `quoted and cites_source`, so the two mechanisms cover disjoint
+classes rather than competing.
+
+### What this does not measure
+
+- **A threshold.** The evidence supports "DF is the discriminating
+  feature, at gram granularity" and does not support shipping a specific
+  `D`. As with `_CPUS_PER_DOCLING_WORKER` in
+  [PARALLELISM.md](../docs/PARALLELISM.md#roadmap), the target is a
+  region, measured on one corpus and one book.
+- **Recall, at any useful sample size.** One true positive, planted.
+- **Paraphrase.** Unchanged from the section above and still the largest
+  caveat: DF is computed over exact-tier findings, so a rule built on it
+  inherits that tier's blindness.
+- **Stability under corpus change.** `index.json`'s key is a sha256 over
+  every document's own change-detection key, so every DF here moves when
+  a paper is added or re-parsed. A DF-based suppression is deterministic
+  *given a corpus state* -- weaker than `src.draft gate`'s guarantee, and
+  the same shape as #128's per-host allowlist. #130 is where that is
+  priced.
+- **Whether DF beats the hand allowlist.** #128's candidate allowlist
+  suppresses 13 of the 16 by hand; `D = 2` suppresses 12 of the 14
+  gateable ones mechanically. The two sets are not compared here.
+
+The book scanned is the one restored from
+`content/backup/content-20260809.zip`. That tree differs from the one the
+gate record above was written against only below the 15-word floor -- 160
+findings against 159, with the churn confined to `short` severity. The
+16-finding labelled population and its ids are identical, and the record
+reports `unlabelled: 0`, so both sections score against the same ground
+truth.
+
+Reproduce:
+
+```bash
+python3 bench/bench_overlap_df.py --tag <date>-overlap-df \
+    --drafts content/drafts/books/<book-slug>
+```
+
+Labels are shared with `bench_overlap_gate.py` rather than duplicated --
+the same findings, the same hand-authored file.

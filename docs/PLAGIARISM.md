@@ -364,6 +364,110 @@ book, one topic, one generator; and because it contains no organic true
 positives, the measurement establishes how often the gate fires *wrongly*
 far better than it establishes how often it would fire *rightly*.
 
+## Measured: document frequency, and what a single-field corpus changes
+
+The measurement above ends on an unfinished observation. Having shown
+that span length does not separate the two populations, it notes that
+something else partly does: the large false-positive clusters are each
+matched by **4 distinct citekeys**, where the one true positive available
+anywhere in this repository -- the planted `aguzzi_cloud_2020` lift --
+matches exactly **1**. That accounted for 8 of the 14 gateable findings
+and no more.
+
+`bench/bench_overlap_df.py` finishes it, and the result changes the order
+tiers 2 and 3 should be built in.
+
+### The corpus this pipeline is pointed at is single-field by design
+
+That is not incidental to detection; it is the governing fact. This
+project is built to be aimed at a deep corpus on one topic, and the
+drafts are written *from* it: `src.retrieval` hands a skill the nearest
+passages and the skill writes from those. Two consequences follow, and
+they pull in opposite directions.
+
+**It makes semantic similarity a weak discriminator.** Cosine distance
+tells reuse from coincidence only when topical similarity is low by
+default. Here it is high by default, and the pipeline's own retrieval
+step guarantees that a draft segment's nearest neighbours are the
+passages it was legitimately grounded in. A tier-3 rule of the form
+"embed, k-NN, threshold" would rediscover its own retrieval step and
+report it as a finding. Separation between "similar because same field"
+and "similar because copied" does not vanish, but it narrows, and the
+number of pairs a whole-draft scan generates amplifies whatever tail
+remains.
+
+**It makes document frequency a strong one.** An 8-gram in one corpus
+paper is distinctive shared wording; an 8-gram in thirty is how the field
+writes. A deep single-field corpus is exactly the sample that can tell
+those apart, so the signal *improves* as the corpus grows -- the opposite
+of what corpus depth does to cosine.
+
+### DF is already stored, and it explains 12 of the 14
+
+`overlap_index.postings_for_gram` returns every `(citekey, page,
+position)` posting for a gram, so the count of distinct citekeys in those
+postings *is* that gram's document frequency. No model, no new artefact,
+no second index: DF is a projection of the index #110 already built.
+
+Scoring each finding by the **median** DF over its 8-grams, against the
+same corpus, the same book and the same hand labels as the #130
+measurement:
+
+| `median_df >= D` | Suppressed, of 14 gateable | True positives lost, of 1 |
+|---|---|---|
+| 2 | 12 | 0 |
+| 3 | 11 | 0 |
+| 4 | 8 | 0 |
+| 5 | 0 | 0 |
+
+`D = 4` reproduces the earlier 8 exactly, which is the check that this is
+the same feature measured one level down -- per gram against the whole
+index, rather than per finding against the citekeys that happened to
+report.
+
+Grouped by the labeller's own classes, DF turns out to measure what they
+were seeing by eye:
+
+| Class | Findings | median DF |
+|---|---|---|
+| `canonical-definition` | 4 | 3-4 |
+| `third-party-echo` | 9 | 1-4 |
+| `attributed-quotation` | 3 | 1 |
+
+The first two are the classes whose written rationale is "many corpus
+papers reproduce this", and DF finds them. The third sits at exactly 1,
+and DF is blind to it -- correctly, because an attributed quotation *is*
+verbatim from a single source. That class is already exempt from #130's
+predicate through `quoted and cites_source`, so the two mechanisms cover
+disjoint populations rather than competing for the same one.
+
+### What the DF result does not license
+
+- **A threshold.** The evidence supports "DF is the discriminating
+  feature, at gram granularity"; it does not support shipping a `D`. The
+  target is a region measured on one corpus and one book, in the same
+  sense [PARALLELISM.md](PARALLELISM.md#roadmap) means it for
+  `_CPUS_PER_DOCLING_WORKER`.
+- **A recall claim.** The recall arm is **one planted finding**. "0 of 1
+  true positive lost" is the whole of what was measured; it is not a
+  false-negative rate, and no phrasing that implies one is supportable
+  from this data.
+- **Escape from the paraphrase caveat.** DF is computed over exact-tier
+  findings and inherits that tier's blindness entirely.
+- **A gate.** DF moves whenever the corpus does: `index.json`'s key is a
+  sha256 over every document's own change-detection key, so adding a
+  paper or re-parsing one shifts every number above, and a run that was
+  clean can turn dirty with no draft edit. That is deterministic *given a
+  corpus state* -- a weaker guarantee than `src.draft gate`'s, and the
+  same shape as the per-host allowlist below. #130 is where that trade is
+  priced, not here.
+
+The measurement is `bench/RESULTS.md`'s `2026-08-13b` section -- not
+linked, because `bench/` is one of the trees the documentation site does
+not publish. It carries the two profile artefacts that force the median
+rather than the minimum, and the `fragment`-versus-`draft_text` trap that
+makes a wrong implementation of this fail silently.
+
 ## Measured: does the corpus's parser backend change the answer?
 
 `[parser].backend` (`config.toml`) is `pdftotext` or `docling`. Both
@@ -506,6 +610,33 @@ Because the drafts this pipeline produces are LLM-written and literal
 paraphrase is their normal failure mode, tiers 2-3 are prioritized
 immediately after the exact tier rather than parked indefinitely.
 
+**Between the two, tier 2 goes first**, and [the DF
+measurement](#measured-document-frequency-and-what-a-single-field-corpus-changes)
+is why. Three things follow from it, all recorded in #133 and #134:
+
+- Skip-grams are lexically anchored, so the topical similarity that
+  saturates a single-field corpus does not inflate them, and they live in
+  the same index framework -- which means they inherit a DF-derived
+  boilerplate suppression for free rather than needing their own.
+- Tier 3's stated form -- k-NN against the whole corpus, thresholded --
+  is the form the same measurement argues against. The redesign in #134
+  scopes it to the citekeys a section's dossier already records and ranks
+  rather than thresholds.
+- Tier 3 also needs a step this list never named: a **local alignment**,
+  because a cosine score is not a finding. That is #164, and it changes
+  the tier's dependency list from `content/chroma/` alone to chroma plus
+  the Docling passage sidecars.
+
+A **cross-encoder reranker** over tier-1 and tier-2 candidates is the
+obvious fourth option and is deliberately not a tier. It cannot search --
+one forward pass per pair, no index possible -- so it can only reorder
+findings something else produced, never generate one. That is what would
+make it safe here (the gate stays deterministic because the reranker
+cannot change the finding set, only its order), and also what makes it
+hard to justify: it adds a torch dependency and a model download to
+improve the ranking of a population DF already suppresses deterministically
+and for free.
+
 **Not on this roadmap, deliberately:** BERTopic (`content/topics.json`)
 -- topic granularity is far too coarse for overlap, and prefiltering
 candidates is worthless at ~500 documents where the exact index already
@@ -527,4 +658,6 @@ the index doesn't already have.
   gate.
 - `bench/RESULTS.md` -- wall-clock measurements for `overlap`/`scan`
   against this project's real corpus (separate from the backend
-  comparison above, which is about detection quality, not speed).
+  comparison above, which is about detection quality, not speed), and the
+  two label-scored sections behind #130 and the document-frequency
+  result.

@@ -25,6 +25,12 @@ touches `content/`; `bench_overlap.py` reads this host's real
 safe here and not for `bench_drift.py`) but writes its own cache to a
 throwaway directory, never the real `content/overlap/`.
 
+`bench_overlap_gate.py` and `bench_overlap_df.py` are stdlib-only too,
+but unlike those two they need a **synced corpus** and a real draft to
+scan: both read `content/ledger.sqlite`, `content/parsed/` and the shared
+`content/overlap/` index, and neither measures wall clock at all. They
+score a decision against hand-authored labels.
+
 ```bash
 # 1. Build the work lists from your own bib file (gitignored output --
 #    they carry absolute PDF paths, like the bib file itself).
@@ -54,6 +60,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | What does a drift sweep over every dossier cost? | **`bench_drift.py`** -- stdlib only, synthetic corpus, no GPU |
 | What does `verbatim_check.py overlap`/`scan` cost, and what can `scan` see that N `overlap` calls can't? | **`bench_overlap.py`** -- stdlib only, this host's real corpus, no GPU |
 | Would an `overlap_gate` (#130) block anything worth blocking, and at what span threshold? | **`bench_overlap_gate.py`** -- stdlib only, no GPU; measures **agreement with hand labels**, not cost |
+| Does a gram's corpus document frequency tell field boilerplate apart from genuine reuse (#133/#134)? | **`bench_overlap_df.py`** -- stdlib only, no GPU; reuses `bench_overlap_gate.py`'s labels and adds a planted-reuse control arm |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -130,6 +137,7 @@ being tested.
 | `sweep_sync.py` | Sweeps the **real** `src.corpus sync` over worker/GPU/OCR settings -- the pool-level numbers |
 | `repro_check.py` | Asks whether two runs *agree*, not what they cost: parses one subset under two GPU counts and compares text, passage spans and passage texts |
 | `bench_overlap_gate.py` | Sweeps #130's gate predicate over a real book's `scan` findings and scores each candidate threshold (**T**, a run length in words) against hand-authored labels -- **tp**/**fp** being a blocked finding that is, or is not, genuine uncredited reuse; also measures what References masking is worth |
+| `bench_overlap_df.py` | Asks whether the **corpus document frequency** of a run's 8-grams -- distinct citekeys in `overlap_index.postings_for_gram`, so a projection of the #110 index rather than a new artefact -- tells a field's stock phrasing apart from genuine reuse. Two arms, because the book supplies only false positives: the labelled book, and the planted-reuse fixture as the one true positive |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
 `repro_check.py` is the odd one out here, and deliberately so: every other
