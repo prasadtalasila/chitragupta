@@ -646,6 +646,10 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
             run_paragraphs = {w.paragraph for w in run_words}
             cites_source = any(citekey in paragraph_citekeys[p] for p in run_paragraphs)
             run_pages = [pos_pages[p] for p in run]
+            # Hoisted out of the dict rather than inlined as #131 wrote
+            # it: `finding_id` needs the same start page the payload
+            # reports, and computing `min(run_pages)` twice is how those
+            # two quietly stop agreeing.
             page = min(run_pages)
             findings.append({
                 "id": finding_id(citekey, page, fragment),
