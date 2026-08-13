@@ -2140,13 +2140,15 @@ class TestBoundedInt:
         assert vc._bounded_int(1, "--n")("12") == 12
 
     def test_a_non_integer_is_a_usage_error(self):
+        to_int = vc._bounded_int(1, "--n")
         with pytest.raises(argparse.ArgumentTypeError) as exc:
-            vc._bounded_int(1, "--n")("not-a-number")
+            to_int("not-a-number")
         assert "not a valid value" in str(exc.value)
 
     def test_a_below_minimum_value_is_a_usage_error(self):
+        to_int = vc._bounded_int(1, "--n")
         with pytest.raises(argparse.ArgumentTypeError) as exc:
-            vc._bounded_int(1, "--n")("0")
+            to_int("0")
         assert "--n must be >= 1" in str(exc.value)
 
 

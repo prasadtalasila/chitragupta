@@ -40,7 +40,9 @@ class TestGramHashes:
 
     def test_deterministic_across_calls(self):
         words = "alpha beta gamma delta".split()
-        assert overlap_index.gram_hashes(words, 4) == overlap_index.gram_hashes(words, 4)
+        first = overlap_index.gram_hashes(words, 4)
+        second = overlap_index.gram_hashes(words, 4)
+        assert first == second
 
     def test_different_grams_hash_differently(self):
         a = overlap_index.gram_hashes("alpha beta gamma delta".split(), 4)

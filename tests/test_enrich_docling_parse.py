@@ -1258,8 +1258,9 @@ class TestParseCorpusInterrupt:
             return real(job)
 
         monkeypatch.setattr(docling_parse, "parse_one", interrupt_after_two)
+        docs = self._docs(tmp_path)
         with pytest.raises(KeyboardInterrupt):
-            docling_parse.parse_corpus(self._docs(tmp_path))
+            docling_parse.parse_corpus(docs)
 
         out = capsys.readouterr().out
         assert "interrupted after" in out
@@ -1298,8 +1299,9 @@ class TestEnrichPartialSuccess:
             FakeDocumentConverter, "convert",
             lambda self, p: _PartialResult("PARTIAL_SUCCESS", ["timeout after 10s"]),
         )
+        doc = self._doc(tmp_path)
         with pytest.raises(RuntimeError, match="PARTIAL_SUCCESS"):
-            docling_parse.parse_doc(self._doc(tmp_path))
+            docling_parse.parse_doc(doc)
 
     def test_no_markdown_is_written_for_a_partial_parse(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
@@ -1308,8 +1310,9 @@ class TestEnrichPartialSuccess:
             FakeDocumentConverter, "convert",
             lambda self, p: _PartialResult("PARTIAL_SUCCESS", []),
         )
+        doc = self._doc(tmp_path)
         with pytest.raises(RuntimeError):
-            docling_parse.parse_doc(self._doc(tmp_path))
+            docling_parse.parse_doc(doc)
         assert not (isolated_config.DOCLING_DIR / "a.md").exists()
 
     def test_a_partial_parse_is_reported_and_not_cached_by_parse_corpus(
