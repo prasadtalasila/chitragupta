@@ -173,10 +173,13 @@ lines and 288 lines of code, the difference being 221 lines of
 per-setting rationale. The file rule counts code lines -- non-blank,
 non-comment -- for the same reason.
 
-**This is a re-expression, not a relaxation.** One outlier gets stricter
-under it, not looser: `src/sync.py::run` is 322 physical lines but **117
-statements**, 4.7× the next worst function in the repository. Physical
-lines rank it 2.4× the next worst and understate how far out it is.
+**This is a re-expression, not a relaxation.** One outlier got stricter
+under it, not looser: at 5.7.1, `src/sync.py::run` was 322 physical lines
+but **117 statements**, 4.7× the next worst function in the repository.
+Physical lines ranked it 2.4× the next worst and understated how far out
+it was. (It has since been split back under the limit and delisted -- the
+ratchet doing its job -- but the measurement is what justified counting
+statements, so it stays.)
 
 ## The Boy Scout Rule, and surgical changes
 
@@ -284,7 +287,7 @@ has, both of which fail:
 The ratchet takes the useful half of each. Concretely, here:
 
 - Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
-  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **13
+  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **12
   functions** and **13 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale.
@@ -319,7 +322,8 @@ Three reasons beyond the general argument.
 3. **It makes the debt legible instead of ambient.** "The code quality is
    poor" is unactionable and, measured properly, was not even true here.
    "`src/sync.py::run` is 117 statements and `src/dossier.py` is 1605
-   code lines" is a worklist, ordered, with the two entries worth taking
+   code lines" -- the register's two worst entries on the day it was
+   written -- is a worklist, ordered, with the entries worth taking
    first at the top.
 
 The register is a debt list, not an allowance. Neither of those two is
