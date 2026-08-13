@@ -83,17 +83,31 @@ from pathlib import Path, PurePosixPath
 
 from src import citation_gate, config, review
 
+# One constant per dossier filename, because each recurs across this
+# module -- as FILES keys, template keys, path joins and report lookups
+# -- and a filename spelled at every use site is a rename that misses
+# one. All seven are named, not only the ones repeated often enough for
+# a duplicated-literal check to notice: a dict keyed by five constants
+# and two bare strings would read as if the two were different in kind.
+SCOPE_MD = "scope.md"
+EVIDENCE_MD = "evidence.md"
+REJECTED_MD = "rejected.md"
+SECTIONS_MD = "sections.md"
+STEERING_MD = "steering.md"
+REVISIONS_MD = "revisions.md"
+RETRIEVAL_MD = "retrieval.md"
+
 # The files a dossier holds, in the order `init` writes them and `status`
 # reports them. The value is how `status` counts entries in that file --
 # see `_count`, and the "counts are advisory" note there.
 FILES: dict[str, str] = {
-    "scope.md": "prose",
-    "evidence.md": "blocks",
-    "rejected.md": "rows",
-    "sections.md": "rows",
-    "steering.md": "prose",
-    "revisions.md": "prose",
-    "retrieval.md": "rows",
+    SCOPE_MD: "prose",
+    EVIDENCE_MD: "blocks",
+    REJECTED_MD: "rows",
+    SECTIONS_MD: "rows",
+    STEERING_MD: "prose",
+    REVISIONS_MD: "prose",
+    RETRIEVAL_MD: "rows",
 }
 
 # Top-level directories a bundle may contain, and the only ones `restore`
@@ -272,7 +286,7 @@ _CORPUS_LINE = re.compile(
 
 def recorded_corpus(dossier: Path) -> tuple[int, str] | None:
     """(citekey count, digest) as recorded in `scope.md` at draft time."""
-    scope = dossier / "scope.md"
+    scope = dossier / SCOPE_MD
     if not scope.is_file():
         return None
     match = _CORPUS_LINE.search(scope.read_text(encoding="utf-8"))
@@ -295,8 +309,8 @@ def _citekeys_in(dossier: Path, names: tuple[str, ...]) -> set[str]:
 # that leaves the ledger is a finding when the draft cites it and a
 # non-event when the draft turned it down, and `MENTIONED_FILES` would
 # report the second as the first.
-CITED_FILES = ("evidence.md", "sections.md")
-MENTIONED_FILES = ("evidence.md", "rejected.md", "sections.md")
+CITED_FILES = (EVIDENCE_MD, SECTIONS_MD)
+MENTIONED_FILES = (EVIDENCE_MD, REJECTED_MD, SECTIONS_MD)
 
 
 def cited_citekeys(dossier: Path) -> set[str]:
@@ -320,7 +334,7 @@ def rejected_reasons(dossier: Path) -> dict[str, str]:
     and only the first is worth revisiting when the corpus grows -- so a
     re-grounding pass needs the sentence, not just the membership.
     """
-    path = dossier / "rejected.md"
+    path = dossier / REJECTED_MD
     if not path.is_file():
         return {}
     found: dict[str, str] = {}
@@ -368,7 +382,7 @@ def citekeys_by_section(dossier: Path) -> dict[str, list[str]]:
     "not a section at all" want opposite fixes -- one is a gap to fill,
     the other a typo in the section name.
     """
-    path = dossier / "sections.md"
+    path = dossier / SECTIONS_MD
     if not path.is_file():
         return {}
     found: dict[str, list[str]] = {}
@@ -407,7 +421,7 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
     input everywhere else here, and a block nobody can address is a block
     the next run re-retrieves.
     """
-    path = dossier / "evidence.md"
+    path = dossier / EVIDENCE_MD
     if not path.is_file():
         return {}
     found: dict[str, str] = {}
@@ -495,7 +509,12 @@ class Section:
 # doing a different job -- segmenting claim-bearing blocks for scoring --
 # and the two are deliberately not shared: that module needs list items
 # and table rows to be blocks, which would be noise in an outline.
-_MD_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+# The whole rest of the line is captured and the optional ATX closing
+# sequence (`## Title ##`) stripped in `sections()` instead of by a
+# `(.*?)\s*#*\s*$` tail here: that tail's adjacent ambiguous quantifiers
+# backtrack super-linearly on pathological input (Sonar S8786), and a
+# plain-code strip is both linear and easier to confirm faithful.
+_MD_HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 _TEX_HEADING = re.compile(r"^\s*\\(chapter|(?:sub){0,2}section|paragraph)\*?\{(.*)$")
 _TEX_LEVELS = {
     "chapter": 1, "section": 2, "subsection": 3, "subsubsection": 4, "paragraph": 5,
@@ -565,7 +584,12 @@ def sections(text: str) -> list[Section]:
 
         md = _MD_HEADING.match(line)
         if md:
-            found.append(Section(md.group(2).strip(), len(md.group(1)), number, number))
+            # Strip whitespace, then one closing-hash run, then the
+            # whitespace preceding it -- the same shape the regex's old
+            # `\s*#*\s*$` tail matched, so `## Title ##` and `## Title`
+            # both yield "Title" while an interior `#` survives.
+            title = md.group(2).strip().rstrip("#").rstrip()
+            found.append(Section(title, len(md.group(1)), number, number))
             continue
         tex = _TEX_HEADING.match(line)
         if tex:
@@ -771,12 +795,12 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
 """
 
 _TEMPLATES = {
-    "evidence.md": _EVIDENCE_TEMPLATE,
-    "rejected.md": _REJECTED_TEMPLATE,
-    "sections.md": _SECTIONS_TEMPLATE,
-    "steering.md": _STEERING_TEMPLATE,
-    "revisions.md": _REVISIONS_TEMPLATE,
-    "retrieval.md": _RETRIEVAL_TEMPLATE,
+    EVIDENCE_MD: _EVIDENCE_TEMPLATE,
+    REJECTED_MD: _REJECTED_TEMPLATE,
+    SECTIONS_MD: _SECTIONS_TEMPLATE,
+    STEERING_MD: _STEERING_TEMPLATE,
+    REVISIONS_MD: _REVISIONS_TEMPLATE,
+    RETRIEVAL_MD: _RETRIEVAL_TEMPLATE,
 }
 
 
@@ -843,7 +867,7 @@ def log_retrieval(
     """
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)
-    path = target / "retrieval.md"
+    path = target / RETRIEVAL_MD
     safe_query = " ".join(query.split()).replace("|", "\\|")
     row = f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | {chars} |\n"
     with path.open("a", encoding="utf-8") as handle:
@@ -880,7 +904,7 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     """
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)
-    path = target / "retrieval.md"
+    path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
     row = f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 |\n"
     with path.open("a", encoding="utf-8") as handle:
@@ -898,7 +922,7 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
     six cells like any other. Advisory like every other read here: a
     hand-edited row that doesn't parse is skipped rather than raising.
     """
-    path = dossier / "retrieval.md"
+    path = dossier / RETRIEVAL_MD
     if not path.is_file():
         return []
     rows: list[list[str]] = []
@@ -1031,7 +1055,7 @@ def init(draft: Path, genre: str) -> list[Path]:
     written: list[Path] = []
     contents = {
         "README.md": _readme(draft_name(draft), draft, genre),
-        "scope.md": _scope(draft, genre, corpus),
+        SCOPE_MD: _scope(draft, genre, corpus),
         **_TEMPLATES,
     }
     for name, body in contents.items():
@@ -1816,8 +1840,8 @@ def _cmd_status(args: argparse.Namespace) -> int:
             print(f"  {entry.name:<14}{entry.entries} entr{'y' if entry.entries == 1 else 'ies'}")
 
     if report.retrieval_calls:
-        kept = next((f.entries for f in report.files if f.name == "evidence.md"), 0)
-        rejected = next((f.entries for f in report.files if f.name == "rejected.md"), 0)
+        kept = next((f.entries for f in report.files if f.name == EVIDENCE_MD), 0)
+        rejected = next((f.entries for f in report.files if f.name == REJECTED_MD), 0)
         print(f"\nRetrieval: {report.retrieval_calls} call(s) returned "
               f"{report.retrieval_chars:,} characters")
         if kept or rejected:
@@ -1919,7 +1943,7 @@ def _sections_citekeys(draft: Path, text: str, write: bool) -> int:
 
     table = sections_markdown(text)
     if write:
-        target = dossier_dir(draft) / "sections.md"
+        target = dossier_dir(draft) / SECTIONS_MD
         if not target.parent.is_dir():
             print(
                 f"No dossier for {draft_relpath(draft)} -- run `init` first.",

@@ -178,7 +178,7 @@ def terminate_workers(executor) -> None:
     for process in processes:
         try:
             process.terminate()
-        except Exception:  # noqa: BLE001 -- already exited, or already reaped
+        except Exception:  # noqa: BLE001  # already exited, or already reaped
             pass
     # SIGTERM is a request, and a worker sitting in onnxruntime or torch
     # native code does not necessarily honour it promptly -- measured 21
@@ -465,7 +465,7 @@ def cuda_is_initialised() -> bool:
         return False
     try:
         return bool(torch.cuda.is_initialized())
-    except Exception:  # noqa: BLE001 -- can't tell, so assume the worst
+    except Exception:  # noqa: BLE001  # can't tell, so assume the worst
         return True
 
 
@@ -672,6 +672,9 @@ def drop_stdlib_shadowing_path_entries() -> list[str]:
     something has installed a top-level `typing` backport into it.
     """
     removed = []
+    # `list()` is a copy, not a cast: the loop body removes entries from
+    # sys.path, and mutating the list being iterated skips the element
+    # after each removal.
     for entry in list(sys.path):
         if not entry:
             continue

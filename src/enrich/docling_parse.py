@@ -605,7 +605,7 @@ def parse_one(job: tuple) -> tuple:
     try:
         out_path = parse_doc(doc, cache={}, converter=_worker_converter(threads))
         return doc.citekey, f"ok: {out_path}", _fingerprint(doc)
-    except Exception as exc:  # noqa: BLE001 -- report per-doc, don't abort the batch
+    except Exception as exc:  # noqa: BLE001  # report per-doc, don't abort the batch
         return doc.citekey, f"error: {exc}", None
 
 
@@ -698,7 +698,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
             try:
                 out_path = parse_doc(doc, cache=cache, converter=converter)
                 status[doc.citekey] = f"ok: {out_path}"
-            except Exception as exc:  # noqa: BLE001 -- report per-doc, don't abort the batch
+            except Exception as exc:  # noqa: BLE001  # report per-doc, don't abort the batch
                 status[doc.citekey] = f"error: {exc}"
     _save_cache(cache)
     return status
