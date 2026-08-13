@@ -30,6 +30,7 @@ registered module is caught by C1 on its functions, and by review.
 """
 
 import ast
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +51,7 @@ MAX_CODE_LINES = 250
 STATEMENT_ROOTS = ("src", "scripts", "tests")
 CODE_LINE_ROOTS = ("src", "scripts")
 
-# Every offender as of 5.5.1, frozen. Ordered worst-first, with today's
+# Every offender as of 5.6.1, frozen. Ordered worst-first, with today's
 # count in a trailing comment so the size of each debt is visible without
 # running anything. The two worth taking first are src/sync.py::run (117
 # statements, 4.7x the next worst function in the repository) and
@@ -63,8 +64,8 @@ LEGACY_LONG_FUNCTIONS = {
     "src/dossier.py::main",  # 42
     "src/enrich/docling_parse.py::parse_corpus",  # 41
     "src/enrich/embed_index.py::build_index",  # 40
+    "src/review/verbatim_check.py::scan_findings",  # 39
     "src/review/citation_provenance.py::render_markdown",  # 38
-    "src/review/verbatim_check.py::scan_findings",  # 38
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/references.py::format_entry",  # 35
     "src/dossier.py::_cmd_brief",  # 34
@@ -89,11 +90,11 @@ LEGACY_LONG_FUNCTIONS = {
 LEGACY_LONG_FILES = {
     "src/dossier.py",  # 1605
     "src/pdf_text.py",  # 1001
-    "src/review/verbatim_check.py",  # 749
+    "src/review/verbatim_check.py",  # 759
     "src/enrich/docling_parse.py",  # 504
     "src/render_output.py",  # 452
     "src/sync.py",  # 443
-    "src/overlap_index.py",  # 394
+    "src/overlap_index.py",  # 412
     "src/review/citation_provenance.py",  # 379
     "src/ledger.py",  # 359
     "src/retrieval.py",  # 358
@@ -311,6 +312,51 @@ def test_the_registers_name_only_paths_that_still_exist():
     paths = {name.split("::")[0] for name in LEGACY_LONG_FUNCTIONS} | LEGACY_LONG_FILES
     missing = sorted(name for name in paths if not (REPO_ROOT / name).exists())
     assert not missing, f"register entries for files that no longer exist: {missing}"
+
+
+def _recorded_counts():
+    """`{register entry: the count in its trailing comment}`.
+
+    Read out of this file's own source rather than kept as a second data
+    structure, because the comment is what a reader sees when deciding
+    which debt to take first -- so the comment is the thing that has to be
+    true.
+    """
+    pattern = re.compile(r'^\s+"([^"]+)",\s+#\s+(\d+)\s*$')
+    recorded = {}
+    for line in Path(__file__).read_text(encoding="utf-8").splitlines():
+        match = pattern.match(line)
+        if match:
+            recorded[match.group(1)] = int(match.group(2))
+    return recorded
+
+
+def test_every_registered_offender_records_its_current_count():
+    """The registers cannot drift; the numbers written beside them can.
+
+    They already did. A merge that changed `verbatim_check.py` left three
+    of these comments describing the previous release's code, and nothing
+    noticed -- the entries were still offenders, so both ratchet tests
+    stayed green. Since the whole point of the trailing count is to show
+    how large each debt is, a stale one is worse than none.
+    """
+    counts = long_functions(STATEMENT_ROOTS) | long_files(CODE_LINE_ROOTS)
+    recorded = _recorded_counts()
+    assert set(recorded) == set(counts), (
+        "the register comments and the registers themselves disagree about "
+        "which entries exist"
+    )
+    drifted = {
+        name: (was, counts[name])
+        for name, was in recorded.items()
+        if was != counts[name]
+    }
+    assert not drifted, (
+        "register entries whose recorded count is stale (recorded -> actual):"
+        + "".join(f"\n  {n}: {w} -> {a}" for n, (w, a) in sorted(drifted.items()))
+        + "\n\nUpdate the trailing comment to the current number. Ordering in the "
+        "register is worst-first, so check whether the entry also needs moving."
+    )
 
 
 def test_the_registers_are_the_size_this_document_says():
