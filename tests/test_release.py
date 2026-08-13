@@ -31,6 +31,7 @@ def make_repo(tmp_path):
     (repo / ".github" / "workflows").mkdir(parents=True)
     (repo / ".github" / "workflows" / "ci.yml").write_text("name: ci")
     (repo / ".gitignore").write_text("content/parsed/\n")
+    (repo / "sonar-project.properties").write_text("sonar.projectKey=x\n")
     (repo / "AGENTS.md").write_text("agent guidance")
     (repo / "DEVELOPER-AGENTS.md").write_text("agent guidance for developing this repo")
     (repo / "SOUL.md").write_text("why this exists")
@@ -75,6 +76,13 @@ class TestTrackedFiles:
         paths = release.tracked_files()
         assert not any(p.startswith(".github/") for p in paths)
         assert ".gitignore" not in paths
+
+    def test_excludes_sonar_project_properties(self, repo):
+        # Root-level CI config, excluded for the same reason .github/ is:
+        # it does something only in a git checkout of *this* repo, and it
+        # names this repo's Sonar project key specifically.
+        paths = release.tracked_files()
+        assert "sonar-project.properties" not in paths
 
     def test_ships_all_three_agent_guidance_files(self, repo):
         # All three ship. .claude/ and its genre skills ship too, and they
