@@ -842,7 +842,7 @@ def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
     (`_tokenize_draft`: masked, citation markers blanked, lowercased,
     punctuation dropped), not a character offset and not a line number.
     Neither it nor `fragment`/`context` -- which are that same stream,
-    space-joined -- can be seeked to or matched in the draft file as
+    space-joined -- can be located or matched in the draft file as
     written. Those three locate a run for a *reader*.
 
     `line`, `char_start`, `char_end` and `draft_text` locate it for an

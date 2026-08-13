@@ -239,7 +239,7 @@ decides whether each repair may be kept.
 
 **The scan payload locates a finding for an editor, not just a reader.**
 `start`/`fragment`/`context` describe the normalised word stream, which
-cannot be seeked to in the file. Alongside them each finding carries
+cannot be located in the file by position. Alongside them each finding carries
 `line`, `char_start`, `char_end` and `draft_text` -- the passage exactly
 as written, citation markers and line breaks included -- plus `id`, a
 digest of `(citekey, page, fragment)`. `id` is deliberately
