@@ -162,7 +162,10 @@ rejected.
 **Quotation** -- only for a `long` run, and only when the human chose it:
 
 - Wrap the passage in quote marks and anchor the citation to the
-  finding's own `page`: `[@citekey, p. 12]`.
+  finding's own page: `[@citekey, p. 12]`, or `[@citekey, pp. 12-13]`
+  when `end_page` is greater than `page` -- a quotation lifted from a run
+  spanning a source page break (#131) is misattributed if the citation
+  names only where it starts.
 - Check the source can actually be quoted first. `src/passages.py` gives
   a page-level passage no text at all when the source was parsed by
   `pdftotext -layout`, because an excerpt cut from a two-column paper is

@@ -252,8 +252,11 @@ as `resolved`, `persisting` or `new`, plus the change in the count of
 is both quoted and cited is excluded from that count, or converting a
 lift into a properly attributed quotation would score as no improvement.
 It refuses a baseline it cannot compare against: another aid's payload,
-one written under `--limit` (truncation makes "absent" ambiguous), or one
-predating the `id` field.
+one written under `--limit` (truncation makes "absent" ambiguous), one
+missing a field the comparison prints (`id` or a locator, or `end_page`
+from a build before #131), one from a different release series (what
+counts as one finding can change between them), or one that is
+unreadable or not JSON.
 
 **What may be repaired without asking is decided by the buckets above,
 not by the model.** A `short` run is reworded unattended; a `long` one

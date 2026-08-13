@@ -1068,13 +1068,13 @@ def load_baseline(path):
       finding's `id` (`finding_id`'s `page` argument) even though nothing
       in the draft or the source moved -- so a cross-series comparison
       could report a repair that never happened.
+    - unreadable or not JSON at all.
 
     The last two overlap but neither covers the other: a payload can be
     the right shape and mean something different (same series check), or
     claim this series and still be missing a field (the shape check --
     which is what a build taken between `id` landing and #131's
     `end_page` produces).
-    - unreadable or not JSON at all.
     """
     try:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
