@@ -225,7 +225,7 @@ into its wording, and a revision that moved a claim between sections can
 strand borrowed phrasing in a paragraph that no longer cites anything. A
 review aid, not a gate: it exits 0 either way and cannot block the draft.
 Say what it misses when you offer it -- it sees verbatim and
-near-verbatim reuse only, and **paraphrase is not detected**, so a clean
+near-verbatim reuse only, and **genuine restatement is not detected**, so a clean
 scan is not a clean bill of health (`docs/PLAGIARISM.md`).
 If the user wants the finding kept, add `--write`: the report
 goes to `content/review/`, mirroring the draft's path, beside any

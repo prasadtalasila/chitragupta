@@ -60,16 +60,17 @@ import shlex
 import subprocess
 import sys
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import citation_gate, config, overlap_index, references, review
+from src import citation_gate, config, overlap_index, overlap_skipgram, references, review
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
 
 
-def bib_entry(citekey):
+def bib_entry(citekey: str) -> str:
     if not BIB.exists():
         # papers/bibliography.bib is gitignored, per-host data (see
         # AGENTS.md) -- absent on a fresh clone/CI checkout until someone
@@ -96,7 +97,7 @@ def bib_entry(citekey):
     return text[m.start():]  # unbalanced braces: hand back what we have
 
 
-def pdf_path(citekey):
+def pdf_path(citekey: str) -> Path | None:
     """The `file` field's attachment format is `Desc:path:mimetype`,
     `;`-separated per attachment -- the same shape src.bib_reader
     parses, and it must be split the same way here.
@@ -134,7 +135,7 @@ def pdf_path(citekey):
     return None
 
 
-def pages(citekey):
+def pages(citekey: str) -> list[str]:
     """Return list of page texts, 1-indexed by position+1 (PDF page order)."""
     p = pdf_path(citekey)
     if p is None:
@@ -156,11 +157,11 @@ def pages(citekey):
 WORD = re.compile(r"[a-z0-9]+")
 
 
-def norm(text):
+def norm(text: str) -> list[str]:
     return WORD.findall(text.lower())
 
 
-def sentences_citing(draft, citekey):
+def sentences_citing(draft: str | Path, citekey: str) -> list[str]:
     """Whole paragraphs mentioning the citekey, not just the citing sentence.
 
     Paraphrased-but-uncited sentences sitting next to a citation are
@@ -172,7 +173,31 @@ def sentences_citing(draft, citekey):
     return [re.sub(r"\s+", " ", p) for p in paras if citekey in p]
 
 
-def cmd_overlap(draft, citekey, n=8):
+def _gram_hit_runs(
+    draft_hashes: list[int], grams: dict[int, int]
+) -> list[list[tuple[int, int]]]:
+    """Consecutive-index runs of `draft_hashes` entries present in `grams`,
+    as `[(index, posting), ...]` runs -- broken wherever a hash is absent.
+
+    Extracted out of `cmd_overlap` so the run-grouping loop's own nested
+    branching does not also count against that function's complexity --
+    it is a self-contained grouping step with no other caller.
+    """
+    run: list[tuple[int, int]] = []
+    runs: list[list[tuple[int, int]]] = []
+    for j, gh in enumerate(draft_hashes):
+        if gh in grams:
+            run.append((j, grams[gh]))
+        else:
+            if run:
+                runs.append(run)
+            run = []
+    if run:
+        runs.append(run)
+    return runs
+
+
+def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
     """Verbatim word-n-gram overlap between `draft`'s paragraphs citing
     `citekey` and that source's corpus-layer parsed text (src/ledger.py's
     `parsed_path`) -- fingerprinted and cached by src/overlap_index.py, so
@@ -196,17 +221,7 @@ def cmd_overlap(draft, citekey, n=8):
     for s in sentences_citing(draft, citekey):
         w = norm(re.sub(r"\[@[^\]]+\]", "", s))
         draft_hashes = overlap_index.gram_hashes(w, n)
-        run, runs = [], []
-        for j, gh in enumerate(draft_hashes):
-            if gh in grams:
-                run.append((j, grams[gh]))
-            else:
-                if run:
-                    runs.append(run)
-                run = []
-        if run:
-            runs.append(run)
-        for r in runs:
+        for r in _gram_hit_runs(draft_hashes, grams):
             start = r[0][0]
             length = r[-1][0] + n - start
             hits.append((length, r[0][1], " ".join(w[start:start + length]), s[:80]))
@@ -236,7 +251,7 @@ def cmd_overlap(draft, citekey, n=8):
 _QUOTE_SPAN_RE = re.compile(r'["“]([^"”]{2,})["”]')
 
 
-def _quote_char_spans(text):
+def _quote_char_spans(text: str) -> list[tuple[int, int]]:
     spans = [(m.start(), m.end()) for m in _QUOTE_SPAN_RE.finditer(text)]
     pos = 0
     for line in text.splitlines(keepends=True):
@@ -246,11 +261,11 @@ def _quote_char_spans(text):
     return spans
 
 
-def _char_in_spans(pos, spans):
+def _char_in_spans(pos: int, spans: list[tuple[int, int]]) -> bool:
     return any(start <= pos < end for start, end in spans)
 
 
-def _mask_for_scan(text):
+def _mask_for_scan(text: str) -> str:
     """Code-fence/inline-code and References-section blanking, sharing
     the corpus's own masking discipline rather than reinventing it:
     `citation_gate._blank_code` is what keeps a Python `@dataclass` or a
@@ -292,7 +307,7 @@ _PARA_SPLIT_RE = re.compile(r"\n\s*\n")
 _CITE_MARKER_RE = re.compile(r"\[@[^\]]+\]")
 
 
-def _paragraphs(text):
+def _paragraphs(text: str) -> list[tuple[int, str]]:
     """`(offset, paragraph)` for each paragraph of `text`, splitting where
     `re.split(r"\\n\\s*\\n", text)` splits and keeping the offset that
     split throws away.
@@ -311,7 +326,7 @@ def _paragraphs(text):
     return out
 
 
-def _lower_offsets(text):
+def _lower_offsets(text: str) -> tuple[str, list[int] | None]:
     """`text.lower()`, plus -- when lowercasing moved anything -- the
     index in `text` of every character of that result.
 
@@ -347,15 +362,15 @@ def _lower_offsets(text):
     return "".join(parts), offsets
 
 
-def _original_index(offsets, i):
+def _original_index(offsets: list[int] | None, i: int) -> int:
     return i if offsets is None else offsets[i]
 
 
-def _blank_span(m):
+def _blank_span(m: re.Match) -> str:
     return re.sub(r"[^\n]", " ", m.group(0))
 
 
-def _tokenize_draft(text):
+def _tokenize_draft(text: str) -> tuple[list[_DraftWord], list[set[str]]]:
     """Every word of `text` (masked, citation markers blanked) as a flat
     list across the whole draft, plus which citekeys each paragraph
     cites. Each word carries where it sits in `text` itself.
@@ -394,7 +409,7 @@ def _tokenize_draft(text):
     return words, paragraph_citekeys
 
 
-def _merge_runs(positions, gap, n):
+def _merge_runs(positions: list[int], gap: int, n: int) -> list[list[int]]:
     """Sorted draft word-positions on one diagonal -> maximal runs,
     merging two anchors separated by at most `gap` non-matching *words*.
 
@@ -420,6 +435,45 @@ def _merge_runs(positions, gap, n):
     return runs
 
 
+def _merge_spans(
+    spans: list[tuple[int, int, int]], gap: int
+) -> list[tuple[int, int, list[tuple[int, int, int]]]]:
+    """The tier-2 analogue of `_merge_runs`: `spans` is `(start, end,
+    page)` triples on one diagonal, merged into maximal runs tolerating
+    up to `gap` non-covered original positions between one span's end
+    and the next's start.
+
+    A separate function, not `_merge_runs` reused, because a skip-gram
+    window's width in original draft positions is not fixed the way
+    tier 1's `n`-word anchors are -- it varies with how many stopwords
+    and opposite-family words it happens to skip -- so there is no
+    single `n` to subtract the way `_merge_runs`' gap arithmetic needs.
+    Comparing `start - previous_end` directly needs no such constant:
+    the two spans already carry their own extents.
+
+    Returns `(start, end, members)` triples, `members` the `(start,
+    end, page)` triples that merged into this run -- kept rather than
+    collapsed, so `_skipgram_tier_findings` can recover exactly which
+    original positions were the subject of an actual skip-gram match,
+    not merely inside the merged span (its `matched_words`).
+    """
+    ordered = sorted(spans)
+    runs = [[ordered[0]]]
+    run_end = ordered[0][1]
+    for item in ordered[1:]:
+        start, end, _page = item
+        if start - run_end <= gap:
+            runs[-1].append(item)
+            run_end = max(run_end, end)
+        else:
+            runs.append([item])
+            run_end = end
+    return [
+        (min(m[0] for m in run), max(m[1] for m in run), run)
+        for run in runs
+    ]
+
+
 # ---------------------------------------------------------------------
 # allowlist: per-host boilerplate (acronyms, fixed phrasing, defined
 # terms, whole paragraphs) this draft's owner has decided `scan` should
@@ -430,7 +484,7 @@ def _merge_runs(positions, gap, n):
 _ALLOWLIST_KEYS = ("acronyms", "phrases", "definitions", "paragraphs")
 
 
-def _load_allowlist_phrases():
+def _load_allowlist_phrases() -> list[tuple[str, ...]]:
     """Every phrase across the allowlist file's four categories,
     normalized into word tuples via `norm()` -- the same tokenization
     `scan` itself uses on the draft, so a phrase matches regardless of
@@ -480,7 +534,9 @@ def _load_allowlist_phrases():
     return [words for words in normalized if words]
 
 
-def _mask_allowlisted(span_word_strs, allowlist_tuples):
+def _mask_allowlisted(
+    span_word_strs: list[str], allowlist_tuples: list[tuple[str, ...]]
+) -> list[bool]:
     """Boolean mask, one entry per word in `span_word_strs`, True where
     that position is covered by a contiguous occurrence of any
     allowlisted phrase.
@@ -503,7 +559,41 @@ def _mask_allowlisted(span_word_strs, allowlist_tuples):
     return masked
 
 
-def _newline_offsets(text):
+def _mask_allowlisted_stemmed(
+    span_word_strs: list[str], allowlist_tuples: list[tuple[str, ...]]
+) -> list[bool]:
+    """Tier-2 analogue of `_mask_allowlisted`: an allowlisted phrase is
+    matched after the same stem-and-drop-stopwords reduction
+    `overlap_skipgram` applies before hashing, not against
+    `span_word_strs`' literal wording -- a tier-2 finding is itself only
+    a stemmed, skip-gram-level match, so a literal-text allowlist check
+    would almost never fire on it, defeating the point of allowlisting
+    against a tier built to tolerate a synonym swap in the first place.
+
+    The mask is still indexed by `span_word_strs`' own (original,
+    unstemmed) positions: a stemmed-phrase match spanning reduced
+    positions p..q masks every *original* position from the first
+    matched reduced token's index to the last's, inclusive -- the same
+    "the whole matched stretch counts, stopwords and all" convention
+    `_mask_allowlisted` uses for tier 1.
+    """
+    span_stems, span_positions = overlap_skipgram.stem_filter(span_word_strs)
+    masked = [False] * len(span_word_strs)
+    m = len(span_stems)
+    for phrase in allowlist_tuples:
+        stems, _ = overlap_skipgram.stem_filter(list(phrase))
+        length = len(stems)
+        if length == 0 or length > m:
+            continue
+        for i in range(m - length + 1):
+            if tuple(span_stems[i:i + length]) == tuple(stems):
+                first, last = span_positions[i], span_positions[i + length - 1]
+                for j in range(first, last + 1):
+                    masked[j] = True
+    return masked
+
+
+def _newline_offsets(text: str) -> list[int]:
     """Every newline's index in `text`, ascending -- one sweep, reused by
     every finding.
 
@@ -516,7 +606,7 @@ def _newline_offsets(text):
     return [m.start() for m in re.finditer("\n", text)]
 
 
-def _line_at(newlines, pos):
+def _line_at(newlines: list[int], pos: int) -> int:
     """The 1-based line `pos` falls on, given `_newline_offsets`.
 
     `bisect_left`, so a newline character counts as ending the line it
@@ -526,7 +616,7 @@ def _line_at(newlines, pos):
     return bisect.bisect_left(newlines, pos) + 1
 
 
-def finding_id(citekey, page, fragment):
+def finding_id(citekey: str, page: int, fragment: str) -> str:
     """A finding's name, stable across runs and across edits elsewhere in
     the draft. `page` is the run's start page (`scan_findings` passes
     `min(run_pages)`, not `end_page`) -- a run that merges differently on
@@ -548,29 +638,75 @@ def finding_id(citekey, page, fragment):
     return digest.hexdigest()[:12]
 
 
-def scan_findings(draft, min_run=None, gap=1, limit=None):
-    """Slide `draft`'s whole normalized text across the corpus-wide index,
-    grouping matches by `(citekey, diagonal)` and merging each group into
-    maximal same-diagonal runs (see `_merge_runs`). Returns `(findings,
-    min_run, suppressed)`, `findings` longest run first; `suppressed` is
-    how many runs the allowlist (see `_load_allowlist_phrases`) dropped.
-    This function never raises for "nothing found" and returns an empty
-    list in that case -- this is a review aid, not a gate, and it is not
-    wired into anything that treats a nonzero exit as a failure. It does
-    raise `ValueError` for a request it cannot honor at all -- `min_run`
-    below the corpus index's own n-gram size (see below), or a malformed
-    allowlist file -- that is not "no findings", it is "this input can't
-    be scanned as asked", and the `scan` CLI (below) turns it into the
-    same stderr-plus-exit-2 usage error as its other malformed
-    invocations, e.g. `--gap` with no value.
+def _citekeys_at_positions(
+    groups: dict[tuple[str, int], dict[int, int]]
+) -> dict[int, set[str]]:
+    """Draft position -> every citekey with a posting there, across
+    *every* `(citekey, diagonal)` group a tier produced -- not just the
+    one a given finding is reported against. Built once per tier and
+    handed to `_cites_source`, below.
+    """
+    at_position = {}
+    for (citekey, _diagonal), pos_pages in groups.items():
+        for j in pos_pages:
+            at_position.setdefault(j, set()).add(citekey)
+    return at_position
 
-    A finding is dropped, not just flagged, when the allowlist accounts
-    for enough of it that what's left would not itself have cleared
-    `min_run` -- e.g. a run that is entirely one allowlisted standard's
-    name. A run that merely *contains* a short allowlisted phrase inside
-    a much longer otherwise-unexplained lift is kept: suppressing the
-    whole thing would hide the real overlap the allowlist was never
-    meant to excuse.
+
+def _cites_source(
+    start: int,
+    end: int,
+    run_paragraphs: set[int],
+    paragraph_citekeys: list[set[str]],
+    citekeys_at_position: dict[int, set[str]],
+) -> bool:
+    """Whether a paragraph this run crosses cites *any* citekey that
+    matches somewhere in `[start, end)` -- not only the one citekey this
+    particular finding happens to be grouped under.
+
+    A definition several corpus papers reproduce verbatim can be cited
+    to any one of them: the paragraph that quotes and cites paper A is
+    correctly attributed even though `scan` also finds the same span
+    matching papers B through N, which the paragraph never mentions.
+    Checking only "does this citekey appear in the paragraph" reported
+    the other N-1 matches as `UNCITED SOURCE` regardless -- including a
+    correctly quoted, correctly credited block quote, which then never
+    reached the `quoted`-and-cited exemption `_bucket` gives an
+    attributed quotation, because that exemption also keyed off this
+    same single-citekey check (docs/PLAGIARISM.md's Kritzinger case,
+    surfaced by PR #162's benchmark: a taxonomy quoted and cited to
+    `kritzinger_digital_2018` also matches `barbie_toward_2024`, which
+    reproduces the same taxonomy and is never mentioned in the
+    paragraph -- correct scholarship, misreported as uncited).
+
+    Paragraphs *plural*, and positions *plural*: a run can cross a
+    paragraph break (the flat word stream `_tokenize_draft` produces),
+    and different words within one run can each match a different set
+    of other-citekey postings, so both dimensions have to be unioned
+    before checking for overlap with what any of those paragraphs cite.
+    """
+    span_citekeys = set()
+    for j in range(start, end):
+        span_citekeys |= citekeys_at_position.get(j, set())
+    return any(span_citekeys & paragraph_citekeys[p] for p in run_paragraphs)
+
+
+def _exact_tier_findings(
+    words: list[_DraftWord],
+    word_strs: list[str],
+    paragraph_citekeys: list[set[str]],
+    newlines: list[int],
+    text: str,
+    min_run: int,
+    gap: int,
+    allowlist: list[tuple[str, ...]],
+) -> tuple[list[dict], int]:
+    """Tier 1: exact contiguous n-gram matches against the corpus-wide
+    index (`overlap_index.py`). One of possibly several tier finders
+    `scan_findings` unions together -- see that function's docstring for
+    the shared contract every tier finder follows: same finding-dict
+    shape (`tier` naming which one produced it), same `(findings,
+    suppressed)` return.
 
     A run can span a page break in the source: `src/overlap_index.py`'s
     `token_position` is a global offset into the document (#131), not
@@ -581,9 +717,6 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     page` for one that straddles a break -- rather than picking one side
     and losing the other.
     """
-    if min_run is None:
-        min_run = overlap_index.DEFAULT_N
-
     index = overlap_index.build_corpus_index()
     if min_run < index.n:
         raise ValueError(
@@ -594,10 +727,6 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
             "really what's needed."
         )
 
-    text = Path(draft).read_text(encoding="utf-8")
-    words, paragraph_citekeys = _tokenize_draft(text)
-    word_strs = [w.text for w in words]
-    newlines = _newline_offsets(text)
     n = index.n
     draft_hashes = overlap_index.gram_hashes(word_strs, n)
 
@@ -619,8 +748,31 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
         for citekey, page, src_pos in overlap_index.postings_for_gram(index, gh):
             groups.setdefault((citekey, src_pos - j), {})[j] = page
 
-    allowlist = _load_allowlist_phrases()
+    citekeys_at_position = _citekeys_at_positions(groups)
+    return _exact_findings_from_groups(
+        groups, gap, n, min_run, allowlist, words, word_strs,
+        newlines, text, paragraph_citekeys, citekeys_at_position,
+    )
 
+
+def _exact_findings_from_groups(
+    groups: dict[tuple[str, int], dict[int, int]],
+    gap: int,
+    n: int,
+    min_run: int,
+    allowlist: list[tuple[str, ...]],
+    words: list[_DraftWord],
+    word_strs: list[str],
+    newlines: list[int],
+    text: str,
+    paragraph_citekeys: list[set[str]],
+    citekeys_at_position: dict[int, set[str]],
+) -> tuple[list[dict], int]:
+    """Merge each `(citekey, diagonal)` group's positions into runs, drop
+    anything the allowlist or `min_run` rules out, and build a finding for
+    what's left. Extracted out of `_exact_tier_findings` so this loop's
+    own nesting does not also count against that function's complexity.
+    """
     findings = []
     suppressed = 0
     for (citekey, _diagonal), pos_pages in groups.items():
@@ -634,47 +786,327 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
                 if span_words - sum(mask) < min_run:
                     suppressed += 1
                     continue
-            matched_words = len({idx for p in run for idx in range(p, p + n)})
-            run_words = words[start:end]
-            char_start, char_end = run_words[0].char, run_words[-1].char_end
-            fragment = " ".join(word_strs[start:end])
-            # Paragraphs *plural*: _tokenize_draft's word stream is flat
-            # (module note above), so a run can cross a paragraph break --
-            # checking only the start word's paragraph would call a run
-            # "uncited" when it actually runs on into a paragraph that
-            # does cite this source, or vice versa.
-            run_paragraphs = {w.paragraph for w in run_words}
-            cites_source = any(citekey in paragraph_citekeys[p] for p in run_paragraphs)
-            run_pages = [pos_pages[p] for p in run]
-            # Hoisted out of the dict rather than inlined as #131 wrote
-            # it: `finding_id` needs the same start page the payload
-            # reports, and computing `min(run_pages)` twice is how those
-            # two quietly stop agreeing.
-            page = min(run_pages)
-            findings.append({
-                "id": finding_id(citekey, page, fragment),
-                "citekey": citekey,
-                "page": page,
-                "end_page": max(run_pages),
-                "span_words": span_words,
-                "matched_words": matched_words,
-                "start": start,
-                # 1-based, counted in the original text: the only one of
-                # these four a person reads directly.
-                "line": _line_at(newlines, char_start),
-                "char_start": char_start,
-                "char_end": char_end,
-                "draft_text": text[char_start:char_end],
-                "fragment": fragment,
-                "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
-                "cites_source": cites_source,
-                # `all`, not `any`: "sits inside quote delimiters" means
-                # the whole run is inside the quote, not merely that one
-                # word of it happens to be near/inside an unrelated
-                # quoted phrase.
-                "quoted": all(w.quoted for w in run_words),
-                "tier": "exact",
-            })
+            findings.append(_exact_finding(
+                run, citekey, pos_pages, span_words, n, words, word_strs,
+                newlines, text, paragraph_citekeys, citekeys_at_position,
+            ))
+    return findings, suppressed
+
+
+def _exact_finding(
+    run: list[int],
+    citekey: str,
+    pos_pages: dict[int, int],
+    span_words: int,
+    n: int,
+    words: list[_DraftWord],
+    word_strs: list[str],
+    newlines: list[int],
+    text: str,
+    paragraph_citekeys: list[set[str]],
+    citekeys_at_position: dict[int, set[str]],
+) -> dict:
+    """The finding dict for one merged exact-tier `run`.
+
+    Extracted out of `_exact_tier_findings` so its own comprehensions
+    (each already nested inside that function's double loop) do not also
+    count against that function's cognitive complexity -- this is a pure
+    one-run-in, one-dict-out step with no other caller.
+    """
+    start, end = run[0], run[-1] + n
+    matched_words = len({idx for p in run for idx in range(p, p + n)})
+    run_words = words[start:end]
+    char_start, char_end = run_words[0].char, run_words[-1].char_end
+    fragment = " ".join(word_strs[start:end])
+    run_paragraphs = {w.paragraph for w in run_words}
+    cites_source = _cites_source(
+        start, end, run_paragraphs, paragraph_citekeys, citekeys_at_position
+    )
+    run_pages = [pos_pages[p] for p in run]
+    # Hoisted out of the dict rather than inlined as #131 wrote
+    # it: `finding_id` needs the same start page the payload
+    # reports, and computing `min(run_pages)` twice is how those
+    # two quietly stop agreeing.
+    page = min(run_pages)
+    return {
+        "id": finding_id(citekey, page, fragment),
+        "citekey": citekey,
+        "page": page,
+        "end_page": max(run_pages),
+        "span_words": span_words,
+        "matched_words": matched_words,
+        "start": start,
+        # 1-based, counted in the original text: the only one of
+        # these four a person reads directly.
+        "line": _line_at(newlines, char_start),
+        "char_start": char_start,
+        "char_end": char_end,
+        "draft_text": text[char_start:char_end],
+        "fragment": fragment,
+        "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
+        "cites_source": cites_source,
+        # `all`, not `any`: "sits inside quote delimiters" means
+        # the whole run is inside the quote, not merely that one
+        # word of it happens to be near/inside an unrelated
+        # quoted phrase.
+        "quoted": all(w.quoted for w in run_words),
+        "tier": "exact",
+    }
+
+
+def _skipgram_tier_findings(
+    words: list[_DraftWord],
+    word_strs: list[str],
+    paragraph_citekeys: list[set[str]],
+    newlines: list[int],
+    text: str,
+    min_run: int,
+    gap: int,
+    allowlist: list[tuple[str, ...]],
+) -> tuple[list[dict], int]:
+    """Tier 2: deterministic light-paraphrase detection via stemmed
+    skip-grams (`src/overlap_skipgram.py`, #133, the CoReMo design --
+    discussion #115, docs/PLAGIARISM.md). Same shared contract as
+    `_exact_tier_findings` -- `(citekey, diagonal)` grouping, allowlist,
+    `_cites_source` -- against `overlap_skipgram`'s own corpus-wide
+    index instead of the exact tier's.
+
+    Grouping mirrors `_exact_tier_findings`, but a posting here is a
+    whole `(start, end)` skip-gram window, not a single anchor position:
+    `diagonal` is still `src_pos - draft_start`, computed from each
+    window's own start, and `_merge_spans` (not `_merge_runs`) merges
+    same-diagonal windows, since a skip-gram window's width in original
+    positions varies rather than being fixed at `n`.
+
+    `matched_words` counts only the *family members* an actual matched
+    window touched -- same-parity, non-stopword original positions --
+    not every position `_merge_spans` merged in between, which can
+    include the other family's words and any interposed stopwords
+    (`span_words` already counts those, matching tier 1's own
+    span/matched_words split).
+
+    Advisory only: nothing here or in `overlap_skipgram.py` decides
+    gate-eligibility (a later, separate call, issue #130); this tier
+    ships now because discussion #115 says start advisory and promote
+    with evidence, not because it has been judged safe to block on.
+    """
+    index = overlap_skipgram.build_corpus_index()
+    n = index.n
+
+    groups = {}
+    for gh, start_j, end_j in overlap_skipgram.skipgram_postings(word_strs, n):
+        for citekey, page, src_pos in overlap_skipgram.postings_for_gram(index, gh):
+            groups.setdefault((citekey, src_pos - start_j), []).append((start_j, end_j, page))
+
+    citekeys_at_position = _skipgram_citekeys_at_positions(groups)
+    return _skipgram_findings_from_groups(
+        groups, gap, min_run, allowlist, words, word_strs,
+        newlines, text, paragraph_citekeys, citekeys_at_position,
+    )
+
+
+def _skipgram_findings_from_groups(
+    groups: dict[tuple[str, int], list[tuple[int, int, int]]],
+    gap: int,
+    min_run: int,
+    allowlist: list[tuple[str, ...]],
+    words: list[_DraftWord],
+    word_strs: list[str],
+    newlines: list[int],
+    text: str,
+    paragraph_citekeys: list[set[str]],
+    citekeys_at_position: dict[int, set[str]],
+) -> tuple[list[dict], int]:
+    """Merge each `(citekey, diagonal)` group's spans, drop anything the
+    allowlist or `min_run` rules out, and build a finding for what's
+    left. Extracted out of `_skipgram_tier_findings` for the same reason
+    as `_exact_findings_from_groups`.
+    """
+    findings = []
+    suppressed = 0
+    for (citekey, _diagonal), spans in groups.items():
+        for start, end, members in _merge_spans(spans, gap):
+            span_words = end - start
+            if span_words < min_run:
+                continue
+            if allowlist:
+                mask = _mask_allowlisted_stemmed(word_strs[start:end], allowlist)
+                if span_words - sum(mask) < min_run:
+                    suppressed += 1
+                    continue
+            findings.append(_skipgram_finding(
+                start, end, members, span_words, citekey, words, word_strs,
+                newlines, text, paragraph_citekeys, citekeys_at_position,
+            ))
+    return findings, suppressed
+
+
+def _skipgram_citekeys_at_positions(
+    groups: dict[tuple[str, int], list[tuple[int, int, int]]]
+) -> dict[int, set[str]]:
+    """Same purpose as `_citekeys_at_positions` (tier 1), reshaped for
+    tier 2's `(start, end, page)` span postings instead of single
+    positions: every original position some matched skip-gram window
+    covers maps to the citekeys with a matching window there.
+
+    Extracted out of `_skipgram_tier_findings` so this loop's own
+    nesting does not also count against that function's complexity.
+    """
+    citekeys_at_position = {}
+    for (citekey, _diagonal), spans in groups.items():
+        for start_j, end_j, _page in spans:
+            for j in range(start_j, end_j):
+                citekeys_at_position.setdefault(j, set()).add(citekey)
+    return citekeys_at_position
+
+
+def _skipgram_matched_positions(
+    members: list[tuple[int, int, int]], word_strs: list[str]
+) -> set[int]:
+    """Same-parity, non-stopword original positions an actual matched
+    skip-gram window touched -- the real evidence `matched_words` counts,
+    as opposed to every position `_merge_spans` merged in between (which
+    can include the other family's words and any interposed stopwords).
+
+    Extracted out of `_skipgram_tier_findings` for the same reason as
+    `_skipgram_citekeys_at_positions`.
+    """
+    matched_positions = set()
+    for m_start, m_end, _page in members:
+        parity = m_start % 2
+        for p in range(m_start, m_end):
+            if p % 2 == parity and word_strs[p] not in overlap_skipgram.STOPWORDS:
+                matched_positions.add(p)
+    return matched_positions
+
+
+def _skipgram_finding(
+    start: int,
+    end: int,
+    members: list[tuple[int, int, int]],
+    span_words: int,
+    citekey: str,
+    words: list[_DraftWord],
+    word_strs: list[str],
+    newlines: list[int],
+    text: str,
+    paragraph_citekeys: list[set[str]],
+    citekeys_at_position: dict[int, set[str]],
+) -> dict:
+    """The finding dict for one merged skip-gram-tier span. Mirrors
+    `_exact_finding`'s role for tier 1 -- extracted for the same reason.
+    """
+    matched_positions = _skipgram_matched_positions(members, word_strs)
+    run_words = words[start:end]
+    char_start, char_end = run_words[0].char, run_words[-1].char_end
+    fragment = " ".join(word_strs[start:end])
+    run_paragraphs = {w.paragraph for w in run_words}
+    cites_source = _cites_source(
+        start, end, run_paragraphs, paragraph_citekeys, citekeys_at_position
+    )
+    pages = [m[2] for m in members]
+    page = min(pages)
+    return {
+        "id": finding_id(citekey, page, fragment),
+        "citekey": citekey,
+        "page": page,
+        "end_page": max(pages),
+        "span_words": span_words,
+        "matched_words": len(matched_positions),
+        "start": start,
+        "line": _line_at(newlines, char_start),
+        "char_start": char_start,
+        "char_end": char_end,
+        "draft_text": text[char_start:char_end],
+        "fragment": fragment,
+        "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
+        "cites_source": cites_source,
+        "quoted": all(w.quoted for w in run_words),
+        "tier": "skip-gram",
+    }
+
+
+def scan_findings(
+    draft: str | Path, min_run: int | None = None, gap: int = 1, limit: int | None = None
+) -> tuple[list[dict], int, int]:
+    """Slide `draft`'s whole normalized text across every built detection
+    tier (`_exact_tier_findings`, `_skipgram_tier_findings`), each
+    grouping its own matches by `(citekey, diagonal)` and merging into
+    maximal same-diagonal runs. Returns `(findings, min_run,
+    suppressed)`: `findings` is every tier's findings unioned (minus any
+    skip-gram finding an exact-tier one already covers -- see below) and
+    sorted longest-first, each dict naming which tier produced it
+    (`"tier"`); `suppressed` is the total the allowlist (see
+    `_load_allowlist_phrases`) dropped, summed across tiers.
+
+    Every tier finder shares this function's tokenization, allowlist and
+    newline bookkeeping -- computed once here, not once per tier -- and
+    returns `(tier_findings, tier_suppressed)` in the same finding-dict
+    shape `_PAYLOAD_FIELDS` publishes; nothing downstream of this
+    function (bucketing, rendering, the JSON payload) needs to know how
+    many tiers ran or which one produced any given finding beyond
+    reading `"tier"`.
+
+    This function never raises for "nothing found" and returns an empty
+    list in that case -- this is a review aid, not a gate, and it is not
+    wired into anything that treats a nonzero exit as a failure. It does
+    raise `ValueError` for a request it cannot honor at all -- `min_run`
+    below a tier's own n-gram size, or a malformed allowlist file -- that
+    is not "no findings", it is "this input can't be scanned as asked",
+    and the `scan` CLI (below) turns it into the same stderr-plus-exit-2
+    usage error as its other malformed invocations, e.g. `--gap` with no
+    value.
+
+    A finding is dropped, not just flagged, when the allowlist accounts
+    for enough of it that what's left would not itself have cleared
+    `min_run` -- e.g. a run that is entirely one allowlisted standard's
+    name. A run that merely *contains* a short allowlisted phrase inside
+    a much longer otherwise-unexplained lift is kept: suppressing the
+    whole thing would hide the real overlap the allowlist was never
+    meant to excuse.
+    """
+    if min_run is None:
+        min_run = overlap_index.DEFAULT_N
+
+    text = Path(draft).read_text(encoding="utf-8")
+    words, paragraph_citekeys = _tokenize_draft(text)
+    word_strs = [w.text for w in words]
+    newlines = _newline_offsets(text)
+    allowlist = _load_allowlist_phrases()
+
+    exact_findings, exact_suppressed = _exact_tier_findings(
+        words, word_strs, paragraph_citekeys, newlines, text, min_run, gap, allowlist
+    )
+    skipgram_findings, skipgram_suppressed = _skipgram_tier_findings(
+        words, word_strs, paragraph_citekeys, newlines, text, min_run, gap, allowlist
+    )
+    # Pure verbatim reuse trivially satisfies skip-gram matching too --
+    # nothing in the text changed, so both families' stems line up
+    # exactly -- which means tier 2 would otherwise re-report every tier
+    # 1 finding a second time under `"tier": "skip-gram"`, adding no new
+    # information. Drop a skip-gram finding whenever an exact-tier
+    # finding for the *same citekey* already covers an overlapping span:
+    # tier 2 exists to surface what tier 1 structurally cannot, not to
+    # duplicate what it already did.
+    # Drop a skip-gram finding only when an exact finding fully CONTAINS its
+    # span -- the pure-verbatim-reuse case where tier 2 trivially re-finds
+    # what tier 1 already reported. A merely-overlapping exact finding (a
+    # short verbatim island inside a longer paraphrased passage) must not
+    # suppress the skip-gram finding: the wider paraphrase span is exactly
+    # the signal this tier exists to surface, and containment is the
+    # narrowest test that still avoids the redundant report.
+    skipgram_findings = [
+        f for f in skipgram_findings
+        if not any(
+            e["citekey"] == f["citekey"]
+            and e["start"] <= f["start"]
+            and f["start"] + f["span_words"] <= e["start"] + e["span_words"]
+            for e in exact_findings
+        )
+    ]
+
+    findings = exact_findings + skipgram_findings
+    suppressed = exact_suppressed + skipgram_suppressed
 
     # Longest run first, no silent truncation -- every finding above the
     # floor prints unless --limit narrows it, matching the issue's explicit
@@ -685,7 +1117,7 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     return findings, min_run, suppressed
 
 
-def _flags(finding):
+def _flags(finding: dict) -> list[str]:
     flags = []
     if not finding["cites_source"]:
         flags.append("UNCITED SOURCE")
@@ -694,13 +1126,13 @@ def _flags(finding):
     return flags
 
 
-def _matched_note(finding):
+def _matched_note(finding: dict) -> str:
     if finding["matched_words"] == finding["span_words"]:
         return ""
     return f", {finding['matched_words']} matched"
 
 
-def _page_range(finding):
+def _page_range(finding: dict) -> str:
     """`p.N` for an ordinary single-page run, `p.N-M` for one whose
     postings start on more than one page (#131).
 
@@ -725,7 +1157,7 @@ LONG_RUN_WORDS = 15
 BUCKET_ORDER = ("long", "short", "quoted")
 
 
-def _bucket(finding):
+def _bucket(finding: dict) -> str:
     """Which severity bucket the written report groups `finding` under.
 
     `quoted` only demotes a run to the low-priority `quoted` bucket when
@@ -734,21 +1166,30 @@ def _bucket(finding):
     one most worth reading first" (see below); burying it under `quoted`
     just because it happens to sit inside quote marks would contradict
     that. It buckets by length like any other uncited run instead.
+
+    Length is judged on `matched_words`, not `span_words`. For the exact
+    tier the two are nearly identical (`--gap` only ever interpolates a
+    handful of edited words). For the skip-gram tier they are not:
+    `span_words` is the raw width of a family window and can run to
+    dozens of words on the evidence of a handful of matched stemmed
+    content words. Bucketing on `span_words` would let a weakly-evidenced
+    skip-gram finding outrank a strongly-evidenced one solely because its
+    window happened to stretch across more stopwords.
     """
     if finding["quoted"] and finding["cites_source"]:
         return "quoted"
-    return "long" if finding["span_words"] >= LONG_RUN_WORDS else "short"
+    return "long" if finding["matched_words"] >= LONG_RUN_WORDS else "short"
 
 
-def _bucket_title(bucket):
+def _bucket_title(bucket: str) -> str:
     if bucket == "long":
-        return f"Long verbatim runs (>= {LONG_RUN_WORDS} words)"
+        return f"Long runs (>= {LONG_RUN_WORDS} matched words)"
     if bucket == "short":
-        return "Short verbatim runs"
+        return "Short runs"
     return "Quoted runs"
 
 
-def format_scan(findings, min_run, suppressed=0):
+def format_scan(findings: list[dict], min_run: int, suppressed: int = 0) -> str:
     """The plain-text form, for stdout."""
     if not findings:
         base = f"no verbatim run of >= {min_run} words found anywhere in the draft"
@@ -785,7 +1226,7 @@ _PAYLOAD_FIELDS = (
 )
 
 
-def published(finding):
+def published(finding: dict) -> dict:
     """One of `scan_findings`' working dicts as the payload publishes it:
     `_PAYLOAD_FIELDS` in order, plus the derived `severity`.
 
@@ -802,7 +1243,9 @@ def published(finding):
     }
 
 
-def scan_command(draft, min_run, gap, limit, write, as_json):
+def scan_command(
+    draft: str | Path, min_run: int, gap: int, limit: int | None, write: bool, as_json: bool
+) -> str:
     """The invocation recorded in both the Markdown report's header and
     the JSON payload's envelope, so a reader holding either file can
     regenerate it.
@@ -829,7 +1272,15 @@ def scan_command(draft, min_run, gap, limit, write, as_json):
     return shlex.join(command)
 
 
-def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
+def scan_payload(
+    draft: str | Path,
+    findings: list[dict],
+    min_run: int,
+    gap: int,
+    limit: int | None,
+    suppressed: int,
+    command: str,
+) -> dict:
     """The same findings as data: `review.envelope`'s provenance, the
     three flags that set the reporting floor, how many findings the
     allowlist suppressed, and one object per finding.
@@ -886,7 +1337,14 @@ def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
     return payload
 
 
-def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0):
+def render_scan_markdown(
+    draft: str | Path,
+    findings: list[dict],
+    min_run: int,
+    limit: int | None,
+    command: str,
+    suppressed: int = 0,
+) -> str:
     """The same findings as a Markdown report, for `--write`.
 
     Kept beside `format_scan` rather than replacing it: stdout is read in
@@ -925,10 +1383,20 @@ def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0)
         "- **quoted** -- the whole run sits inside quote delimiters, so it is",
         "  most likely a deliberate quotation.",
         "",
+        "Each finding names its `tier`: **exact** is a verbatim run; "
+        "**skip-gram**",
+        "is a tolerant stemmed-subsequence match that also catches a passage",
+        "with a handful of words substituted. A skip-gram finding's word count",
+        "is `matched words / span`: how many words the tier actually matched,",
+        "out of the raw width of text those matches span -- the two can differ",
+        "a lot, since a skip-gram window can stretch across stopwords and",
+        "opposite-family words that were not themselves matched.",
+        "",
         "Findings below are grouped most-damning-first: long runs, then short",
         "ones, then quoted runs -- but a quoted run only drops into the last",
         "group when it also cites the source it matched. A quoted run from an",
-        "uncited source is still grouped by length, not buried under `quoted`.",
+        "uncited source is still grouped by length (on matched words, not raw",
+        "span), not buried under `quoted`.",
         "",
         "The allowlist bullet above names a per-host, gitignored file",
         "(`content/verbatim_allowlist.toml`, see docs/PLAGIARISM.md) of",
@@ -937,10 +1405,12 @@ def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0)
         "would no longer clear `--min-run` on its own, so a real lift that",
         "merely contains a defined term still shows up below.",
         "",
-        "**A clean run is not a clean bill of health.** This is the exact",
-        "detection tier; the paraphrase tiers beside it are unbuilt, so this",
-        "comes up short by being silently incomplete rather than by being wrong.",
-        "See docs/PLAGIARISM.md.",
+        "**A clean run is not a clean bill of health.** This draft has been",
+        "checked against two deterministic tiers: exact runs, and skip-gram",
+        "matches tolerant of a substituted word. A genuine restatement --",
+        "reworded well past a word swap -- is invisible to both by",
+        "construction; that tier is unbuilt. A clean scan is silently",
+        "incomplete rather than wrong. See docs/PLAGIARISM.md.",
         "",
         "## Findings",
         "",
@@ -978,7 +1448,7 @@ def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0)
             flag_text = f" -- **{', '.join(flags)}**" if flags else ""
             lines += [
                 f"#### {f['span_words']} words{_matched_note(f)} -- `{f['citekey']}` "
-                f"{_page_range(f)}{flag_text}",
+                f"{_page_range(f)} (tier={f['tier']}){flag_text}",
                 "",
                 f"> {f['fragment']}",
                 "",
@@ -988,8 +1458,15 @@ def render_scan_markdown(draft, findings, min_run, limit, command, suppressed=0)
     return "\n".join(lines)
 
 
-def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
-             formats=("md", "tex", "pdf"), as_json=False):
+def cmd_scan(
+    draft: str | Path,
+    min_run: int | None = None,
+    gap: int = 1,
+    limit: int | None = None,
+    write: bool = False,
+    formats: tuple[str, ...] | list[str] = ("md", "tex", "pdf"),
+    as_json: bool = False,
+) -> None:
     """`scan`'s stdout entry point: run the scan and print it.
 
     Printing text stays the default -- the usual use is a question asked
@@ -1060,7 +1537,7 @@ _BASELINE_FIELDS = (
 )
 
 
-def _baseline_gaps(payload):
+def _baseline_gaps(payload: dict) -> list[str]:
     """Everything `recheck` needs from `payload` and cannot find, named
     for the refusal message -- empty when there is nothing missing.
 
@@ -1095,7 +1572,7 @@ def _baseline_gaps(payload):
     return gaps
 
 
-def load_baseline(path):
+def load_baseline(path: str | Path) -> dict:
     """A `scan` payload read back off disk, refused if it cannot serve as
     a comparison basis.
 
@@ -1176,7 +1653,7 @@ def load_baseline(path):
     return payload
 
 
-def _series(version):
+def _series(version: object) -> str | None:
     """A version's `major.minor`, or `None` where there is nothing to
     compare.
 
@@ -1202,7 +1679,9 @@ def _series(version):
     return ".".join(version.split(".")[:2])
 
 
-def recheck_findings(draft, baseline):
+def recheck_findings(
+    draft: str | Path, baseline: dict
+) -> tuple[list[dict], list[dict], list[dict], int, int]:
     """`(resolved, persisting, new, objective_before, objective_after)`
     for `draft` against `baseline`, rescanned at the baseline's own floor.
 
@@ -1235,13 +1714,13 @@ def recheck_findings(draft, baseline):
     # cited is a correctly attributed quotation, so counting it here would
     # make converting a lift into a quotation -- one of the two repairs
     # this loop is for -- look like no improvement at all.
-    def objective(items):
+    def objective(items: list[dict]) -> int:
         return sum(1 for f in items if f["severity"] != "quoted")
 
     return resolved, persisting, new, objective(before), objective(payload_now)
 
 
-def recheck_command(draft, baseline):
+def recheck_command(draft: str | Path, baseline: str | Path) -> str:
     """The invocation recorded in the payload's envelope, so a reader
     holding the payload can regenerate it.
 
@@ -1255,7 +1734,14 @@ def recheck_command(draft, baseline):
                        str(draft), "--baseline", str(baseline), "--json"])
 
 
-def recheck_payload(draft, baseline_path, baseline, groups, counts, command):
+def recheck_payload(
+    draft: str | Path,
+    baseline_path: str | Path,
+    baseline: dict,
+    groups: tuple[list[dict], list[dict], list[dict]],
+    counts: tuple[int, int],
+    command: str,
+) -> dict:
     """The comparison as data -- the form the remediation loop reads.
 
     Carries the baseline's path, version and floor as well as the three
@@ -1281,7 +1767,12 @@ def recheck_payload(draft, baseline_path, baseline, groups, counts, command):
     return payload
 
 
-def format_recheck(baseline_path, baseline, groups, counts):
+def format_recheck(
+    baseline_path: str | Path,
+    baseline: dict,
+    groups: tuple[list[dict], list[dict], list[dict]],
+    counts: tuple[int, int],
+) -> str:
     """The plain-text form, for stdout."""
     resolved, persisting, new = groups
     before, after = counts
@@ -1306,7 +1797,7 @@ def format_recheck(baseline_path, baseline, groups, counts):
     return "\n".join(lines)
 
 
-def cmd_recheck(draft, baseline, as_json=False):
+def cmd_recheck(draft: str | Path, baseline: str | Path, as_json: bool = False) -> None:
     """`recheck`'s stdout entry point.
 
     Prints and stops -- no `--write`. A scan report is kept beside the
@@ -1330,7 +1821,7 @@ def cmd_recheck(draft, baseline, as_json=False):
     ))
 
 
-def cmd_locate(citekey, *phrases):
+def cmd_locate(citekey: str, *phrases: str) -> None:
     src_pages = pages(citekey)
     print(f"{citekey}: {len(src_pages)} pdf pages")
     for phrase in phrases:
@@ -1345,7 +1836,7 @@ def cmd_locate(citekey, *phrases):
         print(f"  {phrase!r}\n      -> {top}")
 
 
-def _bounded_int(minimum, name):
+def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
     """An argparse `type` that rejects an out-of-range value as a usage
     error rather than letting it through to be silently absorbed.
 
@@ -1356,7 +1847,7 @@ def _bounded_int(minimum, name):
     arithmetic degrade silently rather than raising) -- both look like
     "nothing to report" instead of the usage error they actually are.
     """
-    def parse(raw):
+    def parse(raw: str) -> int:
         try:
             value = int(raw)
         except ValueError:
@@ -1367,7 +1858,7 @@ def _bounded_int(minimum, name):
     return parse
 
 
-def build_parser(parser=None):
+def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
     """The `verbatim` aid's four modes.
 
     `parser` is passed by src/review/__main__.py, which has already
@@ -1431,7 +1922,7 @@ def build_parser(parser=None):
     return parser
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     """Exit codes: `0` on every successful invocation, findings or not --
     a review aid, not a gate. `1` for a draft this layer will not read
     (missing, or outside `content/`). `2` for a malformed invocation,
@@ -1444,7 +1935,7 @@ def main(argv=None):
     return run(parser.parse_args(sys.argv[1:] if argv is None else argv))
 
 
-def run(args):
+def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
     Split from main() so src/review/__main__.py can hand over the args it

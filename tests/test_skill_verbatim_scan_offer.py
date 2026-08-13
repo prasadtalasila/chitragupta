@@ -11,13 +11,15 @@ notice is a reader comparing seven files by eye.
 
 Two halves, and the second is the one worth having. The offer alone is
 a command; the caveat is what stops a clean result being read as a clean
-bill of health. `scan` is the exact tier of a detection stack whose
-paraphrase tiers are unbuilt (docs/PLAGIARISM.md,
-docs/LADDERS.md#the-one-stack), and the drafts these skills produce are
-LLM-written, so literal paraphrase -- the reuse mode the exact tier
-cannot see -- is the *likely* one. The skill file is the only place the
-drafter reads, which makes it the only place the caveat can reach the
-one whose habit it is about.
+bill of health. `scan` runs two deterministic tiers of a detection stack
+whose embedding tier is unbuilt (docs/PLAGIARISM.md,
+docs/LADDERS.md#the-one-stack): exact runs, and skip-gram matches
+tolerant of a substituted word. Genuine restatement -- reworded well
+past a word swap, the reuse mode neither deterministic tier can see --
+is still invisible, and the drafts these skills produce are LLM-written,
+so that is the *likely* failure mode. The skill file is the only place
+the drafter reads, which makes it the only place the caveat can reach
+the one whose habit it is about.
 
 A text scan over `.claude/skills/`, in the shape of
 tests/test_skill_retrieval_logging.py, and for the same reason: what the
@@ -42,7 +44,7 @@ _OFFER = re.compile(r"-m src\.review verbatim scan\b")
 # characters, and the offers are the last step in each file, so a
 # window this size cannot reach a *different* offer's caveat.
 _LOOKAHEAD_CHARS = 900
-_CAVEAT = "paraphrase is not detected"
+_CAVEAT = "genuine restatement is not detected"
 
 
 def _skill_files():
@@ -86,9 +88,9 @@ def test_every_offer_says_what_the_scan_cannot_see():
 
     assert not offenders, (
         f"`-m src.review verbatim scan` is offered without {_CAVEAT!r} nearby in "
-        f"{sorted(offenders)}. An exact-tier scan cannot see paraphrase, and "
-        "these drafts are LLM-written, so a clean run must never be presented "
-        "as a clean bill of health -- see docs/PLAGIARISM.md."
+        f"{sorted(offenders)}. Neither deterministic tier can see genuine "
+        "restatement, and these drafts are LLM-written, so a clean run must "
+        "never be presented as a clean bill of health -- see docs/PLAGIARISM.md."
     )
 
 

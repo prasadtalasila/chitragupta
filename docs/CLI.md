@@ -558,10 +558,10 @@ so that subcommand needs poppler-utils on `PATH`. `overlap`, `scan` and
 instead. Run with no arguments to print its usage.
 
 [PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
-section: what `overlap`/`scan` catch and don't (verbatim only --
-paraphrase is a later, unbuilt detection tier), the fingerprinting
-technique and its literature sources, and a measured
-`docling`-vs-`pdftotext` backend comparison.
+section: what `overlap`/`scan` catch and don't (verbatim and
+light-paraphrase word-swaps -- genuine restatement is a later, unbuilt
+detection tier), the fingerprinting technique and its literature
+sources, and a measured `docling`-vs-`pdftotext` backend comparison.
 
 | Subcommand | Arguments | What it does |
 |---|---|---|
@@ -744,16 +744,22 @@ clean. Nothing obliges you to use it -- `recheck` is as free and as
 advisory as every other command here.
 
 **What `scan` does not see, and why that matters more than it sounds.**
-`scan` is the **exact tier** of three planned detection tiers, and the
-other two are not built. It matches word n-grams, so literal
-paraphrase -- the same sentence skeleton with a synonym swapped every few
-words -- is invisible to it *by construction*, not by omission. Because
-the drafts this pipeline produces are LLM-written, and that is an LLM's
-normal failure mode when it drifts too close to a source, the reuse mode
-`scan` cannot see is the dominant one. Read a clean run as "no exact or
-near-exact copying found", never "no borrowed wording found". An
-unbuilt tier contributes nothing and nothing in the output says so -- see
-[PLAGIARISM.md](PLAGIARISM.md) and
+`scan` runs the **exact** and **skip-gram** tiers (findings labelled
+`tier: "exact"` / `tier: "skip-gram"` in `--json` output) of three
+planned detection tiers; the third, embedding-based, is not built. The
+exact tier matches word n-grams, so a single substituted word breaks it
+by construction; the skip-gram tier (#133) tolerates that, catching a
+synonym swap or inflection change, but neither tier sees genuine
+restatement -- the same claim in a different sentence structure. Because
+the drafts this pipeline produces are LLM-written, and drifting into
+that kind of restatement is an LLM's normal failure mode, the reuse mode
+`scan` still cannot see remains a real gap. Read a clean run as "no
+exact or near-exact copying, and no word-swapped paraphrase, found",
+never "no borrowed wording found". The skip-gram tier also ships
+advisory-only, with its real-corpus false-positive rate not yet
+measured (`bench/RESULTS.md`) -- treat its findings with the same
+scrutiny as the exact tier's, not more trust just because it is newer.
+See [PLAGIARISM.md](PLAGIARISM.md) and
 [discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
 for the three-tier plan.
 

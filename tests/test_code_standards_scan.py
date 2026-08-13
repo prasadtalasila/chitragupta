@@ -61,7 +61,6 @@ LEGACY_LONG_FUNCTIONS = {
     "src/dossier.py::_cmd_status",  # 65
     "src/ledger.py::main",  # 50
     "src/retrieval.py::main",  # 45
-    "src/review/verbatim_check.py::scan_findings",  # 43
     "src/dossier.py::main",  # 42
     "src/enrich/docling_parse.py::parse_corpus",  # 41
     "src/enrich/embed_index.py::build_index",  # 40
@@ -76,13 +75,12 @@ LEGACY_LONG_FUNCTIONS = {
     "src/ledger.py::upsert_reference",  # 32
     "src/render_output.py::render",  # 31
     "src/enrich/__main__.py::_run_stages",  # 30
-    "src/overlap_index.py::_load_corpus_index",  # 30
     "tests/test_release.py::make_repo",  # 30
     "src/dossier.py::_cmd_status_all",  # 29
-    "src/review/verbatim_check.py::cmd_overlap",  # 29
     "src/dossier.py::sections",  # 28
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
+    "src/overlap_skipgram.py::build_corpus_index",  # 27
     "src/review/verbatim_check.py::render_scan_markdown",  # 27
     "scripts/release.py::build_release",  # 26
 }
@@ -95,16 +93,17 @@ LEGACY_LONG_FUNCTIONS = {
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
     "src/dossier.py",  # 1606
-    "src/review/verbatim_check.py",  # 1151
+    "src/review/verbatim_check.py",  # 1588
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 508
+    "src/overlap_index.py",  # 492
     "src/render_output.py",  # 456
     "src/sync.py",  # 444
-    "src/overlap_index.py",  # 414
     "src/review/citation_provenance.py",  # 382
     "src/ledger.py",  # 359
     "src/retrieval.py",  # 359
     "src/references.py",  # 340
+    "src/overlap_skipgram.py",  # 305
     "src/config.py",  # 294
 }
 

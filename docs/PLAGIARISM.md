@@ -1,7 +1,8 @@
 # Plagiarism / verbatim-reuse detection
 
-Status: **implemented, one detection tier of a planned three.** Written
-2026-08-10.
+Status: **implemented, two detection tiers of a planned three -- the
+second shipped advisory-only, its real-corpus precision not yet
+measured.** Written 2026-08-10, tier 2 added 2026-08-13 (#133).
 
 **Written for** someone deciding whether `src/review/verbatim_check.py`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
@@ -28,17 +29,20 @@ or to someone else". `src/review/verbatim_check.py`'s two modes exist to
 answer the second question, mechanically, over what is currently checked
 verbatim word-n-gram reuse.
 
-**Verbatim reuse only.** Paraphrase -- the same sentence skeleton, a
-synonym swapped every few words, function words shuffled -- is invisible
-to an exact n-gram match by construction. That matters more than it would
-elsewhere in this project because **the drafts this pipeline produces are
-LLM-written**, and literal paraphrase is an LLM's default failure mode
-when it drifts too close to a source, not an edge case. Treat a clean
-`scan` as "no exact or near-exact copying found", never as "no borrowed
-wording found" -- see [Where this sits in a bigger plan](#where-this-sits-in-a-bigger-plan)
-for the tiers that close that gap. That is this tier set's
-characteristic failure: the missing tiers do not announce themselves, so
-a thin result and a thorough one look identical.
+**Verbatim and light-paraphrase reuse only.** A synonym swapped every
+few words or an inflection changed is what tier 2's stemmed skip-grams
+(`src/overlap_skipgram.py`, #133) now catch; genuine restatement in new
+sentence structure -- the same claim, said differently -- is invisible
+to both deterministic tiers by construction. That matters more than it
+would elsewhere in this project because **the drafts this pipeline
+produces are LLM-written**, and literal paraphrase is an LLM's default
+failure mode when it drifts too close to a source, not an edge case.
+Treat a clean `scan` as "no exact or near-exact copying, and no
+word-swapped paraphrase, found", never as "no borrowed wording found" --
+see [Where this sits in a bigger plan](#where-this-sits-in-a-bigger-plan)
+for the tier that still closes that gap. That is this tier set's
+characteristic failure: an unbuilt tier does not announce itself, so a
+thin result and a thorough one look identical.
 
 ## The two tools, and when each is right
 
@@ -576,7 +580,7 @@ habit. Summary, for anyone deciding what to build next:
 
 | Source | What it established | Where it lands here |
 |---|---|---|
-| Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013 winner, quality and runtime) | Contextual n-grams with odd/even skip-grams -- exact-matching family, well-engineered n-gram methods beat fancier ones on speed at comparable quality; skip-grams + stemming tolerate single-word edits | The exact tier here (`overlap`/`scan`) is this family. Skip-grams are the named tier-2 upgrade, not yet built |
+| Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013 winner, quality and runtime) | Contextual n-grams with odd/even skip-grams -- exact-matching family, well-engineered n-gram methods beat fancier ones on speed at comparable quality; skip-grams + stemming tolerate single-word edits | The exact tier here (`overlap`/`scan`) is this family. Skip-grams are the tier-2 upgrade, built in `src/overlap_skipgram.py` (#133) |
 | Sánchez-Pérez et al., [PAN 2014/2015 winner](https://ceur-ws.org/Vol-1180/CLEF2014wn-Pan-SanchezPerezEt2014.pdf) | TF-IDF sentence similarity + recursive passage extension -- the fuzzy-match family wins only on *obfuscated* reuse | Not used: built for obfuscation the exact tier doesn't target, and competes with skip-grams for tier 2 on determinism-adjacent simplicity |
 | [PAN 2025 generated-plagiarism task](https://arxiv.org/abs/2510.06805) | Measured the LLM case directly: exact-matching approaches miss LLM-paraphrased reuse, and detection degrades further as paraphrase complexity rises; embedding-based alignment (SBERT + local alignment, e.g. Smith-Waterman) is the validated answer for that tier | This is exactly why this document's [scope section](#what-plagiarism-means-here-and-what-it-deliberately-doesnt) insists a clean `scan` is not "no borrowed wording" |
 | Schleimer, Wilkerson & Aiken, [winnowing / MOSS](https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf) | Keep the minimum hash per window of size w; detection of any match >= w+n-1 is still *guaranteed*, index shrinks to ~2/(w+1) of full size | Deferred: a real lever at book scale, unnecessary at ~500 papers where the full index already fits in RAM. The cache-key design (`tokenizer_version`) leaves room for it later |
@@ -590,14 +594,23 @@ change when `[enrich].embedding_model` does -- so it can never gate, only
 advise.
 
 That produces **three detection tiers** -- cumulative, not a menu you
-pick one option from -- of which this document covers tier 1:
+pick one option from -- of which this document covers tier 1 in depth;
+tier 2's own mechanism is documented in `src/overlap_skipgram.py`'s
+module docstring, and its first (synthetic-only) measurement is in
+`bench/RESULTS.md`'s 2026-08-13 skip-gram section:
 
 1. **Exact tier (here).** Inverted word-8-gram index, whole-corpus `scan`,
    gap-tolerant merge. Built (#110, #111).
-2. **Deterministic light-paraphrase tier (proposed, not built).**
-   Stemmed, stopword-filtered odd/even skip-grams in the same index
-   framework -- the CoReMo design. Catches synonym swaps and inflection
-   changes while staying objective enough to gate eventually.
+2. **Deterministic light-paraphrase tier.** Stemmed, stopword-filtered
+   odd/even skip-grams in the same index framework -- the CoReMo design.
+   Catches synonym swaps and inflection changes while staying objective
+   enough to gate eventually. Built (#133), `src/overlap_skipgram.py`,
+   findings carry `tier: "skip-gram"`. Shipped **advisory only**
+   (discussion #115: "start advisory, promote with evidence") -- nothing
+   in `scan` decides gate-eligibility for it; that is #130's decision,
+   unchanged by this tier existing. Its own precision on real prose is
+   not yet measured -- see `bench/RESULTS.md`'s caveat before trusting a
+   clean `scan` on this tier any more than on tier 1.
 3. **Embedding literal-paraphrase tier (proposed, not built).** Embed
    draft segments, k-NN against the existing `content/chroma/` collection
    (already built by the optional enrichment layer; reuses its
@@ -607,7 +620,7 @@ pick one option from -- of which this document covers tier 1:
    cannot depend on an optional layer.
 
 Because the drafts this pipeline produces are LLM-written and literal
-paraphrase is their normal failure mode, tiers 2-3 are prioritized
+paraphrase is their normal failure mode, tiers 2-3 were prioritized
 immediately after the exact tier rather than parked indefinitely.
 
 **Between the two, tier 2 goes first**, and [the DF

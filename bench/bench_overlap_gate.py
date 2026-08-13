@@ -9,7 +9,7 @@ the predicate below would block, and -- against hand-labelled ground
 truth -- how much of that is genuine reuse rather than a canonical
 definition every paper in the field quotes.
 
-    tier in {"exact", "skip-gram"} and span_words >= T
+    tier == "exact" and span_words >= T
         and not (quoted and cites_source)
 
 Terms, as used in the code, the printed table and the JSON record. **T**
@@ -34,10 +34,14 @@ reproduces that, by making `section_start` return None. It is not a
 hypothetical: it is what this benchmark measured before the pattern was
 fixed, and the gap between the arms is the strongest number here.
 
-**What this does not measure.** Paraphrase: the exact tier cannot see it,
-so a low finding count is not a clean bill of health -- it is the
-headline caveat of docs/PLAGIARISM.md and it applies to every number
-below. Nor does it measure whether a blocked draft is *fixable*: the
+**What this does not measure.** This sweep counts `exact`-tier findings
+only (see `eligible`). The skip-gram tier (#133) exists and runs as part
+of `scan`, but this benchmark predates its precision being measured, so
+its findings are excluded rather than silently counted as gateable; a
+low finding count here is still not a clean bill of health, and genuine
+restatement is invisible to both deterministic tiers regardless -- see
+docs/PLAGIARISM.md. Nor does it measure whether a blocked draft is
+*fixable*: the
 `long` runs it counts are exactly the class `overlap-reviser` refuses to
 rewrite unattended, referring the paraphrase-or-quote choice to a person.
 Nor recall against reuse the corpus does not contain -- every true
@@ -86,17 +90,17 @@ KEPT_FIELDS = (
 def eligible(finding):
     """Whether the predicate under test could ever block on `finding`.
 
-    The tier clause is trivially true today -- `scan` labels everything
-    `exact` and no skip-gram tier is built -- but it is written out
-    because it is the half of #130's predicate that decides what the
-    gate *cannot* see, and a reader checking the numbers against the
-    issue should find it here rather than infer it.
-
-    The quoted-and-cited exemption mirrors `_bucket`'s own demotion: a
-    properly quoted, properly attributed block quote is scholarship, and
-    a gate that blocks it is wrong by construction.
+    Only `exact` is included. `skip-gram` (#133) is deterministic too and
+    is gate-eligible *in principle* per docs/PLAGIARISM.md, but its
+    real-corpus precision has not been measured -- bench_overlap_skipgram.py
+    ran only the capability arm (see bench/RESULTS.md's 2026-08-13
+    section), never against this corpus. Folding it into this sweep now
+    would silently change what "gateable" means here without anyone
+    having made that call; promote it explicitly, with its own measured
+    numbers, when #130's gate decision is actually made. `embedding`
+    (#134, unbuilt) can never be included -- see the assertion below.
     """
-    if finding["tier"] not in {"exact", "skip-gram"}:
+    if finding["tier"] != "exact":
         return False
     return not (finding["quoted"] and finding["cites_source"])
 
@@ -210,6 +214,10 @@ def self_check():
     assert not eligible({"id": "d", "tier": "embedding", "span_words": 99,
                          "quoted": False, "cites_source": False}), (
         "only deterministic tiers may gate (docs/PLAGIARISM.md)")
+    assert not eligible({"id": "e", "tier": "skip-gram", "span_words": 99,
+                         "quoted": False, "cites_source": False}), (
+        "skip-gram is deterministic but its precision is unmeasured -- "
+        "not gate-eligible until that call is made deliberately")
 
     findings = [
         {"id": "t", "tier": "exact", "span_words": 30, "quoted": False,

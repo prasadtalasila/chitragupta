@@ -147,9 +147,21 @@ def eligible(finding):
     Copied in shape from `bench_overlap_gate.py::eligible` rather than
     imported, because the two benchmarks are independently re-runnable
     records and a shared helper would let a later edit to one silently
-    restate what the other measured.
+    restate what the other measured -- which is exactly what happened
+    once #133 landed the skip-gram tier for real: only `exact` is
+    included here, for a reason specific to *this* script on top of
+    `bench_overlap_gate.py`'s own (unmeasured precision, #130 is the
+    deliberate promotion call). `df_profile` hashes 8-grams off
+    `fragment` against the tier-1 corpus index -- meaningful for an
+    exact-tier fragment, which *is* the matched text. A skip-gram
+    fragment is a family window that can include unmatched, opposite-
+    family words the tier never matched at all, so most of its 8-grams
+    are absent from the tier-1 index by construction. That reads as an
+    all-zero DF profile -- the exact failure mode this module's
+    `self_check` exists to catch for the `fragment`/`draft_text` mix-up,
+    just reached a different way.
     """
-    if finding["tier"] not in {"exact", "skip-gram"}:
+    if finding["tier"] != "exact":
         return False
     return not (finding["quoted"] and finding["cites_source"])
 
