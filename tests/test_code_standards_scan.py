@@ -290,10 +290,18 @@ def test_the_scan_reaches_the_source_tree():
     """Non-vacuity: a glob that silently matched nothing would make every
     assertion above pass for the wrong reason, forever."""
     scanned = {_relative(path) for path in _python_files(STATEMENT_ROOTS)}
-    assert len(scanned) > 60, f"only {len(scanned)} Python files found"
+    # One per root, so a root silently dropped from STATEMENT_ROOTS fails
+    # here rather than quietly halving what the ratchet covers.
     assert "src/sync.py" in scanned
     assert "scripts/release.py" in scanned
     assert "tests/test_code_standards_scan.py" in scanned
+    # Two *nested* modules, which is the specific thing the glob has to get
+    # right: `**/*.py` degraded to `*.py` still finds all three paths above
+    # -- they sit directly in their roots -- while silently dropping every
+    # module in src/enrich/ and src/review/, half of which are on the
+    # register. A count alone would only imply this; these name it.
+    assert "src/enrich/docling_parse.py" in scanned
+    assert "src/review/verbatim_check.py" in scanned
     assert not any(name.startswith("bench/") for name in scanned)
 
 

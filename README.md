@@ -250,7 +250,10 @@ publisher = {GitHub}
 
 This file is the overview: what the pipeline is, how to get it running,
 and what it needs. Everything else lives in one document per question,
-split by who is asking.
+split by what you are doing -- using the pipeline, or working on it.
+Which of those you are doing can change within a session, and the split
+follows the task rather than the person; [CLAUDE.md](CLAUDE.md) is the
+one-screen router for exactly that.
 
 ### Using it
 
