@@ -294,12 +294,12 @@ class TestDoclingPageBreaks:
     """The parsed .txt has to have the same *shape* as pdftotext's, or
     everything downstream that splits on form feeds reports p.1."""
 
-    def test_pages_are_separated_by_form_feeds(self, isolated_config, fake_docling, tmp_path):
-        FakeDoclingConverter.next_pages = ["first page", "second page", "third page"]
+    def test_pages_are_separated_by_form_feeds(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+        monkeypatch.setattr(FakeDoclingConverter, "next_pages", ["first page", "second page", "third page"])
         out = pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert out.read_text().split("\f") == ["first page", "second page", "third page"]
 
-    def test_the_split_gives_one_based_page_numbers(self, isolated_config, fake_docling, tmp_path):
+    def test_the_split_gives_one_based_page_numbers(self, isolated_config, fake_docling, tmp_path, monkeypatch):
         """Docling puts a break *between* pages and none before the
         first, so the nth segment is page n. Checked against real
         docling_core 2.89.0 output: a 51-page paper produced exactly 51
@@ -307,7 +307,7 @@ class TestDoclingPageBreaks:
         the same PDF -- that backend emits a trailing form feed after the
         last page, so it yields one more segment for the same document.
         """
-        FakeDoclingConverter.next_pages = ["alpha", "beta", "gamma"]
+        monkeypatch.setattr(FakeDoclingConverter, "next_pages", ["alpha", "beta", "gamma"])
         out = pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         pages = out.read_text().split("\f")
         assert pages[2 - 1] == "beta"
@@ -326,8 +326,8 @@ class TestCorpusLayerPassageSidecar:
     def _texts():
         return [FakeTextItem("A reading-ordered paragraph.", page=3)]
 
-    def test_a_docling_parse_writes_one(self, isolated_config, fake_docling, tmp_path):
-        FakeDoclingConverter.next_texts = self._texts()
+    def test_a_docling_parse_writes_one(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+        monkeypatch.setattr(FakeDoclingConverter, "next_texts", self._texts())
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
 
         records = json.loads(passages.sidecar_path("smith_2024").read_text())
@@ -335,8 +335,8 @@ class TestCorpusLayerPassageSidecar:
             {"text": "A reading-ordered paragraph.", "label": "text", "page": 3}
         ]
 
-    def test_it_sits_beside_the_parsed_text(self, isolated_config, fake_docling, tmp_path):
-        FakeDoclingConverter.next_texts = self._texts()
+    def test_it_sits_beside_the_parsed_text(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+        monkeypatch.setattr(FakeDoclingConverter, "next_texts", self._texts())
         out = pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert passages.sidecar_path("smith_2024").parent == out.parent
 
@@ -374,25 +374,25 @@ class TestCorpusLayerPassageSidecar:
 
         assert not passages.sidecar_path("smith_2024").exists()
 
-    def test_a_reparse_replaces_rather_than_merges(self, isolated_config, fake_docling, tmp_path):
-        FakeDoclingConverter.next_texts = [FakeTextItem("Original wording.", page=1)]
+    def test_a_reparse_replaces_rather_than_merges(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+        monkeypatch.setattr(FakeDoclingConverter, "next_texts", [FakeTextItem("Original wording.", page=1)])
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
 
-        FakeDoclingConverter.next_texts = [FakeTextItem("Revised wording.", page=1)]
+        monkeypatch.setattr(FakeDoclingConverter, "next_texts", [FakeTextItem("Revised wording.", page=1)])
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
 
         records = json.loads(passages.sidecar_path("smith_2024").read_text())
         assert [r["text"] for r in records] == ["Revised wording."]
 
     def test_a_document_with_no_prose_still_writes_an_empty_sidecar(
-        self, isolated_config, fake_docling, tmp_path
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
         """Written even when empty, so the file's presence answers "did a
         reading-order backend parse this?" -- which is what src/ledger.py
         checks before skipping a document it believes is parsed. Were it
         omitted here, that check would re-parse this document on every
         single run, forever."""
-        FakeDoclingConverter.next_texts = [FakeTextItem("Journal of Things", label="page_header")]
+        monkeypatch.setattr(FakeDoclingConverter, "next_texts", [FakeTextItem("Journal of Things", label="page_header")])
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert json.loads(passages.sidecar_path("smith_2024").read_text()) == []
 

@@ -388,7 +388,7 @@ class TestApply:
 
 
 class TestMainCli:
-    def test_success_prints_result_and_returns_0(self, isolated_config, tmp_path, capsys):
+    def test_success_prints_result_and_returns_0(self, isolated_config, tmp_path, capsys, monkeypatch):
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
@@ -396,17 +396,17 @@ class TestMainCli:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@smith2024]\n")
 
-        sys.argv = ["references.py", str(draft)]
+        monkeypatch.setattr(sys, "argv", ["references.py", str(draft)])
         rc = references.main()
         out = capsys.readouterr().out
         assert rc == 0
         assert "wrote References section" in out
 
-    def test_missing_citekey_prints_error_and_returns_1(self, isolated_config, tmp_path, capsys):
+    def test_missing_citekey_prints_error_and_returns_1(self, isolated_config, tmp_path, capsys, monkeypatch):
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@fabricated2024]\n")
 
-        sys.argv = ["references.py", str(draft)]
+        monkeypatch.setattr(sys, "argv", ["references.py", str(draft)])
         rc = references.main()
         err = capsys.readouterr().err
         assert rc == 1
