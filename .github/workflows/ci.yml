@@ -189,7 +189,14 @@ jobs:
       # failure to be loud.
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        # Pinned to a commit SHA rather than the `v5` tag (which currently
+        # resolves to this same commit, v5.5.5) because the first SonarQube
+        # analysis on this file flagged exactly this line: S7637, "use full
+        # commit SHA hash for this dependency", MAJOR. A movable tag on a
+        # third-party action that receives a token is the finding, and it
+        # is a fair one. Bump this deliberately, by resolving the tag again,
+        # rather than by tracking `v5` silently.
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           files: ./coverage.xml
           flags: ${{ matrix.os }}
@@ -251,3 +258,70 @@ jobs:
       # what CI checks and what a contributor runs cannot drift apart.
       - name: markdownlint
         run: markdownlint-cli2 "*.md" "docs/**/*.md"
+
+  # SonarQube Cloud's static analysis. The quality-gate summary that is
+  # meant to accompany it on the PR page is not arriving yet -- see the
+  # scan step's own comment below before concluding this job is broken.
+  #
+  # Its own job rather than a step inside the `test` matrix above, and
+  # ubuntu-only, because exactly one analysis per commit is the thing that
+  # has to hold. Two scanners submitting the same commit under the same
+  # `sonar.projectKey` don't add a second opinion -- the later one
+  # overwrites the earlier one -- and Sonar's Python analysis reads source
+  # text, so a Windows leg would find precisely what the Linux leg found
+  # anyway. The matrix above is untouched by this job; the Windows leg
+  # keeps running the suite exactly as before.
+  #
+  # No `if:` guard on the job. "Pull requests and commits on main" is
+  # already exactly what the `on:` block at the top of this file selects,
+  # and for the reason stated there: `branches: [main]` on the `push`
+  # trigger is what stops a PR branch's push starting a second run beside
+  # its `pull_request` one. A job-level condition repeating that would be
+  # a second place to keep in sync with the first. `workflow_dispatch` can
+  # still aim this at a feature branch, which is what a manual dispatch is
+  # for -- Sonar records that as a branch analysis, not as a PR.
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0, against the default depth-1 clone, because Sonar
+      # attributes each issue to the commit that introduced it by reading
+      # the git history. A shallow clone doesn't fail the scan; it quietly
+      # costs new-code detection and blame, which is most of what the PR
+      # comment is worth reading for.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The PR comment is posted server-side by the SonarQube Cloud GitHub
+      # App, from the analysis this step submits -- not by this workflow.
+      # That's why the job needs nothing beyond the read-only `permissions:`
+      # at the top of the file: no `pull-requests: write` would help.
+      #
+      # As of the PR that added this job, the comment is *not* appearing,
+      # and the cause is on SonarCloud's side rather than here. What was
+      # verified on that PR: the secret exists and the step is green; the
+      # scanner logs `ANALYSIS SUCCESSFUL ... &pullRequest=<n>`; and
+      # SonarCloud's own API lists the pull request, its head SHA and its
+      # gate result. What is missing is only the decoration -- no summary
+      # comment and no `sonarqubecloud` check run -- while Codecov's app
+      # comments on the same page without trouble. So look at the
+      # SonarQubeCloud GitHub App's access to this repository and at the
+      # project's pull-request settings; a green scan step here means this
+      # workflow has already done its part.
+      #
+      # The scanner reads the PR number, base branch
+      # and head SHA out of the runner's own GITHUB_* environment, so none
+      # of that is passed here; the project key and organisation come from
+      # sonar-project.properties at the repo root.
+      #
+      # Pinned to a commit SHA rather than the `v8` tag: this is a
+      # third-party action handling a credential, and a tag can be moved to
+      # point at different code. Sonar's own S7637 makes the same point
+      # about the Codecov action above, which is now pinned too.
+      # `actions/checkout` is left on `@v4` at every call site in this file
+      # -- it is GitHub's own action, and S7637 did not flag it.
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -54,6 +54,12 @@ EXCLUDE_TOP_LEVEL = {
     ".github",
     ".gitignore",
     "bench",
+    # CI config that happens to live at the root rather than under
+    # .github/: it names *this* repository's SonarQube project key and
+    # organisation, so in an unzipped release it is either inert or
+    # actively wrong -- a scan run from there would report someone else's
+    # code against prasadtalasila_chitragupta.
+    "sonar-project.properties",
 }
 
 # Ships as an empty placeholder directory instead of its tracked contents

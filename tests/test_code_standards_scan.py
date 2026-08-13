@@ -77,9 +77,9 @@ LEGACY_LONG_FUNCTIONS = {
     "src/render_output.py::render",  # 31
     "src/enrich/__main__.py::_run_stages",  # 30
     "src/overlap_index.py::_load_corpus_index",  # 30
+    "tests/test_release.py::make_repo",  # 30
     "src/dossier.py::_cmd_status_all",  # 29
     "src/review/verbatim_check.py::cmd_overlap",  # 29
-    "tests/test_release.py::make_repo",  # 29
     "src/dossier.py::sections",  # 28
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
