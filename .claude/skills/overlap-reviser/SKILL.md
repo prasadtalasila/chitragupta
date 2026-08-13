@@ -116,9 +116,10 @@ stated against it, not against a re-scan you took later.
 
 Take a fresh one at the start of every pass rather than reusing whatever
 is already at that path. An existing payload may predate the draft's last
-edit, or a release that changed what counts as one finding -- `recheck`
-prints a `note:` line naming the baseline's version when it is not this
-one, and that note means re-scan, not proceed carefully.
+edit, and one from an earlier release series `recheck` will refuse
+outright -- what counts as a single finding changes between releases.
+Re-scanning is a sub-second cache hit, so there is nothing to save by
+reusing an old one.
 
 ### 3. Triage
 

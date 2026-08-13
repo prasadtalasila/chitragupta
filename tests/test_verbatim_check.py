@@ -1796,6 +1796,24 @@ class TestRecheck:
         assert result["objective_before"] == 0
         assert len(result["new"]) == 2
 
+    def test_a_findings_list_of_the_wrong_shape_is_refused_not_crashed_on(
+        self, ledger_con, tmp_path
+    ):
+        """`findings` holding something that is not a finding is still a
+        baseline this cannot compare against, and refusing is the same
+        answer as for the other four -- not a TypeError from probing a
+        non-dict for a key."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps({
+            "aid": "verbatim", "min_run": 8, "gap": 1, "limit": None,
+            "findings": [42],
+        }))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "predates" in str(exc.value)
+
     def test_another_aids_payload_is_refused(self, ledger_con, tmp_path):
         """The review layer's payloads share an envelope, so a coverage
         report is JSON with a `findings` key too."""
@@ -1835,54 +1853,72 @@ class TestRecheck:
 
         assert "2 -> 2" in capsys.readouterr().out
 
-    def test_a_baseline_from_another_version_is_reported_as_such(
-        self, ledger_con, tmp_path, capsys
-    ):
-        """Reported, not refused. What counts as one finding can change
-        between releases -- a scan that learns to merge two runs into one
-        produces a different `id` for the same borrowed wording -- and a
-        comparison across that reads as a repair nobody made. Most
-        version bumps change nothing here, so refusing every one would
-        make the comparison useless; saying which version the baseline
-        came from lets the caller decide."""
-        draft = self._planted(ledger_con, tmp_path)
+    def _reversioned(self, draft, tmp_path, version):
         baseline = self._baseline(draft, tmp_path)
         payload = json.loads(baseline.read_text())
-        payload["version"] = "0.0.1-from-the-past"
+        payload["version"] = version
         baseline.write_text(json.dumps(payload, indent=2))
+        return baseline
+
+    def test_a_baseline_from_an_earlier_release_series_is_refused(
+        self, ledger_con, tmp_path
+    ):
+        """What counts as one finding changes between releases -- a scan
+        that learns to merge two runs into one produces a different `id`
+        for wording nobody touched -- and a comparison across that reads
+        as a repair that never happened. DEVELOPER-AGENTS.md's versioning
+        rules put any such change in a minor bump at least, so the
+        release series is exactly the granularity to check."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._reversioned(draft, tmp_path, "5.4.0")
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "5.4.0" in str(exc.value)
+        assert "Re-scan" in str(exc.value)
+
+    def test_a_patch_level_difference_is_accepted_silently(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """A patch release is defined as changing nothing about what the
+        pipeline does, so a baseline from one is still comparable -- and
+        refusing it would force a re-scan for no reason."""
+        draft = self._planted(ledger_con, tmp_path)
+        current = ".".join(vc.review.version().split(".")[:2])
+        baseline = self._reversioned(draft, tmp_path, f"{current}.99")
 
         result = self._recheck(draft, baseline, capsys)
 
-        assert result["baseline_version"] == "0.0.1-from-the-past"
-        assert result["version"] != "0.0.1-from-the-past"
+        assert result["baseline_version"] == f"{current}.99"
+        assert len(result["persisting"]) == 2
 
-    def test_a_same_version_baseline_says_nothing_about_versions(
+    def test_an_unknowable_version_is_not_treated_as_a_mismatch(
         self, ledger_con, tmp_path, capsys
     ):
-        """The note is a warning, and a warning that fires on the normal
-        case is one nobody reads."""
+        """`review.version()` falls back to `"unknown"` when pyproject
+        cannot be read. Refusing on that would turn one unreadable file
+        into a second, unrelated failure."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._reversioned(draft, tmp_path, "unknown")
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["baseline_version"] == "unknown"
+
+    def test_it_publishes_findings_in_the_same_shape_scan_does(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """`recheck` compares its own freshly-scanned findings against a
+        baseline `scan` wrote, so the two must agree about what a
+        published finding looks like -- both go through `published`."""
         draft = self._planted(ledger_con, tmp_path)
         baseline = self._baseline(draft, tmp_path)
 
-        vc.cmd_recheck(str(draft), str(baseline))
-        out = capsys.readouterr().out
+        result = self._recheck(draft, baseline, capsys)
 
-        assert "baseline version" not in out
-
-    def test_the_text_form_warns_about_a_version_mismatch(
-        self, ledger_con, tmp_path, capsys
-    ):
-        draft = self._planted(ledger_con, tmp_path)
-        baseline = self._baseline(draft, tmp_path)
-        payload = json.loads(baseline.read_text())
-        payload["version"] = "0.0.1-from-the-past"
-        baseline.write_text(json.dumps(payload, indent=2))
-
-        vc.cmd_recheck(str(draft), str(baseline))
-
-        out = capsys.readouterr().out
-        assert "0.0.1-from-the-past" in out
-        assert "re-scan" in out
+        expected = list(json.loads(baseline.read_text())["findings"][0])
+        for finding in result["persisting"] + result["new"]:
+            assert list(finding) == expected
 
     def test_the_payload_carries_the_envelope_every_aid_shares(
         self, ledger_con, tmp_path, capsys

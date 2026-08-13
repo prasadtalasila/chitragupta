@@ -671,24 +671,31 @@ comparable at the same `--min-run`/`--gap`, and the baseline's already
 happened; a `--min-run` here would let a strict run be compared against a
 lax one and the difference read as progress.
 
-It refuses, with exit 2, a baseline it cannot compare against: another
-aid's payload (the review layer's aids share an envelope, so a coverage
-report is also JSON with a `findings` key), one written under `--limit`
-(truncation happens after sorting, so "absent" cannot be distinguished
-from "cut"), one predating the `id` field, and one that is unreadable or
-not JSON. That third case is the likeliest of them -- a payload filed by
-an earlier version sits at exactly the path a caller is told to look at
--- so it names the remedy rather than raising.
+It refuses, with exit 2, a baseline it cannot compare against, always
+naming the remedy:
 
-A baseline written by a *different but recent* version is **reported, not
-refused**: the payload carries `baseline_version` and the text form
-prints a `note:` line. What counts as one finding can change between
-releases -- a scan that learns to merge two runs into one produces a
-different `id` for wording nobody touched -- and comparing across such a
-change reads as a repair that never happened. Most releases change
-nothing here, though, so refusing every mismatch would make the
-comparison unusable the day after any upgrade. Take a fresh baseline if
-the note appears and the numbers look surprising.
+- another aid's payload. The review layer's aids share an envelope, so a
+  coverage report is also JSON with a `findings` key, and comparing
+  against one would report every verbatim finding as new.
+- one written under `--limit`. Truncation happens after sorting, so
+  "absent" cannot be distinguished from "cut".
+- one predating the `id` field, or otherwise not shaped like a findings
+  list. The likeliest of the five: a payload filed by an earlier version
+  sits at exactly the path a caller is told to look at.
+- one from a **different release series** (`major.minor`). What counts as
+  one finding changes between releases -- a scan that learns to merge two
+  runs into one gives wording nobody touched a different `id` -- so the
+  comparison would report repairs that never happened. A *patch*
+  difference is accepted silently, because
+  [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s versioning rules define
+  a patch release as changing nothing about what the pipeline does, so a
+  finding-shape change cannot land in one.
+- one that is unreadable or not JSON.
+
+Refusing rather than warning costs nothing here: `recheck` re-scans
+anyway, so if it can run at all then `scan --write` can too, and against
+a warm index that is a sub-second re-take. The payload still carries
+`baseline_version` as provenance for the comparison it did make.
 
 There is no `--write`. A scan report is kept beside the draft because it
 is read again months later; a comparison against one particular baseline

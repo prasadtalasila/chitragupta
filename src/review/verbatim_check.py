@@ -757,6 +757,23 @@ _PAYLOAD_FIELDS = (
 )
 
 
+def published(finding):
+    """One of `scan_findings`' working dicts as the payload publishes it:
+    `_PAYLOAD_FIELDS` in order, plus the derived `severity`.
+
+    One function rather than the same comprehension in `scan_payload` and
+    `recheck_findings`, so "what a published finding looks like" has a
+    single definition -- `recheck` compares its own freshly-scanned
+    findings against a baseline written by `scan`, and the two disagreeing
+    about the shape is the one way that comparison could go quietly
+    wrong.
+    """
+    return {
+        **{field: finding[field] for field in _PAYLOAD_FIELDS},
+        "severity": _bucket(finding),
+    }
+
+
 def scan_command(draft, min_run, gap, limit, write, as_json):
     """The invocation recorded in both the Markdown report's header and
     the JSON payload's envelope, so a reader holding either file can
@@ -826,10 +843,7 @@ def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
         "gap": gap,
         "limit": limit,
         "suppressed": suppressed,
-        "findings": [
-            {**{field: f[field] for field in _PAYLOAD_FIELDS}, "severity": _bucket(f)}
-            for f in findings
-        ],
+        "findings": [published(f) for f in findings],
     })
     return payload
 
@@ -1041,14 +1055,49 @@ def load_baseline(path):
             "Re-scan without --limit to take a baseline."
         )
     missing = [key for key in ("min_run", "gap") if key not in payload]
-    if missing or any("id" not in f for f in payload["findings"]):
+    findings = payload["findings"]
+    if missing or not isinstance(findings, list) \
+            or any(not isinstance(f, dict) or "id" not in f for f in findings):
         raise ValueError(
             f"{path} predates this command: it is a verbatim scan payload, but "
             "one written before findings carried an `id` and a reporting floor. "
             "Re-scan the draft with `verbatim scan <draft> --write` to replace "
             "it, then compare against that."
         )
+    recorded, running = payload.get("version"), review.version()
+    if _series(recorded) and _series(recorded) != _series(running):
+        raise ValueError(
+            f"{path} was written by chitragupta {recorded}, and this is "
+            f"{running}. What counts as one finding changes between release "
+            "series -- a scan that learns to merge two runs into one gives "
+            "wording nobody touched a different `id` -- so a comparison "
+            "across one would report repairs that never happened. Re-scan "
+            "the draft with `verbatim scan <draft> --write` to take a "
+            "baseline this version wrote."
+        )
     return payload
+
+
+def _series(version):
+    """A version's `major.minor`, or `None` where there is nothing to
+    compare.
+
+    The release series is the right granularity because
+    DEVELOPER-AGENTS.md defines it that way: a patch release is
+    "nothing that changes what the pipeline does", so a finding-shape
+    change cannot land in one, while a minor release is exactly where new
+    functionality -- `severity` in 5.4.0, the allowlist in 5.5.0, `id`
+    here -- has repeatedly arrived. Checking the full string instead
+    would force a needless re-scan after every patch; checking nothing
+    would let a real contract change through silently.
+
+    `None` for a missing version and for `review.version()`'s `"unknown"`
+    fallback, which means pyproject could not be read: turning one
+    unreadable file into a second, unrelated refusal helps nobody.
+    """
+    if not version or version == "unknown":
+        return None
+    return ".".join(version.split(".")[:2])
 
 
 def recheck_findings(draft, baseline):
@@ -1071,10 +1120,7 @@ def recheck_findings(draft, baseline):
     findings, _, _ = scan_findings(
         draft, baseline["min_run"], baseline["gap"], None
     )
-    payload_now = [
-        {**{field: f[field] for field in _PAYLOAD_FIELDS}, "severity": _bucket(f)}
-        for f in findings
-    ]
+    payload_now = [published(f) for f in findings]
     before = baseline["findings"]
 
     now_ids = {f["id"] for f in payload_now}
@@ -1133,32 +1179,6 @@ def recheck_payload(draft, baseline_path, baseline, groups, counts, command):
     return payload
 
 
-def _version_note(baseline):
-    """A line naming the baseline's version when it isn't this one, and
-    nothing when it is.
-
-    Reported rather than refused. What counts as *one finding* can change
-    between releases -- a scan that learns to merge two runs into one
-    produces a different `id` for wording nobody touched -- and comparing
-    across such a change reads as a repair that never happened. But most
-    releases change nothing here, and refusing every mismatched baseline
-    would make the comparison unusable the day after any upgrade. So this
-    says which version the baseline came from and leaves the judgement
-    where it belongs, next to the person who knows what they changed.
-
-    A warning that fires on the normal case is one nobody reads, which is
-    why it is silent when the versions agree.
-    """
-    recorded = baseline.get("version")
-    if recorded is None or recorded == review.version():
-        return None
-    return (
-        f"note:     baseline version {recorded}, running {review.version()}. "
-        "What counts as one finding can differ between releases; re-scan "
-        "to take a baseline this version wrote."
-    )
-
-
 def format_recheck(baseline_path, baseline, groups, counts):
     """The plain-text form, for stdout."""
     resolved, persisting, new = groups
@@ -1166,11 +1186,8 @@ def format_recheck(baseline_path, baseline, groups, counts):
     lines = [
         f"baseline: {baseline_path}",
         f"floor:    --min-run {baseline['min_run']} --gap {baseline['gap']} (from the baseline)",
+        "",
     ]
-    note = _version_note(baseline)
-    if note:
-        lines.append(note)
-    lines.append("")
     for label, items in (("resolved", resolved), ("persisting", persisting), ("new", new)):
         lines.append(f"  {label} ({len(items)}):")
         if not items:
