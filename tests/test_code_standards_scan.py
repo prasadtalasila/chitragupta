@@ -87,19 +87,25 @@ LEGACY_LONG_FUNCTIONS = {
     "scripts/release.py::build_release",  # 26
 }
 
+# Ten of these grew by a line or six when pylint's `line-too-long` was
+# enabled: wrapping a 105-character line necessarily spends a physical
+# line to save a column, so C0301 and C2 pull against each other and C0301
+# won. The trade is deliberate and one-way -- the wraps are permanent,
+# the growth is bounded by the 34 lines that were over 100 columns, and
+# no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/dossier.py",  # 1605
-    "src/review/verbatim_check.py",  # 1148
+    "src/dossier.py",  # 1606
+    "src/review/verbatim_check.py",  # 1151
     "src/pdf_text.py",  # 1001
-    "src/enrich/docling_parse.py",  # 504
-    "src/render_output.py",  # 452
-    "src/sync.py",  # 443
-    "src/overlap_index.py",  # 412
-    "src/review/citation_provenance.py",  # 379
+    "src/enrich/docling_parse.py",  # 508
+    "src/render_output.py",  # 456
+    "src/sync.py",  # 444
+    "src/overlap_index.py",  # 414
+    "src/review/citation_provenance.py",  # 382
     "src/ledger.py",  # 359
-    "src/retrieval.py",  # 358
-    "src/references.py",  # 338
-    "src/config.py",  # 288
+    "src/retrieval.py",  # 359
+    "src/references.py",  # 340
+    "src/config.py",  # 294
 }
 
 

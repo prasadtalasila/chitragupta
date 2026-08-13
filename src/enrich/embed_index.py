@@ -76,7 +76,8 @@ def strip_image_refs(markdown: str) -> str:
     text, so they're real prose about the figure and worth embedding.
     """
     without_refs = re.sub(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*$", "", markdown, flags=re.MULTILINE)
-    without_placeholders = re.sub(r"^[ \t]*<!--\s*image\s*-->[ \t]*$", "", without_refs, flags=re.MULTILINE)
+    without_placeholders = re.sub(r"^[ \t]*<!--\s*image\s*-->[ \t]*$", "",
+                                  without_refs, flags=re.MULTILINE)
     # Collapse the blank runs those deletions leave behind, so chunking
     # doesn't see paragraph gaps where a figure used to sit.
     return re.sub(r"\n{3,}", "\n\n", without_placeholders)
@@ -87,27 +88,28 @@ def get_text(doc: CorpusDoc) -> str | None:
     > on-the-fly pdftotext. Doesn't require the Docling stage to have run."""
     docling_path = config.DOCLING_DIR / f"{doc.citekey}.md"
     if docling_path.exists():
-        return strip_image_refs(docling_path.read_text())
+        return strip_image_refs(docling_path.read_text(encoding="utf-8"))
     if doc.text_path and Path(doc.text_path).exists():
-        return Path(doc.text_path).read_text()
+        return Path(doc.text_path).read_text(encoding="utf-8")
     if doc.pdf_path:
-        # delete=False + a manual unlink in finally, not the plain `with
-        # ... as tmp:` shortcut: on Windows, NamedTemporaryFile keeps its
-        # own handle open (and the file exclusively locked) for the
-        # block's duration, and pdftotext writing to that same path
-        # while Python still holds it open fails with PermissionError --
-        # POSIX allows a second open of the same path, which is why this
-        # only surfaced on this repo's Windows CI leg. Closing tmp
-        # immediately releases that lock before pdftotext ever touches
-        # the path.
-        tmp = tempfile.NamedTemporaryFile(suffix=".txt", delete=False)
-        tmp.close()
+        # delete=False, an empty `with` body, and a manual unlink in
+        # finally -- deliberately *not* a `with` block wrapped around the
+        # subprocess call. On Windows, NamedTemporaryFile keeps its own
+        # handle open (and the file exclusively locked) for the block's
+        # duration, and pdftotext writing to that same path while Python
+        # still holds it open fails with PermissionError -- POSIX allows a
+        # second open of the same path, which is why this only surfaced on
+        # this repo's Windows CI leg. So the `with` exists only to close
+        # the handle immediately; widening it to cover the run() below
+        # would reintroduce exactly the lock it is here to release.
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
+            pass
         try:
             subprocess.run(
                 ["pdftotext", "-layout", doc.pdf_path, tmp.name],
                 check=True, capture_output=True,
             )
-            return Path(tmp.name).read_text(errors="ignore")
+            return Path(tmp.name).read_text(encoding="utf-8", errors="ignore")
         finally:
             os.unlink(tmp.name)
     return None
@@ -181,7 +183,8 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
             # same value alongside it -- so an index built before #57
             # keeps working without a rebuild.
             existing = collection.get(where={"citekey": doc.citekey})
-            if existing["ids"] and all(m.get("text_hash") == text_hash for m in existing["metadatas"]):
+            if existing["ids"] and all(m.get("text_hash") == text_hash
+                                       for m in existing["metadatas"]):
                 counts[doc.citekey] = len(existing["ids"])
                 n_unchanged += 1
                 print(f" -- unchanged, {len(existing['ids'])} chunk(s)", flush=True)
@@ -259,6 +262,8 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     raw = collection.query(query_embeddings=query_embedding, n_results=k)
 
     results = []
-    for doc_text, metadata, distance in zip(raw["documents"][0], raw["metadatas"][0], raw["distances"][0]):
+    for doc_text, metadata, distance in zip(raw["documents"][0],
+                                            raw["metadatas"][0],
+                                            raw["distances"][0]):
         results.append({**metadata, "snippet": doc_text[:snippet_chars], "distance": distance})
     return results

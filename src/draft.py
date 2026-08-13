@@ -64,7 +64,8 @@ from src import citation_gate, dossier, references, render_output, retrieval
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
-    "dossier": (dossier, "the working state behind a draft: create it, inspect it, back it up, restore it"),
+    "dossier": (dossier, "the working state behind a draft: create it, "
+                         "inspect it, back it up, restore it"),
     "retrieve": (retrieval, "BM25 retrieval over the synced corpus"),
     "references": (references, "an IEEE reference list built from a draft's own cited citekeys"),
     "render": (render_output, "render a Pandoc-markdown or LaTeX draft to tex/pdf/docx"),

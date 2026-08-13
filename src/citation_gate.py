@@ -188,7 +188,7 @@ def extract_citekeys(text: str) -> list[tuple[int, str]]:
 
 def check_document(path: Path, known_citekeys: set[str]) -> GateResult:
     result = GateResult(path=path)
-    for line_no, key in extract_citekeys(path.read_text()):
+    for line_no, key in extract_citekeys(path.read_text(encoding="utf-8")):
         result.total_citations += 1
         if key not in known_citekeys:
             result.unknown.append((line_no, key))
@@ -225,12 +225,14 @@ def run(paths: list[str]) -> int:
             continue
         result = check_document(checked, known)
         if result.ok:
-            print(f"OK    {p}: {result.total_citations} citation(s), all verified against the ledger.")
+            print(f"OK    {p}: {result.total_citations} citation(s), "
+                  f"all verified against the ledger.")
         else:
             all_ok = False
             print(f"FAIL  {p}: {len(result.unknown)} unresolved citekey(s):")
             for line_no, key in result.unknown:
-                print(f"        {p}:{line_no}: @{key} not found in ledger -- not sourced from bib sync")
+                print(f"        {p}:{line_no}: @{key} not found in ledger "
+                      f"-- not sourced from bib sync")
 
     return 0 if all_ok else 1
 

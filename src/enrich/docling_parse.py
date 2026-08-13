@@ -96,7 +96,7 @@ def _load_cache() -> dict:
     rather than any one entry: both change what every .md in
     config.DOCLING_DIR should contain, not just one document's."""
     try:
-        data = json.loads(config.DOCLING_CACHE_PATH.read_text())
+        data = json.loads(config.DOCLING_CACHE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
     if not isinstance(data, dict):
@@ -135,7 +135,7 @@ def _save_cache(cache: dict) -> None:
             "ocr": config.PARSER_OCR,
             "items": cache,
         }
-        tmp_path.write_text(json.dumps(payload))
+        tmp_path.write_text(json.dumps(payload), encoding="utf-8")
         os.replace(tmp_path, config.DOCLING_CACHE_PATH)
     except OSError as exc:
         logging_setup.say(
@@ -201,7 +201,8 @@ def _build_converter(threads: int | None = None):
     if config.DOCLING_IMAGES:
         opts.generate_picture_images = True
         opts.images_scale = config.DOCLING_IMAGE_SCALE
-    return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
+    return DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
 
 
 _IMAGE_REF_RE = re.compile(r"(!\[[^\]]*\]\()([^)]+)(\))")
@@ -222,7 +223,7 @@ def _relativise_image_refs(md_path: Path) -> list[str]:
     the whole PNG base64-encoded, and `save_as_markdown` does not rewrite
     it, so the markdown is the only place the written filename appears.
     """
-    text = md_path.read_text()
+    text = md_path.read_text(encoding="utf-8")
     base = md_path.parent
     names: list[str] = []
 
@@ -245,7 +246,7 @@ def _relativise_image_refs(md_path: Path) -> list[str]:
         names.append(target)
         return match.group(1) + target + match.group(3)
 
-    md_path.write_text(_IMAGE_REF_RE.sub(rewrite, text))
+    md_path.write_text(_IMAGE_REF_RE.sub(rewrite, text), encoding="utf-8")
     return names
 
 
@@ -517,7 +518,9 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
         dl_doc.save_as_markdown(out_path, image_mode=ImageRefMode.REFERENCED)
         image_names = _relativise_image_refs(out_path)
         figures_path = config.DOCLING_DIR / f"{stem}.figures.json"
-        figures_path.write_text(json.dumps(_figure_records(doc, dl_doc, image_names), indent=2))
+        figures_path.write_text(
+            json.dumps(_figure_records(doc, dl_doc, image_names), indent=2),
+            encoding="utf-8")
     else:
         out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
 
@@ -529,7 +532,8 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     # directory, because this parse runs under its own OCR and figure
     # settings and must not overwrite the corpus layer's copy.
     passages_path = config.DOCLING_DIR / f"{stem}.passages.json"
-    passages_path.write_text(json.dumps(passages.passage_records(dl_doc), indent=2))
+    passages_path.write_text(
+        json.dumps(passages.passage_records(dl_doc), indent=2), encoding="utf-8")
 
     cache[doc.citekey] = fingerprint
     if owns_cache:

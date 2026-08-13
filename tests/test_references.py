@@ -56,6 +56,36 @@ class TestHasSection:
         lines = draft.splitlines(keepends=True)
         assert lines[references.section_start(lines)].strip() == "## References"
 
+    @pytest.mark.parametrize("heading", [
+        "## References",
+        "# References",
+        "###### References",
+        "## 6. References",
+        "## 6) References",
+        # A book numbers headings per chapter, so every chapter of a
+        # book-length draft ends in one of these. Before multi-level
+        # numbers were matched, section_start returned None for all of
+        # them and the whole bibliography stayed in the draft.
+        "## 1.14 References",
+        "### 12.14 References",
+        "## 1.2.3.4 References",
+    ])
+    def test_matches_bare_and_numbered_headings(self, heading):
+        assert references.has_section(f"# Draft\n\n{heading}\n\n[1] X. `k`\n")
+
+    @pytest.mark.parametrize("heading", [
+        "## Introduction",
+        # Ends in the word but is not the bibliography. apply() replaces
+        # everything below the index and render_output strips it, so an
+        # over-matching pattern silently truncates a document.
+        "## 3.5 The published reference architectures",
+        "## Further References",
+        "## References and notes",
+        "## Reference",
+    ])
+    def test_does_not_match_a_heading_that_is_not_the_bibliography(self, heading):
+        assert not references.has_section(f"# Draft\n\n{heading}\n\nProse.\n")
+
 
 class TestFormatEntry:
     def test_article_is_quoted_inside_an_italic_journal(self):

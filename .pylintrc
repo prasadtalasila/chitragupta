@@ -120,7 +120,55 @@ disable=raw-checker-failed,
         suppressed-message,
         useless-suppression,
         deprecated-pragma,
-        use-symbolic-message-instead
+        use-symbolic-message-instead,
+
+        # Everything below is a decision this repository has already
+        # taken, not an oversight, and each was measured before being
+        # switched off -- see docs/TECHNICAL-DEBT.md's 5.2 for the
+        # baseline these came from. They are disabled here rather than
+        # inline so that the disable list and the debt register stay one
+        # list instead of two (CODE-STANDARDS.md's build order, item 2).
+
+        # The documented lazy-import pattern: tier-1 modules stay
+        # stdlib-only at import time, so the heavy imports live inside
+        # the functions that need them.
+        import-outside-toplevel,
+
+        # This project requires *why*-comments, and a docstring on every
+        # small private helper is the "obvious noise" its own checklist
+        # bans. The prose that matters is already required elsewhere.
+        missing-function-docstring,
+        missing-class-docstring,
+
+        # Size is already measured, more strictly, by the C1/C2 ratchet
+        # in tests/test_code_standards_scan.py. Two detectors for one
+        # rule is the two-debt-lists problem again.
+        too-many-locals,
+        too-many-arguments,
+        too-many-positional-arguments,
+        too-many-return-statements,
+        too-many-branches,
+        too-many-statements,
+        too-many-instance-attributes,
+        too-many-lines,
+        too-few-public-methods,
+
+        # Two are deliberate and documented; the third is registered as
+        # docs/TECHNICAL-DEBT.md's 3.7 and tracked there, which is where
+        # a decision about it belongs.
+        duplicate-code,
+
+        # Each site states its cause in a comment; the checker cannot
+        # see that and would only ask for the comment again.
+        broad-exception-caught,
+
+        # Test seams and module-level caches, both deliberate.
+        protected-access,
+        global-statement,
+        unused-argument,
+        attribute-defined-outside-init,
+        redefined-outer-name,
+        cyclic-import
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -203,7 +251,27 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis). It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=
+# The "enrich" Poetry group's third-party imports. Every one of these is
+# imported *inside* the function that needs it -- the lazy pattern that
+# keeps tier-1 modules stdlib-only at import time -- but pylint resolves
+# imports statically wherever they sit, so it reports import-error for all
+# of them unless the enrich group is installed.
+#
+# Listing them here rather than installing the group in CI is the cheaper
+# and more honest of the two: the group pulls torch and docling, minutes
+# of download for a check that reads source, and installing it would let a
+# genuine typo'd import inside src/enrich/ pass unnoticed only if the
+# typo'd name happened to exist. Naming the modules keeps import-error
+# live for everything else, including a misspelling of one of these.
+ignored-modules=bertopic,
+                chromadb,
+                docling,
+                docling_core,
+                hdbscan,
+                numpy,
+                sentence_transformers,
+                torch,
+                umap
 
 # Show a hint with possible names when a member name was not found. The aspect
 # of finding the hint is based on edit distance.
@@ -315,7 +383,15 @@ good-names=i,
            k,
            ex,
            Run,
-           _
+           _,
+           # Context managers, deliberately lowercase: both are used as
+           # `with pipeline_lock(...)` / `with interrupt_guard(...)`,
+           # where PascalCase would read as a class being constructed
+           # rather than a block being entered. Named in
+           # docs/TECHNICAL-DEBT.md's 5.2 baseline as belonging here
+           # rather than being a finding to fix.
+           pipeline_lock,
+           interrupt_guard
 
 # Good variable names regexes, separated by a comma. If names match any regex,
 # they will always be accepted

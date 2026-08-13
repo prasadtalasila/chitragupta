@@ -2,11 +2,10 @@
 # (INTO-CPS-Association/DTaaS), the same source docs/CODE-STANDARDS.md
 # takes this project's code standards from.
 #
-# NOT ENFORCED YET. No CI job runs this -- see DEVELOPER-AGENTS.md's
-# "The linters, which are configured but not yet enforced" and
-# docs/TECHNICAL-DEBT.md's 5.3 for the measured baseline (927 findings
-# over the root and docs/ prose, 827 of them the cosmetic MD060) and the
-# order the two linters should be adopted in.
+# ENFORCED. `.github/workflows/ci.yml`'s `lint` job runs this at a binary
+# zero-messages bar -- see docs/TECHNICAL-DEBT.md's 5.3 for the baseline
+# it was adopted from (947 findings, 839 of them MD060) and the order the
+# two linters were adopted in.
 #
 # Run it with:
 #   markdownlint-cli2 "*.md" "docs/**/*.md"
@@ -16,6 +15,15 @@ default: true
 # block for the dark-mode logo, which has no Markdown spelling.
 MD033: false
 
+# Table cell padding, and 89% of the baseline on its own (839 of 947).
+# This is the judgement docs/TECHNICAL-DEBT.md's 5.3 left to whoever
+# adopted the linter, and it is declined: the alternative is a 839-line
+# diff that touches every table in the documentation to move spaces
+# around, changing no rendered output and burying the substantive history
+# of those files. The tables here are hand-aligned and read well already.
+# Everything else in the baseline is enforced.
+MD060: false
+
 MD013:
   code_blocks: false
   tables: false
@@ -23,18 +31,14 @@ MD013:
 MD046:
   style: "fenced"
 
-overrides:
-  files:
-    # Paths corrected for this repository's layout. Upstream's third entry
-    # was `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`, the
-    # directory form; GitHub also accepts the flat file, which is what is
-    # here, so the inherited path matched nothing and the override was
-    # inert. `.github/RELEASE_TEMPLATE.md` is added because it has the
-    # same shape and the same reason -- it is a fragment to copy from
-    # rather than a document, so it does not open with an H1.
-    - ".github/ISSUE_TEMPLATE/bug_report.md"
-    - ".github/ISSUE_TEMPLATE/feature_request.md"
-    - ".github/pull_request_template.md"
-    - ".github/RELEASE_TEMPLATE.md"
-  rules:
-    MD041: false
+# There is no `overrides:` block here, and the one inherited from
+# upstream has been removed rather than corrected. `overrides` is a
+# markdownlint-**cli2** feature, read from `.markdownlint-cli2.yaml`; a
+# plain `.markdownlint.yaml` like this one is the library's own config
+# schema and ignores the key silently. The inherited block was therefore
+# inert twice over -- it named `.github/` paths, which this project's lint
+# scope (`"*.md" "docs/**/*.md"`) does not reach either.
+#
+# Per-file exceptions are inline directives instead, at the one site that
+# needs one: `README.md`'s `markdownlint-disable-next-line MD041`, which
+# carries its reason beside it and cannot quietly stop applying.

@@ -2057,7 +2057,8 @@ def _cmd_restore(args: argparse.Namespace) -> int:
     verb = "Restored" if plan.performed else "Would restore"
     print(f"{verb} into {draft_relpath(config.CONTENT_DIR)}:")
     print(f"  {len(plan.new)} new file(s)")
-    print(f"  {len(plan.overwrite)} existing file(s) {'overwritten' if plan.performed else 'would be OVERWRITTEN'}")
+    print(f"  {len(plan.overwrite)} existing file(s) "
+          f"{'overwritten' if plan.performed else 'would be OVERWRITTEN'}")
     for path in plan.overwrite[:10]:
         print(f"    {draft_relpath(path)}")
     if len(plan.overwrite) > 10:

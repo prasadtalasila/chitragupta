@@ -291,7 +291,7 @@ rendered PDF's bibliography agree on which source is `[1]`. Each entry
 ends with its citekey in a code span, because the draft's own inline
 markers are still `[@citekey]`:
 
-```
+```text
 [1] J. Doe and R. Roe, "A Paper," *IEEE Trans. Testing*, vol. 3, pp. 1–9, 2024. `doe_paper_2024`
 ```
 
@@ -835,7 +835,7 @@ under the draft's own heading, including a numbered one like
 format is written **beside the draft**, mirroring its path under
 `content/drafts/` into `content/rendered/`:
 
-```
+```text
 content/drafts/dt-for-engineers/survey.md
    -> content/rendered/dt-for-engineers/survey.{md,tex,pdf,docx}
 ```
@@ -983,7 +983,7 @@ reverse, and nothing is parsed twice.
 The `embed` stage names each document as it reaches it, so a run over a
 real corpus is legible rather than silent for its whole duration:
 
-```
+```text
 === embed ===
   [1/646] abbiati_modelling_2024 -- embedded, 92 chunk(s)
   [2/646] abduvakhobov_scalable_2024 -- unchanged, 65 chunk(s)

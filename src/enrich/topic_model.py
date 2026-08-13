@@ -46,13 +46,13 @@ from src.enrich.corpus import CorpusDoc
 
 def _load_embed_cache() -> dict:
     if config.TOPIC_EMBED_CACHE_PATH.exists():
-        return json.loads(config.TOPIC_EMBED_CACHE_PATH.read_text())
+        return json.loads(config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
     return {}
 
 
 def _save_embed_cache(cache: dict) -> None:
     config.TOPIC_EMBED_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    config.TOPIC_EMBED_CACHE_PATH.write_text(json.dumps(cache))
+    config.TOPIC_EMBED_CACHE_PATH.write_text(json.dumps(cache), encoding="utf-8")
 
 
 def run_topic_model(docs: list[CorpusDoc]) -> dict:
@@ -68,7 +68,8 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
             doc_texts[doc.citekey] = text
 
     if len(doc_texts) < 2:
-        raise ValueError(f"Need at least 2 documents with text to run BERTopic; got {len(doc_texts)}")
+        raise ValueError("Need at least 2 documents with text to run BERTopic; "
+                         f"got {len(doc_texts)}")
 
     _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
 
@@ -131,5 +132,5 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
     }
     config.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    config.TOPICS_PATH.write_text(json.dumps(result, indent=2))
+    config.TOPICS_PATH.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result
