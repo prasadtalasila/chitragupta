@@ -239,6 +239,33 @@ code whose `main()` reads top to bottom on purpose. Stating that plainly
 is better than the alternative reading, which is that its 8 long
 functions were quietly not counted.
 
+### Cognitive complexity: the bar is 25, not SonarQube's default 15
+
+SonarQube's Python analysis ships S3776 -- "Cognitive Complexity of
+functions should not be too high" -- with a default threshold of **15**.
+That default is not this project's standard. **The standard here is
+25**, deliberately aligned with C1's 25-statement rule: the two measure
+different things -- how much a function *does* against how hard its
+control flow is to *follow* -- but they draw the line at the same
+altitude, and a complexity bar lower than the statement bar would drive
+exactly the over-splitting [R3](#the-rule-that-decides-everything) warns
+about: functions cut past the point where the logic survives the break,
+with every cut passing its own re-check.
+
+Operationally:
+
+- A function with cognitive complexity **above 25** is treated like a C1
+  offence: split it along its natural seams, or say in the PR why it
+  cannot be split.
+- A SonarCloud S3776 finding **at 25 or below** is marked *Accepted* in
+  the SonarCloud UI, not "fixed" -- splitting a 16-complexity function
+  to satisfy a tool's default is churn, not cleanup.
+- The threshold itself lives in SonarCloud's **quality profile**, which
+  is server-side configuration: set `python:S3776`'s `threshold`
+  parameter to 25 there. It cannot be pinned from
+  `sonar-project.properties`, so this section is the durable record of
+  the decision, and the profile is what has to match it.
+
 ## What a ratchet is, and the debt register
 
 A **ratchet** is a mechanical pawl that lets a wheel turn one way and
@@ -257,7 +284,7 @@ has, both of which fail:
 The ratchet takes the useful half of each. Concretely, here:
 
 - Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
-  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **25
+  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **22
   functions** and **13 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale.

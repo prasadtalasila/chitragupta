@@ -261,6 +261,23 @@ class TestImageExtraction:
         )
         assert records[0]["cite"] == f"{expected} of [@richstein_characterizing_2024], p.3"
 
+    def test_a_numberless_pageless_figure_is_cited_as_unplaced(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """No caption number and no page provenance -- a publisher logo is
+        the usual culprit. The citation names it unplaced rather than
+        inventing a number or a page for it."""
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("just a logo", page=None)]
+        )
+        docling_parse.parse_doc(self._doc(tmp_path))
+
+        records = json.loads(
+            (images_on.DOCLING_DIR / "richstein_characterizing_2024.figures.json").read_text()
+        )
+        assert records[0]["cite"] == "an unplaced figure in [@richstein_characterizing_2024]"
+        assert records[0]["page"] is None
+
     def test_distinct_subfigures_do_not_collapse_onto_one_number(self, images_on, fake_docling, tmp_path, monkeypatch):
         """The actual regression: four figures, four distinct citations."""
         monkeypatch.setattr(FakeDocumentConverter, "pictures", [

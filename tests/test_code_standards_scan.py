@@ -62,18 +62,15 @@ LEGACY_LONG_FUNCTIONS = {
     "src/ledger.py::main",  # 50
     "src/retrieval.py::main",  # 45
     "src/dossier.py::main",  # 42
-    "src/enrich/docling_parse.py::parse_corpus",  # 41
     "src/enrich/embed_index.py::build_index",  # 40
     "src/review/citation_provenance.py::render_markdown",  # 38
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/references.py::format_entry",  # 35
     "src/dossier.py::_cmd_brief",  # 34
-    "src/enrich/__main__.py::main",  # 34
     "src/sync.py::_parse_parallel",  # 33
     "src/dossier.py::_print_drift",  # 32
     "src/enrich/topic_model.py::run_topic_model",  # 32
     "src/render_output.py::render",  # 31
-    "src/enrich/__main__.py::_run_stages",  # 30
     "tests/test_release.py::make_repo",  # 30
     "src/dossier.py::sections",  # 29
     "src/ledger.py::upsert_reference",  # 29
@@ -94,7 +91,7 @@ LEGACY_LONG_FILES = {
     "src/dossier.py",  # 1619
     "src/review/verbatim_check.py",  # 1588
     "src/pdf_text.py",  # 1001
-    "src/enrich/docling_parse.py",  # 508
+    "src/enrich/docling_parse.py",  # 522
     "src/overlap_index.py",  # 492
     "src/render_output.py",  # 456
     "src/sync.py",  # 444
@@ -103,7 +100,7 @@ LEGACY_LONG_FILES = {
     "src/retrieval.py",  # 359
     "src/references.py",  # 340
     "src/overlap_skipgram.py",  # 305
-    "src/config.py",  # 294
+    "src/config.py",  # 292
 }
 
 

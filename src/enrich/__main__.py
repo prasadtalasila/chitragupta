@@ -187,77 +187,18 @@ def main(configure_logging: bool = False) -> int:
     handlers or create a logs/ directory as a side effect.
     """
     args = parse_args()
-    # Every print between here and the lock is deliberately a bare print
-    # rather than _say: no log file is open yet and none may be opened
-    # here (see this docstring). Argument validation belongs to the
-    # caller's terminal anyway -- the run it describes has not started.
-    if args.stages is not None:
-        stages = args.stages
-    elif args.for_draft:
-        # Just docling: the other two are refused with a scope
-        # (SCOPE_REFUSED above), and quotable passages for the cited
-        # papers are what --for-draft is for.
-        stages = "docling"
-    else:
-        stages = ",".join(STAGE_ORDER)
-    # Strip and drop blanks: "--stages 'embed, bertopic'" and a trailing
-    # comma are both natural to type, and without this the first makes a
-    # real stage look unknown (" bertopic" matches nothing) while the
-    # second puts an empty name in the warning below.
-    selected = {name.strip() for name in stages.split(",") if name.strip()}
-
-    # An unrecognized stage name would otherwise be a silent no-op: the
-    # loop below iterates STAGE_ORDER and skips anything not selected, so
-    # nothing ever reports that the name went unused. Say so instead --
-    # notably for a stage name this pipeline used to have and no longer does.
-    unknown = sorted(selected - set(STAGE_ORDER))
-    if unknown:
-        print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- "
-              f"known stages: {', '.join(STAGE_ORDER)}")
+    # Every print in this function and its two helpers is deliberately a
+    # bare print rather than _say: no log file is open yet and none may
+    # be opened here (see this docstring). Argument validation belongs to
+    # the caller's terminal anyway -- the run it describes has not
+    # started.
+    selected = _selected_stages(args)
 
     scope = None
     if args.for_draft:
-        # Refused against the stages the user *typed*, not against the
-        # default: a bare --for-draft selects docling alone above and
-        # never reaches this, so the only way here is having asked for a
-        # scoped embed or bertopic in so many words.
-        refused = sorted(selected & set(SCOPE_REFUSED))
-        if refused:
-            print(f"  --for-draft cannot scope {' or '.join(refused)}: "
-                  f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
-                  "artefact, and a partial one is indistinguishable from a complete one. Run "
-                  "them as separate commands:\n"
-                  f"      python -m src.enrich --for-draft {args.for_draft} --stages docling\n"
-                  f"      python -m src.enrich --stages {','.join(refused)}")
-            return EXIT_BAD_SCOPE
-
-        draft_path = Path(args.for_draft)
-        try:
-            scope = draft_citekeys(draft_path)
-        except OSError as exc:
-            print(f"  cannot read --for-draft {draft_path}: {exc}")
-            return EXIT_BAD_SCOPE
-        except UnicodeDecodeError as exc:
-            # A separate branch because it is a separate failure:
-            # UnicodeDecodeError is a ValueError, so the clause above
-            # does not catch it, and the fix is different enough to be
-            # worth naming. Not read with errors="replace" instead --
-            # a replacement character lands in the middle of whatever
-            # citekey the bad byte was part of, and the run would then
-            # scope itself to a quietly wrong set of papers rather than
-            # stopping.
-            print(f"  cannot read --for-draft {draft_path} as UTF-8: {exc}\n"
-                  "      Every draft this pipeline writes is UTF-8, so this one came from "
-                  "somewhere else -- re-save it in that encoding.")
-            return EXIT_BAD_SCOPE
-        if not scope:
-            # Before the lock rather than after: this is a property of
-            # the file the user named, and answerable without the
-            # ledger, so there is no reason to make a concurrent sync
-            # wait for the answer.
-            print(f"  no citations found in {draft_path} -- nothing to scope the run to. "
-                  "Drop --for-draft to enrich the whole corpus.")
-            return EXIT_BAD_SCOPE
+        scope, error = _resolve_scope(args, selected)
+        if error is not None:
+            return error
     # Same lock as `python -m src.corpus sync`: every stage here writes a corpus
     # artefact, and
     # sync's parsed-text writes are not atomic, so an enrichment run
@@ -283,36 +224,96 @@ def main(configure_logging: bool = False) -> int:
         return runlock.EXIT_ALREADY_RUNNING
 
 
+def _selected_stages(args) -> set[str]:
+    """The stage names this run will attempt, warned but not filtered.
+
+    Strip and drop blanks: "--stages 'embed, bertopic'" and a trailing
+    comma are both natural to type, and without this the first makes a
+    real stage look unknown (" bertopic" matches nothing) while the
+    second puts an empty name in the warning below.
+    """
+    if args.stages is not None:
+        stages = args.stages
+    elif args.for_draft:
+        # Just docling: the other two are refused with a scope
+        # (SCOPE_REFUSED above), and quotable passages for the cited
+        # papers are what --for-draft is for.
+        stages = "docling"
+    else:
+        stages = ",".join(STAGE_ORDER)
+    selected = {name.strip() for name in stages.split(",") if name.strip()}
+
+    # An unrecognized stage name would otherwise be a silent no-op: the
+    # loop in _run_stages iterates STAGE_ORDER and skips anything not
+    # selected, so nothing ever reports that the name went unused. Say so
+    # instead -- notably for a stage name this pipeline used to have and
+    # no longer does.
+    unknown = sorted(selected - set(STAGE_ORDER))
+    if unknown:
+        print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- "
+              f"known stages: {', '.join(STAGE_ORDER)}")
+    return selected
+
+
+def _resolve_scope(args, selected) -> "tuple[set[str] | None, int | None]":
+    """--for-draft's citekey set, or the exit code refusing it.
+
+    Returns (scope, None) on success and (None, EXIT_BAD_SCOPE) on any
+    refusal, so main() has one place to bail. All of it runs before the
+    lock: every answer here is a property of the file the user named,
+    answerable without the ledger, so there is no reason to make a
+    concurrent sync wait for it.
+    """
+    # Refused against the stages the user *typed*, not against the
+    # default: a bare --for-draft selects docling alone in
+    # _selected_stages and never reaches this branch, so the only way
+    # here is having asked for a scoped embed or bertopic in so many
+    # words.
+    refused = sorted(selected & set(SCOPE_REFUSED))
+    if refused:
+        print(f"  --for-draft cannot scope {' or '.join(refused)}: "
+              f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
+              "artefact, and a partial one is indistinguishable from a complete one. Run "
+              "them as separate commands:\n"
+              f"      python -m src.enrich --for-draft {args.for_draft} --stages docling\n"
+              f"      python -m src.enrich --stages {','.join(refused)}")
+        return None, EXIT_BAD_SCOPE
+
+    draft_path = Path(args.for_draft)
+    try:
+        scope = draft_citekeys(draft_path)
+    except OSError as exc:
+        print(f"  cannot read --for-draft {draft_path}: {exc}")
+        return None, EXIT_BAD_SCOPE
+    except UnicodeDecodeError as exc:
+        # A separate branch because it is a separate failure:
+        # UnicodeDecodeError is a ValueError, so the clause above
+        # does not catch it, and the fix is different enough to be
+        # worth naming. Not read with errors="replace" instead --
+        # a replacement character lands in the middle of whatever
+        # citekey the bad byte was part of, and the run would then
+        # scope itself to a quietly wrong set of papers rather than
+        # stopping.
+        print(f"  cannot read --for-draft {draft_path} as UTF-8: {exc}\n"
+              "      Every draft this pipeline writes is UTF-8, so this one came from "
+              "somewhere else -- re-save it in that encoding.")
+        return None, EXIT_BAD_SCOPE
+    if not scope:
+        print(f"  no citations found in {draft_path} -- nothing to scope the run to. "
+              "Drop --for-draft to enrich the whole corpus.")
+        return None, EXIT_BAD_SCOPE
+    return scope, None
+
+
 def _run_stages(args, selected, scope: set[str] | None = None) -> int:
     docs = corpus.build_corpus()
     _say(f"Target: {args.target}")
     if scope is None:
         _say(f"Corpus: {len(docs)} doc(s) from {config.BIB_FILE_PATH}")
     else:
-        # The filter sits here rather than inside build_corpus(): that
-        # function's whole contract is "every ledger item", the full
-        # SELECT is microseconds next to any stage, and keeping the
-        # unfiltered list in hand is what lets the count below say what
-        # was left out instead of only what was kept.
-        total = len(docs)
-        docs = [doc for doc in docs if doc.citekey in scope]
-        _say(f"Corpus: {len(docs)} of {total} doc(s) from {config.BIB_FILE_PATH} "
-             f"-- scoped to {args.for_draft}")
-
-        # Named, not just counted. A citekey a draft cites and the
-        # ledger has never heard of is normally the hard gate's business
-        # and cannot reach a passing draft -- but a draft written before
-        # a re-export, or against a corpus that has since moved, has
-        # them, and silently enriching the remainder would report a
-        # smaller number with nothing to explain it.
-        unknown = sorted(scope - {doc.citekey for doc in docs})
-        if unknown:
-            _say(f"  {len(unknown)} cited citekey(s) are not in the ledger and cannot be "
-                 f"enriched: {', '.join(unknown)}", level=logging.WARNING)
-        if not docs and selected & set(CORPUS_STAGES):
-            _say("  nothing to enrich -- re-export your bibliography and run "
-                 "`python -m src.corpus sync` first.", level=logging.WARNING)
-            return EXIT_BAD_SCOPE
+        docs, error = _scope_corpus(docs, scope, args, selected)
+        if error is not None:
+            return error
 
     results = {}
     for name in STAGE_ORDER:
@@ -324,31 +325,72 @@ def _run_stages(args, selected, scope: set[str] | None = None) -> int:
         except Exception as exc:  # noqa: BLE001 -- a stage failing must not abort the run
             result = {"status": "error", "detail": f"{type(exc).__name__}: {exc}"}
         results[name] = result
-        detail = result["detail"]
-        # Two renderings of the same detail on purpose. The terminal gets
-        # the indented JSON it has always had; the log gets it on one
-        # line, because a record spanning several lines turns one event
-        # into several with only the first timestamped, and every stage
-        # but `render` returns a dict here -- so this is the common case,
-        # not an edge one.
-        #
-        # A failed stage is logged at WARNING so an unattended reader
-        # grepping logs/pipeline.log at the default level still sees it
-        # -- the stage swallowed the exception to keep the run going,
-        # so this line is the only trace it leaves.
-        is_text = isinstance(detail, str)
-        _say(
-            f"[{result['status']}] "
-            + (detail if is_text else json.dumps(detail, indent=2, default=str)),
-            level=logging.WARNING if result["status"] == "error" else logging.INFO,
-            log_as=None if is_text else f"[{result['status']}] " + json.dumps(detail, default=str),
-        )
+        _report_stage_result(result)
 
     _say("\n=== Summary ===")
     for name in STAGE_ORDER:
         if name in results:
             _say(f"  {name:10s} {results[name]['status']}")
     return 0
+
+
+def _scope_corpus(docs, scope, args, selected):
+    """The corpus narrowed to --for-draft's citekeys, with the losses named.
+
+    The filter sits here rather than inside build_corpus(): that
+    function's whole contract is "every ledger item", the full SELECT is
+    microseconds next to any stage, and keeping the unfiltered list in
+    hand is what lets the count below say what was left out instead of
+    only what was kept.
+
+    Returns (docs, None), or (docs, EXIT_BAD_SCOPE) when a corpus stage
+    was asked to run over nothing.
+    """
+    total = len(docs)
+    docs = [doc for doc in docs if doc.citekey in scope]
+    _say(f"Corpus: {len(docs)} of {total} doc(s) from {config.BIB_FILE_PATH} "
+         f"-- scoped to {args.for_draft}")
+
+    # Named, not just counted. A citekey a draft cites and the
+    # ledger has never heard of is normally the hard gate's business
+    # and cannot reach a passing draft -- but a draft written before
+    # a re-export, or against a corpus that has since moved, has
+    # them, and silently enriching the remainder would report a
+    # smaller number with nothing to explain it.
+    unknown = sorted(scope - {doc.citekey for doc in docs})
+    if unknown:
+        _say(f"  {len(unknown)} cited citekey(s) are not in the ledger and cannot be "
+             f"enriched: {', '.join(unknown)}", level=logging.WARNING)
+    if not docs and selected & set(CORPUS_STAGES):
+        _say("  nothing to enrich -- re-export your bibliography and run "
+             "`python -m src.corpus sync` first.", level=logging.WARNING)
+        return docs, EXIT_BAD_SCOPE
+    return docs, None
+
+
+def _report_stage_result(result) -> None:
+    """One stage's outcome, to the terminal and the log.
+
+    Two renderings of the same detail on purpose. The terminal gets
+    the indented JSON it has always had; the log gets it on one
+    line, because a record spanning several lines turns one event
+    into several with only the first timestamped, and every stage
+    but `render` returns a dict here -- so this is the common case,
+    not an edge one.
+
+    A failed stage is logged at WARNING so an unattended reader
+    grepping logs/pipeline.log at the default level still sees it
+    -- the stage swallowed the exception to keep the run going,
+    so this line is the only trace it leaves.
+    """
+    detail = result["detail"]
+    is_text = isinstance(detail, str)
+    _say(
+        f"[{result['status']}] "
+        + (detail if is_text else json.dumps(detail, indent=2, default=str)),
+        level=logging.WARNING if result["status"] == "error" else logging.INFO,
+        log_as=None if is_text else f"[{result['status']}] " + json.dumps(detail, default=str),
+    )
 
 
 if __name__ == "__main__":

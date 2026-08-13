@@ -65,6 +65,11 @@ Read it before a non-trivial change. In brief:
   new offender fails and a fixed one must be delisted.
 - **Statements, not physical lines**, because this repository *requires*
   rationale comments and a physical-line limit would reward deleting them.
+- **Cognitive complexity is capped at 25, not SonarQube's default 15** --
+  aligned with the 25-statement rule, for the same anti-over-splitting
+  reason. Do not split a function merely to satisfy an S3776 finding of
+  25 or below; mark it *Accepted* in SonarCloud instead --
+  [why](docs/CODE-STANDARDS.md#cognitive-complexity-the-bar-is-25-not-sonarqubes-default-15).
 - Everything else in that document -- naming, one-thing-per-function, the
   code-smell vocabulary -- is a review standard with no detector,
   deliberately. A quality score is not a thing to drive to zero;
