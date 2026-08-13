@@ -189,7 +189,14 @@ jobs:
       # failure to be loud.
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        # Pinned to a commit SHA rather than the `v5` tag (which currently
+        # resolves to this same commit, v5.5.5) because the first SonarQube
+        # analysis on this file flagged exactly this line: S7637, "use full
+        # commit SHA hash for this dependency", MAJOR. A movable tag on a
+        # third-party action that receives a token is the finding, and it
+        # is a fair one. Bump this deliberately, by resolving the tag again,
+        # rather than by tracking `v5` silently.
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           files: ./coverage.xml
           flags: ${{ matrix.os }}
@@ -255,8 +262,10 @@ jobs:
       #
       # Pinned to a commit SHA rather than the `v8` tag: this is a
       # third-party action handling a credential, and a tag can be moved to
-      # point at different code. The two actions above are first-party
-      # (GitHub, Codecov) and stay on their existing tag pins.
+      # point at different code. Sonar's own S7637 makes the same point
+      # about the Codecov action above, which is now pinned too.
+      # `actions/checkout` is left on `@v4` at every call site in this file
+      # -- it is GitHub's own action, and S7637 did not flag it.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
         env:
