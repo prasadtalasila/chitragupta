@@ -163,11 +163,11 @@ review finding today, independent of whether a checker is ever adopted.
 
 New in this review. Each names a call site.
 
-### 3.1 Text I/O on the locale codec, including the gate itself
+### 3.1 Text I/O on the locale codec
 
-**The most severe item in this document.** 32 of `src/`'s 67 text-I/O
-call sites call `read_text()` / `write_text()` / `open()` with **no
-`encoding=`**, so they use the host's locale codec:
+32 of `src/`'s 67 text-I/O call sites call `read_text()` /
+`write_text()` / `open()` with **no `encoding=`**, so they use the host's
+locale codec:
 
 | Module | Sites without `encoding=` |
 |---|---|
@@ -188,31 +188,51 @@ leg, and these files are full of em dashes." CI sets no `PYTHONUTF8`.
 The rule is understood, written down four times, and applied to fewer
 than half of `src/`'s own call sites.
 
-Three sites make this more than tidiness:
+**The two failure modes are not the same, and the difference decides
+where this matters.** Both were reproduced against cp1252 rather than
+reasoned about, because the intuitive answer is wrong:
 
-- **`src/citation_gate.py:191`** -- `check_document` reads the draft with
-  the locale codec. A draft containing any character outside the host's
-  codec raises `UnicodeDecodeError` and the gate exits on a traceback
-  instead of a verdict. This is the one gate in the project
-  ([CLAUDE.md](../CLAUDE.md)); a gate that crashes is a gate that did not
-  run, which is the failure mode the whole design exists to prevent.
-- **`src/render_output.py:151`** -- reads `bibliography.bib`. Author
-  names with diacritics are the norm, not the exception, in a real
-  reference export.
-- **`src/references.py:430,451`** -- *writes* the rendered bibliography.
-  The failure here is `UnicodeEncodeError` on output, after the work is
-  done.
+- **Writing raises.** `"≥"`, a CJK name and a Cyrillic name each raise
+  `UnicodeEncodeError` on a cp1252 host. This is a hard, loud crash,
+  and it lands *after* the expensive work is done.
+- **Reading almost never raises.** cp1252 leaves only five bytes
+  undefined (`0x81`, `0x8D`, `0x8F`, `0x90`, `0x9D`), so a UTF-8 draft
+  read back as cp1252 overwhelmingly **succeeds and returns mojibake**:
+  `"Films at ≥ 5 nm ... 中文 ... café"` comes back as
+  `"Films at â‰¥ 5 nm ... ä¸\xadæ–‡ ... cafÃ©"`. Silent corruption, not a
+  traceback.
+
+So the sites that matter are the **writes**, and the read sites matter
+only where the text is used as text rather than scanned for ASCII:
+
+- **`src/references.py:430,451`** and **`src/render_output.py:148,171,172`**
+  -- write the rendered bibliography and the sanitised markdown/bib
+  handed to pandoc. A Cyrillic or CJK author name is ordinary in a real
+  reference export, and on a cp1252 host it crashes the render.
+- **`src/render_output.py:141,151`** -- read the draft and
+  `bibliography.bib` and pass them straight back out to pandoc, so a
+  mojibake read becomes a mojibake PDF with no error anywhere.
+- **`src/retrieval.py:168`** -- reads parsed text into the BM25 index
+  under `errors="ignore"`. Corrupted tokens degrade ranking silently.
+
+**What this is *not*.** `src/citation_gate.py:191` reads the draft the
+same way, and it was worth checking whether the project's one gate could
+be taken out this way. It cannot: citekeys are ASCII, so
+`extract_citekeys()` returns identical results from the correctly-decoded
+and the mojibake text (verified on the example above -- both yield
+`[(1, 'zhang_2021')]`). The gate is unaffected, and the same reasoning
+clears `src/review/citation_coverage.py:73`. Recorded here because the
+opposite conclusion is the natural one to jump to.
 
 Why it has not been caught: an encoding-less write followed by an
-encoding-less read round-trips correctly for any character the host codec
-can represent, and cp1252 covers the em dash the test comments name. The
-break needs a character outside it -- a Greek letter in a title, a CJK
-author name, a `≥` in a quoted excerpt -- on a non-UTF-8 host. Linux CI
-is UTF-8 and cannot see it.
+encoding-less read round-trips for anything the host codec can
+represent, and cp1252 covers the em dash the four test comments name.
+Linux CI is UTF-8 and cannot see any of it; the Windows leg would, but
+only if a fixture fed it a character outside cp1252.
 
-**Fix shape:** pass `encoding="utf-8"` at all 32 sites. Mechanical, but
-it is a code change and belongs in its own PR with a test that reads a
-draft containing a non-cp1252 character.
+**Fix shape:** pass `encoding="utf-8"` at all 32 sites -- mechanical, one
+PR, with a test that renders a bibliography containing a CJK author name.
+Writes first if it is split.
 
 ### 3.2 `_executor_for` duplicated across a module boundary
 
@@ -247,14 +267,26 @@ Measured against the ratchet it does not face, `bench/` holds **8
 functions over C1** and **2 modules over C2** (`repro_check.py` at 530
 code lines, `sweep_sync.py` at 282).
 
-CODE-STANDARDS.md states the exclusion and its reason -- one-shot
+CODE-STANDARDS.md states the C1/C2 exclusion and its reason -- one-shot
 analysis code whose `main()` reads top to bottom on purpose -- and
 explicitly prefers saying so to "the alternative reading, which is that
-its 8 long functions were quietly not counted." That is the right call
-for C1/C2. The debt is the **untested** half, which no document
-addresses: `bench/repro_check.py` at 700 physical lines is the tool that
-decides whether a parser change reproduces, and nothing verifies it
-still works. A wrong answer from it is a wrong answer about the parser.
+its 8 long functions were quietly not counted." That is the right call.
+
+The **untested** half is the part no document addresses, and it is
+narrower than it first looks. `bench/repro_check.py`, the largest of the
+eight and the one that decides whether a parser change reproduces,
+already handles it: `self_check()` runs from `main()` on every
+invocation, and its docstring names this exact gap -- "`bench/` sits
+outside CI's coverage targets, so nothing in the test suite will ever
+catch a regression here. This runs on every invocation instead." Nine
+assertions prove the detector can see a difference before a zero from it
+is believed.
+
+That leaves the debt as: **it is a pattern of one.** The other seven
+scripts hold no assertion at all, and the guard is a convention in one
+file's `main()` rather than anything a new script would inherit or a
+reviewer would be reminded of. `bench_drift.py` (336 lines) and
+`sweep_sync.py` (366) also publish numbers that decisions are made from.
 
 ### 3.4 `docker/Dockerfile` has never been built
 
@@ -276,11 +308,21 @@ The single install path for host, Docker and CI, called by
 `docker/Dockerfile` (three times) and `.github/workflows/ci.yml`
 directly. CI does exercise it on both legs, which is real verification of
 the happy path -- this is not untested code. But it is 333 lines of shell
-with no `shellcheck`, and its most delicate part
-(`ensure_gpu_torch`, which reinstalls torch from a driver-matched wheel
-index after Poetry resolves a different one) runs on neither CI leg,
-since no runner has a GPU. That function's failure mode is a silently
-wrong torch build.
+with no `shellcheck`, and its most delicate part is unreached there.
+
+`ensure_gpu_torch` reinstalls torch from a driver-matched wheel index
+after Poetry has resolved a different one, walking `cu130 -> cu118` to
+find the newest tag at or under the driver's CUDA ceiling. Its first
+statement is `if ! command -v nvidia-smi; then return`, and no GitHub
+runner has a GPU -- so **both CI legs execute exactly that one line and
+stop.** Everything after it, including the `nvidia-smi` output parsing
+and the tag walk, has only ever run by hand on one A40 host.
+
+The consequence is the one its own comment describes: torch installs
+clean, `torch.cuda.is_available()` returns `False`, and the enrichment
+stack runs on CPU with no error anywhere. That is the failure this
+function exists to prevent, and it is the failure a regression in it
+would silently reintroduce.
 
 ### 3.6 The Windows coverage floor is a 5-point blind spot
 
@@ -292,8 +334,8 @@ self-skip.
 The debt is that 95 is a *floor*, not a *target*: the 5 points are not
 attributed to the skipped tests, so Windows-only code that no test
 reaches is indistinguishable from a render test that self-skipped. This
-matters precisely for [3.1](#31-text-io-on-the-locale-codec-including-the-gate-itself),
-whose failure mode is Windows-specific. Attributing the gap -- via
+matters precisely for [3.1](#31-text-io-on-the-locale-codec), whose
+failure mode is Windows-specific. Attributing the gap -- via
 `# pragma: no cover` on the toolchain-dependent branches, or a second
 `.coveragerc` for the Windows leg -- would turn a floor into the same
 100 the Linux leg holds.
@@ -331,14 +373,18 @@ worse.
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
 | Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#tests): a test that reads top to bottom is worth more than a DRY one |
 | `tests/test_pdf_text.py` at 1806 code lines | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
+| `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
+| `src/citation_gate.py:191` reads the draft with no `encoding=` | Real, and on the list at [3.1](#31-text-io-on-the-locale-codec) -- but *not* a way to break the gate. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
 ## What to take first
 
 Ordered by what breaks if it is left, not by size:
 
-1. **[3.1] `encoding="utf-8"` at 32 call sites.** The only item whose
-   failure mode is the citation gate crashing. Mechanical, testable, one
-   PR.
+1. **[3.1] `encoding="utf-8"` at 32 call sites.** The only item in this
+   document with a *demonstrated* crash on ordinary input -- a CJK or
+   Cyrillic author name, rendered on a cp1252 host. Mechanical, testable,
+   one PR. The reads are worth fixing in the same pass, but they corrupt
+   rather than crash, so take the writes first if it is split.
 2. **[Tier 1] `src/sync.py::run`.** 117 statements, separable at six
    named seams, and already the register's designated first job.
 3. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
