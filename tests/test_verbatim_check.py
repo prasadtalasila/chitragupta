@@ -468,6 +468,39 @@ class TestLowerOffsets:
         assert len(offsets) == len(lowered)
 
 
+class TestLineAt:
+    """1-based line numbers off one precomputed sweep of the text, rather
+    than a `count("\\n", 0, pos)` per finding -- `citation_gate` already
+    computes its line numbers in one forward pass for the same reason."""
+
+    def test_a_position_on_the_first_line_is_line_one(self):
+        text = "first\nsecond\nthird"
+        assert vc._line_at(vc._newline_offsets(text), 0) == 1
+
+    def test_a_position_after_a_break_is_the_next_line(self):
+        text = "first\nsecond\nthird"
+        assert vc._line_at(vc._newline_offsets(text), text.index("second")) == 2
+        assert vc._line_at(vc._newline_offsets(text), text.index("third")) == 3
+
+    def test_the_newline_character_itself_belongs_to_the_line_it_ends(self):
+        text = "first\nsecond"
+        assert vc._line_at(vc._newline_offsets(text), text.index("\n")) == 1
+
+    def test_a_text_with_no_breaks_is_all_line_one(self):
+        text = "one single line"
+        offsets = vc._newline_offsets(text)
+        assert offsets == []
+        assert vc._line_at(offsets, len(text) - 1) == 1
+
+    def test_it_agrees_with_counting_newflines_at_every_position(self):
+        """The property the loop used to compute directly, pinned against
+        the cheap version so the two cannot drift."""
+        text = "alpha\n\nbeta gamma\ndelta\n\n\nepsilon"
+        offsets = vc._newline_offsets(text)
+        for pos in range(len(text)):
+            assert vc._line_at(offsets, pos) == text.count("\n", 0, pos) + 1
+
+
 class TestDraftWordOffsets:
     """Every word carries where it sits in the *original* text, which is
     what lets a finding be handed to `Edit` as an exact span (#129)."""

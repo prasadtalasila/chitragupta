@@ -52,6 +52,7 @@ error, not a verdict.
 """
 
 import argparse
+import bisect
 import hashlib
 import json
 import re
@@ -502,6 +503,29 @@ def _mask_allowlisted(span_word_strs, allowlist_tuples):
     return masked
 
 
+def _newline_offsets(text):
+    """Every newline's index in `text`, ascending -- one sweep, reused by
+    every finding.
+
+    `text.count("\\n", 0, char_start)` per finding is O(len(text)) each
+    time, so a long draft with many findings pays for the whole file once
+    per finding. `citation_gate.extract_citekeys` already computes its
+    line numbers in a single forward pass rather than per match, for
+    exactly this reason; this is that discipline applied here.
+    """
+    return [m.start() for m in re.finditer("\n", text)]
+
+
+def _line_at(newlines, pos):
+    """The 1-based line `pos` falls on, given `_newline_offsets`.
+
+    `bisect_left`, so a newline character counts as ending the line it
+    sits on rather than starting the next one -- the same convention
+    `str.count("\\n", 0, pos)` had.
+    """
+    return bisect.bisect_left(newlines, pos) + 1
+
+
 def finding_id(citekey, page, fragment):
     """A finding's name, stable across runs and across edits elsewhere in
     the draft.
@@ -573,6 +597,7 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     text = Path(draft).read_text(encoding="utf-8")
     words, paragraph_citekeys = _tokenize_draft(text)
     word_strs = [w.text for w in words]
+    newlines = _newline_offsets(text)
     n = index.n
     draft_hashes = overlap_index.gram_hashes(word_strs, n)
 
@@ -622,7 +647,7 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
                 "start": start,
                 # 1-based, counted in the original text: the only one of
                 # these four a person reads directly.
-                "line": text.count("\n", 0, char_start) + 1,
+                "line": _line_at(newlines, char_start),
                 "char_start": char_start,
                 "char_end": char_end,
                 "draft_text": text[char_start:char_end],
