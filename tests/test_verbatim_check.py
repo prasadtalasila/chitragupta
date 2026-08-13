@@ -719,6 +719,15 @@ class TestLoadAllowlistPhrases:
         with pytest.raises(ValueError, match="malformed TOML"):
             vc._load_allowlist_phrases()
 
+    def test_an_unreadable_path_raises_valueerror_not_oserror(self, isolated_config):
+        # path.exists() is True for a directory too, so a directory at
+        # this exact path reaches open() and raises IsADirectoryError (an
+        # OSError) -- which must not escape as an unhandled traceback
+        # instead of the usual usage-error path.
+        config.VERBATIM_ALLOWLIST_PATH.mkdir(parents=True, exist_ok=True)
+        with pytest.raises(ValueError, match="cannot read allowlist"):
+            vc._load_allowlist_phrases()
+
     def test_a_non_string_entry_raises(self, isolated_config):
         config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.VERBATIM_ALLOWLIST_PATH.write_text("phrases = [1, 2]\n")

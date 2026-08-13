@@ -336,14 +336,18 @@ def _load_allowlist_phrases():
 
     No file -> no suppressions: the normal state for a fresh clone, since
     nothing ever commits this file (see config.VERBATIM_ALLOWLIST_PATH).
-    A *present* file that isn't valid TOML, whose category isn't a list
-    of strings, or that carries a key outside the four documented ones
-    (a typo like `pharses`), raises ValueError rather than degrading to
-    "no suppressions" -- a policy file that silently stopped suppressing
-    is exactly the failure that surfaces months later as "why did this
-    stop working," not as "no findings today." An unknown key is exactly
-    that failure mode: without the check, a misspelled category loads as
-    an empty list, no phrases suppress, and nothing says why.
+    A *present* file that isn't valid TOML, that this process cannot read
+    (permissions, or the path is a directory), whose category isn't a
+    list of strings, or that carries a key outside the four documented
+    ones (a typo like `pharses`), raises ValueError rather than
+    degrading to "no suppressions" -- a policy file that silently
+    stopped suppressing is exactly the failure that surfaces months
+    later as "why did this stop working," not as "no findings today."
+    An unknown key is exactly that failure mode: without the check, a
+    misspelled category loads as an empty list, no phrases suppress, and
+    nothing says why. `run()` only catches `ValueError` as a usage error
+    (`OSError` would otherwise escape as an unhandled traceback instead
+    of the same clean exit 2), so both open() and parsing are wrapped.
     """
     path = config.VERBATIM_ALLOWLIST_PATH
     if not path.exists():
@@ -353,6 +357,8 @@ def _load_allowlist_phrases():
             data = tomllib.load(f)
     except tomllib.TOMLDecodeError as exc:
         raise ValueError(f"{path}: malformed TOML -- {exc}") from None
+    except OSError as exc:
+        raise ValueError(f"{path}: cannot read allowlist -- {exc}") from None
 
     unknown = sorted(set(data) - set(_ALLOWLIST_KEYS))
     if unknown:
