@@ -222,8 +222,10 @@ the day it lands is a rule that gets skipped, so both are enforced as a
 **ratchet** rather than a wall:
 
 - Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
-  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- 27
-  functions and 12 modules.
+  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **28
+  functions** and **12 modules**. Those two counts are themselves pinned
+  by `test_the_registers_are_the_size_this_document_says`, so a shrinking
+  register cannot leave this sentence stale.
 - **New offenders fail.** Anything not in the register that crosses
   either threshold fails the suite, with the count and the limit in the
   message.

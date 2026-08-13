@@ -103,26 +103,32 @@ LEGACY_LONG_FILES = {
 
 
 def statement_count(node):
-    """Statements in a function body, excluding nested definitions' bodies.
+    """Statements in a function body, not descending into nested definitions.
 
     A nested `def` is reached by `functions()` in its own right and checked
     on its own account, so counting its body here too would charge it to
-    both and make an inner helper look like a way to fail its parent.
-    Its own `def` line still counts as one statement of the parent, which
-    is correct -- declaring it is something the parent does.
+    both and make an inner helper look like a way to fail its parent. The
+    nested `def` or `class` statement itself still counts as one statement
+    of the parent, which is correct -- declaring it is something the parent
+    does.
+
+    Stopping the descent is what makes that true at any depth. An earlier
+    version subtracted a set of nested nodes from the walk instead, which
+    got a nested *class* wrong: its methods were themselves nested
+    definitions, so they survived the subtraction and were charged to the
+    enclosing function. The parent's count then moved when a method was
+    added to a class it merely declared.
     """
-    nested = {
-        inner
-        for child in ast.iter_child_nodes(node)
-        for inner in ast.walk(child)
-        if isinstance(inner, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-    }
-    skip = {body for definition in nested for body in ast.walk(definition)} - nested
-    return sum(
-        1
-        for child in ast.walk(node)
-        if isinstance(child, ast.stmt) and child is not node and child not in skip
-    )
+    count = 0
+    pending = list(ast.iter_child_nodes(node))
+    while pending:
+        child = pending.pop()
+        if isinstance(child, ast.stmt):
+            count += 1
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        pending.extend(ast.iter_child_nodes(child))
+    return count
 
 
 def functions(source):
@@ -155,7 +161,12 @@ def code_lines(source):
 
 
 def _python_files(roots):
-    """Every tracked `.py` file under `roots`, path-sorted.
+    """Every `.py` file under `roots` in the working tree, path-sorted.
+
+    The working tree, not `git ls-files`: an untracked scratch file under
+    `src/` is scanned and can fail the suite. That is deliberate -- it is
+    the state the code is actually in -- but it means a local-only failure
+    naming a file you never committed is a stray file, not a bug here.
 
     encoding="utf-8" is passed on every read below. Without it `read_text()`
     uses the locale codec, which is cp1252 on the Windows CI leg, and these
@@ -273,6 +284,26 @@ def test_the_registers_name_only_paths_that_still_exist():
     assert not missing, f"register entries for files that no longer exist: {missing}"
 
 
+def test_the_registers_are_the_size_this_document_says():
+    """CODE-STANDARDS.md quotes both register sizes in prose.
+
+    The registers are checked on every run and cannot drift; the sentence
+    describing them can, and did -- it said 27 functions against a
+    register of 28. Pinning the two numbers to the two registers is the
+    narrow form of the doc-drift detector that document's build order
+    asks for.
+    """
+    text = (REPO_ROOT / "docs" / "CODE-STANDARDS.md").read_text(encoding="utf-8")
+    expected = (
+        f"**{len(LEGACY_LONG_FUNCTIONS)}\nfunctions** and **{len(LEGACY_LONG_FILES)} modules**"
+    )
+    assert " ".join(expected.split()) in " ".join(text.split()), (
+        "docs/CODE-STANDARDS.md no longer states the register sizes correctly. "
+        f"They are now {len(LEGACY_LONG_FUNCTIONS)} functions and "
+        f"{len(LEGACY_LONG_FILES)} modules."
+    )
+
+
 def test_this_scanner_obeys_its_own_statement_limit():
     """The check that would be embarrassing to fail."""
     source = Path(__file__).read_text(encoding="utf-8")
@@ -306,6 +337,28 @@ def test_a_nested_function_is_charged_to_itself_not_to_its_parent():
     )
     # `outer` does two things: define `inner`, and return it.
     assert dict(functions(source)) == {"outer": 2, "inner": 3}
+
+
+def test_a_nested_classs_methods_are_not_charged_to_the_enclosing_function():
+    """The bug the set-subtraction version of `statement_count` had.
+
+    A method of a nested class is itself a nested definition, so it
+    survived a skip set built by subtracting nested nodes from the walk --
+    and `outer` below counted 4 rather than 2. The count of a function
+    that merely declares a class must not move when a method is added to
+    that class.
+    """
+    source = (
+        "def outer():\n"
+        "    class C:\n"
+        "        def m(self):\n"
+        "            pass\n"
+        "        def n(self):\n"
+        "            pass\n"
+        "    return C\n"
+    )
+    # `outer` does two things: define `C`, and return it.
+    assert dict(functions(source)) == {"outer": 2, "m": 1, "n": 1}
 
 
 def test_a_method_is_counted_and_not_charged_to_its_class_body():
