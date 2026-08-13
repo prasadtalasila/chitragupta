@@ -20,11 +20,23 @@
     "for the human. First matching entry wins; a file matching none falls",
     "back to OCR's built-in.",
     "",
-    "VERIFY A CHANGE with `ocr rules check <path>` -- it prints which entry",
-    "matched and the resolved text. tests/test_opencodereview_rules.py pins",
-    "the parts that would silently stop working."
+    "NO RULE FOR MARKDOWN, DELIBERATELY. OCR reviews only file extensions",
+    "it recognises as code, and drops everything else before rules are ever",
+    "consulted -- `ocr delegate preview` reports them as",
+    "`exclude_reason: unsupported_ext`. Probed on this binary: .py, .json,",
+    ".yml/.yaml, .sh and .toml are reviewed; .md, .txt, .rst and .cfg are",
+    "not. An earlier revision of this file carried two Markdown rules; they",
+    "resolved cleanly under `ocr rules check` and could never fire in a",
+    "real review, which is a worse failure than having none -- it implies",
+    "coverage of the standing-instruction documents that does not exist.",
+    "",
+    "VERIFY A CHANGE with the plugin's own workflow, not with `rules check`",
+    "alone -- that is a rule lookup and answers for files OCR would never",
+    "review. `ocr delegate preview --format json` is what tells you whether",
+    "a file is reachable at all. tests/test_opencodereview_rules.py pins",
+    "both halves: that no glob is orphaned, and that no rule targets an",
+    "extension OCR will not open."
   ],
-
   "exclude": [
     "content/**",
     "papers/**",
@@ -34,7 +46,6 @@
     "assets/csl/*.csl",
     "**/__pycache__/**"
   ],
-
   "rules": [
     {
       "name": "tests",
@@ -48,8 +59,8 @@
     },
     {
       "name": "scripts",
-      "path": "scripts/**/*.py",
-      "rule": "Apply the standard Python review, then these.\n\n`scripts/` is developer tooling, not a pipeline layer, and `scripts/release.py` builds the shipped artefact. Report:\n\n- **Anything that would put a secret, a per-host path, or gitignored data into the release archive.** `config.toml` and `papers/` are per-host; `content/` is the user's own work.\n- **A tree newly excluded from, or included in, the archive without a stated reason.** Every prose document ships deliberately, because they cross-reference each other by name and dropping one leaves dangling links in the rest.\n- **`read_text`/`write_text`/`open` without `encoding=\"utf-8\"`.**\n- **A function over 25 statements** not already in `tests/test_code_standards_scan.py`'s register.\n\nDo not report the dense rationale comments; they are required here as in `src/`."
+      "path": "scripts/**",
+      "rule": "Apply the standard review for the file's language, then these.\n\n`scripts/` is developer tooling, not a pipeline layer, and it holds exactly two things that matter: `release.py`, which builds the shipped artefact, and `install_full_pipeline.sh`, which is **the single install path for host, Docker and CI** -- `docker/Dockerfile` calls it three times and `.github/workflows/ci.yml` calls it directly. A second install path anywhere is a defect, not a shortcut.\n\nReport:\n\n- **Anything that would put a secret, a per-host path, or gitignored data into the release archive.** `config.toml` and `papers/` are per-host; `content/` is the user's own work.\n- **A tree newly excluded from, or included in, the archive without a stated reason.** Every prose document ships deliberately, because they cross-reference each other by name and dropping one leaves dangling links in the rest.\n- **In the shell script: an unchecked failure.** A missing `set -e`, a pipeline whose exit status is swallowed, a `cd` that is not guarded, an unquoted expansion that word-splits on a path with spaces. This script runs as root during `os-deps` and its failures are silent by default.\n- **In `ensure_gpu_torch` specifically: anything that changes what it installs.** It returns on its first statement without `nvidia-smi`, so neither CI leg executes any of the rest -- the parsing of the driver's CUDA ceiling and the cu130-to-cu118 tag walk have only ever run by hand. Its failure mode is silent: torch installs clean and the enrichment stack runs on CPU with no error anywhere.\n- **`read_text`/`write_text`/`open` without `encoding=\"utf-8\"`** in the Python.\n- **A function over 25 statements** not already in `tests/test_code_standards_scan.py`'s register.\n\nDo not report the dense rationale comments; they are required here as in `src/`."
     },
     {
       "name": "bench",
@@ -60,16 +71,6 @@
       "name": "workflows",
       "path": ".github/**",
       "rule": "Review CI and release workflow definitions.\n\nReport:\n\n- **A step that can fail silently** -- an unchecked exit code, a `continue-on-error` that hides a real failure, a `|| true`.\n- **A coverage floor lowered rather than a test added.** This repository holds 100% line and branch on the Linux leg; the Windows leg's lower floor exists only because `os-deps` is apt-only and ~30 render/pdf tests self-skip there.\n- **A second install path.** `scripts/install_full_pipeline.sh` is the single install script for host, Docker and CI. Hand-rolled apt-get/pip/poetry steps in a workflow are a defect, not a shortcut.\n- **A hardcoded interpreter path** where `poetry run` would resolve correctly on both the POSIX `bin/` and Windows `Scripts/` venv layouts.\n- **A secret, token, or per-host path in plain text.**\n\nDo not report the long explanatory comments: this file is roughly half prose by line count, deliberately, and every paragraph answers a question a future reader would otherwise re-litigate."
-    },
-    {
-      "name": "standing-instructions",
-      "path": "*.md",
-      "rule": "These are the repository's root prose documents -- CLAUDE.md, AGENTS.md, DEVELOPER-AGENTS.md, SOUL.md, README.md, DEVELOPER.md, DOCKER.md. Agents load them as standing instructions, so a stale sentence here is not a documentation bug; it is a wrong instruction that will be followed.\n\nReport:\n\n- **A claim contradicted by the code or by a GitHub setting**, naming both. Commands, flags, exit codes, thresholds, counts, layer counts, and statements about what a tool does automatically.\n- **A rule stated here that already lives in another document.** CLAUDE.md is deliberately a router that duplicates no guidance; AGENTS.md governs drafting; DEVELOPER-AGENTS.md governs changes to this repository; docs/CODE-STANDARDS.md governs what the code looks like. A rule in the wrong file is drift waiting to happen.\n- **An instruction with no way to tell whether it was followed.** This project's own position is that a mechanical check beats a resolution to be careful. Where a rule is repeatedly not adhered to, say so and name the mechanism that would bind it.\n- **A broken cross-reference.**\n\nDo not report length or tone here without evidence. If you believe a document is too long to be followed, support it: name which rules are and are not being adhered to, and where in the file each sits."
-    },
-    {
-      "name": "prose",
-      "path": "docs/**/*.md",
-      "rule": "Review documentation for drift, not for style.\n\nThis project's documents are load-bearing: agents read them as standing instructions, and a stale one is followed. Report:\n\n- **A claim contradicted by the code**, naming both. A count, a threshold, a file path, a command, a layer count, an exit code -- anything a reader would act on.\n- **The same fact stated in two documents.** A fact stated twice will eventually be stated two different ways, and only one copy will be checked. Name which document should own it.\n- **A cross-reference to a heading or file that does not exist.**\n- **A command that would not run as written**, including a flag that argparse does not accept.\n\nDo not report length, tone, or repetition of an idea for emphasis. Do not propose condensing a passage whose job is to record why a decision was made."
     }
   ]
 }

@@ -272,49 +272,88 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
-## Reviewing before you push: OpenCodeReview, if it is installed
+## Reviewing before you push: the OpenCodeReview plugin
 
-`ocr` ([OpenCodeReview](https://open-codereview.ai)) is a per-host
-developer tool, not a dependency of this repository and not part of CI.
-**If it is on PATH, run it on the diff before opening the PR**; if it is
-not, skip it and say so rather than installing it mid-task:
+[OpenCodeReview](https://github.com/alibaba/open-code-review) is a Claude
+Code **plugin**, installed per-host from the `alibaba/open-code-review`
+marketplace and enabled in the user's own `settings.json`. It is not a
+dependency of this repository, is not in `pyproject.toml`, and is not
+part of CI. If it is available, run it on the branch before opening the
+PR. If it is not, skip it and say so rather than installing it mid-task.
 
-```bash
-ocr review --audience agent                 # staged + unstaged + untracked
-ocr review --audience agent --from main --to HEAD    # the whole branch
-```
+It provides **two skills, and the difference between them decides which
+one you can use**:
+
+| Skill | Who does the reviewing | Needs an LLM endpoint |
+|---|---|---|
+| `/open-code-review:delegate-review` | **You do.** The tool supplies file selection and rule resolution only | **No** |
+| `/open-code-review:review` | The `ocr` CLI calls its own model | **Yes** |
+
+**Prefer `delegate-review` here, and not only as a fallback.** It is a
+first-class mode -- "LLM-free on the OCR side", in the plugin's own words
+-- and it is the better fit for this repository: the agent doing the
+reviewing is already carrying
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md), the layer boundaries and
+the citekey invariant, which is exactly the context a detached CLI call
+does not have. `review` additionally needs `OCR_LLM_URL`/`OCR_LLM_TOKEN`/
+`OCR_LLM_MODEL`, `~/.opencodereview/config.json`, or
+`ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`; with none set it exits on
+`resolve LLM endpoint` and nothing has been reviewed.
+
+Whichever runs, **say which one did.** "OCR reviewed the branch" and "I
+reviewed the branch against OCR's rules" are different claims, and only
+one of them is usually true.
+
+### What the plugin does and does not reach
 
 `.opencodereview/rule.json` is what makes it worth running here. OCR's
-built-in rule is generic Python review and is wrong about this tree in
+built-in rule is generic Python review, and is wrong about this tree in
 both directions -- it would flag the dense *why*-comments, the f-string
-`PRAGMA`, and the deliberately duplicated pool builders, and it does not
+`PRAGMA` and the deliberately duplicated pool builders, and it does not
 know the citekey invariant, the layer boundaries, C1/C2 counted in
 statements, or the `encoding="utf-8"` rule. The project file replaces it
-per tree (`src/`, `tests/`, `scripts/`, `bench/`, `.github/`, `docs/`,
-and the root prose documents) and excludes `content/` and `papers/`,
-which are the user's own work and their personal bibliography rather than
-this repository's code.
+for `src/`, `tests/`, `scripts/`, `bench/` and `.github/`, and excludes
+`content/` and `papers/` -- the user's drafts and their personal
+bibliography, which are not this repository's code and have no business
+being sent to a third-party endpoint.
 
-Two things to know before trusting a run:
+**It cannot review Markdown, so it cannot review the documents that
+govern this project.** OCR opens only extensions it recognises as code
+and drops the rest *before* rules are consulted, reporting
+`exclude_reason: unsupported_ext`. Probed against the installed binary:
+`.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` are reviewed; `.md`,
+`.txt`, `.rst` and `.cfg` are not. So `AGENTS.md`, this file,
+`docs/CODE-STANDARDS.md` and every skill in `.claude/` are outside it
+entirely -- a clean run says nothing about them, and doc drift stays a
+human's job.
 
-- **It needs an LLM endpoint** (`OCR_LLM_URL`/`OCR_LLM_TOKEN`/`OCR_LLM_MODEL`,
-  `~/.opencodereview/config.json`, or `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`).
-  With none configured it exits on `resolve LLM endpoint`, and the only
-  thing that still works is `ocr delegate`, which emits the resolved rules
-  for a host agent to review against and calls no model itself. That is a
-  usable fallback, but it is the agent reviewing, not the tool -- say
-  which one happened.
-- **It is an aid, not a gate.** Same standing as the review layer
-  ([SOUL.md](SOUL.md)): nothing here blocks on it, `python -m src.draft
-  gate` remains the only gate, and a finding is a claim to agree or
-  disagree with. Judge each one against
-  [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) rather than adopting it
-  because a tool said so -- a change made only to silence a reviewer is
-  the failure mode that document's R3 is about.
+Two traps, both of which have already caught someone:
 
-`tests/test_opencodereview_rules.py` pins the rule file, because a path
-glob that matches nothing fails *open*: OCR silently falls back to its
-built-in rule and still exits 0.
+- **`ocr rules check <path>` is a rule *lookup*, not a coverage check.**
+  It resolves a rule for a file OCR would never open, so it will
+  cheerfully confirm a Markdown rule that can never fire. The command
+  that answers "will this file actually be reviewed?" is
+  `ocr delegate preview --format json`, whose `excluded_files` carries
+  the reason. `tests/test_opencodereview_rules.py` pins both halves --
+  that no glob is orphaned, and that no rule targets an extension OCR
+  will not open -- because an orphaned glob fails *open*: OCR silently
+  falls back to its built-in rule and still exits 0.
+- **The `ocr` binary may not be on `PATH`.** A user-prefix npm install
+  puts it in `~/.npm-global/bin`, which is not on the default path, so
+  the plugin's own `which ocr` prerequisite check reports NOT INSTALLED
+  on a host where it is installed. Check that before concluding the tool
+  is absent.
+
+### It is an aid, not a gate
+
+Same standing as the review layer ([SOUL.md](SOUL.md)): nothing here
+blocks on it, `python -m src.draft gate` remains the only gate, and a
+finding is a claim to agree or disagree with. Judge each against
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) rather than adopting it
+because a tool said so -- a change made only to silence a reviewer is the
+failure mode that document's R3 is about. The plugin's `review` skill
+offers to apply fixes autonomously; the surgical-changes rule above still
+governs what may land in your diff.
 
 ## Commit messages
 

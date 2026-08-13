@@ -32,7 +32,7 @@ rest of the suite does.
 
 import glob
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RULE_PATH = REPO_ROOT / ".opencodereview" / "rule.json"
@@ -43,6 +43,20 @@ RULE_PATH = REPO_ROOT / ".opencodereview" / "rule.json"
 # a future OCR release shows up as this test failing rather than as every
 # rule silently ceasing to match.
 ENTRY_FIELDS = ("path", "rule")
+
+# Extensions OCR will actually open. It reviews only what it recognises as
+# code and drops the rest *before* rules are consulted, reporting
+# `exclude_reason: unsupported_ext` in `ocr delegate preview --format json`.
+# Probed against the installed binary rather than taken from documentation:
+# .py, .json, .yml/.yaml, .sh and .toml came back reviewable; .md, .txt,
+# .rst and .cfg came back excluded.
+#
+# This is the list that matters, and it is not the list `ocr rules check`
+# answers from -- that command is a rule *lookup* and will happily resolve
+# a rule for a file OCR would never review. An earlier revision of the rule
+# file carried two Markdown rules that passed every check here and could
+# not fire.
+REVIEWABLE_EXTENSIONS = {".py", ".json", ".json5", ".yml", ".yaml", ".sh", ".toml"}
 
 
 def _rules():
@@ -94,20 +108,48 @@ def test_no_rule_glob_matches_nothing():
     )
 
 
-def test_the_globs_reach_both_the_source_and_the_test_tree():
+def test_the_globs_reach_every_tree_a_rule_claims():
     """Non-vacuity for this test itself.
 
     `test_no_rule_glob_matches_nothing` passes vacuously if `rules` is
     ever emptied, and passes for the wrong reason if every glob is a
     broad `**` that matches something regardless. Naming one file per
-    tree that must be covered is what pins it -- and the test tree is
-    named because bringing `tests/` into scope is why this file was added.
+    tree is what pins it -- and the test tree is named because bringing
+    `tests/` into scope is why this file was added.
+
+    Every path here is a file OCR will actually review. A Markdown file
+    would be the wrong thing to assert: see `REVIEWABLE_EXTENSIONS`.
     """
     covered = {path for entry in _rules()["rules"] for path in _matches(entry["path"])}
     for wanted in ("src/sync.py", "tests/conftest.py", "scripts/release.py",
-                   "bench/repro_check.py", "docs/CODE-STANDARDS.md",
-                   "DEVELOPER-AGENTS.md"):
+                   "scripts/install_full_pipeline.sh", "bench/repro_check.py",
+                   ".github/workflows/ci.yml"):
         assert wanted in covered, f"no rule covers {wanted}"
+
+
+def test_no_rule_targets_an_extension_ocr_will_not_review():
+    """The failure the Markdown rules were: a rule that cannot ever fire.
+
+    OCR drops an unsupported extension before rules are consulted, so
+    such a rule resolves cleanly under `ocr rules check`, reviews
+    nothing, and reports no error -- while implying this repository's
+    prose is covered. Worse than having no rule at all.
+
+    Only globs that *name* an extension are checked. A directory sweep
+    like `.github/**` legitimately matches both `ci.yml` (reviewed) and a
+    Markdown template (not), and is not making a claim about either.
+    """
+    unreviewable = [
+        entry["path"]
+        for entry in _rules()["rules"]
+        if (suffix := PurePosixPath(entry["path"]).suffix)
+        and suffix not in REVIEWABLE_EXTENSIONS
+    ]
+    assert not unreviewable, (
+        "these rules target extensions OCR reports as `unsupported_ext` and "
+        f"never opens, so they can never fire: {unreviewable}. Verify with "
+        "`ocr delegate preview --format json`, not `ocr rules check`."
+    )
 
 
 def test_the_source_rule_states_the_citekey_invariant():

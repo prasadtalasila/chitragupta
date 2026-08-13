@@ -481,27 +481,51 @@ Two fixes, and the cheap one is not the repository's:
 
 ## Reviewing with OpenCodeReview
 
-`.opencodereview/rule.json` now carries seven per-tree rules, so `ocr`
-reviews this repository against its own standards rather than against
-generic Python advice.
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#reviewing-before-you-push-opencodereview-if-it-is-installed)
-says when to run it. Two limits belong on this list rather than in that
-document, because they are costs rather than instructions:
+`.opencodereview/rule.json` carries five per-tree rules, so the
+OpenCodeReview plugin reviews this repository against its own standards
+rather than against generic Python advice.
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#reviewing-before-you-push-the-opencodereview-plugin)
+says when and how to run it. Three limits belong on this list rather than
+in that document, because they are costs rather than instructions:
 
-- **The rules are prose handed to a model, and nothing checks that they
-  are obeyed.** They are an aid with the same standing as the review
-  layer, not a gate, and a run that reports clean is not evidence of
-  anything. `tests/test_opencodereview_rules.py` pins only that the file
-  parses and that every glob still reaches the tree -- which matters
-  because an orphaned glob fails *open*, silently returning that tree to
-  OCR's built-in rule while every command still exits 0.
+- **It cannot review Markdown, so it cannot review the documents that
+  govern this project.** OCR opens only extensions it recognises as code
+  and drops the rest before rules are consulted
+  (`exclude_reason: unsupported_ext`). Probed on the installed binary:
+  `.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` in; `.md`, `.txt`,
+  `.rst`, `.cfg` out. `AGENTS.md`, `DEVELOPER-AGENTS.md`,
+  `docs/CODE-STANDARDS.md` and every skill under `.claude/` are therefore
+  outside every review this tool can perform -- which matters more here
+  than in most repositories, because those documents are read as standing
+  instructions and a stale one is followed. Doc drift remains a human's
+  job, and
+  [CODE-STANDARDS.md's build order](CODE-STANDARDS.md#build-order) item 4
+  is still the only proposal that would touch it.
+
+  This cost was paid before it was noticed: the first revision of the
+  rule file carried two Markdown rules, for the root prose documents and
+  for `docs/`. Both resolved cleanly under `ocr rules check` and neither
+  could ever fire. A rule that cannot fire is worse than no rule, because
+  it implies coverage that does not exist -- so
+  `tests/test_opencodereview_rules.py` now fails on one.
+- **`ocr rules check` and the plugin disagree, and only one of them is
+  about coverage.** `rules check` is a rule *lookup*: it answers for any
+  path, including one OCR would never open. `ocr delegate preview
+  --format json` is what reports whether a file is reachable. Verifying
+  with the first while believing it means the second is exactly how the
+  two dead rules above got shipped.
 - **The schema is undocumented and was established by probing.** The
-  published docs URL 404s, so the two fields OCR actually reads (`path`
-  and `rule`) were found by feeding its unmarshaller wrong-typed values
-  and reading the Go struct fields it named. Anything else in an entry is
-  ignored without complaint. A future OCR release could rename either and
-  the only symptom would be rules quietly ceasing to match; the pinned
-  field names in that test are what turns it into a failure.
+  published docs URL 404s, so the two fields OCR reads (`path` and
+  `rule`) were found by feeding its unmarshaller wrong-typed values and
+  reading the Go struct fields it named. Anything else in an entry is
+  ignored without complaint. A future release could rename either and the
+  only symptom would be rules quietly ceasing to match; the pinned field
+  names in that test are what turns it into a failure.
+
+The rules themselves are prose handed to a model, and nothing checks that
+they are obeyed. They are an aid with the same standing as the review
+layer, not a gate, and a run that reports clean is not evidence of
+anything.
 
 ## The standing-instruction budget
 
