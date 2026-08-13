@@ -1017,7 +1017,25 @@ quotation. The mechanism meant to make a gate tolerable empties it.
 ### No threshold blocks anything real
 
 Sweeping the predicate `tier in {exact, skip-gram} and span_words >= T
-and not (quoted and cites_source)` over the 14 gateable findings:
+and not (quoted and cites_source)` over the 14 gateable findings.
+
+Terms, used throughout this section and in the record it is read from:
+
+- **T** -- the candidate `GATE_THRESHOLD`, a run length in words. A
+  finding blocks when its `span_words` reaches T.
+- **tp** (*true positive*) -- a blocked finding that is genuine
+  uncredited reuse, which a reviewer would require be fixed. Blocking it
+  is the gate working.
+- **fp** (*false positive*) -- a blocked finding no reviewer would act
+  on: a canonical definition, a standard's own wording, an attributed
+  quotation. Blocking it is the gate costing someone an edit for nothing.
+- **precision** -- tp / (tp + fp) among what blocks at T. How much of
+  what the gate stops is worth stopping.
+- **missed_tp** -- true positives that stop blocking as T rises, i.e.
+  *false negatives* (fn) introduced by the threshold. Precision alone
+  always flatters a high threshold; this is the cost against it.
+- **gateable** -- findings the predicate could ever act on, after the
+  `quoted and cites_source` exemption and the tier restriction.
 
 | T | blocked | tp | fp | precision | drafts blocked |
 |---|---|---|---|---|---|
@@ -1053,6 +1071,34 @@ correctly cited to `kritzinger_digital_2018`, matched against
 `quoted=true, cites_source=false`, so `_bucket` keeps it in `long` and
 #130's own exemption does **not** reach it. A correctly quoted,
 correctly credited passage would block.
+
+### Span length does not separate the two populations
+
+The zeros above understate the problem, because they could be read as
+"tune T higher". The gateable false positives, in words:
+
+```
+29, 29, 28, 24, 23, 20, 20, 20, 19, 17, 16, 15, 15, 15
+```
+
+The one true positive available anywhere in this repository -- the
+planted `aguzzi_cloud_2020` lift below -- is **18 words**, inside that
+range rather than beyond it. So `T <= 18` catches the genuine lift and
+admits nine false positives longer than it, and `T >= 30` clears every
+false positive and misses the genuine lift entirely. **No threshold
+admits the true positive and excludes the false ones.**
+
+That is the finding that bears directly on #130, whose premise is that a
+generous span threshold makes the gate tolerable: on this evidence the
+variable it asks to be tuned does not discriminate, so no amount of
+tuning produces a usable gate.
+
+One feature does partly discriminate, and it is not span. The two large
+false-positive clusters are each matched by **4 distinct citekeys** --
+many corpus papers carry the same sentence because it is a definition --
+where the planted true positive matches exactly **1**. It explains 8 of
+the 14, and no more: the remaining four passages match a single citekey
+and look like the true positive on every feature recorded here.
 
 ### The detector is not blind
 

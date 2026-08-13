@@ -12,6 +12,18 @@ definition every paper in the field quotes.
     tier in {"exact", "skip-gram"} and span_words >= T
         and not (quoted and cites_source)
 
+Terms, as used in the code, the printed table and the JSON record. **T**
+is the candidate `GATE_THRESHOLD`, a run length in words. A **tp** (true
+positive) is a blocked finding that really is uncredited reuse; an **fp**
+(false positive) is one no reviewer would act on -- a standard's own
+wording, a field's fixed definition, an attributed quotation.
+**precision** is tp / (tp + fp) among what blocks at T. **missed_tp** is
+the true positives that stop blocking as T rises -- the false negatives
+(fn) the threshold introduces, and the only thing arguing against raising
+T forever, since precision alone always flatters a higher one.
+**gateable** is what the predicate could act on at all, after the
+exemption and the tier restriction.
+
 Two arms, because References masking turned out to dominate the answer.
 `verbatim_check._mask_for_scan` blanks the draft's own bibliography
 before scanning, since two documents citing the same paper share its

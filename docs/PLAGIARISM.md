@@ -271,13 +271,95 @@ not do*.
 
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
 every other review command. `python -m src.draft gate` remains the only
-thing in this pipeline that blocks, and whether a long allowlist-filtered
-run should ever join it is still [#130](AUTO-IMPROVEMENT.md#build-order)'s
-question, to be decided against real reports rather than guessed.
+thing in this pipeline that blocks. Whether a long allowlist-filtered run
+should ever join it is [#130](AUTO-IMPROVEMENT.md#build-order)'s question;
+it has now been measured rather than guessed, and
+[the section below](#measured-what-a-blocking-overlap-gate-would-block-130)
+is what the measurement found.
 
 And the caveat that governs the whole section: repairing every finding
 the exact tier can see leaves untouched everything it cannot. Paraphrase
 is not detected. An empty findings list is not a clean bill of health.
+
+## Measured: what a blocking overlap gate would block (#130)
+
+[#130](AUTO-IMPROVEMENT.md#build-order) asks whether a long verbatim run
+should block a draft the way the citation gate blocks an unresolvable
+citekey, and forbids guessing the threshold. `bench/bench_overlap_gate.py`
+measured it against this project's own 15-chapter book
+(178,077 words) and the same 497-document corpus the book was written
+from -- organic prose with no planted reuse, which is what makes a
+false-positive rate measurable at all. `bench/RESULTS.md` owns the
+numbers; this section owns what they mean for the tool.
+
+**Terms.** A **true positive** is a blocked finding that really is
+uncredited reuse; a **false positive** is one no reviewer would act on --
+a standard's own wording, a field's fixed definition, an attributed
+quotation. **T** is the candidate threshold, a run length in words.
+
+### The measurement first had to fix a masking bug
+
+`_mask_for_scan` blanks the draft's own References section before
+scanning, because two documents citing the same paper share its title and
+venue verbatim. `references.section_start` matched only single-level
+heading numbers, so a book numbering headings per chapter --
+`## 1.14 References` -- was never masked, and the whole bibliography was
+scanned against the corpus. On one chapter that was 97.7% of all findings
+and **100%** of its long-run bucket. Fixed; the numbers below are from
+the corrected behaviour. It is the first thing to check if a `scan`
+result looks implausibly noisy: findings clustered at the end of the
+draft, all naming different sources, are its reference list.
+
+### The threshold is not a discriminating variable
+
+With References masked, the whole book yields **16** runs of 15 words or
+more, of which **14** the predicate could act on. Every one is a false
+positive. The false positives run **15 to 29 words**; the only true
+positive available anywhere in this repository -- the planted lift in
+`bench/fixtures/` -- is **18 words**, inside that range rather than above
+it.
+
+So a threshold low enough to catch the genuine lift admits nine false
+positives longer than it, and a threshold high enough to clear the false
+positives misses the genuine lift. **No T separates them.** #130's
+premise is that a generous span threshold makes a gate tolerable; on this
+evidence the variable it proposes to tune does not discriminate.
+
+### Why the false positives are structural, not tunable
+
+The findings reduce to seven passages, dominated by two canonical
+definitions -- ISO 23247's, and VanDerHorn & Mahadevan's. Several corpus
+papers quote *and attribute* each one, verified in the parsed text. The
+draft quotes and attributes it too, and can cite only one source for it.
+
+That is the structural part, and `cites_source` cannot fix it: **a
+definition reproduced by N corpus papers can be cited to one, so the
+other N-1 report as `UNCITED SOURCE`.** The sharpest form is a
+blockquote correctly cited to the work that first stated the taxonomy,
+matched against a second paper reproducing it: `quoted` is true but
+`cites_source` is false, so [`_bucket`](#severity-buckets-and-the-boilerplate-allowlist)
+keeps it in `long` and #130's own `quoted and cites_source` exemption
+does not reach it. **A correctly quoted, correctly credited passage would
+block.**
+
+The boilerplate allowlist is the mechanism meant to make this tolerable,
+and it works: five entries take the 14 to **1**, and that one is an
+attributed quotation. But `content/verbatim_allowlist.toml` is per-host
+and gitignored by design, so a fresh clone has no suppression at all --
+a gate's tolerability would depend on a file that does not exist until
+someone writes it.
+
+### What this does not license
+
+The exact tier sees no verbatim reuse in this book. It does not follow
+that the book borrows no wording: paraphrase is invisible here, and is an
+LLM's normal failure mode. A gate built on this tier would block the
+honest cases -- a quoted definition -- and miss the paraphrased ones.
+
+Two further limits worth stating before anyone generalises: this is one
+book, one topic, one generator; and because it contains no organic true
+positives, the measurement establishes how often the gate fires *wrongly*
+far better than it establishes how often it would fire *rightly*.
 
 ## Measured: does the corpus's parser backend change the answer?
 
