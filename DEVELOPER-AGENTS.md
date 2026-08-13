@@ -272,14 +272,150 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
+### The linters, which are configured but not yet enforced
+
+`.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
+[DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
+from -- so a baseline is reproducible on any host:
+
+```bash
+pylint --rcfile=.pylintrc src scripts        # needs the project's deps importable
+markdownlint-cli2 "*.md" "docs/**/*.md"      # npm i -g markdownlint-cli2
+```
+
+**Neither is in CI, and neither is a check you have to pass yet.** Run
+them on code you touched and fix what is clearly yours; do not go fixing
+the backlog in an unrelated diff. Both baselines are measured in
+[docs/TECHNICAL-DEBT.md's Tier 5](docs/TECHNICAL-DEBT.md#tier-5-continuous-integration-and-the-linters)
+-- 44 real pylint findings after the deliberate categories are disabled,
+and 100 markdownlint findings once the cosmetic `MD060` is set aside --
+along with the disable list and the order the two should be adopted in.
+
+They are deliberately not wired into `ci.yml` yet, and the reason is a
+rule from this file rather than a preference: **a check that has not been
+made to pass must not ship.** Enabling pylint today would mean either a
+red build or suppressing `unspecified-encoding`, which is the top item on
+the debt register -- closing the detector without closing the defect. The
+order is: fix the encoding sites, fix the long lines, then enable, at a
+binary zero-messages bar rather than a `fail-under` score.
+
+`.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
+runner: it normalises line endings so CI's Windows leg reads
+byte-identical files to the Linux leg, which matters because four tests
+here scan this repository's own source.
+
+## Reviewing before you push: the OpenCodeReview plugin
+
+**This is a step in the cycle, not an optional extra.** Step 3 of
+[Shipping a code change](#shipping-a-code-change-the-full-cycle) is to run
+it on the branch and act on what it finds, before the PR is opened -- the
+same standing as the local check suite above it. It is the one review that
+happens while the change is still cheap to alter, which is the whole
+reason it goes before the PR rather than after.
+
+[OpenCodeReview](https://github.com/alibaba/open-code-review) is a Claude
+Code **plugin**, installed per-host from the `alibaba/open-code-review`
+marketplace and enabled in the user's own `settings.json`. It is not a
+dependency of this repository, is not in `pyproject.toml`, and is not part
+of CI -- so it is the developing agent that has to invoke it. Nothing else
+will. If the plugin is not available on this host, skip it and **say so in
+the PR's test plan**, rather than installing it mid-task or letting its
+absence pass unmentioned.
+
+It provides two skills, both of them plugin skills; what differs is who
+does the thinking.
+
+| Skill | Who reviews | Needs an LLM endpoint |
+|---|---|---|
+| `/open-code-review:delegate-review` | **You do.** The skill has OCR select the files and resolve the rules, then hands you each diff to review yourself | **No** |
+| `/open-code-review:review` | **A separate model call.** The skill drives `ocr review`, which sends each file to a configured endpoint and returns comments | **Yes** |
+
+**Prefer `delegate-review` here, and not only as a fallback.** It is a
+first-class mode -- "LLM-free on the OCR side", in the plugin's own words
+-- and it is the better fit for this repository: the agent doing the
+reviewing is already carrying
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md), the layer boundaries and
+the citekey invariant, which is exactly the context a detached CLI call
+does not have. `review` additionally needs `OCR_LLM_URL`/`OCR_LLM_TOKEN`/
+`OCR_LLM_MODEL`, `~/.opencodereview/config.json`, or
+`ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`; with none set it exits on
+`resolve LLM endpoint` and nothing has been reviewed.
+
+Whichever runs, **say which one did.** "OCR reviewed the branch" and "I
+reviewed the branch against OCR's rules" are different claims, and only
+one of them is usually true.
+
+### What the plugin does and does not reach
+
+`.opencodereview/rule.json` is what makes it worth running here. OCR's
+built-in rule is generic Python review, and is wrong about this tree in
+both directions -- it would flag the dense *why*-comments, the f-string
+`PRAGMA` and the deliberately duplicated pool builders, and it does not
+know the citekey invariant, the layer boundaries, C1/C2 counted in
+statements, or the `encoding="utf-8"` rule. The project file replaces it
+for `src/`, `tests/`, `scripts/`, `bench/` and `.github/`, and excludes
+`content/` and `papers/` -- the user's drafts and their personal
+bibliography, which are not this repository's code and have no business
+being sent to a third-party endpoint.
+
+**It cannot review Markdown, so it cannot review the documents that
+govern this project.** OCR opens only extensions it recognises as code
+and drops the rest *before* rules are consulted, reporting
+`exclude_reason: unsupported_ext`. Probed against the installed binary:
+`.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` are reviewed; `.md`,
+`.txt`, `.rst` and `.cfg` are not. So `AGENTS.md`, this file,
+`docs/CODE-STANDARDS.md` and every skill in `.claude/` are outside it
+entirely -- a clean run says nothing about them, and doc drift stays a
+human's job.
+
+Two traps, both of which have already caught someone:
+
+- **`ocr rules check <path>` is a rule *lookup*, not a coverage check.**
+  It resolves a rule for a file OCR would never open, so it will
+  cheerfully confirm a Markdown rule that can never fire. The command
+  that answers "will this file actually be reviewed?" is
+  `ocr delegate preview --format json`, whose `excluded_files` carries
+  the reason. `tests/test_opencodereview_rules.py` pins both halves --
+  that no glob is orphaned, and that no rule targets an extension OCR
+  will not open -- because an orphaned glob fails *open*: OCR silently
+  falls back to its built-in rule and still exits 0.
+- **The `ocr` binary may not be on `PATH`.** A user-prefix npm install
+  puts it in `~/.npm-global/bin`, which is not on the default path, so
+  the plugin's own `which ocr` prerequisite check reports NOT INSTALLED
+  on a host where it is installed. Check that before concluding the tool
+  is absent.
+
+### It is an aid, not a gate
+
+Same standing as the review layer ([SOUL.md](SOUL.md)): nothing here
+blocks on it, `python -m src.draft gate` remains the only gate, and a
+finding is a claim to agree or disagree with. Judge each against
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) rather than adopting it
+because a tool said so -- a change made only to silence a reviewer is the
+failure mode that document's R3 is about. The plugin's `review` skill
+offers to apply fixes autonomously; the surgical-changes rule above still
+governs what may land in your diff.
+
 ## Commit messages
 
 Title line: imperative mood, concise, describes the change's effect (not
 "updated files" or "misc fixes"). PRs are squash-merged (see "Pull
-requests" below), and GitHub uses the PR's title as the resulting commit
-title on `main`, appending the PR number automatically (e.g. `Fix reconcile
-drift detection (#42)`) -- so write commits and PR titles as if either one
-could become that commit title, and don't add the number by hand.
+requests" below), so write commits and PR titles as if either one could
+become the commit title on `main`. Don't add the PR number by hand in the
+*PR title or a branch commit* -- GitHub appends it when it composes the
+squash title itself (e.g. `Fix reconcile drift detection (#42)`). The one
+exception is merging with an explicit `--subject`, where GitHub takes the
+string verbatim and appends nothing, so the `(#N)` has to be in it; see
+[Merging](#merging).
+
+**Which of the two GitHub actually uses is a repository setting, and this
+repository's setting means it depends on your branch.**
+`squash_merge_commit_title` is `COMMIT_OR_PR_TITLE`: with two or more
+commits on the branch GitHub takes the PR title, with exactly one it takes
+that commit's title. So a one-commit branch whose commit title has drifted
+from the PR title lands the commit's, not the PR's. Keep them the same, or
+merge with an explicit subject -- see [Merging](#merging).
 
 Body: a blank line, then a bulleted list of the specific, concrete changes,
 each bullet starting with a present-tense verb (Fix, Add, Remove, Migrate,
@@ -299,6 +435,65 @@ Fix reconcile drift detection, secret handling, and stale config warnings
   dead code no longer reachable after the above.
 ```
 
+**This body shape is not what lands on `main` by default, and that is the
+single biggest reason it is not adhered to.** Measured over the last 30
+commits: 14 carry a leading `* <branch commit title>` line, and 8 have a
+prose body rather than bullets. Neither is an authoring mistake. The
+repository's `squash_merge_commit_message` is GitHub's default,
+`COMMIT_MESSAGES`, which builds the squash body by concatenating the
+branch's commit messages with `*` bullets -- so the shape above survives
+only if whoever merges hand-edits the body in the web UI, every time,
+forever. Writing the rule down more emphatically cannot fix a default.
+[Merging](#merging) is where it is fixed.
+
+## Merging
+
+Squash, always. Do it with a command that *states* the title and body
+rather than accepting what GitHub composes:
+
+```bash
+gh pr merge <N> --squash \
+  --subject "$(gh pr view <N> --json title --jq .title) (#<N>)" \
+  --body-file <path to a body in the shape above>
+```
+
+**The `(#N)` is written in here on purpose**, and it is the one place
+that is true: GitHub appends the number only when it composes the title
+itself. Given an explicit `--subject` it takes the string verbatim, so
+omitting it lands a commit on `main` that cannot be traced back to its
+PR -- the opposite of what "don't add it by hand" is protecting.
+
+The point is not the exact incantation -- write the body to a file in the
+bulleted shape above rather than piping raw branch commits through it,
+which just reproduces the `*`-concatenated default by another route. The point is that the format becomes
+something a command produces, not something a person has to remember at
+the end of a long session, in a browser, after CI has gone green. That is
+this project's standing answer to guidance that does not stick: the
+ratchet, the citation gate, and this are the same move
+([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#why-a-ratchet-suits-this-project-specifically)).
+
+**Three repository settings would make it structural instead**, and are
+the actual fix -- they need a maintainer with admin rights, so they are
+recorded here rather than done:
+
+```bash
+gh api -X PATCH repos/prasadtalasila/chitragupta \
+  -f squash_merge_commit_title=PR_TITLE \
+  -f squash_merge_commit_message=PR_BODY \
+  -F allow_merge_commit=false -F allow_rebase_merge=false
+```
+
+- `PR_TITLE` makes "GitHub uses the PR title" true unconditionally,
+  rather than only on a multi-commit branch.
+- `PR_BODY` makes the squash body the PR description -- which
+  `.github/pull_request_template.md` already shapes -- and retires the
+  `*`-concatenated default that produced 14 of the last 30 bodies.
+- Disabling the other two merge methods makes "Merge method: squash" a
+  fact about the repository rather than a sentence in this file.
+
+Until they are set, the `gh pr merge` form above is the workaround, and
+the rule genuinely is harder to follow than it reads.
+
 ## Issues and pull requests
 
 Templates live in `.github/`, where GitHub picks them up automatically --
@@ -313,10 +508,10 @@ describes the effect. The template's **Test plan** section is not a
 formality -- fill it from what you actually ran (see "Before claiming a
 task complete" above), not from what you intended to run.
 
-Merge method: squash. Each PR becomes exactly one commit on `main`, titled
-from the PR title (see "Commit messages" above) -- keep the PR title
-accurate even when the branch itself carries several intermediate
-commits.
+Merge method: squash -- see [Merging](#merging) for the command and for
+why the default does not produce the documented shape. Each PR becomes
+exactly one commit on `main`, so keep the PR title accurate even when the
+branch itself carries several intermediate commits.
 
 ## Versioning and releases
 
@@ -352,21 +547,26 @@ succeeded -- not merely started:
    `pyproject.toml` as part of the same branch -- `release.yml` verifies
    the pushed tag against `pyproject.toml`'s version on `main`, so the
    bump has to land *before* the tag exists, i.e. in this PR, not after.
-3. Open a PR against `main` (see "Issues and pull requests" above).
-4. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
+3. Run the [OpenCodeReview plugin](#reviewing-before-you-push-the-opencodereview-plugin)
+   over the branch and act on what it finds. Nothing invokes it for you --
+   it is not in CI and not a dependency -- so if this step is skipped it
+   simply does not happen. Record in the PR's test plan which skill ran,
+   or that the plugin was unavailable.
+4. Open a PR against `main` (see "Issues and pull requests" above).
+5. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
    it's green -- if it fails, fix the actual cause (see "Before claiming a
    task complete") and push again; don't merge past a red check.
-5. Request review from Copilot, resolve every issue it identifies, and
+6. Request review from Copilot, resolve every issue it identifies, and
    mark each as resolved; consider all previous Copilot comments made in
    this PR while resolving the issues. Make a push after all issues are
    resolved, and then request re-review from Copilot. Iterate until all
    issues are resolved. Use judgement on a genuinely trivial finding
    rather than treating every comment as mandatory -- but "trivial" means
    actually inconsequential (a wording nit), not "inconvenient to fix."
-6. Squash-merge the PR.
-7. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
+7. Squash-merge the PR.
+8. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
    push the tag.
-8. Confirm `.github/workflows/release.yml` completed and the resulting
+9. Confirm `.github/workflows/release.yml` completed and the resulting
    GitHub Release has its `chitragupta-<version>.zip` asset
    attached -- this is the actual deliverable, not the tag or the merge
    by itself.

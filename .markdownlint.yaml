@@ -1,0 +1,40 @@
+# markdownlint configuration, adopted from DTaaS
+# (INTO-CPS-Association/DTaaS), the same source docs/CODE-STANDARDS.md
+# takes this project's code standards from.
+#
+# NOT ENFORCED YET. No CI job runs this -- see DEVELOPER-AGENTS.md's
+# "The linters, which are configured but not yet enforced" and
+# docs/TECHNICAL-DEBT.md's 5.3 for the measured baseline (927 findings
+# over the root and docs/ prose, 827 of them the cosmetic MD060) and the
+# order the two linters should be adopted in.
+#
+# Run it with:
+#   markdownlint-cli2 "*.md" "docs/**/*.md"
+default: true
+
+# Inline HTML. This repository's README uses a <picture>/<source srcset>
+# block for the dark-mode logo, which has no Markdown spelling.
+MD033: false
+
+MD013:
+  code_blocks: false
+  tables: false
+
+MD046:
+  style: "fenced"
+
+overrides:
+  files:
+    # Paths corrected for this repository's layout. Upstream's third entry
+    # was `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`, the
+    # directory form; GitHub also accepts the flat file, which is what is
+    # here, so the inherited path matched nothing and the override was
+    # inert. `.github/RELEASE_TEMPLATE.md` is added because it has the
+    # same shape and the same reason -- it is a fragment to copy from
+    # rather than a document, so it does not open with an H1.
+    - ".github/ISSUE_TEMPLATE/bug_report.md"
+    - ".github/ISSUE_TEMPLATE/feature_request.md"
+    - ".github/pull_request_template.md"
+    - ".github/RELEASE_TEMPLATE.md"
+  rules:
+    MD041: false

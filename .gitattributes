@@ -1,0 +1,22 @@
+# Normalise line endings on the way into the object database.
+#
+# `text=auto` lets git decide per file whether the content is text; `eol=lf`
+# says that anything it decides *is* text gets LF in the working tree on
+# every platform, not just in the repository. Both halves matter here
+# because CI runs a Windows leg: without this, a checkout there converts to
+# CRLF, and the tree-walking tests that read this repository's own files
+# (tests/test_code_standards_scan.py, test_command_depth_scan.py,
+# test_removed_command_scan.py, test_skill_retrieval_logging.py) would be
+# matching patterns against content whose line endings differ from the
+# Linux leg's. Pinning it here means the two legs read byte-identical files.
+#
+# It also removes a whole class of diff noise: a contributor on Windows
+# whose editor writes CRLF can no longer commit a file that shows as
+# entirely rewritten.
+#
+# Binary content is deliberately not listed. `text=auto` already leaves
+# anything git detects as binary alone, and the repository's binaries
+# (content/rendered/*.pdf, assets/*.png) are either gitignored per-host
+# output or already handled by that detection -- adding `-text` rules for
+# them would be guarding a case that has not occurred.
+* text=auto eol=lf
