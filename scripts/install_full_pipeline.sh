@@ -54,7 +54,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 
 sudo_if_needed() {
-    if [ "$(id -u)" = "0" ]; then
+    if [[ "$(id -u)" == "0" ]]; then
         "$@"
     elif command -v sudo >/dev/null 2>&1; then
         sudo "$@"
@@ -151,10 +151,11 @@ check_poetry() {
 # (.github/workflows/ci.yml's windows-latest leg) both need to work with
 # either layout, so every bin/-hardcoded path goes through this instead.
 venv_bin_dir() {
-    if [ -x "$1/bin/python" ] || [ -x "$1/bin/python3" ]; then
-        echo "$1/bin"
+    local venv_dir="$1"
+    if [[ -x "$venv_dir/bin/python" || -x "$venv_dir/bin/python3" ]]; then
+        echo "$venv_dir/bin"
     else
-        echo "$1/Scripts"
+        echo "$venv_dir/Scripts"
     fi
 }
 
@@ -163,17 +164,17 @@ venv_bin_dir() {
 # it -- poetry.toml's `virtualenvs.create = false` means Poetry will
 # never make its own, by design (see the header comment for why).
 resolve_venv_dir() {
-    if [ "${SKIP_VENV:-0}" = "1" ]; then
+    if [[ "${SKIP_VENV:-0}" == "1" ]]; then
         VENV_DIR="${VIRTUAL_ENV:-/opt/venv}"
     else
-        if [ "$(id -u)" = "0" ]; then
+        if [[ "$(id -u)" == "0" ]]; then
             echo "Warning: running as root (e.g. via sudo) will create a root-owned" >&2
             echo ".venv-full/ that your normal user can't later modify or remove" >&2
             echo "without sudo. Re-run without sudo, or set SKIP_VENV=1 if this is" >&2
             echo "intentional (e.g. inside Docker, where /opt/venv is already root-owned)." >&2
         fi
         VENV_DIR="${VENV_DIR:-$REPO_ROOT/.venv-full}"
-        if [ ! -d "$VENV_DIR" ]; then
+        if [[ ! -d "$VENV_DIR" ]]; then
             python3 -m venv "$VENV_DIR"
         fi
     fi
@@ -184,6 +185,16 @@ install_python_deps() {
     check_poetry
     resolve_venv_dir
 
+    # Sonar (S8541) flags every `poetry install` here because an sdist in
+    # the resolution runs its setup script at build time. A wheels-only
+    # refusal (`installer.only-binary :all:`, as docs.yml now sets for its
+    # own group) is not available to *this* install: bibtexparser 1.4.x --
+    # a main-group runtime dependency -- ships no wheel at all, so
+    # forcing wheels breaks the resolve outright. What stands in its
+    # place is the lockfile: every package, sdists included, is
+    # hash-pinned in poetry.lock, so the archive whose setup script runs
+    # is byte-exact the one that was locked, not whatever the index
+    # serves that day.
     (cd "$REPO_ROOT" && poetry install --with enrich)
     local bin_dir
     bin_dir="$(venv_bin_dir "$VENV_DIR")"
@@ -223,7 +234,7 @@ ensure_gpu_torch() {
 
     local driver_cuda
     driver_cuda="$(nvidia-smi 2>/dev/null | grep -oP 'CUDA Version:\s*\K[0-9]+\.[0-9]+' | head -1)"
-    if [ -z "$driver_cuda" ]; then
+    if [[ -z "$driver_cuda" ]]; then
         echo "Warning: nvidia-smi is present but its CUDA ceiling couldn't be" >&2
         echo "parsed -- leaving torch as installed (may be CPU-only)." >&2
         return
@@ -240,14 +251,14 @@ ensure_gpu_torch() {
     for tag in cu130 cu129 cu128 cu126 cu124 cu121 cu118; do
         tag_ver="${tag#cu}"
         tag_ver="${tag_ver:0:-1}.${tag_ver: -1}"
-        if [ "$(awk -v a="$driver_cuda" -v b="$tag_ver" 'BEGIN{print (b<=a)?1:0}')" = "1" ]; then
+        if [[ "$(awk -v a="$driver_cuda" -v b="$tag_ver" 'BEGIN{print (b<=a)?1:0}')" == "1" ]]; then
             best_tag="$tag"
             best_ver="$tag_ver"
             break
         fi
     done
 
-    if [ -z "$best_tag" ]; then
+    if [[ -z "$best_tag" ]]; then
         echo "Warning: driver's CUDA ceiling (${driver_cuda}) is older than every" >&2
         echo "torch CUDA wheel tag this script knows about. Leaving the default" >&2
         echo "wheel installed (CPU-only on this driver) -- upgrade the NVIDIA" >&2
@@ -274,11 +285,10 @@ ensure_gpu_torch() {
     # other, not swallowed just because it's a fallback path.
     if "$pip" install --force-reinstall \
         --index-url "https://download.pytorch.org/whl/${best_tag}" \
-        "torch" "torchvision"; then
-        if "$python_bin" -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
-            echo "torch now sees the GPU via the ${best_tag} wheel."
-            return
-        fi
+        "torch" "torchvision" \
+        && "$python_bin" -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
+        echo "torch now sees the GPU via the ${best_tag} wheel."
+        return
     fi
 
     echo "Warning: reinstalling torch from ${best_tag} didn't make the GPU" >&2
@@ -293,7 +303,7 @@ install_dev_deps() {
     local venv_dir="${VENV_DIR:-$REPO_ROOT/.venv-full}"
     local bin_dir
     bin_dir="$(venv_bin_dir "$venv_dir")"
-    if [ ! -x "$bin_dir/pip" ]; then
+    if [[ ! -x "$bin_dir/pip" ]]; then
         echo "No venv at ${venv_dir} -- run '$0 python-deps' first." >&2
         exit 1
     fi
@@ -314,7 +324,7 @@ install_dev_deps() {
 }
 
 STAGES=("$@")
-if [ ${#STAGES[@]} -eq 0 ]; then
+if [[ ${#STAGES[@]} -eq 0 ]]; then
     STAGES=("python-deps")
 fi
 
