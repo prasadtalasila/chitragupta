@@ -309,7 +309,8 @@ one-screen router for exactly that.
 | [DEVELOPER.md](DEVELOPER.md) | How do I run the tests, where does everything live, and what is unbuilt? |
 | [DOCKER.md](DOCKER.md) | How do I run this in a container? |
 | [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
-| [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
+| [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
+| [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and -- where the licence requires it -- what was deliberately not |
 
 Every prose document ships in the release archive -- everything under
 `docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
@@ -319,27 +320,8 @@ raw timings), `.github/` and `.gitignore`.
 
 ## Acknowledgements
 
-- **[hadufer/claude-storm](https://github.com/hadufer/claude-storm)** (MIT
-  License) -- the `.claude/skills/deep-research/` skill and its
-  `deep-research-interviewer`/`deep-research-writer` subagents adapt its
-  7-phase pipeline (perspective discovery, parallel grounded interviews,
-  contradiction mapping, outline, cited writing, synthesis, self peer-review).
-  Retooled here for a closed, citekey-grounded local corpus instead of live
-  web sources -- see `reference.md` in that skill's directory for exactly
-  what changed and why.
-- **[stanford-oval/storm](https://github.com/stanford-oval/storm)** -- the
-  original STORM method claude-storm implements: "Assisting in Writing
-  Wikipedia-like Articles From Scratch with Large Language Models" (Shao,
-  Jiang, Kanell, Xu, Khattab, Lam; NAACL 2024; arXiv:2402.14207).
-- Nav Toor's (@heynavtoor) 4-prompt adaptation, fused into claude-storm's
-  pipeline and carried through into `deep-research`'s synthesis-briefing
-  and single-reviewer (`quick` depth) peer-review phases.
-- **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**
-  -- the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
-  (an independent multi-reviewer panel including a dedicated adversarial
-  reviewer, reconciled against a concession threshold) is credited to that
-  project's Stage-3 peer-review design. That project is licensed CC-BY-NC
-  4.0; **no text from it was copied** -- `.claude/agents/peer-reviewer.md`
-  and `.claude/skills/deep-research/reference.md` §7 are written from
-  scratch, adapting only the concept of an independent panel plus a
-  Devil's Advocate role, not its implementation.
+This project borrows from several others -- the deep-research skill's
+7-phase method, the clean-code checklist its own code standard is written
+against, and the harness-engineering reading list behind much of
+`.claude/`. Each is credited, with what was taken and what deliberately
+was not, in **[docs/INSPIRATION.md](docs/INSPIRATION.md)**.

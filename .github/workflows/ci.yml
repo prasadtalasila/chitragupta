@@ -110,7 +110,7 @@ jobs:
           fail_under=100
           [ "$RUNNER_OS" = "Linux" ] || fail_under=95
           poetry run python -m pytest --cov=src --cov=scripts --cov-report=term-missing \
-            --cov-fail-under="$fail_under" -rf | tee pytest-output.txt
+            --cov-report=xml --cov-fail-under="$fail_under" -rf | tee pytest-output.txt
 
       # Which test failed is the only actionable part of a red run.
       # This step mattered most while the Windows leg carried
@@ -140,6 +140,39 @@ jobs:
           grep -E '^(FAILED|ERROR) ' pytest-output.txt | while read -r line; do
             echo "::error::${{ matrix.os }}: ${line}"
           done
+
+      # Codecov gets the run's coverage.xml, which the step above now emits
+      # alongside the terminal report it already printed. Both matrix legs
+      # upload under their own flag, because they measure different things
+      # and merging them silently would hide that: the Linux leg installs
+      # os-deps and runs the whole suite, the Windows leg gets python-deps
+      # only, so ~30 render/pdf tests self-skip there and
+      # src/render_output.py lands near 76%. Two flags keep those two
+      # numbers separable in Codecov's UI, the same reason the two legs
+      # hold two different --cov-fail-under floors here.
+      #
+      # `if: ${{ !cancelled() }}` rather than the default: a run that went
+      # red on the coverage floor is exactly the run whose report is worth
+      # looking at, and skipping the upload there would leave Codecov
+      # showing the last *passing* commit as current.
+      #
+      # `fail_ci_if_error: false` is deliberate and worth revisiting once
+      # the first upload is confirmed. The pass/fail decision on coverage
+      # is already made locally by pyproject's `fail_under = 100`, which
+      # needs no network -- so an upload problem (a missing token, a
+      # Codecov outage, a rate limit) would be turning this repository's
+      # CI red for something that is not a fact about the code. Flip it to
+      # true if uploads prove reliable and you want a silent upload
+      # failure to be loud.
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          flags: ${{ matrix.os }}
+          name: ${{ matrix.os }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       - name: poetry check
         shell: bash

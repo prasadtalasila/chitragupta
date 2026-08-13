@@ -21,10 +21,9 @@ reasonable reading and no clear tie-breaker in this file or the code).
 
 ## Behavioural rules: think before coding
 
-Four rules about *how to work*, adopted from
-[DTaaS's CLAUDE.md](https://github.com/INTO-CPS-Association/DTaaS/blob/feature/distributed-demo/CLAUDE.md)
-and stated here in this repository's terms. They prioritise caution over
-speed; for a genuinely trivial change, use judgement.
+Four rules about *how to work*, as opposed to what the code should look
+like ([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)). They prioritise
+caution over speed; for a genuinely trivial change, use judgement.
 
 1. **Think before coding.** State assumptions rather than making silent
    choices. Where a requirement has more than one reasonable reading,
@@ -36,14 +35,17 @@ speed; for a genuinely trivial change, use judgement.
    unrequested `config.toml` key, no defensive handling for a state that
    cannot occur. Ask whether a reviewer would call it over-engineered; if
    yes, cut it. Note the one deliberate exception: the *comments* are not
-   subject to this -- see [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)'s
-   Override 1.
+   subject to this -- see
+   [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid).
 3. **Surgical changes.** Each changed line should trace to the requested
    task. Do not refactor unrelated code, and match the local style of
    whatever you are editing. Remove imports and helpers *your* change
    orphaned; report pre-existing dead code rather than deleting it in the
    same diff. A module already on the size register is a thing to mention
-   in the PR, not a licence to rewrite it while passing through.
+   in the PR, not a licence to rewrite it while passing through. This is
+   where the Boy Scout Rule lands here: cleanup happens, in its own PR
+   and against the register, rather than inside an unrelated diff --
+   [why](docs/CODE-STANDARDS.md#the-boy-scout-rule-and-surgical-changes).
 4. **Goal-driven execution.** Turn the task into a verifiable goal before
    starting: "fix the bug" becomes "write a test that reproduces it, then
    make it pass" -- which is the test-driven rule below, arrived at from
@@ -63,11 +65,15 @@ Read it before a non-trivial change. In brief:
   new offender fails and a fixed one must be delisted.
 - **Statements, not physical lines**, because this repository *requires*
   rationale comments and a physical-line limit would reward deleting them.
-- Everything else in that document -- DRY, naming, one-thing-per-function
-  -- is a review standard with no detector, deliberately. A quality score
-  is not a thing to drive to zero;
+- Everything else in that document -- naming, one-thing-per-function, the
+  code-smell vocabulary -- is a review standard with no detector,
+  deliberately. A quality score is not a thing to drive to zero;
   [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md)'s R3 is the rule,
   and it applies to code as written.
+- It is written against the clean-code checklist rather than invented
+  here, and maps every rule in it to enforced / already-here /
+  review / not-applicable. [docs/INSPIRATION.md](docs/INSPIRATION.md) has
+  the provenance.
 
 ## Module boundaries
 

@@ -173,4 +173,5 @@ nav:
       - Docker: DOCKER.md
       - Changing this repo: DEVELOPER-AGENTS.md
       - Code standards: docs/CODE-STANDARDS.md
+      - Inspiration and credits: docs/INSPIRATION.md
   - The name: docs/NAME.md

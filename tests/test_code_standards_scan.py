@@ -51,7 +51,7 @@ MAX_CODE_LINES = 250
 STATEMENT_ROOTS = ("src", "scripts", "tests")
 CODE_LINE_ROOTS = ("src", "scripts")
 
-# Every offender as of 5.6.1, frozen. Ordered worst-first, with today's
+# Every offender as of 5.7.1, frozen. Ordered worst-first, with today's
 # count in a trailing comment so the size of each debt is visible without
 # running anything. The two worth taking first are src/sync.py::run (117
 # statements, 4.7x the next worst function in the repository) and
@@ -61,10 +61,10 @@ LEGACY_LONG_FUNCTIONS = {
     "src/dossier.py::_cmd_status",  # 65
     "src/ledger.py::main",  # 50
     "src/retrieval.py::main",  # 45
+    "src/review/verbatim_check.py::scan_findings",  # 43
     "src/dossier.py::main",  # 42
     "src/enrich/docling_parse.py::parse_corpus",  # 41
     "src/enrich/embed_index.py::build_index",  # 40
-    "src/review/verbatim_check.py::scan_findings",  # 39
     "src/review/citation_provenance.py::render_markdown",  # 38
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/references.py::format_entry",  # 35
@@ -89,8 +89,8 @@ LEGACY_LONG_FUNCTIONS = {
 
 LEGACY_LONG_FILES = {
     "src/dossier.py",  # 1605
+    "src/review/verbatim_check.py",  # 1148
     "src/pdf_text.py",  # 1001
-    "src/review/verbatim_check.py",  # 759
     "src/enrich/docling_parse.py",  # 504
     "src/render_output.py",  # 452
     "src/sync.py",  # 443
