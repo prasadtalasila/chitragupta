@@ -725,6 +725,16 @@ class TestLoadAllowlistPhrases:
         with pytest.raises(ValueError, match="'phrases' must be a list of strings"):
             vc._load_allowlist_phrases()
 
+    def test_an_unknown_key_raises_rather_than_loading_as_empty(self, isolated_config):
+        # A typo like `pharses` would otherwise load silently as zero
+        # phrases from a category that was never checked -- exactly the
+        # "policy file quietly stopped suppressing" failure this module
+        # exists to avoid.
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.VERBATIM_ALLOWLIST_PATH.write_text('pharses = ["alpha"]\n')
+        with pytest.raises(ValueError, match=r"unknown key\(s\) \['pharses'\]"):
+            vc._load_allowlist_phrases()
+
 
 class TestAllowlistSuppression:
     """End to end through `cmd_scan`: the allowlist is consulted inside

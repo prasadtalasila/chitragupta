@@ -336,11 +336,14 @@ def _load_allowlist_phrases():
 
     No file -> no suppressions: the normal state for a fresh clone, since
     nothing ever commits this file (see config.VERBATIM_ALLOWLIST_PATH).
-    A *present* file that isn't valid TOML, or whose category isn't a
-    list of strings, raises ValueError rather than degrading to "no
-    suppressions" -- a policy file that silently stopped suppressing is
-    exactly the failure that surfaces months later as "why did this stop
-    working," not as "no findings today."
+    A *present* file that isn't valid TOML, whose category isn't a list
+    of strings, or that carries a key outside the four documented ones
+    (a typo like `pharses`), raises ValueError rather than degrading to
+    "no suppressions" -- a policy file that silently stopped suppressing
+    is exactly the failure that surfaces months later as "why did this
+    stop working," not as "no findings today." An unknown key is exactly
+    that failure mode: without the check, a misspelled category loads as
+    an empty list, no phrases suppress, and nothing says why.
     """
     path = config.VERBATIM_ALLOWLIST_PATH
     if not path.exists():
@@ -351,6 +354,13 @@ def _load_allowlist_phrases():
     except tomllib.TOMLDecodeError as exc:
         raise ValueError(f"{path}: malformed TOML -- {exc}") from None
 
+    unknown = sorted(set(data) - set(_ALLOWLIST_KEYS))
+    if unknown:
+        raise ValueError(
+            f"{path}: unknown key(s) {unknown} -- expected only "
+            f"{list(_ALLOWLIST_KEYS)}"
+        )
+
     phrases = []
     for key in _ALLOWLIST_KEYS:
         values = data.get(key, [])
@@ -358,7 +368,8 @@ def _load_allowlist_phrases():
             raise ValueError(f"{path}: {key!r} must be a list of strings")
         phrases.extend(values)
 
-    return [tuple(norm(p)) for p in phrases if norm(p)]
+    normalized = (tuple(norm(p)) for p in phrases)
+    return [words for words in normalized if words]
 
 
 def _mask_allowlisted(span_word_strs, allowlist_tuples):
