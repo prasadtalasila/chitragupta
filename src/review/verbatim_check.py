@@ -596,6 +596,16 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
     a valid JSON file -- the discipline `dossier brief` already follows.
     """
     findings, min_run = scan_findings(draft, min_run, gap, limit)
+
+    # The default path prints text and stops. Returning here rather than
+    # falling through keeps the payload's cost off it entirely -- a
+    # projection per finding, and the `pyproject.toml` read
+    # `review.version()` does for the envelope -- none of which the
+    # printed form uses.
+    if not (as_json or write):
+        print(format_scan(findings, min_run))
+        return
+
     command = scan_command(draft, min_run, gap, limit, write, as_json)
     payload = scan_payload(draft, findings, min_run, gap, limit, command)
 

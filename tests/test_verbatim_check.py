@@ -911,6 +911,21 @@ class TestScanPayload:
         assert "no verbatim run" not in out
         assert json.loads(out)["findings"] == []
 
+    def test_the_text_path_builds_no_payload(self, ledger_con, tmp_path, capsys, monkeypatch):
+        """A plain `scan` prints text and stops: it never pays for the
+        envelope's `pyproject.toml` read or a projection per finding,
+        neither of which the printed form uses."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        def unexpected(*a, **k):  # pragma: no cover - the point is it is never called
+            raise AssertionError("the text path built a payload")
+
+        monkeypatch.setattr(vc, "scan_payload", unexpected)
+
+        vc.cmd_scan(str(draft))
+
+        assert "uncited_2024" in capsys.readouterr().out
+
     def test_an_unscannable_request_still_raises_rather_than_emitting_json(
         self, isolated_config, tmp_path
     ):
