@@ -591,8 +591,21 @@ def _run_scan(draft, *args):
         and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
     }
     env["CONTENT_DIR"] = str(config.CONTENT_DIR)
+    return _run_verbatim("scan", str(draft), *args)
+
+
+def _run_verbatim(mode, *args):
+    """Any `verbatim` mode in a child process, with `_run_scan`'s
+    environment discipline (see its docstring for why the coverage
+    variables are stripped)."""
+    env = {
+        key: value for key, value in os.environ.items()
+        if not key.startswith("COV_CORE_")
+        and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
+    }
+    env["CONTENT_DIR"] = str(config.CONTENT_DIR)
     return subprocess.run(
-        [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), *args],
+        [sys.executable, "-m", "src.review", "verbatim", mode, *args],
         cwd=str(Path(__file__).resolve().parent.parent),
         capture_output=True, text=True, env=env,
     )
@@ -857,6 +870,126 @@ class TestVerbatimScanEndToEnd:
         assert {f["citekey"] for f in _findings(result.stdout)} == {
             "dt_arch_2024", "cloud_infra_2023", "calib_2025"
         }
+
+
+class TestOverlapRemediationEndToEnd:
+    """The loop #129 exists for, driven the way the `overlap-reviser`
+    skill drives it: `scan --write --json` to take a baseline, an `Edit`
+    built from a finding's own `draft_text`, then `recheck` to decide
+    whether the repair may be accepted.
+
+    The point is the seam no unit test covers -- that `draft_text` read
+    out of the *filed* payload still matches the draft on disk, so the
+    edit the skill would make actually applies. A skill that has to
+    reconstruct the passage by searching for it is the design this
+    replaced.
+    """
+
+    @pytest.fixture
+    def corpus(self, isolated_config):
+        _add_scan_paper("cloud_infra_2023", _scan_source_text(
+            "An opening page about billing models for rented hardware.",
+            SCAN_RUN_UNCITED + ". Costs are then compared across three vendors.",
+        ))
+        _add_scan_paper("calib_2025", _scan_source_text(
+            "An opening page about sensor drift in long-lived deployments.",
+            SCAN_RUN_CONNECTIVE + ". Two thresholds are then derived empirically.",
+        ))
+        return isolated_config
+
+    @pytest.fixture
+    def draft(self, corpus):
+        draft = content_draft(corpus, "drafts/remediate-e2e.md")
+        draft.write_text(
+            "# Deployment\n\n"
+            f"Most twins run on rented hardware. {SCAN_RUN_UNCITED}.\n\n"
+            "## Keeping a twin honest\n\n"
+            f"{SCAN_RUN_CONNECTIVE}. That question is taken up below.\n",
+            encoding="utf-8",
+        )
+        return draft
+
+    def _baseline(self, draft):
+        result = _run_scan(draft, "--write", "--formats", "md")
+        assert result.returncode == 0, result.stderr
+        path = config.REVIEW_DIR / "remediate-e2e.verbatim.json"
+        return path, json.loads(path.read_text(encoding="utf-8"))
+
+    def test_a_filed_findings_draft_text_still_matches_the_draft(self, draft):
+        path, payload = self._baseline(draft)
+
+        assert path.is_file()
+        text = draft.read_text(encoding="utf-8")
+        for finding in payload["findings"]:
+            assert finding["draft_text"] in text
+            assert text[finding["char_start"]:finding["char_end"]] == finding["draft_text"]
+
+    def test_repairing_one_finding_reports_it_resolved_and_the_other_persisting(
+        self, draft
+    ):
+        path, payload = self._baseline(draft)
+        target = next(f for f in payload["findings"] if f["citekey"] == "cloud_infra_2023")
+        other = next(f for f in payload["findings"] if f["citekey"] == "calib_2025")
+
+        # The constrained rewrite, applied exactly as the skill would: the
+        # finding's own draft_text replaced in place, nothing else touched.
+        draft.write_text(
+            draft.read_text(encoding="utf-8").replace(
+                target["draft_text"],
+                "we rewrote this passage in our own words, keeping the claim",
+            ),
+            encoding="utf-8",
+        )
+        result = _run_verbatim("recheck", str(draft), "--baseline", str(path), "--json")
+
+        assert result.returncode == 0, result.stderr
+        comparison = json.loads(result.stdout)
+        assert [f["id"] for f in comparison["resolved"]] == [target["id"]]
+        assert [f["id"] for f in comparison["persisting"]] == [other["id"]]
+        assert comparison["new"] == []
+        assert comparison["objective_delta"] == -1
+
+    def test_an_untouched_draft_is_reported_as_no_progress_not_as_success(self, draft):
+        """The acceptance test has to be able to say "nothing changed", or
+        a skill that silently failed to edit would read as a repair."""
+        path, _ = self._baseline(draft)
+
+        result = _run_verbatim("recheck", str(draft), "--baseline", str(path), "--json")
+
+        assert result.returncode == 0, result.stderr
+        comparison = json.loads(result.stdout)
+        assert comparison["resolved"] == []
+        assert comparison["objective_delta"] == 0
+
+    def test_recheck_exits_zero_on_a_draft_it_could_not_improve(self, draft):
+        """Still a review aid: the comparison is evidence, and the only
+        gate in the pipeline is `python -m src.draft gate`."""
+        path, _ = self._baseline(draft)
+
+        assert _run_verbatim(
+            "recheck", str(draft), "--baseline", str(path)
+        ).returncode == 0
+
+    def test_recheck_runs_on_the_bare_system_interpreter(self, draft, system_python):
+        """docs/CLI.md files the whole verbatim aid in interpreter tier 1,
+        and a mode added to it inherits that claim."""
+        path, _ = self._baseline(draft)
+        env = {
+            key: value for key, value in os.environ.items()
+            if not key.startswith("COV_CORE_")
+            and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
+        }
+        env["CONTENT_DIR"] = str(config.CONTENT_DIR)
+
+        result = subprocess.run(
+            [system_python, "-m", "src.review", "verbatim", "recheck",
+             str(draft), "--baseline", str(path)],
+            cwd=str(Path(__file__).resolve().parent.parent),
+            capture_output=True, text=True, env=env,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert "objective findings (long + short): 2 -> 2" in result.stdout
 
 
 class TestOneDraftsReviewArtefactsLandTogether:
