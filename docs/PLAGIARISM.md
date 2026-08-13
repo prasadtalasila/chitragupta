@@ -137,9 +137,12 @@ on one side of the break that used to be silently dropped.
 
 Each finding reports the run's total span and its matched-word count
 (so a gapped run is distinguishable from a pure one), the citekey and
-page range (`page`/`end_page` -- equal for an ordinary single-page run,
-`end_page > page` for one that spans a source page break), whether the
-containing paragraph actually cites that source (`UNCITED SOURCE` if
+page range (`page`/`end_page` -- the lowest and highest page an n-gram in
+the run actually *starts* on, equal for an ordinary single-page run,
+`end_page > page` for one that spans a source page break -- though not
+the converse: a remainder shorter than the index's own n-gram size has no
+gram starting on its page, so it is recovered into the run's word content
+without moving `end_page`), whether the containing paragraph actually cites that source (`UNCITED SOURCE` if
 not), whether the run sits inside quote delimiters (straight/curly double
 quotes or a Markdown blockquote line -- a deterministic bit, not a
 severity judgment), and `tier: "exact"` -- one key now, reserved for the

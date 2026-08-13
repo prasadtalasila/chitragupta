@@ -606,9 +606,15 @@ exits 0 -- "nothing found" is data too.
 `quoted: true` its `quoted`: booleans rather than those labels, because a
 caller that has to match display text is back where it started.
 
-`page` and `end_page` are equal for an ordinary single-page run;
-`end_page > page` means the run spans a source page break (#131) -- the
-printed forms render that as `p.N-M` instead of picking one side.
+`page` and `end_page` are the lowest and highest page an n-gram in the
+run actually *starts* on (#131), equal for an ordinary single-page run.
+`end_page > page` means the run spans a source page break; the printed
+forms render that as `p.N-M` instead of picking one side. It is not the
+converse: a remainder shorter than the index's own n-gram size has no
+gram starting on its page at all, so it is recovered into the merged
+run's word content without moving `end_page` to cover it -- `page` ==
+`end_page` does not by itself mean every word in the run sits on one
+page.
 
 `start`, `fragment` and `context` describe the **normalised word stream**
 -- the draft masked (code and the References section blanked), citation
@@ -672,8 +678,13 @@ so a single edited word inside an otherwise-verbatim passage still
 reports as one run, and so does a genuine lift that spans a source page
 break: it used to report as two (or more) shorter findings, with a short
 remainder stranded alone on the far side of the break falling under
-`--min-run` and vanishing entirely; it now merges into one finding whose
-`page`/`end_page` cover the full range. Each finding reports whether the containing draft paragraph
+`--min-run` and vanishing entirely; it now merges into one finding. That
+finding's `page`/`end_page` name every page an n-gram in the run actually
+*starts* on, which is usually but not always the full range: a remainder
+shorter than the index's own n-gram size has no gram starting on its
+page at all (nothing that short can start one), so it is recovered into
+the merged run's word content without moving `end_page` to cover it.
+Each finding reports whether the containing draft paragraph
 actually cites that source (`UNCITED SOURCE` if not) and whether the run
 sits inside quote delimiters -- both informational on stdout; `--write`'s
 report goes one step further and *groups* findings most-damning-first

@@ -539,9 +539,15 @@ def _matched_note(finding):
 
 
 def _page_range(finding):
-    """`p.N` for an ordinary single-page run, `p.N-M` for one that
-    straddles a source page break (#131) -- never silently reports just
-    one side of a multi-page run."""
+    """`p.N` for an ordinary single-page run, `p.N-M` for one whose
+    postings start on more than one page (#131).
+
+    Not a guarantee that `p.N` never means multi-page content: `page`/
+    `end_page` are the pages an n-gram in the run actually *starts* on, so
+    a remainder shorter than the index's own n-gram size -- recovered
+    into the run's word content because nothing that short can start a
+    gram of its own -- can leave `end_page` unmoved even though the run's
+    text reaches that page. See `scan_findings`'s docstring."""
     page, end_page = finding["page"], finding["end_page"]
     return f"p.{page}" if page == end_page else f"p.{page}-{end_page}"
 

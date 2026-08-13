@@ -230,18 +230,27 @@ def _build_fingerprint(citekey: str, pdf_hash: str, parsed_path: str, n: int) ->
     would let a run merge across a real page break. `position` is
     therefore a global word offset into the document, not reset at each
     page; `page` is still recorded per posting, attributed via the
-    cumulative per-page word counts (`bisect_right`) to whichever page
-    contains the gram's *first* word -- the same "lowest page wins"
-    convention `grams_for_citekey` already uses across documents, applied
-    here across pages of one.
+    cumulative per-page word counts to whichever page contains the
+    gram's *first* word -- the same "lowest page wins" convention
+    `grams_for_citekey` already uses across documents, applied here
+    across pages of one.
     """
     page_words = [_norm(page_text) for page_text in _pages_from_parsed_text(parsed_path)]
     boundaries = list(accumulate(len(words) for words in page_words))
     words = [w for page in page_words for w in page]
     postings: list[tuple[int, int, int]] = []
+    # A linear sweep, not a `bisect_right` per posting: `position` is
+    # ascending (`enumerate` over one document's grams in order), so
+    # `page_idx` only ever advances, never needs to search backward. That
+    # makes this O(#postings + #pages) instead of O(#postings * log
+    # #pages) -- the same total work, just not re-done from scratch for
+    # every one of a document's several-thousand postings.
+    page_idx = 0
+    num_pages = len(boundaries)
     for position, gram_hash in enumerate(gram_hashes(words, n)):
-        page = bisect_right(boundaries, position) + 1
-        postings.append((gram_hash, page, position))
+        while page_idx < num_pages and position >= boundaries[page_idx]:
+            page_idx += 1
+        postings.append((gram_hash, page_idx + 1, position))
     return DocFingerprint(
         citekey=citekey, key=_fingerprint_key(pdf_hash, parsed_path), n=n, postings=postings
     )
