@@ -5,8 +5,11 @@ draft content**.
 
 > **Changing chitragupta's own code, rather than drafting with it? Read
 > [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) first -- it governs.** Test
-> policy, the local check suite, environment constraints, and
-> commit/PR/release conventions all live there.
+> policy, the local check suite, environment constraints, code standards,
+> and commit/PR/release conventions all live there.
+>
+> [CLAUDE.md](CLAUDE.md) is the one-screen router between the two, for an
+> agent that has not yet worked out which task it is on.
 
 [SOUL.md](SOUL.md) is the one-page why behind everything below. When this
 file and that one seem to disagree, that one is the tie-breaker.

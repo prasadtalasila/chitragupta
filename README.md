@@ -259,6 +259,7 @@ split by who is asking.
 | Document | Answers |
 |---|---|
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
+| [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
 | [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the seven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
@@ -304,11 +305,12 @@ split by who is asking.
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
 | [DEVELOPER.md](DEVELOPER.md) | How do I run the tests, where does everything live, and what is unbuilt? |
 | [DOCKER.md](DOCKER.md) | How do I run this in a container? |
-| [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, commit/PR/release conventions |
+| [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
+| [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
 
 Every prose document ships in the release archive -- everything under
-`docs/`, plus `SOUL.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md` and
-`DEVELOPER.md` -- as do `.claude/`'s genre skills. Only this repo's own
+`docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
+and `DEVELOPER.md` -- as do `.claude/`'s genre skills. Only this repo's own
 machinery stays behind: `tests/`, `bench/` (the measurement harness and its
 raw timings), `.github/` and `.gitignore`.
 

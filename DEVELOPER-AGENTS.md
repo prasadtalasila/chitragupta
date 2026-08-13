@@ -19,6 +19,56 @@ each step -- reserve pausing for decisions that are genuinely irreversible
 regenerable) or genuinely ambiguous (a requirement with more than one
 reasonable reading and no clear tie-breaker in this file or the code).
 
+## Behavioural rules: think before coding
+
+Four rules about *how to work*, adopted from
+[DTaaS's CLAUDE.md](https://github.com/INTO-CPS-Association/DTaaS/blob/feature/distributed-demo/CLAUDE.md)
+and stated here in this repository's terms. They prioritise caution over
+speed; for a genuinely trivial change, use judgement.
+
+1. **Think before coding.** State assumptions rather than making silent
+   choices. Where a requirement has more than one reasonable reading,
+   present the alternatives instead of picking one quietly -- this is the
+   "genuinely ambiguous" case under "Role" above, and it is the one time
+   pausing beats proceeding.
+2. **Simplicity first.** Write the minimum that solves the stated
+   problem. No speculative abstraction for a single call site, no
+   unrequested `config.toml` key, no defensive handling for a state that
+   cannot occur. Ask whether a reviewer would call it over-engineered; if
+   yes, cut it. Note the one deliberate exception: the *comments* are not
+   subject to this -- see [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)'s
+   Override 1.
+3. **Surgical changes.** Each changed line should trace to the requested
+   task. Do not refactor unrelated code, and match the local style of
+   whatever you are editing. Remove imports and helpers *your* change
+   orphaned; report pre-existing dead code rather than deleting it in the
+   same diff. A module already on the size register is a thing to mention
+   in the PR, not a licence to rewrite it while passing through.
+4. **Goal-driven execution.** Turn the task into a verifiable goal before
+   starting: "fix the bug" becomes "write a test that reproduces it, then
+   make it pass" -- which is the test-driven rule below, arrived at from
+   the other direction. For a multi-step change, state the plan as steps
+   with the check that verifies each.
+
+## Code standards
+
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) is the standard the code
+itself is held to -- the code counterpart of `docs/WRITING-STANDARDS.md`.
+Read it before a non-trivial change. In brief:
+
+- **Two rules are machine-checked**, by `tests/test_code_standards_scan.py`
+  as part of the ordinary `pytest` run: at most **25 statements** per
+  function, at most **250 code lines** per module. Both are **ratchets** --
+  today's offenders are frozen in a register that may only shrink, so a
+  new offender fails and a fixed one must be delisted.
+- **Statements, not physical lines**, because this repository *requires*
+  rationale comments and a physical-line limit would reward deleting them.
+- Everything else in that document -- DRY, naming, one-thing-per-function
+  -- is a review standard with no detector, deliberately. A quality score
+  is not a thing to drive to zero;
+  [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md)'s R3 is the rule,
+  and it applies to code as written.
+
 ## Module boundaries
 
 `src/references.py` formats an IEEE bibliography entry (authors, venue,

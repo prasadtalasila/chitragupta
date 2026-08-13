@@ -141,6 +141,7 @@ nav:
   - Home: README.md
   - Getting started:
       - Why this exists: SOUL.md
+      - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
       - Which genre skill: docs/GENRE.md
       - Getting your library in: docs/ZOTERO.md
@@ -171,4 +172,5 @@ nav:
       - Developing: DEVELOPER.md
       - Docker: DOCKER.md
       - Changing this repo: DEVELOPER-AGENTS.md
+      - Code standards: docs/CODE-STANDARDS.md
   - The name: docs/NAME.md
