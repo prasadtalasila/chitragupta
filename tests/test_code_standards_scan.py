@@ -131,18 +131,39 @@ def statement_count(node):
     return count
 
 
-def functions(source):
-    """Every function in `source` as `(qualified_suffix, statement_count)`.
+def _definitions(node, prefix):
+    """`(qualified_name, statement_count)` for every function under `node`.
 
-    The suffix is the bare function name; the caller prefixes the path.
-    Nested and method definitions are yielded too -- each is a function
-    someone has to read, and C1 is about reading.
+    A class or an enclosing function extends the prefix; any other
+    statement -- `if`, `try`, `with` -- leaves it alone, so a conditionally
+    defined function is still found and still named for its real scope.
     """
-    return [
-        (node.name, statement_count(node))
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    ]
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            name = prefix + child.name
+            yield name, statement_count(child)
+            yield from _definitions(child, name + ".")
+        elif isinstance(child, ast.ClassDef):
+            yield from _definitions(child, prefix + child.name + ".")
+        else:
+            yield from _definitions(child, prefix)
+
+
+def functions(source):
+    """Every function in `source` as `(qualified_name, statement_count)`.
+
+    The caller prefixes the path. Nested and method definitions are
+    yielded too -- each is a function someone has to read, and C1 is about
+    reading.
+
+    Qualified (`Class.method`, `outer.inner`), not the bare name, because
+    the bare name is not unique within a file: `src/pdf_text.py` defines
+    `__init__` twice. `long_functions()` keys a dict on this, so a
+    collision would drop one offender of a colliding pair -- and, worse,
+    would let a register entry for one `main` silently license a *different*
+    `main` added to the same module later.
+    """
+    return list(_definitions(ast.parse(source), ""))
 
 
 def code_lines(source):
@@ -336,10 +357,10 @@ def test_a_nested_function_is_charged_to_itself_not_to_its_parent():
         "    return inner\n"
     )
     # `outer` does two things: define `inner`, and return it.
-    assert dict(functions(source)) == {"outer": 2, "inner": 3}
+    assert dict(functions(source)) == {"outer": 2, "outer.inner": 3}
 
 
-def test_a_nested_classs_methods_are_not_charged_to_the_enclosing_function():
+def test_the_methods_of_a_nested_class_are_not_charged_to_the_enclosing_function():
     """The bug the set-subtraction version of `statement_count` had.
 
     A method of a nested class is itself a nested definition, so it
@@ -358,7 +379,7 @@ def test_a_nested_classs_methods_are_not_charged_to_the_enclosing_function():
         "    return C\n"
     )
     # `outer` does two things: define `C`, and return it.
-    assert dict(functions(source)) == {"outer": 2, "m": 1, "n": 1}
+    assert dict(functions(source)) == {"outer": 2, "outer.C.m": 1, "outer.C.n": 1}
 
 
 def test_a_method_is_counted_and_not_charged_to_its_class_body():
@@ -368,7 +389,42 @@ def test_a_method_is_counted_and_not_charged_to_its_class_body():
         "        a = 1\n"
         "        return a\n"
     )
-    assert dict(functions(source)) == {"m": 2}
+    assert dict(functions(source)) == {"C.m": 2}
+
+
+def test_two_same_named_methods_in_one_module_stay_distinct():
+    """The collision `long_functions()`'s dict would otherwise hide.
+
+    Keyed on the bare name, the second of these would overwrite the first
+    -- so a colliding pair would report as one offender, and a register
+    entry for one would license a different function of the same name
+    added to that module later. `src/pdf_text.py` is the live case: it
+    defines `__init__` on both `interrupt_guard` and `_AnnotatedStream`.
+    """
+    source = (
+        "class A:\n"
+        "    def __init__(self):\n"
+        "        self.x = 1\n"
+        "class B:\n"
+        "    def __init__(self):\n"
+        "        self.y = 1\n"
+        "        self.z = 2\n"
+    )
+    assert dict(functions(source)) == {"A.__init__": 1, "B.__init__": 2}
+
+
+def test_a_function_defined_inside_a_conditional_keeps_its_enclosing_scope():
+    """`if`/`try`/`with` are not scopes, so they must not extend the name --
+    but they must still be descended into, or the function inside is
+    invisible to the scan."""
+    source = (
+        "class A:\n"
+        "    if True:\n"
+        "        def m(self):\n"
+        "            a = 1\n"
+        "            return a\n"
+    )
+    assert dict(functions(source)) == {"A.m": 2}
 
 
 def test_an_async_function_is_counted():
