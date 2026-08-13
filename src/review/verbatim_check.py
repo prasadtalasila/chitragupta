@@ -1106,7 +1106,19 @@ def load_baseline(path):
             "Re-scan without --limit to take a baseline."
         )
     findings = payload["findings"]
-    missing = [key for key in ("min_run", "gap") if key not in payload]
+    missing = []
+    for key in ("min_run", "gap"):
+        if key not in payload:
+            missing.append(key)
+        elif not isinstance(payload[key], int) or isinstance(payload[key], bool):
+            # `recheck_findings` hands these straight to `scan_findings`
+            # uncoerced; a hand-edited `"min_run": "8"` would otherwise
+            # reach `_merge_runs`' `int <= str` comparison and raise
+            # TypeError, not the clean ValueError/exit-2 refusal every
+            # other malformed baseline gets. `bool` is a subclass of
+            # `int`, but `min_run`/`gap` are word counts -- True/False
+            # would silently become 1/0 instead of naming the problem.
+            missing.append(f"{key} (not an int)")
     if (not isinstance(findings, list)
             or any(not isinstance(f, dict) for f in findings)):
         missing.append("findings (not a list of findings)")

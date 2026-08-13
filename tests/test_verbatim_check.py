@@ -1853,6 +1853,27 @@ class TestRecheck:
             vc.cmd_recheck(str(draft), str(baseline))
         assert "end_page" in str(exc.value)
 
+    @pytest.mark.parametrize("key", ["min_run", "gap"])
+    @pytest.mark.parametrize("value", ["8", 8.0, True, None, [8]])
+    def test_a_non_int_min_run_or_gap_is_refused_not_typeerrored(
+        self, ledger_con, tmp_path, key, value
+    ):
+        """`recheck_findings` hands `min_run`/`gap` straight to
+        `scan_findings` uncoerced -- a hand-edited `"min_run": "8"` would
+        otherwise reach `_merge_runs`' `int <= str` comparison and raise
+        `TypeError`, not the clean refusal every other malformed baseline
+        gets. `bool` included: it's an `int` subclass, but a word count of
+        `True`/`False` should name the problem, not silently become 1/0."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload[key] = value
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert key in str(exc.value)
+
     def test_every_field_recheck_prints_is_one_scan_actually_writes(self):
         """The two lists are checked against each other rather than kept
         in step by hand: a field `recheck` requires but `scan` never
