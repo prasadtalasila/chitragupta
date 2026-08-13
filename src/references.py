@@ -52,7 +52,20 @@ from src import citation_gate, config, ledger
 # at any heading level -- used both to detect an existing section (for
 # render_output.py, which strips it before handing the draft to pandoc)
 # and to find where to splice in a replacement.
-_HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+[.)]\s*)?References\s*$", re.IGNORECASE)
+#
+# The section number is multi-level (`\d+(?:\.\d+)*`), not a single digit
+# group: a book numbers its headings per chapter, so every chapter of a
+# book-length draft ends in "## 1.14 References", which an earlier
+# `(?:\d+[.)]\s*)?` did not match. The consequence was silent and
+# expensive -- `section_start` returned None, so the whole bibliography
+# stayed in the draft for every caller that acts on it. For
+# `verbatim_check.scan` that meant scanning the reference list against
+# the corpus, where two documents citing the same paper share its title
+# and venue verbatim: on this project's own 15-chapter book that was
+# 97.7% of all findings and 100% of the long-run bucket, none of them
+# reuse. The trailing separator stays optional because "1.14 References"
+# carries none, while "6. References" and "6) References" still do.
+_HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+(?:\.\d+)*[.)]?\s*)?References\s*$", re.IGNORECASE)
 
 
 def used_citekeys(text: str) -> list[str]:

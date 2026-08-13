@@ -53,6 +53,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | What would the whole corpus cost, from a sample? | `estimate.py` -- **but see its docstring: it understates** |
 | What does a drift sweep over every dossier cost? | **`bench_drift.py`** -- stdlib only, synthetic corpus, no GPU |
 | What does `verbatim_check.py overlap`/`scan` cost, and what can `scan` see that N `overlap` calls can't? | **`bench_overlap.py`** -- stdlib only, this host's real corpus, no GPU |
+| Would an `overlap_gate` (#130) block anything worth blocking, and at what span threshold? | **`bench_overlap_gate.py`** -- stdlib only, no GPU; measures **agreement with hand labels**, not cost |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -128,6 +129,7 @@ being tested.
 | `run_parallel.py` | Runs N worker processes over G GPUs, reports aggregate throughput |
 | `sweep_sync.py` | Sweeps the **real** `src.corpus sync` over worker/GPU/OCR settings -- the pool-level numbers |
 | `repro_check.py` | Asks whether two runs *agree*, not what they cost: parses one subset under two GPU counts and compares text, passage spans and passage texts |
+| `bench_overlap_gate.py` | Sweeps #130's gate predicate over a real book's `scan` findings and scores each candidate threshold against hand-authored labels; also measures what References masking is worth |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
 `repro_check.py` is the odd one out here, and deliberately so: every other

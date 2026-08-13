@@ -25,7 +25,8 @@ if it is obvious which is which, so:
 | [2026-08-04b: repeats](#2026-08-04b-repeats-and-where-the-time-goes) | **Current** | Overturned the 32-vs-48 "knee" from the single-run sweep |
 | [2026-08-07: does the quotable passage survive a re-parse?](#2026-08-07-does-the-quotable-passage-survive-a-re-parse) | **Current** | Corrected "same-configuration runs reproduce exactly", which had been asserted in three documents |
 | [2026-08-08: what a drift sweep costs](#2026-08-08-what-a-drift-sweep-costs) | **Current** | The first measurement of `dossier status --all`, on the real corpus |
-| [2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy) | **Current** | The first measurement of `scripts/verbatim_check.py`'s `overlap` and `scan` modes, on the real corpus |
+| [2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy) | **Partly superseded** | Its cold/warm figures still stand -- re-measured at 26.8s after #131 bumped the tokenizer version, which was expected to make them stale and did not. Its claim that `scan`'s findings are the input a gating decision would be tuned against is what the 2026-08-13 section actually tests |
+| [2026-08-13: what an `overlap_gate` would block, and how much of it would be wrong (#130)](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130) | **Current** | The first false-positive measurement of the gate #130 proposes, over a real 15-chapter book. Found References masking broken for book-numbered headings (72x the gateable population) and no threshold with a true positive at any width |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -964,3 +965,146 @@ CONTENT_DIR=/path/to/your/content python3 bench/bench_overlap.py \
     --draft bench/fixtures/cloud-computing-for-digital-twins.md \
     --out bench/results/<date>-overlap/overlap.json
 ```
+
+## 2026-08-13: what an `overlap_gate` would block, and how much of it would be wrong (#130)
+
+[#130](https://github.com/prasadtalasila/chitragupta/issues/130) asks
+whether a long verbatim run should block a draft the way `python -m
+src.draft gate` blocks an unresolvable citekey, and forbids guessing the
+threshold: it is to be "tuned against real reports". This is the report.
+
+Host: as above. Corpus: the same 497 parsed documents, `docling` backend,
+no allowlist configured. Drafts: the 15 chapters of
+`digital-twins-for-software-engineers` (178,077 words), restored from a
+`content/` backup -- organic, LLM-written textbook prose grounded in this
+corpus, with no planted reuse, which is what makes a false-positive rate
+measurable at all. `bench/fixtures/` cannot serve: its reuse is planted,
+so it is a true positive by construction.
+
+### References masking decides the answer, and it was broken
+
+`_mask_for_scan` blanks the draft's own bibliography before scanning,
+because two documents citing the same paper share its title and venue
+verbatim. `references.section_start` matched only single-level heading
+numbers (`(?:\d+[.)]\s*)?`), so a book numbering its headings per chapter
+-- `## 1.14 References` -- was never masked. All 15 chapters were
+affected; the three non-book drafts, which write a bare `## References`,
+were not.
+
+| Arm | Findings | >= 15 words | Gateable |
+|---|---|---|---|
+| References masked (fixed) | 159 | 16 | 14 |
+| References unmasked (as shipped) | 5,356 | 1,013 | 1,011 |
+| References masked + allowlist | 146 | 3 | **1** |
+
+**72x on the gateable population** (1,011 against 14; 63x on the long
+bucket, 1,013 against 16), from one unanchored regex. Unmasked, chapter 1
+alone produced 577 findings of which 97.7% sat in the reference list and
+**100% of its long bucket** did. Every number below is from the masked
+arm; the pattern is fixed in `src/references.py`.
+
+`section_start` is also what `references apply` splices on and what
+`render_output` strips, and both act destructively on the index it
+returns -- so the same miss applies to them. That is read off the shared
+call, not measured here; neither path was exercised.
+
+The third arm is #130's own qualifier: its gate is *allowlist-filtered*.
+Five entries -- the ISO 23247 and VanDerHorn definitions and two lines of
+Kritzinger's taxonomy, committed as `candidate_allowlist.toml` -- take
+the gateable population from 14 to **1**, and that one is an attributed
+quotation. The mechanism meant to make a gate tolerable empties it.
+
+### No threshold blocks anything real
+
+Sweeping the predicate `tier in {exact, skip-gram} and span_words >= T
+and not (quoted and cites_source)` over the 14 gateable findings:
+
+| T | blocked | tp | fp | precision | drafts blocked |
+|---|---|---|---|---|---|
+| 15 | 14 | 0 | 14 | 0.00 | 3 |
+| 20 | 8 | 0 | 8 | 0.00 | 2 |
+| 25 | 3 | 0 | 3 | 0.00 | 1 |
+| 29 | 2 | 0 | 2 | 0.00 | 1 |
+| 30 | 0 | 0 | 0 | -- | 0 |
+
+**Zero true positives at every threshold.** Across 178,077 words of real
+prose against the 497-document corpus it was written from, the exact
+tier finds no uncredited verbatim reuse -- only canonical definitions and
+attributed quotations. There is no `GATE_THRESHOLD` that blocks
+something worth blocking; the choice is between blocking false positives
+and blocking nothing. With the allowlist applied it is starker: one
+gateable finding survives in the whole book, and it is a quotation in
+quote marks with its source cited.
+
+The 16 findings reduce to seven distinct passages, dominated by two:
+ISO 23247's definition of a digital twin, and VanDerHorn & Mahadevan's
+consolidated definition. Both are quoted *and attributed* by several
+corpus papers, verified in the parsed text -- `paredis_family_2023` puts
+the ISO sentence in quote marks and names the standard;
+`thelen_comprehensive_2022` p.3 writes "VanDerHorn and Mahadevan (2021)
+proposed ...". The draft does the same thing and cites one source for it.
+
+That last point is the structural finding, and `cites_source` cannot fix
+it: **a definition reproduced by N corpus papers can only be cited to
+one, so the other N-1 report as `UNCITED SOURCE`.** Two findings show the
+sharper form -- a Kritzinger taxonomy blockquote, correctly quoted and
+correctly cited to `kritzinger_digital_2018`, matched against
+`barbie_toward_2024`, which reproduces the same taxonomy. It is
+`quoted=true, cites_source=false`, so `_bucket` keeps it in `long` and
+#130's own exemption does **not** reach it. A correctly quoted,
+correctly credited passage would block.
+
+### The detector is not blind
+
+A precision of 0.00 could equally mean the scan sees nothing, so the same
+build was run against the planted-reuse fixture and its control:
+
+```
+planted : 3 findings, 1 at >=15w -- 18w aguzzi_cloud_2020, UNCITED SOURCE
+control : 1 finding,  0 at >=15w
+```
+
+The known true positive is found and the control stays clean, so the
+zeros above are a measurement rather than an absence of one.
+`bench_overlap_gate.py` also runs a `self_check()` on every invocation
+and refuses to print a table when the index is empty or findings are
+unlabelled, for the same reason.
+
+### What this does not measure
+
+- **Paraphrase.** The exact tier cannot see it, and
+  [PLAGIARISM.md](../docs/PLAGIARISM.md) names literal paraphrase an
+  LLM's default failure mode. "Zero true positives" means zero *verbatim*
+  reuse, not no borrowed wording. This is the single largest caveat: the
+  tier that would gate is the tier blind to the likeliest offence.
+- **Thresholds below 15 words.** Labelling covered the report bucket and
+  above, so the sweep cannot say whether a gate should fire lower.
+- **Reuse from outside the corpus.** Every finding is against one of 497
+  parsed documents; a lift from an unparsed source is invisible.
+- **Whether a blocked draft is fixable.** The `long` runs counted here
+  are exactly the class `overlap-reviser` refuses to rewrite unattended,
+  referring the paraphrase-or-quote choice to a person.
+- **Other genres.** One book, one topic, one author's voice.
+- **Cross-page runs.** #131 merges runs across a source page break.
+  *Zero* of all 159 findings has `end_page > page` -- weak evidence that
+  the merge rarely fires on this corpus, and no evidence at all about
+  that population's false-positive rate, which remains unmeasured.
+
+One correction to [the 2026-08-10 section](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy):
+`_TOKENIZER_VERSION` went 1 -> 2 with #131, invalidating every `.fpr`, so
+a cold build now re-fingerprints rather than re-merges. Measured here at
+**26.8s** for 497 documents -- unchanged against the 27.2-27.5s recorded
+there. The rebuild is not the dominant cost it was expected to be.
+
+Reproduce:
+
+```bash
+python3 bench/bench_overlap_gate.py --tag <date>-overlap-gate \
+    --drafts content/drafts/books/<book-slug>
+```
+
+The labels are an input, hand-authored and committed as
+`results/<date>-overlap-gate/labels.json`; the script reports any
+gateable finding it cannot find a label for. The detector check above is
+a one-off, not a bench tool: copy the two `bench/fixtures/`
+cloud-computing drafts under `content/drafts/` and scan each.

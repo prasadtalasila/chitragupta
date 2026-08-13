@@ -1,0 +1,35 @@
+{
+ "about": "Hand-authored ground truth for bench/bench_overlap_gate.py. One entry per finding at or above the sweep floor (15 words) in the references-masked arm. `label` is whether an overlap_gate blocking this finding would be right: `tp` = genuine uncredited reuse a reviewer would require fixing, `fp` = a finding no reviewer would act on. Rationales carry no extended verbatim text; the passages are locatable from `draft` and `line` in overlap_gate.json.",
+ "corpus": {
+  "documents": 497,
+  "corpus_key": "5d2f911790ad5b2127fe1b20be4350ac",
+  "tokenizer_version": 2,
+  "n": 8,
+  "parser_backend": "docling",
+  "release": "5.7.1",
+  "note": "finding ids are sha256(citekey, page, fragment), so a re-parse or a page shift invalidates this file rather than silently half-matching it. bench_overlap_gate.py reports labels that match no current finding as an integrity complaint."
+ },
+ "finding_classes": {
+  "canonical-definition": "The passage is a standard's or a field's fixed definition. The draft attributes it in prose and cites a source for it; the matched paper is quoting the same definition. Not reuse of that paper's own writing.",
+  "third-party-echo": "A canonical-definition match against a paper *other* than the one the draft cites. The draft can only cite one source for a definition that many corpus papers reproduce, so every other one reports as UNCITED SOURCE. `cites_source` cannot distinguish this from real uncredited reuse.",
+  "attributed-quotation": "Quoted with quote marks or as a blockquote, and attributed. Legitimate scholarship."
+ },
+ "labels": {
+  "6dec39addc4a": {"label": "fp", "class": "third-party-echo", "rationale": "The VanDerHorn & Mahadevan consolidated definition of a digital twin. The draft attributes it in prose ('A generalisation exercise across the published definitions proposes') and cites vanderhorn_digital_2021. thelen_comprehensive_2022 p.3 quotes the same definition and names its authors; the match is against Thelen's quotation of someone else's words, not Thelen's own."},
+  "e308b2d5b2b2": {"label": "fp", "class": "third-party-echo", "rationale": "Same passage and same reasoning as 6dec39addc4a; the corpus holds thelen_comprehensive_2022 twice, so one draft sentence yields two findings. Duplicate corpus entries inflate any count taken over findings rather than over passages."},
+  "777c622bef3b": {"label": "fp", "class": "canonical-definition", "rationale": "The same VanDerHorn definition, matched against vanderhorn_digital_2021 itself -- the paper the draft actually cites (cites_source=true). Attributed in prose and correctly credited; the only criticism available is that a definition quoted this closely could carry quotation marks."},
+  "27903edc179b": {"label": "fp", "class": "canonical-definition", "rationale": "ISO 23247's definition of a digital twin for manufacturing, under the draft's own heading '2.5.2 ISO 23247's', attributed in prose ('The manufacturing standard defines a digital twin as') and cited to bottjer_review_2023-1. Reproducing a standard's definition is what quoting a standard is."},
+  "eb96275fcf8f": {"label": "fp", "class": "third-party-echo", "rationale": "The ISO 23247 definition again, matched against anwer_developing_2025, which quotes the standard rather than being its source. The draft cites bottjer_review_2023-1 for it, so this reports UNCITED SOURCE despite the definition being credited."},
+  "5a53197e4b75": {"label": "fp", "class": "third-party-echo", "rationale": "As eb96275fcf8f; anwer_developing_2025 is in the corpus twice."},
+  "5872358f0f2d": {"label": "fp", "class": "third-party-echo", "rationale": "The ISO 23247 definition matched against paredis_family_2023, which quotes it in quote marks and names the standard ('Systems and integration - Digital twin framework for manufacturing defines a DT for manufacturing as ...'). Verified in the parsed source text."},
+  "1e13c0722790": {"label": "fp", "class": "third-party-echo", "rationale": "Kritzinger's digital model / shadow / twin taxonomy, set as a Markdown blockquote and cited to kritzinger_digital_2018 -- the work that first stated it. The match is against barbie_toward_2024, which reproduces the same taxonomy. quoted=true but cites_source=false, so _bucket keeps it in `long` and #130's predicate does NOT exempt it: this is the concrete case where a correctly quoted, correctly credited passage would still block."},
+  "8bf9f6405db5": {"label": "fp", "class": "third-party-echo", "rationale": "The adjacent blockquote in the same taxonomy, same reasoning as 1e13c0722790."},
+  "777c28fe9fc9": {"label": "fp", "class": "canonical-definition", "rationale": "The ISO 23247 definition where chapter 13 restates it, cited to bottjer_review_2023-1. The same canonical sentence appearing in two chapters of one book produces findings in both."},
+  "203c7274dc73": {"label": "fp", "class": "attributed-quotation", "rationale": "A quoted and cited sentence from ferko_standardisation_2023. severity=quoted, so #130's predicate exempts it and it can never block -- recorded to keep the exempt population visible rather than absent."},
+  "d7a5ac18a8cc": {"label": "fp", "class": "canonical-definition", "rationale": "ISO 23247 definition in chapter 13, matched against anwer_developing_2025, which the paragraph does cite."},
+  "80da31839d85": {"label": "fp", "class": "third-party-echo", "rationale": "As d7a5ac18a8cc against the corpus's second copy of anwer_developing_2025, which the paragraph does not cite."},
+  "4b3e157b920b": {"label": "fp", "class": "third-party-echo", "rationale": "ISO 23247 definition in chapter 13, matched against paredis_family_2023's quotation of the standard."},
+  "f0f4fd3982b7": {"label": "fp", "class": "attributed-quotation", "rationale": "A sentence about hierarchical composition that puts the borrowed clause in quote marks and cites martinelli_hierarchical_2024. The run spans both the draft's own framing and the quoted clause, so it reports as a 24-word run rather than as the shorter quotation it contains."},
+  "b598fb1c1815": {"label": "fp", "class": "attributed-quotation", "rationale": "A quoted and cited definition of population-based structural health monitoring from gardner_foundations_2021. severity=quoted, so the predicate exempts it."}
+ }
+}
