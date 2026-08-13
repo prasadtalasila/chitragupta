@@ -46,7 +46,7 @@ dependency graph is acyclic and entirely artefact-mediated -- every edge
 is one layer reading a file another wrote, and no layer calls into
 another:
 
-```
+```text
 corpus (sync) ──ledger, parsed/──▶ drafting (skills + gate chain) ──draft──▶ review
      │                                    ▲                                    │
      └──▶ enrichment (-m src.enrich) ─docling/, chroma/, passages──┘              │
@@ -316,7 +316,7 @@ no reason.
 its renders and its review artefacts are all findable from the draft's
 own path:
 
-```
+```text
 content/drafts/<topic>/survey.md
   -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
      content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf, .json)
@@ -552,8 +552,8 @@ about.
 
 `tests/test_removed_command_scan.py` keeps the old spelling out of the
 tree. It matches the *invocation* -- the `-m` flag and the module
-together, in prose and in the quoted argument-list form that got past
-#150's hand sweep -- rather than the module path, which is legitimate
+together, in prose and in the quoted argument-list form that got past #150's
+hand sweep -- rather than the module path, which is legitimate
 and common: `src.sync` is also the pinned logger name in every
 `logs/pipeline.log` line.
 

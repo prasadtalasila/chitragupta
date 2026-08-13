@@ -55,13 +55,16 @@ release zip for the same reason `tests/` is.
   organised by setting. Ships in the release archive, unlike `bench/`
 - [docs/PARALLELISM.md](docs/PARALLELISM.md) -- parallel parse design:
   architecture, components, and the roadmap
-- [bench/README.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/README.md) -- how to run it, and what each
+- [bench/README.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/README.md)
+  -- how to run it, and what each
   switch measures
-- [bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md) -- the dated measurement record,
+- [bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md)
+  -- the dated measurement record,
   newest last, with raw per-run data in `bench/results/`. Read its
   "Which sections are current" table first: several early conclusions
   were overturned by later runs and are kept, marked, rather than deleted
-- [bench/PARALLELISM-PLAN.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/PARALLELISM-PLAN.md) -- what is still
+- [bench/PARALLELISM-PLAN.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/PARALLELISM-PLAN.md)
+  -- what is still
   unknown, and what to measure before changing it
 
 The headline, in the order it was found:
@@ -128,7 +131,7 @@ immediately rather than subtly.
 
 ## Repository layout
 
-```
+```text
 README.md                 the user-facing overview: what this is, the Quickstart, hardware sizing
 bench/                    parser measurement (dev-only, not shipped) -- see "Benchmarking the parser"
                           above; corpus.json/sample*.json are generated and gitignored, results/ is

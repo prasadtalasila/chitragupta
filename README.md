@@ -1,3 +1,7 @@
+<!-- The H1 follows the centred logo block rather than opening the file.
+     MD033 is already relaxed for that <picture> element; this is the
+     same exception for the heading rule it displaces. -->
+<!-- markdownlint-disable-next-line MD041 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)"
@@ -20,7 +24,8 @@ against it -- which is what this does to citations.
      here resolves on GitHub and 404s on the docs site. Making it a Markdown
      link is not the fix: CommonMark treats the inside of an HTML block as
      raw text, so GitHub would stop rendering it. -->
-<a href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/NAME.md">See more</a>.
+<a href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/NAME.md"
+>See more</a>.
 </p>
 
 ---
@@ -48,7 +53,9 @@ passing phase 4.
 
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
-       alt="Five phases: curate in Zotero, sync the corpus, draft with a genre skill, verify with the citation gate, publish. A failing gate sends the draft back to be rewritten."
+       alt="Five phases: curate in Zotero, sync the corpus, draft with a
+            genre skill, verify with the citation gate, publish. A failing
+            gate sends the draft back to be rewritten."
        width="100%">
 </p>
 
@@ -257,7 +264,7 @@ one-screen router for exactly that.
 
 ### Using it
 
-**Getting started**
+#### Getting started
 
 | Document | Answers |
 |---|---|
@@ -269,7 +276,7 @@ one-screen router for exactly that.
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
 
-**Understanding the system**
+#### Understanding the system
 
 | Document | Answers |
 |---|---|
@@ -281,14 +288,14 @@ one-screen router for exactly that.
 | [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens actually go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
 
-**Choosing settings**
+#### Choosing settings
 
 | Document | Answers |
 |---|---|
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | What does each setting *cost*? Every measured figure in one place, organised by setting |
 | [docs/PDF-PARSER.md](docs/PDF-PARSER.md) | Which PDF backend should I use, why were two dropped, and why was each newer candidate not adopted? |
 
-**Reading the output**
+#### Reading the output
 
 | Document | Answers |
 |---|---|

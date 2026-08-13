@@ -82,7 +82,8 @@ Two properties matter when you compare it with the alternative:
   has a citekey that `citation_gate` will accept.
 - **It reads `content/parsed/<citekey>.txt` and nothing else.** Running
   the enrichment layer's `docling` stage does not improve BM25 --
-  `content/docling/` is not on its read path. The only way Docling's output reaches keyword
+  `content/docling/` is not on its read path. The only way Docling's output
+  reaches keyword
   retrieval is `[parser].backend = "docling"` in the corpus layer, which
   changes what
   `sync` writes into `content/parsed/`. (That choice also decides whether
@@ -173,7 +174,7 @@ repository: catalogue it in your reference manager, re-export, and re-run
 `sync`. `python -m src.enrich` prints what it is about to work on at the top of
 every run, before any stage touches it:
 
-```
+```text
 Corpus: 42 doc(s) from papers/bibliography.bib
 ```
 

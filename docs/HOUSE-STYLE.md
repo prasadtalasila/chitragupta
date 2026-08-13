@@ -185,7 +185,7 @@ and may offer the edit. It may not write the preference file itself.
 
 ## Relationship to #102's roadmap
 
-#102 already sequences the language work as six PRs and ranks them by who
+Issue #102 already sequences the language work as six PRs, ranked by who
 is blocked today. Nothing here reorders it; this document adds the reason
 the first three matter more than their size suggests.
 
@@ -197,9 +197,10 @@ the first three matter more than their size suggests.
 | #107 | `scripts/style_check.py` | the detector and the re-check |
 | #108 | multilingual corpus support | out of scope, and see the caution above |
 
-#102 ranks #107 fifth, as "a nice-to-have consistent with the project's
-review-aid posture". That ranking is right for a human-driven workflow and
-wrong for an unattended one: without #107 there is no binary check, and
+Issue #102 ranks #107 fifth, as "a nice-to-have consistent with the
+project's review-aid posture". That ranking is right for a human-driven
+workflow and wrong for an unattended one: without #107 there is no binary
+check, and
 without a binary check the prose class of
 [the agenda](AUTO-IMPROVEMENT.md#item-classes) cannot be acted on at all.
 If the loop is built, #107 moves up.

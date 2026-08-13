@@ -119,12 +119,14 @@ durable rule is the probe:
   of inventing a new fallback policy.
 
 Install everything with:
-```
+
+```bash
 bash scripts/install_full_pipeline.sh              # Python deps only (default) -- what every host needs regardless of OS packages
 bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry, zip/unzip -- needs root, opt-in
 bash scripts/install_full_pipeline.sh dev-deps     # pytest/pytest-cov, to run the test suite -- opt-in
 bash scripts/install_full_pipeline.sh all          # os-deps + python-deps
 ```
+
 This is **the single install script for both the host and Docker and CI**
 -- `docker/Dockerfile` calls it once per stage as separate `RUN` lines, and
 `.github/workflows/ci.yml` calls it directly too, rather than any of them
@@ -272,33 +274,46 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
-### The linters, which are configured but not yet enforced
+### The linters, which are enforced
 
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
 [DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
-from -- so a baseline is reproducible on any host:
+from. Run both before you push; `ci.yml`'s `lint` job runs exactly these
+two commands:
 
 ```bash
 pylint --rcfile=.pylintrc src scripts        # needs the project's deps importable
 markdownlint-cli2 "*.md" "docs/**/*.md"      # npm i -g markdownlint-cli2
 ```
 
-**Neither is in CI, and neither is a check you have to pass yet.** Run
-them on code you touched and fix what is clearly yours; do not go fixing
-the backlog in an unrelated diff. Both baselines are measured in
-[docs/TECHNICAL-DEBT.md's Tier 5](docs/TECHNICAL-DEBT.md#tier-5-continuous-integration-and-the-linters)
--- 44 real pylint findings after the deliberate categories are disabled,
-and 100 markdownlint findings once the cosmetic `MD060` is set aside --
-along with the disable list and the order the two should be adopted in.
+**Both are blocking, at a binary zero-messages bar** -- never a
+`fail-under` score, because
+[R3](docs/AUTO-IMPROVEMENT.md#the-requirements) rules out driving a
+number, and a score can improve while the thing you cared about gets
+worse. There is no backlog left to avoid: the adoption in 5.8.0 cleared
+both to zero first, which is this file's own rule that **a check that has
+not been made to pass must not ship.**
 
-They are deliberately not wired into `ci.yml` yet, and the reason is a
-rule from this file rather than a preference: **a check that has not been
-made to pass must not ship.** Enabling pylint today would mean either a
-red build or suppressing `unspecified-encoding`, which is the top item on
-the debt register -- closing the detector without closing the defect. The
-order is: fix the encoding sites, fix the long lines, then enable, at a
-binary zero-messages bar rather than a `fail-under` score.
+What that adoption had to settle, since each is a decision a later reader
+will otherwise have to re-derive:
+
+- **The encoding sites went first.** Enabling pylint before fixing them
+  would have closed the detector on the debt register's top item without
+  closing the item. All of
+  [3.1](docs/TECHNICAL-DEBT.md#31-text-io-on-the-locale-codec) is fixed,
+  not just the seven sites pylint could see.
+- **Wrapping long lines grew ten registered files.** `line-too-long` and
+  the C2 file-length ratchet pull against each other; C0301 won, and the
+  counts in `tests/test_code_standards_scan.py` moved with it.
+- **`MD060` is off.** Table cell padding, 839 of the 947-finding
+  baseline, and the alternative was a diff touching every table in the
+  documentation to move spaces around. Everything else is enforced.
+- **The enrich group's imports are in `ignored-modules`** rather than
+  installed in CI. They are lazy imports inside the functions that need
+  them; pylint resolves imports statically wherever they sit, so without
+  that list a lint job that does not download torch reports `import-error`
+  against all of them.
 
 `.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
 runner: it normalises line endings so CI's Windows leg reads
@@ -423,7 +438,7 @@ Upgrade) and naming what actually changed, not vague summaries. No
 preamble paragraph before the bullets. For example (style, not this repo's
 literal content):
 
-```
+```text
 Fix reconcile drift detection, secret handling, and stale config warnings
 
 - Fix reconcile to detect and reprovision users whose containers are gone,
@@ -465,7 +480,8 @@ PR -- the opposite of what "don't add it by hand" is protecting.
 
 The point is not the exact incantation -- write the body to a file in the
 bulleted shape above rather than piping raw branch commits through it,
-which just reproduces the `*`-concatenated default by another route. The point is that the format becomes
+which just reproduces the `*`-concatenated default by another route. The point
+is that the format becomes
 something a command produces, not something a person has to remember at
 the end of a long session, in a browser, after CI has gone green. That is
 this project's standing answer to guidance that does not stick: the

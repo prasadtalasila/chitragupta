@@ -83,11 +83,13 @@ meet them: you need a corpus before a draft, and there is nothing to
 review until a draft exists. They are not a dependency rank -- the
 enrichment layer is optional and nothing above it needs it.
 
-- **Layer 1, the corpus layer -- deterministic** (`python -m src.corpus sync`): bib file
+- **Layer 1, the corpus layer -- deterministic** (`python -m src.corpus sync`):
+  bib file
   read -> ledger update -> PDF text extraction -> duplicate-citekey check
   -> stale-citekey report. No LLM calls, no judgment calls, idempotent;
   safe to run unattended. docs/ARCHITECTURE.md has the stage detail.
-- **Layer 2, the drafting layer -- generative** (the `.claude/skills/`): invoked on
+- **Layer 2, the drafting layer -- generative** (the `.claude/skills/`): invoked
+  on
   demand, reviewed by the user. **Read-only over the corpus layer**: they
   never write to `content/ledger.sqlite`, and they never run `python -m
   src.corpus sync` or the enrichment layer on the user's behalf. On an empty
@@ -121,7 +123,8 @@ enrichment layer is optional and nothing above it needs it.
   what keeps this picture free of a cycle -- a per-draft stage wrapping
   either one would reintroduce it.
 - **Layer 4, the review layer -- advisory** (`src/review/citation_provenance.py`,
-  `src/review/verbatim_check.py`, `src/review/citation_coverage.py`): run by hand on
+  `src/review/verbatim_check.py`, `src/review/citation_coverage.py`): run by
+  hand on
   a finished draft, never invoked automatically. Each reads a draft plus
   the corpus and produces **evidence for a human judgement, never a
   verdict** -- every one exits 0 whether it finds something or not, and

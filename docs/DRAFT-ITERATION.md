@@ -88,7 +88,7 @@ alter a paragraph was to run Phase 1 through Phase 7 again.
 
 One dossier per draft, mirroring the draft's own path:
 
-```
+```text
 content/drafts/dt-for-engineers/survey.md
    -> content/dossiers/dt-for-engineers/survey/
 ```
@@ -213,7 +213,7 @@ skills that produce both write both.
 `scope.md` records how many citekeys the ledger held when the draft was
 written, plus a 12-character digest of that set:
 
-```
+```text
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
 ```
 
@@ -259,7 +259,7 @@ transcription put it there.
 **The mechanism.** Phase 4 writes the section -> citekey plan into
 `sections.md`, and the dispatch prompt carries one line:
 
-```
+```bash
 Your evidence: python -m src.draft dossier brief <draft> --section "2. Failure modes"
 ```
 

@@ -1,0 +1,46 @@
+# Candidate boilerplate allowlist, derived from this run's own labels.
+#
+# `content/verbatim_allowlist.toml` is per-host and gitignored, so the
+# phrases live here instead: this file is the committed record of what a
+# reviewer would have waved through, and the real allowlist is
+# reconstructible by copying it into place. bench_overlap_gate.py reads
+# it directly via --allowlist, so the arm never depends on host state.
+#
+# Every entry is a canonical definition that several corpus papers quote
+# and attribute -- the class the allowlist exists for, per
+# docs/PLAGIARISM.md ("a standard's own name, ... a field's fixed
+# defined-term sentence"). Nothing here says some real reuse is
+# acceptable; each was labelled fp with its rationale in labels.json.
+#
+# **Why the phrases are shaped like this.** Suppression is
+# mask-and-remeasure over the words of a *finding*, so a phrase longer
+# than the span scan reports can never match it: the first draft of this
+# file carried each definition in full, including a trailing clause the
+# runs stop short of, and suppressed 4 of 14 rather than 13. These are
+# the definitions as the report prints them, which is the form a reviewer
+# populating an allowlist from that report would copy. The definitions
+# are split where the runs split -- one entry for the core sentence, one
+# for the trailing clause only the longer runs reach -- because the masks
+# are OR-ed, so two short entries cover both the long and the short
+# variant where one long entry covers neither.
+
+definitions = [
+    # ISO 23247's definition of a digital twin for manufacturing.
+    # paredis_family_2023 quotes it in quote marks and names the
+    # standard; anwer_developing_2025 and bottjer_review_2023-1 also
+    # carry it. Accounts for 8 of the 16 findings, across two chapters.
+    "purpose digital representation of an observable manufacturing element with a means to enable convergence",
+    "between the element and its",
+
+    # VanDerHorn & Mahadevan's consolidated definition.
+    # thelen_comprehensive_2022 p.3 attributes it by name before quoting
+    # it, which is exactly why the draft's own correct attribution still
+    # reports as UNCITED SOURCE against Thelen.
+    "virtual representation of a physical system and its associated environment and processes that is updated through the exchange of information between the physical and virtual systems",
+
+    # Kritzinger's digital model / shadow / twin taxonomy, blockquoted in
+    # chapter 2 and cited to kritzinger_digital_2018, matched against
+    # barbie_toward_2024 which reproduces the same taxonomy.
+    "automated one way data flow from the physical object to the digital",
+    "change in the state of the physical object leads to a change in the state of the digital",
+]

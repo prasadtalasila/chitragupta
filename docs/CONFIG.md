@@ -240,7 +240,8 @@ script (or a test) that needs it somewhere else.
 | `weak_score` | `PROVENANCE_WEAK_SCORE` | number, a fraction 0.0-1.0 | `0.20` |
 | `good_score` | `PROVENANCE_GOOD_SCORE` | number, a fraction 0.0-1.0 | `0.50` |
 
-`src/review/citation_provenance.py` (the review layer) bands the fraction of a citing sentence's
+`src/review/citation_provenance.py` (the review layer) bands the fraction of a
+citing sentence's
 distinctive words found in the best-matching source passage. Below
 `weak_score` a finding reads "no support found", which means *go look at
 this one first* -- never "this citation is wrong". At or above
@@ -409,7 +410,7 @@ ever sees what that leaves visible. Figures in
 **A card someone else is already using is skipped**, and the run says so
 on stderr:
 
-```
+```text
   WARNING skipping cuda:0 (0.6 GiB free) -- under 2.5 GiB free, which is
   not enough for a docling worker. Parsing on cuda:1,2,3.
 ```

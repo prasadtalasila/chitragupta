@@ -44,7 +44,6 @@ Usage:
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 
 from src.enrich import corpus, docling_parse, embed_index, topic_model
@@ -124,7 +123,9 @@ def stage_embed(docs, args):
 
 def stage_bertopic(docs, args):
     result = topic_model.run_topic_model(docs)
-    return {"status": "ok", "detail": {"n_docs": result["n_docs"], "assignments": result["assignments"]}}
+    return {"status": "ok",
+            "detail": {"n_docs": result["n_docs"],
+                       "assignments": result["assignments"]}}
 
 
 STAGE_FUNCS = {
@@ -159,7 +160,8 @@ def parse_args():
     parser.add_argument("--for-draft", metavar="PATH",
                          help="Scope the docling stage to the papers this draft cites, instead of "
                               "the whole corpus. Refused "
-                              f"together with an explicit --stages naming {' or '.join(SCOPE_REFUSED)}.")
+                              "together with an explicit --stages naming "
+                              f"{' or '.join(SCOPE_REFUSED)}.")
     return parser.parse_args()
 
 
@@ -210,7 +212,8 @@ def main(configure_logging: bool = False) -> int:
     # notably for a stage name this pipeline used to have and no longer does.
     unknown = sorted(selected - set(STAGE_ORDER))
     if unknown:
-        print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- known stages: {', '.join(STAGE_ORDER)}")
+        print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- "
+              f"known stages: {', '.join(STAGE_ORDER)}")
 
     scope = None
     if args.for_draft:
@@ -335,7 +338,8 @@ def _run_stages(args, selected, scope: set[str] | None = None) -> int:
         # so this line is the only trace it leaves.
         is_text = isinstance(detail, str)
         _say(
-            f"[{result['status']}] " + (detail if is_text else json.dumps(detail, indent=2, default=str)),
+            f"[{result['status']}] "
+            + (detail if is_text else json.dumps(detail, indent=2, default=str)),
             level=logging.WARNING if result["status"] == "error" else logging.INFO,
             log_as=None if is_text else f"[{result['status']}] " + json.dumps(detail, default=str),
         )

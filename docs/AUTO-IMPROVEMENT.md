@@ -270,7 +270,7 @@ allowlist -- is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
 ## Build order
 
-#126 already fixes this order; the change is to its scope, not its
+Issue #126 already fixes this order; the change is to its scope, not its
 sequence.
 
 1. **Settle the amendment.** Not a coding task --

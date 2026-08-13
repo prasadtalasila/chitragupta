@@ -95,7 +95,7 @@ already removed.**
 graph as acyclic and artefact-mediated, with exactly one edge into the
 review layer:
 
-```
+```text
 corpus ──ledger, parsed/──▶ drafting ──draft──▶ review
 ```
 
@@ -434,7 +434,8 @@ pipeline layer, and neither should acquire one.
   rather than a person.
 - **Does `agenda` strain the aid vocabulary?** A `review.AIDS` key is both
   the subcommand and the report's filename suffix -- the values are the
-  human-readable titles -- so this ships as `survey.agenda.md`. What remains against it is real: the other three
+  human-readable titles -- so this ships as `survey.agenda.md`. What remains
+  against it is real: the other three
   keys name an observed property of the draft, while this one names what
   to do next. It is also the first aid that reads other aids.
 

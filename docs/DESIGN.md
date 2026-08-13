@@ -26,10 +26,12 @@ over the alternative.
 
 ## Repository constraints and operating model
 
-The repository is designed around a few hard constraints that strongly shape the architecture:
+The repository is designed around a few hard constraints that strongly shape the
+architecture:
 
 1. **Never fabricate a citekey**
-   - Citekeys must come from `papers/bibliography.bib` and be synchronized into `content/ledger.sqlite`.
+   - Citekeys must come from `papers/bibliography.bib` and be synchronized into
+     `content/ledger.sqlite`.
    - Drafts must pass `python -m src.draft gate` before being considered valid.
    - This is the repo's primary safety invariant.
 
@@ -45,7 +47,8 @@ The repository is designed around a few hard constraints that strongly shape the
 3. **Config and host variability are first-class concerns**
    - `config.toml` is the single source of configuration.
    - Stages must probe for binaries/services rather than assume availability.
-   - Missing dependencies should degrade to honest reporting, not crashes or silent success.
+   - Missing dependencies should degrade to honest reporting, not crashes or
+     silent success.
 
 4. **Incremental processing is a load-bearing design goal**
    - `ledger.py` uses stat-before-hash skipping.

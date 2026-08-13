@@ -52,7 +52,20 @@ from src import citation_gate, config, ledger
 # at any heading level -- used both to detect an existing section (for
 # render_output.py, which strips it before handing the draft to pandoc)
 # and to find where to splice in a replacement.
-_HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+[.)]\s*)?References\s*$", re.IGNORECASE)
+#
+# The section number is multi-level (`\d+(?:\.\d+)*`), not a single digit
+# group: a book numbers its headings per chapter, so every chapter of a
+# book-length draft ends in "## 1.14 References", which an earlier
+# `(?:\d+[.)]\s*)?` did not match. The consequence was silent and
+# expensive -- `section_start` returned None, so the whole bibliography
+# stayed in the draft for every caller that acts on it. For
+# `verbatim_check.scan` that meant scanning the reference list against
+# the corpus, where two documents citing the same paper share its title
+# and venue verbatim: on this project's own 15-chapter book that was
+# 97.7% of all findings and 100% of the long-run bucket, none of them
+# reuse. The trailing separator stays optional because "1.14 References"
+# carries none, while "6. References" and "6) References" still do.
+_HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+(?:\.\d+)*[.)]?\s*)?References\s*$", re.IGNORECASE)
 
 
 def used_citekeys(text: str) -> list[str]:
@@ -421,19 +434,19 @@ def write_numbered(path: Path, out_dir: Path) -> Path:
     """Writes `path`'s numbered copy into `out_dir`, returning its path."""
     con = ledger.connect()
     try:
-        rendered = numbered_markdown(path.read_text(), con)
+        rendered = numbered_markdown(path.read_text(encoding="utf-8"), con)
     finally:
         con.close()
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{path.stem}.md"
-    out_path.write_text(rendered)
+    out_path.write_text(rendered, encoding="utf-8")
     return out_path
 
 
 def apply(path: Path, heading: str = "References") -> str:
     path = config.require_inside_content(path)
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     keys = used_citekeys(text)
     if not keys:
         return f"{path}: no citekeys cited -- nothing to do"
@@ -448,19 +461,21 @@ def apply(path: Path, heading: str = "References") -> str:
     idx = section_start(lines)
     head = "".join(lines[:idx]) if idx is not None else text
     new_text = head.rstrip() + "\n\n" + section.rstrip() + "\n"
-    path.write_text(new_text)
+    path.write_text(new_text, encoding="utf-8")
     return f"{path}: wrote References section with {len(keys)} citekey(s)"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m src.draft references",
-        description="Append/replace a References section built from a Markdown draft's own cited citekeys.",
+        description="Append/replace a References section built from a "
+                    "Markdown draft's own cited citekeys.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown)")
     parser.add_argument(
         "--heading", default="References",
-        help='Heading text, e.g. "6. References" to match a draft\'s own numbered headings (default: "References")',
+        help='Heading text, e.g. "6. References" to match a draft\'s own '
+             'numbered headings (default: "References")',
     )
     args = parser.parse_args(argv)
 

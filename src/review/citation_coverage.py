@@ -70,7 +70,7 @@ class CoverageResult:
 
 def cited_citekeys(draft_path: Path) -> set[str]:
     keys: set[str] = set()
-    for line in draft_path.read_text().splitlines():
+    for line in draft_path.read_text(encoding="utf-8").splitlines():
         keys.update(extract_citekeys_from_line(line))
     return keys
 
@@ -205,7 +205,10 @@ def build_parser(parser=None):
                         help="Also write the report to content/review/, mirroring the "
                              "draft's path. Off by default: printing is the usual use.")
     parser.add_argument("--formats", default="md,tex,pdf",
-                        help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.")
+                        help="Additional formats to render beside the Markdown "
+                             "report (default: md,tex,pdf). The .md is always "
+                             "written -- it is the report; tex/pdf are renders "
+                             "of it, and need pandoc/pdflatex on PATH.")
     return parser
 
 

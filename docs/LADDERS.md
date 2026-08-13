@@ -289,7 +289,9 @@ corpus layer writes no bitmaps), and for artefacts older than their PDF.
 **The question:** a claim cites `smith_2024` -- which part of that source
 supports it, and may it be quoted?
 
-**Where:** [`src/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py), read by
+**Where:**
+[`src/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py),
+read by
 `src.review provenance` and (not yet) `src.draft retrieve`.
 
 | # | Rung | Written by | Quotable? |
@@ -332,7 +334,8 @@ quote. See [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 this document?
 
 **Where:** `embed_index.get_text()` in
-[`src/enrich/embed_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/embed_index.py), also used by
+[`src/enrich/embed_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/embed_index.py),
+also used by
 `src/enrich/topic_model.py`.
 
 | # | Rung | Note |
@@ -361,7 +364,9 @@ that, once.
 
 **The question:** which device parses this PDF?
 
-**Where:** [`src/pdf_text.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/pdf_text.py), for both the corpus
+**Where:**
+[`src/pdf_text.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/pdf_text.py),
+for both the corpus
 layer's docling backend and the enrichment layer's docling stage.
 
 | # | Rung | Falls when |
