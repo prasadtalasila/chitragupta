@@ -1640,11 +1640,13 @@ class TestRecheck:
 
     def _baseline(self, draft, tmp_path, **kwargs):
         findings, min_run, suppressed = vc.scan_findings(str(draft), **kwargs)
-        command = vc.scan_command(str(draft), min_run, kwargs.get("gap", 1),
-                                  kwargs.get("limit"), False, True)
-        payload = vc.scan_payload(str(draft), findings, min_run,
-                                  kwargs.get("gap", 1), kwargs.get("limit"),
-                                  suppressed, command)
+        command = vc.scan_command(
+            str(draft), min_run, kwargs.get("gap", 1), kwargs.get("limit"), False, True
+        )
+        payload = vc.scan_payload(
+            str(draft), findings, min_run, kwargs.get("gap", 1),
+            kwargs.get("limit"), suppressed, command,
+        )
         path = tmp_path / "baseline.json"
         path.write_text(json.dumps(payload, indent=2))
         return path

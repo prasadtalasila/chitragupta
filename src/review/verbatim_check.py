@@ -1092,8 +1092,8 @@ def load_baseline(path):
             "Write one with `verbatim scan <draft> --write`."
         ) from None
 
-    if not isinstance(payload, dict) or payload.get("aid") != "verbatim" \
-            or "findings" not in payload:
+    if (not isinstance(payload, dict) or payload.get("aid") != "verbatim"
+            or "findings" not in payload):
         raise ValueError(
             f"{path} is not a verbatim scan payload. Write one with "
             "`verbatim scan <draft> --write`, which files it as the "
@@ -1107,8 +1107,8 @@ def load_baseline(path):
         )
     findings = payload["findings"]
     missing = [key for key in ("min_run", "gap") if key not in payload]
-    if not isinstance(findings, list) \
-            or any(not isinstance(f, dict) for f in findings):
+    if (not isinstance(findings, list)
+            or any(not isinstance(f, dict) for f in findings)):
         missing.append("findings (not a list of findings)")
     else:
         missing += sorted({
