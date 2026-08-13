@@ -12,8 +12,8 @@ that produced the current shape). Counting physical lines would put that
 requirement in direct conflict with a size limit and would reward deleting
 the rationale -- the one edit this project least wants. Counting statements
 measures how much a function *does* and is blind to how well it is
-explained. The difference is not cosmetic: 122 functions in `src/` exceed
-25 physical lines, 26 exceed 25 statements.
+explained. The difference is not cosmetic: at 5.7.1, 128 functions in
+`src/` exceed 25 physical lines and 26 exceed 25 statements.
 
 **A ratchet, not a wall.** Both rules are violated by code that exists
 today, and a rule that fails on the day it lands is a rule that gets
@@ -39,7 +39,7 @@ MAX_STATEMENTS = 25
 MAX_CODE_LINES = 250
 
 # C1 covers the tests, C2 does not -- see CODE-STANDARDS.md. In short: the
-# tests already hold C1 (1 offender in 1820 functions), so including them
+# tests already hold C1 (1 offender in 1926 functions), so including them
 # locks in a bar that is met; a test module's *length* tracks the surface
 # of the module under test rather than a count of responsibilities, so C2
 # would push tests into new files for no reason other than the cap.

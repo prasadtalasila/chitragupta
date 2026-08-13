@@ -145,8 +145,16 @@ Here that proxy mostly measures comment discipline:
 
 | Scope | Functions over 25 **physical lines** | Functions over 25 **statements** |
 |---|---|---|
-| `src/` (365 functions) | 122 | 26 |
-| `tests/` (1820 functions) | 61 | 1 |
+| `src/` (383 functions) | 128 | 26 |
+| `tests/` (1926 functions) | 63 | 1 |
+
+*Measured at 5.7.1.* These four numbers are dated rather than pinned by a
+test, unlike the register sizes below, and deliberately: the
+physical-line column moves whenever any function gains a comment, so
+pinning it would make this document churn on unrelated PRs. The
+conclusion it supports is an order-of-magnitude gap, which is stable; the
+exact figures are an illustration and are re-measured when someone has
+reason to.
 
 The gap is the section above. A function carrying twelve lines of
 rationale about why a partial Docling parse must raise before anything is
@@ -158,7 +166,7 @@ edit this project least wants.
 Counting **statements** measures what "do one thing" is actually about --
 how much a function *does* -- and is blind to how well it is explained. On
 that measure the codebase is in good shape: 26 offenders in `src/`, not
-122, and the tests hold the bar almost perfectly at 1 in 1820.
+128, and the tests hold the bar almost perfectly at 1 in 1926.
 
 The same correction applies to files: `src/config.py` is 509 physical
 lines and 288 lines of code, the difference being 221 lines of
@@ -216,7 +224,7 @@ quality gate to keep in sync -- the same idiom as
 | **C2** | A module holds at most **250 lines of code** | `src/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment |
 
 **Why the scopes differ.** C1 covers the tests because the tests already
-hold it -- 1 offender in 1820 -- so including them locks in a bar that is
+hold it -- 1 offender in 1926 -- so including them locks in a bar that is
 met rather than declaring one that is not. C2 does not cover the tests
 because a test module here is one-per-source-module by convention, and
 its length tracks the surface of the module under test rather than a count
@@ -445,7 +453,7 @@ What would extend the enforced half, cheapest first. None of it is built.
    uses.
 
    This document is itself an instance. The physical-line-versus-statement
-   measurement above (122 against 26, 61 against 1) is quoted here and in
+   measurement above (128 against 26, 63 against 1) is quoted here and in
    `tests/test_code_standards_scan.py`'s docstring; a refactor that moves
    those numbers leaves two copies to update by hand. The register beside
    them is checked on every run and cannot drift. The prose around it can,
