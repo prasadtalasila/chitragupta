@@ -901,7 +901,11 @@ class TestOneDraftsReviewArtefactsLandTogether:
 
         review_dir = config.REVIEW_DIR / "dt"
         assert sorted(p.name for p in review_dir.iterdir()) == [
-            "survey.coverage.md", "survey.provenance.md", "survey.verbatim.md"
+            "survey.coverage.md", "survey.provenance.md",
+            # The machine-readable sibling lands in the same mirrored
+            # directory as the report it serialises, not somewhere a
+            # consumer would have to be told about separately (#127).
+            "survey.verbatim.json", "survey.verbatim.md",
         ]
 
     def test_nothing_lands_in_the_drafting_layers_output(self, isolated_config, capsys):
@@ -951,5 +955,9 @@ class TestOneDraftsReviewArtefactsLandTogether:
 
         assert plan.performed
         assert sorted(p.name for p in (config.REVIEW_DIR / "dt").iterdir()) == [
-            "survey.provenance.md", "survey.verbatim.md"
+            "survey.provenance.md",
+            # The payload travels with the report it serialises: a
+            # restored draft whose findings only a person can read would
+            # be a bundle that lost half of what it carried (#127).
+            "survey.verbatim.json", "survey.verbatim.md",
         ]

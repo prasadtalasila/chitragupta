@@ -19,13 +19,16 @@ Three modes:
         draft's sentences citing <citekey> and that source's parsed text.
 
     python -m src.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
-                                       [--limit N] [--write] [--formats md,tex,pdf]
+                                       [--limit N] [--json]
+                                       [--write] [--formats md,tex,pdf]
         slide the WHOLE draft across the WHOLE corpus index (src/overlap_index.py),
         not just the sources a paragraph happens to cite -- catches verbatim
         reuse from an uncited source, and reuse in connective prose that
         cites nothing at all. Prints by default; --write also files the
         report under content/review/, beside the same draft's provenance
-        and coverage reports.
+        and coverage reports. --json prints the same findings as data
+        instead of as text, and --write files that too, as the report's
+        `.json` sibling -- see `scan_payload`.
 
     python -m src.review verbatim locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
@@ -38,6 +41,7 @@ error, not a verdict.
 """
 
 import argparse
+import json
 import re
 import shlex
 import subprocess
@@ -443,7 +447,73 @@ def format_scan(findings, min_run):
     return "\n".join(lines)
 
 
-def render_scan_markdown(draft, findings, min_run, gap, limit):
+# The finding fields the JSON payload publishes, in the order they are
+# written. Spelled out rather than serialising `scan_findings`' dicts
+# directly: those are this module's working representation and a key
+# added there for some later internal purpose would otherwise silently
+# become part of a published contract that #128's severity buckets and
+# #129's remediation loop consume.
+_PAYLOAD_FIELDS = (
+    "citekey", "page", "tier", "span_words", "matched_words", "start",
+    "fragment", "context", "cites_source", "quoted",
+)
+
+
+def scan_command(draft, min_run, gap, limit, write, as_json):
+    """The invocation recorded in both the Markdown report's header and
+    the JSON payload's envelope, so a reader holding either file can
+    regenerate it.
+
+    Every flag that changes *what is reported* is recorded, including the
+    two that decide where it went: a report capped by `--limit` reads
+    very differently from an uncapped one, and a recorded command without
+    `--write` reproduces the findings on stdout but not the file. Only
+    `--formats` is left out -- it selects renders *of* the Markdown
+    report and changes nothing in it or in the payload.
+    """
+    command = ["python", "-m", "src.review", "verbatim", "scan", str(draft),
+               "--min-run", str(min_run), "--gap", str(gap)]
+    if limit is not None:
+        command += ["--limit", str(limit)]
+    if write:
+        command += ["--write"]
+    if as_json:
+        command += ["--json"]
+    return shlex.join(command)
+
+
+def scan_payload(draft, findings, min_run, gap, limit, command):
+    """The same findings as data: `review.envelope`'s provenance, the
+    three flags that set the reporting floor, and one object per finding.
+
+    An additional serialisation of the list `scan_findings` already
+    returned, never a second computation -- so the printed form and this
+    one cannot disagree about what was found.
+
+    `start` is a **word** offset into the draft's normalised word stream
+    (`_tokenize_draft`: masked, citation markers stripped, lowercased,
+    punctuation dropped), not a character offset and not a line number.
+    Neither it nor `fragment`/`context` -- which are that same stream,
+    space-joined -- can be seeked to or matched in the draft file as
+    written. A consumer that means to *edit* the draft has to locate the
+    passage itself; this locates it for a reader.
+
+    `cites_source` and `quoted` are the two bits the printed form shows
+    as `UNCITED SOURCE` and `quoted`. Booleans rather than those labels:
+    the point of this payload is that a caller stops matching display
+    text, and a flag list would only move the parsing one layer down.
+    """
+    payload = review.envelope(Path(draft), "verbatim", command)
+    payload.update({
+        "min_run": min_run,
+        "gap": gap,
+        "limit": limit,
+        "findings": [{field: f[field] for field in _PAYLOAD_FIELDS} for f in findings],
+    })
+    return payload
+
+
+def render_scan_markdown(draft, findings, min_run, command):
     """The same findings as a Markdown report, for `--write`.
 
     Kept beside `format_scan` rather than replacing it: stdout is read in
@@ -451,18 +521,7 @@ def render_scan_markdown(draft, findings, min_run, gap, limit):
     months is read next to the same draft's provenance and coverage
     reports and should look like them.
     """
-    # `--write` is part of the invocation: this function is only reached
-    # under that flag, and a recorded command without it reproduces the
-    # findings on stdout but not the file -- which is what a reader
-    # holding the file wants to regenerate. `--formats` is left out; it
-    # selects renders *of* this report and changes nothing in it.
-    command = ["python", "-m", "src.review", "verbatim", "scan", str(draft),
-               "--min-run", str(min_run), "--gap", str(gap)]
-    if limit is not None:
-        command += ["--limit", str(limit)]
-    command += ["--write"]
-
-    lines = review.header(Path(draft), "verbatim", shlex.join(command))
+    lines = review.header(Path(draft), "verbatim", command)
     lines += [
         "## How to read this",
         "",
@@ -513,19 +572,53 @@ def render_scan_markdown(draft, findings, min_run, gap, limit):
     return "\n".join(lines)
 
 
-def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False, formats=("md", "tex", "pdf")):
+def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
+             formats=("md", "tex", "pdf"), as_json=False):
     """`scan`'s stdout entry point: run the scan and print it.
 
-    Printing stays the default -- the usual use is a question asked and
-    answered in one sitting. `write` additionally puts the Markdown
-    report in `content/review/`, mirroring the draft's path, beside the
-    same draft's provenance and coverage reports.
+    Printing text stays the default -- the usual use is a question asked
+    and answered in one sitting, by a person. `as_json` prints the
+    payload instead, for a caller that would otherwise have to parse that
+    text back into data.
+
+    `write` additionally puts the Markdown report in `content/review/`,
+    mirroring the draft's path, beside the same draft's provenance and
+    coverage reports -- and the payload beside it as the report's `.json`
+    sibling, whether or not `as_json` was asked for. Unconditionally,
+    because the file is written for whatever reads it later
+    (docs/AUTO-IMPROVEMENT.md's `agenda`), not for whoever ran this
+    command: a payload that appeared only when someone happened to also
+    pass `--json` would be missing exactly when a later consumer needed
+    it.
+
+    Under `as_json` the written-files summary goes to stderr, so stdout
+    is only ever the payload and `scan --json --write > findings.json` is
+    a valid JSON file -- the discipline `dossier brief` already follows.
     """
     findings, min_run = scan_findings(draft, min_run, gap, limit)
-    print(format_scan(findings, min_run))
+
+    # The default path prints text and stops. Returning here rather than
+    # falling through keeps the payload's cost off it entirely -- a
+    # projection per finding, and the `pyproject.toml` read
+    # `review.version()` does for the envelope -- none of which the
+    # printed form uses.
+    if not (as_json or write):
+        print(format_scan(findings, min_run))
+        return
+
+    command = scan_command(draft, min_run, gap, limit, write, as_json)
+    payload = scan_payload(draft, findings, min_run, gap, limit, command)
+
+    # Same `indent=2`, same key order, no trailing difference: what this
+    # prints is byte-for-byte what `write_json` files, so a caller may
+    # redirect stdout or read the sibling and get the same bytes.
+    print(json.dumps(payload, indent=2) if as_json else format_scan(findings, min_run))
+
     if write:
-        body = render_scan_markdown(draft, findings, min_run, gap, limit)
-        review.print_written(review.write(Path(draft), "verbatim", body, list(formats)))
+        body = render_scan_markdown(draft, findings, min_run, command)
+        written = review.write(Path(draft), "verbatim", body, list(formats))
+        written["json"] = review.write_json(Path(draft), "verbatim", payload)
+        review.print_written(written, stream=sys.stderr if as_json else sys.stdout)
 
 
 def cmd_locate(citekey, *phrases):
@@ -596,6 +689,10 @@ def build_parser(parser=None):
                         help="Non-matching words tolerated inside a run (default: 1)")
     p_scan.add_argument("--limit", type=_bounded_int(1, "--limit"), default=None,
                         help="Cap how many findings print (default: all of them)")
+    p_scan.add_argument("--json", action="store_true",
+                        help="Print the findings as JSON instead of as text, for a "
+                             "caller that would otherwise parse the printed form. "
+                             "--write files it beside the report either way.")
     p_scan.add_argument("--write", action="store_true",
                         help="Also write the report to content/review/, mirroring the "
                              "draft's path. Off by default: printing is the usual use.")
@@ -656,6 +753,7 @@ def run(args):
             str(draft), args.min_run, args.gap, args.limit,
             write=args.write,
             formats=[f.strip() for f in args.formats.split(",") if f.strip()],
+            as_json=args.json,
         )
     except ValueError as exc:
         # "this input can't be scanned as asked" (e.g. --min-run below the

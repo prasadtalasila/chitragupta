@@ -565,7 +565,7 @@ technique and its literature sources, and a measured
 | Subcommand | Arguments | What it does |
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--json] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--json` prints the findings as data instead of as text (see below). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
 **Exit codes**, shared with the other two review aids: `0` on every
@@ -580,8 +580,50 @@ python -m src.review verbatim overlap content/drafts/survey.md talasila_composab
 python -m src.review verbatim scan content/drafts/survey.md
 # python -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
 # python -m src.review verbatim scan content/drafts/survey.md --write --formats md
+# python -m src.review verbatim scan content/drafts/survey.md --json > findings.json
 # python -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
+
+**`--json`, and who it is for.** The findings were text and nothing else
+until 5.4.0, so everything consuming them programmatically -- severity
+bucketing, a remediation loop, an eventual overlap gate -- had to
+regex the printed lines back into data. `--json` prints the same findings
+list as a payload instead: the envelope every review aid's JSON carries
+(a notice that this is not a verdict, the aid, the draft, the exact
+command, the version), the three flags that set the reporting floor
+(`min_run`, `gap`, `limit`), and one object per finding with `citekey`,
+`page`, `tier`, `span_words`, `matched_words`, `start`, `fragment`,
+`context`, `cites_source` and `quoted`. It is an additional serialisation
+of what the printed form already shows, never a second computation, so
+the two cannot disagree about what was found. A clean draft emits
+`"findings": []` and still exits 0 -- "nothing found" is data too.
+
+`cites_source: false` is the printed form's `UNCITED SOURCE`, and
+`quoted: true` its `quoted`: booleans rather than those labels, because a
+caller that has to match display text is back where it started.
+
+`start`, `fragment` and `context` describe the **normalised word stream**
+-- the draft masked (code and the References section blanked), citation
+markers stripped, lowercased, punctuation dropped -- not the draft file
+as written. `start` is a word offset into that stream, not a character
+offset and not a line number, and `fragment` is those words
+space-joined. So a finding *locates* a passage for a reader; a consumer
+that means to edit the draft has to find the real span itself.
+
+`--write` files the payload as `content/review/<topic>/<stem>.verbatim.json`,
+beside the Markdown report, whether or not `--json` was also given -- it
+is written for whatever reads it later, not for whoever ran the command.
+What `--json` prints is byte-for-byte what `--write` files, so redirecting
+stdout and reading the sibling give the same bytes, and neither carries a
+timestamp: two runs over an unchanged draft and corpus produce identical
+payloads. With both flags, the written-files summary goes to stderr so
+stdout stays a valid JSON file. `dossier export` carries the payload with
+the report.
+
+Only `verbatim` emits one so far; `provenance` and `coverage` follow in
+their own issues, which is why
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s planned `agenda` aid treats
+each aid's JSON as optional.
 
 **What `scan` does not see, and why that matters more than it sounds.**
 `scan` is the **exact tier** of three planned detection tiers, and the

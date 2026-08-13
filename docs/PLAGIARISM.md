@@ -107,6 +107,16 @@ report opens with a banner saying it is not a verdict and repeats the
 later cannot be read as a clearance. It carries no timestamp, so two runs
 over an unchanged draft and corpus diff to nothing.
 
+`--json` prints the same findings as data instead of as text, and
+`--write` files them as the report's `.json` sibling; both carry the same
+not-a-verdict notice and the same absence of a timestamp. That is what
+everything downstream in this track consumes -- the severity bucketing
+below, a remediation loop, an eventual gate -- rather than regex-parsing
+the printed lines. The fields, and the one that is easy to misread
+(`start` is a word offset into the normalised stream, not a position in
+the draft file), are in
+[CLI.md](CLI.md#python--m-srcreview-verbatim).
+
 Matches are grouped by `(citekey, page, diagonal)`, where `diagonal =
 source_position - draft_position`. Two matches on the same diagonal are
 "in step" with each other even with non-matching words between them, so

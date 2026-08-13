@@ -1,11 +1,13 @@
 # The auto-improvement loop: what would be built
 
-Status: **specification of unbuilt work.** Written 2026-08-11.
+Status: **specification of mostly unbuilt work.** Written 2026-08-11;
+step 1 partly built in 5.4.0.
 
-Nothing here exists. `python -m src.review agenda` is not a command, no
-review aid emits JSON, and no skill consumes either. This document states
-*what* would be built and *what it must satisfy*, in the order it would
-be built.
+`python -m src.review agenda` is not a command and no skill consumes
+anything below. Of the review aids, `verbatim scan` emits JSON as of
+5.4.0 (#127) and the other two do not yet. This document states *what*
+would be built and *what it must satisfy*, in the order it would be
+built.
 
 **It contains no argument.** Every "why" -- why the aid sits in the review
 layer rather than the drafting one, why three of six item classes may not
@@ -56,9 +58,9 @@ Three sentences.
 
 ## 1. `--json` on all three review aids
 
-`src/review/__init__.py` owns one output contract for the layer. Extend
-it with a JSON sibling beside the Markdown, at
-`content/review/<topic>/<stem>.<aid>.json`.
+**Partly built (5.4.0).** `src/review/__init__.py` owns one output
+contract for the layer. Extend it with a JSON sibling beside the
+Markdown, at `content/review/<topic>/<stem>.<aid>.json`.
 
 - The JSON is an additional serialisation of the same findings list, never
   a second computation. The printed Markdown stays the default and stays
@@ -67,6 +69,14 @@ it with a JSON sibling beside the Markdown, at
   draft and corpus produce byte-identical JSON.
 - This is #127's change applied to the layer rather than to
   `verbatim_check` alone, so the report contract does not fork.
+
+What 5.4.0 built, per #127's scope: the layer-level plumbing --
+`review.envelope()` (the payload's provenance, and the not-a-verdict
+notice, as data) and `review.write_json()` -- plus `verbatim scan
+--json`, which prints the payload and files it under `--write`.
+`provenance` and `coverage` reuse that plumbing when their own issues
+land; until then the `agenda` below finds one aid's JSON and not the
+other two, which is the case step 2 already accounts for.
 
 ## 2. The `agenda` aid
 
@@ -265,7 +275,8 @@ sequence.
 1. **Settle the amendment.** Not a coding task --
    [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs).
 2. **#127, widened** to all three aids. Hard prerequisite for everything
-   below.
+   below. *Done for `verbatim scan` in 5.4.0, on layer-level plumbing the
+   other two aids reuse; they are the remainder of this step.*
 3. **#128** -- severity buckets and the boilerplate allowlist.
 4. **`agenda`, the fourth aid.** New. Useful on its own the day it lands,
    whether or not step 5 follows.
