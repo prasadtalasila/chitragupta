@@ -110,7 +110,8 @@ class TestFingerprintDocument:
         parsed.write_text("alpha beta gamma delta epsilon zeta")
         fp4 = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         fp3 = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=3)
-        assert fp4.n == 4 and fp3.n == 3
+        assert fp4.n == 4
+        assert fp3.n == 3
         assert len(fp3.postings) != len(fp4.postings)
 
     def test_corrupt_cache_json_is_rebuilt_not_fatal(self, isolated_config, tmp_path):
@@ -210,7 +211,8 @@ class TestLedgerItem:
         result = overlap_index.ledger_item("smith_2024")
         assert result is not None
         pdf_hash, parsed_path = result
-        assert pdf_hash and Path(parsed_path) == parsed
+        assert pdf_hash
+        assert Path(parsed_path) == parsed
 
 
 class TestBuildCorpusIndex:

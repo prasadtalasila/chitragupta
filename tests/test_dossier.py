@@ -262,7 +262,8 @@ class TestKnownCitekeys:
 class TestStatus:
     def test_reports_a_missing_dossier_without_raising(self, draft):
         report = dossier.status(draft)
-        assert report.files and not any(f.present for f in report.files)
+        assert report.files
+        assert not any(f.present for f in report.files)
 
     def test_counts_entries_per_file(self, draft):
         dossier.init(draft, "survey")
@@ -309,7 +310,8 @@ class TestStatus:
         _seed_ledger(["b_two_2021"])
         report = dossier.status(draft)
         assert report.drifted
-        assert report.recorded[0] == 1 and report.current[0] == 2
+        assert report.recorded[0] == 1
+        assert report.current[0] == 2
 
     def test_an_unchanged_corpus_does_not_drift(self, draft):
         _seed_ledger(["a_one_2020"])
@@ -356,7 +358,8 @@ class TestStatus:
     def test_drift_is_unavailable_rather_than_fatal_without_a_ledger(self, draft):
         dossier.init(draft, "survey")
         report = dossier.status(draft)
-        assert report.current is None and not report.drifted
+        assert report.current is None
+        assert not report.drifted
 
     def test_accepts_the_dossier_directory_as_well_as_the_draft(self, draft):
         dossier.init(draft, "survey")
@@ -367,7 +370,8 @@ class TestStatus:
         dossier.init(draft, "survey")
         draft.unlink()
         report = dossier.status(dossier.dossier_dir(draft))
-        assert report.draft is None and report.outline == []
+        assert report.draft is None
+        assert report.outline == []
 
 
 class TestList:
@@ -516,7 +520,8 @@ class TestExport:
     def test_writes_an_archive(self, draft, tmp_path):
         dossier.init(draft, "survey")
         out, count = dossier.export([], tmp_path / "bundle.tar.gz")
-        assert out.is_file() and count >= 2
+        assert out.is_file()
+        assert count >= 2
         with tarfile.open(out) as tar:
             assert "drafts/dt-for-engineers/survey.md" in tar.getnames()
 
@@ -566,7 +571,8 @@ class TestRestore:
 
     def test_reports_which_files_it_would_overwrite(self, bundle, draft):
         plan = dossier.restore(bundle)
-        assert draft in plan.overwrite and not plan.new
+        assert draft in plan.overwrite
+        assert not plan.new
 
     def test_round_trips_content_exactly(self, bundle, draft):
         original = draft.read_text()
@@ -660,7 +666,8 @@ class TestCli:
         assert dossier.main(["status", str(draft)]) == 0
         assert dossier.main(["sections", str(draft)]) == 0
         out = capsys.readouterr().out
-        assert "scope.md" in out and "1. First" in out
+        assert "scope.md" in out
+        assert "1. First" in out
 
     def test_status_without_a_dossier_exits_nonzero_with_the_fix(self, draft, capsys):
         assert dossier.main(["status", str(draft)]) == 1
@@ -1230,7 +1237,8 @@ class TestDrift:
     def test_no_ledger_reports_unavailable_rather_than_raising(self, grounded):
         report = dossier.drift(grounded)
         assert report.corpus_available is False
-        assert report.missing == {} and report.candidates == []
+        assert report.missing == {}
+        assert report.candidates == []
 
     def test_no_recorded_fingerprint_still_reports_missing_citations(self, grounded):
         """The fingerprint answers "did the corpus move"; a cited key
@@ -1246,7 +1254,8 @@ class TestDrift:
         target.mkdir(parents=True)
         _seed_corpus([("any_paper_2025", "Any", "text")])
         report = dossier.drift(target)
-        assert report.missing == {} and report.candidates == []
+        assert report.missing == {}
+        assert report.candidates == []
 
     def test_a_dossier_whose_draft_is_gone_is_still_reported(self, grounded, draft):
         draft.unlink()
@@ -1428,7 +1437,8 @@ class TestStatusAllCLI:
         _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
         assert dossier.main(["status", str(draft), "--json"]) == 0
         (entry,) = __import__("json").loads(capsys.readouterr().out)["dossiers"]
-        assert entry["missing"] == {} and entry["candidates"] == []
+        assert entry["missing"] == {}
+        assert entry["candidates"] == []
         assert entry["recorded"] is None, "nothing on disk recorded a fingerprint"
 
     def test_a_draft_and_all_together_is_refused(self, draft, capsys):
@@ -1571,7 +1581,8 @@ class TestReconsider:
             ("turned_down_2023", "Turned down", "digital twin"),
         ])
         report = dossier.drift(grounded)
-        assert report.reconsider and report.clean
+        assert report.reconsider
+        assert report.clean
         assert dossier.main(["status", "--all"]) == 0
         out = capsys.readouterr().out
         assert "no drift" in out

@@ -74,7 +74,8 @@ class TestCollapsedCsl:
         csl = tmp_path / "style.csl"
         csl.write_text('<style><citation et-al-min="3"><layout/></citation></style>')
         text = render_output._collapsed_csl(csl, tmp_path).read_text()
-        assert 'collapse="citation-number"' in text and 'et-al-min="3"' in text
+        assert 'collapse="citation-number"' in text
+        assert 'et-al-min="3"' in text
 
     def test_a_style_that_already_collapses_is_returned_unchanged(self, tmp_path):
         csl = tmp_path / "style.csl"
@@ -652,7 +653,8 @@ class TestRenderReal:
         # The collapsed form is the whole reason _collapsed_csl exists:
         # upstream ieee.csl alone renders this run as "[2], [3], [4], [5]".
         assert "[2]–[5]" in text
-        assert "J. Doe" in text and "J. Examples" in text
+        assert "J. Doe" in text
+        assert "J. Examples" in text
 
     def test_no_collapse_leaves_the_style_as_published(self, isolated_config, tmp_path):
         con = ledger.connect()

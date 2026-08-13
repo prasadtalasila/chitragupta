@@ -81,19 +81,23 @@ def _matches(pattern):
 
 def test_the_rule_file_is_valid_json_with_the_two_top_level_keys():
     data = _rules()
-    assert isinstance(data["rules"], list) and data["rules"]
-    assert isinstance(data["exclude"], list) and data["exclude"]
+    assert isinstance(data["rules"], list)
+    assert data["rules"]
+    assert isinstance(data["exclude"], list)
+    assert data["exclude"]
 
 
 def test_every_entry_carries_exactly_the_fields_ocr_reads():
     for entry in _rules()["rules"]:
         for field in ENTRY_FIELDS:
-            assert isinstance(entry.get(field), str) and entry[field], (
+            problem = (
                 f"entry {entry.get('name', entry)!r} is missing a usable "
                 f"{field!r}. OCR reads only {ENTRY_FIELDS} and ignores "
                 "everything else without complaining, so a typo here "
                 "disables the rule rather than failing."
             )
+            assert isinstance(entry.get(field), str), problem
+            assert entry[field], problem
 
 
 def test_no_rule_glob_matches_nothing():

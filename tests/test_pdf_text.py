@@ -768,7 +768,9 @@ class TestResolveWorkers:
         monkeypatch.setattr(config, "PARSER_WORKERS", 15)
         workers, note = pdf_text.resolve_workers(500)
         assert workers == 2
-        assert "15" in note and "2" in note and "8" in note
+        assert "15" in note
+        assert "2" in note
+        assert "8" in note
 
     def test_request_within_the_ceiling_is_not_explained(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
@@ -1743,7 +1745,8 @@ class TestTerminateWorkers:
         because onnxruntime/torch native code doesn't honour it promptly."""
         stubborn = _FakeProcess(alive_after_terminate=True)
         pdf_text.terminate_workers(types.SimpleNamespace(_processes={0: stubborn}))
-        assert stubborn.terminated and stubborn.killed
+        assert stubborn.terminated
+        assert stubborn.killed
         assert stubborn.joined == pdf_text._TERMINATE_GRACE_SECONDS
 
     def test_an_already_reaped_worker_is_not_an_error(self):
@@ -1795,7 +1798,8 @@ class TestInterruptGuard:
         guard._on_sigint(signal.SIGINT, None)
 
         err = capsys.readouterr().err
-        assert "7/24" in err and "re-run to continue" in err
+        assert "7/24" in err
+        assert "re-run to continue" in err
         assert procs[0].terminated
         # 130 = 128 + SIGINT, the conventional shell exit code.
         assert exits == [130]
@@ -1995,7 +1999,8 @@ class TestDoclingErrorMessage:
         with pytest.raises(pdf_text.ExtractionError) as excinfo:
             pdf_text.check_docling_status(result)
         message = str(excinfo.value)
-        assert "reason 0" in message and "reason 2" in message
+        assert "reason 0" in message
+        assert "reason 2" in message
         assert "(+7 more)" in message
 
 
