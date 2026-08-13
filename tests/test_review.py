@@ -1,6 +1,8 @@
 """src/review/__init__.py: the review layer's shared output contract -- where a
 report goes, what it opens with, and what it must never contain."""
 
+from pathlib import Path
+
 import pytest
 
 from src import config, review
@@ -188,6 +190,24 @@ class TestWrite:
         assert set(written) == {"md"}
         assert "pandoc not found" in capsys.readouterr().err
 
+    def test_json_is_never_rendered(self, isolated_config, monkeypatch):
+        """`json` in `--formats` names the payload's own path, and pandoc
+        accepts `json` as a real output format -- so passing it on would
+        spend a subprocess writing pandoc's document AST over the payload
+        (or under it, depending on which ran last)."""
+        from src import render_output
+
+        def fail(*a, **k):  # pragma: no cover - the point is it is never called
+            raise AssertionError("json reached render_output.render")
+
+        monkeypatch.setattr(render_output, "render", fail)
+
+        written = review.write(
+            config.DRAFTS_DIR / "survey.md", "verbatim", "# body\n", ["md", "json"]
+        )
+
+        assert set(written) == {"md"}
+
     def test_two_writes_of_the_same_body_are_byte_identical(self, isolated_config):
         draft = config.DRAFTS_DIR / "survey.md"
         body = "\n".join(review.header(draft, "verbatim", "cmd") + ["## Findings", ""])
@@ -196,6 +216,123 @@ class TestWrite:
         second = review.write(draft, "verbatim", body, ["md"])["md"].read_bytes()
 
         assert first == second
+
+
+class TestEnvelope:
+    """The JSON payload's counterpart to `header()`: the same provenance
+    as data, so a payload found on disk names the run that produced it."""
+
+    def test_carries_the_notice_the_aid_the_draft_and_the_command(self, isolated_config):
+        draft = config.DRAFTS_DIR / "dt" / "survey.md"
+
+        envelope = review.envelope(draft, "verbatim", "python -m src.review verbatim scan x")
+
+        assert envelope["aid"] == "verbatim"
+        assert envelope["draft"] == str(draft)
+        assert envelope["command"] == "python -m src.review verbatim scan x"
+        assert envelope["version"] == review.version()
+        assert "Review aid, not a gate" in envelope["notice"]
+
+    def test_the_notice_leads(self, isolated_config):
+        """A payload whose likeliest reader is an agent acting on it says
+        what it is before it says what it found."""
+        envelope = review.envelope(config.DRAFTS_DIR / "survey.md", "verbatim", "cmd")
+        assert next(iter(envelope)) == "notice"
+
+    def test_the_notice_is_the_banner_without_its_markdown(self, isolated_config):
+        """Derived, not restated: the two cannot drift into saying
+        different things about the same report."""
+        envelope = review.envelope(config.DRAFTS_DIR / "survey.md", "verbatim", "cmd")
+
+        assert not envelope["notice"].startswith(">")
+        assert "**" not in envelope["notice"]
+        assert envelope["notice"] in review.BANNER.replace("**", "")
+
+    def test_carries_no_date(self, isolated_config):
+        """The layer's rule, and the reason a payload diffs cleanly
+        across revisions -- same as the Markdown header."""
+        import re
+
+        envelope = review.envelope(config.DRAFTS_DIR / "survey.md", "verbatim", "cmd")
+
+        assert not re.search(r"\d{4}-\d{2}-\d{2}", str(envelope))
+
+    def test_each_call_returns_a_fresh_dict(self, isolated_config):
+        """Callers add their findings to it; a shared dict would leak one
+        run's findings into the next one's payload."""
+        draft = config.DRAFTS_DIR / "survey.md"
+        first = review.envelope(draft, "verbatim", "cmd")
+        first["findings"] = ["mine"]
+
+        assert "findings" not in review.envelope(draft, "verbatim", "cmd")
+
+
+class TestWriteJson:
+    def test_lands_beside_the_markdown_report(self, isolated_config):
+        draft = config.DRAFTS_DIR / "dt" / "survey.md"
+
+        path = review.write_json(draft, "verbatim", {"findings": []})
+
+        assert path == config.REVIEW_DIR / "dt" / "survey.verbatim.json"
+        assert path.parent == review.report_path(draft, "verbatim").parent
+
+    def test_round_trips_as_json_with_a_trailing_newline(self, isolated_config):
+        import json
+
+        path = review.write_json(
+            config.DRAFTS_DIR / "survey.md", "verbatim", {"findings": [{"page": 2}]}
+        )
+        text = path.read_text()
+
+        assert json.loads(text) == {"findings": [{"page": 2}]}
+        assert text.endswith("}\n")
+
+    def test_two_writes_of_the_same_payload_are_byte_identical(self, isolated_config):
+        """Same rule as the Markdown: no wall-clock anywhere, so a
+        payload diffs cleanly against the next revision's."""
+        draft = config.DRAFTS_DIR / "survey.md"
+        payload = review.envelope(draft, "verbatim", "cmd") | {"findings": []}
+
+        first = review.write_json(draft, "verbatim", payload).read_bytes()
+        second = review.write_json(draft, "verbatim", payload).read_bytes()
+
+        assert first == second
+
+    def test_an_unknown_aid_is_rejected(self, isolated_config):
+        """The same guard `report_path` gives the Markdown: a caller
+        cannot invent a fourth report kind by typo."""
+        with pytest.raises(ValueError, match="Unknown review aid"):
+            review.write_json(config.DRAFTS_DIR / "survey.md", "bogus", {})
+
+
+class TestPrintWritten:
+    def test_lists_the_json_sibling_too(self, isolated_config, capsys):
+        """A written file the caller isn't told about is one they will
+        not know to look for."""
+        review.print_written({"md": Path("a.md"), "json": Path("a.json")})
+
+        out = capsys.readouterr().out
+        assert "a.md" in out and "a.json" in out
+
+    def test_defaults_to_stdout(self, isolated_config, capsys):
+        review.print_written({"md": Path("a.md")})
+
+        captured = capsys.readouterr()
+        assert "a.md" in captured.out
+        assert captured.err == ""
+
+    def test_a_caller_whose_stdout_is_a_payload_can_route_it_to_stderr(
+        self, isolated_config, capsys
+    ):
+        """`verbatim scan --json --write`: this summary is a note to a
+        person, and stdout has become machine-readable."""
+        import sys
+
+        review.print_written({"md": Path("a.md"), "json": Path("a.json")}, stream=sys.stderr)
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "a.md" in captured.err and "a.json" in captured.err
 
 
 class TestVersion:

@@ -10,6 +10,7 @@ the file moved into src/review/ and no longer needed a
 Path(__file__)-derived repo root to put on sys.path."""
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -19,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from src.review import verbatim_check as vc
-from src import config, ledger
+from src import config, ledger, overlap_index
 from tests.conftest import make_reference
 
 
@@ -741,6 +742,320 @@ class TestScanWrite:
         assert report.read_bytes() == first
 
 
+class TestScanCommand:
+    """The invocation recorded in both the report header and the payload
+    envelope. It has to describe the run that produced the file: a reader
+    holding one regenerates it from this line and nothing else."""
+
+    def test_records_the_reporting_floor(self):
+        assert vc.scan_command("d.md", 8, 1, None, False, False) == (
+            "python -m src.review verbatim scan d.md --min-run 8 --gap 1"
+        )
+
+    def test_records_a_limit_only_when_one_was_given(self):
+        """A report capped at one finding reads very differently from an
+        uncapped one, and the difference is invisible without the flag."""
+        assert "--limit" not in vc.scan_command("d.md", 8, 1, None, False, False)
+        assert "--limit 3" in vc.scan_command("d.md", 8, 1, 3, False, False)
+
+    def test_records_write_and_json(self):
+        command = vc.scan_command("d.md", 8, 1, None, True, True)
+        assert command.endswith("--write --json")
+
+    def test_a_draft_path_with_a_space_stays_re_runnable(self):
+        """shlex.join, not " ".join: an unquoted path with a space is a
+        command that reproduces nothing."""
+        assert "'my draft.md'" in vc.scan_command("my draft.md", 8, 1, None, False, False)
+
+
+class TestScanPayload:
+    """`--json`: the findings as data, so a consumer stops regex-parsing
+    the printed form (#127)."""
+
+    def _planted(self, ledger_con, tmp_path):
+        _add_parsed_item(
+            ledger_con, tmp_path, "uncited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "Connective prose citing nobody: alpha beta gamma delta epsilon zeta eta theta.\n"
+        )
+        return draft
+
+    def test_prints_valid_json_instead_of_the_text_form(self, ledger_con, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["aid"] == "verbatim"
+        assert payload["draft"] == str(draft)
+        assert [f["citekey"] for f in payload["findings"]] == ["uncited_2024"]
+
+    def test_carries_the_reporting_floor_that_produced_it(self, ledger_con, tmp_path, capsys):
+        """A findings list means nothing without the thresholds it was
+        filtered by -- `[]` at --min-run 40 is not `[]` at 8."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), min_run=9, gap=2, limit=5, as_json=True)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert (payload["min_run"], payload["gap"], payload["limit"]) == (9, 2, 5)
+
+    def test_the_default_min_run_is_reported_as_the_number_it_resolved_to(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """`--min-run` defaults to the corpus index's own n-gram size, so
+        the payload has to carry that number, not `null`."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        assert json.loads(capsys.readouterr().out)["min_run"] == overlap_index.DEFAULT_N
+
+    def test_a_finding_carries_exactly_the_published_fields(self, ledger_con, tmp_path, capsys):
+        """Pinned deliberately: #128's severity buckets and #129's
+        remediation loop consume these, so a field added to
+        `scan_findings`' working dicts must not silently become part of a
+        published contract."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        finding = json.loads(capsys.readouterr().out)["findings"][0]
+        assert list(finding) == [
+            "citekey", "page", "tier", "span_words", "matched_words", "start",
+            "fragment", "context", "cites_source", "quoted",
+        ]
+
+    def test_the_flags_are_booleans_not_the_printed_labels(self, ledger_con, tmp_path, capsys):
+        """The whole point of the payload: a caller that has to match
+        "UNCITED SOURCE" is back to parsing display text."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        out = capsys.readouterr().out
+        assert "UNCITED SOURCE" not in out
+        finding = json.loads(out)["findings"][0]
+        assert finding["cites_source"] is False
+        assert finding["quoted"] is False
+
+    def test_a_quoted_run_from_a_cited_source_sets_both_bits(self, ledger_con, tmp_path, capsys):
+        """The other corner of the same two bits, so neither is pinned
+        only in its `False` state."""
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            'As [@cited_2024] puts it, "alpha beta gamma delta epsilon zeta eta theta" exactly.\n'
+        )
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        finding = json.loads(capsys.readouterr().out)["findings"][0]
+        assert finding["cites_source"] is True
+        assert finding["quoted"] is True
+
+    def test_it_serialises_the_same_findings_the_text_form_prints(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """Never a second computation: the two forms cannot disagree
+        about what was found. The expected flags are derived from the
+        module's own `_flags`, not hardcoded, so this stays a statement
+        about agreement rather than about spelling."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        findings, min_run = vc.scan_findings(str(draft))
+        vc.cmd_scan(str(draft), as_json=True)
+        payload = json.loads(capsys.readouterr().out)
+
+        assert len(payload["findings"]) == len(findings)
+        for serialised, finding in zip(payload["findings"], findings):
+            assert serialised["fragment"] == finding["fragment"]
+            assert serialised["span_words"] == finding["span_words"]
+            expected = vc._flags(finding)
+            assert (not serialised["cites_source"]) == ("UNCITED SOURCE" in expected)
+            assert serialised["quoted"] == ("quoted" in expected)
+
+    def test_start_is_a_word_offset_into_the_normalised_stream(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """Documented in `scan_payload` and docs/CLI.md, and pinned here
+        because a consumer that reads it as a character offset or a line
+        number edits the wrong part of the draft."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        finding = json.loads(capsys.readouterr().out)["findings"][0]
+        words, _ = vc._tokenize_draft(draft.read_text())
+        start, end = finding["start"], finding["start"] + finding["span_words"]
+        assert " ".join(w.text for w in words[start:end]) == finding["fragment"]
+
+    def test_a_clean_draft_emits_an_empty_list_not_the_prose(
+        self, isolated_config, tmp_path, capsys
+    ):
+        """The case that most easily falls through to the text branch:
+        "nothing found" is data too, and a consumer branching on it must
+        not have to recognise a sentence."""
+        draft = tmp_path / "draft.md"
+        draft.write_text("Nothing to see here at all.\n")
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        out = capsys.readouterr().out
+        assert "no verbatim run" not in out
+        assert json.loads(out)["findings"] == []
+
+    def test_an_unscannable_request_still_raises_rather_than_emitting_json(
+        self, isolated_config, tmp_path
+    ):
+        """`--min-run` below the index's own n-gram size is "this input
+        can't be scanned as asked", not an empty findings list -- adding
+        `--json` must not turn a usage error into a clean payload."""
+        draft = tmp_path / "draft.md"
+        draft.write_text("Anything.\n")
+
+        with pytest.raises(ValueError, match="--min-run must be >="):
+            vc.cmd_scan(str(draft), min_run=4, as_json=True)
+
+
+class TestScanJsonSibling:
+    """`--write` files the payload beside the Markdown report, whether or
+    not `--json` was asked for: it is written for whatever reads it
+    later, not for whoever ran the command."""
+
+    def _planted(self, ledger_con, tmp_path, name="dt/survey.md"):
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = config.DRAFTS_DIR / name
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(
+            "As shown [@cited_2024], alpha beta gamma delta epsilon zeta eta theta appears here.\n"
+        )
+        return draft
+
+    def test_written_without_json_being_asked_for(self, ledger_con, isolated_config, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        sibling = config.REVIEW_DIR / "dt" / "survey.verbatim.json"
+        assert json.loads(sibling.read_text())["findings"][0]["citekey"] == "cited_2024"
+
+    def test_it_is_reported_like_the_report_itself(self, ledger_con, isolated_config, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        assert "survey.verbatim.json" in capsys.readouterr().out
+
+    def test_stdout_stays_pure_json_when_both_flags_are_given(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        """`scan --json --write > findings.json` has to be a valid JSON
+        file: the written-files summary is a note to a person and goes to
+        stderr once stdout has become a payload."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"], as_json=True)
+
+        captured = capsys.readouterr()
+        json.loads(captured.out)  # raises if the summary leaked into it
+        assert "survey.verbatim.json" in captured.err
+
+    def test_what_it_prints_is_byte_for_byte_what_it_files(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        """So a caller may redirect stdout or read the sibling and get
+        the same bytes, rather than two formattings of one payload."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"], as_json=True)
+
+        printed = capsys.readouterr().out
+        assert printed == (config.REVIEW_DIR / "dt" / "survey.verbatim.json").read_text()
+
+    def test_two_runs_over_unchanged_input_are_byte_identical(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        """No wall-clock in the payload either: it is kept beside the
+        draft and diffed against the next revision's."""
+        draft = self._planted(ledger_con, tmp_path)
+        sibling = config.REVIEW_DIR / "dt" / "survey.verbatim.json"
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+        first = sibling.read_bytes()
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        assert sibling.read_bytes() == first
+
+    def test_the_recorded_command_regenerates_the_file(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), limit=1, write=True, formats=["md"], as_json=True)
+
+        command = json.loads(capsys.readouterr().out)["command"]
+        assert "--limit 1" in command and "--write" in command and "--json" in command
+
+    def test_the_report_and_its_payload_record_the_same_command(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        """One run, one recorded invocation -- the Markdown header and
+        the envelope are two views of the same file set."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        review_dir = config.REVIEW_DIR / "dt"
+        command = json.loads((review_dir / "survey.verbatim.json").read_text())["command"]
+        assert f"- Command: `{command}`" in (review_dir / "survey.verbatim.md").read_text()
+
+    def test_naming_json_in_formats_still_yields_the_payload(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
+        """`--formats md,json` reads as "give me the payload too", and it
+        is already written -- what it must not do is put a pandoc render
+        at that path instead."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md", "json"])
+
+        sibling = config.REVIEW_DIR / "dt" / "survey.verbatim.json"
+        assert json.loads(sibling.read_text())["aid"] == "verbatim"
+
+    def test_a_clean_draft_still_files_a_payload(self, ledger_con, isolated_config, tmp_path, capsys):
+        """Same reason the Markdown report is written for a clean draft:
+        nothing found is a finding worth diffing against next time."""
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", "wholly unrelated source text here")
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("Entirely original prose that shares nothing.\n")
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        assert json.loads((config.REVIEW_DIR / "survey.verbatim.json").read_text())["findings"] == []
+
+    def test_the_payload_says_it_is_not_a_verdict(self, ledger_con, isolated_config, tmp_path, capsys):
+        """The layer's rule reaches the payload too: a file found on disk
+        months later is the case the docs cannot reach, and no less so
+        when its likeliest reader is an agent acting on it."""
+        draft = self._planted(ledger_con, tmp_path)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        payload = json.loads((config.REVIEW_DIR / "dt" / "survey.verbatim.json").read_text())
+        assert "never a verdict" in payload["notice"]
+
+
 class TestBoundedInt:
     """argparse `type=` callables that reject an out-of-range value as a
     usage error rather than letting it through to be silently absorbed."""
@@ -789,6 +1104,15 @@ class TestMainInProcess:
         assert vc.main(["scan", str(draft)]) == 0
         assert "no verbatim run of >= 8 words found" in capsys.readouterr().out
 
+    def test_the_json_flag_reaches_the_scan(self, isolated_config, tmp_path, capsys):
+        """The flag is wired through `run()`, not only through
+        `cmd_scan`'s keyword -- and a findings-free scan still exits 0
+        with `--json`, like every other successful invocation."""
+        draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
+
+        assert vc.main(["scan", str(draft), "--json"]) == 0
+        assert json.loads(capsys.readouterr().out)["findings"] == []
+
     def test_a_draft_outside_content_exits_one(self, isolated_config, tmp_path, capsys):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("Anything.\n")
@@ -832,6 +1156,22 @@ class TestCliDispatch:
         )
         assert result.returncode == 0
         assert "no verbatim run" in result.stdout
+
+    def test_scan_json_mode_via_subprocess_prints_only_the_payload(self, tmp_path):
+        """The property a consumer actually depends on, and the one an
+        in-process capsys assertion cannot make: nothing else this
+        command or its imports print reaches stdout, so
+        `scan --json > findings.json` is a valid JSON file."""
+        repo_root = Path(__file__).resolve().parent.parent
+        draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
+
+        result = subprocess.run(
+            [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), "--json"],
+            cwd=str(repo_root), capture_output=True, text=True,
+            env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
+        )
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["aid"] == "verbatim"
 
     def test_locate_needs_no_draft_and_so_skips_the_draft_check(self, tmp_path):
         """`locate` takes a citekey and phrases, not a draft -- so it

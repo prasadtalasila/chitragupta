@@ -1534,12 +1534,16 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
     points somewhere else.
 
     `content/review/` is included by default, filtered to the `.md`
-    reports. That is the line `--with-rendered` already draws -- it
-    exists to gate PDFs, not text -- and a bundle that dropped the
-    review reports would quietly falsify the property they were given a
-    mirrored path for, namely that a draft's evidence is findable from
-    the draft. Their `.tex`/`.pdf` renders sit in the same tree and are
-    gated with everything else heavy.
+    reports and the `.json` payloads beside them. That is the line
+    `--with-rendered` already draws -- it exists to gate PDFs, not text
+    -- and a bundle that dropped the review reports would quietly falsify
+    the property they were given a mirrored path for, namely that a
+    draft's evidence is findable from the draft. The same holds for the
+    payload: it is that evidence as data, and leaving it out of the
+    bundle would mean a restored draft's findings were readable by a
+    person and not by the tools written to consume them (#127). Their
+    `.tex`/`.pdf` renders sit in the same tree and are gated with
+    everything else heavy.
     """
     roots = [("drafts", config.DRAFTS_DIR), ("dossiers", config.DOSSIERS_DIR),
              ("review", config.REVIEW_DIR)]
@@ -1553,7 +1557,8 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
         for path in sorted(root.rglob("*")):
             if not path.is_file():
                 continue
-            if label == "review" and not with_rendered and path.suffix.lower() != ".md":
+            if (label == "review" and not with_rendered
+                    and path.suffix.lower() not in (".md", ".json")):
                 continue
             relative = PurePosixPath(path.relative_to(root).as_posix())
             # A dossier lives one directory deeper than its draft, so

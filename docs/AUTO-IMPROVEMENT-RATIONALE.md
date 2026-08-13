@@ -71,16 +71,18 @@ point.
 |---|---|---|---|
 | `python -m src.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
 | `python -m src.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
-| `python -m src.review verbatim scan` | wording shared with a parsed source | Markdown report | human, by hand |
+| `python -m src.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
 | `python -m src.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
 | *nothing* | a sentence that is simply badly written | -- | human, by hand |
 
-Two things stand out. **Only the drift sweep is machine-readable** --
-`--json` on `dossier status --all` is the single machine-readable output in
-the whole quality surface (`grep -rn '\-\-json' src/` returns one file).
-And **prose quality has no signal at all**: `draft-reviser` is
-section-and-evidence-shaped, and #103 records that a copy-edit touching no
-evidence has no sanctioned path through it.
+Two things stand out. **Most of the surface is still text only.** When
+this was written, `--json` on `dossier status --all` was the single
+machine-readable output in the whole quality surface; 5.4.0 added the
+second, on `verbatim scan` (#127), and `provenance` and `coverage` follow
+in their own issues. Until they do, three of the five signals above can
+only be consumed by parsing prose. And **prose quality has no signal at
+all**: `draft-reviser` is section-and-evidence-shaped, and #103 records
+that a copy-edit touching no evidence has no sanctioned path through it.
 
 ## Where the loop sits, and the cycle that decides it
 

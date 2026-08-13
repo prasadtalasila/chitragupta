@@ -319,7 +319,7 @@ own path:
 ```
 content/drafts/<topic>/survey.md
   -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
-     content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf)
+     content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf, .json)
      content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
 ```
 
@@ -328,7 +328,17 @@ content/drafts/<topic>/survey.md
 for both. Every report opens with a banner saying it is not a verdict --
 a file found on disk months later is exactly the case the docs cannot
 reach -- and **carries no timestamp**, because the reason to write one is
-that it diffs cleanly against the next revision's. `src/review/__init__.py` owns
+that it diffs cleanly against the next revision's.
+
+The `.json` beside `survey.verbatim.md` is that report's findings as
+data, for a caller that would otherwise parse the printed form (#127). A
+sibling of the report, not a render of it: `.tex`/`.pdf` go through
+`src/render_output.py` and are another document, this is the same
+findings list serialised. It obeys both rules above -- it leads with the
+same not-a-verdict notice, and it carries no timestamp. Only `verbatim`
+emits one so far; the other two aids follow in their own issues, which is
+why [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s planned `agenda` aid
+reads each aid's JSON as optional. `src/review/__init__.py` owns
 all of that. A draft under `content/` but not under `content/drafts/`
 writes flat, matching `render_output._output_dir`; a draft resolving
 outside `content/` is refused, the same tier-1 rule the gate chain
@@ -396,7 +406,7 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters -- see below |
 | `content/rendered/*.md`, `*.tex` | **Yes** -- byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
-| `content/review/*.md` -- the three review reports | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
+| `content/review/*.md` -- the three review reports, and `*.verbatim.json` beside one of them | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input -- UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change -- two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
 | `content/overlap/` | A cache, not an output: `src/review/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
