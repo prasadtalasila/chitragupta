@@ -119,33 +119,31 @@ one that is easy to misread (`start` is a word offset into the
 normalised stream, not a position in the draft file), are in
 [CLI.md](CLI.md#python--m-srcreview-verbatim).
 
-Matches are grouped by `(citekey, page, diagonal)`, where `diagonal =
-source_position - draft_position`. Two matches on the same diagonal are
-"in step" with each other even with non-matching words between them, so
-a **gap-tolerant merge** -- same idea as seed-and-extend alignment in the
+Matches are grouped by `(citekey, diagonal)`, where `diagonal =
+source_position - draft_position` and `source_position` is a *global*
+token position in the source document, not reset at each page break
+(`src/overlap_index.py`, #131). Two matches on the same diagonal are "in
+step" with each other even with non-matching words between them, so a
+**gap-tolerant merge** -- same idea as seed-and-extend alignment in the
 plagiarism-detection literature (below) -- collapses same-diagonal hits
-within `--gap` non-matching words (default 1) into one run. A single
-edited word inside an otherwise-verbatim passage still reports as one
-finding instead of two truncated ones, which matters because a
-single-word edit is exactly what an LLM's light editing of a lifted
-passage tends to look like.
+within `--gap` non-matching words (default 1) into one run, whether or
+not a source page break falls inside it. A single edited word inside an
+otherwise-verbatim passage still reports as one finding instead of two
+truncated ones, which matters because a single-word edit is exactly what
+an LLM's light editing of a lifted passage tends to look like -- and the
+same merge now recovers a lift that a source page break would otherwise
+have split, including a remainder shorter than `--min-run` stranded alone
+on one side of the break that used to be silently dropped.
 
 Each finding reports the run's total span and its matched-word count
 (so a gapped run is distinguishable from a pure one), the citekey and
-page, whether the containing paragraph actually cites that source
-(`UNCITED SOURCE` if not), whether the run sits inside quote delimiters
-(straight/curly double quotes or a Markdown blockquote line -- a
-deterministic bit, not a severity judgment), and `tier: "exact"` --
-one key now, reserved for the tiers below.
-
-**A known, documented limitation.** A run can never merge across a page
-break in the *source*, because the per-document fingerprint's token
-position resets to 0 at every page. A genuine lift spanning a page break
-reports as two separate, shorter findings, and if the fragment on one
-side of the break is shorter than `--min-run`, that side is invisible --
-not truncated, just never reported. Fixing this needs a global (not
-per-page) token position in the fingerprint cache, a `.fpr` format
-change deliberately left out of scope for issue #111's `scan` work.
+page range (`page`/`end_page` -- equal for an ordinary single-page run,
+`end_page > page` for one that spans a source page break), whether the
+containing paragraph actually cites that source (`UNCITED SOURCE` if
+not), whether the run sits inside quote delimiters (straight/curly double
+quotes or a Markdown blockquote line -- a deterministic bit, not a
+severity judgment), and `tier: "exact"` -- one key now, reserved for the
+tiers below.
 
 ## Severity buckets, and the boilerplate allowlist
 
