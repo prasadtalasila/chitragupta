@@ -611,9 +611,15 @@ exits 0 -- "nothing found" is data too.
 `quoted: true` its `quoted`: booleans rather than those labels, because a
 caller that has to match display text is back where it started.
 
-`page` and `end_page` are equal for an ordinary single-page run;
-`end_page > page` means the run spans a source page break (#131) -- the
-printed forms render that as `p.N-M` instead of picking one side.
+`page` and `end_page` are the lowest and highest page an n-gram in the
+run actually *starts* on (#131), equal for an ordinary single-page run.
+`end_page > page` means the run spans a source page break; the printed
+forms render that as `p.N-M` instead of picking one side. It is not the
+converse: a remainder shorter than the index's own n-gram size has no
+gram starting on its page at all, so it is recovered into the merged
+run's word content without moving `end_page` to cover it -- `page` ==
+`end_page` does not by itself mean every word in the run sits on one
+page.
 
 `start`, `fragment` and `context` describe the **normalised word stream**
 -- the draft masked (code and the References section blanked), citation
