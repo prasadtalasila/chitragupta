@@ -1060,6 +1060,41 @@ _BASELINE_FIELDS = (
 )
 
 
+def _baseline_gaps(payload):
+    """Everything `recheck` needs from `payload` and cannot find, named
+    for the refusal message -- empty when there is nothing missing.
+
+    Its own function rather than a block inside `load_baseline`: that one
+    is a sequence of five independent refusals, and this is the only one
+    that has to look inside every finding, so inlining it made the
+    longest and least readable step of the five also the hardest to see
+    the shape of.
+    """
+    gaps = []
+    for key in ("min_run", "gap"):
+        if key not in payload:
+            gaps.append(key)
+        elif not isinstance(payload[key], int) or isinstance(payload[key], bool):
+            # `recheck_findings` hands these straight to `scan_findings`
+            # uncoerced; a hand-edited `"min_run": "8"` would otherwise
+            # reach `_merge_runs`' `int <= str` comparison and raise
+            # TypeError, not the clean ValueError/exit-2 refusal every
+            # other malformed baseline gets. `bool` is a subclass of
+            # `int`, but `min_run`/`gap` are word counts -- True/False
+            # would silently become 1/0 instead of naming the problem.
+            gaps.append(f"{key} (not an int)")
+
+    findings = payload["findings"]
+    if (not isinstance(findings, list)
+            or any(not isinstance(f, dict) for f in findings)):
+        gaps.append("findings (not a list of findings)")
+    else:
+        gaps += sorted({
+            field for f in findings for field in _BASELINE_FIELDS if field not in f
+        })
+    return gaps
+
+
 def load_baseline(path):
     """A `scan` payload read back off disk, refused if it cannot serve as
     a comparison basis.
@@ -1119,27 +1154,7 @@ def load_baseline(path):
             "only the longest findings and cannot say what was absent. "
             "Re-scan without --limit to take a baseline."
         )
-    findings = payload["findings"]
-    missing = []
-    for key in ("min_run", "gap"):
-        if key not in payload:
-            missing.append(key)
-        elif not isinstance(payload[key], int) or isinstance(payload[key], bool):
-            # `recheck_findings` hands these straight to `scan_findings`
-            # uncoerced; a hand-edited `"min_run": "8"` would otherwise
-            # reach `_merge_runs`' `int <= str` comparison and raise
-            # TypeError, not the clean ValueError/exit-2 refusal every
-            # other malformed baseline gets. `bool` is a subclass of
-            # `int`, but `min_run`/`gap` are word counts -- True/False
-            # would silently become 1/0 instead of naming the problem.
-            missing.append(f"{key} (not an int)")
-    if (not isinstance(findings, list)
-            or any(not isinstance(f, dict) for f in findings)):
-        missing.append("findings (not a list of findings)")
-    else:
-        missing += sorted({
-            field for f in findings for field in _BASELINE_FIELDS if field not in f
-        })
+    missing = _baseline_gaps(payload)
     if missing:
         raise ValueError(
             f"{path} is missing {', '.join(missing)}, so it predates this "
