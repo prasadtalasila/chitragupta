@@ -630,11 +630,18 @@ space-joined. Those three locate a passage for a *reader*.
 
 `line`, `char_start`, `char_end` and `draft_text` locate it for an
 *editor*. They index the draft as written, so
-`draft[char_start:char_end] == draft_text` exactly -- original casing,
-punctuation, line breaks, and any citation marker sitting inside the run
--- which is what makes `draft_text` usable as an `Edit` `old_string`
-without searching the file for the passage and risking the wrong match.
-`line` is 1-based.
+`draft[char_start:char_end] == draft_text` exactly -- which is what makes
+`draft_text` usable as an `Edit` `old_string` without searching the file
+for the passage and risking the wrong match. `line` is 1-based.
+
+The span covers **every original character between the run's first and
+last matched word**, those two words included: original casing, interior
+punctuation, line breaks, and any citation marker sitting inside the run.
+It ends at the last word rather than at the end of the sentence, so a
+trailing period or closing quote falls just outside `char_end` -- which
+is what you want, since a rewrite substituted for `draft_text` should
+leave the sentence's own punctuation alone. Leading punctuation is
+outside the span for the same reason.
 
 `id` names the finding: a 12-hex-character digest of `(citekey, page,
 fragment)`, and deliberately not of its position. An identity built on

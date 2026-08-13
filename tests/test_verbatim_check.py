@@ -1398,6 +1398,30 @@ class TestFindingLocators:
             finding["char_start"]:finding["char_end"]
         ] == finding["draft_text"]
 
+    def test_the_span_covers_interior_punctuation_but_stops_at_the_last_word(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """The boundary the docstring and docs/CLI.md both state, pinned
+        so neither can overstate it again: interior punctuation is inside
+        the span, a trailing period or closing quote is not. That is the
+        behaviour a reviser wants -- a rewrite substituted for
+        `draft_text` must leave the sentence's own punctuation alone."""
+        _add_parsed_item(
+            ledger_con, tmp_path, "uncited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            'Prose: "Alpha beta-gamma, delta epsilon zeta eta theta." End.\n'
+        )
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        text = draft.read_text()
+        assert finding["draft_text"] == "Alpha beta-gamma, delta epsilon zeta eta theta"
+        assert text[finding["char_end"]:finding["char_end"] + 2] == '."'
+        assert text[finding["char_start"] - 1] == '"'
+
     def test_the_id_is_stable_across_an_edit_elsewhere_in_the_draft(
         self, ledger_con, tmp_path, capsys
     ):

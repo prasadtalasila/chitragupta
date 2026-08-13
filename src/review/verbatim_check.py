@@ -851,11 +851,21 @@ def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
 
     `line`, `char_start`, `char_end` and `draft_text` locate it for an
     *editor* (#129): they index the draft as written, so
-    `draft[char_start:char_end] == draft_text` exactly, casing,
-    punctuation, line breaks and any citation marker sitting mid-run
-    included -- which is what makes `draft_text` usable as an `Edit`
-    `old_string`. Nothing here decides *whether* to edit; the review
-    layer still only ever reports.
+    `draft[char_start:char_end] == draft_text` exactly -- which is what
+    makes `draft_text` usable as an `Edit` `old_string`.
+
+    The span runs from the first matched word's first character to the
+    last matched word's last character, so it holds every original
+    character *between* them: casing, interior punctuation, line breaks,
+    and any citation marker sitting mid-run. It stops at the last word,
+    which is the boundary worth being exact about -- a trailing period or
+    closing quote sits just past `char_end` and is **not** included, so a
+    rewrite substituted for `draft_text` leaves that punctuation where
+    the sentence already had it. Leading punctuation is outside the span
+    for the same reason.
+
+    Nothing here decides *whether* to edit; the review layer still only
+    ever reports.
 
     `id` names the finding across runs -- see `finding_id`, and `recheck`,
     which is the reason it exists.
