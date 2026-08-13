@@ -310,6 +310,14 @@ What would extend the enforced half, cheapest first. None of it is built.
    documentation tree, in the shape `test_command_depth_scan.py` already
    uses.
 
+   This document is itself an instance. The physical-line-versus-statement
+   measurement above (122 against 26, 61 against 1) is quoted here, in
+   `tests/test_code_standards_scan.py`'s docstring, and in the PR that
+   introduced both; a refactor that moves those numbers leaves three
+   copies to update by hand. The register beside them is checked on every
+   run and cannot drift. The prose around it can, which is the asymmetry
+   this item would close.
+
 ## What this does not change
 
 - **No new gate.** `python -m src.draft gate` remains the only gate in
