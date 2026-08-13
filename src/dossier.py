@@ -552,6 +552,25 @@ def _braced(text: str) -> str:
     return "".join(out)
 
 
+def _prose_lines(lines: list[str]):
+    """(line number, line) for every line outside fenced code blocks and
+    LaTeX verbatim environments -- the fence tracking `sections()`'s
+    docstring says is not a nicety, shared so no caller re-derives it."""
+    in_fence = False
+    in_verbatim = False
+    for number, line in enumerate(lines, 1):
+        if _FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if _VERBATIM_BEGIN.search(line):
+            in_verbatim = True
+        if _VERBATIM_END.search(line):
+            in_verbatim = False
+            continue
+        if not in_fence and not in_verbatim:
+            yield number, line
+
+
 def sections(text: str) -> list[Section]:
     """The draft's outline: one `Section` per heading, with line ranges.
 
@@ -567,21 +586,8 @@ def sections(text: str) -> list[Section]:
     """
     lines = text.splitlines()
     found: list[Section] = []
-    in_fence = False
-    in_verbatim = False
 
-    for number, line in enumerate(lines, 1):
-        if _FENCE.match(line):
-            in_fence = not in_fence
-            continue
-        if _VERBATIM_BEGIN.search(line):
-            in_verbatim = True
-        if _VERBATIM_END.search(line):
-            in_verbatim = False
-            continue
-        if in_fence or in_verbatim:
-            continue
-
+    for number, line in _prose_lines(lines):
         md = _MD_HEADING.match(line)
         if md:
             # Strip whitespace, then one closing-hash run, then the
@@ -1576,33 +1582,45 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
 
     members: list[tuple[Path, str]] = []
     for label, root in roots:
-        if not root.is_dir():
-            continue
-        for path in sorted(root.rglob("*")):
-            if not path.is_file():
-                continue
-            if (label == "review" and not with_rendered
-                    and path.suffix.lower() not in (".md", ".json")):
-                continue
-            relative = PurePosixPath(path.relative_to(root).as_posix())
-            # A dossier lives one directory deeper than its draft, so
-            # match its parent: `dossiers/topic/survey/scope.md` belongs
-            # to the draft named `topic/survey`. A review report mirrors
-            # the draft's path exactly, so it needs no such adjustment --
-            # but its own name carries the aid (`survey.provenance.md`),
-            # so strip exactly that before matching against a draft named
-            # `topic/survey`. Exactly that, not "two suffixes": a draft
-            # named `survey.v2.md` would otherwise have its reports
-            # double-stripped to `survey` and stop matching the draft.
-            if label == "dossiers":
-                match_against = relative.parent
-            elif label == "review":
-                match_against = _strip_aid_suffix(relative)
-            else:
-                match_against = relative
-            if _matches(match_against, names):
-                members.append((path, f"{label}/{relative.as_posix()}"))
+        if root.is_dir():
+            members.extend(_root_members(label, root, names, with_rendered))
     return members
+
+
+def _root_members(label: str, root: Path, names: list[str],
+                  with_rendered: bool) -> list[tuple[Path, str]]:
+    """The (file, archive name) pairs one content root contributes."""
+    members = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        if (label == "review" and not with_rendered
+                and path.suffix.lower() not in (".md", ".json")):
+            continue
+        relative = PurePosixPath(path.relative_to(root).as_posix())
+        if _matches(_match_target(label, relative), names):
+            members.append((path, f"{label}/{relative.as_posix()}"))
+    return members
+
+
+def _match_target(label: str, relative: PurePosixPath) -> PurePosixPath:
+    """What one archive member's path is matched against a draft name as.
+
+    A dossier lives one directory deeper than its draft, so
+    match its parent: `dossiers/topic/survey/scope.md` belongs
+    to the draft named `topic/survey`. A review report mirrors
+    the draft's path exactly, so it needs no such adjustment --
+    but its own name carries the aid (`survey.provenance.md`),
+    so strip exactly that before matching against a draft named
+    `topic/survey`. Exactly that, not "two suffixes": a draft
+    named `survey.v2.md` would otherwise have its reports
+    double-stripped to `survey` and stop matching the draft.
+    """
+    if label == "dossiers":
+        return relative.parent
+    if label == "review":
+        return _strip_aid_suffix(relative)
+    return relative
 
 
 def export(names: list[str], out: Path, with_rendered: bool = False) -> tuple[Path, int]:
@@ -1733,33 +1751,51 @@ def _print_drift(report: Drift) -> None:
 
     print(f"  {report.name}{marker}")
     if report.missing:
-        print(f"    {len(report.missing)} cited citekey(s) no longer in the ledger:")
-        for citekey, in_sections in list(report.missing.items())[:_SHOWN]:
-            where = f"  cited in: {', '.join(in_sections)}" if in_sections else ""
-            print(f"      {citekey}{where}")
-        if len(report.missing) > _SHOWN:
-            print(f"      ... and {len(report.missing) - _SHOWN} more")
+        _print_capped(
+            f"    {len(report.missing)} cited citekey(s) no longer in the ledger:",
+            list(report.missing.items()), _render_missing)
     if report.candidates:
-        print(f"    {len(report.candidates)} new candidate(s) matching this "
-              "dossier's recorded queries:")
-        for candidate in report.candidates[:_SHOWN]:
-            title = f"  {candidate.title}" if candidate.title else ""
-            print(f"      {candidate.citekey}{title}")
-            print(f"        surfaced by: {'; '.join(candidate.queries)}")
-        if len(report.candidates) > _SHOWN:
-            print(f"      ... and {len(report.candidates) - _SHOWN} more")
+        _print_capped(
+            f"    {len(report.candidates)} new candidate(s) matching this "
+            "dossier's recorded queries:",
+            report.candidates, _render_candidate)
     # Only alongside a real finding. On its own this is true on every
     # sweep forever, so printing it unconditionally would bury the drift
     # it is meant to help act on.
     if report.reconsider:
-        print(f"    {len(report.reconsider)} previously rejected paper(s) these "
-              "queries still reach:")
-        for entry in report.reconsider[:_SHOWN]:
-            title = f"  {entry.title}" if entry.title else ""
-            print(f"      {entry.citekey}{title}")
-            print(f"        rejected because: {entry.reason}")
-        if len(report.reconsider) > _SHOWN:
-            print(f"      ... and {len(report.reconsider) - _SHOWN} more")
+        _print_capped(
+            f"    {len(report.reconsider)} previously rejected paper(s) these "
+            "queries still reach:",
+            report.reconsider, _render_reconsider)
+
+
+def _print_capped(header: str, items: list, render) -> None:
+    """A listing capped at _SHOWN entries that always counts its
+    remainder out loud -- the never-truncate-silently rule stated at
+    _SHOWN's definition, in one place instead of three."""
+    print(header)
+    for item in items[:_SHOWN]:
+        render(item)
+    if len(items) > _SHOWN:
+        print(f"      ... and {len(items) - _SHOWN} more")
+
+
+def _render_missing(item) -> None:
+    citekey, in_sections = item
+    where = f"  cited in: {', '.join(in_sections)}" if in_sections else ""
+    print(f"      {citekey}{where}")
+
+
+def _render_candidate(candidate) -> None:
+    title = f"  {candidate.title}" if candidate.title else ""
+    print(f"      {candidate.citekey}{title}")
+    print(f"        surfaced by: {'; '.join(candidate.queries)}")
+
+
+def _render_reconsider(entry) -> None:
+    title = f"  {entry.title}" if entry.title else ""
+    print(f"      {entry.citekey}{title}")
+    print(f"        rejected because: {entry.reason}")
 
 
 def _cmd_status_all(reports: list[Drift], as_json: bool) -> int:
@@ -1827,6 +1863,15 @@ def _cmd_status(args: argparse.Namespace) -> int:
         return 1
 
     print(f"Dossier: {draft_relpath(report.dossier)}")
+    _print_status_files(report)
+    _print_status_retrieval(report)
+    print()
+    _print_status_drift(report)
+    return 0
+
+
+def _print_status_files(report: Status) -> None:
+    """The draft line and the per-file table."""
     if report.draft is not None:
         print(f"  draft         {draft_relpath(report.draft)} ({len(report.outline)} sections)")
     else:
@@ -1845,54 +1890,61 @@ def _cmd_status(args: argparse.Namespace) -> int:
         else:
             print(f"  {entry.name:<14}{entry.entries} entr{'y' if entry.entries == 1 else 'ies'}")
 
-    if report.retrieval_calls:
-        kept = next((f.entries for f in report.files if f.name == EVIDENCE_MD), 0)
-        rejected = next((f.entries for f in report.files if f.name == REJECTED_MD), 0)
-        print(f"\nRetrieval: {report.retrieval_calls} call(s) returned "
-              f"{report.retrieval_chars:,} characters")
-        if kept or rejected:
-            print(f"  {kept} kept, {rejected} rejected")
-        else:
-            # Searched, and recorded nothing it found. Reported rather
-            # than blocked, like every other check outside the citation
-            # gate: it costs a comparison of two numbers already on this
-            # report, and nothing else in the pipeline can see it -- the
-            # draft looks finished and the judgment behind it is gone.
-            #
-            # "no entries" rather than "empty": both counts are 0 for an
-            # absent file too, and the per-file lines above already
-            # distinguish `absent` from `empty (skeleton only)`. Calling
-            # a missing file empty would contradict them.
-            print("  but evidence.md and rejected.md hold no entries -- this run")
-            print("  searched and recorded nothing it found, so a revision will")
-            print("  have to re-retrieve and re-judge the same candidates.")
 
-        # Only worth a breakdown once there's more than one segment --
-        # with just one, it would repeat the total line above under a
-        # different label. A dossier revised before `mark-revision`
-        # existed has exactly one ("initial draft") for the same reason a
-        # dossier with no revisions yet does: nothing split it.
-        if len(report.revisions) > 1:
-            print("  by revision:")
-            for segment in report.revisions:
-                print(f"    {segment.label:<24}{segment.calls} call(s), "
-                      f"{segment.chars:,} characters")
+def _print_status_retrieval(report: Status) -> None:
+    """The retrieval cost block, when this dossier logged any calls."""
+    if not report.retrieval_calls:
+        return
+    kept = next((f.entries for f in report.files if f.name == EVIDENCE_MD), 0)
+    rejected = next((f.entries for f in report.files if f.name == REJECTED_MD), 0)
+    print(f"\nRetrieval: {report.retrieval_calls} call(s) returned "
+          f"{report.retrieval_chars:,} characters")
+    if kept or rejected:
+        print(f"  {kept} kept, {rejected} rejected")
+    else:
+        # Searched, and recorded nothing it found. Reported rather
+        # than blocked, like every other check outside the citation
+        # gate: it costs a comparison of two numbers already on this
+        # report, and nothing else in the pipeline can see it -- the
+        # draft looks finished and the judgment behind it is gone.
+        #
+        # "no entries" rather than "empty": both counts are 0 for an
+        # absent file too, and the per-file lines above already
+        # distinguish `absent` from `empty (skeleton only)`. Calling
+        # a missing file empty would contradict them.
+        print("  but evidence.md and rejected.md hold no entries -- this run")
+        print("  searched and recorded nothing it found, so a revision will")
+        print("  have to re-retrieve and re-judge the same candidates.")
 
-    print()
+    # Only worth a breakdown once there's more than one segment --
+    # with just one, it would repeat the total line above under a
+    # different label. A dossier revised before `mark-revision`
+    # existed has exactly one ("initial draft") for the same reason a
+    # dossier with no revisions yet does: nothing split it.
+    if len(report.revisions) > 1:
+        print("  by revision:")
+        for segment in report.revisions:
+            print(f"    {segment.label:<24}{segment.calls} call(s), "
+                  f"{segment.chars:,} characters")
+
+
+def _print_status_drift(report: Status) -> None:
+    """The corpus drift block: unavailable, unchanged, or changed with
+    the unconsidered citekeys named."""
     if report.current is None:
         print(f"Corpus drift: unavailable -- no readable ledger at {config.LEDGER_PATH}.")
-        return 0
+        return
     if report.recorded is None:
         print("Corpus drift: unavailable -- scope.md records no corpus fingerprint.")
         print(f"  now: {report.current[0]} citekeys, digest {report.current[1]}")
-        return 0
+        return
 
     print("Corpus drift since this draft:")
     print(f"  recorded  {report.recorded[0]} citekeys, digest {report.recorded[1]}")
     print(f"  now       {report.current[0]} citekeys, digest {report.current[1]}")
     if not report.drifted:
         print("  unchanged -- the dossier's evidence is current.")
-        return 0
+        return
     print(f"  CHANGED ({report.current[0] - report.recorded[0]:+d} citekeys)")
     if report.unconsidered:
         shown = sorted(report.unconsidered)[:10]
@@ -1904,7 +1956,6 @@ def _cmd_status(args: argparse.Namespace) -> int:
             print(f"    ... and {len(report.unconsidered) - len(shown)} more")
         print("\n  Re-search only if the change you are making touches a sub-theme")
         print("  these could bear on. Drift is not itself a reason to redraft.")
-    return 0
 
 
 def _cmd_sections(args: argparse.Namespace) -> int:
@@ -1998,16 +2049,7 @@ def _cmd_brief(args: argparse.Namespace) -> int:
 
     report = brief(target, args.citekeys, args.section)
     if args.section and report.section is None:
-        print(f"No section matching {args.section!r} in "
-              f"{draft_relpath(target / 'sections.md')}.", file=sys.stderr)
-        if report.known_sections:
-            print("  Sections it does hold:", file=sys.stderr)
-            for title in report.known_sections:
-                print(f"    {title}", file=sys.stderr)
-        else:
-            print("  sections.md holds no rows yet -- the run that dispatches by "
-                  "section writes the section -> citekey plan there first.",
-                  file=sys.stderr)
+        _explain_unknown_section(args.section, target, report)
         return 1
 
     label = f"{dossier_name(target)}"
@@ -2016,12 +2058,32 @@ def _cmd_brief(args: argparse.Namespace) -> int:
     asked = len(report.blocks) + len(report.missing)
     print(f"# Kept evidence: {label}", file=sys.stderr)
     print(f"#   {len(report.blocks)} of {asked} citekey(s) from "
-          f"{draft_relpath(target / 'evidence.md')}", file=sys.stderr)
+          f"{draft_relpath(target / EVIDENCE_MD)}", file=sys.stderr)
 
     if not args.check:
         for _, block in report.blocks:
             print(f"\n{block}", end="")
 
+    _warn_brief_gaps(report, asked)
+    return 0 if report.blocks else 1
+
+
+def _explain_unknown_section(section: str, target: Path, report: Brief) -> None:
+    """stderr for a --section that matched nothing: what is there instead."""
+    print(f"No section matching {section!r} in "
+          f"{draft_relpath(target / SECTIONS_MD)}.", file=sys.stderr)
+    if report.known_sections:
+        print("  Sections it does hold:", file=sys.stderr)
+        for title in report.known_sections:
+            print(f"    {title}", file=sys.stderr)
+    else:
+        print("  sections.md holds no rows yet -- the run that dispatches by "
+              "section writes the section -> citekey plan there first.",
+              file=sys.stderr)
+
+
+def _warn_brief_gaps(report: Brief, asked: int) -> None:
+    """The two ungrounded-evidence warnings a brief can end with."""
     if report.missing:
         print(f"\n[warn] {len(report.missing)} citekey(s) have no block in "
               "evidence.md, so nothing here grounds them:", file=sys.stderr)
@@ -2038,7 +2100,6 @@ def _cmd_brief(args: argparse.Namespace) -> int:
               "to it, so there is nothing to write from. Assign its evidence "
               "in sections.md, or don't dispatch a writer for it.",
               file=sys.stderr)
-    return 0 if report.blocks else 1
 
 
 def _cmd_list(args: argparse.Namespace) -> int:
