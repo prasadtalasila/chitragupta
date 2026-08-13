@@ -462,11 +462,11 @@ disjoint populations rather than competing for the same one.
   same shape as the per-host allowlist below. #130 is where that trade is
   priced, not here.
 
-The measurement is in
-[bench/RESULTS.md](../bench/RESULTS.md#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse),
-including the two profile artefacts that force the median rather than the
-minimum, and the `fragment`-versus-`draft_text` trap that makes a wrong
-implementation of this fail silently.
+The measurement is `bench/RESULTS.md`'s `2026-08-13b` section -- not
+linked, because `bench/` is one of the trees the documentation site does
+not publish. It carries the two profile artefacts that force the median
+rather than the minimum, and the `fragment`-versus-`draft_text` trap that
+makes a wrong implementation of this fail silently.
 
 ## Measured: does the corpus's parser backend change the answer?
 
