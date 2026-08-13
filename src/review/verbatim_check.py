@@ -973,7 +973,7 @@ def load_baseline(path):
     """A `scan` payload read back off disk, refused if it cannot serve as
     a comparison basis.
 
-    Refuses rather than degrades in three cases, all of which would
+    Refuses rather than degrades in four cases, all of which would
     otherwise produce a confident and wrong answer:
 
     - not this aid's payload. The review layer's aids share `envelope()`,
@@ -983,6 +983,13 @@ def load_baseline(path):
       sorting, so a finding absent from a capped baseline may simply have
       been cut -- "new" then means "new or merely unreported", which is
       not something a caller can act on.
+    - a payload written before `id` and the locators existed. One of
+      those is sitting at the canonical report path for every draft
+      scanned by an earlier version, which is exactly where a caller is
+      told to look, so this is the likeliest bad baseline of the four and
+      the one that most deserves a remedy rather than a `KeyError`. An
+      empty findings list is not this case: a draft repaired to clean is
+      a legitimate baseline, and has no finding to carry an `id`.
     - unreadable or not JSON at all.
     """
     try:
@@ -1007,6 +1014,14 @@ def load_baseline(path):
             f"{path} was written with --limit {payload['limit']}, so it lists "
             "only the longest findings and cannot say what was absent. "
             "Re-scan without --limit to take a baseline."
+        )
+    missing = [key for key in ("min_run", "gap") if key not in payload]
+    if missing or any("id" not in f for f in payload["findings"]):
+        raise ValueError(
+            f"{path} predates this command: it is a verbatim scan payload, but "
+            "one written before findings carried an `id` and a reporting floor. "
+            "Re-scan the draft with `verbatim scan <draft> --write` to replace "
+            "it, then compare against that."
         )
     return payload
 

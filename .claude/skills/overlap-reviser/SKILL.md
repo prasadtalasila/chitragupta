@@ -1,0 +1,270 @@
+---
+name: overlap-reviser
+description: Repairs the verbatim overlap a scan found, one finding at a time, in a draft that already exists in content/drafts/. Reads `python -m src.review verbatim scan --json`, rewrites each short uncited run to preserve the claim and the citation while breaking the borrowed wording, and stops to ask the human paraphrase-or-quote on every long run rather than deciding silently. Repairs only what that exact-tier scan can see: paraphrase is not detected, so finishing this loop is never a clean bill of health. Every repair must re-pass `python -m src.draft gate` and `python -m src.review verbatim recheck` before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to fix, clean up or remediate verbatim overlap, borrowed wording, a plagiarism report or the findings of a verbatim scan -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything that is not a verbatim finding is draft-reviser, not this skill; hand off and say so. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
+tags: [revision, plagiarism, verbatim, dossier, citation]
+---
+
+# overlap-reviser
+
+`python -m src.review verbatim scan` finds every run of borrowed wording
+in a draft, buckets it by severity and files it as JSON. Then it stops,
+because it is a review aid and review aids report. Everything after that
+-- reading the report, finding the passage, rewriting it without losing
+the claim, checking the rewrite did not make things worse -- was left to
+a person. That is the tedious half, and the half that gets skipped.
+
+It is the exact tier of a stack whose paraphrase tiers are unbuilt:
+**paraphrase is not detected**, and these drafts are LLM-written, which
+makes literal paraphrase the *likely* reuse mode rather than an edge
+case. So an empty findings list is not an achievement, and repairing
+every finding is not a clean bill of health. Say so when you present,
+every time.
+
+This skill does the half that was left over. It is not a better scan and
+it does not decide anything the scan was careful not to decide: what it
+adds is the repair, the re-check that says whether the repair worked, and
+a written record of both.
+
+**A finding is not a verdict.** A run of shared wording is a place to
+look. A defined term, a standard's name and a correctly attributed
+quotation all show up as findings, and rewriting one of those would make
+the draft worse. Read `docs/PLAGIARISM.md` before deciding that a finding
+is a defect.
+
+## When to invoke
+
+| Situation | Action |
+|---|---|
+| User asks to fix, clean up or remediate verbatim overlap, borrowed wording or a plagiarism report | Invoke this skill |
+| A scan was just run and the user asks "what do I do about these" | Invoke this skill |
+| The user wants the draft **scanned** but says nothing about fixing it | Run the scan and show them. Do not start repairing |
+| The finding is real but the user disagrees that it needs changing | They are right by default -- record it and move on. `SOUL.md`: a machine does not outrank a person on a judgment call |
+| Any other change to an existing draft -- shorten, expand, restructure, re-ground | Use `draft-reviser` |
+| User asks to re-check the whole draft against the corpus | Use `corpus-reviser` |
+| User asks for a **new** draft | Use the matching genre skill |
+| The draft has no dossier | Bootstrap one as `draft-reviser` describes, then continue here. `revisions.md` is where this skill's record goes, so it has to exist |
+| The ledger is empty or absent | Stop and say so. A repair that converts a lift into a quotation needs a citekey the gate will accept |
+
+**Read-only over the corpus layer.** Never run `python -m src.corpus
+sync` and never run `python -m src.enrich`; both take the pipeline's
+write lock and are the user's to run.
+
+## What may be repaired unattended, and what may not
+
+The scan already buckets every finding by severity. That bucket is the
+line, so this skill does not invent a second threshold:
+
+| Bucket | What it is | This skill |
+|---|---|---|
+| `quoted` | Inside quote marks **and** citing the source | Report it as already correct. Do not touch it |
+| `short` | Under 15 words, not a marked quotation | Repair unattended |
+| `long` | 15 words or more, not a marked quotation | **Stop and ask.** Present paraphrase and quotation as two options and let the human choose |
+
+A long run is where the choice actually matters. Paraphrasing a sentence
+the field states one particular way makes the prose worse to no benefit;
+quoting a passage that was never meant to be quoted pads the draft and
+signals a claim the author did not make. That is an authorial decision,
+so it is asked, not taken.
+
+## The loop
+
+Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop` for the
+parts this skill does not restate -- reading `scope.md` and `steering.md`
+first, mapping a change onto sections, editing with `Edit` rather than
+`Write`, and writing the dossier back. Read that file; do not reconstruct
+it from memory.
+
+### 1. Snapshot, and mark the revision
+
+Before the first edit:
+
+```bash
+python -m src.draft dossier export <name>
+python -m src.draft dossier mark-revision content/drafts/<path> --label "overlap remediation"
+```
+
+`<name>` is the draft's path under `content/drafts/` with the suffix
+dropped -- `dt-for-engineers/survey`, not the full path and not the bare
+stem. `python -m src.draft dossier list` prints the names it will match.
+
+The export is the way back if the pass as a whole turns out wrong. The
+marker is what lets `dossier status` attribute this session's cost
+separately from the drafting run's.
+
+Then read `scope.md` and `steering.md`. A rewrite is still a rewrite: the
+reader is already fixed, and so is the terminology. Introducing a second
+name for a concept while breaking up a borrowed phrase is the exact seam
+a reader notices.
+
+### 2. Take the baseline
+
+```bash
+python -m src.review verbatim scan content/drafts/<path> --write --json
+```
+
+Uncapped -- **never pass `--limit` to a baseline**. A capped payload lists
+only the longest findings, so it cannot say what was absent, and
+`recheck` refuses it for that reason.
+
+This files the payload at `content/review/<topic>/<stem>.verbatim.json`.
+That file is the recorded baseline: every claim you make at the end is
+stated against it, not against a re-scan you took later.
+
+If the scan reports nothing, say so and stop. There is nothing here to
+do -- and the draft is not thereby clean, because **paraphrase is not
+detected** by the exact tier this baseline came from.
+
+### 3. Triage
+
+Read the payload's `findings`. Each carries `severity` (the bucket
+above), `cites_source`, `quoted`, and enough to locate itself.
+
+Sort into the three buckets and tell the user the counts before you start
+editing: how many will be repaired unattended, how many need their
+decision, and how many are already correct. Then work the `short` bucket,
+and collect the `long` ones into one question rather than interrupting
+per finding.
+
+### 4. Repair one finding
+
+Read only the section that owns it -- `python -m src.draft dossier
+sections content/drafts/<path>` gives the line ranges -- and edit with
+`Edit`, using the finding's own `draft_text` as `old_string`. That field
+is the passage exactly as written, casing, punctuation, line breaks and
+any citation marker sitting mid-run included; it is there so you do not
+have to search the draft for the passage and risk matching the wrong one.
+
+If an `Edit` built from `draft_text` does not match, the draft almost
+certainly has CRLF line endings and the run spans a line break: the
+payload carries the `\n` the file was read with, not the `\r\n` on disk.
+Re-read the line and edit it by hand rather than widening the search.
+
+Keep the pre-edit text. You will need it in step 5 if the repair is
+rejected.
+
+**Paraphrase** -- the default, and the only option for a `short` run:
+
+- Preserve the claim. This is a rewording, not a retraction.
+- Preserve the citation. Breaking up borrowed wording while dropping the
+  attribution converts a citation problem into a worse one.
+- Leave no run of `min_run` consecutive source words. The payload's
+  `min_run` is the number.
+- Prefer the smaller diff. Where deleting a redundant clause and
+  rewriting the sentence both work, delete.
+
+**Quotation** -- only for a `long` run, and only when the human chose it:
+
+- Wrap the passage in quote marks and anchor the citation to the
+  finding's own `page`: `[@citekey, p. 12]`.
+- Check the source can actually be quoted first. `src/passages.py` gives
+  a page-level passage no text at all when the source was parsed by
+  `pdftotext -layout`, because an excerpt cut from a two-column paper is
+  a collage of two arguments rather than a quotation. If it is not
+  quotable, say so and paraphrase instead -- do not quote from a page
+  number alone.
+
+**Never add a claim.** On these findings you are only ever rewording,
+attributing or removing something the draft already said. New ground is a
+different request and belongs to `draft-reviser`.
+
+### 5. Accept or revert
+
+Both of these, after every repair:
+
+```bash
+python -m src.draft gate content/drafts/<path>
+python -m src.review verbatim recheck content/drafts/<path> \
+    --baseline content/review/<topic>/<stem>.verbatim.json --json
+```
+
+Accept the repair only if **all** of:
+
+- the gate exits 0;
+- the finding's `id` appears in `recheck`'s `resolved`;
+- `objective_delta` is not positive.
+
+That last one is the check worth having. A rewrite that fixes its own
+finding by lifting from a different source resolves the item and leaves
+the draft no better, and the delta is what catches it.
+
+Otherwise revert the passage from the text you kept in step 4 and try
+once more. **Two attempts per finding.** A second failure means the item
+is escalated to the human and the loop moves on -- reverting one finding
+leaves every earlier accepted one intact.
+
+**One pass per invocation.** When the list is done, stop and hand back.
+Do not re-scan and start again on whatever the repairs surfaced.
+
+### 6. Log every attempt
+
+Append to the dossier's `revisions.md`: the date, each finding by `id`
+and citekey, what was done, and what happened -- accepted, reverted,
+escalated, or declined by the user. Refusals are the entries most worth
+having, because they are what stops the next session re-attempting
+something that was already decided against.
+
+**Never write any of this to `rejected.md`.** That file is about sources
+that were retrieved and turned down. A rewrite that did not work is not a
+rejected source, and putting it there would teach the next revision to
+skip a paper for a reason that has nothing to do with the paper.
+
+### 7. Present
+
+Show the diff and the `revisions.md` entries, and state the outcome
+against the baseline from step 2: findings before, findings now, what was
+repaired, what was escalated and why.
+
+The human accepts. Nothing here merges, commits or renders on its own.
+
+### Offer the verbatim scan
+
+The baseline in step 2 is that scan, so it has already run. What still
+has to be said when you present is what it does **not** cover:
+
+```bash
+python -m src.review verbatim scan content/drafts/<path>
+```
+
+It reports verbatim and near-verbatim reuse against any parsed source,
+cited or not, and **paraphrase is not detected** -- these drafts are
+LLM-written and literal paraphrase is an LLM's normal failure mode -- so
+a clean scan, and a clean `recheck`, is not a clean bill of health
+(`docs/PLAGIARISM.md`). Say that plainly rather than letting a zero read
+as an all-clear. A review aid, not a gate: it exits 0 either way.
+
+## Guardrails
+
+- **Never start this on your own initiative.** Not from a hook, not from
+  a scheduled job, not at the end of a genre skill's run, and not from
+  `draft-reviser`. A person asking is the only trigger.
+- **Never edit anything but the draft and `revisions.md`.** Not
+  `content/verbatim_allowlist.toml`, not `rejected.md`, not `scope.md`,
+  not `evidence.md`, and nothing under the corpus layer. Suppressing a
+  finding by allowlisting it is the user's call about their own project,
+  and a loop that could silence its own detector is not a loop anyone
+  should trust.
+- **Never decide paraphrase-or-quote on a long run.** Ask.
+- **Never `Write` the whole draft.** `Edit` the passage.
+- **Never add a claim, and never fabricate a citekey.** A fabricated
+  citekey is the one failure this whole pipeline exists to prevent, and a
+  repair that needs a page-anchored citation is exactly where the
+  temptation shows up.
+- **Never run `python -m src.corpus sync` or `python -m src.enrich`.**
+- **Never present a draft that has not passed
+  `python -m src.draft gate`.**
+- **Never report a repair you did not verify.** If `recheck` was not run,
+  say so rather than describing the edit as accepted.
+
+## Sources
+
+The prose standards this skill inherits are documented, with
+per-principle attribution, in
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#sources-and-attribution).
+What the verbatim tiers catch and what they structurally cannot is in
+[`docs/PLAGIARISM.md`](../../../docs/PLAGIARISM.md). The requirements
+this loop is built to satisfy -- the write-set, the binary re-check, the
+two-attempt limit and the rule that only a person may start it -- are
+R1-R11 in
+[`docs/AUTO-IMPROVEMENT.md`](../../../docs/AUTO-IMPROVEMENT.md#the-requirements),
+with the reasoning in
+[`docs/AUTO-IMPROVEMENT-RATIONALE.md`](../../../docs/AUTO-IMPROVEMENT-RATIONALE.md).

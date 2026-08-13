@@ -1718,6 +1718,51 @@ class TestRecheck:
             vc.cmd_recheck(str(draft), str(tmp_path / "nope.json"))
         assert "nope.json" in str(exc.value)
 
+    def test_a_baseline_predating_the_locators_is_refused(self, ledger_con, tmp_path):
+        """A payload filed by 5.5.0 sits at exactly the path the loop is
+        told to look at, and has no `id` on its findings. Refused with the
+        remedy rather than crashing on the missing key."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps({
+            "aid": "verbatim", "min_run": 8, "gap": 1, "limit": None,
+            "findings": [{"citekey": "uncited_2024", "span_words": 20,
+                          "severity": "long"}],
+        }))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "predates" in str(exc.value)
+
+    def test_a_baseline_missing_its_floor_is_refused(self, ledger_con, tmp_path):
+        """`min_run`/`gap` are what make the two scans comparable, and
+        defaulting them would compare a strict run against a lax one."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps(
+            {"aid": "verbatim", "limit": None, "findings": []}
+        ))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "predates" in str(exc.value)
+
+    def test_an_empty_baseline_is_not_mistaken_for_an_old_one(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """"No findings" is a legitimate baseline -- a draft repaired to
+        clean, then re-checked -- and has no findings to carry an `id`."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps(
+            {"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []}
+        ))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["objective_before"] == 0
+        assert len(result["new"]) == 2
+
     def test_another_aids_payload_is_refused(self, ledger_con, tmp_path):
         """The review layer's payloads share an envelope, so a coverage
         report is JSON with a `findings` key too."""

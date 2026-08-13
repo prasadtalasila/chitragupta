@@ -112,12 +112,14 @@ over an unchanged draft and corpus diff to nothing.
 not-a-verdict notice and the same absence of a timestamp. Each payload
 finding also carries `severity` -- the same `long`/`short`/`quoted`
 bucket the written report below groups by, derived the same way, so a
-programmatic consumer -- a remediation loop, an eventual gate -- reads
-the same severity a human reviewer sees, rather than regex-parsing the
-printed lines or recomputing the threshold itself. The fields, and the
-one that is easy to misread (`start` is a word offset into the
-normalised stream, not a position in the draft file), are in
-[CLI.md](CLI.md#python--m-srcreview-verbatim).
+programmatic consumer -- the remediation loop below, an eventual gate --
+reads the same severity a human reviewer sees, rather than regex-parsing
+the printed lines or recomputing the threshold itself. It also carries
+`id`, a position-free name for the finding, and four fields that locate
+it in the draft as written. The fields, and the one that is easy to
+misread (`start` is a word offset into the normalised stream, not a
+position in the draft file, and the locators are what to use instead),
+are in [CLI.md](CLI.md#python--m-srcreview-verbatim).
 
 Matches are grouped by `(citekey, page, diagonal)`, where `diagonal =
 source_position - draft_position`. Two matches on the same diagonal are
@@ -225,6 +227,53 @@ suppressed as a header line, since the allowlist isn't part of the
 recorded, re-runnable command (it's per-host config, not a flag) -- a
 report has to say what it consulted, or "what was waved through" stops
 being visible from the report's own side.
+
+## Repairing what the scan found
+
+Detection without remediation leaves the human doing the tedious part.
+Issue #129 adds the other half: the `overlap-reviser` skill
+([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)) works a scan's
+findings one at a time, and `python -m src.review verbatim recheck`
+decides whether each repair may be kept.
+
+**The scan payload locates a finding for an editor, not just a reader.**
+`start`/`fragment`/`context` describe the normalised word stream, which
+cannot be seeked to in the file. Alongside them each finding carries
+`line`, `char_start`, `char_end` and `draft_text` -- the passage exactly
+as written, citation markers and line breaks included -- plus `id`, a
+digest of `(citekey, page, fragment)`. `id` is deliberately
+position-free: an identity built on `start` would rename every remaining
+finding the moment the first was repaired, and nothing could then say
+whether a finding had survived a revision.
+
+**`recheck` is an acceptance test, not a second scan.** Given a baseline
+payload it re-scans at that baseline's own floor -- comparing a strict
+run against a lax one would read as progress -- and reports each finding
+as `resolved`, `persisting` or `new`, plus the change in the count of
+*objective* findings, meaning the `long` and `short` buckets. A run that
+is both quoted and cited is excluded from that count, or converting a
+lift into a properly attributed quotation would score as no improvement.
+It refuses a baseline it cannot compare against: another aid's payload,
+one written under `--limit` (truncation makes "absent" ambiguous), or one
+predating the `id` field.
+
+**What may be repaired without asking is decided by the buckets above,
+not by the model.** A `short` run is reworded unattended; a `long` one
+stops and asks the human whether to paraphrase or to quote; a `quoted`
+one is reported as already correct. The paraphrase-or-quote choice is
+authorial -- some things the field states one particular way -- and
+[SOUL.md](../SOUL.md) puts deciding that for someone under *what you will
+not do*.
+
+**None of this is a gate.** `recheck` exits 0 whatever it finds, like
+every other review command. `python -m src.draft gate` remains the only
+thing in this pipeline that blocks, and whether a long allowlist-filtered
+run should ever join it is still [#130](AUTO-IMPROVEMENT.md#build-order)'s
+question, to be decided against real reports rather than guessed.
+
+And the caveat that governs the whole section: repairing every finding
+the exact tier can see leaves untouched everything it cannot. Paraphrase
+is not detected. An empty findings list is not a clean bill of health.
 
 ## Measured: does the corpus's parser backend change the answer?
 
