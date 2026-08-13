@@ -63,7 +63,6 @@ LEGACY_LONG_FUNCTIONS = {
     "src/retrieval.py::main",  # 45
     "src/dossier.py::main",  # 42
     "src/enrich/embed_index.py::build_index",  # 40
-    "src/review/citation_provenance.py::render_markdown",  # 38
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/references.py::format_entry",  # 35
     "src/dossier.py::_cmd_brief",  # 34
@@ -95,7 +94,7 @@ LEGACY_LONG_FILES = {
     "src/overlap_index.py",  # 492
     "src/render_output.py",  # 456
     "src/sync.py",  # 444
-    "src/review/citation_provenance.py",  # 382
+    "src/review/citation_provenance.py",  # 392
     "src/ledger.py",  # 358
     "src/retrieval.py",  # 359
     "src/references.py",  # 340
