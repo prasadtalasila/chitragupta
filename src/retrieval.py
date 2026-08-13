@@ -412,7 +412,7 @@ def _print_results(results: list[SearchResult]) -> int:
     return chars
 
 
-def main(argv: "list[str] | None" = None) -> int:
+def _build_parser():
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -445,8 +445,69 @@ def main(argv: "list[str] | None" = None) -> int:
             "--log", metavar="DRAFT",
             help="Record this call in DRAFT's dossier (content/dossiers/...), so the "
                  "cost of retrieval for this draft is measured rather than estimated")
+    return parser
 
-    args = parser.parse_args(argv)
+
+def _run_evidence(args) -> "tuple[int, int] | None":
+    """The evidence subcommand: prints the passages and returns
+    (results, chars), or None for a citekey it had to refuse (already
+    reported to stderr)."""
+    try:
+        passages = evidence(args.citekey, args.query, args.chars, args.windows)
+    except KeyError as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return None
+    if not passages:
+        print(f"{args.citekey}: no passage matches that query "
+              "(or the corpus layer has no parsed text for it).")
+    for passage in passages:
+        print(f"\n  {passage}")
+    return len(passages), sum(len(p) for p in passages)
+
+
+def _run_search(args) -> tuple[int, int]:
+    """The search subcommand: prints the ranking and returns
+    (results, chars)."""
+    found = search(args.query, k=args.k, snippet_chars=args.chars)
+    if not found:
+        print("No results.")
+    chars = _print_results(found)
+    if found:
+        print("\n  Judge each snippet yourself -- a high score means the query's "
+              "words are in the document, not that it supports your claim. Run "
+              "`evidence --citekey <key>` where a snippet is not enough to decide.")
+    return len(found), chars
+
+
+def _log_call(args, results: int, chars: int) -> None:
+    """--log's dossier bookkeeping, reported but never fatal."""
+    from src import dossier
+
+    try:
+        # The logged `k` is "how much was asked for", which is `--k`
+        # for the ranking modes and `--windows` for `evidence` --
+        # `evidence` has no `--k`, and logging a bare 1 there put a
+        # number in the column that meant nothing.
+        asked_for = args.windows if args.command == "evidence" else args.k
+        path = dossier.log_retrieval(
+            Path(args.log), args.command, args.query,
+            asked_for, results, chars,
+        )
+    except (dossier.DossierError, OSError) as exc:
+        # A measurement is worth less than the retrieval it measures:
+        # report and carry on rather than failing the search. OSError
+        # is caught alongside DossierError because the failure this
+        # has to survive is not only "that path isn't a draft" -- a
+        # read-only content/, a full disk or a permissions problem
+        # would otherwise let a bookkeeping write throw away results
+        # the caller has already paid to compute.
+        print(f"  [not logged] {exc}", file=sys.stderr)
+    else:
+        print(f"  Logged to {path}")
+
+
+def main(argv: "list[str] | None" = None) -> int:
+    args = _build_parser().parse_args(argv)
 
     if not config.LEDGER_PATH.exists():
         print(f"No ledger at {config.LEDGER_PATH}.", file=sys.stderr)
@@ -454,51 +515,14 @@ def main(argv: "list[str] | None" = None) -> int:
         return 1
 
     if args.command == "evidence":
-        try:
-            passages = evidence(args.citekey, args.query, args.chars, args.windows)
-        except KeyError as exc:
-            print(f"[error] {exc}", file=sys.stderr)
+        outcome = _run_evidence(args)
+        if outcome is None:
             return 1
-        if not passages:
-            print(f"{args.citekey}: no passage matches that query "
-                  "(or the corpus layer has no parsed text for it).")
-        for passage in passages:
-            print(f"\n  {passage}")
-        results, chars = len(passages), sum(len(p) for p in passages)
+        results, chars = outcome
     else:
-        found = search(args.query, k=args.k, snippet_chars=args.chars)
-        if not found:
-            print("No results.")
-        chars = _print_results(found)
-        results = len(found)
-        if found:
-            print("\n  Judge each snippet yourself -- a high score means the query's "
-                  "words are in the document, not that it supports your claim. Run "
-                  "`evidence --citekey <key>` where a snippet is not enough to decide.")
+        results, chars = _run_search(args)
 
     print(f"\n  {results} result(s), {chars:,} characters returned.")
     if args.log:
-        from src import dossier
-
-        try:
-            # The logged `k` is "how much was asked for", which is `--k`
-            # for the ranking modes and `--windows` for `evidence` --
-            # `evidence` has no `--k`, and logging a bare 1 there put a
-            # number in the column that meant nothing.
-            asked_for = args.windows if args.command == "evidence" else args.k
-            path = dossier.log_retrieval(
-                Path(args.log), args.command, args.query,
-                asked_for, results, chars,
-            )
-        except (dossier.DossierError, OSError) as exc:
-            # A measurement is worth less than the retrieval it measures:
-            # report and carry on rather than failing the search. OSError
-            # is caught alongside DossierError because the failure this
-            # has to survive is not only "that path isn't a draft" -- a
-            # read-only content/, a full disk or a permissions problem
-            # would otherwise let a bookkeeping write throw away results
-            # the caller has already paid to compute.
-            print(f"  [not logged] {exc}", file=sys.stderr)
-        else:
-            print(f"  Logged to {path}")
+        _log_call(args, results, chars)
     return 0

@@ -59,12 +59,9 @@ CODE_LINE_ROOTS = ("src", "scripts")
 LEGACY_LONG_FUNCTIONS = {
     "src/sync.py::run",  # 117
     "src/dossier.py::_cmd_status",  # 65
-    "src/ledger.py::main",  # 50
-    "src/retrieval.py::main",  # 45
     "src/dossier.py::main",  # 42
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
-    "src/references.py::format_entry",  # 35
     "src/dossier.py::_cmd_brief",  # 34
     "src/sync.py::_parse_parallel",  # 33
     "src/dossier.py::_print_drift",  # 32
@@ -72,7 +69,6 @@ LEGACY_LONG_FUNCTIONS = {
     "src/render_output.py::render",  # 31
     "tests/test_release.py::make_repo",  # 30
     "src/dossier.py::sections",  # 29
-    "src/ledger.py::upsert_reference",  # 29
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
     "src/overlap_skipgram.py::build_corpus_index",  # 27
@@ -95,9 +91,9 @@ LEGACY_LONG_FILES = {
     "src/render_output.py",  # 456
     "src/sync.py",  # 444
     "src/review/citation_provenance.py",  # 392
-    "src/ledger.py",  # 358
-    "src/retrieval.py",  # 359
-    "src/references.py",  # 340
+    "src/ledger.py",  # 393
+    "src/retrieval.py",  # 376
+    "src/references.py",  # 366
     "src/overlap_skipgram.py",  # 305
     "src/config.py",  # 292
 }
