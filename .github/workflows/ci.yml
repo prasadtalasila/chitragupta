@@ -1,9 +1,26 @@
 name: CI
 
+# `branches`, not `tags-ignore`. The intent has always been "run on
+# merges, don't double-run on a release tag that release.yml already
+# handles", and `tags-ignore: v*` on its own did the opposite of that.
+# GitHub's rule: when a `push` trigger carries **only** tag filters, the
+# workflow does not run on branch pushes at all. So from the commit that
+# added it (6388bad4, 2026-07-31) this workflow stopped running on `main`
+# entirely -- 81 commits landed without one, the last push-event run being
+# 47d3b99e on the day the filter went in.
+#
+# The visible cost was Codecov: it had no report for the base commit, so
+# every PR comment carried "Please upload report for BASE" and the project
+# dashboard had nothing to show. The reason it was invisible for so long
+# is that `pull_request` kept firing, so PRs were still checked and the
+# only thing missing was the one run nobody watches.
+#
+# Naming `main` rather than `'**'` keeps a PR branch push from starting a
+# second, redundant run beside its `pull_request` one; tags match neither
+# filter, which is the original intent stated positively.
 on:
   push:
-    tags-ignore:
-      - 'v*'
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:

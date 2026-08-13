@@ -30,6 +30,7 @@ document owns the arrears. A thing that was never built is not a debt.
 - [Tier 2: the debt CODE-STANDARDS.md already named](#tier-2-the-debt-code-standardsmd-already-named)
 - [Tier 3: found by review, tracked nowhere](#tier-3-found-by-review-tracked-nowhere)
 - [Tier 4: the test suite](#tier-4-the-test-suite)
+- [Tier 5: continuous integration and the linters](#tier-5-continuous-integration-and-the-linters)
 - [Reviewing with OpenCodeReview](#reviewing-with-opencodereview)
 - [The standing-instruction budget](#the-standing-instruction-budget)
 - [Process debt: the formats that are not adhered to](#process-debt-the-formats-that-are-not-adhered-to)
@@ -344,7 +345,47 @@ failure mode is Windows-specific. Attributing the gap -- via
 `.coveragerc` for the Windows leg -- would turn a floor into the same
 100 the Linux leg holds.
 
-### 3.7 `connect()` / `try` / `finally: close()` repeated at eight sites
+### 3.7 The BibTeX author-name grammar exists twice
+
+`src/bib_reader.py:79-84` (`_parse_authors`) and `src/references.py:116-121`
+(`_format_name`) carry the same five lines, character for character:
+
+```python
+if "," in name:
+    last, first = (p.strip() for p in name.split(",", 1))
+else:
+    parts = name.rsplit(" ", 1)
+    first, last = (parts[0], parts[1]) if len(parts) == 2 else ("", parts[0])
+```
+
+**Why it looks correct and is not.**
+[DEVELOPER-AGENTS.md's module boundary](../DEVELOPER-AGENTS.md#module-boundaries)
+says `references.py` must never parse `bibliography.bib`, and it does not
+-- it reads the ledger's `bib_fields` column, exactly as required. But
+that boundary is about *the file*, and what is duplicated here is the
+**grammar**: how a BibTeX author name divides into given and family. So
+`references.py` obeys the letter of the rule while carrying a second,
+independently-maintained copy of `bib_reader`'s most subtle piece of
+parsing.
+
+The failure mode is quiet and specific. Extend one side for a case the
+grammar does not handle today -- a `von` particle, a `Jr.` suffix, a
+second comma -- and the other keeps the old reading. The ledger would
+then record one name and the rendered bibliography would print a
+different one, for the same entry, with nothing failing. On a tool whose
+purpose is citations you can trust, two disagreeing spellings of an
+author is the wrong kind of quiet.
+
+**Fragility**, in
+[the review vocabulary](CODE-STANDARDS.md#code-smells-the-review-vocabulary).
+The fix is not to relax the boundary: the five lines are plain stdlib
+string handling with no bibtexparser in them, so they can live in one
+module both import, and `references.py` keeps running under the bare
+system interpreter. Found by `pylint`'s `duplicate-code` (see
+[5.2](#52-pylint-a-measured-baseline)), not by reading -- which is the
+argument for the linter in one finding.
+
+### 3.8 `connect()` / `try` / `finally: close()` repeated at eight sites
 
 `src/citation_gate.py:199`, `src/references.py:422,441`,
 `src/retrieval.py:292,369`, `src/sync.py:339`,
@@ -478,6 +519,158 @@ Two fixes, and the cheap one is not the repository's:
   against this entry, not inside a documentation PR -- the same Boy Scout
   reconciliation [CODE-STANDARDS.md](CODE-STANDARDS.md#the-boy-scout-rule-and-surgical-changes)
   makes for `src/`.
+
+## Tier 5: continuous integration and the linters
+
+### 5.1 CI stopped running on `main` in July, and nothing noticed
+
+**Fixed in the change that adds this section**, and recorded because the
+shape of the failure is the lesson.
+
+`.github/workflows/ci.yml` declared:
+
+```yaml
+on:
+  push:
+    tags-ignore: ['v*']
+  pull_request:
+    branches: [main]
+```
+
+The intent is clear and reasonable -- run on merges, but do not
+double-run on the release tag `release.yml` already handles. GitHub's
+rule is the opposite of what that spells: **when a `push` trigger carries
+only tag filters and no `branches`, the workflow does not run on branch
+pushes at all.** So from the commit that introduced it (`6388bad4`,
+2026-07-31) the `push` trigger was dead. The evidence is exact: four
+push-event runs in the repository's history, all dated 2026-07-31, the
+last at `47d3b99e` -- an ancestor of the commit that added the filter --
+and **81 commits have landed on `main` since without one.**
+
+**Why it stayed invisible for six weeks.** `pull_request` kept firing, so
+every PR was fully checked and every branch went green. The only thing
+missing was the run nobody watches: the one on `main` after the merge.
+A trigger that narrows silently produces no error, no annotation and no
+red check -- it produces *fewer runs*, which looks exactly like nothing.
+
+**What it cost.** Codecov has no report for any base commit, so every PR
+comment carries "Please upload report for BASE" and shows `?` in the base
+column, and the project dashboard has nothing to display. It reads as
+"Codecov is broken" or "coverage is zero"; in fact the uploads work
+perfectly -- the PR reports parse cleanly at 100.00% across 28 files,
+with both matrix flags separated. There was simply never a baseline to
+compare against, because the run that would have produced one never
+happened.
+
+The fix is `branches: [main]` in place of `tags-ignore`, which states the
+original intent positively: run on merges to `main`, never on a tag, and
+without starting a second redundant run beside each PR's.
+
+**The general form, which has no detector:** a CI trigger, filter or
+matrix entry that narrows what runs is invisible by construction. This
+repository has tests that assert its scanners are non-vacuous
+(`test_the_scan_reaches_the_source_tree`) for precisely this reason, and
+the same argument applies to workflows -- nothing currently asserts that
+a run happens where one is expected.
+
+### 5.2 `pylint`: a measured baseline
+
+[CODE-STANDARDS.md's build order](CODE-STANDARDS.md#build-order) puts a
+linter first and declines to adopt one without "a measured baseline and a
+`per-file-ignores` register of the same shape as this one". This is that
+measurement, taken with the `.pylintrc` this project inherits from DTaaS
+(the same source its own standards come from).
+
+**Baseline: 9.50/10, 235 messages across `src/` and `scripts/`.**
+
+Most of it is not debt. Disabling the categories this repository has
+already decided against leaves **44 real findings**:
+
+| Category | Count | Disposition |
+|---|---|---|
+| `line-too-long` (>100) | 31 | Real. "Keep lines short" is a review standard here with no detector; this is it, measured |
+| `unspecified-encoding` | 7 | Real, and already [3.1](#31-text-io-on-the-locale-codec) -- pylint sees only the `open()` calls, 7 of that item's 32 sites |
+| `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard` -- deliberate lowercase context managers; belongs in `good-names` |
+| Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
+
+The categories disabled, and why, since each is a decision rather than an
+oversight: `import-outside-toplevel` (24 -- the documented lazy-import
+pattern that keeps tier-1 modules stdlib-only at import time),
+`missing-function-docstring`/`missing-class-docstring` (71 -- this
+project requires *why*-comments, and a docstring on every small private
+helper is the "obvious noise" the same checklist bans),
+`too-many-*` (35 -- C1/C2 already measure size, more strictly, and two
+detectors for one rule is the two-debt-lists problem build-order item 2
+names), `duplicate-code` (4 -- two are deliberate and documented, one is
+now [3.7](#37-the-bibtex-author-name-grammar-exists-twice)),
+`broad-exception-caught` (10 -- each carries a stated cause),
+`protected-access`, `global-statement`, `unused-argument`,
+`attribute-defined-outside-init`, `redefined-outer-name`, `cyclic-import`.
+
+**Why it is not wired into CI in this change.** Two of the four residue
+rows are the two things that must not be papered over. Fixing pylint's 7
+`unspecified-encoding` sites while leaving 3.1's other 25 would close the
+detector on the register's top item without closing the item. And
+DEVELOPER-AGENTS.md forbids shipping a check that has not been made to
+pass. So the honest sequence is [3.1](#31-text-io-on-the-locale-codec)
+first, then the 31 long lines, then pylint enabled at a **binary** bar --
+zero messages, never a `fail-under` score, because
+[R3](AUTO-IMPROVEMENT.md#the-requirements) rules out driving a number.
+`.pylintrc` is in the tree so the baseline is reproducible.
+
+Two side effects worth having, once it lands: the 11 inert `# noqa:
+BLE001` markers ([Tier 2](#the-11-inert--noqa-ble001-markers)) become
+live `# pylint: disable=broad-exception-caught` suppressions, and
+`duplicate-code` becomes a standing detector for the class 3.7 belongs
+to.
+
+### 5.3 `markdownlint`: a measured baseline
+
+Same shape, with `.markdownlint.yaml` inherited from the same source, run
+over this repository's own prose (root `*.md` plus `docs/`; `content/` is
+the user's drafts and out of scope):
+
+**927 findings**, of which:
+
+| Rule | Count | Note |
+|---|---|---|
+| `MD060/table-column-style` | 827 | Table cell padding. Cosmetic, and 89% of the total |
+| `MD013/line-length` | 37 | Genuinely low -- this repository already wraps prose short |
+| `MD040/fenced-code-language` | 30 | Real: fenced blocks with no language tag |
+| Everything else | 33 | Blank lines around headings and lists, trailing newlines, emphasis style |
+
+The distribution is the finding. Strip `MD060` and the repository is at
+**100 findings across roughly 30,000 words of prose**, which is close
+enough to adopt. `MD060` alone would either produce a 827-line diff that
+touches every table in the documentation or be disabled; that is a
+judgement for whoever adopts it, not something to decide inside a debt
+register. Adoption is otherwise cheap and should follow 5.2.
+
+### 5.4 Checks that came back clean
+
+Recorded so the next reviewer does not spend the afternoon re-running
+them. Each is a
+[CODE-STANDARDS.md review standard](CODE-STANDARDS.md#the-rest-of-the-checklist)
+with no detector, checked by hand against the tree:
+
+- **Over-configurability** ("a `config.toml` key with one caller and no
+  user asking for it"). 41 public constants in `src/config.py`; the four
+  with no external caller (`LOG_LEVELS`, `PARSER_START_METHODS`,
+  `BIB_FILE`, `CONFIG_PATH`) are all internal validation tuples or
+  intermediate values used within `config.py` itself. No speculative key.
+- **Flag arguments** ("don't use flag arguments"). Nine functions take a
+  boolean-defaulted parameter; every one is a CLI option plumbed to its
+  implementation (`--force`, `--json`, `--write`, `--remove-stale`), not
+  a switch between two behaviours bolted into one function.
+- **Security patterns.** No `shell=True`, no `eval`/`exec`/`pickle`, no
+  `yaml.load`, no bare `except:`, no mutable default argument, no
+  `assert` used for runtime validation, no SQL built by concatenation.
+  The one f-string in a SQL position is the `PRAGMA` documented under
+  [What is not debt](#what-is-not-debt).
+- **Resource lifecycle.** Every `sqlite3` connection in `src/` is closed
+  in a `finally`; no leak. The repetition of that pattern is
+  [3.8](#38-connect--try--finally-close-repeated-at-eight-sites), which
+  is a tidiness item, not a correctness one.
 
 ## Reviewing with OpenCodeReview
 
@@ -702,7 +895,15 @@ Ordered by what breaks if it is left, not by size:
    no behaviour change, and it removes the tree's only zero.
 5. **[Tier 1] Split `src/dossier.py`** along the four ranges above, and
    delist whatever comes back under C1 in the same PR.
-6. **[4.2] Count only entries with fields** in `bib_reader`'s
+6. **[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
+   lines are done — the disable list and the 44-finding residue are
+   already measured, so the remaining PR is small. `markdownlint`
+   ([5.3](#53-markdownlint-a-measured-baseline)) follows it, after
+   someone rules on `MD060`.
+7. **[3.7] Move the BibTeX author-name grammar into one module.** Five
+   duplicated lines, no boundary to relax, and the failure it prevents is
+   two disagreeing spellings of the same author.
+8. **[4.2] Count only entries with fields** in `bib_reader`'s
    dropped-entry warning, so it stops firing on every healthy Zotero
    export. Small, and it restores a guard that currently reads as noise.
 

@@ -272,22 +272,64 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
+### The linters, which are configured but not yet enforced
+
+`.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
+[DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
+[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
+from -- so a baseline is reproducible on any host:
+
+```bash
+pylint --rcfile=.pylintrc src scripts        # needs the project's deps importable
+markdownlint-cli2 "*.md" "docs/**/*.md"      # npm i -g markdownlint-cli2
+```
+
+**Neither is in CI, and neither is a check you have to pass yet.** Run
+them on code you touched and fix what is clearly yours; do not go fixing
+the backlog in an unrelated diff. Both baselines are measured in
+[docs/TECHNICAL-DEBT.md's Tier 5](docs/TECHNICAL-DEBT.md#tier-5-continuous-integration-and-the-linters)
+-- 44 real pylint findings after the deliberate categories are disabled,
+and 100 markdownlint findings once the cosmetic `MD060` is set aside --
+along with the disable list and the order the two should be adopted in.
+
+They are deliberately not wired into `ci.yml` yet, and the reason is a
+rule from this file rather than a preference: **a check that has not been
+made to pass must not ship.** Enabling pylint today would mean either a
+red build or suppressing `unspecified-encoding`, which is the top item on
+the debt register -- closing the detector without closing the defect. The
+order is: fix the encoding sites, fix the long lines, then enable, at a
+binary zero-messages bar rather than a `fail-under` score.
+
+`.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
+runner: it normalises line endings so CI's Windows leg reads
+byte-identical files to the Linux leg, which matters because four tests
+here scan this repository's own source.
+
 ## Reviewing before you push: the OpenCodeReview plugin
+
+**This is a step in the cycle, not an optional extra.** Step 3 of
+[Shipping a code change](#shipping-a-code-change-the-full-cycle) is to run
+it on the branch and act on what it finds, before the PR is opened -- the
+same standing as the local check suite above it. It is the one review that
+happens while the change is still cheap to alter, which is the whole
+reason it goes before the PR rather than after.
 
 [OpenCodeReview](https://github.com/alibaba/open-code-review) is a Claude
 Code **plugin**, installed per-host from the `alibaba/open-code-review`
 marketplace and enabled in the user's own `settings.json`. It is not a
-dependency of this repository, is not in `pyproject.toml`, and is not
-part of CI. If it is available, run it on the branch before opening the
-PR. If it is not, skip it and say so rather than installing it mid-task.
+dependency of this repository, is not in `pyproject.toml`, and is not part
+of CI -- so it is the developing agent that has to invoke it. Nothing else
+will. If the plugin is not available on this host, skip it and **say so in
+the PR's test plan**, rather than installing it mid-task or letting its
+absence pass unmentioned.
 
-It provides **two skills, and the difference between them decides which
-one you can use**:
+It provides two skills, both of them plugin skills; what differs is who
+does the thinking.
 
-| Skill | Who does the reviewing | Needs an LLM endpoint |
+| Skill | Who reviews | Needs an LLM endpoint |
 |---|---|---|
-| `/open-code-review:delegate-review` | **You do.** The tool supplies file selection and rule resolution only | **No** |
-| `/open-code-review:review` | The `ocr` CLI calls its own model | **Yes** |
+| `/open-code-review:delegate-review` | **You do.** The skill has OCR select the files and resolve the rules, then hands you each diff to review yourself | **No** |
+| `/open-code-review:review` | **A separate model call.** The skill drives `ocr review`, which sends each file to a configured endpoint and returns comments | **Yes** |
 
 **Prefer `delegate-review` here, and not only as a fallback.** It is a
 first-class mode -- "LLM-free on the OCR side", in the plugin's own words
@@ -494,21 +536,26 @@ succeeded -- not merely started:
    `pyproject.toml` as part of the same branch -- `release.yml` verifies
    the pushed tag against `pyproject.toml`'s version on `main`, so the
    bump has to land *before* the tag exists, i.e. in this PR, not after.
-3. Open a PR against `main` (see "Issues and pull requests" above).
-4. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
+3. Run the [OpenCodeReview plugin](#reviewing-before-you-push-the-opencodereview-plugin)
+   over the branch and act on what it finds. Nothing invokes it for you --
+   it is not in CI and not a dependency -- so if this step is skipped it
+   simply does not happen. Record in the PR's test plan which skill ran,
+   or that the plugin was unavailable.
+4. Open a PR against `main` (see "Issues and pull requests" above).
+5. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
    it's green -- if it fails, fix the actual cause (see "Before claiming a
    task complete") and push again; don't merge past a red check.
-5. Request review from Copilot, resolve every issue it identifies, and
+6. Request review from Copilot, resolve every issue it identifies, and
    mark each as resolved; consider all previous Copilot comments made in
    this PR while resolving the issues. Make a push after all issues are
    resolved, and then request re-review from Copilot. Iterate until all
    issues are resolved. Use judgement on a genuinely trivial finding
    rather than treating every comment as mandatory -- but "trivial" means
    actually inconsequential (a wording nit), not "inconvenient to fix."
-6. Squash-merge the PR.
-7. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
+7. Squash-merge the PR.
+8. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
    push the tag.
-8. Confirm `.github/workflows/release.yml` completed and the resulting
+9. Confirm `.github/workflows/release.yml` completed and the resulting
    GitHub Release has its `chitragupta-<version>.zip` asset
    attached -- this is the actual deliverable, not the tag or the merge
    by itself.

@@ -1,0 +1,14 @@
+default: true
+MD033: false
+MD013:
+  code_blocks: false
+  tables: false
+MD046:
+  style: "fenced"
+overrides:
+  files:
+    - ".github/ISSUE_TEMPLATE/bug_report.md"
+    - ".github/ISSUE_TEMPLATE/feature_request.md"
+    - ".github/PULL_REQUEST_TEMPLATE/pull_request_template.md"
+  rules:
+    MD041: false
