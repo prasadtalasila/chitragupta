@@ -210,7 +210,7 @@ reasoned about, because the intuitive answer is wrong:
 So the sites that matter are the **writes**, and the read sites matter
 only where the text is used as text rather than scanned for ASCII:
 
-- **`src/references.py:430,451`** and **`src/render_output.py:148,171,172`**
+- **`src/references.py:443,464`** and **`src/render_output.py:148,171,172`**
   -- write the rendered bibliography and the sanitised markdown/bib
   handed to pandoc. A Cyrillic or CJK author name is ordinary in a real
   reference export, and on a cp1252 host it crashes the render.
@@ -347,7 +347,7 @@ failure mode is Windows-specific. Attributing the gap -- via
 
 ### 3.7 The BibTeX author-name grammar exists twice
 
-`src/bib_reader.py:79-84` (`_parse_authors`) and `src/references.py:116-121`
+`src/bib_reader.py:79-84` (`_parse_authors`) and `src/references.py:129-134`
 (`_format_name`) carry the same five lines, character for character:
 
 ```python
