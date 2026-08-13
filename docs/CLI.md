@@ -691,18 +691,27 @@ naming the remedy:
   against one would report every verbatim finding as new.
 - one written under `--limit`. Truncation happens after sorting, so
   "absent" cannot be distinguished from "cut".
-- one predating the `id` field, or otherwise not shaped like a findings
-  list. The likeliest of the five: a payload filed by an earlier version
-  sits at exactly the path a caller is told to look at.
+- one missing a field the comparison prints, or otherwise not shaped like
+  a findings list. The likeliest of the five: a payload filed by an
+  earlier version sits at exactly the path a caller is told to look at.
+  The check names the fields it needs rather than probing for `id` alone,
+  because `resolved` findings are printed straight out of the baseline
+  and never rescanned -- so a payload can carry an `id` and still be
+  missing something the output line reads, which is exactly what one
+  written between `id` and `end_page` landing does.
 - one from a **different release series** (`major.minor`). What counts as
-  one finding changes between releases -- a scan that learns to merge two
-  runs into one gives wording nobody touched a different `id` -- so the
-  comparison would report repairs that never happened. A *patch*
-  difference is accepted silently, because
+  one finding changes between releases -- #131 made a run that used to
+  report as two merge into one, giving wording nobody touched a different
+  `id` -- so the comparison would report repairs that never happened. A
+  *patch* difference is accepted silently, because
   [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s versioning rules define
   a patch release as changing nothing about what the pipeline does, so a
   finding-shape change cannot land in one.
 - one that is unreadable or not JSON.
+
+The last two overlap and neither covers the other: a payload can be the
+right shape and mean something different, or claim this series and still
+be missing a field.
 
 Refusing rather than warning costs nothing here: `recheck` re-scans
 anyway, so if it can run at all then `scan --write` can too, and against

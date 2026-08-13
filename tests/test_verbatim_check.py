@@ -1832,6 +1832,31 @@ class TestRecheck:
         assert result["objective_before"] == 0
         assert len(result["new"]) == 2
 
+    def test_a_baseline_missing_a_field_recheck_prints_is_refused(
+        self, ledger_con, tmp_path
+    ):
+        """`resolved` findings are printed straight out of the baseline,
+        never rescanned, so every field the output line reads has to be
+        there. `end_page` is the live case: a payload written between
+        `id` landing and #131's page range would claim the same release
+        series, pass the version check, and then crash the formatter."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        for finding in payload["findings"]:
+            del finding["end_page"]
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "end_page" in str(exc.value)
+
+    def test_every_field_recheck_prints_is_one_scan_actually_writes(self):
+        """The two lists are checked against each other rather than kept
+        in step by hand: a field `recheck` requires but `scan` never
+        writes would refuse every baseline ever taken."""
+        assert set(vc._BASELINE_FIELDS) <= set(vc._PAYLOAD_FIELDS) | {"severity"}
+
     def test_a_findings_list_of_the_wrong_shape_is_refused_not_crashed_on(
         self, ledger_con, tmp_path
     ):

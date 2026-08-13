@@ -1026,6 +1026,20 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
 # ---------------------------------------------------------------------
 
 
+# What `recheck` reads off a *baseline's* findings. It prints them in
+# `resolved` -- the findings that are gone, so it never rescanned them and
+# has only the file to go on. Named rather than stood in for by `id`,
+# because the two failures differ: a payload can carry an `id` and still
+# be missing something the output line needs. `end_page` is the live case
+# -- a payload written between `id` landing and #131's page range claims
+# the same release series, passes the version check below, and then
+# crashes `_page_range`. Checked against `_PAYLOAD_FIELDS` in the tests,
+# so a field required here but never written cannot slip in.
+_BASELINE_FIELDS = (
+    "id", "citekey", "page", "end_page", "span_words", "severity", "line",
+)
+
+
 def load_baseline(path):
     """A `scan` payload read back off disk, refused if it cannot serve as
     a comparison basis.
@@ -1040,19 +1054,26 @@ def load_baseline(path):
       sorting, so a finding absent from a capped baseline may simply have
       been cut -- "new" then means "new or merely unreported", which is
       not something a caller can act on.
-    - a payload written before `id` and the locators existed. One of
-      those is sitting at the canonical report path for every draft
-      scanned by an earlier version, which is exactly where a caller is
-      told to look, so this is the likeliest bad baseline of the five and
-      the one that most deserves a remedy rather than a `KeyError`. An
-      empty findings list is not this case: a draft repaired to clean is
-      a legitimate baseline, and has no finding to carry an `id`.
+    - a payload missing any of `_BASELINE_FIELDS`, which is what an older
+      `scan` wrote. One of those sits at the canonical report path for
+      every draft an earlier version scanned, which is exactly where a
+      caller is told to look, so this is the likeliest bad baseline of
+      the five and the one that most deserves a remedy rather than a
+      `KeyError`. An empty findings list is not this case: a draft
+      repaired to clean is a legitimate baseline, and has no finding to
+      be missing anything.
     - a payload from a different release series (`_series`, below). What
       counts as one finding can change between series -- #131 made a run
       that used to report as two merge into one, which changes that
       finding's `id` (`finding_id`'s `page` argument) even though nothing
       in the draft or the source moved -- so a cross-series comparison
       could report a repair that never happened.
+
+    The last two overlap but neither covers the other: a payload can be
+    the right shape and mean something different (same series check), or
+    claim this series and still be missing a field (the shape check --
+    which is what a build taken between `id` landing and #131's
+    `end_page` produces).
     - unreadable or not JSON at all.
     """
     try:
@@ -1078,15 +1099,21 @@ def load_baseline(path):
             "only the longest findings and cannot say what was absent. "
             "Re-scan without --limit to take a baseline."
         )
-    missing = [key for key in ("min_run", "gap") if key not in payload]
     findings = payload["findings"]
-    if missing or not isinstance(findings, list) \
-            or any(not isinstance(f, dict) or "id" not in f for f in findings):
+    missing = [key for key in ("min_run", "gap") if key not in payload]
+    if not isinstance(findings, list) \
+            or any(not isinstance(f, dict) for f in findings):
+        missing.append("findings (not a list of findings)")
+    else:
+        missing += sorted({
+            field for f in findings for field in _BASELINE_FIELDS if field not in f
+        })
+    if missing:
         raise ValueError(
-            f"{path} predates this command: it is a verbatim scan payload, but "
-            "one written before findings carried an `id` and a reporting floor. "
-            "Re-scan the draft with `verbatim scan <draft> --write` to replace "
-            "it, then compare against that."
+            f"{path} is missing {', '.join(missing)}, so it predates this "
+            "command: it is a verbatim scan payload, but an older one than "
+            "`recheck` can read. Re-scan the draft with `verbatim scan "
+            "<draft> --write` to replace it, then compare against that."
         )
     recorded, running = payload.get("version"), review.version()
     if _series(recorded) and _series(recorded) != _series(running):
