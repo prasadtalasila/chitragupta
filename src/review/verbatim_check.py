@@ -1142,11 +1142,15 @@ def _series(version):
     would force a needless re-scan after every patch; checking nothing
     would let a real contract change through silently.
 
-    `None` for a missing version and for `review.version()`'s `"unknown"`
-    fallback, which means pyproject could not be read: turning one
-    unreadable file into a second, unrelated refusal helps nobody.
+    `None` for a missing version, a non-string one (a hand-edited or
+    corrupted baseline JSON can put anything under that key, and a
+    malformed `version` is not this function's refusal to make -- the
+    shape check above already covers a baseline that isn't trustworthy),
+    and for `review.version()`'s `"unknown"` fallback, which means
+    pyproject could not be read: turning one unreadable file into a
+    second, unrelated refusal helps nobody.
     """
-    if not version or version == "unknown":
+    if not isinstance(version, str) or version == "unknown":
         return None
     return ".".join(version.split(".")[:2])
 

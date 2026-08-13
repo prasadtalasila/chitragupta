@@ -1966,6 +1966,21 @@ class TestRecheck:
 
         assert result["baseline_version"] == "unknown"
 
+    def test_a_non_string_version_is_not_treated_as_a_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """A hand-edited or corrupted baseline can put anything under
+        `version` -- `_series` must not crash trying to `.split(".")` a
+        non-string, and a malformed `version` is not this check's refusal
+        to make (the shape check already covers an untrustworthy
+        baseline)."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._reversioned(draft, tmp_path, 5)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["baseline_version"] == 5
+
     def test_it_publishes_findings_in_the_same_shape_scan_does(
         self, ledger_con, tmp_path, capsys
     ):
