@@ -1,3 +1,37 @@
+# pylint configuration, adopted from DTaaS (INTO-CPS-Association/DTaaS),
+# the same source docs/CODE-STANDARDS.md takes this project's code
+# standards from. Kept byte-identical to upstream below this header so
+# the deviation is visible in a diff.
+#
+# NOT ENFORCED YET. No CI job runs this -- see DEVELOPER-AGENTS.md's
+# "The linters, which are configured but not yet enforced", and
+# docs/TECHNICAL-DEBT.md's 5.2 for the measured baseline (9.50/10, 44
+# real findings once the deliberate categories are disabled) and the
+# order of adoption.
+#
+# TWO SETTINGS BELOW ARE NOT THIS PROJECT'S SIZE LIMITS, and must not be
+# read as them:
+#
+#   max-statements=50      ([DESIGN], further down)
+#   max-module-lines=1000  ([FORMAT], further down)
+#
+# This repository's limits are **25 statements per function** and **250
+# code lines per module**, enforced as a ratchet by
+# tests/test_code_standards_scan.py against a frozen register.
+# docs/CODE-STANDARDS.md owns the reasoning, including why the count is
+# statements rather than physical lines. Both pylint numbers are looser,
+# so `too-many-statements` and `too-many-lines` can only ever fire on
+# code the ratchet has already failed -- which is why both are in the
+# disable list of the intended configuration rather than being retuned
+# here. Retuning them to 25/250 would create a second detector for one
+# rule, and two debt lists for one debt, which
+# docs/CODE-STANDARDS.md's build order item 2 names as the thing to
+# avoid.
+#
+# `fail-under=10.0` below is likewise not the intended bar. A score is a
+# continuous metric, and docs/AUTO-IMPROVEMENT.md's R3 rules out driving
+# one; adoption is at zero messages or not at all.
+
 [MASTER]
 
 # A comma-separated list of package or module names from where C extensions may

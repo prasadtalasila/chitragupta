@@ -31,9 +31,15 @@ on:
 # instead of letting both consume CI minutes -- github.ref is stable
 # per branch/PR, so this only ever cancels an earlier run of the same
 # ref, never a different branch's.
+#
+# Never cancel on `main`, though: two PRs merged in close succession both
+# push `refs/heads/main` and so share a group, and the second would kill
+# the first. A cancelled run uploads nothing, which would leave Codecov
+# without the base report the `push` trigger above exists to produce --
+# the same symptom, arrived at a different way.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
