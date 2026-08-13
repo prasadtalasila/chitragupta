@@ -210,8 +210,9 @@ jobs:
           export VIRTUAL_ENV="$PWD/.venv-full"
           poetry check
 
-  # SonarQube Cloud's static analysis, plus the quality-gate summary it
-  # posts as a comment on the PR.
+  # SonarQube Cloud's static analysis. The quality-gate summary that is
+  # meant to accompany it on the PR page is not arriving yet -- see the
+  # scan step's own comment below before concluding this job is broken.
   #
   # Its own job rather than a step inside the `test` matrix above, and
   # ubuntu-only, because exactly one analysis per commit is the thing that
@@ -246,9 +247,21 @@ jobs:
       # The PR comment is posted server-side by the SonarQube Cloud GitHub
       # App, from the analysis this step submits -- not by this workflow.
       # That's why the job needs nothing beyond the read-only `permissions:`
-      # at the top of the file: no `pull-requests: write` would help, and a
-      # missing comment is an App-installation or SONAR_TOKEN problem rather
-      # than a permissions one. The scanner reads the PR number, base branch
+      # at the top of the file: no `pull-requests: write` would help.
+      #
+      # As of the PR that added this job, the comment is *not* appearing,
+      # and the cause is on SonarCloud's side rather than here. What was
+      # verified on that PR: the secret exists and the step is green; the
+      # scanner logs `ANALYSIS SUCCESSFUL ... &pullRequest=<n>`; and
+      # SonarCloud's own API lists the pull request, its head SHA and its
+      # gate result. What is missing is only the decoration -- no summary
+      # comment and no `sonarqubecloud` check run -- while Codecov's app
+      # comments on the same page without trouble. So look at the
+      # SonarQubeCloud GitHub App's access to this repository and at the
+      # project's pull-request settings; a green scan step here means this
+      # workflow has already done its part.
+      #
+      # The scanner reads the PR number, base branch
       # and head SHA out of the runner's own GITHUB_* environment, so none
       # of that is passed here; the project key and organisation come from
       # sonar-project.properties at the repo root.
