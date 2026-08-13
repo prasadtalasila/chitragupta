@@ -1,7 +1,8 @@
 # The auto-improvement loop: what would be built
 
 Status: **specification of mostly unbuilt work.** Written 2026-08-11;
-step 1 partly built in 5.4.0.
+step 1 partly built in 5.4.0, step 3 in 5.5.0, and step 5 built narrow
+(verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
 
 `python -m src.review agenda` is not a command and no skill consumes
 anything below. Of the review aids, `verbatim scan` emits JSON as of
@@ -111,7 +112,7 @@ bucket within a class, then position in the draft.
 | Class | Source | Kind | Unattended? |
 |---|---|---|---|
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
-| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human |
+| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
 | `prose` | `style_check` (#107), `steering.md` | no evidence delta | only the mechanically re-checkable subset -- [HOUSE-STYLE.md](HOUSE-STYLE.md) |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `uncited-source` | coverage | judgement | no -- surfaced |
@@ -285,7 +286,21 @@ sequence.
 4. **`agenda`, the fourth aid.** New. Useful on its own the day it lands,
    whether or not step 5 follows.
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect
-   classes rather than verbatim runs alone.
+   classes rather than verbatim runs alone. *Built narrow first, in
+   5.7.0: `overlap-reviser` is #129 as filed, over the `verbatim-run`
+   class alone, consuming `verbatim scan --json` directly rather than an
+   agenda. It did not wait for steps 2 and 4 because it did not need to
+   -- one aid's JSON already existed, and a loop that repairs one class
+   is the report step 7 has to be tuned against. Widening it is now a
+   matter of giving it the agenda as an input and the other classes as
+   work; the write-set, the two-attempt limit, the binary re-check and
+   the person-only trigger are already what R1-R11 ask for.*
+
+   Two pieces of that step landed with it, both in the review layer
+   rather than the skill: the scan payload's `id` (R2's stable identity,
+   for the `verbatim-run` class) and `verbatim recheck`, which is R3's
+   binary check and R4's did-anything-else-break count made
+   deterministic. `agenda` should reuse both rather than restate them.
 6. **#103 and #107** -- the copy-edit branch and `style_check.py`, giving
    the `prose` class a producer and a consumer.
 7. **#130** -- the gating decision, last, tuned against real reports from

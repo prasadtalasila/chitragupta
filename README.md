@@ -67,12 +67,14 @@ discards the unsupported claim and writes again. You only get involved in
 the rarer case where the paper genuinely isn't in the corpus yet -- the
 dotted arrow back to phase 1.
 
-Seven skills sit behind phase 3, all obeying the same grounding rules:
+Eight skills sit behind phase 3, all obeying the same grounding rules:
 five that write a new draft -- survey, thesis chapter, undergraduate
 textbook chapter, tutorial, and a heavier multi-perspective deep-research
-mode -- and two that change one that already exists, because a draft is
+mode -- and three that change one that already exists, because a draft is
 never revised by re-running the skill that produced it
-([docs/GENRE.md](docs/GENRE.md)). Two more layers sit outside these
+([docs/GENRE.md](docs/GENRE.md)). The third of those, `overlap-reviser`,
+repairs the verbatim overlap a scan found and re-verifies each repair
+before keeping it. Two more layers sit outside these
 phases. **Enrichment** deepens the same corpus with layout-aware parsing,
 semantic search and topic clustering, and nothing above needs it.
 **Review** is what you run afterwards on a finished draft -- provenance,

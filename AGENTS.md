@@ -103,8 +103,12 @@ enrichment layer is optional and nothing above it needs it.
   a draft whose cited papers a `sync` removed. If you do want the whole
   corpus re-searched, ask for it and you get `corpus-reviser`, which is
   the same edit discipline over a full retrieval pass -- it still keeps
-  the dossier. Never re-run a genre skill to change an existing draft --
-  see docs/DRAFT-ITERATION.md.
+  the dossier. And if what you want repaired is the verbatim overlap a
+  scan reported, that is `overlap-reviser`: it works the findings one at
+  a time, reasks you before deciding paraphrase-or-quote on a long run,
+  and keeps no repair that `python -m src.draft gate` and `python -m
+  src.review verbatim recheck` do not both accept. Never re-run a genre
+  skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
 - **Layer 3, the enrichment layer -- optional** (`python -m src.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
@@ -136,7 +140,11 @@ enrichment layer is optional and nothing above it needs it.
   is real, the scan reports what wording came along with them. It is the
   exact detection tier, and the paraphrase tiers beside it are unbuilt,
   so a clean run is not a clean bill of health --
-  [docs/PLAGIARISM.md](docs/PLAGIARISM.md).
+  [docs/PLAGIARISM.md](docs/PLAGIARISM.md). Its `recheck` mode compares a
+  re-scan against a payload `scan --write` filed earlier, so "is this
+  finding gone, and did fixing it break anything else" is arithmetic
+  rather than two reports read side by side. Advisory like the rest: it
+  exits 0 on a draft that got worse.
 
 ## Retrieval
 

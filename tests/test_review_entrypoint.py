@@ -163,3 +163,22 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         result = _run("-m", "src.review", "verbatim", "scan",
                       "content/drafts/x.md", "--gap", "-1")
         assert result.returncode == 2
+
+    def test_recheck_without_a_baseline_exits_two(self):
+        """`--baseline` is required: there is nothing to compare against
+        without one, and defaulting to the report's usual path would
+        silently compare against whatever happened to be lying there."""
+        result = _run("-m", "src.review", "verbatim", "recheck",
+                      "content/drafts/x.md")
+        assert result.returncode == 2
+        assert "--baseline" in result.stderr
+
+    def test_recheck_on_a_draft_outside_content_exits_one(self):
+        result = _run("-m", "src.review", "verbatim", "recheck",
+                      "README.md", "--baseline", "whatever.json")
+        assert result.returncode == 1
+
+    def test_recheck_is_listed_as_a_verbatim_mode(self):
+        result = _run("-m", "src.review", "verbatim", "--help")
+        assert result.returncode == 0
+        assert "recheck" in result.stdout

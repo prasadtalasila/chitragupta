@@ -549,12 +549,13 @@ python -m src.review provenance content/drafts/survey.md
 
 ### `python -m src.review verbatim`
 
-Layer 4, the review layer, with three subcommands: verbatim overlap
+Layer 4, the review layer, with four subcommands: verbatim overlap
 between a draft and one cited source, a whole-draft x whole-corpus scan,
-and page location for a phrase. Stdlib-only -- but `locate` shells out to
-the `pdftotext` binary, so that subcommand needs poppler-utils on `PATH`.
-`overlap` and `scan` read already-parsed text via `src/overlap_index.py`'s
-cache instead. Run with no arguments to print its usage.
+a re-scan compared against a recorded one, and page location for a
+phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary,
+so that subcommand needs poppler-utils on `PATH`. `overlap`, `scan` and
+`recheck` read already-parsed text via `src/overlap_index.py`'s cache
+instead. Run with no arguments to print its usage.
 
 [PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
 section: what `overlap`/`scan` catch and don't (verbatim only --
@@ -566,13 +567,15 @@ technique and its literature sources, and a measured
 |---|---|---|
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
 | `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--json] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--json` prints the findings as data instead of as text (see below). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
+| `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
 **Exit codes**, shared with the other two review aids: `0` on every
-successful invocation, findings or not -- advisory, never a gate. `1` for
-a draft this layer will not read (missing, or resolving outside
-`content/`). `2` for a malformed invocation, the usual CLI-usage error,
-not a verdict.
+successful invocation, findings or not -- advisory, never a gate.
+`recheck` included: a draft that got worse still exits 0. `1` for a draft
+this layer will not read (missing, or resolving outside `content/`). `2`
+for a malformed invocation, the usual CLI-usage error, not a verdict --
+which is also how `recheck` reports a baseline it cannot compare against.
 
 ```bash
 python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
@@ -581,6 +584,7 @@ python -m src.review verbatim scan content/drafts/survey.md
 # python -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
 # python -m src.review verbatim scan content/drafts/survey.md --write --formats md
 # python -m src.review verbatim scan content/drafts/survey.md --json > findings.json
+# python -m src.review verbatim recheck content/drafts/survey.md --baseline content/review/survey.verbatim.json
 # python -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
 
@@ -592,9 +596,10 @@ instead: the envelope every review aid's JSON carries (a notice that this
 is not a verdict, the aid, the draft, the exact command, the version),
 the three flags that set the reporting floor (`min_run`, `gap`, `limit`),
 how many findings the allowlist suppressed (`suppressed`, see below), and
-one object per finding with `citekey`, `page`, `end_page`, `tier`,
-`span_words`, `matched_words`, `start`, `fragment`, `context`,
-`cites_source`, `quoted`, and `severity` -- the same `long`/`short`/`quoted` bucket the
+one object per finding with `id`, `citekey`, `page`, `end_page`, `tier`,
+`span_words`, `matched_words`, `start`, `line`, `char_start`, `char_end`,
+`draft_text`, `fragment`, `context`, `cites_source`, `quoted`, and
+`severity` -- the same `long`/`short`/`quoted` bucket the
 written report groups by (see below), so a consumer of the payload reads
 the same severity a human reviewer sees. It is an additional
 serialisation of what `scan` already computed, never a second
@@ -618,11 +623,41 @@ page.
 
 `start`, `fragment` and `context` describe the **normalised word stream**
 -- the draft masked (code and the References section blanked), citation
-markers stripped, lowercased, punctuation dropped -- not the draft file
+markers blanked, lowercased, punctuation dropped -- not the draft file
 as written. `start` is a word offset into that stream, not a character
 offset and not a line number, and `fragment` is those words
-space-joined. So a finding *locates* a passage for a reader; a consumer
-that means to edit the draft has to find the real span itself.
+space-joined. Those three locate a passage for a *reader*.
+
+`line`, `char_start`, `char_end` and `draft_text` locate it for an
+*editor*. They index the draft as written, so
+`draft[char_start:char_end] == draft_text` exactly -- which is what makes
+`draft_text` usable as an `Edit` `old_string` without searching the file
+for the passage and risking the wrong match. `line` is 1-based.
+
+The span covers **every original character between the run's first and
+last matched word**, those two words included: original casing, interior
+punctuation, line breaks, and any citation marker sitting inside the run.
+It ends at the last word rather than at the end of the sentence, so a
+trailing period or closing quote falls just outside `char_end` -- which
+is what you want, since a rewrite substituted for `draft_text` should
+leave the sentence's own punctuation alone. Leading punctuation is
+outside the span for the same reason.
+
+`id` names the finding: a 12-hex-character digest of `(citekey, page,
+fragment)`, and deliberately not of its position. An identity built on
+`start` would rename every remaining finding the moment the first one was
+repaired, so nothing could decide whether a given finding had survived a
+revision -- which is precisely what `recheck` below has to decide. Two
+identical runs from the same source page therefore share an `id`, and
+`recheck` understates progress in that case rather than overstating it.
+For a run spanning a page break (`end_page > page`, #131), `id` is keyed
+on `page` -- the lower of the two, where the run starts -- not
+`end_page`; if a later scan merges a run differently (a wider gap-tolerant
+run absorbing a previously-separate one, say), the merged run's `page`
+can change, and with it the `id`. That is the correct read -- a run whose
+extent changed really is a different finding to `recheck` -- but it means
+`id` stability holds across re-runs at the same `--gap`/`--min-run`, not
+across every possible one.
 
 `--write` files the payload as `content/review/<topic>/<stem>.verbatim.json`,
 beside the Markdown report, whether or not `--json` was also given -- it
@@ -638,6 +673,75 @@ Only `verbatim` emits one so far; `provenance` and `coverage` follow in
 their own issues, which is why
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s planned `agenda` aid treats
 each aid's JSON as optional.
+
+**`recheck`, and what it is for.** `scan` says what a draft borrows.
+`recheck` says what changed since a particular scan, which is the
+question anyone repairing those findings actually has -- *did that
+rewrite fix the finding, and did it break anything else?* Deciding that
+by reading two reports side by side is a judgement, and it is one that
+should not be a judgement, so this makes it arithmetic.
+
+Given a baseline payload it re-scans and reports each finding as
+`resolved` (in the baseline, gone now), `persisting` or `new`, together
+with `objective_before`, `objective_after` and `objective_delta`.
+"Objective" means the `long` and `short` buckets: a run that is both
+quoted and cited is excluded, because converting a lift into a properly
+attributed quotation is one of the two repairs available and it must not
+score as no improvement. A rewrite that resolves its own finding by
+lifting from a *different* source shows up as a `new` finding and a delta
+that did not fall, which is the case the count exists to catch.
+
+The floor comes from the baseline, not from a flag. Two scans are only
+comparable at the same `--min-run`/`--gap`, and the baseline's already
+happened; a `--min-run` here would let a strict run be compared against a
+lax one and the difference read as progress.
+
+It refuses, with exit 2, a baseline it cannot compare against, always
+naming the remedy:
+
+- another aid's payload. The review layer's aids share an envelope, so a
+  coverage report is also JSON with a `findings` key, and comparing
+  against one would report every verbatim finding as new.
+- one written under `--limit`. Truncation happens after sorting, so
+  "absent" cannot be distinguished from "cut".
+- one missing a field the comparison prints, or otherwise not shaped like
+  a findings list. The likeliest of the five: a payload filed by an
+  earlier version sits at exactly the path a caller is told to look at.
+  The check names the fields it needs rather than probing for `id` alone,
+  because `resolved` findings are printed straight out of the baseline
+  and never rescanned -- so a payload can carry an `id` and still be
+  missing something the output line reads, which is exactly what one
+  written between `id` and `end_page` landing does.
+- one from a **different release series** (`major.minor`). What counts as
+  one finding changes between releases -- #131 made a run that used to
+  report as two merge into one, giving wording nobody touched a different
+  `id` -- so the comparison would report repairs that never happened. A
+  *patch* difference is accepted silently, because
+  [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s versioning rules define
+  a patch release as changing nothing about what the pipeline does, so a
+  finding-shape change cannot land in one.
+- one that is unreadable or not JSON.
+
+The last two overlap and neither covers the other: a payload can be the
+right shape and mean something different, or claim this series and still
+be missing a field.
+
+Refusing rather than warning costs nothing here: `recheck` re-scans
+anyway, so if it can run at all then `scan --write` can too, and against
+a warm index that is a sub-second re-take. The payload still carries
+`baseline_version` as provenance for the comparison it did make.
+
+There is no `--write`. A scan report is kept beside the draft because it
+is read again months later; a comparison against one particular baseline
+is consumed by whoever asked for it and stale the next time the draft is
+touched.
+
+The `overlap-reviser` skill
+([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)) is the intended
+caller: it takes a baseline, repairs findings one at a time, and keeps a
+repair only when `recheck` and `python -m src.draft gate` both come back
+clean. Nothing obliges you to use it -- `recheck` is as free and as
+advisory as every other command here.
 
 **What `scan` does not see, and why that matters more than it sounds.**
 `scan` is the **exact tier** of three planned detection tiers, and the

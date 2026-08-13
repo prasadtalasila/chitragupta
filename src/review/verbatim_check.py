@@ -13,7 +13,7 @@ __main__ block of its own, so that invocation would import it and exit 0
 without doing anything. See docs/ARCHITECTURE.md on why every layer's
 command surface stays one level deep.
 
-Three modes:
+Four modes:
     python -m src.review verbatim overlap <draft.md> <citekey> [--n 8]
         report the longest verbatim word-n-gram runs shared between the
         draft's sentences citing <citekey> and that source's parsed text.
@@ -30,6 +30,17 @@ Three modes:
         instead of as text, and --write files that too, as the report's
         `.json` sibling -- see `scan_payload`.
 
+    python -m src.review verbatim recheck <draft.md> --baseline <scan.json>
+                                          [--json]
+        re-scan the draft at the baseline's own floor and report which of
+        its findings are gone, which remain, and which the edits
+        introduced. The deterministic half of #129's remediation loop:
+        "did this rewrite fix the finding without breaking anything else"
+        is an acceptance test, and one a model should not be deciding by
+        reading two reports side by side. Still not a gate -- it exits 0
+        whatever it finds, and `python -m src.draft gate` remains the only
+        thing in this pipeline that blocks.
+
     python -m src.review verbatim locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
         appears on, for fact-checking page numbers.
@@ -41,6 +52,8 @@ error, not a verdict.
 """
 
 import argparse
+import bisect
+import hashlib
 import json
 import re
 import shlex
@@ -265,12 +278,87 @@ class _DraftWord:
     text: str
     paragraph: int
     quoted: bool
+    # Where this word sits in the *original* text handed to
+    # `_tokenize_draft` -- not in the masked, marker-blanked, lowercased
+    # stream `text` came out of. `original[char:char_end]` is the word as
+    # written, casing and all, which is what a remediation loop needs to
+    # hand `Edit` (#129). See `_lower_offsets` for why the two can differ
+    # by more than case.
+    char: int
+    char_end: int
+
+
+_PARA_SPLIT_RE = re.compile(r"\n\s*\n")
+_CITE_MARKER_RE = re.compile(r"\[@[^\]]+\]")
+
+
+def _paragraphs(text):
+    """`(offset, paragraph)` for each paragraph of `text`, splitting where
+    `re.split(r"\\n\\s*\\n", text)` splits and keeping the offset that
+    split throws away.
+
+    The offset is the half of the answer a caller that means to *edit*
+    needs: without it a word's position is known only within its own
+    paragraph, and every paragraph after the first is off by however much
+    preceded it.
+    """
+    out = []
+    pos = 0
+    for m in _PARA_SPLIT_RE.finditer(text):
+        out.append((pos, text[pos:m.start()]))
+        pos = m.end()
+    out.append((pos, text[pos:]))
+    return out
+
+
+def _lower_offsets(text):
+    """`text.lower()`, plus -- when lowercasing moved anything -- the
+    index in `text` of every character of that result.
+
+    `str.lower()` is not length-preserving: `"İ"` lowercases to two code
+    points, so every offset after one is shifted. Everything else in this
+    masking chain preserves offsets deliberately
+    (`citation_gate._blank_code` says as much in its own comment), and
+    this is the one step that cannot, so it reports the shift instead of
+    hiding it.
+
+    The lowercasing itself has to stay. `src/overlap_index.py`
+    fingerprints the corpus with `WORD.findall(text.lower())`; matching
+    the draft case-insensitively instead would read `"İstanbul"` as one
+    word where the corpus reads two, and the two sides would stop
+    agreeing on what a word is -- which is the whole basis of a match.
+
+    `None` rather than a range-mapping list for the overwhelmingly common
+    case where lowercasing changed no lengths: it says "offsets are their
+    own indices" once, instead of every caller carrying a list it would
+    only ever index by identity.
+    """
+    lowered = text.lower()
+    if len(lowered) == len(text):
+        return lowered, None
+    parts = []
+    offsets = []
+    for i, ch in enumerate(text):
+        low = ch.lower()
+        parts.append(low)
+        offsets.extend([i] * len(low))
+    # Rebuilt character by character rather than reusing `lowered`, so the
+    # string actually searched is the one these offsets describe.
+    return "".join(parts), offsets
+
+
+def _original_index(offsets, i):
+    return i if offsets is None else offsets[i]
+
+
+def _blank_span(m):
+    return re.sub(r"[^\n]", " ", m.group(0))
 
 
 def _tokenize_draft(text):
-    """Every word of `text` (masked, citation markers stripped) as a flat
+    """Every word of `text` (masked, citation markers blanked) as a flat
     list across the whole draft, plus which citekeys each paragraph
-    cites.
+    cites. Each word carries where it sits in `text` itself.
 
     Flat rather than paragraph-scoped: an n-gram window can cross a
     paragraph break in the word stream this produces, unlike `overlap`'s
@@ -278,17 +366,31 @@ def _tokenize_draft(text):
     the (much more common) single-paragraph case matters more than the
     rare false-candidate an adjacent-paragraph seam could produce, and a
     real match still has to line up with actual corpus text to survive.
+
+    **Blanked, not stripped.** The citation marker used to be deleted,
+    which shifted every character after it and was one of the two reasons
+    a finding could not be located in the file it came from (the other
+    being the paragraph split; see `_paragraphs`). Blanking it with
+    spaces is `_blank_code`'s existing discipline, applied to the one
+    place in this module that still deleted. It also stops
+    `twins[@key]matter` from welding into a single token, which deleting
+    did.
     """
     masked = _mask_for_scan(text)
-    paragraphs = re.split(r"\n\s*\n", masked)
     words = []
     paragraph_citekeys = []
-    for p_idx, para in enumerate(paragraphs):
+    for p_idx, (para_start, para) in enumerate(_paragraphs(masked)):
         paragraph_citekeys.append({key for _, key in citation_gate.extract_citekeys(para)})
-        clean = re.sub(r"\[@[^\]]+\]", "", para)
+        clean = _CITE_MARKER_RE.sub(_blank_span, para)
         quote_spans = _quote_char_spans(clean)
-        for m in WORD.finditer(clean.lower()):
-            words.append(_DraftWord(m.group(0), p_idx, _char_in_spans(m.start(), quote_spans)))
+        lowered, offsets = _lower_offsets(clean)
+        for m in WORD.finditer(lowered):
+            start = _original_index(offsets, m.start())
+            end = _original_index(offsets, m.end() - 1) + 1
+            words.append(_DraftWord(
+                m.group(0), p_idx, _char_in_spans(start, quote_spans),
+                para_start + start, para_start + end,
+            ))
     return words, paragraph_citekeys
 
 
@@ -401,6 +503,51 @@ def _mask_allowlisted(span_word_strs, allowlist_tuples):
     return masked
 
 
+def _newline_offsets(text):
+    """Every newline's index in `text`, ascending -- one sweep, reused by
+    every finding.
+
+    `text.count("\\n", 0, char_start)` per finding is O(len(text)) each
+    time, so a long draft with many findings pays for the whole file once
+    per finding. `citation_gate.extract_citekeys` already computes its
+    line numbers in a single forward pass rather than per match, for
+    exactly this reason; this is that discipline applied here.
+    """
+    return [m.start() for m in re.finditer("\n", text)]
+
+
+def _line_at(newlines, pos):
+    """The 1-based line `pos` falls on, given `_newline_offsets`.
+
+    `bisect_left`, so a newline character counts as ending the line it
+    sits on rather than starting the next one -- the same convention
+    `str.count("\\n", 0, pos)` had.
+    """
+    return bisect.bisect_left(newlines, pos) + 1
+
+
+def finding_id(citekey, page, fragment):
+    """A finding's name, stable across runs and across edits elsewhere in
+    the draft. `page` is the run's start page (`scan_findings` passes
+    `min(run_pages)`, not `end_page`) -- a run that merges differently on
+    a later scan can land on a different start page and so get a
+    different id, which is correct: the finding really did change.
+
+    Deliberately position-free. `start` moves whenever anything above a
+    finding is edited, so an identity built on it would rename every
+    remaining finding the moment the first one was repaired, and nothing
+    could then decide whether a given finding had survived a revision --
+    which is the whole job (R2, docs/AUTO-IMPROVEMENT.md).
+
+    Two identical runs from the same source page therefore share an id.
+    `recheck` is written to understate progress in that case rather than
+    overstate it: with two copies in the baseline and one repaired, the
+    id is still present and the finding still reports as persisting.
+    """
+    digest = hashlib.sha256(f"{citekey}\x00{page}\x00{fragment}".encode())
+    return digest.hexdigest()[:12]
+
+
 def scan_findings(draft, min_run=None, gap=1, limit=None):
     """Slide `draft`'s whole normalized text across the corpus-wide index,
     grouping matches by `(citekey, diagonal)` and merging each group into
@@ -450,6 +597,7 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
     text = Path(draft).read_text(encoding="utf-8")
     words, paragraph_citekeys = _tokenize_draft(text)
     word_strs = [w.text for w in words]
+    newlines = _newline_offsets(text)
     n = index.n
     draft_hashes = overlap_index.gram_hashes(word_strs, n)
 
@@ -488,6 +636,8 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
                     continue
             matched_words = len({idx for p in run for idx in range(p, p + n)})
             run_words = words[start:end]
+            char_start, char_end = run_words[0].char, run_words[-1].char_end
+            fragment = " ".join(word_strs[start:end])
             # Paragraphs *plural*: _tokenize_draft's word stream is flat
             # (module note above), so a run can cross a paragraph break --
             # checking only the start word's paragraph would call a run
@@ -496,14 +646,26 @@ def scan_findings(draft, min_run=None, gap=1, limit=None):
             run_paragraphs = {w.paragraph for w in run_words}
             cites_source = any(citekey in paragraph_citekeys[p] for p in run_paragraphs)
             run_pages = [pos_pages[p] for p in run]
+            # Hoisted out of the dict rather than inlined as #131 wrote
+            # it: `finding_id` needs the same start page the payload
+            # reports, and computing `min(run_pages)` twice is how those
+            # two quietly stop agreeing.
+            page = min(run_pages)
             findings.append({
+                "id": finding_id(citekey, page, fragment),
                 "citekey": citekey,
-                "page": min(run_pages),
+                "page": page,
                 "end_page": max(run_pages),
                 "span_words": span_words,
                 "matched_words": matched_words,
                 "start": start,
-                "fragment": " ".join(word_strs[start:end]),
+                # 1-based, counted in the original text: the only one of
+                # these four a person reads directly.
+                "line": _line_at(newlines, char_start),
+                "char_start": char_start,
+                "char_end": char_end,
+                "draft_text": text[char_start:char_end],
+                "fragment": fragment,
                 "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
                 "cites_source": cites_source,
                 # `all`, not `any`: "sits inside quote delimiters" means
@@ -617,9 +779,27 @@ def format_scan(findings, min_run, suppressed=0):
 # become part of a published contract that #128's severity buckets and
 # #129's remediation loop consume.
 _PAYLOAD_FIELDS = (
-    "citekey", "page", "end_page", "tier", "span_words", "matched_words",
-    "start", "fragment", "context", "cites_source", "quoted",
+    "id", "citekey", "page", "end_page", "tier", "span_words",
+    "matched_words", "start", "line", "char_start", "char_end",
+    "draft_text", "fragment", "context", "cites_source", "quoted",
 )
+
+
+def published(finding):
+    """One of `scan_findings`' working dicts as the payload publishes it:
+    `_PAYLOAD_FIELDS` in order, plus the derived `severity`.
+
+    One function rather than the same comprehension in `scan_payload` and
+    `recheck_findings`, so "what a published finding looks like" has a
+    single definition -- `recheck` compares its own freshly-scanned
+    findings against a baseline written by `scan`, and the two disagreeing
+    about the shape is the one way that comparison could go quietly
+    wrong.
+    """
+    return {
+        **{field: finding[field] for field in _PAYLOAD_FIELDS},
+        "severity": _bucket(finding),
+    }
 
 
 def scan_command(draft, min_run, gap, limit, write, as_json):
@@ -663,12 +843,32 @@ def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
     threshold.
 
     `start` is a **word** offset into the draft's normalised word stream
-    (`_tokenize_draft`: masked, citation markers stripped, lowercased,
+    (`_tokenize_draft`: masked, citation markers blanked, lowercased,
     punctuation dropped), not a character offset and not a line number.
     Neither it nor `fragment`/`context` -- which are that same stream,
-    space-joined -- can be seeked to or matched in the draft file as
-    written. A consumer that means to *edit* the draft has to locate the
-    passage itself; this locates it for a reader.
+    space-joined -- can be located or matched in the draft file as
+    written. Those three locate a run for a *reader*.
+
+    `line`, `char_start`, `char_end` and `draft_text` locate it for an
+    *editor* (#129): they index the draft as written, so
+    `draft[char_start:char_end] == draft_text` exactly -- which is what
+    makes `draft_text` usable as an `Edit` `old_string`.
+
+    The span runs from the first matched word's first character to the
+    last matched word's last character, so it holds every original
+    character *between* them: casing, interior punctuation, line breaks,
+    and any citation marker sitting mid-run. It stops at the last word,
+    which is the boundary worth being exact about -- a trailing period or
+    closing quote sits just past `char_end` and is **not** included, so a
+    rewrite substituted for `draft_text` leaves that punctuation where
+    the sentence already had it. Leading punctuation is outside the span
+    for the same reason.
+
+    Nothing here decides *whether* to edit; the review layer still only
+    ever reports.
+
+    `id` names the finding across runs -- see `finding_id`, and `recheck`,
+    which is the reason it exists.
 
     `cites_source` and `quoted` are the two bits the printed form shows
     as `UNCITED SOURCE` and `quoted`. Booleans rather than those labels:
@@ -681,10 +881,7 @@ def scan_payload(draft, findings, min_run, gap, limit, suppressed, command):
         "gap": gap,
         "limit": limit,
         "suppressed": suppressed,
-        "findings": [
-            {**{field: f[field] for field in _PAYLOAD_FIELDS}, "severity": _bucket(f)}
-            for f in findings
-        ],
+        "findings": [published(f) for f in findings],
     })
     return payload
 
@@ -840,6 +1037,299 @@ def cmd_scan(draft, min_run=None, gap=1, limit=None, write=False,
         review.print_written(written, stream=sys.stderr if as_json else sys.stdout)
 
 
+# ---------------------------------------------------------------------
+# recheck: this scan against a recorded one. The half of #129's
+# remediation loop that has to be deterministic -- "is this finding gone,
+# and did repairing it break anything else" is the acceptance test a
+# constrained rewrite is held to, and a model deciding that by reading
+# two reports is exactly the judgement that should not be a judgement.
+# ---------------------------------------------------------------------
+
+
+# What `recheck` reads off a *baseline's* findings. It prints them in
+# `resolved` -- the findings that are gone, so it never rescanned them and
+# has only the file to go on. Named rather than stood in for by `id`,
+# because the two failures differ: a payload can carry an `id` and still
+# be missing something the output line needs. `end_page` is the live case
+# -- a payload written between `id` landing and #131's page range claims
+# the same release series, passes the version check below, and then
+# crashes `_page_range`. Checked against `_PAYLOAD_FIELDS` in the tests,
+# so a field required here but never written cannot slip in.
+_BASELINE_FIELDS = (
+    "id", "citekey", "page", "end_page", "span_words", "severity", "line",
+)
+
+
+def _baseline_gaps(payload):
+    """Everything `recheck` needs from `payload` and cannot find, named
+    for the refusal message -- empty when there is nothing missing.
+
+    Its own function rather than a block inside `load_baseline`: that one
+    is a sequence of five independent refusals, and this is the only one
+    that has to look inside every finding, so inlining it made the
+    longest and least readable step of the five also the hardest to see
+    the shape of.
+    """
+    gaps = []
+    for key in ("min_run", "gap"):
+        if key not in payload:
+            gaps.append(key)
+        elif not isinstance(payload[key], int) or isinstance(payload[key], bool):
+            # `recheck_findings` hands these straight to `scan_findings`
+            # uncoerced; a hand-edited `"min_run": "8"` would otherwise
+            # reach `_merge_runs`' `int <= str` comparison and raise
+            # TypeError, not the clean ValueError/exit-2 refusal every
+            # other malformed baseline gets. `bool` is a subclass of
+            # `int`, but `min_run`/`gap` are word counts -- True/False
+            # would silently become 1/0 instead of naming the problem.
+            gaps.append(f"{key} (not an int)")
+
+    findings = payload["findings"]
+    if (not isinstance(findings, list)
+            or any(not isinstance(f, dict) for f in findings)):
+        gaps.append("findings (not a list of findings)")
+    else:
+        gaps += sorted({
+            field for f in findings for field in _BASELINE_FIELDS if field not in f
+        })
+    return gaps
+
+
+def load_baseline(path):
+    """A `scan` payload read back off disk, refused if it cannot serve as
+    a comparison basis.
+
+    Refuses rather than degrades in five cases, all of which would
+    otherwise produce a confident and wrong answer:
+
+    - not this aid's payload. The review layer's aids share `envelope()`,
+      so a coverage report is also JSON with a `findings` key, and
+      comparing against one would report every verbatim finding as new.
+    - a payload written under `--limit`. Truncation happens after
+      sorting, so a finding absent from a capped baseline may simply have
+      been cut -- "new" then means "new or merely unreported", which is
+      not something a caller can act on.
+    - a payload missing any of `_BASELINE_FIELDS`, which is what an older
+      `scan` wrote. One of those sits at the canonical report path for
+      every draft an earlier version scanned, which is exactly where a
+      caller is told to look, so this is the likeliest bad baseline of
+      the five and the one that most deserves a remedy rather than a
+      `KeyError`. An empty findings list is not this case: a draft
+      repaired to clean is a legitimate baseline, and has no finding to
+      be missing anything.
+    - a payload from a different release series (`_series`, below). What
+      counts as one finding can change between series -- #131 made a run
+      that used to report as two merge into one, which changes that
+      finding's `id` (`finding_id`'s `page` argument) even though nothing
+      in the draft or the source moved -- so a cross-series comparison
+      could report a repair that never happened.
+    - unreadable or not JSON at all.
+
+    The last two overlap but neither covers the other: a payload can be
+    the right shape and mean something different (same series check), or
+    claim this series and still be missing a field (the shape check --
+    which is what a build taken between `id` landing and #131's
+    `end_page` produces).
+    """
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(f"Cannot read the baseline {path}: {exc}") from None
+    except json.JSONDecodeError:
+        raise ValueError(
+            f"{path} is not a verbatim scan payload -- it is not valid JSON. "
+            "Write one with `verbatim scan <draft> --write`."
+        ) from None
+
+    if (not isinstance(payload, dict) or payload.get("aid") != "verbatim"
+            or "findings" not in payload):
+        raise ValueError(
+            f"{path} is not a verbatim scan payload. Write one with "
+            "`verbatim scan <draft> --write`, which files it as the "
+            "report's .json sibling."
+        )
+    if payload.get("limit") is not None:
+        raise ValueError(
+            f"{path} was written with --limit {payload['limit']}, so it lists "
+            "only the longest findings and cannot say what was absent. "
+            "Re-scan without --limit to take a baseline."
+        )
+    missing = _baseline_gaps(payload)
+    if missing:
+        raise ValueError(
+            f"{path} is missing {', '.join(missing)}, so it predates this "
+            "command: it is a verbatim scan payload, but an older one than "
+            "`recheck` can read. Re-scan the draft with `verbatim scan "
+            "<draft> --write` to replace it, then compare against that."
+        )
+    recorded, running = payload.get("version"), review.version()
+    if _series(recorded) and _series(recorded) != _series(running):
+        raise ValueError(
+            f"{path} was written by chitragupta {recorded}, and this is "
+            f"{running}. What counts as one finding changes between release "
+            "series -- a scan that learns to merge two runs into one gives "
+            "wording nobody touched a different `id` -- so a comparison "
+            "across one would report repairs that never happened. Re-scan "
+            "the draft with `verbatim scan <draft> --write` to take a "
+            "baseline this version wrote."
+        )
+    return payload
+
+
+def _series(version):
+    """A version's `major.minor`, or `None` where there is nothing to
+    compare.
+
+    The release series is the right granularity because
+    DEVELOPER-AGENTS.md defines it that way: a patch release is
+    "nothing that changes what the pipeline does", so a finding-shape
+    change cannot land in one, while a minor release is exactly where new
+    functionality -- `severity` in 5.4.0, the allowlist in 5.5.0, `id`
+    here -- has repeatedly arrived. Checking the full string instead
+    would force a needless re-scan after every patch; checking nothing
+    would let a real contract change through silently.
+
+    `None` for a missing version, a non-string one (a hand-edited or
+    corrupted baseline JSON can put anything under that key, and a
+    malformed `version` is not this function's refusal to make -- the
+    shape check above already covers a baseline that isn't trustworthy),
+    and for `review.version()`'s `"unknown"` fallback, which means
+    pyproject could not be read: turning one unreadable file into a
+    second, unrelated refusal helps nobody.
+    """
+    if not isinstance(version, str) or version == "unknown":
+        return None
+    return ".".join(version.split(".")[:2])
+
+
+def recheck_findings(draft, baseline):
+    """`(resolved, persisting, new, objective_before, objective_after)`
+    for `draft` against `baseline`, rescanned at the baseline's own floor.
+
+    The floor comes from the baseline rather than from a flag because two
+    scans are only comparable at the same one, and the baseline's already
+    happened -- a caller who could pass `--min-run` here could quietly
+    compare a strict run against a lax one and read the difference as
+    progress.
+
+    Findings are matched by `finding_id`, which is position-free, so an
+    edit above a finding does not report it as resolved-and-new. Where a
+    baseline holds two findings sharing an id (see `finding_id`), a
+    single repair leaves the id present and both still count as
+    persisting -- understating progress, which is the direction an
+    acceptance test should err in.
+    """
+    findings, _, _ = scan_findings(
+        draft, baseline["min_run"], baseline["gap"], None
+    )
+    payload_now = [published(f) for f in findings]
+    before = baseline["findings"]
+
+    now_ids = {f["id"] for f in payload_now}
+    before_ids = {f["id"] for f in before}
+    resolved = [f for f in before if f["id"] not in now_ids]
+    persisting = [f for f in payload_now if f["id"] in before_ids]
+    new = [f for f in payload_now if f["id"] not in before_ids]
+
+    # "Objective" is the two defect buckets. A run that is both quoted and
+    # cited is a correctly attributed quotation, so counting it here would
+    # make converting a lift into a quotation -- one of the two repairs
+    # this loop is for -- look like no improvement at all.
+    def objective(items):
+        return sum(1 for f in items if f["severity"] != "quoted")
+
+    return resolved, persisting, new, objective(before), objective(payload_now)
+
+
+def recheck_command(draft, baseline):
+    """The invocation recorded in the payload's envelope, so a reader
+    holding the payload can regenerate it.
+
+    Always includes `--json`, and takes no flag saying whether to: only
+    the JSON form carries an envelope, so the recorded command is the one
+    that reproduces *this file*. `scan_command` takes the flag because it
+    is shared with the Markdown report, which the text form of a
+    comparison has no counterpart to.
+    """
+    return shlex.join(["python", "-m", "src.review", "verbatim", "recheck",
+                       str(draft), "--baseline", str(baseline), "--json"])
+
+
+def recheck_payload(draft, baseline_path, baseline, groups, counts, command):
+    """The comparison as data -- the form the remediation loop reads.
+
+    Carries the baseline's path, version and floor as well as the three
+    groups: a verdict whose basis is not recorded beside it is one nobody
+    can check later, which is the same reason `scan_payload` carries
+    `min_run`. See `_version_note` for what the version is doing here.
+    """
+    resolved, persisting, new = groups
+    before, after = counts
+    payload = review.envelope(Path(draft), "verbatim", command)
+    payload.update({
+        "baseline": str(baseline_path),
+        "baseline_version": baseline.get("version"),
+        "min_run": baseline["min_run"],
+        "gap": baseline["gap"],
+        "objective_before": before,
+        "objective_after": after,
+        "objective_delta": after - before,
+        "resolved": resolved,
+        "persisting": persisting,
+        "new": new,
+    })
+    return payload
+
+
+def format_recheck(baseline_path, baseline, groups, counts):
+    """The plain-text form, for stdout."""
+    resolved, persisting, new = groups
+    before, after = counts
+    lines = [
+        f"baseline: {baseline_path}",
+        f"floor:    --min-run {baseline['min_run']} --gap {baseline['gap']} (from the baseline)",
+        "",
+    ]
+    for label, items in (("resolved", resolved), ("persisting", persisting), ("new", new)):
+        lines.append(f"  {label} ({len(items)}):")
+        if not items:
+            lines.append("      -")
+        for f in items:
+            lines.append(
+                f"      {f['id']}  [{f['span_words']} words, {f['severity']}] "
+                f"{f['citekey']} {_page_range(f)} line {f['line']}"
+            )
+        lines.append("")
+    lines.append(
+        f"objective findings (long + short): {before} -> {after} ({after - before:+d})"
+    )
+    return "\n".join(lines)
+
+
+def cmd_recheck(draft, baseline, as_json=False):
+    """`recheck`'s stdout entry point.
+
+    Prints and stops -- no `--write`. A scan report is kept beside the
+    draft because it is read again months later; this is a comparison
+    against one particular baseline, consumed by whoever asked for it and
+    stale the next time the draft is touched. Filing it would leave a
+    directory of near-identical reports whose only difference is which
+    edit had happened yet.
+    """
+    loaded = load_baseline(baseline)
+    resolved, persisting, new, before, after = recheck_findings(draft, loaded)
+    groups, counts = (resolved, persisting, new), (before, after)
+
+    if not as_json:
+        print(format_recheck(baseline, loaded, groups, counts))
+        return
+
+    command = recheck_command(draft, baseline)
+    print(json.dumps(
+        recheck_payload(draft, baseline, loaded, groups, counts, command), indent=2
+    ))
+
+
 def cmd_locate(citekey, *phrases):
     src_pages = pages(citekey)
     print(f"{citekey}: {len(src_pages)} pdf pages")
@@ -878,7 +1368,7 @@ def _bounded_int(minimum, name):
 
 
 def build_parser(parser=None):
-    """The `verbatim` aid's three modes.
+    """The `verbatim` aid's four modes.
 
     `parser` is passed by src/review/__main__.py, which has already
     created this aid's subparser and needs the modes hung off *that*
@@ -917,6 +1407,15 @@ def build_parser(parser=None):
                              "draft's path. Off by default: printing is the usual use.")
     p_scan.add_argument("--formats", default="md,tex,pdf",
                         help="Additional formats to render beside the Markdown report (default: md,tex,pdf). The .md is always written -- it is the report; tex/pdf are renders of it, and need pandoc/pdflatex on PATH.")
+
+    p_recheck = sub.add_parser("recheck", help="this scan against a recorded one")
+    p_recheck.add_argument("draft", help="Markdown draft to re-scan")
+    p_recheck.add_argument("--baseline", required=True,
+                           help="A scan payload to compare against, as written by "
+                                "`scan --write`. Its --min-run and --gap are reused, "
+                                "so the two scans are comparable.")
+    p_recheck.add_argument("--json", action="store_true",
+                           help="Print the comparison as JSON instead of as text.")
 
     p_locate = sub.add_parser("locate", help="which page a phrase is on")
     p_locate.add_argument("citekey", help="The source to search")
@@ -968,15 +1467,19 @@ def run(args):
         return 0
 
     try:
-        cmd_scan(
-            str(draft), args.min_run, args.gap, args.limit,
-            write=args.write,
-            formats=[f.strip() for f in args.formats.split(",") if f.strip()],
-            as_json=args.json,
-        )
+        if args.mode == "recheck":
+            cmd_recheck(str(draft), args.baseline, as_json=args.json)
+        else:
+            cmd_scan(
+                str(draft), args.min_run, args.gap, args.limit,
+                write=args.write,
+                formats=[f.strip() for f in args.formats.split(",") if f.strip()],
+                as_json=args.json,
+            )
     except ValueError as exc:
         # "this input can't be scanned as asked" (e.g. --min-run below the
-        # corpus index's own n-gram size) is a usage error, not a finding.
+        # corpus index's own n-gram size, or a baseline that cannot serve
+        # as one) is a usage error, not a finding.
         print(exc, file=sys.stderr)
         return 2
     return 0

@@ -12,6 +12,7 @@ Path(__file__)-derived repo root to put on sys.path."""
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -422,6 +423,135 @@ class TestTokenizeDraft:
         by_text = {w.text: w.quoted for w in words}
         assert by_text["unquoted"] is False
         assert by_text["quoted"] is True
+
+
+class TestParagraphs:
+    """`re.split(r"\\n\\s*\\n", ...)` with the offsets it throws away --
+    the first of the two places `_tokenize_draft` used to lose the
+    position of a word in the file it came from."""
+
+    def test_splits_exactly_where_the_plain_split_splits(self):
+        text = "one\n\ntwo\n  \nthree"
+        assert [para for _, para in vc._paragraphs(text)] == re.split(r"\n\s*\n", text)
+
+    def test_each_paragraph_knows_where_it_starts(self):
+        text = "one\n\ntwo\n  \nthree"
+        for offset, para in vc._paragraphs(text):
+            assert text[offset:offset + len(para)] == para
+
+    def test_a_single_paragraph_starts_at_zero(self):
+        assert vc._paragraphs("just one") == [(0, "just one")]
+
+
+class TestLowerOffsets:
+    """`str.lower()` is not length-preserving for every character, and
+    `char_start` slices the original text -- so the lowercased stream a
+    word was found in has to be mappable back to it."""
+
+    def test_ascii_takes_the_identity_fast_path(self):
+        lowered, offsets = vc._lower_offsets("Digital Twin")
+        assert lowered == "digital twin"
+        assert offsets is None
+
+    def test_a_length_changing_character_gets_a_real_mapping(self):
+        # "İ" (Latin capital I with dot above) lowercases to two code
+        # points, so every offset after it is shifted by one.
+        lowered, offsets = vc._lower_offsets("İstanbul")
+        assert len(lowered) == 9
+        assert offsets is not None
+        # Both code points of the lowercased "İ" map back to it.
+        assert offsets[0] == 0 and offsets[1] == 0
+        assert offsets[2] == 1  # "s"
+
+    def test_the_mapping_covers_every_character_of_the_result(self):
+        lowered, offsets = vc._lower_offsets("AİB")
+        assert len(offsets) == len(lowered)
+
+
+class TestLineAt:
+    """1-based line numbers off one precomputed sweep of the text, rather
+    than a `count("\\n", 0, pos)` per finding -- `citation_gate` already
+    computes its line numbers in one forward pass for the same reason."""
+
+    def test_a_position_on_the_first_line_is_line_one(self):
+        text = "first\nsecond\nthird"
+        assert vc._line_at(vc._newline_offsets(text), 0) == 1
+
+    def test_a_position_after_a_break_is_the_next_line(self):
+        text = "first\nsecond\nthird"
+        assert vc._line_at(vc._newline_offsets(text), text.index("second")) == 2
+        assert vc._line_at(vc._newline_offsets(text), text.index("third")) == 3
+
+    def test_the_newline_character_itself_belongs_to_the_line_it_ends(self):
+        text = "first\nsecond"
+        assert vc._line_at(vc._newline_offsets(text), text.index("\n")) == 1
+
+    def test_a_text_with_no_breaks_is_all_line_one(self):
+        text = "one single line"
+        offsets = vc._newline_offsets(text)
+        assert offsets == []
+        assert vc._line_at(offsets, len(text) - 1) == 1
+
+    def test_it_agrees_with_counting_newlines_at_every_position(self):
+        """The property the loop used to compute directly, pinned against
+        the cheap version so the two cannot drift."""
+        text = "alpha\n\nbeta gamma\ndelta\n\n\nepsilon"
+        offsets = vc._newline_offsets(text)
+        for pos in range(len(text)):
+            assert vc._line_at(offsets, pos) == text.count("\n", 0, pos) + 1
+
+
+class TestDraftWordOffsets:
+    """Every word carries where it sits in the *original* text, which is
+    what lets a finding be handed to `Edit` as an exact span (#129)."""
+
+    def _spans(self, text):
+        words, _ = vc._tokenize_draft(text)
+        return [(w.text, text[w.char:w.char_end]) for w in words]
+
+    def test_offsets_slice_the_original_casing_back_out(self):
+        assert self._spans("Digital Twin here.\n") == [
+            ("digital", "Digital"), ("twin", "Twin"), ("here", "here"),
+        ]
+
+    def test_offsets_survive_a_paragraph_break(self):
+        assert self._spans("First para.\n\nSecond Para.\n") == [
+            ("first", "First"), ("para", "para"),
+            ("second", "Second"), ("para", "Para"),
+        ]
+
+    def test_offsets_survive_a_blanked_citation_marker(self):
+        """The marker is blanked, not deleted -- deleting it shifted every
+        character after it, which is the second place the position of a
+        word in the file was lost."""
+        assert self._spans("Twins [@smith_2024] matter.\n") == [
+            ("twins", "Twins"), ("matter", "matter"),
+        ]
+
+    def test_a_marker_with_no_space_around_it_no_longer_welds_two_words(self):
+        """`word[@key]word` used to become one token, because deleting the
+        marker closed the gap between them."""
+        words, _ = vc._tokenize_draft("twins[@smith_2024]matter\n")
+        assert [w.text for w in words] == ["twins", "matter"]
+
+    def test_offsets_survive_a_blanked_code_fence(self):
+        text = "Before.\n\n```\nfenced code\n```\n\nAfter.\n"
+        assert self._spans(text) == [("before", "Before"), ("after", "After")]
+
+    def test_offsets_survive_a_length_changing_lowercase(self):
+        assert self._spans("The İstanbul result.\n") == [
+            ("the", "The"), ("i", "İ"), ("stanbul", "stanbul"),
+            ("result", "result"),
+        ]
+
+    def test_the_word_stream_is_unchanged_by_carrying_offsets(self):
+        """The corpus index fingerprints with `WORD.findall(text.lower())`
+        (src/overlap_index.py), so the draft side must tokenize the same
+        way -- matching case-insensitively instead would read
+        "İstanbul" as one word where the corpus reads two."""
+        text = "The İstanbul Result.\n"
+        words, _ = vc._tokenize_draft(text)
+        assert [w.text for w in words] == vc.norm(text)
 
 
 class TestCmdScan:
@@ -1112,8 +1242,10 @@ class TestScanPayload:
 
         finding = json.loads(capsys.readouterr().out)["findings"][0]
         assert list(finding) == [
-            "citekey", "page", "end_page", "tier", "span_words", "matched_words",
-            "start", "fragment", "context", "cites_source", "quoted", "severity",
+            "id", "citekey", "page", "end_page", "tier", "span_words",
+            "matched_words", "start", "line", "char_start", "char_end",
+            "draft_text", "fragment", "context", "cites_source", "quoted",
+            "severity",
         ]
 
     def test_the_flags_are_booleans_not_the_printed_labels(self, ledger_con, tmp_path, capsys):
@@ -1184,6 +1316,154 @@ class TestScanPayload:
         words, _ = vc._tokenize_draft(draft.read_text())
         start, end = finding["start"], finding["start"] + finding["span_words"]
         assert " ".join(w.text for w in words[start:end]) == finding["fragment"]
+
+
+class TestFindingLocators:
+    """`start`/`fragment` locate a run for a *reader*. These four fields
+    locate it for an *editor*: `draft_text` is the passage as written, and
+    it is what a remediation loop hands `Edit` as `old_string` (#129)."""
+
+    def _payload(self, draft, capsys, **kwargs):
+        vc.cmd_scan(str(draft), as_json=True, **kwargs)
+        return json.loads(capsys.readouterr().out)
+
+    def _planted(self, ledger_con, tmp_path, prefix="Connective prose citing nobody: "):
+        _add_parsed_item(
+            ledger_con, tmp_path, "uncited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"{prefix}Alpha Beta gamma delta epsilon zeta eta theta.\n")
+        return draft
+
+    def test_draft_text_slices_the_draft_as_written(self, ledger_con, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        text = draft.read_text()
+        assert text[finding["char_start"]:finding["char_end"]] == finding["draft_text"]
+
+    def test_draft_text_keeps_the_casing_the_normalised_fragment_lost(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        assert finding["fragment"] == "alpha beta gamma delta epsilon zeta eta theta"
+        assert finding["draft_text"] == "Alpha Beta gamma delta epsilon zeta eta theta"
+
+    def test_draft_text_keeps_a_citation_marker_sitting_inside_the_run(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """The marker is absent from `fragment` and present on disk, so an
+        `Edit` built from `fragment` would not match. This is the case the
+        locators exist for."""
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text("Text: alpha beta gamma [@cited_2024] delta epsilon zeta eta theta.\n")
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        assert "[@cited_2024]" in finding["draft_text"]
+        assert "cited_2024" not in finding["fragment"]
+
+    def test_line_is_the_one_based_line_of_the_runs_first_word(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path, prefix="Heading line.\n\nSecond line: ")
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        assert finding["line"] == 3
+
+    def test_a_run_spanning_a_line_break_carries_the_break(
+        self, ledger_con, tmp_path, capsys
+    ):
+        _add_parsed_item(
+            ledger_con, tmp_path, "uncited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text("Prose: alpha beta gamma delta\nepsilon zeta eta theta.\n")
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        assert "\n" in finding["draft_text"]
+        assert draft.read_text()[
+            finding["char_start"]:finding["char_end"]
+        ] == finding["draft_text"]
+
+    def test_the_span_covers_interior_punctuation_but_stops_at_the_last_word(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """The boundary the docstring and docs/CLI.md both state, pinned
+        so neither can overstate it again: interior punctuation is inside
+        the span, a trailing period or closing quote is not. That is the
+        behaviour a reviser wants -- a rewrite substituted for
+        `draft_text` must leave the sentence's own punctuation alone."""
+        _add_parsed_item(
+            ledger_con, tmp_path, "uncited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            'Prose: "Alpha beta-gamma, delta epsilon zeta eta theta." End.\n'
+        )
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        text = draft.read_text()
+        assert finding["draft_text"] == "Alpha beta-gamma, delta epsilon zeta eta theta"
+        assert text[finding["char_end"]:finding["char_end"] + 2] == '."'
+        assert text[finding["char_start"] - 1] == '"'
+
+    def test_the_id_is_stable_across_an_edit_elsewhere_in_the_draft(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """Position-free by construction: an edit above a finding must not
+        rename it, or nothing could decide whether a finding survived a
+        revision (R2, docs/AUTO-IMPROVEMENT.md)."""
+        draft = self._planted(ledger_con, tmp_path)
+        before = self._payload(draft, capsys)["findings"][0]
+
+        draft.write_text("A new opening sentence.\n\n" + draft.read_text())
+        after = self._payload(draft, capsys)["findings"][0]
+
+        assert before["id"] == after["id"]
+        assert before["start"] != after["start"]
+
+    def test_the_id_changes_when_the_matched_wording_changes(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """A long enough run survives a one-word edit as one finding (the
+        default `--gap` recovers it), so this pins that the id tracks the
+        wording rather than merely the run's existence."""
+        source = (
+            "one two three four five six seven eight nine ten eleven twelve "
+            "thirteen fourteen fifteen sixteen seventeen eighteen"
+        )
+        _add_parsed_item(ledger_con, tmp_path, "uncited_2024", source)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"Prose: {source} end.\n")
+        before = self._payload(draft, capsys)["findings"][0]
+
+        draft.write_text(draft.read_text().replace(" nine ", " ninexx "))
+        after = self._payload(draft, capsys)["findings"][0]
+
+        assert before["span_words"] == after["span_words"] == 18
+        assert before["id"] != after["id"]
+
+    def test_the_id_is_a_short_hex_digest(self, ledger_con, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+
+        finding = self._payload(draft, capsys)["findings"][0]
+
+        assert re.fullmatch(r"[0-9a-f]{12}", finding["id"])
 
     def test_a_clean_draft_emits_an_empty_list_not_the_prose(
         self, isolated_config, tmp_path, capsys
@@ -1360,6 +1640,424 @@ class TestScanJsonSibling:
         assert "never a verdict" in payload["notice"]
 
 
+class TestRecheck:
+    """`recheck`: one scan compared against a recorded baseline, so
+    "did this edit fix the finding, and did it break anything else"
+    is a decidable question rather than two reports read side by side
+    (#129). Still not a gate -- it exits 0 whatever it finds."""
+
+    SOURCE = (
+        "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu "
+        "nu xi omicron pi rho sigma tau upsilon"
+    )
+    OTHER = (
+        "one two three four five six seven eight nine ten eleven twelve "
+        "thirteen fourteen fifteen sixteen"
+    )
+
+    def _planted(self, ledger_con, tmp_path):
+        _add_parsed_item(ledger_con, tmp_path, "uncited_2024", self.SOURCE)
+        _add_parsed_item(ledger_con, tmp_path, "other_2024", self.OTHER)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"First: {self.SOURCE}.\n\nSecond: {self.OTHER}.\n")
+        return draft
+
+    def _baseline(self, draft, tmp_path, **kwargs):
+        findings, min_run, suppressed = vc.scan_findings(str(draft), **kwargs)
+        command = vc.scan_command(
+            str(draft), min_run, kwargs.get("gap", 1), kwargs.get("limit"), False, True
+        )
+        payload = vc.scan_payload(
+            str(draft), findings, min_run, kwargs.get("gap", 1),
+            kwargs.get("limit"), suppressed, command,
+        )
+        path = tmp_path / "baseline.json"
+        path.write_text(json.dumps(payload, indent=2))
+        return path
+
+    def _recheck(self, draft, baseline, capsys):
+        vc.cmd_recheck(str(draft), str(baseline), as_json=True)
+        return json.loads(capsys.readouterr().out)
+
+    def test_an_unchanged_draft_resolves_nothing_and_breaks_nothing(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["resolved"] == []
+        assert result["new"] == []
+        assert result["objective_delta"] == 0
+        assert len(result["persisting"]) == 2
+
+    def test_a_repaired_finding_reports_as_resolved(self, ledger_con, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        target = next(f for f in json.loads(baseline.read_text())["findings"]
+                      if f["citekey"] == "uncited_2024")
+
+        draft.write_text(draft.read_text().replace(
+            target["draft_text"], "a wholly unrelated sentence of our own"))
+        result = self._recheck(draft, baseline, capsys)
+
+        assert [f["id"] for f in result["resolved"]] == [target["id"]]
+        assert target["id"] not in [f["id"] for f in result["persisting"]]
+        assert result["objective_delta"] == -1
+
+    def test_the_edit_can_be_built_from_the_baselines_own_draft_text(
+        self, ledger_con, tmp_path
+    ):
+        """The loop this serves reads `draft_text` out of the baseline and
+        hands it straight to `Edit` -- so it has to still match the file
+        the baseline was taken from."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        for finding in json.loads(baseline.read_text())["findings"]:
+            assert finding["draft_text"] in draft.read_text()
+
+    def test_a_rewrite_that_introduces_new_overlap_reports_it_as_new(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """The R4 case: the edit resolved its own finding but lifted from
+        a third source, so the objective count did not actually fall."""
+        third = (
+            "red orange yellow green blue indigo violet white black grey "
+            "silver golden copper bronze"
+        )
+        draft = self._planted(ledger_con, tmp_path)
+        _add_parsed_item(ledger_con, tmp_path, "third_2024", third)
+        baseline = self._baseline(draft, tmp_path)
+        target = next(f for f in json.loads(baseline.read_text())["findings"]
+                      if f["citekey"] == "uncited_2024")
+
+        draft.write_text(draft.read_text().replace(target["draft_text"], third))
+        result = self._recheck(draft, baseline, capsys)
+
+        assert [f["id"] for f in result["resolved"]] == [target["id"]]
+        assert [f["citekey"] for f in result["new"]] == ["third_2024"]
+        assert result["objective_delta"] == 0
+
+    def test_two_identical_runs_share_an_id_and_one_repair_understates(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """Documented in `finding_id`: an acceptance test should err
+        towards "not yet fixed", never towards "fixed"."""
+        _add_parsed_item(ledger_con, tmp_path, "uncited_2024", self.SOURCE)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"First: {self.SOURCE}.\n\nAgain: {self.SOURCE}.\n")
+        baseline = self._baseline(draft, tmp_path)
+        assert len({f["id"] for f in json.loads(baseline.read_text())["findings"]}) == 1
+
+        draft.write_text(f"First: {self.SOURCE}.\n\nAgain: nothing borrowed here.\n")
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["resolved"] == []
+        assert result["objective_delta"] == -1
+
+    def test_the_floor_comes_from_the_baseline_not_from_a_flag(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """Two scans are only comparable at the same floor, and the
+        baseline is the one that already happened."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path, min_run=18, gap=2)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert (result["min_run"], result["gap"]) == (18, 2)
+        # Only the 20-word run clears a floor of 18; the 16-word one does not.
+        assert [f["citekey"] for f in result["persisting"]] == ["uncited_2024"]
+
+    def test_objective_counts_exclude_the_quoted_bucket(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """R4 counts defects. A run that is both quoted and cited is the
+        one bucket that is not one."""
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", self.SOURCE)
+        draft = tmp_path / "draft.md"
+        draft.write_text(f'As [@cited_2024] has it, "{self.SOURCE}" exactly.\n')
+        baseline = self._baseline(draft, tmp_path)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert [f["severity"] for f in result["persisting"]] == ["quoted"]
+        assert (result["objective_before"], result["objective_after"]) == (0, 0)
+
+    def test_a_capped_baseline_is_refused(self, ledger_con, tmp_path):
+        """`--limit` truncates, so a finding absent from a capped baseline
+        may never have been reported rather than never have existed --
+        "new" would then be a guess."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path, limit=1)
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "--limit" in str(exc.value)
+
+    def test_a_baseline_that_is_not_json_is_refused(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text("not json at all")
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "not a verbatim scan payload" in str(exc.value)
+
+    def test_a_missing_baseline_is_refused(self, ledger_con, tmp_path):
+        draft = self._planted(ledger_con, tmp_path)
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(tmp_path / "nope.json"))
+        assert "nope.json" in str(exc.value)
+
+    def test_a_baseline_predating_the_locators_is_refused(self, ledger_con, tmp_path):
+        """A payload filed by 5.5.0 sits at exactly the path the loop is
+        told to look at, and has no `id` on its findings. Refused with the
+        remedy rather than crashing on the missing key."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps({
+            "aid": "verbatim", "min_run": 8, "gap": 1, "limit": None,
+            "findings": [{"citekey": "uncited_2024", "span_words": 20,
+                          "severity": "long"}],
+        }))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "predates" in str(exc.value)
+
+    def test_a_baseline_missing_its_floor_is_refused(self, ledger_con, tmp_path):
+        """`min_run`/`gap` are what make the two scans comparable, and
+        defaulting them would compare a strict run against a lax one."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps(
+            {"aid": "verbatim", "limit": None, "findings": []}
+        ))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "predates" in str(exc.value)
+
+    def test_an_empty_baseline_is_not_mistaken_for_an_old_one(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """"No findings" is a legitimate baseline -- a draft repaired to
+        clean, then re-checked -- and has no findings to carry an `id`."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps(
+            {"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []}
+        ))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["objective_before"] == 0
+        assert len(result["new"]) == 2
+
+    def test_a_baseline_missing_a_field_recheck_prints_is_refused(
+        self, ledger_con, tmp_path
+    ):
+        """`resolved` findings are printed straight out of the baseline,
+        never rescanned, so every field the output line reads has to be
+        there. `end_page` is the live case: a payload written between
+        `id` landing and #131's page range would claim the same release
+        series, pass the version check, and then crash the formatter."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        for finding in payload["findings"]:
+            del finding["end_page"]
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "end_page" in str(exc.value)
+
+    @pytest.mark.parametrize("key", ["min_run", "gap"])
+    @pytest.mark.parametrize("value", ["8", 8.0, True, None, [8]])
+    def test_a_non_int_min_run_or_gap_is_refused_not_typeerrored(
+        self, ledger_con, tmp_path, key, value
+    ):
+        """`recheck_findings` hands `min_run`/`gap` straight to
+        `scan_findings` uncoerced -- a hand-edited `"min_run": "8"` would
+        otherwise reach `_merge_runs`' `int <= str` comparison and raise
+        `TypeError`, not the clean refusal every other malformed baseline
+        gets. `bool` included: it's an `int` subclass, but a word count of
+        `True`/`False` should name the problem, not silently become 1/0."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload[key] = value
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert key in str(exc.value)
+
+    def test_every_field_recheck_prints_is_one_scan_actually_writes(self):
+        """The two lists are checked against each other rather than kept
+        in step by hand: a field `recheck` requires but `scan` never
+        writes would refuse every baseline ever taken."""
+        assert set(vc._BASELINE_FIELDS) <= set(vc._PAYLOAD_FIELDS) | {"severity"}
+
+    def test_a_findings_list_of_the_wrong_shape_is_refused_not_crashed_on(
+        self, ledger_con, tmp_path
+    ):
+        """`findings` holding something that is not a finding is still a
+        baseline this cannot compare against, and refusing is the same
+        answer as for the other four -- not a TypeError from probing a
+        non-dict for a key."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps({
+            "aid": "verbatim", "min_run": 8, "gap": 1, "limit": None,
+            "findings": [42],
+        }))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "predates" in str(exc.value)
+
+    def test_another_aids_payload_is_refused(self, ledger_con, tmp_path):
+        """The review layer's payloads share an envelope, so a coverage
+        report is JSON with a `findings` key too."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps({"aid": "coverage", "findings": []}))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "not a verbatim scan payload" in str(exc.value)
+
+    def test_the_text_form_names_every_bucket_of_the_comparison(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        target = next(f for f in json.loads(baseline.read_text())["findings"]
+                      if f["citekey"] == "uncited_2024")
+        draft.write_text(draft.read_text().replace(
+            target["draft_text"], "a wholly unrelated sentence of our own"))
+
+        vc.cmd_recheck(str(draft), str(baseline))
+
+        out = capsys.readouterr().out
+        assert "resolved (1)" in out
+        assert "persisting (1)" in out
+        assert "new (0)" in out
+        assert target["id"] in out
+
+    def test_the_text_form_states_the_objective_delta(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        vc.cmd_recheck(str(draft), str(baseline))
+
+        assert "2 -> 2" in capsys.readouterr().out
+
+    def _reversioned(self, draft, tmp_path, version):
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload["version"] = version
+        baseline.write_text(json.dumps(payload, indent=2))
+        return baseline
+
+    def test_a_baseline_from_an_earlier_release_series_is_refused(
+        self, ledger_con, tmp_path
+    ):
+        """What counts as one finding changes between releases -- a scan
+        that learns to merge two runs into one produces a different `id`
+        for wording nobody touched -- and a comparison across that reads
+        as a repair that never happened. DEVELOPER-AGENTS.md's versioning
+        rules put any such change in a minor bump at least, so the
+        release series is exactly the granularity to check."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._reversioned(draft, tmp_path, "5.4.0")
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "5.4.0" in str(exc.value)
+        assert "Re-scan" in str(exc.value)
+
+    def test_a_patch_level_difference_is_accepted_silently(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """A patch release is defined as changing nothing about what the
+        pipeline does, so a baseline from one is still comparable -- and
+        refusing it would force a re-scan for no reason."""
+        draft = self._planted(ledger_con, tmp_path)
+        current = ".".join(vc.review.version().split(".")[:2])
+        baseline = self._reversioned(draft, tmp_path, f"{current}.99")
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["baseline_version"] == f"{current}.99"
+        assert len(result["persisting"]) == 2
+
+    def test_an_unknowable_version_is_not_treated_as_a_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """`review.version()` falls back to `"unknown"` when pyproject
+        cannot be read. Refusing on that would turn one unreadable file
+        into a second, unrelated failure."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._reversioned(draft, tmp_path, "unknown")
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["baseline_version"] == "unknown"
+
+    def test_a_non_string_version_is_not_treated_as_a_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """A hand-edited or corrupted baseline can put anything under
+        `version` -- `_series` must not crash trying to `.split(".")` a
+        non-string, and a malformed `version` is not this check's refusal
+        to make (the shape check already covers an untrustworthy
+        baseline)."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._reversioned(draft, tmp_path, 5)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["baseline_version"] == 5
+
+    def test_it_publishes_findings_in_the_same_shape_scan_does(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """`recheck` compares its own freshly-scanned findings against a
+        baseline `scan` wrote, so the two must agree about what a
+        published finding looks like -- both go through `published`."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        expected = list(json.loads(baseline.read_text())["findings"][0])
+        for finding in result["persisting"] + result["new"]:
+            assert list(finding) == expected
+
+    def test_the_payload_carries_the_envelope_every_aid_shares(
+        self, ledger_con, tmp_path, capsys
+    ):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["aid"] == "verbatim"
+        assert result["draft"] == str(draft)
+        assert "never a verdict" in result["notice"]
+        assert "recheck" in result["command"]
+        assert result["baseline"] == str(baseline)
+
+
 class TestBoundedInt:
     """argparse `type=` callables that reject an out-of-range value as a
     usage error rather than letting it through to be silently absorbed."""
@@ -1422,6 +2120,24 @@ class TestMainInProcess:
         outside.write_text("Anything.\n")
 
         assert vc.main(["scan", str(outside)]) == 1
+
+    def test_dispatches_recheck(self, isolated_config, tmp_path, capsys):
+        draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps(
+            {"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []}
+        ))
+
+        assert vc.main(["recheck", str(draft), "--baseline", str(baseline)]) == 0
+        assert "objective findings (long + short): 0 -> 0 (+0)" in capsys.readouterr().out
+
+    def test_an_unusable_baseline_exits_two(self, isolated_config, tmp_path, capsys):
+        draft = _content_draft(tmp_path, "Anything.\n")
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps({"aid": "verbatim", "findings": [], "limit": 5}))
+
+        assert vc.main(["recheck", str(draft), "--baseline", str(baseline)]) == 2
+        assert "--limit 5" in capsys.readouterr().err
 
     def test_an_unscannable_request_exits_two(self, isolated_config, tmp_path, capsys):
         """--min-run below the index's own n-gram size: "this input can't

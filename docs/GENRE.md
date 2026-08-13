@@ -4,9 +4,10 @@ Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
 as it stands.
 
 Which skill writes what, how to pick between them, and what each one
-refuses to do. Seven skills live in `.claude/`: five that write a new
-draft, and two that change an existing one -- one cheap and scoped, one
-that goes back to the whole corpus when you ask it to.
+refuses to do. Eight skills live in `.claude/`: five that write a new
+draft, and three that change an existing one -- one cheap and scoped, one
+that goes back to the whole corpus when you ask it to, and one that
+repairs what a verbatim scan found.
 
 You do not invoke any of them by name. Each has a `description` in its
 frontmatter that names its triggers, and asking for the thing in ordinary
@@ -17,7 +18,7 @@ and when you want to know why the one that ran refused something.
 
 Related reading:
 
-- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules all seven
+- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules all eight
   share, and where in the technical-communication literature they come
   from.
 - [DRAFT-ITERATION.md](DRAFT-ITERATION.md) -- the dossier every skill
@@ -34,7 +35,8 @@ Related reading:
 - [The five drafting genres](#the-five-drafting-genres)
 - [Revising: draft-reviser](#revising-draft-reviser)
 - [Revising widely: corpus-reviser](#revising-widely-corpus-reviser)
-- [What all seven have in common](#what-all-seven-have-in-common)
+- [Repairing overlap: overlap-reviser](#repairing-overlap-overlap-reviser)
+- [What all eight have in common](#what-all-eight-have-in-common)
 - [The boundaries, and why they are enforced](#the-boundaries-and-why-they-are-enforced)
 - [Genres this project does not have](#genres-this-project-does-not-have)
 
@@ -77,6 +79,7 @@ both.
 | `deep-research` | `content/drafts/deep-research-<slug>.md` | every claim | 6 interviewers, N writers, 4 reviewers | heaviest by design |
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass -- by request only |
+| `overlap-reviser` | edits an existing draft in place | inherits the draft's | none | one scan, then one edit per finding |
 
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
@@ -274,10 +277,44 @@ The thing that stays never, in both skills, is re-running the genre
 skill: that discards all of that state and pays to rediscover a worse
 version of it.
 
-## What all seven have in common
+## Repairing overlap: `overlap-reviser`
 
-These are not per-skill choices. They are the same rules restated in six
-files, and a skill that broke one would be the bug.
+Not a genre either, and narrower than both revisers above: its input is
+one report rather than a request in prose. `python -m src.review verbatim
+scan --json` lists every run of wording a draft shares with the corpus;
+this skill works that list, repairing each finding and re-checking the
+repair before keeping it. **Paraphrase is not detected** by that scan, so
+finishing the list is not a clean bill of health -- see
+[PLAGIARISM.md](PLAGIARISM.md).
+
+**What it may do without asking is decided by the report, not by the
+model.** #128's severity buckets are the line: a `short` run is reworded
+unattended, a `long` one stops and asks the human whether to paraphrase
+or to quote, and a run that is both quoted and cited is reported as
+already correct and left alone. The paraphrase-or-quote choice on a long
+run is an authorial one -- the field states some things one particular
+way -- and [SOUL.md](../SOUL.md) puts deciding it for you under *what you
+will not do*.
+
+**Every repair is verified before it is kept.** `python -m src.draft
+gate` and `python -m src.review verbatim recheck` both have to come back
+clean, the finding has to be gone, and the count of objective findings
+must not have risen -- a rewrite that fixes its own finding by lifting
+from a different source is caught by that last one. Two attempts per
+finding, one pass per invocation, and every attempt is logged in
+`revisions.md` with its outcome, refusals included.
+
+**Only a person starts it.** No hook, no scheduled job, no genre skill at
+the end of its run, and not `draft-reviser` on its own initiative. The
+loop proposes and repairs; you accept the diff.
+
+Everything else about the draft is `draft-reviser`. A finding this skill
+cannot repair is escalated, not worked around.
+
+## What all eight have in common
+
+These are not per-skill choices. They are the same rules restated in
+eight `SKILL.md` files, and a skill that broke one would be the bug.
 
 **One invariant.** A citekey may only be used if it appears in your `.bib`
 export *and* was picked up into the ledger by a real parse of a real PDF.
