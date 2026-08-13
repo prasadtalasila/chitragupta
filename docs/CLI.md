@@ -592,9 +592,9 @@ instead: the envelope every review aid's JSON carries (a notice that this
 is not a verdict, the aid, the draft, the exact command, the version),
 the three flags that set the reporting floor (`min_run`, `gap`, `limit`),
 how many findings the allowlist suppressed (`suppressed`, see below), and
-one object per finding with `citekey`, `page`, `tier`, `span_words`,
-`matched_words`, `start`, `fragment`, `context`, `cites_source`,
-`quoted`, and `severity` -- the same `long`/`short`/`quoted` bucket the
+one object per finding with `citekey`, `page`, `end_page`, `tier`,
+`span_words`, `matched_words`, `start`, `fragment`, `context`,
+`cites_source`, `quoted`, and `severity` -- the same `long`/`short`/`quoted` bucket the
 written report groups by (see below), so a consumer of the payload reads
 the same severity a human reviewer sees. It is an additional
 serialisation of what `scan` already computed, never a second
@@ -605,6 +605,16 @@ exits 0 -- "nothing found" is data too.
 `cites_source: false` is the printed form's `UNCITED SOURCE`, and
 `quoted: true` its `quoted`: booleans rather than those labels, because a
 caller that has to match display text is back where it started.
+
+`page` and `end_page` are the lowest and highest page an n-gram in the
+run actually *starts* on (#131), equal for an ordinary single-page run.
+`end_page > page` means the run spans a source page break; the printed
+forms render that as `p.N-M` instead of picking one side. It is not the
+converse: a remainder shorter than the index's own n-gram size has no
+gram starting on its page at all, so it is recovered into the merged
+run's word content without moving `end_page` to cover it -- `page` ==
+`end_page` does not by itself mean every word in the run sits on one
+page.
 
 `start`, `fragment` and `context` describe the **normalised word stream**
 -- the draft masked (code and the References section blanked), citation
@@ -660,15 +670,21 @@ whole directory is a cache, not an output:
 delete it and the next run rebuilds whatever it needs. See
 [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
-`scan` groups a match's `(citekey, page, diagonal)` -- the source position
-minus the draft position, held constant across a run -- and merges runs on
-the same diagonal within `--gap` words of each other, so a single edited
-word inside an otherwise-verbatim passage still reports as one run. It
-cannot merge a run across a page break in the *source*: the fingerprint
-cache's token position resets there, so a genuine lift spanning one is
-reported as two (or more) shorter findings, and a short remainder stranded
-alone on the far side of the break can fall under `--min-run` and vanish
-entirely. Each finding reports whether the containing draft paragraph
+`scan` groups a match's `(citekey, diagonal)` -- the source position minus
+the draft position, held constant across a run, where the source position
+is global across the whole document rather than reset per page (#131) --
+and merges runs on the same diagonal within `--gap` words of each other,
+so a single edited word inside an otherwise-verbatim passage still
+reports as one run, and so does a genuine lift that spans a source page
+break: it used to report as two (or more) shorter findings, with a short
+remainder stranded alone on the far side of the break falling under
+`--min-run` and vanishing entirely; it now merges into one finding. That
+finding's `page`/`end_page` name every page an n-gram in the run actually
+*starts* on, which is usually but not always the full range: a remainder
+shorter than the index's own n-gram size has no gram starting on its
+page at all (nothing that short can start one), so it is recovered into
+the merged run's word content without moving `end_page` to cover it.
+Each finding reports whether the containing draft paragraph
 actually cites that source (`UNCITED SOURCE` if not) and whether the run
 sits inside quote delimiters -- both informational on stdout; `--write`'s
 report goes one step further and *groups* findings most-damning-first

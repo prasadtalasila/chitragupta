@@ -15,10 +15,10 @@ Two independent caches, both under `config.OVERLAP_DIR` (gitignored,
 regenerable, like every other content/ artifact):
 
 - `docs/<citekey>.fpr` -- one document's fingerprint: every word n-gram's
-  hash, the page it occurs on, and its token position within that page
-  (position is unused here but is exactly what a later maximal-run
-  extension needs, so it is recorded now rather than added as a breaking
-  cache-format change later). Keyed by `(pdf_hash, parsed-file size,
+  hash, its *global* token position in the document (not reset per page --
+  see `_build_fingerprint`; a per-page reset used to break a maximal run
+  across a page boundary, #131), and the page that position falls on, for
+  attribution only. Keyed by `(pdf_hash, parsed-file size,
   parsed-file mtime_ns)` -- not `pdf_hash` alone. `pdf_hash` unchanged does
   not imply the parsed text is unchanged: `sync --reparse` and a
   `[parser].backend` switch both rewrite `content/parsed/<citekey>.txt`
@@ -69,6 +69,7 @@ import uuid
 from array import array
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
+from itertools import accumulate
 from pathlib import Path
 
 from src import config
@@ -83,7 +84,13 @@ def _norm(text: str) -> list[str]:
     return WORD.findall(text.lower())
 
 
-_TOKENIZER_VERSION = 1
+# Bumped for #131: `_build_fingerprint`'s postings now carry a global
+# (not per-page) token position, so a stale cache from before this change
+# would silently misalign every diagonal. `_load_doc_cache` and
+# `_load_corpus_index` both already gate on this constant, so bumping it
+# is the whole migration -- every `.fpr`/`index.bin` written under the old
+# scheme reads as a cache miss and gets rebuilt.
+_TOKENIZER_VERSION = 2
 _HEADER_VERSION = 1
 
 # A large odd 64-bit constant (fractional part of the golden ratio, scaled
@@ -153,7 +160,8 @@ class DocFingerprint:
     citekey: str
     key: list
     n: int
-    # (gram_hash, page, token_position), in page/position order.
+    # (gram_hash, page, token_position), in position order (position is
+    # global across the document, so this is also page order).
     postings: list[tuple[int, int, int]]
 
 
@@ -215,11 +223,34 @@ def _save_doc_cache(fp: DocFingerprint) -> None:
 
 
 def _build_fingerprint(citekey: str, pdf_hash: str, parsed_path: str, n: int) -> DocFingerprint:
+    """Tokenizes the *whole* document as one continuous word stream, not
+    page by page: a page-local word list can never produce the n-gram
+    that straddles the boundary (last few words of page N + first few of
+    page N+1), so per-page tokenization silently drops every gram that
+    would let a run merge across a real page break. `position` is
+    therefore a global word offset into the document, not reset at each
+    page; `page` is still recorded per posting, attributed via the
+    cumulative per-page word counts to whichever page contains the
+    gram's *first* word -- the same "lowest page wins" convention
+    `grams_for_citekey` already uses across documents, applied here
+    across pages of one.
+    """
+    page_words = [_norm(page_text) for page_text in _pages_from_parsed_text(parsed_path)]
+    boundaries = list(accumulate(len(words) for words in page_words))
+    words = [w for page in page_words for w in page]
     postings: list[tuple[int, int, int]] = []
-    for page_num, page_text in enumerate(_pages_from_parsed_text(parsed_path), 1):
-        words = _norm(page_text)
-        for position, gram_hash in enumerate(gram_hashes(words, n)):
-            postings.append((gram_hash, page_num, position))
+    # A linear sweep, not a `bisect_right` per posting: `position` is
+    # ascending (`enumerate` over one document's grams in order), so
+    # `page_idx` only ever advances, never needs to search backward. That
+    # makes this O(#postings + #pages) instead of O(#postings * log
+    # #pages) -- the same total work, just not re-done from scratch for
+    # every one of a document's several-thousand postings.
+    page_idx = 0
+    num_pages = len(boundaries)
+    for position, gram_hash in enumerate(gram_hashes(words, n)):
+        while page_idx < num_pages and position >= boundaries[page_idx]:
+            page_idx += 1
+        postings.append((gram_hash, page_idx + 1, position))
     return DocFingerprint(
         citekey=citekey, key=_fingerprint_key(pdf_hash, parsed_path), n=n, postings=postings
     )

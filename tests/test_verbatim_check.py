@@ -623,13 +623,13 @@ class TestCmdScan:
         out = capsys.readouterr().out
         assert out.count("tier=exact") == 1
 
-    def test_page_boundary_split_run_both_halves_survive_independently(
+    def test_run_spanning_a_page_break_merges_into_one_finding(
         self, ledger_con, tmp_path, capsys
     ):
-        # Documented limitation (cmd_scan's docstring): a run can never
-        # merge across a page break, since token_position resets to 0
-        # there. A 15/15 split still clears --min-run on both sides, so
-        # both report -- as two findings, not one.
+        # #131: global (not per-page) token position means a run merges
+        # across a page break instead of splitting. A 15/15 split used to
+        # report as two 15-word findings; it is now one 30-word finding
+        # spanning both pages.
         words = [f"w{i}" for i in range(30)]
         page1, page2 = " ".join(words[:15]), " ".join(words[15:])
         _add_parsed_item(ledger_con, tmp_path, "split_2024", page1 + "\f" + page2)
@@ -638,12 +638,21 @@ class TestCmdScan:
 
         vc.cmd_scan(str(draft))
         out = capsys.readouterr().out
-        assert "pdf p.1" in out and "pdf p.2" in out
+        assert out.count("tier=exact") == 1
+        assert "30 words" in out
+        assert "pdf p.1-2" in out
 
-    def test_page_boundary_short_remainder_is_invisible(self, ledger_con, tmp_path, capsys):
-        # The sharper edge of the same limitation: a 25/5 split leaves a
-        # 5-word remainder alone on its page, below --min-run, so it
-        # never appears at all -- not merged, not reported separately.
+    def test_page_boundary_short_remainder_is_recovered_by_the_merge(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # The sharper edge of the same bug, now fixed: a 25/5 split used
+        # to leave the 5-word remainder alone on its page, below
+        # --min-run, invisible. It is now part of the single 30-word
+        # merged run, so it appears too. Page attribution stays `p.1`
+        # here (not a range): page2 has only 5 words, fewer than n=8, so
+        # no gram *starts* there for any posting to be attributed to --
+        # the remainder is recovered by content, even though every
+        # posting's start position is still on page 1.
         words = [f"w{i}" for i in range(30)]
         page1, page2 = " ".join(words[:25]), " ".join(words[25:])
         _add_parsed_item(ledger_con, tmp_path, "split_2024", page1 + "\f" + page2)
@@ -652,8 +661,34 @@ class TestCmdScan:
 
         vc.cmd_scan(str(draft))
         out = capsys.readouterr().out
-        assert "25 words" in out
-        assert "w25" not in out.split("in:")[0]  # the 5-word tail never becomes its own finding
+        assert out.count("tier=exact") == 1
+        assert "30 words" in out
+        assert "pdf p.1" in out
+        assert "w25" in out
+
+    def test_unrelated_matches_either_side_of_a_page_break_stay_separate(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # Dropping `page` from scan_findings' grouping key merges a run
+        # across a real page break (above), but must not merge two
+        # unrelated matches just because one lands on each side of a
+        # page: they land on different diagonals (the filler word between
+        # them in the draft has no counterpart in the source), so they
+        # stay two findings, each attributed to its own single page.
+        page1 = "alpha beta gamma delta epsilon zeta eta theta"
+        page2 = "iota kappa lambda mu nu xi omicron pi"
+        _add_parsed_item(ledger_con, tmp_path, "mixed_2024", page1 + "\f" + page2)
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "[@mixed_2024] alpha beta gamma delta epsilon zeta eta theta filler "
+            "iota kappa lambda mu nu xi omicron pi end.\n"
+        )
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert out.count("tier=exact") == 2
+        assert "pdf p.1" in out and "pdf p.2" in out
+        assert "pdf p.1-2" not in out
 
 
 class TestMaskAllowlisted:
@@ -1077,8 +1112,8 @@ class TestScanPayload:
 
         finding = json.loads(capsys.readouterr().out)["findings"][0]
         assert list(finding) == [
-            "citekey", "page", "tier", "span_words", "matched_words", "start",
-            "fragment", "context", "cites_source", "quoted", "severity",
+            "citekey", "page", "end_page", "tier", "span_words", "matched_words",
+            "start", "fragment", "context", "cites_source", "quoted", "severity",
         ]
 
     def test_the_flags_are_booleans_not_the_printed_labels(self, ledger_con, tmp_path, capsys):
