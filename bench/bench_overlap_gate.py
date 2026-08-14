@@ -324,7 +324,7 @@ def main(argv=None):
 
     payload = {
         "drafts": [d.name for d in drafts],
-        "corpus_documents": len(set(f["citekey"] for f in findings)),
+        "corpus_documents": len({f["citekey"] for f in findings}),
         "parser_backend": config.PARSER,
         "allowlist_present": config.VERBATIM_ALLOWLIST_PATH.exists(),
         "sweep_floor": SWEEP_FLOOR,

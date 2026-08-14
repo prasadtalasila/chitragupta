@@ -551,8 +551,8 @@ def _show_summary(con) -> int:
     if not total:
         print(f"Ledger at {config.LEDGER_PATH} is empty.")
         print("Run `python -m src.corpus sync` to populate it from your bib file.")
-        return 0
-    _print_summary_counts(con, counts, total)
+    else:
+        _print_summary_counts(con, counts, total)
     return 0
 
 
