@@ -537,10 +537,10 @@ def _list_items(con, status) -> int:
     ).fetchall()
     if not rows:
         print(f"No items with status {status!r}.")
-        return 0
-    for row in rows:
-        _print_item(row)
-    print(f"\n  {len(rows)} item(s).")
+    else:
+        for row in rows:
+            _print_item(row)
+        print(f"\n  {len(rows)} item(s).")
     return 0
 
 
@@ -552,7 +552,11 @@ def _show_summary(con) -> int:
         print(f"Ledger at {config.LEDGER_PATH} is empty.")
         print("Run `python -m src.corpus sync` to populate it from your bib file.")
         return 0
+    _print_summary_counts(con, counts, total)
+    return 0
 
+
+def _print_summary_counts(con, counts, total) -> None:
     print(f"Ledger: {config.LEDGER_PATH}   ({total} item(s) from "
           f"{config.BIB_FILE_PATH.name})\n")
     for status, label in _STATUS_LABELS.items():
@@ -575,4 +579,3 @@ def _show_summary(con) -> int:
               "and will be retried on the next sync.")
     else:
         print("\n  Nothing needs attention.")
-    return 0

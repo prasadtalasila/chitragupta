@@ -229,13 +229,13 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
             # sync that changed every fingerprint. Every repeat is cold,
             # not just the first -- the scan never writes the cache back.
             config.RETRIEVAL_INDEX_PATH.unlink(missing_ok=True)
-            result["cold"][str(count)] = _time(lambda: sweep(subset), repeats)
+            result["cold"][str(count)] = _time(lambda subset=subset: sweep(subset), repeats)
 
             # Warm: the cache `python -m src.draft retrieve` leaves behind.
             # Built once here through the real indexer, then reused
             # read-only.
             retrieval.search("digital twin", k=1)
-            result["warm"][str(count)] = _time(lambda: sweep(subset), repeats)
+            result["warm"][str(count)] = _time(lambda subset=subset: sweep(subset), repeats)
 
         # The path that never builds an index at all: dossiers that logged
         # no retrieval calls. Measured at the largest count only.

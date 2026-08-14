@@ -199,7 +199,7 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
             reader.join(timeout=30)
             elapsed = time.perf_counter() - started
         err = "".join(err_lines)
-        parsed = len(re.findall(r"^  parsed ", out, flags=re.M))
+        parsed = len(re.findall(r"^ {2}parsed ", out, flags=re.M))
         # `sync` prints per-document failures to *stderr* and the totals to
         # stdout. Counting only stdout reported every run as clean, which
         # is the exact failure mode this harness exists to catch -- so
@@ -207,9 +207,14 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
         # across both streams.
         summary = re.search(r"Sync complete: \d+ parsed, .*?, (\d+) failed", out)
         failed = (int(summary.group(1)) if summary
-                  else len(re.findall(r"^  FAILED ", out + err, flags=re.M)))
+                  else len(re.findall(r"^ {2}FAILED ", out + err, flags=re.M)))
         m = re.search(r"parsing \d+ document\(s\) with (\d+) workers", out)
-        resolved = int(m.group(1)) if m else (1 if workers == 1 else None)
+        if m:
+            resolved = int(m.group(1))
+        else:
+            # A serial run never prints the pool line; anything else is a
+            # run that died before dispatch, where the count is unknown.
+            resolved = 1 if workers == 1 else None
         timeline = {}
         if completions:
             first, last = completions[0], completions[-1]
@@ -262,11 +267,39 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="print the plan and exit")
     args = ap.parse_args()
 
+    plan, gpus = _validated_plan(ap, args)
+
+    print(f"{len(plan)} configuration(s) x {args.repeat} run(s); "
+          f"each parses the whole corpus from an empty ledger.", flush=True)
+    print(f"machine: {allowed_cpus()} CPUs available to this process "
+          f"(host reports {os.cpu_count()})\n")
+    if args.dry_run:
+        for w, g, o in plan:
+            print(f"  workers={w} gpus={g} ocr={'on' if o else 'off'}")
+        return 0
+
+    python = args.python
+    if not Path(python).exists() and not shutil.which(python):
+        print(f"error: {python} not found -- run "
+              f"`bash scripts/install_full_pipeline.sh python-deps` first", file=sys.stderr)
+        return 2
+
+    out_path = BENCH_DIR / "results" / f"sweep-{args.tag}.jsonl"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    records = _run_plan(plan, args.repeat, python, out_path)
+    _print_summary(records, gpus, out_path)
+    return 0
+
+
+def _validated_plan(ap, args):
+    """The (workers, gpus, ocr) grid, or an argparse usage error.
+
+    Validated rather than coerced: an unrecognised --ocr token used to
+    fall through to "off", which silently runs a different benchmark than
+    the one asked for and reports it under the requested name.
+    """
     if args.repeat < 1:
         ap.error(f"--repeat must be at least 1, got {args.repeat}")
-    # Validated rather than coerced: an unrecognised token used to fall
-    # through to "off", which silently runs a different benchmark than the
-    # one asked for and reports it under the requested name.
     ON, OFF = {"on", "true", "1", "yes"}, {"off", "false", "0", "no"}
     ocrs = []
     for token in args.ocr.split(","):
@@ -287,55 +320,50 @@ def main() -> int:
         ap.error(f"--workers must all be at least 1, got {args.workers!r}")
     if any(g < 0 for g in gpus):
         ap.error(f"--gpus must all be non-negative, got {args.gpus!r}")
-    plan = [(w, g, o) for o in ocrs for g in gpus for w in workers]
+    return [(w, g, o) for o in ocrs for g in gpus for w in workers], gpus
 
-    print(f"{len(plan)} configuration(s) x {args.repeat} run(s); "
-          f"each parses the whole corpus from an empty ledger.", flush=True)
-    print(f"machine: {allowed_cpus()} CPUs available to this process "
-          f"(host reports {os.cpu_count()})\n")
-    if args.dry_run:
-        for w, g, o in plan:
-            print(f"  workers={w} gpus={g} ocr={'on' if o else 'off'}")
-        return 0
 
-    python = args.python
-    if not Path(python).exists() and not shutil.which(python):
-        print(f"error: {python} not found -- run "
-              f"`bash scripts/install_full_pipeline.sh python-deps` first", file=sys.stderr)
-        return 2
-
-    out_path = BENCH_DIR / "results" / f"sweep-{args.tag}.jsonl"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+def _run_plan(plan, repeat, python, out_path):
+    """Every configuration, every repeat, appended to `out_path` as it
+    lands; the median run of each configuration is what is kept."""
     records: list[dict] = []
     with out_path.open("w") as fh:
         for w, g, o in plan:
             runs = []
-            for rep in range(args.repeat):
+            for rep in range(repeat):
                 rec = one_run(w, g, o, python)
                 rec["repeat"] = rep
                 runs.append(rec)
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
-                clamp = ""
-                if rec["workers_resolved"] and rec["workers_resolved"] != w:
-                    clamp = (f"  !! CLAMPED to {rec['workers_resolved']}"
-                             f" -- see worker_ceiling()")
-                status = "" if rec["returncode"] == 0 and rec["failed"] == 0 else \
-                         f"  !! rc={rec['returncode']} failed={rec['failed']}"
-                extra = ""
-                if rec.get("startup_s") is not None:
-                    extra = (f"  startup={rec['startup_s']}s({rec['startup_pct']}%)"
-                             f" tail={rec['drain_s']}s({rec['drain_pct']}%)")
-                # flush: these runs are tens of minutes each, and stdout
-                # is block-buffered when redirected to a file -- without
-                # this a `> sweep.log` shows nothing until the very end.
-                print(f"  workers={w:<3} gpus={g} ocr={'on ' if o else 'off'} "
-                      f"{rec['seconds']:8.1f}s  parsed={rec['parsed']:<4}"
-                      f"  host_cpu={rec['host_cpu_pct_of_allowed']}%{extra}{clamp}{status}",
-                      flush=True)
+                _print_run_line(w, g, o, rec)
             runs.sort(key=lambda r: r["seconds"])
             records.append(runs[len(runs) // 2])
+    return records
 
+
+def _print_run_line(w, g, o, rec):
+    clamp = ""
+    if rec["workers_resolved"] and rec["workers_resolved"] != w:
+        clamp = (f"  !! CLAMPED to {rec['workers_resolved']}"
+                 f" -- see worker_ceiling()")
+    status = "" if rec["returncode"] == 0 and rec["failed"] == 0 else \
+             f"  !! rc={rec['returncode']} failed={rec['failed']}"
+    extra = ""
+    if rec.get("startup_s") is not None:
+        extra = (f"  startup={rec['startup_s']}s({rec['startup_pct']}%)"
+                 f" tail={rec['drain_s']}s({rec['drain_pct']}%)")
+    # flush: these runs are tens of minutes each, and stdout
+    # is block-buffered when redirected to a file -- without
+    # this a `> sweep.log` shows nothing until the very end.
+    print(f"  workers={w:<3} gpus={g} ocr={'on ' if o else 'off'} "
+          f"{rec['seconds']:8.1f}s  parsed={rec['parsed']:<4}"
+          f"  host_cpu={rec['host_cpu_pct_of_allowed']}%{extra}{clamp}{status}",
+          flush=True)
+
+
+def _print_summary(records, gpus, out_path):
+    """The speedup/efficiency table against the 1-worker OCR-off baseline."""
     baseline = next((r for r in records
                      if r["workers_resolved"] == 1 and not r["ocr"]
                      and r["gpus"] == max(gpus)), None)
@@ -359,7 +387,6 @@ def main() -> int:
     if clamped:
         print(f"\n!! {len(clamped)} configuration(s) were clamped below what was asked "
               f"for. Those rows measure the clamp, not the setting.")
-    return 0
 
 
 if __name__ == "__main__":

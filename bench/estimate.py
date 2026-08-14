@@ -130,8 +130,8 @@ def main() -> None:
         print(f"  linear fit  : seconds ~= {a:.1f} + {b:.3f} * pages")
         print(f"  serial est. : per-doc {hms(per_doc_total)}  "
               f"(per-page {hms(per_page_total)}, an optimistic bound)")
-        print(f"                both understate a real run -- see this module's "
-              f"docstring; measured was 9% and 41% above these respectively")
+        print("                both understate a real run -- see this module's "
+              "docstring; measured was 9% and 41% above these respectively")
         w = args.workers
         if args.efficiency is not None:
             eff, interpolated = args.efficiency, False
