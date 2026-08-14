@@ -95,8 +95,47 @@ DEFAULT_N = 5
 # Bumped whenever the stemmer, the stopword list, or the even/odd split
 # below changes shape -- the whole migration for this tier's cache, same
 # discipline as overlap_index._TOKENIZER_VERSION.
-_TOKENIZER_VERSION = 1
+#
+# Bumped to 2 for #180: `skipgram_postings` no longer emits a
+# numeric-dominated window (see MAX_NUMERIC_SHARE below), so every
+# `.fpr`/`skipgram_index.bin` written before that change holds postings
+# this tier would no longer generate, and a stale one would keep
+# reporting exactly the findings the fix removes.
+_TOKENIZER_VERSION = 2
 _HEADER_VERSION = 1
+
+# A skip-gram window counts as evidence only if fewer than this share of
+# its stems are bare numbers -- at DEFAULT_N, at most 2 of 5.
+#
+# #180 measured the failure this fixes: 97 of 125 unique findings on the
+# first real-corpus run were numeric tables colliding by chance with
+# unrelated numeric tables in other papers -- page-number runs, a
+# systematic-review scoring grid repeating 0/0.5/1/1.5/2/2.5/3 down its
+# rows, a requirement-coverage matrix of small counts. `stem_filter`'s
+# rule that "a purely numeric token stems to itself, since a shared
+# figure is still shared wording" is right about a specific figure and
+# wrong about a bare `2`: with the digits 0-9 an effective ~10-token
+# vocabulary, and this tier tolerating a substitution in the opposite
+# family by construction, two long enough numeric tables share a window
+# by chance alone.
+#
+# **A window rule, not a token rule**, which is why the guard is here
+# rather than in `stem_filter`/`_stem_filter_family`. Two reasons:
+#
+# - `WORD = [a-z0-9]+` splits "48.2" into "48" and "2", so there is no
+#   such thing as a multi-digit non-integer *token* to keep and no
+#   token-level test can tell the "2" of "48.2 billion" from the "2" of
+#   a scoring grid. What separates them is their company: the first sits
+#   among content words, the second among other digits.
+# - Dropping numeric tokens outright would lose a genuine shared figure
+#   -- the case #180 explicitly asks to keep -- while this rule leaves
+#   every such window intact as long as most of it is words.
+#
+# `stem_filter` itself is deliberately unchanged: it feeds only
+# `verbatim_check._mask_allowlisted_stemmed`, which normalizes an
+# allowlisted phrase rather than generating evidence, and an allowlist
+# entry that is mostly digits is a host's explicit decision to suppress.
+MAX_NUMERIC_SHARE = 0.5
 
 # A short, standard English function-word list -- articles, pronouns,
 # prepositions, conjunctions, auxiliary/copular verb forms, and the most
@@ -180,6 +219,13 @@ def skipgram_postings(words: list[str], n: int) -> list[tuple[int, int, int]]:
     (`src/review/verbatim_check.py`'s tier-2 finder) needs both, to
     report where a match starts and ends in the draft actually scanned.
 
+    A window at least `MAX_NUMERIC_SHARE` of whose stems are bare
+    numbers is not emitted at all (#180) -- see that constant for why
+    the test is on the window rather than on the token. Both sides go
+    through this one function, the corpus fingerprint and the draft scan
+    alike, so the suppression is symmetric without either caller knowing
+    about it.
+
     Order is ascending within each of the two families, families
     concatenated even-then-odd; not globally sorted by position, since a
     caller grouping by `(citekey, diagonal)` does not need it to be.
@@ -187,7 +233,12 @@ def skipgram_postings(words: list[str], n: int) -> list[tuple[int, int, int]]:
     postings = []
     for pairs in _families(words):
         stems, positions = _stem_filter_family(pairs)
+        # A running count, so each window's numeric share is a
+        # subtraction rather than a re-scan of its own n stems.
+        numeric = list(accumulate((s.isdigit() for s in stems), initial=0))
         for j, gh in enumerate(gram_hashes(stems, n)):
+            if numeric[j + n] - numeric[j] >= n * MAX_NUMERIC_SHARE:
+                continue
             postings.append((gh, positions[j], positions[j + n - 1] + 1))
     return postings
 

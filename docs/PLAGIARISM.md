@@ -608,9 +608,18 @@ module docstring, and its first (synthetic-only) measurement is in
    findings carry `tier: "skip-gram"`. Shipped **advisory only**
    (discussion #115: "start advisory, promote with evidence") -- nothing
    in `scan` decides gate-eligibility for it; that is #130's decision,
-   unchanged by this tier existing. Its own precision on real prose is
-   not yet measured -- see `bench/RESULTS.md`'s caveat before trusting a
-   clean `scan` on this tier any more than on tier 1.
+   unchanged by this tier existing. **Measured 2026-08-14 (#180), and it
+   stays advisory on the strength of it**: over a real 15-chapter book,
+   2 of 27 findings were reuse a reviewer would act on, and the exact
+   tier already reported both of those passages -- so tier 2 contributed
+   nothing tier 1 had not. That number is only trustworthy because the
+   same measurement first found two mechanical bugs behind 163 of the
+   190 raw findings (bare numbers treated as distinctive content, and
+   the same finding emitted once per diagonal group). One book whose
+   reuse happens to be verbatim is not evidence tier 2 cannot work, but
+   it is not the evidence discussion #115 asks for before promoting it.
+   See `bench/RESULTS.md`'s #180 section before trusting a clean `scan`
+   on this tier any more than on tier 1.
 3. **Embedding literal-paraphrase tier (proposed, not built).** Embed
    draft segments, k-NN against the existing `content/chroma/` collection
    (already built by the optional enrichment layer; reuses its

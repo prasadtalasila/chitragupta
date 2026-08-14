@@ -756,9 +756,12 @@ that kind of restatement is an LLM's normal failure mode, the reuse mode
 `scan` still cannot see remains a real gap. Read a clean run as "no
 exact or near-exact copying, and no word-swapped paraphrase, found",
 never "no borrowed wording found". The skip-gram tier also ships
-advisory-only, with its real-corpus false-positive rate not yet
-measured (`bench/RESULTS.md`) -- treat its findings with the same
-scrutiny as the exact tier's, not more trust just because it is newer.
+advisory-only, and its real-corpus false-positive rate **has now been
+measured** (`bench/RESULTS.md`, 2026-08-14): over a real 15-chapter
+book, 2 of 27 findings were reuse a reviewer would act on, and the
+exact tier already reported both of those passages. So treat its
+findings with *more* scrutiny than the exact tier's, not less, and
+certainly not more trust because it is newer.
 See [PLAGIARISM.md](PLAGIARISM.md) and
 [discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
 for the three-tier plan.
@@ -777,7 +780,14 @@ halves of that per-document key earn their place: re-parsing the corpus
 under a different `[parser].backend` rewrites the text without touching
 the PDF, and the parsed-file stat is the only part that notices. The
 whole directory is a cache, not an output:
-delete it and the next run rebuilds whatever it needs. See
+delete it and the next run rebuilds whatever it needs.
+
+The skip-gram tier keeps its own pair of files in the same directory
+(`skipgram_index.bin`/`.json`, and `docs/<citekey>.skipgram.fpr`) under
+its own tokenizer version, so the two tiers never cross-invalidate.
+**5.11.0 bumps that version**, so the first `scan` after upgrading
+re-fingerprints the corpus for tier 2 once -- roughly the same cost
+again as the tier-1 build above, paid once. See
 [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
 `scan` groups a match's `(citekey, diagonal)` -- the source position minus

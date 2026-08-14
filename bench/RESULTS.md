@@ -28,7 +28,8 @@ if it is obvious which is which, so:
 | [2026-08-10: `overlap` and `scan` -- what the fingerprint index (#110) and the whole-draft scan (#111) actually buy](#2026-08-10-overlap-and-scan----what-the-fingerprint-index-110-and-the-whole-draft-scan-111-actually-buy) | **Partly superseded** | Its cold/warm figures still stand -- re-measured at 26.8s after #131 bumped the tokenizer version, which was expected to make them stale and did not. Its claim that `scan`'s findings are the input a gating decision would be tuned against is what the 2026-08-13 section actually tests |
 | [2026-08-13: what an `overlap_gate` would block, and how much of it would be wrong (#130)](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130) | **Current** | The first false-positive measurement of the gate #130 proposes, over a real 15-chapter book. Found References masking broken for book-numbered headings (72x the gateable population) and no threshold with a true positive at any width |
 | [2026-08-13b: does a gram's corpus document frequency separate boilerplate from reuse?](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse) | **Current** | Follows the section above, which found the discriminating feature and quantified it only partly. Measured at gram rather than finding granularity it explains 12 of 14, against that section's 8 |
-| [2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses) | **Current, capability arm only** | Confirms the every-Nth-word design works synthetically. The precision arm (real-corpus false positives, the harder and more important question) was not run -- this environment had no synced corpus -- and is not evidence either way |
+| [2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses) | **Current, capability arm only** | Confirms the every-Nth-word design works synthetically. Its "precision arm: not run" half is superseded by the section below, which ran it |
+| [2026-08-14: tier 2's first real precision number, and the two bugs that had to be fixed to get it (#180)](#2026-08-14-tier-2s-first-real-precision-number-and-the-two-bugs-that-had-to-be-fixed-to-get-it-180) | **Current** | The precision arm the section above could not run. Two mechanical bugs accounted for 163 of 190 raw findings; on the 27 that survive, precision is 2/27 and both true positives are passages the exact tier already reports |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1319,6 +1320,12 @@ fixed cases, kept here as the reproducible record.
 
 ### Precision arm: not run
 
+**Superseded 2026-08-14.** It was run once a corpus was synced, and what
+it found is in
+[the #180 section](#2026-08-14-tier-2s-first-real-precision-number-and-the-two-bugs-that-had-to-be-fixed-to-get-it-180).
+The paragraph below stands as the caveat that turned out to be
+warranted, not as a current statement of what is unmeasured.
+
 The harder and more important question -- how many false positives the
 skip-gram tier produces on real, organic prose, the same measurement
 [2026-08-13's overlap-gate section](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130)
@@ -1355,3 +1362,112 @@ python3 bench/bench_overlap_skipgram.py --tag <date>-skipgram \
 
 The capability sweep's raw output is committed at
 `results/2026-08-13-skipgram-capability/skipgram_capability.json`.
+
+## 2026-08-14: tier 2's first real precision number, and the two bugs that had to be fixed to get it (#180)
+
+The arm the section above could not run, run -- and it does not read as
+a precision measurement of the design. Two mechanical defects accounted
+for **163 of the 190 raw findings** the first real-corpus run produced,
+and neither is tier 2's word-swap tolerance doing its job badly.
+
+Same host, same corpus as the [DF section](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse):
+642 ledger items, 497 parsed, docling backend, and the same 15-chapter
+digital-twins book. Tier 2 at `n=5`, `min_run` at tier 1's default 8.
+
+### What the raw run reported, and what was wrong with it
+
+```
+             findings   what they were
+raw               190
+  duplicates       65   the same (citekey, page, fragment) emitted again
+unique            125
+  numeric          98   two unrelated numeric tables colliding by chance
+surviving          27
+```
+
+**Duplicate emission.** `_skipgram_tier_findings` groups postings by
+`(citekey, diagonal)`, but a finding's id is `sha256(citekey, page,
+fragment)` -- no diagonal in it. A source table whose values repeat puts
+the *same* draft window at several `src_pos`, so it lands in several
+diagonal groups, each of which merges to the same draft span against the
+same source page. One id, appended once per group. The worst single
+finding was emitted **15 times**. This also inflated this benchmark's
+own arithmetic: `precision_run` sums labels over the raw list, so a
+duplicated finding's label counted once per copy.
+
+**Numeric chance collision.** `stem_filter` keeps a purely numeric token
+unstemmed, on the reasoning that a shared figure is still shared
+wording. That is right about "48.2 billion" and wrong about a bare `2`:
+with the digits 0-9 an effective ~10-token vocabulary, and this tier
+tolerating a substitution in the opposite family by construction, two
+long enough numeric tables share a window by chance. The population was
+concentrated exactly where that predicts -- the book's own worked
+arithmetic against page-number runs in spec PDFs, a systematic-review
+scoring grid repeating `0/0.5/1/1.5/2/2.5/3` down its rows
+(`karabey_aksakalli_deployment_2021`, 32 raw findings of its own), and a
+requirement-coverage matrix of small counts
+(`muller_reconfiguration_2023`, 24). Both citekeys have **no** surviving
+finding after the fix.
+
+Fixed by requiring fewer than half of a skip-gram window's stems to be
+bare numbers (`overlap_skipgram.MAX_NUMERIC_SHARE`), which is a rule
+about a window's company rather than about a token -- `[a-z0-9]+`
+tokenization splits `48.2` into `48` and `2`, so no token-level test can
+tell one from the other in the first place.
+
+### Precision on what survives: 2 of 27
+
+```
+skip-gram findings: 27  tp: 2  fp: 25  precision: 0.0741
+```
+
+Hand-labelled in `results/2026-08-14-skipgram-precision/labels.json`,
+against the same rubric as
+[the gate section's labels](#2026-08-13-what-an-overlap_gate-would-block-and-how-much-of-it-would-be-wrong-130):
+`tp` is reuse a reviewer would require fixing. The 25 false positives
+fall into three classes, two of them already named by that section:
+
+| Class | n | |
+|---|---|---|
+| `third-party-echo` | 10 | The NASA "integrated multiphysics, multiscale, probabilistic simulation" definition and ISO 23247's "fit-for-purpose digital representation", each matched against every corpus paper that reproduces it |
+| `stock-phrase-echo` | 12 | The field's ordinary phrasing in its ordinary order -- one draft sentence about predictive-maintenance literature reviews matched **nine** different papers on five stemmed content words |
+| `attributed-quotation` | 3 | Quoted and cited. `quoted` is false on all three because the skip-gram window straddles the opening quote mark -- a real gap in the flag, not in the labelling |
+
+**The finding that matters is about the two true positives.** Both are
+passages where the draft reproduces a source's wording without quote
+marks while citing it, and **the exact tier already reports both**, at
+14 and 11 matched words against tier 2's 5 and 6. So on this book tier 2
+found nothing tier 1 had not already found. `scan_findings` drops a
+skip-gram finding only when an exact finding fully *contains* it, and
+neither of these is contained -- the skip-gram window starts a word or
+two earlier -- which is why they survive as separate rows.
+
+That is not evidence tier 2 cannot work; it is one book, whose reuse
+happens to be verbatim rather than paraphrased, and a tier built for
+paraphrase has nothing to catch there. It is evidence that **the bar
+discussion #115 sets -- "promote with evidence" -- has not been met**,
+and tier 2 stays advisory. The measurement that would move it is a draft
+with known light-paraphrase reuse in it, which this corpus does not
+contain.
+
+### By-product: cold and warm cost
+
+Not the timing arm ["the section above"](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses)
+asks for, and not comparable to tier 1's isolated 26.8s, since `scan`
+builds *both* corpus indices: **68s cold** (497 documents fingerprinted
+for both tiers, plus the 15-chapter scan) and **6.5s warm**, on the same
+host under other load. Read it as an upper bound on the pair, not as
+tier 2's own number.
+
+Reproduce:
+
+```bash
+python3 bench/bench_overlap_skipgram.py --tag 2026-08-14-skipgram-precision \
+    --drafts content/drafts/books/<book-slug>
+```
+
+The pre-fix run is committed alongside it at
+`results/2026-08-14-skipgram-precision-before/skipgram_precision.json`
+-- 190 rows, unlabelled, kept so the 190 -> 125 -> 27 arithmetic above
+can be re-derived rather than taken on trust. Reproducing *it* needs the
+parent commit, since the fixes are in `src/`.

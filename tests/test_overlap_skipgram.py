@@ -110,6 +110,44 @@ class TestSkipgramPostings:
         ) == []
 
 
+class TestNumericWindowsAreNotEvidence:
+    """#180: bare numbers are an effective ~10-token vocabulary, so two
+    long enough numeric tables share a skip-gram by chance alone --
+    measured as 97 of 125 unique findings on the first real-corpus run.
+    A window is evidence only if fewer than `MAX_NUMERIC_SHARE` of its
+    stems are bare numbers.
+    """
+
+    def test_an_all_numeric_table_row_yields_no_postings(self):
+        # A page-number run, or a scoring grid's row: nothing here is a
+        # word, so nothing here distinguishes this document from any
+        # other document with a table in it.
+        assert overlap_skipgram.skipgram_postings(
+            "1 4 2 7 3 9 0 6 5 8 2 3 8 1".split(), overlap_skipgram.DEFAULT_N
+        ) == []
+
+    def test_a_figure_among_content_words_still_yields_postings(self):
+        # The case #180 explicitly asks to keep: "48.2 billion" quoted by
+        # two papers is genuine shared wording, and a token-level "drop
+        # every digit" rule would have lost it. The even family here
+        # reduces to `annual reach 2 dollar fiscal across region` -- one
+        # number among six words -- so every window it makes survives.
+        words = ("annual revenue reached 48 2 billion dollars during the "
+                 "2021 fiscal year across every regional market").split()
+        starts = [s for _h, s, _e in overlap_skipgram.skipgram_postings(words, 5)]
+        assert 0 in starts, "a window holding a figure among content words was dropped"
+
+    def test_the_bar_is_fewer_than_half_the_window(self):
+        # Exactly at the boundary, from both sides. Stopwords on every
+        # even index leave that family empty, so each list makes exactly
+        # one window, on the odd family: three numbers of five is out,
+        # two is in.
+        three = "the 1 the alpha the 2 the beta the 3".split()
+        two = "the 1 the alpha the 2 the beta the delta".split()
+        assert overlap_skipgram.skipgram_postings(three, 5) == []
+        assert len(overlap_skipgram.skipgram_postings(two, 5)) == 1
+
+
 class TestGradedParaphraseDetection:
     """The property #133's benchmark and its own graded fixtures pin:
     a synonym swapped at a fixed *even* stride (so every substitution
