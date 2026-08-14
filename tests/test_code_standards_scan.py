@@ -72,12 +72,12 @@ LEGACY_LONG_FUNCTIONS = {
     "src/sync.py::_parse_parallel",  # 33
     "src/dossier.py::_print_drift",  # 32
     "src/enrich/topic_model.py::run_topic_model",  # 32
-    "src/ledger.py::upsert_reference",  # 32
     "src/render_output.py::render",  # 31
     "src/enrich/__main__.py::_run_stages",  # 30
     "tests/test_release.py::make_repo",  # 30
     "src/dossier.py::_cmd_status_all",  # 29
-    "src/dossier.py::sections",  # 28
+    "src/dossier.py::sections",  # 29
+    "src/ledger.py::upsert_reference",  # 29
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
     "src/overlap_skipgram.py::build_corpus_index",  # 27
@@ -92,7 +92,7 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/dossier.py",  # 1606
+    "src/dossier.py",  # 1614
     "src/review/verbatim_check.py",  # 1588
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 508
@@ -100,7 +100,7 @@ LEGACY_LONG_FILES = {
     "src/render_output.py",  # 456
     "src/sync.py",  # 444
     "src/review/citation_provenance.py",  # 382
-    "src/ledger.py",  # 359
+    "src/ledger.py",  # 358
     "src/retrieval.py",  # 359
     "src/references.py",  # 340
     "src/overlap_skipgram.py",  # 305

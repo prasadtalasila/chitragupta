@@ -263,7 +263,12 @@ def _tidy(text: str) -> str:
     *draft* rather than in this tool.
     """
     stripped = _CITE_MARKUP.sub("", text)
-    stripped = re.sub(r"\s+([.,;:!?)])", r"\1", stripped)
+    # `\s++` (possessive, 3.11+): the backtracking `\s+` re-tries every
+    # shorter run of a long whitespace stretch before giving up at each
+    # scan position, which is quadratic on whitespace-heavy input (Sonar
+    # S8786). Possessive changes no match -- whitespace then punctuation
+    # is found identically -- only the wasted re-tries.
+    stripped = re.sub(r"\s++([.,;:!?)])", r"\1", stripped)
     stripped = re.sub(r"\(\s+", "(", stripped)
     return re.sub(r"\s{2,}", " ", stripped).strip(" ,;:")
 

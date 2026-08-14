@@ -274,12 +274,17 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
         elif pdf_hash != old_hash:
             needs_parse = pdf_hash is not None
             new_status = "discovered" if pdf_hash else "no_pdf"
-        elif old_status == "parsed" and pdf_hash is not None and not _parse_outputs_present(
-                ref.citekey, old_parsed_path):
-            needs_parse = True
-            new_status = "discovered"
-        elif (old_status == "parse_failed" and pdf_hash is not None
-                and old_kind != "deterministic"):
+        elif pdf_hash is not None and (
+                (old_status == "parsed"
+                 and not _parse_outputs_present(ref.citekey, old_parsed_path))
+                or (old_status == "parse_failed"
+                    and old_kind != "deterministic")):
+            # One branch for the two re-parse triggers on a byte-identical
+            # PDF -- outputs gone from disk, and the transient-failure
+            # retry below -- because their consequence is identical and
+            # two branches with the same body invite the implementations
+            # drifting apart (Sonar S1871).
+            #
             # Retry a *transient* failed parse even though the PDF is
             # byte-identical -- a NULL kind predates the distinction and
             # counts as transient (see _MIGRATIONS version 2).

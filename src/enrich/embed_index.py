@@ -92,26 +92,27 @@ def get_text(doc: CorpusDoc) -> str | None:
     if doc.text_path and Path(doc.text_path).exists():
         return Path(doc.text_path).read_text(encoding="utf-8")
     if doc.pdf_path:
-        # delete=False, an empty `with` body, and a manual unlink in
-        # finally -- deliberately *not* a `with` block wrapped around the
-        # subprocess call. On Windows, NamedTemporaryFile keeps its own
-        # handle open (and the file exclusively locked) for the block's
-        # duration, and pdftotext writing to that same path while Python
-        # still holds it open fails with PermissionError -- POSIX allows a
-        # second open of the same path, which is why this only surfaced on
-        # this repo's Windows CI leg. So the `with` exists only to close
-        # the handle immediately; widening it to cover the run() below
-        # would reintroduce exactly the lock it is here to release.
-        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
-            pass
+        # mkstemp with the descriptor closed at once, and a manual unlink
+        # in finally -- deliberately *not* a NamedTemporaryFile `with`
+        # block wrapped around the subprocess call. On Windows an open
+        # handle keeps the file exclusively locked, and pdftotext writing
+        # to that same path while Python still holds it open fails with
+        # PermissionError -- POSIX allows a second open of the same path,
+        # which is why this only surfaced on this repo's Windows CI leg.
+        # Only the *name* is wanted here, so the descriptor is closed
+        # before anything else happens; any construct that held the file
+        # open across the run() below would reintroduce exactly the lock
+        # this close is here to release.
+        fd, tmp_name = tempfile.mkstemp(suffix=".txt")
+        os.close(fd)
         try:
             subprocess.run(
-                ["pdftotext", "-layout", doc.pdf_path, tmp.name],
+                ["pdftotext", "-layout", doc.pdf_path, tmp_name],
                 check=True, capture_output=True,
             )
-            return Path(tmp.name).read_text(encoding="utf-8", errors="ignore")
+            return Path(tmp_name).read_text(encoding="utf-8", errors="ignore")
         finally:
-            os.unlink(tmp.name)
+            os.unlink(tmp_name)
     return None
 
 
