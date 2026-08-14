@@ -51,13 +51,13 @@ MAX_CODE_LINES = 250
 STATEMENT_ROOTS = ("src", "scripts", "tests")
 CODE_LINE_ROOTS = ("src", "scripts")
 
-# Every offender as of 5.7.1, frozen. Ordered worst-first, with today's
-# count in a trailing comment so the size of each debt is visible without
-# running anything. The two worth taking first are src/sync.py::run (117
-# statements, 4.7x the next worst function in the repository) and
-# src/dossier.py (1605 code lines).
+# Every offender as of 5.7.1 that remains, frozen. Ordered worst-first,
+# with today's count in a trailing comment so the size of each debt is
+# visible without running anything. The original register held 28
+# functions, worst of them src/sync.py::run at 117 statements -- the
+# 5.8.x SonarCloud-debt series split the worst offenders and delisted
+# each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    "src/sync.py::run",  # 117
     "src/dossier.py::main",  # 42
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
@@ -85,7 +85,7 @@ LEGACY_LONG_FILES = {
     "src/enrich/docling_parse.py",  # 522
     "src/overlap_index.py",  # 492
     "src/render_output.py",  # 456
-    "src/sync.py",  # 444
+    "src/sync.py",  # 519
     "src/review/citation_provenance.py",  # 392
     "src/ledger.py",  # 393
     "src/retrieval.py",  # 376
