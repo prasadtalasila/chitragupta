@@ -170,7 +170,7 @@ exits 0 whatever it finds, and nothing in this pipeline blocks on it.
   the check has to work with no network, and a rule set that changed
   underneath a draft would report a document that had already been
   reviewed. Point it at your own house style to override what ships;
-  [assets/vale/README.md](../assets/vale/README.md) documents each rule,
+  `assets/vale/README.md` documents each rule,
   which section of
   [WRITING-STANDARDS.md](WRITING-STANDARDS.md) it implements, and the word
   pairs it deliberately leaves out.
