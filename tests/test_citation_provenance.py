@@ -474,7 +474,8 @@ class TestWriteReportAndCli:
 
         written = cp.write_report(path, ["md", "pdf"])
 
-        assert "md" in written and "pdf" not in written
+        assert "md" in written
+        assert "pdf" not in written
         assert "pandoc not found" in capsys.readouterr().err
 
     def test_an_escaping_render_target_warns_and_still_returns_md(
@@ -498,7 +499,8 @@ class TestWriteReportAndCli:
 
         written = cp.write_report(path, ["md", "pdf"])
 
-        assert "md" in written and "pdf" not in written
+        assert "md" in written
+        assert "pdf" not in written
         assert "resolves to /elsewhere" in capsys.readouterr().err
 
     def test_pandoc_failure_warns_and_still_returns_md(self, isolated_config, monkeypatch, capsys):
@@ -524,7 +526,8 @@ class TestWriteReportAndCli:
 
         written = cp.write_report(path, ["md", "pdf"])
 
-        assert "md" in written and "pdf" not in written
+        assert "md" in written
+        assert "pdf" not in written
         err = capsys.readouterr().err
         assert "pandoc failed" in err
         assert "LaTeX Error" in err
@@ -550,7 +553,8 @@ class TestWriteReportAndCli:
 
         written = cp.write_report(path, ["md", "pdf"])
 
-        assert "md" in written and "pdf" not in written
+        assert "md" in written
+        assert "pdf" not in written
         assert "pandoc failed" in capsys.readouterr().err
 
     def test_cli_reports_missing_draft(self, isolated_config, capsys):

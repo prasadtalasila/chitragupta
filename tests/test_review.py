@@ -312,7 +312,8 @@ class TestPrintWritten:
         review.print_written({"md": Path("a.md"), "json": Path("a.json")})
 
         out = capsys.readouterr().out
-        assert "a.md" in out and "a.json" in out
+        assert "a.md" in out
+        assert "a.json" in out
 
     def test_defaults_to_stdout(self, isolated_config, capsys):
         review.print_written({"md": Path("a.md")})
@@ -332,7 +333,8 @@ class TestPrintWritten:
 
         captured = capsys.readouterr()
         assert captured.out == ""
-        assert "a.md" in captured.err and "a.json" in captured.err
+        assert "a.md" in captured.err
+        assert "a.json" in captured.err
 
 
 class TestVersion:

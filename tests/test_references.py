@@ -135,7 +135,8 @@ class TestFormatEntry:
         # An unescaped underscore or asterisk would italicize part of the
         # reference list, making the rendered entry differ from the bib.
         entry = references.format_entry("k", "The C_str_ and A*B Problem", "2024", {})
-        assert r"C\_str\_" in entry and r"A\*B" in entry
+        assert r"C\_str\_" in entry
+        assert r"A\*B" in entry
 
     def test_entry_with_nothing_but_a_citekey_still_renders(self):
         assert references.format_entry("k", "", "", {}) == "k."

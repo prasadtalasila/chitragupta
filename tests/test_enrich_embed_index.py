@@ -146,7 +146,8 @@ class TestStripImageRefs:
     def test_drops_bare_image_placeholders(self):
         out = embed_index.strip_image_refs("intro\n\n<!-- image -->\n\nbody\n")
         assert "<!-- image -->" not in out
-        assert "intro" in out and "body" in out
+        assert "intro" in out
+        assert "body" in out
 
     def test_collapses_the_gap_left_behind(self):
         out = embed_index.strip_image_refs("a\n\n<!-- image -->\n\nb\n")
@@ -170,7 +171,8 @@ class TestGetText:
         out = embed_index.get_text(doc)
 
         assert "image_000000_abc.png" not in out
-        assert "real text" in out and "more text" in out
+        assert "real text" in out
+        assert "more text" in out
 
     def test_prefers_docling_output(self, isolated_config):
         isolated_config.DOCLING_DIR.mkdir(parents=True)

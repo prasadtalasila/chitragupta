@@ -382,7 +382,8 @@ class TestMergeSpans:
 class TestQuoteCharSpans:
     def test_straight_double_quotes_detected(self):
         spans = vc._quote_char_spans('before "a quoted phrase" after')
-        assert spans and spans[0] == (7, 24)
+        assert spans
+        assert spans[0] == (7, 24)
 
     def test_curly_double_quotes_detected(self):
         spans = vc._quote_char_spans("before “a quoted phrase” after")
@@ -390,7 +391,8 @@ class TestQuoteCharSpans:
 
     def test_blockquote_line_detected(self):
         spans = vc._quote_char_spans("> a blockquote line\nnot a quote\n")
-        assert spans and spans[0][0] == 0
+        assert spans
+        assert spans[0][0] == 0
 
     def test_no_quotes_returns_empty(self):
         assert vc._quote_char_spans("nothing quoted here at all") == []
@@ -401,12 +403,14 @@ class TestMaskForScan:
         text = "before\n```\n@dataclass\n```\nafter"
         masked = vc._mask_for_scan(text)
         assert "dataclass" not in masked
-        assert "before" in masked and "after" in masked
+        assert "before" in masked
+        assert "after" in masked
 
     def test_blanks_inline_code(self):
         masked = vc._mask_for_scan("use `@property` here")
         assert "property" not in masked
-        assert "use" in masked and "here" in masked
+        assert "use" in masked
+        assert "here" in masked
 
     def test_blanks_references_section_onward(self):
         text = "Intro text here.\n\n## References\n\n[1] Some Title, Some Venue.\n"
@@ -476,7 +480,8 @@ class TestLowerOffsets:
         assert len(lowered) == 9
         assert offsets is not None
         # Both code points of the lowercased "İ" map back to it.
-        assert offsets[0] == 0 and offsets[1] == 0
+        assert offsets[0] == 0
+        assert offsets[1] == 0
         assert offsets[2] == 1  # "s"
 
     def test_the_mapping_covers_every_character_of_the_result(self):
@@ -833,7 +838,8 @@ class TestCmdScan:
         vc.cmd_scan(str(draft))
         out = capsys.readouterr().out
         assert out.count("tier=exact") == 2
-        assert "pdf p.1" in out and "pdf p.2" in out
+        assert "pdf p.1" in out
+        assert "pdf p.2" in out
         assert "pdf p.1-2" not in out
 
 
@@ -1662,7 +1668,9 @@ class TestScanJsonSibling:
         vc.cmd_scan(str(draft), limit=1, write=True, formats=["md"], as_json=True)
 
         command = json.loads(capsys.readouterr().out)["command"]
-        assert "--limit 1" in command and "--write" in command and "--json" in command
+        assert "--limit 1" in command
+        assert "--write" in command
+        assert "--json" in command
 
     def test_the_report_and_its_payload_record_the_same_command(
         self, ledger_con, isolated_config, tmp_path, capsys

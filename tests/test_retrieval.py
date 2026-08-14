@@ -40,7 +40,8 @@ class TestSnippet:
             + " soil moisture twin controller " + "y " * 400
         )
         snippet = retrieval._snippet(text, {"twin", "soil", "moisture"}, window=60)
-        assert "soil" in snippet and "moisture" in snippet
+        assert "soil" in snippet
+        assert "moisture" in snippet
 
     def test_is_the_same_snippet_whatever_the_hash_seed(self):
         """`terms` is a set and string hashing is randomised per process,
@@ -295,7 +296,8 @@ class TestWindows:
             + "moisture " * 20
         )
         (best,) = retrieval._windows(text, {"soil", "moisture", "sensor"}, 60, 1)
-        assert "soil" in best and "sensor" in best
+        assert "soil" in best
+        assert "sensor" in best
 
     def test_finds_a_passage_late_in_a_long_document(self):
         """The limitation `_snippet` has and this fixes: it anchors on the
@@ -315,7 +317,8 @@ class TestWindows:
     def test_returns_windows_in_document_order(self):
         text = "start marker one " + "x " * 300 + " end marker two"
         windows = retrieval._windows(text, {"marker", "start", "end"}, 40, 2)
-        assert "start" in windows[0] and "end" in windows[1]
+        assert "start" in windows[0]
+        assert "end" in windows[1]
 
     def test_respects_the_requested_count(self):
         text = ("term " + "pad " * 40) * 10
@@ -423,7 +426,8 @@ class TestCli:
         assert retrieval.main(
             ["search", "digital twin architecture", "--log", str(draft)]) == 0
         calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
-        assert calls == 1 and chars > 0
+        assert calls == 1
+        assert chars > 0
         assert "Logged to" in capsys.readouterr().out
 
     def test_a_draft_outside_drafts_reports_but_does_not_fail_the_search(

@@ -113,7 +113,8 @@ class TestMain:
 
         assert rc == 0
         assert called == ["docling", "embed"]  # bertopic not selected, never called
-        assert "docling" in out and "ok" in out
+        assert "docling" in out
+        assert "ok" in out
         assert "=== Summary ===" in out
         assert "WARNING: unknown stage" not in out  # every selected name is real
 

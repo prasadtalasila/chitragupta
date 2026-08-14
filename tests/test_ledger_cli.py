@@ -87,7 +87,8 @@ class TestFilters:
     def test_citekey_shows_one_item_in_full(self, corpus, capsys):
         assert ledger.main(["--citekey", "broken_1"]) == 0
         out = capsys.readouterr().out
-        assert "broken_1" in out and "cannot read" in out
+        assert "broken_1" in out
+        assert "cannot read" in out
 
     def test_an_unknown_citekey_is_reported_not_silent(self, corpus, capsys):
         assert ledger.main(["--citekey", "nope_2024"]) == 1

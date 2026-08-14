@@ -176,7 +176,8 @@ class TestRun:
         sync.run()
         out = capsys.readouterr().out
         assert "WARNING: 1 possible duplicate group(s)" in out
-        assert "smith_example_2024" in out and "smith_example_2024_dup" in out
+        assert "smith_example_2024" in out
+        assert "smith_example_2024_dup" in out
 
     def test_warns_when_bib_reader_drops_a_malformed_entry(self, isolated_config, monkeypatch, capsys):
         # bib_reader.read_library() prints this warning itself (it's the
@@ -740,7 +741,8 @@ class TestParallelParsing:
         out = captured.out
 
         assert rc == 1
-        assert "5 parsed" in out and "1 failed" in out
+        assert "5 parsed" in out
+        assert "1 failed" in out
         con = ledger.connect()
         try:
             rows = {r["citekey"]: r for r in ledger.all_items(con)}
@@ -782,7 +784,8 @@ class TestParallelParsing:
         out = capsys.readouterr().out
 
         assert rc == 1
-        assert "5 parsed" in out and "1 failed" in out
+        assert "5 parsed" in out
+        assert "1 failed" in out
         con = ledger.connect()
         try:
             rows = {r["citekey"]: r for r in ledger.all_items(con)}
@@ -1147,7 +1150,8 @@ class TestProgressReporting:
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
         # A counter, so the reader can see both rate and remaining work.
-        assert "[1/6]" in caplog.text and "[6/6]" in caplog.text
+        assert "[1/6]" in caplog.text
+        assert "[6/6]" in caplog.text
 
     def test_stdout_stays_in_bibliography_order(self, many_corpus, monkeypatch, capsys):
         """Live progress goes to stderr precisely so stdout can stay
@@ -1461,7 +1465,8 @@ class TestTimeoutReporting:
         sync.run()
         out = capsys.readouterr().out
         assert "2 document(s) hit the 5.0s" in out
-        assert "doe_broken_2023" in out and "smith_example_2024" in out
+        assert "doe_broken_2023" in out
+        assert "smith_example_2024" in out
 
     def test_a_timeout_from_a_pool_worker_is_reported_too(
         self, many_corpus, monkeypatch, capsys

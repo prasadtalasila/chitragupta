@@ -1274,7 +1274,8 @@ class TestParseCorpusInterrupt:
     ):
         docling_parse.parse_corpus(self._docs(tmp_path))
         out = capsys.readouterr().out
-        assert "[1/6]" in out and "[6/6]" in out
+        assert "[1/6]" in out
+        assert "[6/6]" in out
 
 
 class TestEnrichPartialSuccess:
