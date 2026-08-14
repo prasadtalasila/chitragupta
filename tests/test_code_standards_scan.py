@@ -58,17 +58,13 @@ CODE_LINE_ROOTS = ("src", "scripts")
 # src/dossier.py (1605 code lines).
 LEGACY_LONG_FUNCTIONS = {
     "src/sync.py::run",  # 117
-    "src/dossier.py::_cmd_status",  # 65
     "src/dossier.py::main",  # 42
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
-    "src/dossier.py::_cmd_brief",  # 34
     "src/sync.py::_parse_parallel",  # 33
-    "src/dossier.py::_print_drift",  # 32
     "src/enrich/topic_model.py::run_topic_model",  # 32
     "src/render_output.py::render",  # 31
     "tests/test_release.py::make_repo",  # 30
-    "src/dossier.py::sections",  # 29
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
     "src/overlap_skipgram.py::build_corpus_index",  # 27
@@ -83,7 +79,7 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/dossier.py",  # 1619
+    "src/dossier.py",  # 1667
     "src/review/verbatim_check.py",  # 1588
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 522
