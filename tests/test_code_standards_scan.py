@@ -75,7 +75,6 @@ LEGACY_LONG_FUNCTIONS = {
     "src/render_output.py::render",  # 31
     "src/enrich/__main__.py::_run_stages",  # 30
     "tests/test_release.py::make_repo",  # 30
-    "src/dossier.py::_cmd_status_all",  # 29
     "src/dossier.py::sections",  # 29
     "src/ledger.py::upsert_reference",  # 29
     "src/retrieval.py::_windows",  # 28
@@ -92,7 +91,7 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/dossier.py",  # 1614
+    "src/dossier.py",  # 1619
     "src/review/verbatim_check.py",  # 1588
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 508

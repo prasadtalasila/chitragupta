@@ -30,11 +30,13 @@ def _normalize_title(title: str) -> str:
 
 
 def _normalize_doi(doi: str) -> str:
+    # One pattern for either scheme, then the bare `doi:` label. These are
+    # prefixes being *stripped* from a bibliography's DOI field -- http-form
+    # DOIs exist in the wild and must normalise equal to their https twins;
+    # nothing here ever fetches a URL.
     text = doi.strip().lower()
-    for prefix in ("https://doi.org/", "http://doi.org/", "doi:"):
-        if text.startswith(prefix):
-            text = text[len(prefix):]
-    return text
+    text = re.sub(r"^https?://doi\.org/", "", text)
+    return text.removeprefix("doi:")
 
 
 def find_duplicates(references: list[Reference]) -> list[list[Reference]]:

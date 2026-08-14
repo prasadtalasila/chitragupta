@@ -1697,13 +1697,13 @@ def _cmd_init(args: argparse.Namespace) -> int:
     target = dossier_dir(draft)
     if not written:
         print(f"Dossier already complete: {draft_relpath(target)}")
-        return 0
-    print(f"Dossier: {draft_relpath(target)}")
-    for path in written:
-        print(f"  created {path.name}")
-    if known_citekeys() is None:
-        print(f"\n  No ledger at {config.LEDGER_PATH}, so no corpus fingerprint was")
-        print("  recorded. Drift checks will be unavailable for this dossier.")
+    else:
+        print(f"Dossier: {draft_relpath(target)}")
+        for path in written:
+            print(f"  created {path.name}")
+        if known_citekeys() is None:
+            print(f"\n  No ledger at {config.LEDGER_PATH}, so no corpus fingerprint was")
+            print("  recorded. Drift checks will be unavailable for this dossier.")
     return 0
 
 
@@ -1765,11 +1765,18 @@ def _print_drift(report: Drift) -> None:
 def _cmd_status_all(reports: list[Drift], as_json: bool) -> int:
     if as_json:
         print(json.dumps({"dossiers": [r.as_dict() for r in reports]}, indent=2))
-        return 0
-    if not reports:
+    elif not reports:
         print(f"No dossiers under {draft_relpath(config.DOSSIERS_DIR)}.")
-        return 0
+    else:
+        _print_drift_summary(reports)
+    return 0
 
+
+def _print_drift_summary(reports: list[Drift]) -> None:
+    """The human-readable half of `status --all`: every dossier's drift,
+    then the how-to-read-this coda. Split from `_cmd_status_all` so the
+    command keeps one exit and one return -- this text report cannot fail,
+    which is exactly why it returns nothing."""
     print(f"Corpus drift across {len(reports)} dossier(s):\n")
     for report in reports:
         _print_drift(report)
@@ -1788,7 +1795,7 @@ def _cmd_status_all(reports: list[Drift], as_json: bool) -> int:
     if not stale:
         if not unknown:
             print("  Every dossier is current against the corpus.")
-        return 0
+        return
     print(f"  {len(stale)} of {len(reports)} dossier(s) have drifted.")
     print("  A missing citekey is a defect: the draft cites what the corpus no")
     print("  longer has. A candidate is a decision, not a defect -- re-search only")
@@ -1799,7 +1806,6 @@ def _cmd_status_all(reports: list[Drift], as_json: bool) -> int:
     else:
         print("  `rejected.md` was already subtracted, so nothing here was turned "
               "down before.")
-    return 0
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
@@ -2039,13 +2045,13 @@ def _cmd_list(args: argparse.Namespace) -> int:
     found = all_dossiers()
     if not found:
         print(f"No dossiers under {config.DOSSIERS_DIR}.")
-        return 0
-    for dossier in found:
-        draft = find_draft(dossier)
-        name = dossier.resolve().relative_to(config.DOSSIERS_DIR.resolve()).as_posix()
-        marker = "" if draft else "   (draft missing)"
-        print(f"  {name}{marker}")
-    print(f"\n  {len(found)} dossier(s) under {draft_relpath(config.DOSSIERS_DIR)}.")
+    else:
+        for dossier in found:
+            draft = find_draft(dossier)
+            name = dossier.resolve().relative_to(config.DOSSIERS_DIR.resolve()).as_posix()
+            marker = "" if draft else "   (draft missing)"
+            print(f"  {name}{marker}")
+        print(f"\n  {len(found)} dossier(s) under {draft_relpath(config.DOSSIERS_DIR)}.")
     return 0
 
 

@@ -672,10 +672,11 @@ def drop_stdlib_shadowing_path_entries() -> list[str]:
     something has installed a top-level `typing` backport into it.
     """
     removed = []
-    # `list()` is a copy, not a cast: the loop body removes entries from
-    # sys.path, and mutating the list being iterated skips the element
-    # after each removal.
-    for entry in list(sys.path):
+    # A copy, spelled `.copy()` so it cannot be misread (or "cleaned up")
+    # as a redundant cast: the loop body removes entries from sys.path,
+    # and mutating the list being iterated skips the element after each
+    # removal.
+    for entry in sys.path.copy():
         if not entry:
             continue
         parent = os.path.basename(os.path.dirname(entry.rstrip(os.sep)))
