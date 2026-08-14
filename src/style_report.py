@@ -30,7 +30,8 @@ def _dialect_lines(payload: dict) -> list[str]:
              "[style].language in config.toml (WRITING-STANDARDS.md section 8)"]
     proposal = payload.get("proposed_language")
     if proposal:
-        counts = ", ".join(f"{tag}: {n}" for tag, n in sorted(proposal["findings_by_language"].items()))
+        measured = sorted(proposal["findings_by_language"].items())
+        counts = ", ".join(f"{tag}: {n}" for tag, n in measured)
         lines.append(f"  it reads as {proposal['language']} ({counts}). To record that:")
         lines.append(f"    python -m src.draft dossier set-language "
                      f"{proposal['language']} {payload['draft']}")
