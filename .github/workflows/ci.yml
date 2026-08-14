@@ -294,6 +294,41 @@ jobs:
       - name: markdownlint
         run: markdownlint-cli2 "*.md" "docs/**/*.md"
 
+      # Vale is installed by the same function the host and Docker use, so
+      # a break in that install path fails here rather than on a
+      # contributor's machine. It is the one binary that script fetches by
+      # hand, and it verifies a pinned sha256 before unpacking -- see
+      # assets/vale/README.md.
+      - name: Install Vale
+        run: bash scripts/install_full_pipeline.sh vale
+
+      # Not a lint of this repository's own prose, which would fail today:
+      # docs/ carries 27 uses of §2's markers, and DEVELOPER-AGENTS.md's
+      # rule is that a check which has not been made to pass must not ship.
+      # This runs the vendored style over a fixture instead, so a
+      # BlockIgnores regex that Vale refuses to parse -- a comma inside
+      # `\n{2,}` is the way that happens -- fails CI rather than silently
+      # reporting zero findings on every draft forever.
+      # `style` exits 0 by design -- it is a review aid, not a gate -- so
+      # this step reads the findings rather than the exit code. Every
+      # marker in the fixtures sits inside an exemption, so anything
+      # reported means an exemption broke.
+      - name: Vale config parses and the exemptions hold
+        run: |
+          python -m src.draft style --json \
+            tests/fixtures/style/exemptions.md \
+            tests/fixtures/style/exemptions.tex > /tmp/style.json
+          python - <<'CHECK'
+          import json, sys
+          payload = json.load(open("/tmp/style.json"))
+          bad = [(d["draft"], d["findings"]) for d in payload["drafts"] if d["findings"]]
+          if payload["warnings"]:
+              sys.exit(f"style check could not run: {payload['warnings']}")
+          if bad:
+              sys.exit(f"a quoted-span exemption has broken: {bad}")
+          print("exemptions hold: 0 findings in", len(payload["drafts"]), "fixtures")
+          CHECK
+
   # SonarQube Cloud's static analysis. The quality-gate summary that is
   # meant to accompany it on the PR page is not arriving yet -- see the
   # scan step's own comment below before concluding this job is broken.

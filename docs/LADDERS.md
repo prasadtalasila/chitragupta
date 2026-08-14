@@ -434,7 +434,7 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids), `src.passages` |
+| 1 | bare `python`, stdlib only | `src.draft` (all six commands), `src.corpus ledger`, `src.review` (all three aids), `src.passages` |
 | 2 | a venv with `bibtexparser` | `python -m src.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m src.enrich` |
 

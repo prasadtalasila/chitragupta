@@ -41,7 +41,7 @@ against the project's venv for tiers 2 and 3.
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python`** -- stdlib only, no venv | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids) |
+| 1 | **`python`** -- stdlib only, no venv | `src.draft` (all six commands), `src.corpus ledger`, `src.review` (all three aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m src.enrich` |
 
@@ -915,6 +915,66 @@ python -m src.draft render content/drafts/survey.md --format pdf
 # python -m src.draft render content/drafts/thesis.md \
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
+
+### `python -m src.draft style`
+
+Report where a draft's prose departs from
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers and
+§8's recorded dialect. **A review aid: it exits 0 whatever it finds**, and
+nothing in this pipeline reads its output back or blocks on it.
+
+```bash
+python -m src.draft style content/drafts/<path>
+python -m src.draft style content/drafts/<path> --json
+```
+
+It is not a gate and cannot be made one, not even behind a flag. The gate
+is measured against the ledger, which is ground truth; this is measured
+against a `language:` line someone typed into `scope.md`, which can be
+wrong, stale, or deliberately overridden -- so blocking on it would refuse
+a correct draft on a bad target. [ARCHITECTURE.md](ARCHITECTURE.md)'s
+"Layer 4" has the axis, and DEVELOPER-AGENTS.md bars promoting any new
+check into a gate beside the citation gate.
+
+**Which dialect it checks is declared, never inferred.** Three sources,
+most specific first, and the report names which one was used:
+
+1. `--language en-GB`, for this run only. Writes nothing.
+2. The `language:` line in the dossier's `scope.md` -- the draft's own
+   property, settled with the reader when it was drafted.
+3. `[style].language` in `config.toml`, a standing preference for this
+   machine.
+
+Record a draft's dialect with:
+
+```bash
+python -m src.draft dossier set-language en-GB content/drafts/<path>
+```
+
+With none of the three set -- the shipped "not settled" placeholder, or
+any dossier written before 5.12.0 -- **no dialect rules run**, and the
+command measures the draft both ways and proposes one:
+
+```text
+dialect: not checked -- no `language:` in scope.md and no [style].language
+it reads as en-GB (en-GB: 0, en-US: 13). To record that:
+  python -m src.draft dossier set-language en-GB content/drafts/<path>
+```
+
+It proposes and never writes: [HOUSE-STYLE.md](HOUSE-STYLE.md)'s rule is
+that the machine offers and the human accepts.
+
+**Repeated findings collapse.** A chapter that never expands "AI" reports
+it once with a count, not once per occurrence.
+
+Needs the `vale` binary on `PATH`; without it the command reports
+missing-binary and changes nothing, the same bargain `render` makes with
+pandoc. `bash scripts/install_full_pipeline.sh os-deps` installs the
+pinned version. The rules live in `assets/vale/`, vendored rather than
+fetched, and `assets/vale/README.md` documents what they deliberately
+leave out -- `licence`/`license` and `practice`/`practise` are decided by
+part of speech, `program`/`programme` by domain, and no string match
+settles any of them.
 
 ### `python -m src.enrich`
 

@@ -1,0 +1,32 @@
+extends: substitution
+message: "Use '%s' instead of '%s' -- scope.md records en-IN, which prefers -ise (WRITING-STANDARDS.md §8)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: warning
+ignorecase: true
+# en-IN is en-GB plus this one check, and it is the reason en-IN is not
+# simply an alias for en-GB. Indian English follows the -ise convention;
+# British English accepts both, so DialectGB cannot carry these without
+# reporting correct Oxford-spelled prose.
+#
+# Never listed here: capsize, prize, size, seize -- always -ize in every
+# dialect, and not instances of this suffix at all.
+swap:
+  characteriz(e|es|ed|ing|ation): characteris$1
+  emphasiz(e|es|ed|ing): emphasis$1
+  formaliz(e|es|ed|ing|ation): formalis$1
+  generaliz(e|es|ed|ing|ation): generalis$1
+  initializ(e|es|ed|ing|ation): initialis$1
+  maximiz(e|es|ed|ing): maximis$1
+  minimiz(e|es|ed|ing): minimis$1
+  normaliz(e|es|ed|ing|ation): normalis$1
+  optimiz(e|es|ed|ing|ation): optimis$1
+  organiz(e|es|ed|ing|ation): organis$1
+  prioritiz(e|es|ed|ing): prioritis$1
+  realiz(e|es|ed|ing): realis$1
+  recogniz(e|es|ed|ing): recognis$1
+  specializ(e|es|ed|ing|ation): specialis$1
+  standardiz(e|es|ed|ing|ation): standardis$1
+  summariz(e|es|ed|ing): summaris$1
+  synchroniz(e|es|ed|ing|ation): synchronis$1
+  utiliz(e|es|ed|ing|ation): utilis$1
+  visualiz(e|es|ed|ing|ation): visualis$1

@@ -1,0 +1,7 @@
+extends: existence
+message: "'just' -- adverb or adjective? Only the adverb is a defect marker (WRITING-STANDARDS.md §2, §9)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - just

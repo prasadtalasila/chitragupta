@@ -1,0 +1,18 @@
+{
+  "corpus": "content/drafts/books/digital-twins-for-software-engineers (15 chapters + ToC)",
+  "words": 178511,
+  "vale": "3.9.1",
+  "dialect_recorded": null,
+  "occurrences_by_rule": {
+    "chitragupta.Acronyms": 337,
+    "chitragupta.DefectMarkers": 24,
+    "chitragupta.Just": 33
+  },
+  "distinct_findings_by_rule": {
+    "chitragupta.Acronyms": 101,
+    "chitragupta.DefectMarkers": 7,
+    "chitragupta.Just": 15
+  },
+  "total_occurrences": 394,
+  "total_distinct": 123
+}

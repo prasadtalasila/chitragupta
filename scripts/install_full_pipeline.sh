@@ -135,6 +135,59 @@ install_os_deps() {
     # Pinning opencv-python-headless instead does not work: rapidocr
     # requires opencv-python by distribution name, so both would install
     # and clobber the same cv2/ directory.
+
+    install_vale
+}
+
+# Vale, the prose linter `python -m src.draft style` shells out to. Not in
+# the Debian/Ubuntu archives, so this is a release tarball rather than an
+# apt package -- the one binary this script fetches by hand, and the
+# reason it verifies a checksum before unpacking anything.
+#
+# Pinned, not "latest", for the reason assets/vale/README.md gives: a Vale
+# release can change how a format is scoped, which silently moves the
+# quoted-span exemptions the checks depend on. Moving this pin means
+# re-running bench/ against the shipped drafts, not just bumping a number.
+#
+# Absent Vale is not an error here or anywhere else: `src.draft style`
+# probes for it and reports missing-binary, exactly as render does for
+# pandoc, so a host that skips this keeps every other capability.
+VALE_VERSION="3.9.1"
+VALE_SHA256="fbc2eb47d0b8c50220ed1a2c5c611fbe0904ed567d638143d482016a18fd2db0"
+
+install_vale() {
+    if command -v vale >/dev/null 2>&1; then
+        echo "vale already installed: $(vale --version)"
+        return 0
+    fi
+    case "$(uname -m)" in
+        x86_64|amd64) vale_arch="64-bit" ;;
+        *)
+            echo "WARNING: no pinned Vale build for $(uname -m); skipping." >&2
+            echo "         python -m src.draft style will report it as missing." >&2
+            return 0
+            ;;
+    esac
+    vale_tmp="$(mktemp -d)"
+    vale_url="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_${vale_arch}.tar.gz"
+    if ! curl -fsSL -o "${vale_tmp}/vale.tar.gz" "$vale_url"; then
+        echo "WARNING: could not download Vale from $vale_url; skipping." >&2
+        rm -rf "$vale_tmp"
+        return 0
+    fi
+    # Verified before it is unpacked, not after: this is the only file
+    # this script takes from outside the distribution's archives.
+    if ! echo "${VALE_SHA256}  ${vale_tmp}/vale.tar.gz" | sha256sum -c --status; then
+        echo "ERROR: Vale checksum mismatch -- refusing to install." >&2
+        echo "       expected ${VALE_SHA256}" >&2
+        echo "       got      $(sha256sum "${vale_tmp}/vale.tar.gz" | cut -d' ' -f1)" >&2
+        rm -rf "$vale_tmp"
+        return 1
+    fi
+    tar xzf "${vale_tmp}/vale.tar.gz" -C "$vale_tmp" vale
+    sudo_if_needed install -m 0755 "${vale_tmp}/vale" /usr/local/bin/vale
+    rm -rf "$vale_tmp"
+    echo "installed $(vale --version)"
 }
 
 check_poetry() {
@@ -333,10 +386,17 @@ for stage in "${STAGES[@]}"; do
         os-deps) install_os_deps ;;
         python-deps) install_python_deps ;;
         dev-deps) install_dev_deps ;;
+        # Vale alone, without the TeX Live and poppler that os-deps also
+        # brings. os-deps installs it too; this target exists because CI's
+        # lint job wants the prose linter and nothing else, and because
+        # sourcing this script to reach the function runs the dispatcher
+        # below with no stage -- which defaults to python-deps and fails
+        # on a runner that has no poetry.
+        vale) install_vale ;;
         all) install_os_deps; install_python_deps ;;
         *)
             echo "Unknown stage: $stage" >&2
-            echo "Expected one of: os-deps, python-deps, dev-deps, all" >&2
+            echo "Expected one of: os-deps, python-deps, dev-deps, vale, all" >&2
             exit 1
             ;;
     esac

@@ -60,7 +60,7 @@ before it had a shared front door.
 import argparse
 import sys
 
-from src import citation_gate, dossier, references, render_output, retrieval
+from src import citation_gate, dossier, references, render_output, retrieval, style_check
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
@@ -69,6 +69,8 @@ VERBS = {
     "retrieve": (retrieval, "BM25 retrieval over the synced corpus"),
     "references": (references, "an IEEE reference list built from a draft's own cited citekeys"),
     "render": (render_output, "render a Pandoc-markdown or LaTeX draft to tex/pdf/docx"),
+    "style": (style_check, "check a draft's prose against docs/WRITING-STANDARDS.md "
+                           "-- a review aid, never a gate"),
 }
 
 

@@ -1471,3 +1471,89 @@ The pre-fix run is committed alongside it at
 -- 190 rows, unlabelled, kept so the 190 -> 125 -> 27 arithmetic above
 can be re-derived rather than taken on trust. Reproducing *it* needs the
 parent commit, since the fixes are in `src/`.
+
+## 2026-08-14b: `src.draft style` on a real 178k-word book, and the four bugs measuring it exposed (#107)
+
+Payload: `results/2026-08-14-style-precision/style_precision.json`.
+Corpus: the fifteen chapters of
+`content/drafts/books/digital-twins-for-software-engineers` plus its table
+of contents -- **178,511 words**, all sixteen files passing the citation
+gate. Vale 3.9.1, rules as vendored at `assets/vale/`.
+
+This is the run the plan on #107 promised before the checker shipped, and
+it is the reason four things in `assets/vale/` are the way they are. Every
+one was found by running against real drafts rather than fixtures.
+
+### The dialect signal is decisive, which is the result that matters
+
+| Checked as | Findings |
+|---|---|
+| `en-GB` | **5** |
+| `en-US` | **400** |
+
+An 80:1 ratio over 178k words. The book is en-GB and the checker says so
+without being told -- none of the fifteen dossiers carries a `language:`
+line, since all of them predate 5.12.0. That ratio is the evidence that
+the rules and the exemptions are both working: a checker with sloppy
+exemptions would report a few hundred either way.
+
+### What it reports when no dialect is recorded
+
+| Rule | Occurrences | Distinct |
+|---|---|---|
+| `Acronyms` | 337 | 101 |
+| `Just` | 33 | 15 |
+| `DefectMarkers` | 24 | 7 |
+
+**`DefectMarkers` at 24 over 178k words is the headline for §2**: the
+drafting skills are already honouring it. Zero uses of "obviously",
+"simply" or "of course" in the whole book; the 24 are "clearly" twice and
+"easy" the rest.
+
+**`Acronyms` is noisy and is shipped at `suggestion` for that reason.**
+101 distinct acronyms in a technical book, most of them domain vocabulary
+(`FMI`, `FMU`, `OPC`, `AAS`, `MODBUS`) that the reader of *this* book
+knows. The rule cannot tell those from a genuinely unexplained one without
+the author's own vocabulary, which is #190. Until that lands, this rule is
+a prompt rather than a finding, and the count above is what "noisy" means
+in numbers.
+
+### The four bugs this run exposed
+
+1. **Collapsing was not optional.** "AI" appears 45 times unexpanded in
+   one chapter. 337 occurrences reduce to 101 distinct findings; without
+   that, the report is not read to the end.
+2. **The references heading is not `## References`.** It is
+   `## 3.13 References` -- a dotted section number. The exemption regex
+   written from the docs matched neither, so the first run reported five
+   dialect findings that were all cited paper titles. Fixing the pattern
+   took `DialectGB` from 5 false positives to 0 on chapter 3.
+3. **`[formats] tex = md` is load-bearing.** Without it Vale scans a
+   `.tex` fragment as plain text and applies no `BlockIgnores` at all,
+   reporting every word inside a `verbatim` block.
+4. **Vale splits `BlockIgnores` on commas**, so `\n{2,}` fails to parse
+   and Vale refuses to start. It has to be written `\n\n+`.
+
+Bugs 2-4 are each pinned by a test in
+`tests/test_style_assets_match_the_standard.py`, because all three fail
+*silently* -- as zero findings, which reads as a clean draft.
+
+### Reproducing
+
+```bash
+python -m src.draft style --json \
+  content/drafts/books/digital-twins-for-software-engineers/*.md
+```
+
+The dialect columns need the rules selected by hand, since the restored
+dossiers record no `language:`:
+
+```bash
+vale --config=assets/vale/vale.ini --no-exit --output=line \
+  --filter='.Name != "chitragupta.DialectUS" and .Name != "chitragupta.DialectIN"' \
+  content/drafts/books/digital-twins-for-software-engineers/*.md
+```
+
+The book is restored from a content backup and is gitignored, so this run
+is not reproducible from a fresh clone. That is the same limitation every
+corpus-dependent entry in this file has.

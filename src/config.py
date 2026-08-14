@@ -409,6 +409,26 @@ RENDERED_DIR = CONTENT_DIR / "rendered"
 # no network and so a style change can never silently renumber a draft that
 # was already reviewed -- see assets/csl/README.md.
 CSL_STYLE_PATH = REPO_ROOT / _get("CSL_STYLE", "render", "csl", default="assets/csl/ieee.csl")
+
+# The Vale configuration `python -m src.draft style` checks a draft
+# against, vendored at assets/vale/ for the reason assets/csl/ieee.csl is:
+# a style fetched at run time is not the style that was reviewed, and a
+# check whose rules differ per clone is not a check. Overridable so a user
+# can point at their own house style without editing what ships.
+VALE_CONFIG_PATH = REPO_ROOT / _get("VALE_CONFIG", "style", "vale_config",
+                                    default="assets/vale/vale.ini")
+
+# A fallback dialect for a draft whose dossier records none -- the
+# standing preference docs/HOUSE-STYLE.md calls for under "What persists
+# across drafts", where a user who has chosen en-GB four times has a
+# default and re-choosing it is friction rather than a decision.
+#
+# It is a fallback, never an override: scope.md wins, because a thesis at
+# an Indian university and an IEEE submission legitimately differ and the
+# per-draft record is the one that knows which this is. Empty by default,
+# and `src.draft style` names which source a dialect came from, so a draft
+# checked against this is never checked against it silently.
+STYLE_LANGUAGE = _get("STYLE_LANGUAGE", "style", "language", default="")
 # Whether a run of consecutive citation numbers collapses ([3]-[6] rather
 # than [3], [4], [5], [6]). IEEE's own guide shows the collapsed form, but
 # upstream ieee.csl doesn't produce it; render_output.py injects the one

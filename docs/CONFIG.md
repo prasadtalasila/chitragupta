@@ -14,6 +14,7 @@ this document can stay a reference rather than an argument.
 - [Every setting](#every-setting)
   - [Paths](#paths)
   - [`[render]` -- citation style](#render----citation-style)
+  - [`[style]` -- prose conformance](#style----prose-conformance)
   - [`[parser]` -- PDF text extraction](#parser----pdf-text-extraction)
   - [`[logging]` -- the pipeline log file](#logging----the-pipeline-log-file)
   - [`[provenance]` -- citation-support bands](#provenance----citation-support-bands)
@@ -155,6 +156,43 @@ citation gate.
   unmodified. A style that already sets `collapse` itself is never
   overridden. See `assets/csl/README.md`.
 
+### `[style]` -- prose conformance
+
+Used only by `python -m src.draft style`, which is a **review aid**: it
+exits 0 whatever it finds, and nothing in this pipeline blocks on it.
+
+| Key | Env var | Accepts | Default |
+|---|---|---|---|
+| `vale_config` | `VALE_CONFIG` | path | `assets/vale/vale.ini` |
+| `language` | `STYLE_LANGUAGE` | BCP-47 tag | unset |
+
+- **`vale_config`** -- the Vale configuration and rule package a draft's
+  prose is checked against. Vendored for the same two reasons `csl` is:
+  the check has to work with no network, and a rule set that changed
+  underneath a draft would report a document that had already been
+  reviewed. Point it at your own house style to override what ships;
+  `assets/vale/README.md` documents each rule,
+  which section of
+  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) it implements, and the word
+  pairs it deliberately leaves out.
+- The `vale` binary itself is **not** configured here -- it is looked up
+  on `PATH`. Without it the command reports missing-binary and every
+  other command is unaffected, the same bargain `render` makes with
+  pandoc. `bash scripts/install_full_pipeline.sh os-deps` installs the
+  pinned version.
+- **`language`** -- a fallback dialect for a draft whose dossier records
+  none. **A fallback, never an override**: the `language:` line in a
+  draft's own `scope.md` wins, because a thesis at an Indian university
+  and an IEEE submission legitimately differ, and only the per-draft
+  record knows which this is. The report names which source a dialect came
+  from, so a draft checked against this one never reads like a draft that
+  declared its own.
+- The order is: `--language` on the command line, then the draft's
+  `scope.md`, then this key. With none of the three set, the command
+  measures the draft both ways and **proposes** a tag with the
+  `dossier set-language` command that would record it -- it never writes
+  one itself.
+
 ### `[parser]` -- PDF text extraction
 
 | Key | Env var | Accepts | Default |
@@ -224,7 +262,7 @@ The values in full:
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
-  write lock. Commands that don't take that lock -- `src.draft` (all five
+  write lock. Commands that don't take that lock -- `src.draft` (all six
   drafting-layer CLIs: gate, dossier, retrieve, references, render) --
   write to stdout only and are not logged.
 

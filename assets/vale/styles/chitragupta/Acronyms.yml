@@ -1,0 +1,41 @@
+extends: conditional
+message: "'%s' may have no expansion at first use (WRITING-STANDARDS.md §2)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+scope: text
+ignorecase: false
+first: '\b([A-Z]{2,6})\b'
+second: '(?:\b[A-Z][a-z]+[\s-]){1,5}\(([A-Z]{2,6})\)'
+# Roman numerals are the largest false-positive class measured on real
+# drafts: "Part II" and "Chapter III" are not acronyms. Listed rather
+# than excluded by pattern, because III and IV are also plausible
+# initialisms and a pattern would hide a real one.
+exceptions:
+  - I
+  - II
+  - III
+  - IV
+  - V
+  - VI
+  - VII
+  - VIII
+  - IX
+  - X
+  - API
+  - CPU
+  - CSV
+  - CSS
+  - GPU
+  - HTML
+  - HTTP
+  - HTTPS
+  - IEEE
+  - JSON
+  - PDF
+  - RAM
+  - REST
+  - SQL
+  - URL
+  - UTC
+  - XML
+  - YAML
