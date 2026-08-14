@@ -111,7 +111,7 @@ renders at all: it matches them by their path relative to
 
 | File | What it holds | Status before this |
 |---|---|---|
-| `scope.md` | genre, reader, what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
+| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
 | `evidence.md` | each kept citekey, why it was kept, supporting quote or paraphrase | **specified** (survey-writer step 2) but written as JSON |
 | `rejected.md` | candidates retrieved and turned down, with the reason | **nowhere** |
 | `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite | **specified** (survey-writer step 8) but written as JSON |

@@ -20,7 +20,7 @@ skill, the requirements -- which is
 does, which is
 [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md).
 
-**Partly built, as of 5.11.0.** #103 shipped the sanctioned edit path
+**Partly built, as of 5.12.0.** #103 shipped the sanctioned edit path
 (`draft-reviser`'s copy-edit mode) and #104 the recorded target
 (`scope.md`'s `language:` line, and
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8), so what this document
