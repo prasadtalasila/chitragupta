@@ -78,16 +78,7 @@ def _get_optional_float(env_var: str, *toml_path: str,
     Validated at load, like _get_workers, so a bad value is reported
     where it was written rather than as a strange timeout much later.
     """
-    if env_var in os.environ:
-        raw = os.environ[env_var]
-    else:
-        node = _toml
-        for key in toml_path:
-            if not isinstance(node, dict):
-                node = None
-                break
-            node = node.get(key)
-        raw = node
+    raw = _raw_setting(env_var, toml_path)
     if raw is None:
         return default
     # Checked for both sources, not just the environment: the shipped
@@ -97,24 +88,37 @@ def _get_optional_float(env_var: str, *toml_path: str,
         raw = raw.strip()
         if raw.lower() in ("", "off", "none", "false"):
             return None  # explicitly off, regardless of `default`
+    # Built once, raised from three places: the three failure modes -- a
+    # non-numeric type, an unparseable string, a non-positive or infinite
+    # number -- all deserve the same message, and stating it three times
+    # is how the copies drift.
+    complaint = ValueError(
+        f"{'/'.join(toml_path)} (or {env_var}) must be a positive number of "
+        f'seconds, or "off", not {raw!r}.'
+    )
     if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be a positive number of "
-            f'seconds, or "off", not {raw!r}.'
-        )
+        raise complaint
     try:
         seconds = float(raw)
     except ValueError:
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be a positive number of "
-            f'seconds, or "off", not {raw!r}.'
-        ) from None
+        raise complaint from None
     if not math.isfinite(seconds) or seconds <= 0:
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be a positive number of "
-            f'seconds, or "off", not {raw!r}.'
-        )
+        raise complaint
     return seconds
+
+
+def _raw_setting(env_var: str, toml_path: tuple[str, ...]):
+    """The unparsed value of one setting: the env var if set, else the
+    TOML node at `toml_path`, else None. Shared lookup for the getters
+    that need to distinguish "absent" from every real value."""
+    if env_var in os.environ:
+        return os.environ[env_var]
+    node = _toml
+    for key in toml_path:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    return node
 
 
 def _get_bool(env_var: str, *toml_path: str, default: bool) -> bool:

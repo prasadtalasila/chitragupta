@@ -270,25 +270,34 @@ def _figure_records(doc: CorpusDoc, dl_doc, image_names: list[str] | None = None
     for index, pic in enumerate(dl_doc.pictures):
         caption = (pic.caption_text(dl_doc) or "").strip()
         page = pic.prov[0].page_no if pic.prov else None
-        label_match = _CAPTION_LABEL_RE.match(caption)
-        ref = f"[@{doc.citekey}]"
-        if label_match:
-            kind = label_match.group(1).rstrip(".")
-            # "Fig"/"Fig." -> "Figure", so the citation reads the way a
-            # reader would write it, rather than echoing the source's
-            # abbreviation into the middle of a sentence.
-            kind = "Figure" if kind.lower().startswith("fig") else kind.capitalize()
-            cite = f"{kind} {label_match.group(2)} of {ref}" + (f", p.{page}" if page else "")
-        else:
-            cite = (f"the figure on p.{page} of {ref}" if page
-                    else f"an unplaced figure in {ref}")
         records.append({
             "page": page,
             "caption": caption or None,
-            "cite": cite,
+            "cite": _figure_cite(doc.citekey, caption, page),
             "image": image_names[index] if image_names else None,
         })
     return records
+
+
+def _figure_cite(citekey: str, caption: str, page: "int | None") -> str:
+    """The exact string a draft cites one figure by.
+
+    A numbered caption is cited by its own number; an unnumbered one by
+    page; a figure with neither is named as unplaced rather than given a
+    number this module would otherwise have to invent.
+    """
+    ref = f"[@{citekey}]"
+    label_match = _CAPTION_LABEL_RE.match(caption)
+    if label_match:
+        kind = label_match.group(1).rstrip(".")
+        # "Fig"/"Fig." -> "Figure", so the citation reads the way a
+        # reader would write it, rather than echoing the source's
+        # abbreviation into the middle of a sentence.
+        kind = "Figure" if kind.lower().startswith("fig") else kind.capitalize()
+        return f"{kind} {label_match.group(2)} of {ref}" + (f", p.{page}" if page else "")
+    if page:
+        return f"the figure on p.{page} of {ref}"
+    return f"an unplaced figure in {ref}"
 
 
 def _outputs_present(stem: str) -> bool:
@@ -656,42 +665,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
         logging_setup.say(logger, complaint, level=logging.WARNING)
 
     if workers > 1:
-        threads = pdf_text.docling_threads(workers)
-        # Biggest-file-first, same LPT reasoning as src/sync.py: one
-        # 675-page document in this corpus would otherwise define the
-        # wall clock all by itself if it were picked up last.
-        jobs = [(d, threads) for d in sorted(pending, key=lambda d: -_pdf_size(d.pdf_path))]
-        cached = [d for d in docs if d not in pending]
-        for doc in cached:
-            try:
-                status[doc.citekey] = f"ok: {parse_doc(doc, cache=cache)}"
-            except Exception as exc:  # noqa: BLE001 -- as below
-                status[doc.citekey] = f"error: {exc}"
-        # Explicit shutdown rather than `with`, for the reason src/sync.py
-        # gives: the context manager waits for every queued job, so
-        # Ctrl+C would drain the whole corpus before exiting.
-        executor = _executor_for(workers)
-        done = 0
-        try:
-            for citekey, doc_status, fingerprint in executor.map(parse_one, jobs):
-                status[citekey] = doc_status
-                if fingerprint is not None:
-                    cache[citekey] = fingerprint
-                done += 1
-                logging_setup.say(logger, f"  [{done}/{len(jobs)}] {citekey}")
-        except KeyboardInterrupt:
-            executor.shutdown(wait=False, cancel_futures=True)
-            pdf_text.terminate_workers(executor)
-            logging_setup.say(
-                logger,
-                f"\n  interrupted after {done}/{len(jobs)} document(s) -- "
-                "parsed output is kept; re-run to continue.",
-                level=logging.WARNING,
-            )
-            _save_cache(cache)
-            raise
-        finally:
-            executor.shutdown(wait=False)
+        _parse_with_pool(docs, pending, cache, status, workers)
     else:
         converter = _LazyConverter()
         for doc in docs:
@@ -702,3 +676,48 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
                 status[doc.citekey] = f"error: {exc}"
     _save_cache(cache)
     return status
+
+
+def _parse_with_pool(docs: list[CorpusDoc], pending: list[CorpusDoc],
+                     cache: dict, status: dict[str, str], workers: int) -> None:
+    """parse_corpus's parallel leg: the cached docs adopted serially, the
+    rest fanned out to a process pool. Mutates `status` and `cache` in
+    place -- the caller owns saving the cache, except on interrupt, where
+    this saves before re-raising so finished work survives the Ctrl+C.
+    """
+    threads = pdf_text.docling_threads(workers)
+    # Biggest-file-first, same LPT reasoning as src/sync.py: one
+    # 675-page document in this corpus would otherwise define the
+    # wall clock all by itself if it were picked up last.
+    jobs = [(d, threads) for d in sorted(pending, key=lambda d: -_pdf_size(d.pdf_path))]
+    cached = [d for d in docs if d not in pending]
+    for doc in cached:
+        try:
+            status[doc.citekey] = f"ok: {parse_doc(doc, cache=cache)}"
+        except Exception as exc:  # noqa: BLE001 -- as below
+            status[doc.citekey] = f"error: {exc}"
+    # Explicit shutdown rather than `with`, for the reason src/sync.py
+    # gives: the context manager waits for every queued job, so
+    # Ctrl+C would drain the whole corpus before exiting.
+    executor = _executor_for(workers)
+    done = 0
+    try:
+        for citekey, doc_status, fingerprint in executor.map(parse_one, jobs):
+            status[citekey] = doc_status
+            if fingerprint is not None:
+                cache[citekey] = fingerprint
+            done += 1
+            logging_setup.say(logger, f"  [{done}/{len(jobs)}] {citekey}")
+    except KeyboardInterrupt:
+        executor.shutdown(wait=False, cancel_futures=True)
+        pdf_text.terminate_workers(executor)
+        logging_setup.say(
+            logger,
+            f"\n  interrupted after {done}/{len(jobs)} document(s) -- "
+            "parsed output is kept; re-run to continue.",
+            level=logging.WARNING,
+        )
+        _save_cache(cache)
+        raise
+    finally:
+        executor.shutdown(wait=False)
