@@ -43,8 +43,13 @@ jobs:
       - name: Build release archive
         run: python3 scripts/release.py
 
+      # Pinned to a commit SHA rather than the `v2` tag (which currently
+      # resolves to this same commit, v2.6.2), for the reason ci.yml's
+      # Codecov pin states: S7637 -- a movable tag on a third-party action
+      # running with `contents: write` is exactly the dependency to pin.
+      # Bump it deliberately, by resolving the tag again.
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: release/chitragupta-*.zip
           generate_release_notes: true
