@@ -18,8 +18,16 @@ standard being checked against, and
 skill, the requirements -- which is
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), and why the line falls where it
 does, which is
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md). Nothing
-here is built; #103, #104 and #107 are the open issues that would build it.
+[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md).
+
+**Partly built, as of 5.11.0.** #103 shipped the sanctioned edit path
+(`draft-reviser`'s copy-edit mode) and #104 the recorded target
+(`scope.md`'s `language:` line, and
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8), so what this document
+called *the objective function* is now normative in that file's §9 rather
+than proposed here. What remains unbuilt is the machinery: the detector
+(#107), its automatic invocation (#183), and everything under "What
+persists across drafts" below, which no issue yet covers.
 
 ## Table of contents
 
@@ -76,37 +84,35 @@ being optimised.
 
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) is it, and it was written that
 way before any of this was contemplated. Its §2 and §4 are not aspirations;
-they are conformance rules with a decidable answer:
+they are conformance rules with a decidable answer.
 
-| Rule | Source in WRITING-STANDARDS | Decidable because |
-|---|---|---|
-| No defect markers: "obviously", "simply", "just", "of course", "clearly", "easy" | §2 | a literal string search -- though #107 adds the caveat, which §2 itself does not, that "just" needs a human eye (adverb versus adjective) |
-| Each term defined once, then used consistently | §2 | the dossier already carries a glossary |
-| Acronym expanded at first use, then not re-expanded | §2 | first occurrence is computable |
-| Short sentences, one idea each | §4 | *not* decidable -- see the next section |
-| Active voice with a named actor | §4 | detectable, but a judgement to fix |
-| Each paragraph leads with its point | §4 | detectable as a heuristic, a judgement to fix |
-| Hedging that carries no information is cut | §4 | detectable, a judgement to fix |
+**The rule-by-rule triage used to live here and no longer does.** It is
+[WRITING-STANDARDS.md §9](WRITING-STANDARDS.md#9-what-is-checked-mechanically-and-what-is-not),
+which names for each rule whether it is decidable and whether a machine
+may act on it unattended. That move was deliberate: this document is a
+proposal, and nothing may be built against a proposal, so the normative
+copy belongs in the file whose status is *reference* -- and in one place,
+so the two cannot drift into disagreeing about the same rule. What §9
+says, in one line: the *top* of that list is genuinely autoresearchable,
+and the bottom is a review aid's output for a human.
 
-That table is the honest version of "language is autoresearchable": the
-*top* of it is, and the bottom is a review aid's output for a human.
+The apparatus around it, and none of it needs a model:
 
-The apparatus around it is already specified in open issues, and none of it
-needs a model:
-
-- **#104** would record the draft's dialect as a `language:` line in the
+- **#104, shipped.** The draft's dialect is a `language:` line in the
   dossier's `scope.md` (BCP-47: `en-GB`, `en-IN`, `en-US`), so the target
   is on disk rather than restated in chat each session. That is the
-  *recorded target* an unattended pass needs, and #104 notes that
-  `draft-reviser` already reads `scope.md` before any edit, so the
-  preference reaches every future revision with no new tooling.
-- **#107** would add `scripts/style_check.py` -- dialect consistency
+  *recorded target* an unattended pass needs, and it needed no new
+  tooling: `draft-reviser` already read `scope.md` before any edit.
+- **#103, shipped.** `draft-reviser` has a copy-edit branch -- the
+  sanctioned path for a whole-document edit that touches no evidence,
+  which the skill had no shape for.
+- **#107, open.** `python -m src.draft style` -- dialect consistency
   against that line, plus §2's banned words -- stdlib-only, exit 0 always,
   a review aid and explicitly never a gate. That is the *detector* and the
-  *re-check*.
-- **#103** would give `draft-reviser` a copy-edit branch: the sanctioned
-  path for a whole-document edit that touches no evidence, which the skill
-  has no shape for today.
+  *re-check*. (Re-homed from the `scripts/style_check.py` this document
+  first named; `scripts/` holds dev tooling and no layer entry point.)
+- **#183, open.** What invokes the detector once it exists, so a prose
+  finding arrives without a human remembering to ask for it.
 
 Detector, recorded target, re-check, and a sanctioned edit path -- the
 whole loop, and every deterministic part of it costs zero tokens. This is
@@ -120,6 +126,12 @@ them adapted, not transliterated -- so none of this generalises to #108's
 multilingual track for free.
 
 ## What is binary, and what only looks it
+
+Wider than §9, and for a different purpose: §9 is normative over
+`WRITING-STANDARDS.md`'s own rules, and this is the inventory of
+everything an unattended loop might reach for, most of which that document
+never mentions. Where the two overlap, **§9 is the one that governs**; the
+rows below restate its verdicts only so the inventory reads as one list.
 
 | Property | Binary? | Unattended? |
 |---|---|---|
@@ -191,11 +203,12 @@ the first three matter more than their size suggests.
 
 | #102's PR | What it is | Why it matters here |
 |---|---|---|
-| #103 | copy-edit mode in `draft-reviser` | the sanctioned edit path -- without it there is nowhere for a prose fix to go |
-| #104 | dialect as a first-class draft property | the recorded target |
+| #103, shipped | copy-edit mode in `draft-reviser` | the sanctioned edit path -- without it there is nowhere for a prose fix to go |
+| #104, shipped | dialect as a first-class draft property | the recorded target |
 | #105, #106 | render-language plumbing, localisable references | unrelated to this loop; the non-English track |
-| #107 | `scripts/style_check.py` | the detector and the re-check |
+| #107 | `python -m src.draft style` | the detector and the re-check |
 | #108 | multilingual corpus support | out of scope, and see the caution above |
+| #183 | automatic invocation of the detector | what makes the loop a loop rather than a command someone remembers |
 
 Issue #102 ranks #107 fifth, as "a nice-to-have consistent with the
 project's review-aid posture". That ranking is right for a human-driven
@@ -203,4 +216,11 @@ workflow and wrong for an unattended one: without #107 there is no binary
 check, and
 without a binary check the prose class of
 [the agenda](AUTO-IMPROVEMENT.md#item-classes) cannot be acted on at all.
-If the loop is built, #107 moves up.
+Issue #183 takes that reading and moves #107 ahead of #105 and #106.
+
+**One thing #183 settled that this document left open**: the check is
+decidable, so the question of gating it was live. It is not gateable, and
+the reason is narrower than "prose is soft" -- the gate is measured
+against the ledger, which is ground truth, and a dialect check is measured
+against a line someone typed, which can be wrong or stale. See
+[ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
