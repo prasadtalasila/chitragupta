@@ -120,7 +120,12 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
    **Glossary** now, while you are deciding them -- the glossary is where
    the chapter's terminology gets pinned, so a revision doesn't drift off
-   it. `init` also stamps the corpus fingerprint, which is what lets a
+   it. Settle the **dialect** with the reader in the same breath and write
+   it to `scope.md`'s `language:` line, which ships unset -- the examiner's
+   institution decides it (an Indian university is `en-IN` or `en-GB`), and
+   a chapter whose dialect nobody chose silently gets the model's own
+   (`docs/WRITING-STANDARDS.md` §8). `init` also stamps the corpus
+   fingerprint, which is what lets a
    later revision tell whether the ledger has moved since.
 1. **Clarify the research question** the chapter serves, if not already given
    by the user. The chapter's narrative arc should argue toward/around this RQ,

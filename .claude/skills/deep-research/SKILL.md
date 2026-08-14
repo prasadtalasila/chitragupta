@@ -201,7 +201,11 @@ and Phase 7(d).
 
 Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
 **Glossary** now, while you are deciding them; Phase 4 fixes the final
-reader sentence and glossary and updates that same file. `init` also
+reader sentence and glossary and updates that same file. Settle the
+**dialect** with the reader in the same breath and write it to
+`scope.md`'s `language:` line, which ships unset: a report whose dialect
+nobody chose silently gets the model's own, and this genre writes more
+prose than any other here (`docs/WRITING-STANDARDS.md` §8). `init` also
 stamps the corpus fingerprint, which is what lets a later revision tell
 whether the ledger has moved since. It only creates files that are
 missing, so re-running it can't overwrite what you've filled in.

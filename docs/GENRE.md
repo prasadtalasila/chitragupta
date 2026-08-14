@@ -336,12 +336,16 @@ found and stops, rather than drafting around it.
 and filled in as the run goes -- not at the end, when what was rejected
 has already fallen out of context.
 
-**Shared prose standards.** Name the reader before drafting, define terms
-once, state scope up front, active voice with a named actor, no
+**Shared prose standards.** Name the reader before drafting, settle the
+dialect with them and record it as `scope.md`'s `language:` line, define
+terms once, state scope up front, active voice with a named actor, no
 "obviously/simply/just", reread as the reader before presenting.
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) holds them and the
 attribution -- Diátaxis, Last's *Technical Writing Essentials*, Google's
-Technical Writing courses, all CC-licensed and all requiring credit.
+Technical Writing courses, all CC-licensed and all requiring credit. Its
+§9 is the one to read before building anything that checks a draft: it
+says which of these rules have a decidable answer and which are a
+judgement, and the two must not be treated alike.
 
 **Rendering never blocks.** `.tex`/`.pdf` rendering that fails for a
 missing binary prints a one-line warning and the `.md` draft is presented

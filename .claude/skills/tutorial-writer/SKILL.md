@@ -142,6 +142,11 @@ the lesson design is the part worth keeping either way.
      a scope decision from an oversight.
    - **Glossary** -- each recurring term with the one definition the whole
      lesson uses.
+   - **`language:`** -- the dialect, a BCP-47 tag, settled with the reader.
+     The line ships unset, and a lesson whose dialect nobody chose silently
+     gets the model's own (`docs/WRITING-STANDARDS.md` §8). Command output
+     and file contents are quoted material and keep whatever spelling the
+     tool actually emits.
 
    `init` also stamps the corpus fingerprint, which is what lets a later
    revision tell whether the ledger has moved since.

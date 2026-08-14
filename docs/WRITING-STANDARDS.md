@@ -120,6 +120,78 @@ stated plainly is always better than a gap papered over. Thin corpus
 coverage, an unresolved contradiction, a step you couldn't verify -- all of
 these get reported to the user in prose. None of them get smoothed.
 
+## 8. Dialect and house style
+
+A draft is written in one dialect of English, and which one is a fact
+about the reader rather than a habit of the writer. A thesis submitted at
+an Indian university is en-IN or en-GB; an IEEE submission is en-US; a
+European funder's deliverable is usually en-GB. Settle it in §1, with the
+reader, and record it as the `language:` line in the dossier's `scope.md`
+-- a BCP-47 tag, so `en-GB`, not "British".
+
+Recording it is the point. A preference stated in chat is gone by the
+next session, and the model's own default takes over the first revision
+made weeks later, silently. `draft-reviser` reads `scope.md` before any
+edit, so a tag on disk reaches every future revision with no further
+instruction and no restating.
+
+One dialect per draft, and it governs the draft's *own* prose. Quoted
+material keeps its source's spelling, and so do a cited title, a proper
+noun, and a dataset or code identifier: changing those is a misquotation,
+not a correction.
+
+**House style is the same field's second half.** Where a target venue
+imposes conventions these standards do not settle -- serial comma or not,
+"Section 3" or "§3", how a figure is captioned -- record the decision
+beside the dialect rather than re-deciding it section by section.
+
+**A caveat this section owns.** §2's defect-marker list is English
+literals, and §4's voice rules are an Anglophone technical-writing
+convention. A draft in another language needs them adapted rather than
+transliterated, and nothing in this document should be read as claiming
+they carry over unchanged.
+
+## 9. What is checked mechanically, and what is not
+
+Some rules above have a decidable answer and some do not. The split
+matters in both directions, and getting it wrong fails in opposite ways:
+mechanising §4's "short sentences" builds a machine that splits sentences
+past the point the argument survives, while leaving §2's literals to
+memory means they are checked only when someone remembers to.
+
+| Rule | Section | Decidable? | May a machine act on it unattended? |
+|---|---|---|---|
+| Dialect matches `scope.md`'s `language:` | §8 | yes | yes |
+| No defect markers: "obviously", "simply", "of course", "clearly", "easy" | §2 | yes | yes |
+| "just", specifically | §2 | no | no -- the adverb ("just add the flag") and the adjective ("a just outcome") are not separable by string match, so it is reported for a human eye |
+| Each term defined once, then used consistently | §2 | yes, given the dossier's glossary | yes |
+| Acronym expanded at first use, then not re-expanded | §2 | yes -- first occurrence is computable | yes |
+| Active voice with a named actor | §4 | detectable | no -- the fix is a judgement |
+| Each paragraph leads with its point | §4 | heuristic only | no -- surfaced, never applied |
+| Hedging that carries no information | §4 | detectable | no -- the fix is a judgement |
+| Short sentences, one idea each | §4 | **no: this is a score** | no |
+| The reread as the reader | §6 | no | never |
+
+**Nothing in the last column is a continuous score, deliberately.** A
+readability index is the tempting exception and the instructive one: a
+loop minimising grade level splits sentences past the point the argument
+survives and replaces precise technical vocabulary with shorter, vaguer
+words, because a polysyllabic term is indistinguishable to the metric
+from bad writing. It may be reported; it may never be optimised.
+[HOUSE-STYLE.md](HOUSE-STYLE.md) has that argument in full.
+
+**Quoted spans are exempt from every row, and this is the one place that
+needs saying.** Drafts produced by this pipeline contain source text by
+construction, so "simply" inside a quoted abstract and an `-ize` inside a
+cited title are correct rather than findings. No rule here has a
+zero-exception form, which is also why none of them may become a gate --
+see [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" for the axis that
+decides which checks may block, and [SOUL.md](../SOUL.md) for why there is
+exactly one that does.
+
+**Every verdict in the table is scoped to English**, for the reason §8
+gives.
+
 ## Sources and attribution
 
 Three openly licensed works supply the principles above. All three require

@@ -241,6 +241,20 @@ class TestInit:
         dossier.init(draft, "thesis-chapter")
         assert "genre: thesis-chapter" in (dossier.dossier_dir(draft) / "scope.md").read_text()
 
+    def test_scope_carries_a_language_line_marked_unsettled(self, draft):
+        """The dialect field #104 adds, and the fact that `init` cannot know it.
+
+        A placeholder that looked like a value would be worse than no
+        field: `draft-reviser` reads `scope.md` before every edit and
+        would apply an en-US default nobody chose. So the line ships
+        saying it is not settled, the same way the corpus fingerprint
+        says "not recorded" rather than inventing a digest.
+        """
+        dossier.init(draft, "survey")
+        scope = (dossier.dossier_dir(draft) / "scope.md").read_text()
+        assert "- language: not settled" in scope
+        assert "en-GB" in scope
+
 
 class TestKnownCitekeys:
     def test_returns_none_without_a_ledger(self, isolated_config):

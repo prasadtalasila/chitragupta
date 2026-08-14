@@ -138,7 +138,11 @@ candidate for the chapter.
    Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
    **Glossary** now, while you are deciding them -- the glossary especially,
    since it is what stops a later revision renaming a concept this chapter has
-   already defined once, which is the failure a student notices fastest. Where
+   already defined once, which is the failure a student notices fastest.
+   Settle the **dialect** with the reader in the same breath and write it to
+   `scope.md`'s `language:` line, which ships unset -- the course's own
+   institution decides it, and a chapter whose dialect nobody chose silently
+   gets the model's own (`docs/WRITING-STANDARDS.md` §8). Where
    a ledger is present, `init` also stamps the corpus fingerprint, which is
    what lets a later revision tell whether the ledger has moved since. Do this
    even if the chapter will carry no citations.
