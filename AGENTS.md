@@ -141,6 +141,19 @@ enrichment layer is optional and nothing above it needs it.
   answers a question with one correct answer and may block; these three
   answer questions of judgement and may not.
 
+  **One correct answer is what a gate needs, not what earns it.** The
+  deciding question is what the check is measured against. The gate is
+  measured against the ledger, which is ground truth -- the human's own
+  `.bib` export plus a real parse of a real PDF -- and no state of the
+  world makes a citekey absent from it legitimately present. A check
+  measured against a *recorded preference* -- a target someone typed,
+  which can be wrong, stale, or deliberately overridden -- reports and
+  never blocks however mechanical its answer, because blocking on it
+  would refuse a correct draft on a bad target. That holds whichever
+  layer the check lives in, and it is why DEVELOPER-AGENTS.md bars
+  promoting any new check into a gate beside `src/citation_gate.py`.
+  docs/ARCHITECTURE.md's "Layer 4" has the argument.
+
   `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus one,
   and the complement of the citation gate: the gate proves every citekey
   is real, the scan reports what wording came along with them. It is the

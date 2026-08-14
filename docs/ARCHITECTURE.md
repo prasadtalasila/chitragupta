@@ -351,6 +351,26 @@ of judgement, where a machine verdict would be either wrong often enough
 to be ignored, or trusted more than it deserves. They give you the
 evidence and leave the call to you.
 
+**Which side a check falls on is decided by what it is measured against,
+not by how decidable its answer is.** The two are easy to conflate, and
+the conflation is the one that would erode the gate. The gate compares a
+citekey to the ledger -- ground truth, built from the human's own `.bib`
+export and a real parse of a real PDF -- and no state of the world makes
+a citekey absent from it legitimately present, so an absolute verdict is
+available. A check compared against a *recorded preference* fails
+differently even when its answer is just as mechanical: the preference is
+a line someone typed, so it can be wrong, stale, or deliberately
+overridden by a quoted title or a proper noun, and blocking on it refuses
+a correct draft on a bad target -- a failure the gate cannot have by
+construction. Such a check reports and never blocks, whichever layer it
+lives in, and its enforcement is of *invocation* rather than of
+conformance: a harness may guarantee that it runs and that its findings
+are seen, never that they were obeyed. Decidable is not the same as
+gateable, which is why
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) bars promoting any new
+check into a gate beside `src/citation_gate.py` outright, rather than
+leaving it to a judgement about how precise the check is.
+
 `scan` is worth placing against the gate specifically, because the two
 are complements and both are deterministic. The gate proves every citekey
 is *real*; the scan reports what *wording* came along with them. Same
