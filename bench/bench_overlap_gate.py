@@ -62,6 +62,7 @@ corpus-index build on first run; every run after that is warm.
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -227,9 +228,9 @@ def self_check():
     ]
     labels = {"t": {"label": "tp"}, "f": {"label": "fp"}}
     rows = {r["threshold"]: r for r in sweep(findings, labels, [16, 20, 40])}
-    assert rows[16]["blocked"] == 2 and rows[16]["precision"] == 0.5
+    assert rows[16]["blocked"] == 2 and math.isclose(rows[16]["precision"], 0.5)
     assert rows[16]["fp_cross_page"] == 1, "cross-page split not counted"
-    assert rows[20]["blocked"] == 1 and rows[20]["precision"] == 1.0
+    assert rows[20]["blocked"] == 1 and math.isclose(rows[20]["precision"], 1.0)
     assert rows[20]["missed_tp"] == 0, "a caught true positive counted as missed"
     # Raising T past everything must show the cost, not a clean sheet.
     assert rows[40]["blocked"] == 0 and rows[40]["precision"] is None

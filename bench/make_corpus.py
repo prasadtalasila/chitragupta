@@ -43,7 +43,7 @@ def build_corpus() -> list[dict]:
             doc = pdfium.PdfDocument(ref.pdf_path)
             pages = len(doc)
             doc.close()
-        except Exception:  # noqa: BLE001 -- an unopenable PDF is data, not a crash
+        except Exception:  # noqa: BLE001  # an unopenable PDF is data, not a crash
             pages = None
         rows.append({
             "citekey": ref.citekey,

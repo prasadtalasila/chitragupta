@@ -67,7 +67,7 @@ def run(draft: Path) -> dict:
         elapsed, _ = _timed(vc.cmd_overlap, str(draft), citekey, 8)
         overlap_warm += elapsed
 
-    scan_cold, cold_out = _timed(vc.cmd_scan, str(draft))
+    scan_cold, _ = _timed(vc.cmd_scan, str(draft))
     scan_warm, warm_out = _timed(vc.cmd_scan, str(draft))
     findings = warm_out.count("tier=exact")
 
