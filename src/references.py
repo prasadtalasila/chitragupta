@@ -183,34 +183,64 @@ def format_entry(citekey: str, title: str, year: str, fields: dict[str, str]) ->
     a thinner reference is still a true one, and `sync` is what fixes it.
     """
     fields = {k.lower(): v for k, v in fields.items()}
-    parts: list[str] = []
+    parts = [
+        _authors_part(fields),
+        _title_part(title, fields),
+        _venue_part(fields),
+        *_locator_parts(fields),
+        _publisher_part(fields),
+    ]
+    if year:
+        parts.append(_md_escape(str(year).strip()))
 
+    entry = _join(parts)
+    if not entry:
+        return f"{citekey}."
+    # A value can already end the sentence itself -- an undated entry's
+    # year is the literal "n.d.", which would otherwise close as "n.d..".
+    return entry if entry.endswith(".") else f"{entry}."
+
+
+def _authors_part(fields: dict[str, str]) -> str:
+    """Authors, or the editors marked as such when there are none."""
     authors = _format_authors(fields.get("author", ""))
     if not authors and fields.get("editor"):
         authors = f"{_format_authors(fields['editor'])}, Eds."
-    if authors:
-        parts.append(_md_escape(authors))
+    return _md_escape(authors) if authors else ""
 
+
+def _title_part(title: str, fields: dict[str, str]) -> str:
+    """The title, quoted or italicised by IEEE's container rule.
+
+    IEEE quotes the title of a work published *inside* something
+    else (an article in a journal, a paper in proceedings) and
+    italicizes the title of a work that is itself the publication (a
+    book, a thesis, a standalone report). The presence of a
+    container field is what distinguishes the two, and is more
+    reliable here than the entry type: this corpus's exports use
+    @misc for both preprints and books.
+    """
     title = _md_escape((title or "").strip().rstrip("."))
-    if title:
-        # IEEE quotes the title of a work published *inside* something
-        # else (an article in a journal, a paper in proceedings) and
-        # italicizes the title of a work that is itself the publication (a
-        # book, a thesis, a standalone report). The presence of a
-        # container field is what distinguishes the two, and is more
-        # reliable here than the entry type: this corpus's exports use
-        # @misc for both preprints and books.
-        has_container = any(fields.get(f) for f in _VENUE_FIELDS)
-        parts.append(f'"{title},"' if has_container else f"*{title}*")
+    if not title:
+        return ""
+    has_container = any(fields.get(f) for f in _VENUE_FIELDS)
+    return f'"{title},"' if has_container else f"*{title}*"
 
+
+def _venue_part(fields: dict[str, str]) -> str:
     venue = next((fields[f] for f in _VENUE_FIELDS if fields.get(f)), "")
-    if venue:
-        venue = _md_escape(venue.strip())
-        # "in" only for a paper inside a proceedings/edited volume, which
-        # is what a booktitle (rather than a journal) means.
-        prefix = "in " if fields.get("booktitle") and not fields.get("journal") else ""
-        parts.append(f"{prefix}*{venue}*")
+    if not venue:
+        return ""
+    venue = _md_escape(venue.strip())
+    # "in" only for a paper inside a proceedings/edited volume, which
+    # is what a booktitle (rather than a journal) means.
+    prefix = "in " if fields.get("booktitle") and not fields.get("journal") else ""
+    return f"{prefix}*{venue}*"
 
+
+def _locator_parts(fields: dict[str, str]) -> list[str]:
+    """Volume, number and pages, each only when present."""
+    parts = []
     if fields.get("volume"):
         parts.append(f"vol. {_md_escape(fields['volume'])}")
     if fields.get("number"):
@@ -221,21 +251,15 @@ def format_entry(citekey: str, title: str, year: str, fields: dict[str, str]) ->
         pages = re.sub(r"-{2,}", "–", fields["pages"].strip())
         label = "pp." if re.search(r"[–,]", pages) else "p."
         parts.append(f"{label} {_md_escape(pages)}")
+    return parts
 
+
+def _publisher_part(fields: dict[str, str]) -> str:
+    """The most specific issuing body the entry names, and only one."""
     for field_name in ("school", "institution", "publisher", "organization"):
         if fields.get(field_name):
-            parts.append(_md_escape(fields[field_name].strip()))
-            break
-
-    if year:
-        parts.append(_md_escape(str(year).strip()))
-
-    entry = _join(parts)
-    if not entry:
-        return f"{citekey}."
-    # A value can already end the sentence itself -- an undated entry's
-    # year is the literal "n.d.", which would otherwise close as "n.d..".
-    return entry if entry.endswith(".") else f"{entry}."
+            return _md_escape(fields[field_name].strip())
+    return ""
 
 
 def _join(parts: list[str]) -> str:

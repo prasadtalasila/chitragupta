@@ -268,47 +268,8 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
              _bib_fields_json(ref)),
         )
     else:
-        old_hash, _old_size, _old_mtime_ns, old_status, old_kind, old_parsed_path = row
-        if force and pdf_hash is not None:
-            new_status = "discovered"
-        elif pdf_hash != old_hash:
-            needs_parse = pdf_hash is not None
-            new_status = "discovered" if pdf_hash else "no_pdf"
-        elif pdf_hash is not None and (
-                (old_status == "parsed"
-                 and not _parse_outputs_present(ref.citekey, old_parsed_path))
-                or (old_status == "parse_failed"
-                    and old_kind != "deterministic")):
-            # One branch for the two re-parse triggers on a byte-identical
-            # PDF -- outputs gone from disk, and the transient-failure
-            # retry below -- because their consequence is identical and
-            # two branches with the same body invite the implementations
-            # drifting apart (Sonar S1871).
-            #
-            # Retry a *transient* failed parse even though the PDF is
-            # byte-identical -- a NULL kind predates the distinction and
-            # counts as transient (see _MIGRATIONS version 2).
-            # Without this, needs_parse was true only for a new or
-            # changed document, so a failure stuck until the file itself
-            # changed -- which for a corrupt PDF is never. That was
-            # tolerable while failures were per-document and permanent;
-            # it stopped being tolerable once a worker pool could mark
-            # every in-flight document parse_failed on one worker's
-            # death. Unattended, that silently drops those documents from
-            # the corpus for good: each later run counts them "unchanged"
-            # and exits 0. A retry costs one re-parse of a genuinely bad
-            # PDF per run, which is visible and bounded; the alternative
-            # is invisible and permanent.
-            #
-            # A deterministic failure deliberately falls through to the
-            # else branch: it keeps its parse_failed status, so it is
-            # still counted and still makes the run exit nonzero, but it
-            # is not re-parsed. --reparse and editing the PDF are the two
-            # escape hatches for a misclassification.
-            needs_parse = True
-            new_status = "discovered"
-        else:
-            new_status = old_status
+        new_status, must_reparse = _next_status(row, pdf_hash, force, ref.citekey)
+        needs_parse = needs_parse or must_reparse
         con.execute(
             """
             UPDATE items SET
@@ -323,6 +284,50 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
         )
     con.commit()
     return needs_parse
+
+
+def _next_status(row, pdf_hash, force, citekey) -> tuple[str, bool]:
+    """The status an existing row moves to, and whether that demands a
+    re-parse beyond what `force` already decided.
+
+    One branch for the two re-parse triggers on a byte-identical
+    PDF -- outputs gone from disk, and the transient-failure
+    retry below -- because their consequence is identical and
+    two branches with the same body invite the implementations
+    drifting apart (Sonar S1871).
+
+    Retry a *transient* failed parse even though the PDF is
+    byte-identical -- a NULL kind predates the distinction and
+    counts as transient (see _MIGRATIONS version 2).
+    Without this, needs_parse was true only for a new or
+    changed document, so a failure stuck until the file itself
+    changed -- which for a corrupt PDF is never. That was
+    tolerable while failures were per-document and permanent;
+    it stopped being tolerable once a worker pool could mark
+    every in-flight document parse_failed on one worker's
+    death. Unattended, that silently drops those documents from
+    the corpus for good: each later run counts them "unchanged"
+    and exits 0. A retry costs one re-parse of a genuinely bad
+    PDF per run, which is visible and bounded; the alternative
+    is invisible and permanent.
+
+    A deterministic failure deliberately keeps its old status, so it is
+    still counted and still makes the run exit nonzero, but it
+    is not re-parsed. --reparse and editing the PDF are the two
+    escape hatches for a misclassification.
+    """
+    old_hash, _old_size, _old_mtime_ns, old_status, old_kind, old_parsed_path = row
+    if force and pdf_hash is not None:
+        return "discovered", False
+    if pdf_hash != old_hash:
+        return ("discovered" if pdf_hash else "no_pdf"), pdf_hash is not None
+    if pdf_hash is not None and (
+            (old_status == "parsed"
+             and not _parse_outputs_present(citekey, old_parsed_path))
+            or (old_status == "parse_failed"
+                and old_kind != "deterministic")):
+        return "discovered", True
+    return old_status, False
 
 
 def mark_parsed(con: sqlite3.Connection, citekey: str, parsed_path: Path) -> None:
@@ -504,57 +509,70 @@ def main(argv: "list[str] | None" = None) -> int:
     con.row_factory = sqlite3.Row
     try:
         if args.citekey:
-            row = con.execute(
-                "SELECT * FROM items WHERE citekey = ?", (args.citekey,)
-            ).fetchone()
-            if row is None:
-                print(f"{args.citekey} is not in the ledger.")
-                return 1
-            _print_item(row)
-            return 0
-
+            return _show_item(con, args.citekey)
         if args.status or args.list:
-            rows = con.execute(
-                "SELECT * FROM items WHERE (? IS NULL OR status = ?) ORDER BY citekey",
-                (args.status, args.status),
-            ).fetchall()
-            if not rows:
-                print(f"No items with status {args.status!r}.")
-                return 0
-            for row in rows:
-                _print_item(row)
-            print(f"\n  {len(rows)} item(s).")
-            return 0
-
-        counts = dict(con.execute("SELECT status, count(*) FROM items GROUP BY status"))
-        total = sum(counts.values())
-        if not total:
-            print(f"Ledger at {config.LEDGER_PATH} is empty.")
-            print("Run `python -m src.corpus sync` to populate it from your bib file.")
-            return 0
-
-        print(f"Ledger: {config.LEDGER_PATH}   ({total} item(s) from "
-              f"{config.BIB_FILE_PATH.name})\n")
-        for status, label in _STATUS_LABELS.items():
-            if counts.get(status):
-                print(f"  {counts[status]:>4}  {label}")
-
-        try:
-            kinds = failure_counts(con)
-        except sqlite3.OperationalError:
-            # A ledger written before failure_kind existed. Read-only, so
-            # it cannot be migrated here -- `python -m src.corpus sync` does that.
-            kinds = {"deterministic": 0, "transient": 0}
-        if kinds["deterministic"]:
-            print(f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
-                  "automatically.\n  Fix or remove the PDF, or re-run "
-                  "`python -m src.corpus sync --reparse`.")
-            print("  See which: python -m src.corpus ledger --status parse_failed")
-        elif kinds["transient"]:
-            print(f"\n  {kinds['transient']} item(s) failed for a transient reason "
-                  "and will be retried on the next sync.")
-        else:
-            print("\n  Nothing needs attention.")
-        return 0
+            return _list_items(con, args.status)
+        return _show_summary(con)
     finally:
         con.close()
+
+
+def _show_item(con, citekey) -> int:
+    """`--citekey`: one item in full, or exit 1 for a key the ledger lacks."""
+    row = con.execute(
+        "SELECT * FROM items WHERE citekey = ?", (citekey,)
+    ).fetchone()
+    if row is None:
+        print(f"{citekey} is not in the ledger.")
+        return 1
+    _print_item(row)
+    return 0
+
+
+def _list_items(con, status) -> int:
+    """`--list`/`--status`: every matching item, then the count."""
+    rows = con.execute(
+        "SELECT * FROM items WHERE (? IS NULL OR status = ?) ORDER BY citekey",
+        (status, status),
+    ).fetchall()
+    if not rows:
+        print(f"No items with status {status!r}.")
+        return 0
+    for row in rows:
+        _print_item(row)
+    print(f"\n  {len(rows)} item(s).")
+    return 0
+
+
+def _show_summary(con) -> int:
+    """The no-flag default: per-status counts, then what needs attention."""
+    counts = dict(con.execute("SELECT status, count(*) FROM items GROUP BY status"))
+    total = sum(counts.values())
+    if not total:
+        print(f"Ledger at {config.LEDGER_PATH} is empty.")
+        print("Run `python -m src.corpus sync` to populate it from your bib file.")
+        return 0
+
+    print(f"Ledger: {config.LEDGER_PATH}   ({total} item(s) from "
+          f"{config.BIB_FILE_PATH.name})\n")
+    for status, label in _STATUS_LABELS.items():
+        if counts.get(status):
+            print(f"  {counts[status]:>4}  {label}")
+
+    try:
+        kinds = failure_counts(con)
+    except sqlite3.OperationalError:
+        # A ledger written before failure_kind existed. Read-only, so
+        # it cannot be migrated here -- `python -m src.corpus sync` does that.
+        kinds = {"deterministic": 0, "transient": 0}
+    if kinds["deterministic"]:
+        print(f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
+              "automatically.\n  Fix or remove the PDF, or re-run "
+              "`python -m src.corpus sync --reparse`.")
+        print("  See which: python -m src.corpus ledger --status parse_failed")
+    elif kinds["transient"]:
+        print(f"\n  {kinds['transient']} item(s) failed for a transient reason "
+              "and will be retried on the next sync.")
+    else:
+        print("\n  Nothing needs attention.")
+    return 0
