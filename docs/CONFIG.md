@@ -164,6 +164,7 @@ exits 0 whatever it finds, and nothing in this pipeline blocks on it.
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
 | `vale_config` | `VALE_CONFIG` | path | `assets/vale/vale.ini` |
+| `language` | `STYLE_LANGUAGE` | BCP-47 tag | unset |
 
 - **`vale_config`** -- the Vale configuration and rule package a draft's
   prose is checked against. Vendored for the same two reasons `csl` is:
@@ -179,9 +180,18 @@ exits 0 whatever it finds, and nothing in this pipeline blocks on it.
   other command is unaffected, the same bargain `render` makes with
   pandoc. `bash scripts/install_full_pipeline.sh os-deps` installs the
   pinned version.
-- Which **dialect** is checked is a property of the draft, not of this
-  file: the `language:` line in its dossier's `scope.md`. A draft with
-  none gets no dialect rules and is told so.
+- **`language`** -- a fallback dialect for a draft whose dossier records
+  none. **A fallback, never an override**: the `language:` line in a
+  draft's own `scope.md` wins, because a thesis at an Indian university
+  and an IEEE submission legitimately differ, and only the per-draft
+  record knows which this is. The report names which source a dialect came
+  from, so a draft checked against this one never reads like a draft that
+  declared its own.
+- The order is: `--language` on the command line, then the draft's
+  `scope.md`, then this key. With none of the three set, the command
+  measures the draft both ways and **proposes** a tag with the
+  `dossier set-language` command that would record it -- it never writes
+  one itself.
 
 ### `[parser]` -- PDF text extraction
 

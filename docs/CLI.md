@@ -936,11 +936,33 @@ a correct draft on a bad target. [ARCHITECTURE.md](ARCHITECTURE.md)'s
 "Layer 4" has the axis, and DEVELOPER-AGENTS.md bars promoting any new
 check into a gate beside the citation gate.
 
-**Which dialect it checks comes from the draft, not from you.** The
-`language:` line in the dossier's `scope.md` selects one of `en-GB`,
-`en-US` or `en-IN`. A draft with no recorded dialect -- the shipped "not
-settled" placeholder, or any dossier written before 5.12.0 -- gets no
-dialect rules at all, and the report says so rather than guessing.
+**Which dialect it checks is declared, never inferred.** Three sources,
+most specific first, and the report names which one was used:
+
+1. `--language en-GB`, for this run only. Writes nothing.
+2. The `language:` line in the dossier's `scope.md` -- the draft's own
+   property, settled with the reader when it was drafted.
+3. `[style].language` in `config.toml`, a standing preference for this
+   machine.
+
+Record a draft's dialect with:
+
+```bash
+python -m src.draft dossier set-language en-GB content/drafts/<path>
+```
+
+With none of the three set -- the shipped "not settled" placeholder, or
+any dossier written before 5.12.0 -- **no dialect rules run**, and the
+command measures the draft both ways and proposes one:
+
+```text
+dialect: not checked -- no `language:` in scope.md and no [style].language
+it reads as en-GB (en-GB: 0, en-US: 13). To record that:
+  python -m src.draft dossier set-language en-GB content/drafts/<path>
+```
+
+It proposes and never writes: [HOUSE-STYLE.md](HOUSE-STYLE.md)'s rule is
+that the machine offers and the human accepts.
 
 **Repeated findings collapse.** A chapter that never expands "AI" reports
 it once with a count, not once per occurrence.

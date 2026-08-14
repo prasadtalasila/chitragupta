@@ -48,23 +48,9 @@ import subprocess
 from pathlib import Path
 
 from src import config, dossier
+from src.style_report import report
+from src.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
 
-# Which rule to keep for a given BCP-47 tag. Everything not named here is
-# filtered out, so an unknown tag disables dialect checking rather than
-# defaulting to one -- an unrecognised `language:` is a typo or a locale
-# this style does not cover, and both deserve silence over a guess.
-#
-# en-IN is not an alias for en-GB. British English accepts both -ise and
-# Oxford -ize, so DialectGB cannot flag -ize without reporting correct
-# prose; Indian English prefers -ise, and DialectIN is that one check.
-DIALECT_RULES = {
-    "en-GB": "chitragupta.DialectGB",
-    "en-US": "chitragupta.DialectUS",
-    "en-IN": ("chitragupta.DialectGB", "chitragupta.DialectIN"),
-}
-
-_ALL_DIALECT_RULES = ("chitragupta.DialectGB", "chitragupta.DialectUS",
-                      "chitragupta.DialectIN")
 
 
 class MissingBinary(RuntimeError):
@@ -94,11 +80,38 @@ def language_of(draft: Path) -> str | None:
             continue
         value = stripped.split(":", 1)[1].strip()
         # "not settled -- a BCP-47 tag (`en-GB`, ...)" is the shipped
-        # placeholder, and it *contains* real tags. Take the first word
-        # only, so the placeholder reads as unset rather than as en-GB.
+        # placeholder, and it *contains* real tags, so the whole value
+        # cannot be trusted. Matched by prefix rather than by tag shape,
+        # because "not" is itself three lowercase letters and passes for a
+        # BCP-47 primary subtag.
+        if value.lower().startswith("not settled"):
+            return None
         tag = value.split()[0] if value else ""
-        return tag if tag in DIALECT_RULES else None
+        # Returned even when this style has no rules for it. "Recorded
+        # fr-FR, nothing to check it with" and "nobody chose one" are
+        # different states, and only the second is worth prompting about.
+        return tag or None
     return None
+
+
+def resolve_language(draft: Path, override: str | None = None) -> tuple[str | None, str]:
+    """The dialect to check `draft` against, and where it came from.
+
+    Three sources, most specific first, because that is the order in which
+    someone's intent gets more specific: a flag typed for this run, the
+    draft's own recorded property, then a standing preference for this
+    machine. The source travels with the tag so the report can name it --
+    a draft checked against a host-wide default must not look like a draft
+    that declared one.
+    """
+    if override:
+        return override, "--language"
+    recorded = language_of(draft)
+    if recorded:
+        return recorded, "scope.md"
+    if config.STYLE_LANGUAGE:
+        return config.STYLE_LANGUAGE, "config.toml"
+    return None, "nothing"
 
 
 def rule_filter(language: str | None) -> str:
@@ -181,37 +194,44 @@ def collapse(findings: list[dict]) -> list[dict]:
     return sorted(collapsed.values(), key=lambda f: (-f["count"], f["line"]))
 
 
-def report(draft: Path, language: str | None, findings: list[dict]) -> list[str]:
-    """The human-readable lines, including what was *not* checked.
+def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
+    """Which dialect `draft` reads as, measured by checking it both ways.
 
-    Naming the skipped rules is the point of the header. A report that
-    silently omits dialect findings because `language:` is unset looks
-    exactly like a draft with none, and the second is the reading a reader
-    will take.
+    Only ever a suggestion, and only computed when nobody has declared
+    one. docs/HOUSE-STYLE.md's rule is that the machine proposes and the
+    human accepts -- so this prints a command to run and writes nothing.
+    Measured on a real book: 5 findings as en-GB against 400 as en-US, so
+    at document length the signal is not subtle.
+
+    None when the two are too close to call, which is the honest answer
+    for a short draft with no dialect-bearing words in it at all.
     """
-    lines = [f"{draft}"]
-    if language is None:
-        lines.append("  dialect: not checked -- scope.md records no `language:` "
-                     "(WRITING-STANDARDS.md section 8)")
-    else:
-        lines.append(f"  dialect: {language}")
-    if not findings:
-        lines.append("  no findings.")
-        return lines
-    for finding in findings:
-        times = "" if finding["count"] == 1 else f" (x{finding['count']})"
-        lines.append(f"  {finding['line']:>5}  {finding['severity']:<10} "
-                     f"{finding['message']}{times}")
-    lines.append(f"  {len(findings)} finding(s). A review aid, not a gate: "
-                 "nothing here blocks the draft.")
-    return lines
+    # Dialect findings only. Every other rule fires identically whichever
+    # dialect is assumed, so counting them in would add the same number to
+    # both sides and bury the signal under the noise -- measured on one
+    # chapter, 18 against 31 rather than the true 0 against 26.
+    counts = {
+        tag: sum(1 for f in run_vale(draft, tag)
+                 if f.get("Check", "").startswith("chitragupta.Dialect"))
+        for tag in ("en-GB", "en-US")
+    }
+    best, worst = sorted(counts, key=lambda tag: counts[tag])
+    if counts[best] == counts[worst]:
+        return None
+    return best, counts
 
 
-def check(draft: Path) -> dict:
+def check(draft: Path, override: str | None = None) -> dict:
     """Everything one draft's report is built from, as data."""
-    language = language_of(draft)
+    language, source = resolve_language(draft, override)
     findings = collapse(run_vale(draft, language))
-    return {"draft": str(draft), "language": language, "findings": findings}
+    proposal = None
+    if language is None:
+        proposed = propose_language(draft)
+        if proposed:
+            proposal = {"language": proposed[0], "findings_by_language": proposed[1]}
+    return {"draft": str(draft), "language": language, "language_source": source,
+            "findings": findings, "proposed_language": proposal}
 
 
 def build_parser():
@@ -223,6 +243,9 @@ def build_parser():
                     "A review aid: it exits 0 whatever it finds.",
     )
     parser.add_argument("draft", nargs="+", help="draft(s) under content/")
+    parser.add_argument("--language", metavar="TAG",
+                        help="check against this dialect for this run only, "
+                             "ahead of scope.md and config.toml; writes nothing")
     parser.add_argument("--json", action="store_true",
                         help="machine-readable findings, for a hook or an agenda")
     return parser
@@ -237,7 +260,7 @@ def main(argv=None):
     for name in args.draft:
         draft = Path(name)
         try:
-            payloads.append(check(draft))
+            payloads.append(check(draft, args.language))
         except MissingBinary as exc:
             warnings.append(str(exc))
             break  # the binary will not appear between two drafts
@@ -248,8 +271,7 @@ def main(argv=None):
                           "drafts": payloads, "warnings": warnings}, indent=2))
     else:
         for payload in payloads:
-            print("\n".join(report(Path(payload["draft"]), payload["language"],
-                                   payload["findings"])))
+            print("\n".join(report(Path(payload["draft"]), payload)))
         for warning in warnings:
             print(f"WARNING: {warning}")
     return 0
