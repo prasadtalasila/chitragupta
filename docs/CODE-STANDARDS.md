@@ -284,7 +284,7 @@ has, both of which fail:
 The ratchet takes the useful half of each. Concretely, here:
 
 - Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
-  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **22
+  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **21
   functions** and **13 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale.

@@ -388,10 +388,26 @@ def render_markdown(report: Report) -> str:
         lines += ["No citations found in this draft.", ""]
         return "\n".join(lines)
 
+    lines += _summary_lines(report)
+
+    lines += ["## Findings", ""]
+    current = None
+    for finding in report.findings:
+        band = _band(finding.score)
+        if band != current:
+            lines += [f"### {band.capitalize()}", ""]
+            current = band
+        lines += _finding_lines(finding)
+    return "\n".join(lines)
+
+
+def _summary_lines(report: Report) -> list[str]:
+    """The Summary band counts, and the unreadable-sources section when
+    there is one."""
     counts: dict[str, int] = {}
     for finding in report.findings:
         counts[_band(finding.score)] = counts.get(_band(finding.score), 0) + 1
-    lines += ["## Summary", ""]
+    lines = ["## Summary", ""]
     for band in ("no support found", "weak", "supported"):
         if counts.get(band):
             lines.append(f"- {counts[band]} {band}")
@@ -404,39 +420,37 @@ def render_markdown(report: Report) -> str:
         lines += ["", "Findings for these show a score of 0 because there was "
                       "nothing to compare against, not because the claim is "
                       "unsupported.", ""]
+    return lines
 
-    lines += ["## Findings", ""]
-    current = None
-    for finding in report.findings:
-        band = _band(finding.score)
-        if band != current:
-            lines += [f"### {band.capitalize()}", ""]
-            current = band
+
+def _finding_lines(finding: Finding) -> list[str]:
+    """One finding's body: the claim, then the best-match passage or the
+    stated reason there is none."""
+    lines = [
+        f"#### Line {finding.line} -- `[@{finding.citekey}]` "
+        f"({finding.score:.0%} match)",
+        "",
+        f"> {finding.claim}" if finding.claim else "> (no sentence text)",
+        "",
+    ]
+    if finding.note:
+        lines += [f"*Source unavailable: {finding.note}*", ""]
+    elif finding.passage is None:
+        lines += ["*No passage in the source matched any distinctive word "
+                  "from this sentence.*", ""]
+    elif finding.passage.quotable:
+        page = f", p.{finding.passage.page}" if finding.passage.page else ""
+        lines += [f"Best match in the source{page}:", ""]
+        lines += [f"> {finding.passage.text}", ""]
+    else:
+        page = finding.passage.page
         lines += [
-            f"#### Line {finding.line} -- `[@{finding.citekey}]` "
-            f"({finding.score:.0%} match)",
-            "",
-            f"> {finding.claim}" if finding.claim else "> (no sentence text)",
+            f"Best match is on **page {page}** of the source. The text for "
+            "this citekey has no reading order (see src/passages.py), "
+            "so the page is reported without quoting from it.",
             "",
         ]
-        if finding.note:
-            lines += [f"*Source unavailable: {finding.note}*", ""]
-        elif finding.passage is None:
-            lines += ["*No passage in the source matched any distinctive word "
-                      "from this sentence.*", ""]
-        elif finding.passage.quotable:
-            page = f", p.{finding.passage.page}" if finding.passage.page else ""
-            lines += [f"Best match in the source{page}:", ""]
-            lines += [f"> {finding.passage.text}", ""]
-        else:
-            page = finding.passage.page
-            lines += [
-                f"Best match is on **page {page}** of the source. The text for "
-                "this citekey has no reading order (see src/passages.py), "
-                "so the page is reported without quoting from it.",
-                "",
-            ]
-    return "\n".join(lines)
+    return lines
 
 
 def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
