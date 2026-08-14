@@ -300,9 +300,7 @@ jobs:
       # hand, and it verifies a pinned sha256 before unpacking -- see
       # assets/vale/README.md.
       - name: Install Vale
-        run: |
-          source scripts/install_full_pipeline.sh
-          install_vale
+        run: bash scripts/install_full_pipeline.sh vale
 
       # Not a lint of this repository's own prose, which would fail today:
       # docs/ carries 27 uses of §2's markers, and DEVELOPER-AGENTS.md's

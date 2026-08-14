@@ -121,6 +121,7 @@ exclude_docs: |
   .venv-full/
   .venv/
   assets/csl/
+  assets/vale/
   bench/
   content/
   docker/

@@ -386,10 +386,17 @@ for stage in "${STAGES[@]}"; do
         os-deps) install_os_deps ;;
         python-deps) install_python_deps ;;
         dev-deps) install_dev_deps ;;
+        # Vale alone, without the TeX Live and poppler that os-deps also
+        # brings. os-deps installs it too; this target exists because CI's
+        # lint job wants the prose linter and nothing else, and because
+        # sourcing this script to reach the function runs the dispatcher
+        # below with no stage -- which defaults to python-deps and fails
+        # on a runner that has no poetry.
+        vale) install_vale ;;
         all) install_os_deps; install_python_deps ;;
         *)
             echo "Unknown stage: $stage" >&2
-            echo "Expected one of: os-deps, python-deps, dev-deps, all" >&2
+            echo "Expected one of: os-deps, python-deps, dev-deps, vale, all" >&2
             exit 1
             ;;
     esac
