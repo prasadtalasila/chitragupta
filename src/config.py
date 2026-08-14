@@ -409,6 +409,14 @@ RENDERED_DIR = CONTENT_DIR / "rendered"
 # no network and so a style change can never silently renumber a draft that
 # was already reviewed -- see assets/csl/README.md.
 CSL_STYLE_PATH = REPO_ROOT / _get("CSL_STYLE", "render", "csl", default="assets/csl/ieee.csl")
+
+# The Vale configuration `python -m src.draft style` checks a draft
+# against, vendored at assets/vale/ for the reason assets/csl/ieee.csl is:
+# a style fetched at run time is not the style that was reviewed, and a
+# check whose rules differ per clone is not a check. Overridable so a user
+# can point at their own house style without editing what ships.
+VALE_CONFIG_PATH = REPO_ROOT / _get("VALE_CONFIG", "style", "vale_config",
+                                    default="assets/vale/vale.ini")
 # Whether a run of consecutive citation numbers collapses ([3]-[6] rather
 # than [3], [4], [5], [6]). IEEE's own guide shows the collapsed form, but
 # upstream ieee.csl doesn't produce it; render_output.py injects the one

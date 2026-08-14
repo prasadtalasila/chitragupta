@@ -1,0 +1,55 @@
+extends: substitution
+message: "Use '%s' instead of '%s' -- scope.md records en-GB (WRITING-STANDARDS.md §8)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: warning
+ignorecase: true
+# Deliberately conservative: every pair here is unambiguous in both
+# directions. Pairs that are not decidable by string match are omitted
+# rather than guessed -- see assets/vale/README.md for the list and why.
+#
+# -ize is NOT flagged for en-GB. Oxford spelling ("organize") is
+# legitimate British English, so a rule flagging it would report a
+# correct draft. Only en-IN gets that check, via DialectIN.
+swap:
+  # -our
+  behavior(s|al|ally)?: behaviour$1
+  color(s|ed|ing|ful)?: colour$1
+  endeavor(s|ed|ing)?: endeavour$1
+  favor(s|ed|ing|able|ably)?: favour$1
+  flavor(s|ed|ing)?: flavour$1
+  harbor(s|ed|ing)?: harbour$1
+  honor(s|ed|ing|able)?: honour$1
+  labor(s|ed|ing)?: labour$1
+  neighbor(s|ing|hood)?: neighbour$1
+  rumor(s|ed)?: rumour$1
+  savor(s|ed|ing)?: savour$1
+  vapor(s|ized|ization)?: vapour$1
+  # -yse
+  analyze(s|d|r|rs)?: analyse$1
+  analyzing: analysing
+  catalyze(s|d)?: catalyse$1
+  paralyze(s|d)?: paralyse$1
+  # -re
+  caliber: calibre
+  center(s|ed|ing)?: centre$1
+  fiber(s)?: fibre$1
+  liter(s)?: litre$1
+  theater(s)?: theatre$1
+  # -ce
+  defense(s|less)?: defence$1
+  offense(s)?: offence$1
+  pretense: pretence
+  # doubled l, and the two directions it runs in
+  canceled: cancelled
+  canceling: cancelling
+  fueled: fuelled
+  labeled: labelled
+  labeling: labelling
+  modeled: modelled
+  modeling: modelling
+  signaling: signalling
+  traveled: travelled
+  traveling: travelling
+  fulfill(s|ed|ing|ment)?: fulfil$1
+  instill(s|ed|ing)?: instil$1
+  skillful(ly)?: skilful$1

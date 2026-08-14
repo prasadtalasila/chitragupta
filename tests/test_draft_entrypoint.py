@@ -1,6 +1,6 @@
 """src/draft.py: the drafting layer's single entry point.
 
-What each of the five commands *computes* is covered in their own test
+What each of the six commands *computes* is covered in their own test
 files (tests/test_citation_gate.py, tests/test_dossier.py,
 tests/test_retrieval.py, tests/test_references.py,
 tests/test_render_output.py). This file pins only the dispatch, and the
@@ -32,6 +32,7 @@ BACKING_MODULES = {
     "retrieve": "retrieval",
     "references": "references",
     "render": "render_output",
+    "style": "style_check",
 }
 
 # A real top-level entry-point block, anchored at column 0 -- not the
@@ -48,8 +49,8 @@ def _run(*argv):
     )
 
 
-class TestTheVerbsAreTheFiveDraftingCommands:
-    def test_the_verb_set_is_exactly_the_five_backing_modules(self):
+class TestTheVerbsAreTheDraftingCommands:
+    def test_the_verb_set_is_exactly_the_backing_modules(self):
         assert set(entrypoint.VERBS) == set(BACKING_MODULES)
 
     @pytest.mark.parametrize("verb", sorted(BACKING_MODULES))
@@ -63,7 +64,7 @@ class TestTheVerbsAreTheFiveDraftingCommands:
 
     def test_no_verb_prints_the_layers_usage_and_exits_zero(self):
         """"Tell me how to use this" is not an error -- the same rule
-        each of the five commands already applies to a missing mode."""
+        each of the commands already applies to a missing mode."""
         result = _run("-m", "src.draft")
         assert result.returncode == 0
         for verb in BACKING_MODULES:

@@ -14,6 +14,7 @@ this document can stay a reference rather than an argument.
 - [Every setting](#every-setting)
   - [Paths](#paths)
   - [`[render]` -- citation style](#render----citation-style)
+  - [`[style]` -- prose conformance](#style----prose-conformance)
   - [`[parser]` -- PDF text extraction](#parser----pdf-text-extraction)
   - [`[logging]` -- the pipeline log file](#logging----the-pipeline-log-file)
   - [`[provenance]` -- citation-support bands](#provenance----citation-support-bands)
@@ -155,6 +156,33 @@ citation gate.
   unmodified. A style that already sets `collapse` itself is never
   overridden. See `assets/csl/README.md`.
 
+### `[style]` -- prose conformance
+
+Used only by `python -m src.draft style`, which is a **review aid**: it
+exits 0 whatever it finds, and nothing in this pipeline blocks on it.
+
+| Key | Env var | Accepts | Default |
+|---|---|---|---|
+| `vale_config` | `VALE_CONFIG` | path | `assets/vale/vale.ini` |
+
+- **`vale_config`** -- the Vale configuration and rule package a draft's
+  prose is checked against. Vendored for the same two reasons `csl` is:
+  the check has to work with no network, and a rule set that changed
+  underneath a draft would report a document that had already been
+  reviewed. Point it at your own house style to override what ships;
+  [assets/vale/README.md](../assets/vale/README.md) documents each rule,
+  which section of
+  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) it implements, and the word
+  pairs it deliberately leaves out.
+- The `vale` binary itself is **not** configured here -- it is looked up
+  on `PATH`. Without it the command reports missing-binary and every
+  other command is unaffected, the same bargain `render` makes with
+  pandoc. `bash scripts/install_full_pipeline.sh os-deps` installs the
+  pinned version.
+- Which **dialect** is checked is a property of the draft, not of this
+  file: the `language:` line in its dossier's `scope.md`. A draft with
+  none gets no dialect rules and is told so.
+
 ### `[parser]` -- PDF text extraction
 
 | Key | Env var | Accepts | Default |
@@ -224,7 +252,7 @@ The values in full:
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
-  write lock. Commands that don't take that lock -- `src.draft` (all five
+  write lock. Commands that don't take that lock -- `src.draft` (all six
   drafting-layer CLIs: gate, dossier, retrieve, references, render) --
   write to stdout only and are not logged.
 

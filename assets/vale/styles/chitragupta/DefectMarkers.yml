@@ -1,0 +1,11 @@
+extends: existence
+message: "'%s' is a defect marker: delete it (WRITING-STANDARDS.md §2)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: warning
+ignorecase: true
+tokens:
+  - obviously
+  - simply
+  - of course
+  - clearly
+  - easy

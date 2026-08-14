@@ -91,7 +91,7 @@ LEGACY_LONG_FILES = {
     "src/retrieval.py",  # 376
     "src/references.py",  # 366
     "src/overlap_skipgram.py",  # 315
-    "src/config.py",  # 292
+    "src/config.py",  # 294
 }
 
 

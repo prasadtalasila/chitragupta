@@ -492,6 +492,7 @@ unavailable rather than failing.
 | Track parse status incrementally | stdlib `sqlite3` |
 | BM25-ranked retrieval | stdlib only |
 | Citation gate, References section, tex/pdf render | stdlib only, no venv (see [below](#which-interpreter-and-why)) |
+| Prose conformance report (`src.draft style`) | stdlib only, plus `vale` on PATH (`os-deps` stage); absent, it reports missing-binary |
 | Docling layout-aware parsing, embeddings/Chroma, BERTopic | venv, `enrich` Poetry group |
 | Compiling generated `.tex` to PDF | `pandoc`, `pdflatex`, `latexmk` (`os-deps` stage) |
 
@@ -502,7 +503,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.draft` (all five commands), `src.corpus ledger`, `src.review` (all three aids) |
+| 1 | bare `python`, stdlib only | `src.draft` (all six commands -- `style` additionally probes for the optional `vale` binary), `src.corpus ledger`, `src.review` (all three aids) |
 | 2 | venv + `bibtexparser` | `src.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m src.enrich` |
 

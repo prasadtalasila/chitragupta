@@ -71,6 +71,24 @@ csl = "assets/csl/ieee.csl"
 #                                                           Default: true
 collapse_citations = true
 
+[style]
+# What `python -m src.draft style` checks a draft's prose against. That
+# command is a review aid: it exits 0 whatever it finds, and nothing in
+# this pipeline blocks on it (docs/ARCHITECTURE.md, "Layer 4").
+
+# The Vale configuration and rule package. Vendored, for the reason the
+# CSL style above is: a style fetched at run time is not the style that
+# was reviewed, and a check whose rules differ between two clones is not
+# a check. Point this at your own house style to override what ships --
+# assets/vale/README.md documents the rules and what they deliberately
+# leave out.
+#
+# The `vale` binary itself is optional. Without it this command reports
+# missing-binary and every other command is unaffected, exactly as render
+# behaves without pandoc.
+# Relative to the repo root, or absolute.  Default: assets/vale/vale.ini
+vale_config = "assets/vale/vale.ini"
+
 [parser]
 # Which backend `python -m src.corpus sync` uses to turn a PDF into
 # content/parsed/<citekey>.txt.
