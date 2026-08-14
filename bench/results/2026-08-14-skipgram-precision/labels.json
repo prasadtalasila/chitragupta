@@ -1,0 +1,155 @@
+{
+ "about": "Hand-authored ground truth for bench/bench_overlap_skipgram.py's precision arm, over the 15 numbered chapters of the digital-twins book, after #180's two fixes. `label` follows 2026-08-13-overlap-gate/labels.json's rubric: `tp` = reuse a reviewer would require fixing, `fp` = a finding no reviewer would act on. Rationales carry no extended source text; each passage is locatable from `draft` and `line` in skipgram_precision.json.",
+ "corpus": {
+  "documents": 497,
+  "corpus_key": "25e79db222e1bda9eda6bf5c5343d8fa2d630edcddfb8c4d821f7a673da08901",
+  "tokenizer_version": 2,
+  "n": 5,
+  "parser_backend": "docling",
+  "release": "5.11.0",
+  "note": "finding ids are sha256(citekey, page, fragment), so a re-parse or a page shift invalidates this file rather than silently half-matching it. tokenizer_version 2 is #180's; a run against a version-1 index reports every one of these labels as stale."
+ },
+ "finding_classes": {
+  "stock-phrase-echo": "The matched words are the field's stock phrasing -- a sentence any survey in the area writes. Distinct from canonical-definition in that there is no definition being reproduced, only common vocabulary in a common order.",
+  "third-party-echo": "A canonical definition, or one passage's reuse, matched against a paper other than the one the draft credits -- including the volume that contains the cited chapter. `cites_source` cannot tell this from real uncredited reuse.",
+  "attributed-quotation": "Quoted with quote marks and attributed. Legitimate scholarship. Tier 2's `quoted` flag misses several of these because a skip-gram window straddles the opening quote mark.",
+  "unquoted-close-reuse": "The draft reproduces the source's own wording without quotation marks, citing it. A reviewer would require quote marks, so this is a true positive -- but on this book both instances are passages the exact tier already reports."
+ },
+ "labels": {
+  "d95d4663b28e": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "c6c674024cc1": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "9753f85a9f8b": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "8003e232725b": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "69fd4ac5a34e": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "165c91a4ab0b": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "217a98ca57bc": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "1926037a50c7": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "68efd1f165e6": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "The draft's own sentence about predictive-maintenance literature reviews. Nine different corpus papers match the same eleven draft words on five stemmed content words; a phrase every survey in the field writes is not this paper's writing."
+  },
+  "26e64013bdb6": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "Generic hardware-in-the-loop phrasing ('test the control system without the hardware'). Five stemmed content words, no distinctive wording."
+  },
+  "d1fab517b60b": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The canonical digital-shadow definition (one-way physical-to-digital state propagation). Set as an attributed blockquote in the draft; the matched paper is reproducing the same standard definition, not being copied."
+  },
+  "abd5c64ad819": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The NASA 'integrated multiphysics, multiscale, probabilistic simulation of an as-built vehicle or system' definition. The draft attributes it to its originators; every corpus paper that quotes it matches."
+  },
+  "3cfdbeef1073": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The NASA 'integrated multiphysics, multiscale, probabilistic simulation of an as-built vehicle or system' definition. The draft attributes it to its originators; every corpus paper that quotes it matches."
+  },
+  "0a60ca04b4c3": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The NASA 'integrated multiphysics, multiscale, probabilistic simulation of an as-built vehicle or system' definition. The draft attributes it to its originators; every corpus paper that quotes it matches."
+  },
+  "4b0338a9eb1d": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The NASA 'integrated multiphysics, multiscale, probabilistic simulation of an as-built vehicle or system' definition. The draft attributes it to its originators; every corpus paper that quotes it matches."
+  },
+  "b28f9f85bd44": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The NASA 'integrated multiphysics, multiscale, probabilistic simulation of an as-built vehicle or system' definition. The draft attributes it to its originators; every corpus paper that quotes it matches."
+  },
+  "b2beb1700379": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The ISO 23247 'fit-for-purpose digital representation of an observable manufacturing element' definition. Same shape as the NASA cluster: a standard's own words, reproduced by every paper that cites the standard."
+  },
+  "7ccf9cb8b467": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The ISO 23247 'fit-for-purpose digital representation of an observable manufacturing element' definition. Same shape as the NASA cluster: a standard's own words, reproduced by every paper that cites the standard."
+  },
+  "20d364c4a294": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The ISO 23247 'fit-for-purpose digital representation of an observable manufacturing element' definition. Same shape as the NASA cluster: a standard's own words, reproduced by every paper that cites the standard."
+  },
+  "fd8f06342a31": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "Generic simulation taxonomy ('faster than real time', 'discrete-event simulations'). Field vocabulary, five stemmed content words."
+  },
+  "434078c28b9f": {
+   "label": "fp",
+   "class": "stock-phrase-echo",
+   "rationale": "A short inflection-level match on a generic anomaly-detection description ('builds a normal operation model, detects anomalies'). Five stemmed content words of standard ML phrasing; nothing a reviewer would act on."
+  },
+  "e1472e1eea9b": {
+   "label": "tp",
+   "class": "unquoted-close-reuse",
+   "rationale": "11-twin-services.md L234-239 reproduces two of the source's sentences without quote marks, citing it at the end of the paragraph. A reviewer would require quotation marks. Noted: the exact tier already reports this passage (14 matched words), so tier 2 adds nothing here that tier 1 did not."
+  },
+  "8b2f3d001a11": {
+   "label": "fp",
+   "class": "third-party-echo",
+   "rationale": "The same draft passage as the finding above, matched against the volume that contains the cited chapter. One reuse, two citekeys."
+  },
+  "77a6a3a6ac03": {
+   "label": "fp",
+   "class": "attributed-quotation",
+   "rationale": "12-platforms-and-composability.md L40 sets the reused clause in quotation marks and cites the source. Legitimate scholarship; the skip-gram window straddles the opening quote mark, which is why `quoted` is false."
+  },
+  "609c87068172": {
+   "label": "tp",
+   "class": "unquoted-close-reuse",
+   "rationale": "12-platforms-and-composability.md L514 reproduces the source's four-item list almost verbatim with no quotation marks, citing it at the end of the sentence. Same note as the other true positive: the exact tier reports the same passage (11 matched words)."
+  },
+  "06373f5eb33f": {
+   "label": "fp",
+   "class": "attributed-quotation",
+   "rationale": "13-standards-and-open-source.md L30 is two quoted fragments, both in quotation marks and cited. The longest surviving finding (12 matched words) and entirely legitimate."
+  },
+  "b1f7848c8965": {
+   "label": "fp",
+   "class": "attributed-quotation",
+   "rationale": "14-running-twins-in-production.md L647 quotes the source's phrase in quotation marks and cites it."
+  }
+ }
+}

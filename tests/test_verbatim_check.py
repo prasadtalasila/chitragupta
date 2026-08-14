@@ -379,6 +379,55 @@ class TestMergeSpans:
         assert vc._merge_spans([(3, 8, 2)], gap=1) == [(3, 8, [(3, 8, 2)])]
 
 
+class TestSkipgramTierPrecision:
+    """The two tier-2 defects #180 measured against a real corpus, each
+    reproduced against the mechanism the issue traced them to."""
+
+    def test_a_repeating_source_block_reports_one_finding_not_several(
+        self, ledger_con, tmp_path
+    ):
+        # The duplicate-emission mechanism, minimally: the source repeats
+        # one block on one page, so the draft's single matching window
+        # sits at two different `src_pos` and therefore in two different
+        # `(citekey, diagonal)` groups -- which merge to the same draft
+        # span against the same page, and so build the same
+        # `(citekey, page, fragment)` id twice.
+        #
+        # The draft's odd-index words are replaced so the *exact* tier
+        # cannot match (and so cannot mask the bug by suppressing tier 2
+        # under `scan_findings`' containment rule); the even family
+        # survives intact and does the matching.
+        block = ("alpha bexo gamov delka epsilo zenith etaro thelos iotara "
+                 "kappor lambdo muvex").split()
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            " ".join(block + ["filler"] * 3 + block),
+        )
+        swapped = [w if i % 2 == 0 else f"z{i}" for i, w in enumerate(block)]
+        draft = tmp_path / "draft.md"
+        draft.write_text("[@cited_2024] " + " ".join(swapped) + " end.\n")
+
+        findings, _min_run, _suppressed = vc.scan_findings(draft, min_run=8)
+
+        assert [f["tier"] for f in findings] == ["skip-gram"]
+        assert len(findings) == len({f["id"] for f in findings})
+
+    def test_two_unrelated_numeric_tables_do_not_match(self, ledger_con, tmp_path):
+        # Two tables about nothing in common. Their even-index tokens
+        # coincide (1 2 3 0 5 2 8) and their odd-index ones do not, which
+        # is precisely the shape tier 2 is built to forgive -- and with
+        # only ten distinct digit tokens to draw from, forgiving it here
+        # reports a coincidence as reuse. #180 traced 97 of 125 unique
+        # findings to this.
+        _add_parsed_item(ledger_con, tmp_path, "unrelated_2021", "1 4 2 7 3 9 0 6 5 8 2 3 8 1")
+        draft = tmp_path / "draft.md"
+        draft.write_text("1 0 2 1 3 5 0 2 5 4 2 9 8 7\n")
+
+        findings, _min_run, _suppressed = vc.scan_findings(draft, min_run=8)
+
+        assert findings == []
+
+
 class TestQuoteCharSpans:
     def test_straight_double_quotes_detected(self):
         spans = vc._quote_char_spans('before "a quoted phrase" after')

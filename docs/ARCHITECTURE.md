@@ -639,7 +639,7 @@ what is missing.
 | Parser backend | `pdftotext`, `docling` | `sync` warns and skips parsing. It does **not** silently substitute the other backend |
 | Interpreter | the three tiers above | `ModuleNotFoundError` |
 | Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + pdflatex) | reported as `missing-binary`. No format is silently downgraded to another |
-| Detection | `exact` word-n-gram runs (built), a deterministic skip-gram tier and an embedding tier (both proposed) | the embedding tier needs the optional enrichment layer's `content/chroma/`; without it that tier is unavailable and says so, rather than falling back to the exact tier and reporting less |
+| Detection | `exact` word-n-gram runs and a deterministic skip-gram tier (both built, the second advisory-only), an embedding tier (proposed) | the embedding tier needs the optional enrichment layer's `content/chroma/`; without it that tier is unavailable and says so, rather than falling back to the exact tier and reporting less |
 
 One difference worth stating, because it is the exception to the word
 *tier* as used above: the detection tiers are **not mutually exclusive**.

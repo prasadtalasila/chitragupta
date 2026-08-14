@@ -921,8 +921,23 @@ def _skipgram_findings_from_groups(
     allowlist or `min_run` rules out, and build a finding for what's
     left. Extracted out of `_skipgram_tier_findings` for the same reason
     as `_exact_findings_from_groups`.
+
+    **One finding per id** (#180). Grouping is by `(citekey, diagonal)`,
+    but a finding's identity is `(citekey, page, fragment)` -- no
+    diagonal in it -- and the two do not agree: a source table whose
+    values repeat puts the *same* draft window at several `src_pos`, so
+    the same window lands in several `(citekey, diagonal)` groups, each
+    of which then merges to the same draft span against the same source
+    page and builds a finding with the same id. #180 measured 190 raw
+    findings resolving to 125 unique ids on one real run, and the
+    duplicates inflated the benchmark's own precision arithmetic, which
+    sums labels over the raw list. Traced against a repeating source
+    block, the colliding findings were identical in every published
+    field, not merely in their id, so keeping the first one seen
+    discards nothing.
     """
     findings = []
+    seen_ids = set()
     suppressed = 0
     for (citekey, _diagonal), spans in groups.items():
         for start, end, members in _merge_spans(spans, gap):
@@ -934,10 +949,14 @@ def _skipgram_findings_from_groups(
                 if span_words - sum(mask) < min_run:
                     suppressed += 1
                     continue
-            findings.append(_skipgram_finding(
+            finding = _skipgram_finding(
                 start, end, members, span_words, citekey, words, word_strs,
                 newlines, text, paragraph_citekeys, citekeys_at_position,
-            ))
+            )
+            if finding["id"] in seen_ids:
+                continue
+            seen_ids.add(finding["id"])
+            findings.append(finding)
     return findings, suppressed
 
 

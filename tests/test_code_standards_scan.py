@@ -80,7 +80,7 @@ LEGACY_LONG_FUNCTIONS = {
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
     "src/dossier.py",  # 1667
-    "src/review/verbatim_check.py",  # 1588
+    "src/review/verbatim_check.py",  # 1606
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 522
     "src/overlap_index.py",  # 492
@@ -90,7 +90,7 @@ LEGACY_LONG_FILES = {
     "src/ledger.py",  # 395
     "src/retrieval.py",  # 376
     "src/references.py",  # 366
-    "src/overlap_skipgram.py",  # 305
+    "src/overlap_skipgram.py",  # 315
     "src/config.py",  # 292
 }
 
