@@ -111,7 +111,7 @@ renders at all: it matches them by their path relative to
 
 | File | What it holds | Status before this |
 |---|---|---|
-| `scope.md` | genre, reader, what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
+| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
 | `evidence.md` | each kept citekey, why it was kept, supporting quote or paraphrase | **specified** (survey-writer step 2) but written as JSON |
 | `rejected.md` | candidates retrieved and turned down, with the reason | **nowhere** |
 | `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite | **specified** (survey-writer step 8) but written as JSON |
@@ -487,6 +487,38 @@ Steps 3 and 4 are where the output-token saving lives: a scoped edit
 inside one section replaces an estimated ~4.6k-token whole-file rewrite.
 Steps 1, 2 and 5 are where the input-token saving lives: no retrieval
 pass at all in the common case.
+
+### The copy-edit pass, and the entry it leaves
+
+One class of revision inverts every economy above: a grammar pass, a
+spelling fix, a dialect conversion, a rephrasing to meet a style
+guideline. It reads the whole draft rather than one section, and it edits
+every section rather than one -- and it is still the cheap path, because
+what makes the ordinary loop cheap is skipping *retrieval*, and this pass
+skips it entirely. Steps 4 and 5 short-circuit to "no, and never": a
+copy-edit that needs a search has stopped being one.
+
+What it leaves behind is one `revisions.md` entry for the whole document,
+naming the convention applied rather than the sections touched --
+"converted to en-GB per `scope.md`'s `language:` (-ise, -our, -re); no
+claim, citation or section order changed". One entry rather than forty
+because the later reader's question is *which convention governs this
+draft now*, and a per-section log answers a question nobody asks.
+
+**It carries no evidence delta, and that is the point rather than an
+omission.** `evidence.md`, `rejected.md` and `sections.md` all describe
+the relationship between the draft and the corpus, and a wording change
+moves neither end of it: no citekey is added or dropped, no candidate is
+judged, no heading moves. A copy-edit entry that recorded an evidence
+change would be recording something that did not happen -- and the next
+revision, which is told to trust `rejected.md` rather than re-judge it,
+would inherit the fiction. The dossier stays truthful by staying silent
+here.
+
+The one dossier file a copy-edit may legitimately write besides the log is
+`scope.md`'s `language:` line, when the pass is what settles the dialect
+in the first place. A conversion applied against an unrecorded target
+cannot be repeated or checked by the next session.
 
 ### Re-grounding after the corpus moves
 

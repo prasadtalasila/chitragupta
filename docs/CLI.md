@@ -317,7 +317,8 @@ The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
 relative to `content/drafts/`, minus the suffix -- so
 `content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`. Seven
-Markdown files: `scope.md` (the reader, the scope, the glossary),
+Markdown files: `scope.md` (the reader, the dialect, the scope, the
+glossary),
 `evidence.md` (the kept evidence), `rejected.md` (the rejected candidates
 and why), `sections.md` (which section cites which citekey), `steering.md`
 (the user's steering), `revisions.md` (a revision log), and `retrieval.md`

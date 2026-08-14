@@ -681,7 +681,7 @@ pipeline. Genre: {genre}.
 
 | File | What it holds |
 |---|---|
-| `scope.md` | reader, what the draft covers and excludes, glossary, corpus fingerprint |
+| `scope.md` | reader, dialect, what the draft covers and excludes, glossary, corpus fingerprint |
 | `evidence.md` | each citekey kept, why, and the supporting quote or paraphrase |
 | `rejected.md` | candidates retrieved and turned down, with the reason |
 | `sections.md` | section heading -> the citekeys cited under it |
@@ -705,6 +705,13 @@ See `docs/DRAFT-ITERATION.md`.
 
 
 def _scope(draft: Path, genre: str, corpus: tuple[int, str] | None) -> str:
+    # `language` ships unset rather than defaulting, and says so in the
+    # value itself. `init` has no way to know the dialect -- it is settled
+    # with the reader, one step later -- and `draft-reviser` reads this
+    # file before every edit, so a plausible-looking `en-US` here would be
+    # a preference nobody chose, silently applied to every future
+    # revision. Same policy as `corpus_line` below, for the same reason:
+    # an honest "not recorded" beats an invented value.
     corpus_line = (
         f"- corpus: {corpus[0]} citekeys, digest `{corpus[1]}`"
         if corpus
@@ -713,6 +720,8 @@ def _scope(draft: Path, genre: str, corpus: tuple[int, str] | None) -> str:
     return f"""# Scope
 
 - genre: {genre}
+- language: not settled -- a BCP-47 tag (`en-GB`, `en-IN`, `en-US`), \
+settled with the reader; docs/WRITING-STANDARDS.md section 8
 - draft: {draft_relpath(draft)}
 - created: {date.today().isoformat()}
 {corpus_line}

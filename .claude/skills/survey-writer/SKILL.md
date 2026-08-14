@@ -116,7 +116,12 @@ collapse them for the sake of a cleaner narrative.
    render (`content/rendered/<the draft's own directory>/`) mirror
    whatever you pick, so moving the draft later means moving both.
    Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
-   **Glossary** now, while you are deciding them. `init` also stamps the
+   **Glossary** now, while you are deciding them. Settle the **dialect**
+   with the reader in the same breath and write it to `scope.md`'s
+   `language:` line, which ships unset: a survey for an IEEE submission is
+   `en-US` and one for a European funder is usually `en-GB`, and a draft
+   whose dialect nobody chose silently gets the model's own
+   (`docs/WRITING-STANDARDS.md` §8). `init` also stamps the
    corpus fingerprint, which is what lets a later revision tell whether
    the ledger has moved since.
 1. **Retrieve broadly, over-fetching on purpose.** Break the requested topic

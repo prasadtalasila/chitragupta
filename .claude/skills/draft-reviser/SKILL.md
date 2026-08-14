@@ -1,6 +1,6 @@
 ---
 name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.draft gate` before presenting and never invents a citekey.
+description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also covers whole-document copy-editing that touches no evidence -- triggers on "fix the grammar", "fix the spelling", "convert this to British English", "make it en-GB/en-IN", or rephrasing to meet a style guideline -- in a copy-edit mode that reads scope.md's recorded dialect, skips retrieval and evidence entirely, edits section by section rather than rewriting the file, and logs one revisions.md entry naming the convention applied; it refuses to change a claim, add or drop a citation, or reorder an argument under cover of a style pass. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.draft gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
@@ -22,6 +22,7 @@ is shaped that way.
 | Situation | Action |
 |---|---|
 | User asks to shorten, expand, restructure, correct or update an existing draft | Invoke this skill |
+| User asks for a grammar pass, a spelling fix, a dialect conversion (en-US -> en-GB/en-IN), or rephrasing to meet a style guideline | This skill, in **copy-edit mode** (below) -- the loop's search and evidence steps short-circuit |
 | User asks to re-target the draft at a **different reader** | Hand off to `corpus-reviser` -- what counts as support changes with the reader, so the kept set has to be re-judged, not extended |
 | User asks for a **new** draft on a topic | Use the matching genre skill |
 | The draft exists but has no dossier | Bootstrap one (below), then continue here |
@@ -100,15 +101,21 @@ ranges (`Read` with `offset=<start>`, `limit=<lines>`). Do not read the
 whole draft to change one section. Consult `sections.md` when you need to
 know which section owns a citation without reading anything.
 
-The exception: a change that alters the draft's argument (restructuring,
-or a claim that other sections lean on) needs a read of the whole draft.
-Recognise that case and pay for it deliberately, rather than defaulting
-to it. Note that reading the whole draft is still not re-searching it --
-if the evidence also has to be re-judged, that is `corpus-reviser`.
+Two exceptions, and only two. A change that alters the draft's argument
+(restructuring, or a claim that other sections lean on) needs a read of
+the whole draft, and so does a copy-edit pass, which touches every section
+by definition -- see "Copy-edit mode" below for the rest of what that
+changes. Recognise either case and pay for it deliberately, rather than
+defaulting to it. Note that reading the whole draft is still not
+re-searching it -- if the evidence also has to be re-judged, that is
+`corpus-reviser`.
 
 ### 4. Decide whether you need to search at all
 
-Most revisions don't. Before any retrieval call:
+Most revisions don't, and a copy-edit pass never does -- if you are in
+that mode, skip to it now rather than working through this step.
+
+Before any retrieval call:
 
 - Check `evidence.md` -- the supporting quote may already be recorded.
 - Check `rejected.md` -- if a candidate is listed there with a reason,
@@ -172,7 +179,8 @@ Update only what actually changed:
   dated. This is the part with nowhere else to live; skipping it is how
   the next session loses the thread.
 - `revisions.md` -- append one entry: date, what changed, which sections,
-  and why.
+  and why. A copy-edit pass logs one entry for the whole document and
+  updates nothing else in this list; see "Copy-edit mode".
 
 ### 7. Gate, reference, render
 
@@ -230,6 +238,80 @@ scan is not a clean bill of health (`docs/PLAGIARISM.md`).
 If the user wants the finding kept, add `--write`: the report
 goes to `content/review/`, mirroring the draft's path, beside any
 provenance and coverage reports for the same draft.
+
+## Copy-edit mode
+
+A grammar pass, a spelling fix, a dialect conversion, or rephrasing to
+meet a style guideline is still a change to a draft that already exists,
+so it is still this skill. But it is orthogonal to every axis the loop
+above is organised around: it touches *every* section, and changes no
+citekey, no evidence, no section map and no argument.
+
+Recognise it from the request -- "fix the grammar", "convert this to
+British English", "the hedging is too heavy throughout" -- and **say you
+are in this mode before you start**, naming the convention you are about
+to apply. That sentence is what lets the user stop you if they meant a
+change of substance.
+
+What changes, relative to the loop above:
+
+| Step | In copy-edit mode |
+|---|---|
+| 1. Locate and read state | Unchanged, and load-bearing. `scope.md`'s `language:` line is the target a dialect pass converts *to*, and `steering.md` may already carry a house-style decision. Skip this and you apply your own default instead of the user's recorded one |
+| 2. Check against recorded scope | Not applicable -- wording is not scope |
+| 3. Map the change onto sections | Read the whole draft. This is precisely the case step 3's exception exists for, and it is paid for deliberately |
+| 4. Decide whether to search | **No, and never.** A copy-edit that needs a retrieval call has stopped being one; see "Where the line is" below |
+| 5. Edit in place | Unchanged, and load-bearing for a second reason -- below |
+| 6. Write the dossier back | `revisions.md` only, one entry. There is no evidence delta, no new rejection and no moved section to record |
+| 7. Gate, reference, render | Unchanged. Run the gate even though you changed no citation: that is the point |
+
+If `scope.md`'s `language:` still says `not settled`, ask which dialect
+before converting, and write the answer to that line as part of the pass.
+A conversion applied against an unrecorded target is one the next session
+cannot repeat or check.
+
+**Still `Edit`, never `Write`, and now for a second reason.** Every
+objection in step 5 holds. The new one is that the PostToolUse citation
+gate runs per write, so editing section by section gives you a mechanical
+check that the rewrite has not mangled a citekey or a `\citep{}` -- the
+safety net that makes an aggressive whole-document rewrite safe to attempt
+at all. One `Write` of the whole file trades that away exactly where the
+risk is highest.
+
+**One `revisions.md` entry for the whole pass**, not one per section, and
+it names the convention rather than the sections:
+
+```text
+2026-08-14 -- copy-edit: converted to en-GB per scope.md's `language:`
+(-ise, -our, -re endings); whole document; no claim, citation, section
+order or citekey changed.
+```
+
+One entry because the log's later reader wants to know *what convention
+now governs this draft*; forty entries reading "converted section 4" do
+not answer that. `docs/DRAFT-ITERATION.md` has the shape and why it
+carries no evidence delta.
+
+### Where the line is
+
+If the rephrasing wants to change what a sentence claims, add or drop a
+citation, or reorder an argument, that is an ordinary revision. Finish the
+copy-edit, then say what you found and ask -- never take a substantive
+change under cover of a style pass, where it arrives in a diff the user is
+reviewing for spelling.
+
+Two things this mode refuses outright:
+
+- **Never change a claim to make a sentence read better.** Hedging that
+  carries real uncertainty is information (`docs/WRITING-STANDARDS.md`
+  §4), and "X may be a factor" flattened to "X is a factor" is a new claim
+  with an old citation behind it.
+- **Never touch quoted material, a cited title, a proper noun, or a
+  dataset or code identifier.** The recorded dialect governs the draft's
+  own prose only (`docs/WRITING-STANDARDS.md` §8), and "organization"
+  inside a quoted abstract or a venue's name stays as the source spelled
+  it. Nothing downstream catches this one: the citation gate checks
+  citekeys, not the words around them.
 
 ## Re-grounding after the corpus moves
 
@@ -434,6 +516,10 @@ citekey.
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
 - **Never silently change scope, reader or terminology.**
+- **Never let a copy-edit change a claim.** A style pass that quietly
+  strengthens a hedge, drops a citation or reorders an argument is a
+  substantive revision arriving in a diff the user is reading for
+  spelling. Finish the wording, then say what you found and ask.
 - **Never record a rejection you did not make.** Writing an unpursued
   candidate into `rejected.md` to tidy a drift report turns a title into
   a permanent judgment that every later revision trusts.
