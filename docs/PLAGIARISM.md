@@ -1,10 +1,10 @@
 # Plagiarism / verbatim-reuse detection
 
-Status: **implemented, three detection tiers of a planned three -- the
-second and third shipped advisory-only, and the third runs only where
-the optional enrichment layer, the Docling passage sidecars and the
-draft's own dossier are all present.** Written 2026-08-10, tier 2 added
-2026-08-13 (#133), tier 3 added 2026-08-15 (#134/#164).
+Status: **implemented, three detection tiers of a planned three.** The
+second and third shipped advisory-only. The third runs only where the
+optional enrichment layer, the Docling passage sidecars and the draft's
+own dossier are all present. Written 2026-08-10; tier 2 added 2026-08-13
+(#133), tier 3 added 2026-08-15 (#134/#164).
 
 **Written for** someone deciding whether `src/review/verbatim_check.py`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
@@ -24,11 +24,13 @@ a synced corpus (`python -m src.corpus sync`) and a citekey-verified draft
   not need any of it to read a report; you need all of it to change one.
 
 **The three tiers, in one paragraph.** Findings come from three
-detectors, and every finding names the one that produced it. **exact** is
-a verbatim word-run. **skip-gram** is a tolerant stemmed match that also
-catches a passage with a handful of words substituted. **embedding**
-matches meaning rather than wording, and is the only one that sees a
-genuine restatement.
+detectors, and every finding names the one that produced it:
+
+- **exact** is a verbatim word-run.
+- **skip-gram** is a tolerant stemmed match. It also catches a passage
+  with a handful of words substituted.
+- **embedding** matches meaning rather than wording. It is the only one
+  that sees a genuine restatement.
 
 That third tier is also the narrowest. It runs only where the optional
 enrichment layer, the Docling passage sidecars and the draft's own
@@ -51,21 +53,25 @@ or to someone else". `src/review/verbatim_check.py`'s two modes exist to
 answer the second question, mechanically, over what is currently checked
 verbatim word-n-gram reuse.
 
-**Verbatim and light-paraphrase reuse only.** A synonym swapped every
-few words or an inflection changed is what tier 2's stemmed skip-grams
-(`src/overlap_skipgram.py`, #133) now catch; genuine restatement in new
-sentence structure -- the same claim, said differently -- is invisible
-to both deterministic tiers by construction. That matters more than it
-would elsewhere in this project because **the drafts this pipeline
-produces are LLM-written**, and literal paraphrase is an LLM's default
-failure mode when it drifts too close to a source, not an edge case.
-Treat a clean `scan` as "no exact or near-exact copying, no
-word-swapped paraphrase, and -- where tier 3 ran -- no close
-restatement of a source a section's dossier records", never as "no
-borrowed wording found". Tier 3 (below) closes the restatement gap, but
-only within each section's own recorded citekeys and only where the
-optional stack it needs is installed; a lift from a source a section
-never cited is still tiers 1 and 2' business alone.
+**Verbatim and light-paraphrase reuse only.** Tier 2's stemmed
+skip-grams (`src/overlap_skipgram.py`, #133) catch a synonym swapped
+every few words, or an inflection changed. Genuine restatement in new
+sentence structure -- the same claim, said differently -- is invisible to
+both deterministic tiers by construction.
+
+That matters more here than it would elsewhere, because **the drafts this
+pipeline produces are LLM-written**. Literal paraphrase is an LLM's
+default failure mode when it drifts too close to a source, not an edge
+case.
+
+Treat a clean `scan` as "no exact or near-exact copying, no word-swapped
+paraphrase, and -- where tier 3 ran -- no close restatement of a source a
+section's dossier records". Never as "no borrowed wording found".
+
+Tier 3 below closes the restatement gap, but only within each section's
+own recorded citekeys, and only where the optional stack it needs is
+installed. A lift from a source a section never cited remains tiers 1 and
+2's business alone.
 
 That is this tier set's characteristic failure and the reason `scan`
 now names the tiers that **did not run**, with the reason, in both its
@@ -83,14 +89,15 @@ thin result and a thorough one look identical.
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
 | Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after -- **but minutes rather than seconds wherever tier 3 runs**, since it embeds each shortlisted source's sentences. Measured: ~100s for one chapter of the 15-chapter book, dominated by that. See below |
 
-Both belong to the **review layer** and are advisory, not gates: a successful
-run exits 0 whether it
-found anything or not, and neither is wired into a hook or blocks a
-draft. (A malformed invocation -- a bad flag, a missing argument --
-exits 2, ordinary CLI-usage error handling, not a verdict on the draft.)
-Whether long verbatim runs should gate is a later, deliberately separate
-decision (issue #110's Phase 2) -- these tools only produce the findings
-that decision would be tuned against.
+Both belong to the **review layer** and are advisory, not gates. A
+successful run exits 0 whether it found anything or not, and neither is
+wired into a hook or blocks a draft. A malformed invocation -- a bad
+flag, a missing argument -- exits 2, which is ordinary CLI-usage error
+handling rather than a verdict on the draft.
+
+Whether long verbatim runs should gate is a later and deliberately
+separate decision, issue #110's Phase 2. These tools only produce the
+findings that decision would be tuned against.
 
 ## How it works
 
@@ -111,12 +118,12 @@ named.
 
 ### `scan`: the whole draft against the whole corpus
 
-Normalizes the entire draft once (masking code fences/inline code the
-same way `src/citation_gate.py` does, and the generated References
-section, so a source's own title page never reads as "overlap with
-itself"), then for every draft position looks up **every** posting for
-that position's gram hash across **every** parsed document -- not just
-ones the surrounding paragraph cites.
+Normalizes the entire draft once, masking code fences and inline code the
+same way `src/citation_gate.py` does, and masking the generated
+References section so a source's own title page never reads as "overlap
+with itself". Then, for every draft position, it looks up **every**
+posting for that position's gram hash across **every** parsed document --
+not just the ones the surrounding paragraph cites.
 
 `--write` also files the findings as
 `content/review/<topic>/<stem>.verbatim.md`, beside the same draft's
@@ -128,28 +135,32 @@ later cannot be read as a clearance. It carries no timestamp, so two runs
 over an unchanged draft and corpus diff to nothing.
 
 `--json` prints the same findings as data instead of as text, and
-`--write` files them as the report's `.json` sibling; both carry the same
-not-a-verdict notice and the same absence of a timestamp. Each payload
-finding also carries `severity` -- the same `long`/`short`/`quoted`
-bucket the written report below groups by, derived the same way, so a
-programmatic consumer -- the remediation loop below, an eventual gate --
-reads the same severity a human reviewer sees, rather than regex-parsing
-the printed lines or recomputing the threshold itself. It also carries
-`id`, a position-free name for the finding, and four fields that locate
-it in the draft as written. The fields, and the one that is easy to
-misread (`start` is a word offset into the normalised stream, not a
-position in the draft file, and the locators are what to use instead),
-are in [CLI.md](CLI.md#python--m-srcreview-verbatim).
+`--write` files them as the report's `.json` sibling. Both carry the same
+not-a-verdict notice and the same absence of a timestamp.
+
+Each payload finding also carries `severity`: the same
+`long`/`short`/`quoted` bucket the written report groups by, derived the
+same way. A programmatic consumer -- the remediation loop below, an
+eventual gate -- therefore reads the same severity a human reviewer sees,
+rather than regex-parsing the printed lines or recomputing the threshold.
+
+It also carries `id`, a position-free name for the finding, and four
+fields that locate it in the draft as written. One of those is easy to
+misread: `start` is a word offset into the normalised stream, not a
+position in the draft file, and the locators are what to use instead. All
+of them are in [CLI.md](CLI.md#python--m-srcreview-verbatim).
 
 Matches are grouped by `(citekey, diagonal)`, where `diagonal =
-source_position - draft_position` and `source_position` is a *global*
+source_position - draft_position`. That `source_position` is a *global*
 token position in the source document, not reset at each page break
-(`src/overlap_index.py`, #131). Two matches on the same diagonal are "in
-step" with each other even with non-matching words between them, so a
-**gap-tolerant merge** -- same idea as seed-and-extend alignment in the
-plagiarism-detection literature (below) -- collapses same-diagonal hits
-within `--gap` non-matching words (default 1) into one run, whether or
-not a source page break falls inside it. A single edited word inside an
+(`src/overlap_index.py`, #131).
+
+Two matches on the same diagonal are "in step" with each other even with
+non-matching words between them. So a **gap-tolerant merge** collapses
+same-diagonal hits within `--gap` non-matching words (default 1) into one
+run, whether or not a source page break falls inside it. It is the same
+idea as seed-and-extend alignment in the plagiarism-detection
+literature. A single edited word inside an
 otherwise-verbatim passage therefore reports as one finding, not two
 truncated ones. That matters because a single-word edit is exactly what
 an LLM's light editing of a lifted passage tends to look like.
@@ -194,15 +205,19 @@ Two additions from issue #128, both aimed at the same goal as any future
 gate built on top of `scan`: a tolerable false-positive rate.
 
 **Severity buckets, in the written report only.** stdout stays
-longest-first, unchanged -- it's read once, in a terminal, mid-review.
-`--write`'s Markdown report instead groups findings **most-damning-first**
-into three sections: *long* verbatim runs (`LONG_RUN_WORDS`, currently
-15 words, is the boundary), *short* ones, and *quoted* ones. A run demotes to
-the low-priority *quoted* group only when it is **both** touching quote
-delimiters **and** citing the source it matched. A quoted run from a
-source the paragraph does *not* cite is still the finding `overlap`
-structurally cannot make, so it is grouped by length like any other
-uncited run rather than buried under `quoted` for sitting in quote marks.
+longest-first, unchanged: it is read once, in a terminal, mid-review.
+
+`--write`'s Markdown report instead groups findings
+**most-damning-first**, into three sections: *long* verbatim runs,
+*short* ones, and *quoted* ones. `LONG_RUN_WORDS`, currently 15 words, is
+the boundary.
+
+A run demotes to the low-priority *quoted* group only when it is **both**
+touching quote delimiters **and** citing the source it matched. A quoted run
+from a source the paragraph does *not* cite is still the finding
+`overlap` structurally cannot make. It is grouped by length like any
+other uncited run, rather than buried under `quoted` for sitting in quote
+marks.
 
 `--limit` truncates the longest-first list *before* grouping, so a capped
 report can show only the `long` section with `short`/`quoted` empty or
@@ -257,15 +272,15 @@ and the finding is dropped only if what's *left* would no longer clear
 defined term still shows up -- the allowlist only excuses a finding that,
 once boilerplate is discounted, is nothing.
 
-A present-but-malformed allowlist file (bad TOML, or a category that
-isn't a list of strings) is a usage error (`scan` exits 2), not a silent
-fallback to "no suppressions" -- a policy file that quietly stopped
-working is the kind of failure that surfaces months later as "why did
-this stop suppressing," not as a clean scan.
+A present-but-malformed allowlist file -- bad TOML, or a category that
+isn't a list of strings -- is a usage error, and `scan` exits 2. It does
+not fall back silently to "no suppressions". A policy file that quietly
+stopped working surfaces months later as "why did this stop
+suppressing", not as a clean scan.
 
 The written report records the allowlist's path and how many findings it
-suppressed as a header line, since the allowlist isn't part of the
-recorded, re-runnable command (it's per-host config, not a flag) -- a
+suppressed, as a header line. The allowlist is per-host config rather
+than a flag, so it is not part of the recorded, re-runnable command. A
 report has to say what it consulted, or "what was waved through" stops
 being visible from the report's own side.
 
@@ -288,26 +303,33 @@ finding the moment the first was repaired, and nothing could then say
 whether a finding had survived a revision.
 
 **`recheck` is an acceptance test, not a second scan.** Given a baseline
-payload it re-scans at that baseline's own floor -- comparing a strict
-run against a lax one would read as progress -- and reports each finding
-as `resolved`, `persisting` or `new`, plus the change in the count of
-*objective* findings, meaning the `long` and `short` buckets. A run that
-is both quoted and cited is excluded from that count, or converting a
-lift into a properly attributed quotation would score as no improvement.
-It refuses a baseline it cannot compare against. That means another
-aid's payload; one written under `--limit`, where truncation makes
-"absent" ambiguous; one missing a field the comparison prints, such as
-`id`, a locator, or `end_page` from a build before #131; one from a
-different release series, since what counts as one finding can change
-between them; and one that is unreadable or not JSON.
+payload, it re-scans at that baseline's own floor, because comparing a
+strict run against a lax one would read as progress. It reports each
+finding as `resolved`, `persisting` or `new`, plus the change in the
+count of *objective* findings -- the `long` and `short` buckets.
+
+A run that is both quoted and cited is excluded from that count.
+Otherwise converting a lift into a properly attributed quotation would
+score as no improvement.
+
+It refuses a baseline it cannot compare against:
+
+- another aid's payload;
+- one written under `--limit`, where truncation makes "absent" ambiguous;
+- one missing a field the comparison prints, such as `id`, a locator, or
+  `end_page` from a build before #131;
+- one from a different release series, since what counts as one finding
+  can change between them;
+- one that is unreadable or not JSON.
 
 **What may be repaired without asking is decided by the buckets above,
-not by the model.** A `short` run is reworded unattended; a `long` one
-stops and asks the human whether to paraphrase or to quote; a `quoted`
-one is reported as already correct. The paraphrase-or-quote choice is
-authorial -- some things the field states one particular way -- and
-[SOUL.md](../SOUL.md) puts deciding that for someone under *what you will
-not do*.
+not by the model.** A `short` run is reworded unattended. A `long` one
+stops and asks the human whether to paraphrase or to quote. A `quoted`
+one is reported as already correct.
+
+The paraphrase-or-quote choice is authorial -- some things the field
+states one particular way -- and [SOUL.md](../SOUL.md) puts deciding that
+for someone under *what you will not do*.
 
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
 every other review command. `python -m src.draft gate` remains the only
@@ -326,36 +348,40 @@ is not detected. An empty findings list is not a clean bill of health.
 `[parser].backend` (`config.toml`) is `pdftotext` or `docling`. Both
 backends' output gets the same `\f` page-break convention
 (`src/pdf_text.py`), so nothing about `overlap`/`scan`'s page-locating
-breaks either way -- but the two backends extract genuinely different
-text, and this project's own corpus is configured for `docling`. Measured
-directly rather than assumed, against the same 26 real papers cited by
-this project's two full-length benchmark chapters
-(`content/drafts/recalibration-of-models-for-digital-twins.md`,
-`content/drafts/cloud-computing-for-digital-twins.md`): the same PDFs,
-extracted fresh with `pdftotext -layout`, against the corpus's existing
-`docling`-parsed text, with `scan` run over both.
+breaks either way. But the two extract genuinely different text, and this
+project's own corpus is configured for `docling`.
+
+Measured directly rather than assumed, against the 26 real papers cited
+by this project's two full-length benchmark chapters
+(`content/drafts/recalibration-of-models-for-digital-twins.md` and
+`content/drafts/cloud-computing-for-digital-twins.md`). The same PDFs
+were extracted fresh with `pdftotext -layout` and compared against the
+corpus's existing `docling`-parsed text, with `scan` run over both.
 
 **Page counts matched exactly for all 26 documents.** `src/pdf_text.py`'s
 own comment warns that docling can under-count pages relative to
-pdftotext when a page contributes no extracted item at all (a blank
-page, a pure-image page) -- a real risk in principle, not observed on
-this sample. Worth knowing before trusting it blind on a corpus with
-more image-only pages than this one has.
+pdftotext when a page contributes no extracted item at all -- a blank
+page, or a pure-image one. That is a real risk in principle, and was not
+observed on this sample. Worth knowing before trusting it blind on a
+corpus with more image-only pages than this one has.
 
 **docling produced zero false positives from running headers; pdftotext
-produced seven, from one document alone.** `gigli_next_2024` (an IEEE
-Transactions paper) has a running header on every even page --
+produced seven, from one document alone.** `gigli_next_2024`, an IEEE
+Transactions paper, has a running header on every even page:
 `"GIGLI et al.: NEXT GENERATION EDGE-CLOUD CONTINUUM ARCHITECTURE FOR
-STRUCTURAL HEALTH MONITORING"` -- which repeats the paper's own title.
-`pdftotext -layout` extracts running headers as literal page-top text, so
-that 8-word phrase (`edge cloud continuum architecture for structural
-health monitoring`, close paraphrase of the paper's own title, which
-naturally shows up when a draft discusses the paper) matched once per
-even page: **8 findings instead of 1** on the cloud-computing chapter
-alone, all the same non-finding repeated. `docling`'s structural parsing
-recognizes running headers as page furniture and drops them; the single
-`docling` finding for the same citekey came from the paper's own Markdown
-title heading on page 1 -- a genuine, single, legitimate echo.
+STRUCTURAL HEALTH MONITORING"`. It repeats the paper's own title.
+
+`pdftotext -layout` extracts running headers as literal page-top text.
+That 8-word phrase is `edge cloud continuum architecture for structural
+health monitoring`, which naturally shows up when a draft discusses the
+paper. It therefore matched once per even page: **8 findings instead of
+1** on the cloud-computing chapter alone, all the same non-finding
+repeated.
+
+`docling`'s structural parsing recognizes running headers as page
+furniture and drops them. Its single finding for the same citekey came
+from the paper's own Markdown title heading on page 1: a genuine,
+single, legitimate echo.
 
 The planted-reuse fixture told the same story in miniature: the real
 finding (an uncited source's genuinely reused sentence) was found by
@@ -363,33 +389,36 @@ both backends, but `pdftotext`'s corpus carried the same 7 header
 artifacts alongside it, `docling`'s did not.
 
 Where a document has no running-header artifact, the two backends agreed
-exactly: the recalibration chapter's one genuine finding (a 22-word
+exactly. The recalibration chapter's one genuine finding -- a 22-word
 verbatim quote from `gomes_calibration_2024`, planted deliberately to
-prove parity, not left to chance) reported identical span, matched-word
-count and page under both backends. The divergence is specific to the
-running-header failure mode, not a general instability between backends.
+prove parity rather than left to chance -- reported identical span,
+matched-word count and page under both. The divergence is specific to the
+running-header failure mode, not a general instability.
 
-**Conclusion: keep `docling`.** For this measurement's purpose the
-choice is not close. A reviewer working through `pdftotext`-backed
-`scan` output on a corpus with running headers -- common in IEEE/ACM
-journal templates -- has to notice and mentally discard a repeating
-artifact before trusting the rest of the list, which is exactly the kind
-of alarm fatigue that makes a reviewer start skimming past real findings
-too. This was measured on 26 of ~500 corpus documents, one of which
-carried the artifact; it is evidence the failure mode is real, not a
-census of how common it is corpus-wide.
+**Conclusion: keep `docling`.** For this measurement's purpose the choice
+is not close. A reviewer working through `pdftotext`-backed `scan` output
+on a corpus with running headers -- common in IEEE/ACM journal templates
+-- has to notice and mentally discard a repeating artifact before
+trusting the rest of the list. That is exactly the alarm fatigue which
+makes a reviewer start skimming past real findings too.
+
+This was measured on 26 of ~500 corpus documents, one of which carried
+the artifact. It is evidence that the failure mode is real, not a census
+of how common it is corpus-wide.
 
 Reproduce: both fixture chapters are committed at
 `bench/fixtures/recalibration-of-models-for-digital-twins.md` and
-`bench/fixtures/cloud-computing-for-digital-twins.md` (the same ones
-`bench/bench_overlap.py` uses for the #110/#111 timing measurements in
-`bench/RESULTS.md`). The backend-comparison script itself is not -- a
-one-off investigation, not a permanent bench tool. The method: for each
-cited citekey, extract fresh `pdftotext -layout` text from the real PDF,
-build a throwaway ledger pointing at it, run `scan` against that ledger
-and against one pointing at the corpus's existing `docling`-parsed text
-(unshared `OVERLAP_DIR`s so neither run's cache contaminates the other),
-and diff the findings.
+`bench/fixtures/cloud-computing-for-digital-twins.md`. They are the same
+ones `bench/bench_overlap.py` uses for the #110/#111 timing measurements
+in `bench/RESULTS.md`. The backend-comparison script itself is not
+committed -- a one-off investigation, not a permanent bench tool.
+
+The method, for each cited citekey: extract fresh `pdftotext -layout`
+text from the real PDF, build a throwaway ledger pointing at it, then run
+`scan` twice -- against that ledger, and against one pointing at the
+corpus's existing `docling`-parsed text -- and diff the findings. The two
+runs use unshared `OVERLAP_DIR`s, so neither cache contaminates the
+other.
 
 ## Tuning, given the stated priority: catch more, and checking time is not the constraint
 
@@ -398,20 +427,20 @@ the limiting factor:
 
 - **`--gap` (default 1).** Recovers a single-edited-word near-verbatim
   run. Raising it to 2 -- inside the "default 1-2" range named when this
-  was scoped -- tolerates two edited words per gap at the cost of a
+  was scoped -- tolerates two edited words per gap. The cost is a
   slightly higher chance of bridging two unrelated short matches into one
   false run. Worth trying at 2 first, given the priority is recall over
-  speed; the merge cost is negligible either way (a constant-factor
+  speed. The merge cost is negligible either way: a constant-factor
   addition per diagonal group, not separated out in the measurements
-  above).
+  above.
 - **`--min-run` (default 8, the index's own n-gram size -- the reporting
   floor, not something lower can be served without rebuilding the whole
   index at a different `n`).** Cannot be lowered without a corpus-wide
-  reindex at smaller `n`, which raises the birthday-bound collision odds
-  and, more importantly, raises the false-positive rate: shorter
-  n-grams match by coincidence far more often over a ~7M-gram corpus.
-  Not recommended to change casually; if a shorter floor is genuinely
-  needed, treat it as a deliberate reindex decision, not a flag.
+  reindex at smaller `n`. That raises the birthday-bound collision odds,
+  and -- more importantly -- the false-positive rate: shorter n-grams
+  match by coincidence far more often over a ~7M-gram corpus. Not
+  recommended casually. If a shorter floor is genuinely needed, treat it
+  as a deliberate reindex decision rather than a flag.
 
 The larger recall gap given the stated priority is the **page-boundary
 limitation** above, not either flag: a real lift split by a page break
