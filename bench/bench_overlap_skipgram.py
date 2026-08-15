@@ -1,6 +1,6 @@
 """What the skip-gram tier (#133) actually catches, measured two ways.
 
-`docs/PLAGIARISM.md`'s tier-2 entry and discussion #115 both call for
+`docs/PLAGIARISM-DESIGN.md`'s tier-2 entry and discussion #115 both call for
 "start advisory, promote with evidence" -- this is that evidence, styled
 on `bench_overlap_gate.py`'s two-part shape (a self-contained synthetic
 capability check, plus a real-corpus precision measurement), because a
@@ -26,7 +26,7 @@ tier 2 did not exist yet.
 **What this does not measure.** Embedding-level paraphrase (tier 3,
 #134, unbuilt) -- restatement in genuinely new sentence structure, not a
 word-for-word swap. A clean run on both arms here is not evidence
-against that failure mode; see docs/PLAGIARISM.md.
+against that failure mode; see docs/PLAGIARISM-DESIGN.md.
 
     python3 bench/bench_overlap_skipgram.py --capability
 
@@ -121,7 +121,7 @@ def scan_all(drafts):
     out = []
     total_suppressed = 0
     for draft in drafts:
-        found, _, suppressed = vc.scan_findings(str(draft))
+        found, _, suppressed, _ = vc.scan_findings(str(draft))
         total_suppressed += suppressed
         for f in found:
             if not eligible(f):

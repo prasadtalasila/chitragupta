@@ -301,8 +301,8 @@ candidate for the chapter.
     and reuse in the connective prose between worked examples, which
     cites nothing. A review aid, not a gate: it exits 0 either way and
     cannot block the draft. Say what it misses when you offer it -- it
-    sees verbatim and near-verbatim reuse only, and **genuine restatement
-    is not detected**, so a clean scan is not a clean bill of health
+    sees verbatim and near-verbatim reuse only, and **genuine restatement is only detected where the
+embedding tier can run**, so a clean scan is not a clean bill of health
     (`docs/PLAGIARISM.md`).
     If the user wants the finding kept, add `--write`: the report
     goes to `content/review/`, mirroring the draft's path, beside any

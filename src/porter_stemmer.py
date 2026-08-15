@@ -3,7 +3,7 @@
 `src/overlap_skipgram.py` (tier 2, #133) needs a stemmer to fold
 inflection/synonym-adjacent word forms together before skip-gram hashing --
 the same reduction PAN 2013's winning CoReMo design (Torrejon & Ramos)
-built on, cited in discussion #115 and docs/PLAGIARISM.md. No dependency
+built on, cited in discussion #115 and docs/PLAGIARISM-DESIGN.md. No dependency
 on the corpus already carries this (nltk and its Snowball stemmer are not
 project dependencies), and this algorithm is a fixed, public specification
 rather than a moving target, so it is reimplemented from the published

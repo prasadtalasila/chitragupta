@@ -64,7 +64,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import citation_gate, config, overlap_index, overlap_skipgram, references, review
+from src import (
+    citation_gate, config, overlap_embed, overlap_index, overlap_segments,
+    overlap_skipgram, references, review,
+)
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
@@ -673,7 +676,7 @@ def _cites_source(
     correctly quoted, correctly credited block quote, which then never
     reached the `quoted`-and-cited exemption `_bucket` gives an
     attributed quotation, because that exemption also keyed off this
-    same single-citekey check (docs/PLAGIARISM.md's Kritzinger case,
+    same single-citekey check (docs/PLAGIARISM-DESIGN.md's Kritzinger case,
     surfaced by PR #162's benchmark: a taxonomy quoted and cited to
     `kritzinger_digital_2018` also matches `barbie_toward_2024`, which
     reproduces the same taxonomy and is never mentioned in the
@@ -851,6 +854,13 @@ def _exact_finding(
         # quoted phrase.
         "quoted": all(w.quoted for w in run_words),
         "tier": "exact",
+        # `None`, not absent and not 0.0: every tier's finding has to
+        # carry every published field (`published` projects
+        # `_PAYLOAD_FIELDS` with a hard `KeyError`, deliberately), and a
+        # deterministic tier has no similarity score to report. Zero
+        # would read as "aligned, badly", which is a different claim
+        # from "this tier does not measure that".
+        "score": None,
     }
 
 
@@ -866,7 +876,7 @@ def _skipgram_tier_findings(
 ) -> tuple[list[dict], int]:
     """Tier 2: deterministic light-paraphrase detection via stemmed
     skip-grams (`src/overlap_skipgram.py`, #133, the CoReMo design --
-    discussion #115, docs/PLAGIARISM.md). Same shared contract as
+    discussion #115, docs/PLAGIARISM-DESIGN.md). Same shared contract as
     `_exact_tier_findings` -- `(citekey, diagonal)` grouping, allowlist,
     `_cites_source` -- against `overlap_skipgram`'s own corpus-wide
     index instead of the exact tier's.
@@ -1042,21 +1052,193 @@ def _skipgram_finding(
         "cites_source": cites_source,
         "quoted": all(w.quoted for w in run_words),
         "tier": "skip-gram",
+        # `None`, not absent and not 0.0: every tier's finding has to
+        # carry every published field (`published` projects
+        # `_PAYLOAD_FIELDS` with a hard `KeyError`, deliberately), and a
+        # deterministic tier has no similarity score to report. Zero
+        # would read as "aligned, badly", which is a different claim
+        # from "this tier does not measure that".
+        "score": None,
+    }
+
+
+def _embed_tier_findings(
+    draft: str | Path,
+    words: list[_DraftWord],
+    word_strs: list[str],
+    paragraph_citekeys: list[set[str]],
+    newlines: list[int],
+    text: str,
+    min_run: int,
+    allowlist: list[tuple[str, ...]],
+) -> tuple[list[dict], int, str | None]:
+    """Tier 3: embedding-based paraphrase detection by local alignment
+    over sentence embeddings (`src/overlap_embed.py`, #134/#164). Same
+    shared contract as the other two tier finders, plus a third return
+    value the other two have no use for: **why the tier did not run**.
+
+    That third value is the point of the tier being wired in at all on a
+    host that cannot run it. Tier 1 and tier 2 are always available --
+    they read an index this repo builds from parsed text with no optional
+    dependency -- so "found nothing" is the only thing either can say.
+    This tier needs the enrichment layer's embedding stack, a built
+    `content/chroma/`, Docling passage sidecars and the draft's own
+    dossier, and any of those can be absent on a perfectly healthy
+    checkout. A tier that quietly contributed nothing in that state would
+    make a report of a never-checked draft indistinguishable from a
+    report of a clean one.
+
+    No `gap` parameter, unlike the other two. Tier 1 and tier 2 merge
+    same-diagonal matches with a word-level gap tolerance; the alignment
+    here has its own, in sentences, as `overlap_embed.GAP_PENALTY` --
+    a *cost* rather than a limit, so there is no equivalent flag for
+    `--gap` to set and pretending otherwise would put a word count in
+    charge of a sentence-level decision.
+    """
+    scope, reason = overlap_embed.open_scope(Path(draft))
+    if scope is None:
+        return [], 0, reason
+
+    sections = overlap_segments.draft_sections(
+        text, [(w.char, w.char_end) for w in words], scope.citekeys_by_section
+    )
+    if not sections:
+        # The dossier records citekeys against section headings that this
+        # draft no longer has -- a heading renamed since `sections
+        # --citekeys` last wrote the table, or a `sections.md` written by
+        # a release whose heading convention differed. Nothing to scope
+        # to, and the tier says so rather than reporting a clean scan of
+        # a draft it never compared against anything.
+        return [], 0, (
+            "the draft's headings and its dossier's sections.md do not agree on a "
+            "single section -- regenerate it with `python -m src.dossier sections "
+            "<draft> --citekeys --write`"
+        )
+
+    alignments = overlap_embed.align_draft(scope, sections)
+    # The position map is built from *every* alignment and the report
+    # from the narrowed list -- in that order, and not the other way
+    # round. `_cites_source` asks whether a paragraph cites any citekey
+    # that matched somewhere in the span, and `report` has by then
+    # dropped the four weaker sources that matched the same passage. Read
+    # off the narrowed list, a correctly-cited paragraph would report as
+    # `UNCITED SOURCE` whenever the strongest match happened to be a
+    # paper it does not name.
+    citekeys_at_position = _embed_citekeys_at_positions(alignments)
+
+    findings = []
+    suppressed = 0
+    for alignment in overlap_embed.report(alignments):
+        span_words = alignment.word_end - alignment.word_start
+        if span_words < min_run:
+            continue
+        if allowlist:
+            mask = _mask_allowlisted(
+                word_strs[alignment.word_start:alignment.word_end], allowlist
+            )
+            if span_words - sum(mask) < min_run:
+                suppressed += 1
+                continue
+        findings.append(_embed_finding(
+            alignment, span_words, words, word_strs, newlines, text,
+            paragraph_citekeys, citekeys_at_position,
+        ))
+    return findings, suppressed, None
+
+
+def _embed_citekeys_at_positions(
+    alignments: list[overlap_embed.SectionAlignment]
+) -> dict[int, set[str]]:
+    """The tier-3 analogue of `_citekeys_at_positions`: every draft word
+    position an alignment covers, mapped to the citekeys aligned there.
+
+    Same purpose as tier 1's and tier 2's -- a passage that restates a
+    definition several corpus papers each state will align against all of
+    them, and a paragraph correctly citing any one of them is correctly
+    attributed. Without this, the other matches would each report
+    `UNCITED SOURCE` against a paragraph that cites its source properly
+    (the Kritzinger case `_cites_source` documents, which a
+    similarity-based tier hits harder than either lexical one).
+    """
+    at_position: dict[int, set[str]] = {}
+    for alignment in alignments:
+        for j in range(alignment.word_start, alignment.word_end):
+            at_position.setdefault(j, set()).add(alignment.citekey)
+    return at_position
+
+
+def _embed_finding(
+    alignment: overlap_embed.SectionAlignment,
+    span_words: int,
+    words: list[_DraftWord],
+    word_strs: list[str],
+    newlines: list[int],
+    text: str,
+    paragraph_citekeys: list[set[str]],
+    citekeys_at_position: dict[int, set[str]],
+) -> dict:
+    """The finding dict for one alignment. Mirrors `_exact_finding` and
+    `_skipgram_finding`, and carries the one field they cannot: `score`,
+    the alignment's own strength.
+    """
+    start, end = alignment.word_start, alignment.word_end
+    run_words = words[start:end]
+    char_start, char_end = run_words[0].char, run_words[-1].char_end
+    fragment = " ".join(word_strs[start:end])
+    run_paragraphs = {w.paragraph for w in run_words}
+    return {
+        "id": finding_id(alignment.citekey, alignment.page, fragment),
+        "citekey": alignment.citekey,
+        "page": alignment.page,
+        "end_page": alignment.end_page,
+        "span_words": span_words,
+        "matched_words": alignment.matched_words,
+        "start": start,
+        "line": _line_at(newlines, char_start),
+        "char_start": char_start,
+        "char_end": char_end,
+        "draft_text": text[char_start:char_end],
+        "fragment": fragment,
+        "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
+        "cites_source": _cites_source(
+            start, end, run_paragraphs, paragraph_citekeys, citekeys_at_position
+        ),
+        "quoted": all(w.quoted for w in run_words),
+        "tier": "embedding",
+        # Rounded where it is built, not where it is printed: the JSON
+        # payload and the Markdown report both read this field, and a
+        # float that renders differently in the two is the kind of
+        # difference nobody notices until a diff of two reports is
+        # noise. Three places is well inside what separates two
+        # alignments in practice.
+        "score": round(alignment.score, 3),
     }
 
 
 def scan_findings(
     draft: str | Path, min_run: int | None = None, gap: int = 1, limit: int | None = None
-) -> tuple[list[dict], int, int]:
+) -> tuple[list[dict], int, int, list[dict]]:
     """Slide `draft`'s whole normalized text across every built detection
-    tier (`_exact_tier_findings`, `_skipgram_tier_findings`), each
-    grouping its own matches by `(citekey, diagonal)` and merging into
-    maximal same-diagonal runs. Returns `(findings, min_run,
-    suppressed)`: `findings` is every tier's findings unioned (minus any
-    skip-gram finding an exact-tier one already covers -- see below) and
-    sorted longest-first, each dict naming which tier produced it
-    (`"tier"`); `suppressed` is the total the allowlist (see
-    `_load_allowlist_phrases`) dropped, summed across tiers.
+    tier (`_exact_tier_findings`, `_skipgram_tier_findings`,
+    `_embed_tier_findings`), the first two grouping their own matches by
+    `(citekey, diagonal)` and merging into maximal same-diagonal runs,
+    the third aligning sentence embeddings within the scope its dossier
+    records. Returns `(findings, min_run, suppressed, not_run)`:
+    `findings` is every tier's findings unioned (minus anything a
+    stronger tier already covers -- see below) and sorted longest-first,
+    each dict naming which tier produced it (`"tier"`); `suppressed` is
+    the total the allowlist (see `_load_allowlist_phrases`) dropped,
+    summed across tiers; `not_run` is one `{"tier", "reason"}` entry per
+    tier that could not run at all.
+
+    `not_run` is the fourth return value rather than a silent empty
+    contribution because the two are not the same claim. Tiers 1 and 2
+    are always available, so an empty result from either means "checked,
+    nothing found". Tier 3 depends on the optional enrichment layer, a
+    built `content/chroma/`, Docling sidecars and the draft's dossier;
+    an empty result from it means either "checked, nothing found" or
+    "never ran", and a report that cannot tell a reader which is
+    overstating what was checked.
 
     Every tier finder shares this function's tokenization, allowlist and
     newline bookkeeping -- computed once here, not once per tier -- and
@@ -1124,8 +1306,34 @@ def scan_findings(
         )
     ]
 
-    findings = exact_findings + skipgram_findings
-    suppressed = exact_suppressed + skipgram_suppressed
+    embed_findings, embed_suppressed, embed_not_run = _embed_tier_findings(
+        draft, words, word_strs, paragraph_citekeys, newlines, text, min_run, allowlist
+    )
+    # Overlap, not containment, for tier 3 -- the opposite of the rule
+    # just above, deliberately. A tier-2 finding is dropped only when a
+    # tier-1 one fully contains it, because a short verbatim island
+    # inside a longer paraphrased passage is exactly what tier 2 exists
+    # to widen. A tier-3 alignment is already a whole passage, several
+    # sentences wide, and it is normal for it to *contain* the tier-1 or
+    # tier-2 finding rather than the other way round -- so containment
+    # would never fire and the same passage would be reported twice, once
+    # with an exact span a reviewer can act on and once with a soft one.
+    # Any overlap means a deterministic tier already pointed here.
+    lexical_findings = exact_findings + skipgram_findings
+    embed_findings = [
+        f for f in embed_findings
+        if not any(
+            other["citekey"] == f["citekey"]
+            and other["start"] < f["start"] + f["span_words"]
+            and f["start"] < other["start"] + other["span_words"]
+            for other in lexical_findings
+        )
+    ]
+
+    findings = lexical_findings + embed_findings
+    suppressed = exact_suppressed + skipgram_suppressed + embed_suppressed
+    not_run = ([{"tier": "embedding", "reason": embed_not_run}]
+               if embed_not_run is not None else [])
 
     # Longest run first, no silent truncation -- every finding above the
     # floor prints unless --limit narrows it, matching the issue's explicit
@@ -1133,7 +1341,7 @@ def scan_findings(
     findings.sort(key=lambda f: (-f["span_words"], f["citekey"], f["start"]))
     if limit is not None:
         findings = findings[:limit]
-    return findings, min_run, suppressed
+    return findings, min_run, suppressed, not_run
 
 
 def _flags(finding: dict) -> list[str]:
@@ -1149,6 +1357,21 @@ def _matched_note(finding: dict) -> str:
     if finding["matched_words"] == finding["span_words"]:
         return ""
     return f", {finding['matched_words']} matched"
+
+
+def _tier_note(finding: dict) -> str:
+    """`tier=exact`, or `tier=embedding, score=0.41` where there is a
+    score to report.
+
+    The score rides inside the tier's own parenthesis rather than beside
+    the word count, because it is only meaningful *given* the tier: it is
+    an alignment strength in `overlap_embed`'s shifted-cosine units, not
+    a probability and not comparable to anything tier 1 or tier 2
+    reports.
+    """
+    if finding["score"] is None:
+        return f"tier={finding['tier']}"
+    return f"tier={finding['tier']}, score={finding['score']}"
 
 
 def _page_range(finding: dict) -> str:
@@ -1208,7 +1431,20 @@ def _bucket_title(bucket: str) -> str:
     return "Quoted runs"
 
 
-def format_scan(findings: list[dict], min_run: int, suppressed: int = 0) -> str:
+def _not_run_lines(not_run: list[dict]) -> list[str]:
+    """One line per tier that did not run, naming it and why.
+
+    Shared by the printed and written forms so the two cannot end up
+    saying different things about the same scan -- the same reason
+    `scan_command` is built once and handed to both.
+    """
+    return [f"tier {entry['tier']} did not run: {entry['reason']}" for entry in not_run]
+
+
+def format_scan(
+    findings: list[dict], min_run: int, suppressed: int = 0,
+    not_run: list[dict] | None = None,
+) -> str:
     """The plain-text form, for stdout."""
     if not findings:
         base = f"no verbatim run of >= {min_run} words found anywhere in the draft"
@@ -1219,7 +1455,7 @@ def format_scan(findings: list[dict], min_run: int, suppressed: int = 0) -> str:
             flag_text = f" [{', '.join(flags)}]" if flags else ""
             lines.append(
                 f"  [{f['span_words']} words{_matched_note(f)}, pdf {_page_range(f)}] "
-                f"{f['citekey']} (tier={f['tier']}){flag_text}"
+                f"{f['citekey']} ({_tier_note(f)}){flag_text}"
             )
             lines.append(f"      {f['fragment']}")
             lines.append(f"      in: {f['context']}...")
@@ -1229,6 +1465,8 @@ def format_scan(findings: list[dict], min_run: int, suppressed: int = 0) -> str:
             f"\n\n{suppressed} finding(s) suppressed by the allowlist "
             f"({config.VERBATIM_ALLOWLIST_PATH.name})."
         )
+    for line in _not_run_lines(not_run or []):
+        base += f"\n\n{line}"
     return base
 
 
@@ -1242,6 +1480,12 @@ _PAYLOAD_FIELDS = (
     "id", "citekey", "page", "end_page", "tier", "span_words",
     "matched_words", "start", "line", "char_start", "char_end",
     "draft_text", "fragment", "context", "cites_source", "quoted",
+    # Tier 3's alignment strength, `None` on the two deterministic tiers
+    # (#134). Appended rather than slotted next to `span_words`, so a
+    # consumer reading these positionally -- `bench/`'s `KEPT_FIELDS`
+    # lists are written by hand against this order -- sees the same
+    # prefix it saw before the tier existed.
+    "score",
 )
 
 
@@ -1299,6 +1543,7 @@ def scan_payload(
     limit: int | None,
     suppressed: int,
     command: str,
+    not_run: list[dict] | None = None,
 ) -> dict:
     """The same findings as data: `review.envelope`'s provenance, the
     three flags that set the reporting floor, how many findings the
@@ -1351,41 +1596,31 @@ def scan_payload(
         "gap": gap,
         "limit": limit,
         "suppressed": suppressed,
+        # One entry per detection tier that could not run at all, each
+        # naming the tier and why -- empty when every tier ran. A
+        # consumer reading `findings` alone cannot tell a checked draft
+        # from an unchecked one, and this is the field that answers it
+        # (see `scan_findings`). Additive: `load_baseline` requires
+        # `_BASELINE_FIELDS` and ignores everything else, so a payload
+        # written before this key existed still reads.
+        "tiers_not_run": not_run or [],
         "findings": [published(f) for f in findings],
     })
     return payload
 
 
-def render_scan_markdown(
-    draft: str | Path,
-    findings: list[dict],
-    min_run: int,
-    limit: int | None,
-    command: str,
-    suppressed: int = 0,
-) -> str:
-    """The same findings as a Markdown report, for `--write`.
+def _how_to_read(not_run: list[dict]) -> list[str]:
+    """The report's standing preamble: what a finding is, what the two
+    flags mean, what each tier can and cannot see.
 
-    Kept beside `format_scan` rather than replacing it: stdout is read in
-    a terminal mid-review and wants no syntax, while a file kept for
-    months is read next to the same draft's provenance and coverage
-    reports and should look like them.
-
-    `command` is built once, by `scan_command`, and handed to both this
-    function and `scan_payload` -- so the Markdown header and the JSON
-    envelope cannot disagree about what produced them.
+    Extracted out of `render_scan_markdown` (which was already over
+    CODE-STANDARDS.md's C1 limit at 27 statements before tier 3 added to
+    it) so the assembly of a report and the prose inside it are not the
+    same function. It takes `not_run` because the last paragraph is the
+    one thing here that is not standing text: what a clean scan does
+    *not* rule out depends on which tiers actually ran.
     """
-    allowlist_path = config.VERBATIM_ALLOWLIST_PATH
-    if not allowlist_path.exists():
-        allowlist_line = f"- Allowlist: none configured (`{allowlist_path}` not found)"
-    else:
-        allowlist_line = (
-            f"- Allowlist: `{allowlist_path}` ({suppressed} finding(s) suppressed)"
-        )
-
-    lines = review.header(Path(draft), "verbatim", command)
-    lines = lines[:-1] + [allowlist_line, ""]
-    lines += [
+    return [
         "## How to read this",
         "",
         "Every run of at least `--min-run` words this draft shares with **any**",
@@ -1411,6 +1646,16 @@ def render_scan_markdown(
         "a lot, since a skip-gram window can stretch across stopwords and",
         "opposite-family words that were not themselves matched.",
         "",
+        "**embedding** is the third tier: a sentence-level alignment between a",
+        "section of this draft and the sources its dossier records that section",
+        "as written from. It matches meaning rather than wording, so it is the",
+        "only tier that can see a genuine restatement -- and the only one whose",
+        "findings are not reproducible from the draft and the corpus alone,",
+        "since the vectors change with `[enrich].embedding_model`. Its `score`",
+        "is that alignment's strength, not a probability and not comparable to",
+        "anything the other two report; a passage a deterministic tier already",
+        "flagged is left to that tier rather than reported twice.",
+        "",
         "Findings below are grouped most-damning-first: long runs, then short",
         "ones, then quoted runs -- but a quoted run only drops into the last",
         "group when it also cites the source it matched. A quoted run from an",
@@ -1424,16 +1669,77 @@ def render_scan_markdown(
         "would no longer clear `--min-run` on its own, so a real lift that",
         "merely contains a defined term still shows up below.",
         "",
+    ] + _completeness_paragraph(not_run)
+
+
+def _completeness_paragraph(not_run: list[dict]) -> list[str]:
+    """What this particular scan does not rule out.
+
+    Two different sentences, because "the paraphrase tier ran and found
+    nothing here" and "the paraphrase tier never ran" are two different
+    states of knowledge and only one of them is about the draft.
+    `tests/test_skill_verbatim_scan_offer.py` holds every skill's offer
+    of this scan to the same standard -- say what it cannot see -- and
+    this is where the report itself keeps that promise.
+    """
+    if not_run:
+        return [
+            "**A clean run is not a clean bill of health**, and this run was",
+            "not complete. Two deterministic tiers checked this draft -- exact",
+            "runs, and skip-gram matches tolerant of a substituted word -- and",
+            "a genuine restatement, reworded well past a word swap, is",
+            "invisible to both by construction. The tier that can see one did",
+            "not run here:",
+            "",
+        ] + [f"- {line}" for line in _not_run_lines(not_run)] + [
+            "",
+            "So this report is silently incomplete rather than wrong. See",
+            "docs/PLAGIARISM.md.",
+            "",
+        ]
+    return [
         "**A clean run is not a clean bill of health.** This draft has been",
-        "checked against two deterministic tiers: exact runs, and skip-gram",
-        "matches tolerant of a substituted word. A genuine restatement --",
-        "reworded well past a word swap -- is invisible to both by",
-        "construction; that tier is unbuilt. A clean scan is silently",
-        "incomplete rather than wrong. See docs/PLAGIARISM.md.",
-        "",
-        "## Findings",
+        "checked against all three tiers, but they do not cover the same",
+        "ground: the two deterministic ones see wording, and the embedding",
+        "tier sees meaning only within each section's own recorded sources.",
+        "Reuse from a source a section's dossier does not record is outside",
+        "what any of the three can find by restatement alone. See",
+        "docs/PLAGIARISM.md.",
         "",
     ]
+
+
+def render_scan_markdown(
+    draft: str | Path,
+    findings: list[dict],
+    min_run: int,
+    limit: int | None,
+    command: str,
+    suppressed: int = 0,
+    not_run: list[dict] | None = None,
+) -> str:
+    """The same findings as a Markdown report, for `--write`.
+
+    Kept beside `format_scan` rather than replacing it: stdout is read in
+    a terminal mid-review and wants no syntax, while a file kept for
+    months is read next to the same draft's provenance and coverage
+    reports and should look like them.
+
+    `command` is built once, by `scan_command`, and handed to both this
+    function and `scan_payload` -- so the Markdown header and the JSON
+    envelope cannot disagree about what produced them.
+    """
+    allowlist_path = config.VERBATIM_ALLOWLIST_PATH
+    if not allowlist_path.exists():
+        allowlist_line = f"- Allowlist: none configured (`{allowlist_path}` not found)"
+    else:
+        allowlist_line = (
+            f"- Allowlist: `{allowlist_path}` ({suppressed} finding(s) suppressed)"
+        )
+
+    lines = review.header(Path(draft), "verbatim", command)
+    lines = lines[:-1] + [allowlist_line, ""]
+    lines += _how_to_read(not_run or []) + ["## Findings", ""]
 
     if not findings:
         lines += [
@@ -1453,10 +1759,24 @@ def render_scan_markdown(
             "",
         ]
 
+    return "\n".join(lines + _bucketed_lines(findings))
+
+
+def _bucketed_lines(findings: list[dict]) -> list[str]:
+    """The findings themselves, grouped into `BUCKET_ORDER`'s severity
+    sections.
+
+    Extracted out of `render_scan_markdown` for the reason
+    `_exact_findings_from_groups` was extracted out of its own caller:
+    this double loop's nesting was counting against a function that is
+    otherwise a straight-line assembly of a document, and that function
+    was over CODE-STANDARDS.md's C1 limit before this tier added to it.
+    """
     buckets = {key: [] for key in BUCKET_ORDER}
     for f in findings:
         buckets[_bucket(f)].append(f)
 
+    lines = []
     for key in BUCKET_ORDER:
         bucket_findings = buckets[key]
         if not bucket_findings:
@@ -1467,14 +1787,14 @@ def render_scan_markdown(
             flag_text = f" -- **{', '.join(flags)}**" if flags else ""
             lines += [
                 f"#### {f['span_words']} words{_matched_note(f)} -- `{f['citekey']}` "
-                f"{_page_range(f)} (tier={f['tier']}){flag_text}",
+                f"{_page_range(f)} ({_tier_note(f)}){flag_text}",
                 "",
                 f"> {f['fragment']}",
                 "",
                 f"In context: {f['context']}...",
                 "",
             ]
-    return "\n".join(lines)
+    return lines
 
 
 def cmd_scan(
@@ -1507,7 +1827,7 @@ def cmd_scan(
     is only ever the payload and `scan --json --write > findings.json` is
     a valid JSON file -- the discipline `dossier brief` already follows.
     """
-    findings, min_run, suppressed = scan_findings(draft, min_run, gap, limit)
+    findings, min_run, suppressed, not_run = scan_findings(draft, min_run, gap, limit)
 
     # The default path prints text and stops. Returning here rather than
     # falling through keeps the payload's cost off it entirely -- a
@@ -1515,19 +1835,24 @@ def cmd_scan(
     # `review.version()` does for the envelope -- none of which the
     # printed form uses.
     if not (as_json or write):
-        print(format_scan(findings, min_run, suppressed))
+        print(format_scan(findings, min_run, suppressed, not_run))
         return
 
     command = scan_command(draft, min_run, gap, limit, write, as_json)
-    payload = scan_payload(draft, findings, min_run, gap, limit, suppressed, command)
+    payload = scan_payload(
+        draft, findings, min_run, gap, limit, suppressed, command, not_run
+    )
 
     # Same `indent=2`, same key order, no trailing difference: what this
     # prints is byte-for-byte what `write_json` files, so a caller may
     # redirect stdout or read the sibling and get the same bytes.
-    print(json.dumps(payload, indent=2) if as_json else format_scan(findings, min_run, suppressed))
+    print(json.dumps(payload, indent=2) if as_json
+          else format_scan(findings, min_run, suppressed, not_run))
 
     if write:
-        body = render_scan_markdown(draft, findings, min_run, limit, command, suppressed)
+        body = render_scan_markdown(
+            draft, findings, min_run, limit, command, suppressed, not_run
+        )
         written = review.write(Path(draft), "verbatim", body, list(formats))
         written["json"] = review.write_json(Path(draft), "verbatim", payload)
         review.print_written(written, stream=sys.stderr if as_json else sys.stdout)
@@ -1717,7 +2042,7 @@ def recheck_findings(
     persisting -- understating progress, which is the direction an
     acceptance test should err in.
     """
-    findings, _, _ = scan_findings(
+    findings, _, _, _ = scan_findings(
         draft, baseline["min_run"], baseline["gap"], None
     )
     payload_now = [published(f) for f in findings]

@@ -165,6 +165,7 @@ nav:
       - Writing standards: docs/WRITING-STANDARDS.md
   - Working on it:
       - Design constraints: docs/DESIGN.md
+      - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
       - Auto-improvement, what would be built: docs/AUTO-IMPROVEMENT.md

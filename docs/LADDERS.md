@@ -407,7 +407,8 @@ choose between?* -- has no answer for it: nothing picks a detection tier,
 every built one runs, and the findings are unioned. It is a tier set only
 in the sense the table's third column asks about, namely what happens
 when an option is unavailable. [PLAGIARISM.md](PLAGIARISM.md) treats it
-in full.
+for a reader of a report, and
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for someone changing one.
 
 ### Tier 1: Parser backend
 
@@ -594,8 +595,8 @@ keeps this table true rather than aspirational.
 - [docs/CONFIG.md](CONFIG.md) -- every setting these tiers read
 - [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md) -- what ladder 1
   is ultimately for
-- [docs/PLAGIARISM.md](PLAGIARISM.md) -- the detection tiers in full: what
-  the exact tier catches, what it cannot, and why the other two are not
-  mutually exclusive with it
+- [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) -- the detection
+  tiers in full: what the exact tier catches, what it cannot, and why the
+  other two are not mutually exclusive with it
 - [docs/PDF-PARSER.md](PDF-PARSER.md) -- how the parser tier was chosen
 - [docs/PERFORMANCE.md](PERFORMANCE.md) -- what each of these costs

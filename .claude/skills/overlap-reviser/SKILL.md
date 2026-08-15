@@ -1,6 +1,6 @@
 ---
 name: overlap-reviser
-description: Repairs the verbatim overlap a scan found, one finding at a time, in a draft that already exists in content/drafts/. Reads `python -m src.review verbatim scan --json`, rewrites each short uncited run to preserve the claim and the citation while breaking the borrowed wording, and stops to ask the human paraphrase-or-quote on every long run rather than deciding silently. Repairs only what that scan's two deterministic tiers can see: genuine restatement is not detected, so finishing this loop is never a clean bill of health. Every repair must re-pass `python -m src.draft gate` and `python -m src.review verbatim recheck` before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to fix, clean up or remediate verbatim overlap, borrowed wording, a plagiarism report or the findings of a verbatim scan -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything that is not a verbatim finding is draft-reviser, not this skill; hand off and say so. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
+description: Repairs the verbatim overlap a scan found, one finding at a time, in a draft that already exists in content/drafts/. Reads `python -m src.review verbatim scan --json`, rewrites each short uncited run to preserve the claim and the citation while breaking the borrowed wording, and stops to ask the human paraphrase-or-quote on every long run rather than deciding silently. Repairs only what that scan's deterministic tiers can see: genuine restatement is only detected where the embedding tier can run, so finishing this loop is never a clean bill of health. Every repair must re-pass `python -m src.draft gate` and `python -m src.review verbatim recheck` before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to fix, clean up or remediate verbatim overlap, borrowed wording, a plagiarism report or the findings of a verbatim scan -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything that is not a verbatim finding is draft-reviser, not this skill; hand off and say so. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
 tags: [revision, plagiarism, verbatim, dossier, citation]
 ---
 
@@ -14,12 +14,16 @@ the claim, checking the rewrite did not make things worse -- was left to
 a person. That is the tedious half, and the half that gets skipped.
 
 That scan runs two deterministic tiers -- exact and word-swap-tolerant
-skip-gram -- of a stack whose embedding tier is unbuilt: **genuine
-restatement is not detected**, and these drafts are LLM-written, which
-makes literal paraphrase the *likely* reuse mode rather than an edge
-case. So an empty findings list is not an achievement, and repairing
-every finding is not a clean bill of health. Say so when you present,
-every time.
+skip-gram -- plus an embedding tier that only runs where the optional
+enrichment layer, the Docling sidecars and the draft's own dossier are
+all present, and that only ever compares a section against the sources
+that section already cites. So **genuine restatement is only detected
+where the embedding tier can run**, and even there not from a source the
+section never cited -- while these drafts are LLM-written, which makes
+literal paraphrase the *likely* reuse mode rather than an edge case. The
+scan names the tiers that did not run; read that line. An empty findings
+list is not an achievement, and repairing every finding is not a clean
+bill of health. Say so when you present, every time.
 
 This skill does the half that was left over. It is not a better scan and
 it does not decide anything the scan was careful not to decide: what it
@@ -108,8 +112,8 @@ only the longest findings, so it cannot say what was absent, and
 `recheck` refuses it for that reason.
 
 If the scan reports nothing, say so and stop. There is nothing here to
-do -- and the draft is not thereby clean, because **genuine restatement
-is not detected** by either deterministic tier this baseline came from.
+do -- and the draft is not thereby clean, because **genuine restatement is only detected where the
+embedding tier can run** by either deterministic tier this baseline came from.
 
 This files the payload at `content/review/<topic>/<stem>.verbatim.json`.
 That file is the recorded baseline: every claim you make at the end is
@@ -237,7 +241,7 @@ python -m src.review verbatim scan content/drafts/<path>
 ```
 
 It reports verbatim and near-verbatim reuse against any parsed source,
-cited or not, and **genuine restatement is not detected** -- these drafts are
+cited or not, and **genuine restatement is only detected where the embedding tier can run** -- these drafts are
 LLM-written and literal paraphrase is an LLM's normal failure mode -- so
 a clean scan, and a clean `recheck`, is not a clean bill of health
 (`docs/PLAGIARISM.md`). Say that plainly rather than letting a zero read
