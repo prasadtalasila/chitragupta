@@ -78,11 +78,3 @@ config.toml
 # Built documentation site (mkdocs.yml -> .github/workflows/docs.yml).
 # Generated from the repository itself; nothing here is a source file.
 site/
-
-# superpowers:writing-plans output. scripts/release.py bundles every
-# git-tracked file under .claude/ into the release zip (see its
-# docstring, "Every prose document ships"), and a scratch implementation
-# plan for this repo's own development is not something a release
-# consumer needs -- unlike the genre skills, which that same rule is
-# written for.
-.claude/plans/
