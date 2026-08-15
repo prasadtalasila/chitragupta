@@ -247,8 +247,10 @@ def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
 # Straight or curly double-quoted spans, and Markdown blockquote lines --
 # deliberately not cleverer than that (no nesting, no single quotes,
 # which double as apostrophes and would flag most of the draft). Detecting
-# *that* a run sits inside quote delimiters is a cheap, deterministic bit
-# attached to a finding; whether that should downgrade severity (a
+# *that* a run touches quote delimiters (`_run_is_quoted`, which reads
+# these spans as overlap rather than containment) is a cheap,
+# deterministic bit attached to a finding; whether that should downgrade
+# severity (a
 # legitimate page-anchored quotation vs. unmarked reuse) is Phase 2's
 # policy call, not this one's.
 _QUOTE_SPAN_RE = re.compile(r'["“]([^"”]{2,})["”]')
@@ -694,6 +696,41 @@ def _cites_source(
     return any(span_citekeys & paragraph_citekeys[p] for p in run_paragraphs)
 
 
+def _run_is_quoted(run_words: list[_DraftWord]) -> bool:
+    """Whether this run touches a quotation at all -- `any`, not `all`.
+
+    `all` was the first reading of "sits inside quote delimiters", on the
+    argument that one incidentally-quoted word should not excuse a long
+    run -- and it reads false on the case the flag exists for. A matched
+    span is wider than the quotation that evidences it and routinely
+    opens a word or two *before* the mark, in the draft's own framing
+    prose, so a correctly quoted and correctly credited passage reported
+    `quoted: false`, silently, to the reader relying on the flag to skip
+    attributed material (#189). Four hand-labelled
+    `attributed-quotation` findings have that shape: `f0f4fd3982b7` in
+    the #130 gate labels (10 of 24 words quoted), and `06373f5eb33f`,
+    `77a6a3a6ac03`, `b1f7848c8965` in
+    `bench/results/2026-08-14-skipgram-precision/labels.json` (21/22,
+    8/19, 8/15).
+
+    **Those proportions are why this is `any` and nothing gentler.** In
+    two of the four the quoted material is a *minority suffix* of the
+    span, out of reach of any majority-of-span rule: replayed over all 43
+    labels behind the two benchmarks, majority recovers two of the four,
+    while `any` and every longest-quoted-stretch threshold from 3 to 8
+    words score identically. A threshold buys nothing the corpus can see
+    and adds a constant to tune. The same replay answers the `all`-era
+    worry: no finding labelled `tp` changes bucket under `any`.
+
+    The span is deliberately left alone. Narrowing a finding to stop at
+    the quote boundary would change `fragment` and so every `finding_id`
+    those labels are keyed by; the exact tier has lived with straddling
+    spans since #162, and this keeps the flag honest about them rather
+    than reopening that.
+    """
+    return any(w.quoted for w in run_words)
+
+
 def _exact_tier_findings(
     words: list[_DraftWord],
     word_strs: list[str],
@@ -848,11 +885,7 @@ def _exact_finding(
         "fragment": fragment,
         "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
         "cites_source": cites_source,
-        # `all`, not `any`: "sits inside quote delimiters" means
-        # the whole run is inside the quote, not merely that one
-        # word of it happens to be near/inside an unrelated
-        # quoted phrase.
-        "quoted": all(w.quoted for w in run_words),
+        "quoted": _run_is_quoted(run_words),
         "tier": "exact",
         # `None`, not absent and not 0.0: every tier's finding has to
         # carry every published field (`published` projects
@@ -1050,7 +1083,7 @@ def _skipgram_finding(
         "fragment": fragment,
         "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
         "cites_source": cites_source,
-        "quoted": all(w.quoted for w in run_words),
+        "quoted": _run_is_quoted(run_words),
         "tier": "skip-gram",
         # `None`, not absent and not 0.0: every tier's finding has to
         # carry every published field (`published` projects
@@ -1203,7 +1236,7 @@ def _embed_finding(
         "cites_source": _cites_source(
             start, end, run_paragraphs, paragraph_citekeys, citekeys_at_position
         ),
-        "quoted": all(w.quoted for w in run_words),
+        "quoted": _run_is_quoted(run_words),
         "tier": "embedding",
         # Rounded where it is built, not where it is printed: the JSON
         # payload and the Markdown report both read this field, and a
@@ -1634,8 +1667,10 @@ def _how_to_read(not_run: list[dict]) -> list[str]:
         "- **UNCITED SOURCE** -- the paragraph the run sits in does not cite the",
         "  source it matched. That is the finding `overlap` structurally cannot",
         "  make, and the one most worth reading first.",
-        "- **quoted** -- the whole run sits inside quote delimiters, so it is",
-        "  most likely a deliberate quotation.",
+        "- **quoted** -- the run touches quote delimiters, so it is most likely",
+        "  a deliberate quotation. A run is usually wider than the quotation",
+        "  inside it -- it can open in the draft's own framing prose -- so this",
+        "  reads as overlap, not containment.",
         "",
         "Each finding names its `tier`: **exact** is a verbatim run; "
         "**skip-gram**",

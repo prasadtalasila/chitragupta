@@ -1433,7 +1433,7 @@ fall into three classes, two of them already named by that section:
 |---|---|---|
 | `third-party-echo` | 10 | The NASA "integrated multiphysics, multiscale, probabilistic simulation" definition and ISO 23247's "fit-for-purpose digital representation", each matched against every corpus paper that reproduces it |
 | `stock-phrase-echo` | 12 | The field's ordinary phrasing in its ordinary order -- one draft sentence about predictive-maintenance literature reviews matched **nine** different papers on five stemmed content words |
-| `attributed-quotation` | 3 | Quoted and cited. `quoted` is false on all three because the skip-gram window straddles the opening quote mark -- a real gap in the flag, not in the labelling |
+| `attributed-quotation` | 3 | Quoted and cited. `quoted` read false on all three at the time of this run, because the skip-gram window straddles the opening quote mark -- a real gap in the flag, not in the labelling. Fixed in #189: `quoted` now reads the quote spans as overlap rather than containment, and all three demote to the `quoted` bucket. The `tp`/`fp` labels and the precision figure above are unaffected |
 
 **The finding that matters is about the two true positives.** Both are
 passages where the draft reproduces a source's wording without quote

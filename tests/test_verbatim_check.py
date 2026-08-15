@@ -428,6 +428,39 @@ class TestSkipgramTierPrecision:
         assert findings == []
 
 
+class TestSkipgramTierQuoting:
+    """The tier-2 half of #189. Three of the 27 hand-labelled findings in
+    `bench/results/2026-08-14-skipgram-precision/labels.json` are
+    `attributed-quotation` -- quoted and cited, legitimate scholarship --
+    and all three read `quoted: false`, because a skip-gram window is
+    wider than the quotation it evidences and starts outside it."""
+
+    def test_a_window_straddling_the_opening_quote_mark_is_still_quoted(
+        self, ledger_con, tmp_path
+    ):
+        # Same odd-index-swap construction as the precision tests above,
+        # so the exact tier cannot match and mask tier 2 -- with the
+        # opening mark placed after the window's first two words, which
+        # is the straddle `77a6a3a6ac03` and `b1f7848c8965` both have.
+        block = ("alpha bexo gamov delka epsilo zenith etaro thelos iotara "
+                 "kappor lambdo muvex").split()
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", " ".join(block))
+        swapped = [w if i % 2 == 0 else f"z{i}" for i, w in enumerate(block)]
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "[@cited_2024] " + " ".join(swapped[:2])
+            + ' "' + " ".join(swapped[2:]) + '" end.\n'
+        )
+
+        findings, _min_run, _suppressed, _ = vc.scan_findings(draft, min_run=8)
+
+        [found] = [f for f in findings if f["tier"] == "skip-gram"]
+        # The straddle itself, not just the flag: a fragment that began at
+        # the quote mark would pass the assertion below for free.
+        assert found["fragment"].startswith("alpha")
+        assert found["quoted"] is True
+
+
 class TestQuoteCharSpans:
     def test_straight_double_quotes_detected(self):
         spans = vc._quote_char_spans('before "a quoted phrase" after')
@@ -734,11 +767,15 @@ class TestCmdScan:
         out = capsys.readouterr().out
         assert "quoted" in out
 
-    def test_run_only_partly_inside_quotes_is_not_flagged_quoted(self, ledger_con, tmp_path, capsys):
-        # Regression: "sits inside quote delimiters" means the whole run,
-        # not "at least one word of it happens to be quoted" -- a run
-        # straddling a quote's opening mark used to flag `quoted` on any
-        # overlap at all.
+    def test_a_run_straddling_the_opening_quote_mark_is_still_quoted(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # The tier-1 half of #189, and the shape `f0f4fd3982b7` in the
+        # #130 gate labels has: the run starts three words *before* the
+        # opening mark, picking up the draft's own framing prose, so the
+        # earlier whole-span reading reported `quoted: false` on a
+        # correctly quoted and correctly credited passage. See
+        # `_run_is_quoted` for why `any` and not a proportion of the span.
         _add_parsed_item(
             ledger_con, tmp_path, "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
@@ -746,6 +783,24 @@ class TestCmdScan:
         draft = tmp_path / "draft.md"
         draft.write_text(
             'As [@cited_2024] puts it, alpha beta gamma "delta epsilon zeta eta theta" exactly.\n'
+        )
+
+        vc.cmd_scan(str(draft))
+        out = capsys.readouterr().out
+        assert "quoted" in out
+
+    def test_a_run_touching_no_quotation_at_all_is_not_quoted(
+        self, ledger_con, tmp_path, capsys
+    ):
+        # The other side of `_run_is_quoted`: loosening `all` to `any`
+        # must not make every finding read as a quotation.
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024",
+            "alpha beta gamma delta epsilon zeta eta theta iota kappa",
+        )
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "As [@cited_2024] puts it, alpha beta gamma delta epsilon zeta eta theta exactly.\n"
         )
 
         vc.cmd_scan(str(draft))
@@ -2670,6 +2725,31 @@ class TestEmbeddingTier:
 
         assert [f["tier"] for f in findings if f["tier"] == "embedding"] == ["embedding"]
         assert suppressed == 0
+
+    def test_an_alignment_straddling_the_opening_quote_mark_is_still_quoted(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # #189's third tier. A tier-3 alignment is a whole sentence, so it
+        # is the tier *most* likely to straddle a quotation rather than
+        # sit inside one -- the bug had no label of its own here only
+        # because tier 3 postdates the run that found it.
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar("source_2024", [
+            {"text": "Firms save their return on investment while adapting to "
+                     "modern technologies with minimal risk.",
+             "label": "text", "page": 9},
+        ])
+        tier3({("protecting", "save their"): 0.95})
+        draft = _tier3_draft(
+            '# Section\n\nThe study reports a strategy of "protecting profit '
+            'while adopting new tooling at low exposure".\n'
+        )
+
+        findings, _min_run, _suppressed, _ = vc.scan_findings(str(draft))
+
+        [found] = [f for f in findings if f["tier"] == "embedding"]
+        assert found["fragment"].startswith("the study reports")
+        assert found["quoted"] is True
 
     def test_an_unavailable_tier_is_named_with_its_reason_not_silently_empty(
         self, ledger_con, tmp_path
