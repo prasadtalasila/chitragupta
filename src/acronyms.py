@@ -8,6 +8,7 @@ project's PDF/CPU/URL floor are meant to sit together, not replace one
 another. See assets/style/README.md and GitHub issue #190.
 """
 
+import re
 import tomllib
 from pathlib import Path
 
@@ -28,3 +29,28 @@ def load_vocabulary() -> dict[str, str]:
         return vendored
     user = _load(config.ACRONYMS_PATH)
     return {**vendored, **user}
+
+
+# A shape close enough to Acronyms.yml's own heuristic (a short run of
+# capital letters) to flag as "probably an acronym" without a false
+# positive on an ordinary capitalised glossary term: "DTaaS" and "FMU"
+# both match; "Twin state" and "Connector" don't, because neither starts
+# with two or more capitals in a row.
+_LOOKS_LIKE_AN_ACRONYM = re.compile(r"^[A-Z]{2,}[A-Za-z]*$")
+
+
+def suggest(glossary: dict[str, str]) -> dict[str, str]:
+    """`glossary` entries that look like an acronym and aren't in the
+    vocabulary yet -- candidates for the user's own acronyms file.
+
+    Takes a draft's already-parsed glossary (`dossier.glossary_terms()`)
+    rather than a draft path, so this module never needs to import
+    `src.dossier` -- that module already imports this one for
+    `load_vocabulary()`, and a two-way import would be a cycle.
+    """
+    vocabulary = load_vocabulary()
+    return {
+        term: definition
+        for term, definition in glossary.items()
+        if _LOOKS_LIKE_AN_ACRONYM.match(term) and term not in vocabulary
+    }

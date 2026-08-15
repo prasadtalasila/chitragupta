@@ -64,3 +64,32 @@ class TestRealVendoredFile:
         vocab = acronyms.load_vocabulary()
         for term in ("PDF", "CPU", "URL", "API", "HTML"):
             assert term in vocab
+
+
+class TestSuggest:
+    """suggest() -- which glossary entries look like an acronym and
+    aren't in the vocabulary yet. Takes a plain dict, not a draft path:
+    `dossier.glossary_terms()` supplies the glossary, so this module
+    never needs to import `src.dossier` (that module already imports
+    this one for load_vocabulary(), and a two-way import would cycle)."""
+
+    def test_suggests_an_acronym_shaped_term_not_in_the_vocabulary(self, monkeypatch):
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary",
+            lambda: {"PDF": "Portable Document Format"},
+        )
+        glossary = {"DTaaS": "Digital Twin as a Service."}
+        assert acronyms.suggest(glossary) == glossary
+
+    def test_does_not_suggest_a_term_already_in_the_vocabulary(self, monkeypatch):
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary",
+            lambda: {"DTaaS": "Digital Twin as a Service"},
+        )
+        glossary = {"DTaaS": "Digital Twin as a Service."}
+        assert acronyms.suggest(glossary) == {}
+
+    def test_does_not_suggest_a_non_acronym_shaped_term(self, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        glossary = {"Twin state": "the digital object's current estimate."}
+        assert acronyms.suggest(glossary) == {}

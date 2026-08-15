@@ -361,12 +361,19 @@ class TestGlossaryTerms:
 class TestSuggestAcronyms:
     """suggest_acronyms() proposes; it never writes anything -- #190's
     own rule, restated in docs/HOUSE-STYLE.md: this class of feature
-    proposes and the human accepts."""
+    proposes and the human accepts.
+
+    The acronym-shape and already-in-vocabulary matching itself is
+    `acronyms.suggest()`, tested directly in
+    tests/test_acronyms.py::TestSuggest -- these tests only cover this
+    module's own part: turning a draft path into the glossary
+    `acronyms.suggest()` needs, and the CLI wrapper around it.
+    """
 
     def test_returns_empty_without_a_dossier(self, draft):
         assert dossier.suggest_acronyms(draft) == {}
 
-    def test_suggests_an_acronym_shaped_term_not_in_the_vocabulary(
+    def test_delegates_to_acronyms_suggest_with_this_drafts_glossary(
         self, draft, monkeypatch
     ):
         monkeypatch.setattr(
@@ -378,26 +385,6 @@ class TestSuggestAcronyms:
         assert dossier.suggest_acronyms(draft) == {
             "DTaaS": "Digital Twin as a Service."
         }
-
-    def test_does_not_suggest_a_term_already_in_the_vocabulary(
-        self, draft, monkeypatch
-    ):
-        monkeypatch.setattr(
-            acronyms, "load_vocabulary",
-            lambda: {"DTaaS": "Digital Twin as a Service"},
-        )
-        dossier.init(draft, "survey")
-        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert dossier.suggest_acronyms(draft) == {}
-
-    def test_does_not_suggest_a_non_acronym_shaped_term(self, draft, monkeypatch):
-        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
-        dossier.init(draft, "survey")
-        _write_glossary(
-            draft,
-            "- **Twin state** -- the digital object's current estimate.",
-        )
-        assert dossier.suggest_acronyms(draft) == {}
 
     def test_cli_reports_no_new_acronyms(self, draft, capsys, monkeypatch):
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})

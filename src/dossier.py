@@ -2261,14 +2261,6 @@ def _cmd_set_language(args) -> int:
     return 0
 
 
-# A shape close enough to Acronyms.yml's own heuristic (a short run of
-# capital letters) to flag as "probably an acronym" without a false
-# positive on an ordinary capitalised glossary term: "DTaaS" and "FMU"
-# both match; "Twin state" and "Connector" don't, because neither starts
-# with two or more capitals in a row.
-_LOOKS_LIKE_AN_ACRONYM = re.compile(r"^[A-Z]{2,}[A-Za-z]*$")
-
-
 def suggest_acronyms(draft: Path) -> dict[str, str]:
     """Glossary terms that look like an acronym and aren't in the
     vocabulary yet -- candidates for the user's own acronyms file.
@@ -2277,14 +2269,10 @@ def suggest_acronyms(draft: Path) -> dict[str, str]:
     only prints these: #190's own rule is that this feature proposes and
     the human accepts, the same as every other vocabulary file this
     pipeline reads but never edits (papers/bibliography.bib,
-    content/verbatim_allowlist.toml).
+    content/verbatim_allowlist.toml). The matching itself is
+    `acronyms.suggest()` -- this is just glossary_terms() handed to it.
     """
-    vocabulary = acronyms.load_vocabulary()
-    return {
-        term: definition
-        for term, definition in glossary_terms(draft).items()
-        if _LOOKS_LIKE_AN_ACRONYM.match(term) and term not in vocabulary
-    }
+    return acronyms.suggest(glossary_terms(draft))
 
 
 def _cmd_acronyms_suggest(args) -> int:
