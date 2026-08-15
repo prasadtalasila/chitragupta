@@ -114,7 +114,13 @@ def _entry_lines(entry) -> list[str]:
         lines.append("  dialect: not checked -- no `language:` in scope.md, so no "
                      "dialect rule ran. This list is not the whole picture.")
     for finding in findings:
-        times = f" (x{finding['count']})" if finding.get("count", 1) > 1 else ""
+        # `count` is an int in every payload this checker emits, so a
+        # comparison would do -- but the whole reason this hook parses
+        # `--json` defensively is that it is reading another command's
+        # output, and `None > 1` raises. That exception would be caught at
+        # the module tail and cost the *entire* report, not one line.
+        count = finding.get("count")
+        times = f" (x{count})" if isinstance(count, int) and count > 1 else ""
         lines.append(f"  line {finding.get('line', 0)}  "
                      f"{finding.get('rule', '?')}: {finding.get('message', '')}{times}")
     return lines

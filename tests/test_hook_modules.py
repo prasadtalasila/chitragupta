@@ -470,6 +470,26 @@ class TestStyleCheckHookModule:
         assert hook.main() == 0, why
         assert capsys.readouterr().out == "", why
 
+    @pytest.mark.parametrize("count", [None, "3", [], {}])
+    def test_a_malformed_count_costs_one_line_not_the_whole_report(
+            self, rooted, monkeypatch, capsys, count):
+        """Found by an OpenCodeReview pass. `None > 1` raises, and that
+        exception is caught at the module tail -- so a single bad count in
+        another command's output would silently cost the entire report
+        rather than the one line it belongs to."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "g.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, json.dumps({"drafts": [{
+            "language": "en-GB",
+            "findings": [{"rule": "r", "match": "m", "line": 1,
+                          "message": "msg", "count": count}]}]}))
+        self.feed(monkeypatch, draft)
+        assert hook.main() == 0
+        context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+        assert "msg" in context
+        assert "(x" not in context
+
     def test_a_write_that_is_not_a_draft_never_runs_the_checker(
             self, rooted, monkeypatch, capsys):
         hook, root = rooted

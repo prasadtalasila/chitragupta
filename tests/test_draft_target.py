@@ -116,6 +116,31 @@ class TestSuffixes:
         assert dt.target(f"content/drafts/{name}", root) is None
 
 
+class TestPathsTheFilesystemRefuses:
+    """Found by an OpenCodeReview pass, and the more serious of the two it
+    found: `citation_gate_hook.main()` runs straight off
+    `raise SystemExit(main())` with no catch-all, so an exception raised in
+    here exits non-zero *without* the blocking decision -- and the write
+    lands ungated. A hook that crashes on a malformed payload is a gate
+    that has stopped being one."""
+
+    def test_an_embedded_null_byte_is_not_a_draft(self, dt, root):
+        assert dt.target("content/drafts/a\0b.md", root) is None
+
+    def test_a_null_byte_through_the_stdin_path_is_not_a_draft(self, dt, root,
+                                                               monkeypatch):
+        monkeypatch.setattr(dt, "REPO_ROOT", root)
+        assert dt.from_stdin(
+            stdin_of({"tool_input": {"file_path": "content/drafts/a\0b.md"}})) is None
+
+    def test_a_very_long_path_is_judged_on_its_location_like_any_other(
+            self, dt, root):
+        """Not an error case, and worth pinning as such: `resolve()` does
+        not stat, so a path past the OS length limit raises nothing here.
+        `OSError` stays in the guard for the platforms where it would."""
+        assert dt.target("content/drafts/" + "x" * 5000 + ".md", root) is not None
+
+
 class TestPathResolution:
     def test_a_relative_path_resolves_against_the_repo_root(self, dt, root):
         """The near-miss `citation_gate_hook.py`'s docstring records: a

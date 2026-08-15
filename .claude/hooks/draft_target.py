@@ -81,13 +81,29 @@ def target(raw_path: str, repo_root: Path | None = None) -> Path | None:
     """
     if not raw_path:
         return None
-    root = (repo_root or REPO_ROOT).resolve()
-    path = Path(raw_path)
-    if not path.is_absolute():
-        path = root / path
-    path = path.resolve()
-
-    drafts = (root / "content" / "drafts").resolve()
-    if not path.is_relative_to(drafts) or path.suffix not in DRAFT_EXTENSIONS:
+    try:
+        root = (repo_root or REPO_ROOT).resolve()
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = root / path
+        path = path.resolve()
+        drafts = (root / "content" / "drafts").resolve()
+        inside = path.is_relative_to(drafts)
+    except (OSError, ValueError):
+        # A path this platform will not construct. The observed case is an
+        # embedded null byte, which raises ValueError from resolve();
+        # OSError is guarded for the platforms where resolution touches the
+        # filesystem, though on Linux it does not -- `resolve()` does not
+        # stat, so even a path past the length limit gets this far. Neither
+        # can be a draft this pipeline wrote.
+        #
+        # This is caught rather than left to propagate because the caller
+        # that matters has no catch-all: citation_gate_hook's `main` runs
+        # straight off `raise SystemExit(main())`, so an exception here
+        # would exit non-zero *without* the blocking decision, and the
+        # write would land ungated. A hook that crashes on a malformed
+        # payload is a gate that stops being one.
+        return None
+    if not inside or path.suffix not in DRAFT_EXTENSIONS:
         return None
     return path
