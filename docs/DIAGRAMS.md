@@ -19,8 +19,9 @@ Read the one that matches your question and ignore the rest.
 One property holds in all eleven: **a genre skill loops on the citation
 gate until it exits 0, and shows you nothing before that.** All five
 SKILL.md files in `.claude/skills/` carry that instruction, four of them
-in the same words -- *"Fix and re-run until `OK`. Never present a draft
-that hasn't passed."* A gate failure is normally something you never see.
+in the same words: *"Fix and re-run until `OK`. Never present a draft
+that hasn't passed."* A gate failure is normally something you never
+see.
 
 The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
@@ -98,12 +99,14 @@ flowchart LR
 **Written for:** Someone installing it today.
 **Answers:** what do I type, in what order, and what does each step tell me?
 
-The same path as [the Quickstart](../README.md#quickstart), drawn with the
-two checkpoints that actually catch people: the **Export Files** tick box,
-which silently produces a bibliography with no PDFs attached to it, and
-the first `python -m src.corpus ledger` after a sync, which is where you find
-out whether anything became citable. Exit codes are on the diagram
-because at this stage they are the only feedback you have.
+The same path as [the Quickstart](../README.md#quickstart), drawn with
+the two checkpoints that actually catch people. The first is the **Export
+Files** tick box, which silently produces a bibliography with no PDFs
+attached. The second is the first `python -m src.corpus ledger` after a
+sync, which is where you find out whether anything became citable.
+
+Exit codes are on the diagram because at this stage they are the only
+feedback you have.
 
 ```mermaid
 flowchart TB
@@ -494,11 +497,12 @@ The deepest view, and the only part of the repository that runs work in
 parallel. Everything else -- retrieval, gating, rendering -- is
 deliberately serial.
 
-The through-line: **the pool is clamped to the host, not to the request.**
-The ceiling counts the CPUs *this process* may run on
-(`os.sched_getaffinity`), not the machine's, and an over-large request is
-clamped *and said out loud* -- silently obeying thrashes, and silently
-ignoring leaves someone believing they configured something they did not.
+The through-line: **the pool is clamped to the host, not to the
+request.** The ceiling counts the CPUs *this process* may run on
+(`os.sched_getaffinity`), not the machine's. An over-large request is
+clamped *and said out loud*: silently obeying thrashes, and silently
+ignoring leaves someone believing they configured something they did
+not.
 
 Five failure modes hang off the pool, each handled where it can be, and
 the parent process keeps everything only it can do: sqlite has a single
@@ -607,10 +611,10 @@ All five run the same gate, in the same loop, with the same wording.
 **Skills:** `survey-writer`, `deep-research`
 
 **The corpus is the content.** Nearly every sentence is a cited claim, so
-these are the two skills that pay off the enrichment layer: `docling` for
-passages good enough to survive review, and `embed` for semantic recall --
-finding the paper that makes your point in words you didn't search for.
-They are also the only two skills whose SKILL.md names
+these are the two skills that pay off the enrichment layer. `docling`
+gives passages good enough to survive review; `embed` gives semantic
+recall, finding the paper that makes your point in words you did not
+search for. They are also the only two skills whose SKILL.md names
 `src.enrich.embed_index.search()` as an alternative to BM25.
 
 Both read the same corpus the rest of the pipeline does, and that corpus

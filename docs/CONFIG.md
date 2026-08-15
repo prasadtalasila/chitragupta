@@ -351,21 +351,26 @@ removed through that same seam.
 | `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#parserbackend----pdftotext-or-docling) |
 
 **Page boundaries are not cosmetic, which is why both backends now keep
-them.** `src/review/verbatim_check.py` reports which PDF page a verbatim run
-came from by splitting on those form feeds; before `docling` asked for
-them, a citekey parsed that way reported `pdf p.1` for every hit
+them.** `src/review/verbatim_check.py` reports which PDF page a verbatim
+run came from by splitting on those form feeds. Before `docling` asked
+for them, a citekey parsed that way reported `pdf p.1` for every hit,
 regardless of where the text sat.
 
 **What separates the two backends now is quoting, not paging.**
 `pdftotext -layout` preserves a page's visual arrangement rather than its
-reading order, so an excerpt cut from it can splice two columns together;
-the passage ladder therefore refuses to quote from it and reports a page
-number instead. `docling` resolves reading order, and the corpus layer
-keeps that resolution as `content/parsed/<citekey>.passages.json` -- so
-choosing it here buys real quotable passages without running the
-enrichment layer at all. The mechanism is in
+reading order, so an excerpt cut from it can splice two columns together.
+The passage ladder therefore refuses to quote from it, and reports a page
+number instead.
+
+`docling` resolves reading order, and the corpus layer keeps that
+resolution as `content/parsed/<citekey>.passages.json`. Choosing it here
+therefore buys real quotable passages without running the enrichment
+layer at all.
+
+The mechanism is in
 [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#what-the-corpus-layer-keeps-when-it-uses-docling),
-and the ladder it feeds is in [LADDERS.md](LADDERS.md#ladder-1-evidence-passages).
+and the ladder it feeds is in
+[LADDERS.md](LADDERS.md#ladder-1-evidence-passages).
 
 [PDF-PARSER.md](PDF-PARSER.md) has the full fidelity comparison.
 
@@ -420,8 +425,9 @@ machine can be far larger. For `docling` that count is divided by 4:
 
 **That divisor of 4 is measurably too conservative.** It models a docling
 worker as occupying about 4 CPUs, and a full-corpus sweep does not
-support that: at 32 workers the CPU is only ~70% busy, and 32 workers run
+support that. At 32 workers the CPU is only ~70% busy, and 32 workers run
 **1.41x faster** than the 12 this table allows. 48 workers are no worse.
+
 The honest reading is "much smaller than 4" rather than a specific
 replacement. Changing it is a behaviour change and has not been made --
 see
