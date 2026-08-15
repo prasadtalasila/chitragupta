@@ -304,7 +304,34 @@ candidate for the chapter.
     and pedagogical steering is the kind that undoes most quietly, because
     nothing in the finished chapter shows that an easier example was ever on
     the table.
-14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+14. **Run the prose check.** After the gate passes and before
+    presenting:
+
+    ```bash
+    python -m src.draft style content/drafts/<slug>.md
+    ```
+
+    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+    -- §2's defect markers, an acronym never expanded at first use, and
+    §8's dialect against `scope.md`'s `language:` line. It says nothing
+    about whether a paragraph leads with its point or whether a hedge
+    carries information, and it cannot tell a quotation from the chapter's own
+    voice, so a marker inside a quoted passage reports and is correct as
+    it stands. Read the acronym findings rather than skipping
+    them: a student is precisely the outsider an unexpanded acronym is a
+    defect for.
+
+    **Report every finding and fix none of them.** A finding is a place to
+    look, not a defect: the first pass of this check over this
+    repository's own docs kept 59 of its 73 marker hits on inspection. If
+    the user wants any of them acted on, that is `draft-reviser`'s
+    copy-edit mode, which reads the recorded dialect and logs one
+    `revisions.md` entry -- never an edit made here. Report the header
+    lines too: `dialect: not checked` means nobody ever recorded one, so a
+    short list is not a clean draft. A review aid, not a gate -- it
+    exits 0 whatever it finds, and a missing `vale` binary is a one-line
+    warning that blocks nothing.
+15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -321,7 +348,7 @@ candidate for the chapter.
     (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
     the report goes to `content/review/`, mirroring the draft's path, beside
     any provenance and coverage reports for the same draft.
-15. **Present the draft** plus a short note on what it assumes as prior
+16. **Present the draft** plus a short note on what it assumes as prior
     knowledge, what it deliberately leaves out, and where a student is meant
     to go next -- and report the render outcome (paths to the `.tex`/`.pdf` if
     they succeeded, or the warning if not). Tell the user where the dossier

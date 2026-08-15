@@ -120,6 +120,19 @@ turn a wide pass into the re-run this skill exists to avoid.
   was wide and why.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m src.draft gate`.
+- **Run the prose check** -- `python -m src.draft style
+  content/drafts/<path>` -- after the gate and before presenting.
+  `draft-reviser`'s numbered steps 1-7 do not reach its unnumbered riders,
+  so this is written out here for the same reason the scan offer is.
+  **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+  -- §2's defect markers, an acronym never expanded at first use, and §8's
+  dialect against `scope.md`'s `language:` line -- and it cannot tell a
+  quotation from the draft's own voice. **Report every finding and fix
+  none of them:** a wide pass rewrites against sources the draft never
+  cited, which makes it the pass most able to import another author's
+  spelling along with their point, and also the pass least entitled to
+  tidy prose nobody asked about. Findings go to `draft-reviser`'s
+  copy-edit mode, not into this pass.
 - **Offer the verbatim scan** -- `python -m src.review verbatim scan
   content/drafts/<path>` -- before presenting. Don't run it silently and never
   make it a condition of presenting. It reports wording the draft shares with

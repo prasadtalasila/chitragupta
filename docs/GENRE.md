@@ -390,6 +390,34 @@ are all present. So a clean scan is not a clean bill of health.
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
 it sees.
 
+**The prose check is run, reported, and never acted on.** Before
+presenting, each skill runs `python -m src.draft style
+content/drafts/<path>` and reports what it says -- the findings, and the
+header lines naming which dialect was checked and on whose authority. It
+measures only what [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 marks
+decidable: §2's defect markers, an acronym never expanded at first use,
+and §8's dialect against `scope.md`'s `language:` line. So it is silent
+on whether a paragraph leads with its point, it cannot tell a quotation
+from the draft's own voice, and `dialect: not checked` means nobody ever
+recorded one rather than that nothing was wrong. **No skill fixes what it
+finds.** A finding is a place to look -- the first pass of this check
+over this repository's own docs kept 59 of its 73 marker hits after
+inspecting each -- and the sanctioned fix path is `draft-reviser`'s
+copy-edit mode, which reads the recorded dialect and logs one
+`revisions.md` entry naming the convention. Like the scan it exits 0
+whatever it finds; [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why
+it may never become a gate.
+
+**Why one is offered and the other is run.** The scan can be read as an
+accusation, and `--write` files a report, so the skill offers it and the
+person decides. The prose check measures a draft against a preference
+that same person recorded, writes nothing, and proposes rather than sets
+a dialect -- so running it needs no permission, and only the reporting is
+a judgement. A `PostToolUse` hook reports the same command per write, to
+the agent, mid-loop; this step reports the finished draft once, to the
+human. [HOOKS.md](HOOKS.md) has that split: invocation is enforced,
+conformance is not.
+
 ## The boundaries, and why they are enforced
 
 Every skill carries a "When to invoke" table whose rows are mostly

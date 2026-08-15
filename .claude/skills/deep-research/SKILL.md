@@ -502,7 +502,32 @@ a rendering failure never blocks presenting the `.md` report.
   prose and has nowhere else to live; a revision that doesn't know about
   it will undo it.
 
-**(f) Offer the verbatim scan.** Before presenting, offer this -- don't
+**(f) Run the prose check.** After the gate passes and before presenting:
+
+```bash
+python -m src.draft style content/drafts/deep-research-<slug>.md
+```
+
+**It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
+§2's defect markers, an acronym never expanded at first use, and §8's
+dialect against `scope.md`'s `language:` line. It says nothing about
+whether a paragraph leads with its point, and it cannot tell a quotation
+from the report's own voice. This is the first time anything reads the
+whole report at once: a dozen subagents wrote sections independently, so
+a defect marker in one and en-US spelling in another are exactly what no
+writer was placed to notice.
+
+**Report every finding and fix none of them.** A finding is a place to
+look, not a defect: the first pass of this check over this repository's
+own docs kept 59 of its 73 marker hits on inspection. If the user wants
+any acted on, that is `draft-reviser`'s copy-edit mode, which logs one
+`revisions.md` entry -- never an edit made here. Report the header lines
+too: `dialect: not checked` means nobody ever recorded one, so a short
+list is not a clean report. A review aid, not a gate -- it exits 0
+whatever it finds, and a missing `vale` binary is a one-line warning that
+blocks nothing.
+
+**(g) Offer the verbatim scan.** Before presenting, offer this -- don't
 run it silently, and never make it a condition of presenting:
 
 ```bash
@@ -522,7 +547,7 @@ the finding kept, add `--write`: the report goes to `content/review/`,
 mirroring the draft's path, beside any provenance and coverage reports for the
 same draft.
 
-**(g) Present.** Give the user: headline finding, the single most
+**(h) Present.** Give the user: headline finding, the single most
 important contradiction, the actionable insight, the overall grade, any
 unresolved peer-review concern left in the scorecard, the citekey count,
 the saved path, and the render outcome (paths to the `.tex`/`.pdf` if they

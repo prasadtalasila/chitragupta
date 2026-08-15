@@ -232,6 +232,30 @@ repaired, what was escalated and why.
 
 The human accepts. Nothing here merges, commits or renders on its own.
 
+### Run the prose check
+
+Before you present:
+
+```bash
+python -m src.draft style content/drafts/<path>
+```
+
+Your repairs are new prose, written under pressure to avoid someone
+else's wording, which is where a defect marker or a dialect slip gets in.
+**It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
+§2's defect markers, an acronym never expanded at first use, and §8's
+dialect against `scope.md`'s `language:` line. It knows nothing about
+overlap, and it cannot tell a quotation from the draft's own voice, so a
+clean report says nothing about the findings you just repaired.
+
+**Report every finding and fix none of them.** This skill's write-set is
+the draft's overlap findings and `revisions.md`; a spelling fix is not a
+verbatim finding, and anything that is not a verbatim finding is
+`draft-reviser` -- hand it off and say so. Report the header lines too:
+`dialect: not checked` means nobody ever recorded one. A review aid, not
+a gate -- it exits 0 whatever it finds, and a missing `vale` binary is a
+one-line warning that blocks nothing.
+
 ### Offer the verbatim scan
 
 The baseline in step 2 is that scan, so it has already run. What still
