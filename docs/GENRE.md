@@ -211,12 +211,12 @@ applied.
 
 It also runs the other way round, from the corpus rather than from a
 request. When `dossier status --all` reports that a sync removed a paper
-a draft cites, `draft-reviser` re-grounds it: reads the drift report as
-JSON, repairs the broken citations in the sections that carry them,
-weighs only the new candidates that bear on the sub-theme in play, leaves
-previously declined papers declined unless their recorded reason has
-stopped holding, and re-stamps the corpus fingerprint once the gate
-passes. What that promises is no *missing* citations, not an empty
+a draft cites, `draft-reviser` re-grounds it. It reads the drift report
+as JSON and repairs the broken citations in the sections that carry them.
+It weighs only the new candidates bearing on the sub-theme in play, and
+leaves previously declined papers declined unless their recorded reason
+has stopped holding. Once the gate passes, it re-stamps the corpus
+fingerprint. What that promises is no *missing* citations, not an empty
 candidate list -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#re-grounding-after-the-corpus-moves).
 
@@ -230,11 +230,11 @@ evidence entries to fill the file: an empty `evidence.md` is honest, and
 a fabricated one is the same failure class as a fabricated citekey.
 
 **Every one of the five drafting skills routes here for changes.** Each
-carries the rule twice: as a row in its own routing table -- *user asks
-to change something that already exists -> use `draft-reviser`, never
-re-run this skill* -- and as a clause in its frontmatter `description`,
-which is the surface that decides which skill is picked in the first
-place. The table alone is not enough: it is read only after a skill has
+carries the rule twice. Once as a row in its own routing table: *user
+asks to change something that already exists -> use `draft-reviser`,
+never re-run this skill*. Once as a clause in its frontmatter
+`description`, which is the surface that decides which skill is picked in
+the first place. The table alone is not enough: it is read only after a skill has
 already been chosen. [TOKENS.md](TOKENS.md) is why the rule exists.
 
 **It is a default, not a gate.** Nothing enforces it; no hook checks it,
@@ -300,8 +300,8 @@ will not do*.
 **Every repair is verified before it is kept.** `python -m src.draft
 gate` and `python -m src.review verbatim recheck` both have to come back
 clean, the finding has to be gone, and the count of objective findings
-must not have risen -- a rewrite that fixes its own finding by lifting
-from a different source is caught by that last one. Two attempts per
+must not have risen. That last condition catches a rewrite that fixes its
+own finding by lifting from a different source. Two attempts per
 finding, one pass per invocation, and every attempt is logged in
 `revisions.md` with its outcome, refusals included.
 
@@ -357,11 +357,11 @@ each skill offers `python -m src.review verbatim scan
 content/drafts/<path>` -- which reports wording the draft shares with
 *any* parsed source, cited or not. It cannot block a draft and no skill
 treats it as a condition of presenting. The offer carries its own
-caveat, in every skill, because the drafter is the one it is about: two
+caveat, in every skill, because the drafter is the one it is about. Two
 of the three detection tiers see wording only, so a genuine restatement
-is invisible to them, and the third runs only where the optional
-enrichment layer, the Docling sidecars and the draft's dossier are all
-present -- so a clean scan is not a clean bill of health.
+is invisible to them. The third sees one, but runs only where the
+optional enrichment layer, the Docling sidecars and the draft's dossier
+are all present. So a clean scan is not a clean bill of health.
 [PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that;
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
 it sees.

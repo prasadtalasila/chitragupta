@@ -52,12 +52,14 @@ scores each claim against its source. None of them needs to know what
 searches were run or which candidates were turned down.
 
 The drafting layer is the exception. A genre skill's real product is not
-only the draft -- it is also the judgment that produced it: which
-sub-themes the topic was broken into, which of the fifteen retrieved
-candidates were worth keeping, why the other twelve weren't, who the
-reader is, which definition of a contested term the draft settled on, and
-what the user asked for in chat that the prose doesn't show. Before this
-module, all of that lived in one conversation and died with it.
+only the draft -- it is also the judgment that produced it. Which
+sub-themes the topic was broken into. Which of the fifteen retrieved
+candidates were worth keeping, and why the other twelve weren't. Who the
+reader is. Which definition of a contested term the draft settled on. And
+what the user asked for in chat that the prose doesn't show.
+
+Before this module, all of that lived in one conversation and died with
+it.
 
 So "shorten section 3" cost a full re-run: retrieve, score every
 candidate again, re-cluster, rewrite. **That is a structural cost, not a
@@ -70,16 +72,18 @@ The accounting lives in [TOKENS.md](TOKENS.md), together with the same
 argument from [REJECTION.md](REJECTION.md) and two worked examples --
 one subject, kept in one place.
 
-The part this document depends on, in one paragraph: costs split into
-two pools, **orchestrator-resident** (re-sent on every remaining turn of
-the run, and so multiplied by everything that comes after it) and
-**subagent one-shot** (paid once, because the context is discarded when
-the subagent returns). Four things load the first pool -- retrieved
-candidates that are rejected but stay resident, fan-out packets held
-across phases, whole-file rewrites, and **no revision path at all**.
+The part this document depends on, in one paragraph. Costs split into
+two pools. **Orchestrator-resident** costs are re-sent on every remaining
+turn of the run, and so multiplied by everything that comes after them.
+**Subagent one-shot** costs are paid once, because the context is
+discarded when the subagent returns.
 
-The fourth is the one this module exists to remove, and it is the only
-one of the four that is *structural* rather than a constant factor: before
+Four things load the first pool: retrieved candidates that are rejected
+but stay resident, fan-out packets held across phases, whole-file
+rewrites, and **no revision path at all**.
+
+The fourth is the one this module exists to remove, and the only one of
+the four that is *structural* rather than a constant factor. Before
 `src/dossier.py` and the `draft-reviser` skill, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run Phase 1 through Phase 7 again.
@@ -223,15 +227,19 @@ dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
 
 The ledger is opened read-only with `timeout=0`, exactly as
-`python -m src.corpus ledger` does: this is an inspection, and it must not take
-a write lock, run a migration, or block behind a sync that is mid-run.
+`python -m src.corpus ledger` does. This is an inspection: it must not
+take a write lock, run a migration, or block behind a sync that is
+mid-run.
+
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers
-could bear on. That is a claim about a corpus that *grew*; a corpus that
-lost a paper the draft cites has produced a broken citation, which is
-fixed whether or not anyone asked. The line between the two is drawn in
-"Two findings, and they are not the same kind of thing" below, and acted
-on in "Re-grounding after the corpus moves".
+could bear on. That is a claim about a corpus that *grew*. A corpus that
+*lost* a paper the draft cites has produced a broken citation, which is
+fixed whether or not anyone asked.
+
+The line between the two is drawn in "Two findings, and they are not the
+same kind of thing" below, and acted on in "Re-grounding after the corpus
+moves".
 
 The fingerprint is written once, by `init`, and is not maintained by any
 command -- the only thing that rewrites it is a re-grounding pass, which

@@ -46,13 +46,14 @@ By default `sync` only *reports* citekeys that dropped out of the bib file
 (`stale   <citekey> (no longer in bibliography.bib)`, one line per
 citekey, plus a single summary note pointing at `--remove-stale`) -- it
 doesn't delete their `content/ledger.sqlite` row until you re-run with
-`--remove-stale`. This is deliberate: a bib export that comes back short a
-citekey is far more often a botched re-export or `BIB_FILE` pointing at the
-wrong path than an intentional deletion, so the default keeps the ledger
-untouched until a human confirms. `--remove-stale` still refuses (raises)
-if the bib file comes back completely empty against a non-empty ledger,
-for the same reason -- fix the export/path rather than deleting everything
-in one run.
+`--remove-stale`. This is deliberate. A bib export that comes back short
+a citekey is far more often a botched re-export, or `BIB_FILE` pointing
+at the wrong path, than an intentional deletion -- so the default keeps
+the ledger untouched until a human confirms.
+
+`--remove-stale` still refuses, raising, if the bib file comes back
+completely empty against a non-empty ledger. Same reason: fix the export
+or the path rather than deleting everything in one run.
 
 ## Citekeys have to work as filenames
 

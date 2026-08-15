@@ -167,10 +167,11 @@ corpus, BM25 is usually enough -- which is why it stays the default.
 indexes the ledger and nothing else, so a chunk that comes back from
 Chroma always carries a real citekey that `citation_gate` will accept.
 (An earlier version also swept a directory of raw PDFs gathered outside
-the bib file, and those hits came back with an empty citekey and could
-never be cited; that second source is gone.) The way to make a paper
+the bib file. Those hits came back with an empty citekey and could never
+be cited, and that second source is gone.) The way to make a paper
 searchable here is therefore the same as everywhere else in this
-repository: catalogue it in your reference manager, re-export, and re-run
+repository: catalogue it in your reference manager, re-export, and
+re-run
 `sync`. `python -m src.enrich` prints what it is about to work on at the top of
 every run, before any stage touches it:
 

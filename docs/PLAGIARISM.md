@@ -28,10 +28,14 @@ detectors, and every finding names the one that produced it. **exact** is
 a verbatim word-run. **skip-gram** is a tolerant stemmed match that also
 catches a passage with a handful of words substituted. **embedding**
 matches meaning rather than wording, and is the only one that sees a
-genuine restatement -- it also only runs where the optional enrichment
-layer, the Docling passage sidecars and the draft's own dossier are all
-present, and only compares a section against the sources that section
-already cites. This is the one **tier set** in this project whose options
+genuine restatement.
+
+That third tier is also the narrowest. It runs only where the optional
+enrichment layer, the Docling passage sidecars and the draft's own
+dossier are all present, and it compares a section only against the
+sources that section already cites.
+
+This is the one **tier set** in this project whose options
 are not mutually exclusive
 ([ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)): nobody picks one,
 every available tier runs, and the findings are unioned. A tier that
@@ -146,26 +150,32 @@ step" with each other even with non-matching words between them, so a
 plagiarism-detection literature (below) -- collapses same-diagonal hits
 within `--gap` non-matching words (default 1) into one run, whether or
 not a source page break falls inside it. A single edited word inside an
-otherwise-verbatim passage still reports as one finding instead of two
-truncated ones, which matters because a single-word edit is exactly what
-an LLM's light editing of a lifted passage tends to look like -- and the
-same merge now recovers a lift that a source page break would otherwise
-have split, including a remainder shorter than `--min-run` stranded alone
-on one side of the break that used to be silently dropped.
+otherwise-verbatim passage therefore reports as one finding, not two
+truncated ones. That matters because a single-word edit is exactly what
+an LLM's light editing of a lifted passage tends to look like.
 
-Each finding reports the run's total span and its matched-word count
-(so a gapped run is distinguishable from a pure one), the citekey and
-page range (`page`/`end_page` -- the lowest and highest page an n-gram in
-the run actually *starts* on, equal for an ordinary single-page run,
-`end_page > page` for one that spans a source page break -- though not
-the converse: a remainder shorter than the index's own n-gram size has no
-gram starting on its page, so it is recovered into the run's word content
-without moving `end_page`), whether the containing paragraph actually cites that
-source (`UNCITED SOURCE` if
-not), whether the run touches quote delimiters (straight/curly double
-quotes or a Markdown blockquote line -- a deterministic bit, not a
-severity judgment), and `tier: "exact"` -- one key now, reserved for the
-tiers below.
+The same merge recovers a lift that a source page break would otherwise
+have split -- including a remainder shorter than `--min-run`, stranded
+alone on one side of the break, which used to be dropped silently.
+
+Each finding reports five things:
+
+- **The run's total span and its matched-word count**, so a gapped run is
+  distinguishable from a pure one.
+- **The citekey and page range.** `page`/`end_page` are the lowest and
+  highest page an n-gram in the run actually *starts* on. They are equal
+  for an ordinary single-page run, and `end_page > page` for one spanning
+  a source page break.
+- **Whether the containing paragraph cites that source**, shown as
+  `UNCITED SOURCE` if it does not.
+- **Whether the run touches quote delimiters** -- straight or curly
+  double quotes, or a Markdown blockquote line. A deterministic bit, not
+  a severity judgment.
+- **`tier`**, naming the detector that produced it.
+
+The page range does not run the other way. A remainder shorter than the
+index's own n-gram size has no gram starting on its page, so `scan`
+recovers it into the run's word content without moving `end_page`.
 
 **`quoted` reads as overlap, not containment**, and the difference is not
 cosmetic. A matched run is wider than the quotation that evidences it and
@@ -188,15 +198,16 @@ longest-first, unchanged -- it's read once, in a terminal, mid-review.
 `--write`'s Markdown report instead groups findings **most-damning-first**
 into three sections: *long* verbatim runs (`LONG_RUN_WORDS`, currently
 15 words, is the boundary), *short* ones, and *quoted* ones. A run demotes to
-the low-priority *quoted* group only when
-it is **both** touching quote delimiters **and** citing the source it
-matched -- a quoted run from a source the paragraph does *not* cite is
-still the finding `overlap` structurally cannot make, so it is grouped by
-length like any other uncited run, not buried under `quoted` just for
-sitting in quote marks. `--limit` truncates the longest-first list
-*before* grouping, so a capped report can show only the `long` section
-with `short`/`quoted` empty or absent; the report says so when `--limit`
-is set, rather than letting an empty section read as "none exist."
+the low-priority *quoted* group only when it is **both** touching quote
+delimiters **and** citing the source it matched. A quoted run from a
+source the paragraph does *not* cite is still the finding `overlap`
+structurally cannot make, so it is grouped by length like any other
+uncited run rather than buried under `quoted` for sitting in quote marks.
+
+`--limit` truncates the longest-first list *before* grouping, so a capped
+report can show only the `long` section with `short`/`quoted` empty or
+absent. The report says so when `--limit` is set, rather than letting an
+empty section read as "none exist."
 
 ### The boilerplate allowlist
 
@@ -234,12 +245,12 @@ paragraphs = [
 ```
 
 **Suppression is mask-and-remeasure, not exact-match.** `scan` cannot
-drop a finding whose text equals an allowlisted phrase: the
-gap-tolerant merge above means the same boilerplate phrase produces a
-different-length fragment depending on what non-matching prose happens
-to sit next to it, so exact equality would rarely fire twice, and it
-could never touch the common real case -- a short standard's name sitting
-*inside* a much longer, otherwise-unexplained lift. Instead, every word
+drop a finding whose text equals an allowlisted phrase. The gap-tolerant
+merge above means the same boilerplate phrase produces a different-length
+fragment depending on what non-matching prose sits next to it, so exact
+equality would rarely fire twice. It could never touch the common real
+case at all: a short standard's name sitting *inside* a much longer,
+otherwise-unexplained lift. Instead, every word
 in a finding covered by a contiguous allowlisted phrase is masked out,
 and the finding is dropped only if what's *left* would no longer clear
 `--min-run` on its own. A 40-word lift that happens to contain a 3-word
@@ -283,12 +294,12 @@ as `resolved`, `persisting` or `new`, plus the change in the count of
 *objective* findings, meaning the `long` and `short` buckets. A run that
 is both quoted and cited is excluded from that count, or converting a
 lift into a properly attributed quotation would score as no improvement.
-It refuses a baseline it cannot compare against: another aid's payload,
-one written under `--limit` (truncation makes "absent" ambiguous), one
-missing a field the comparison prints (`id` or a locator, or `end_page`
-from a build before #131), one from a different release series (what
-counts as one finding can change between them), or one that is
-unreadable or not JSON.
+It refuses a baseline it cannot compare against. That means another
+aid's payload; one written under `--limit`, where truncation makes
+"absent" ambiguous; one missing a field the comparison prints, such as
+`id`, a locator, or `end_page` from a build before #131; one from a
+different release series, since what counts as one finding can change
+between them; and one that is unreadable or not JSON.
 
 **What may be repaired without asking is decided by the buckets above,
 not by the model.** A `short` run is reworded unattended; a `long` one

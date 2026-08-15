@@ -361,14 +361,16 @@ citekey to the ledger -- ground truth, built from the human's own `.bib`
 export and a real parse of a real PDF -- and no state of the world makes
 a citekey absent from it legitimately present, so an absolute verdict is
 available. A check compared against a *recorded preference* fails
-differently even when its answer is just as mechanical: the preference is
-a line someone typed, so it can be wrong, stale, or deliberately
-overridden by a quoted title or a proper noun, and blocking on it refuses
-a correct draft on a bad target -- a failure the gate cannot have by
-construction. Such a check reports and never blocks, whichever layer it
-lives in, and its enforcement is of *invocation* rather than of
-conformance: a harness may guarantee that it runs and that its findings
-are seen, never that they were obeyed. Decidable is not the same as
+differently, even when its answer is just as mechanical. The preference
+is a line someone typed, so it can be wrong, stale, or deliberately
+overridden by a quoted title or a proper noun. Blocking on it refuses a
+correct draft on a bad target -- a failure the gate cannot have by
+construction.
+
+Such a check reports and never blocks, whichever layer it lives in. What
+is enforced is *invocation* rather than conformance: a harness may
+guarantee that it runs and that its findings are seen, never that they
+were obeyed. Decidable is not the same as
 gateable, which is why
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) bars promoting any new
 check into a gate beside `src/citation_gate.py` outright, rather than
@@ -545,15 +547,17 @@ corpus layer, `src.draft <verb>` for drafting, `src.enrich --stages …`
 for enrichment, `src.review <aid>` for review. A layer's package may nest as
 deep as its code wants; its *command surface* does not. The submodules
 inside `src/enrich/` and `src/review/` carry no `__main__` block, so
-`python -m src.enrich.docling_parse` or `python -m src.review.verbatim_check`
-imports a module and exits 0 having done nothing -- a trap, but a silent
-and harmless one, and the price of there being exactly one `--help` per
-layer. The drafting layer's five commands carry the same trap without
-moving into a package: `citation_gate.py`, `dossier.py`, `references.py`,
-`render_output.py` and `retrieval.py` stayed flat in `src/` --
+`python -m src.enrich.docling_parse` or
+`python -m src.review.verbatim_check` imports a module and exits 0 having
+done nothing. That is a trap, but a silent and harmless one, and it is
+the price of there being exactly one `--help` per layer.
+
+The drafting layer's five commands carry the same trap without moving
+into a package. `citation_gate.py`, `dossier.py`, `references.py`,
+`render_output.py` and `retrieval.py` stayed flat in `src/`;
 `src/draft.py` beside them is what dropped their `__main__` blocks and
-gave the layer its one front door -- so `python -m src.dossier` (or any
-of the other four) is the same silent no-op as the nested form above.
+gave the layer its one front door. So `python -m src.dossier`, or any of
+the other four, is the same silent no-op as the nested form above.
 
 **One module refuses instead: `src/sync.py`.** Silence is the right price
 everywhere above because nobody schedules those commands -- a no-op is

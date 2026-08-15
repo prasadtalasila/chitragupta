@@ -500,11 +500,12 @@ claims of ~27 words and 0 pipe characters.
 
 **Both syntaxes, because every genre skill exports `.tex` and `.pdf`
 beside the Markdown.** A `tabular` had the same defect with one extra
-cost: `\begin{tabular}{lll}`, `\toprule` and `\midrule` reached the
+cost. `\begin{tabular}{lll}`, `\toprule` and `\midrule` reached the
 scorer as though `begin`, `tabular`, `lll` and `toprule` were content
-words the cited paper ought to contain -- noise that no source can ever
-match, so the dilution was guaranteed rather than merely likely. The
-LaTeX rules mirror the Markdown ones, with the one structural difference
+words the cited paper ought to contain. No source can ever match that
+noise, so the dilution was guaranteed rather than merely likely.
+
+The LaTeX rules mirror the Markdown ones, with one structural difference
 that matters: a `tabular` row ends at `\\`, not at a newline, so a row
 hard-wrapped over three lines is still one claim.
 

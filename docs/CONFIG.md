@@ -381,11 +381,14 @@ They are two consumers of the same library, with different scopes:
 They no longer duplicate the parse, though. When this setting is
 `docling`, the enrichment stage adopts the corpus layer's output for a
 citekey instead of parsing the PDF a second time -- a file copy in place
-of 6.65s per document. It falls back to a real parse for a citekey the
+of 6.65s per document.
+
+It falls back to a real parse in three cases. First, for a citekey the
 corpus layer wrote no text for -- a PDF whose parse failed at sync time,
-say -- for a run with `[enrich].docling_images` on, because the corpus
-layer writes no figure bitmaps to adopt, or when the artefacts are older
-than the PDF, which means the PDF has been replaced since the corpus
+say. Second, for a run with `[enrich].docling_images` on, because the
+corpus layer writes no figure bitmaps to adopt. Third, when the artefacts
+are older than the PDF, which means the PDF has been replaced since the
+corpus
 layer read it. The dependency only ever runs that way round: the
 enrichment layer reads the corpus layer's files, and the corpus layer is
 not shaped by this at all.
@@ -410,12 +413,12 @@ machine can be far larger. For `docling` that count is divided by 4:
 | `workers = "auto"` resolves to | 1 | 2 | 4 | 12 |
 
 **That divisor of 4 is measurably too conservative.** It models a docling
-worker as occupying about 4 CPUs, which a full-corpus sweep does not
-support: at 32 workers the CPU is only ~70% busy, and 32 workers run
-**1.41x faster** than the 12 this table allows -- and 48 workers are no
-worse, so the honest reading is "much smaller than 4", not a specific
-replacement. Changing it is a behaviour change and has not been
-made -- see
+worker as occupying about 4 CPUs, and a full-corpus sweep does not
+support that: at 32 workers the CPU is only ~70% busy, and 32 workers run
+**1.41x faster** than the 12 this table allows. 48 workers are no worse.
+The honest reading is "much smaller than 4" rather than a specific
+replacement. Changing it is a behaviour change and has not been made --
+see
 [PERFORMANCE.md](PERFORMANCE.md#parserworkers----document-level-parallelism).
 
 So a four-core desktop resolves to 2, and asking for 15 there still gets

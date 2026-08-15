@@ -41,11 +41,12 @@ re-litigated.
 
 Both tools run on top of `src/overlap_index.py`'s corpus-wide fingerprint
 index. Every parsed document is tokenized into lowercase `[a-z0-9]+`
-words, and every 8-word sliding window ("gram", `n=8`, the smallest unit
-either tool can detect) is hashed to a 64-bit integer with a rolling
-polynomial hash over each word's `blake2b` digest -- deterministic across
-processes and runs, unlike Python's built-in `hash()`, which is
-per-process-salted and could not be cached to disk at all. At the
+words. Every 8-word sliding window -- a "gram", `n=8`, the smallest unit
+either tool can detect -- is then hashed to a 64-bit integer with a
+rolling polynomial hash over each word's `blake2b` digest. That hash is
+deterministic across processes and runs, unlike Python's built-in
+`hash()`, which is per-process-salted and could not be cached to disk at
+all. At the
 corpus's real scale (~7,000,000 grams), the birthday-bound collision
 probability at 64 bits is on the order of 1e-6: real, but small enough
 not to matter in practice.
@@ -111,11 +112,13 @@ draft quotes and attributes it too, and can cite only one source for it.
 
 That is the structural part, and `cites_source` cannot fix it: **a
 definition reproduced by N corpus papers can be cited to one, so the
-other N-1 report as `UNCITED SOURCE`.** The sharpest form is a
-blockquote correctly cited to the work that first stated the taxonomy,
-matched against a second paper reproducing it: `quoted` is true but
-`cites_source` is false, so [`_bucket`](PLAGIARISM.md#severity-buckets-and-the-boilerplate-allowlist)
-keeps it in `long` and #130's own `quoted and cites_source` exemption
+other N-1 report as `UNCITED SOURCE`.**
+
+The sharpest form is a blockquote correctly cited to the work that first
+stated the taxonomy, matched against a second paper reproducing it.
+`quoted` is true but `cites_source` is false, so
+[`_bucket`](PLAGIARISM.md#severity-buckets-and-the-boilerplate-allowlist)
+keeps it in `long`, and #130's own `quoted and cites_source` exemption
 does not reach it. **A correctly quoted, correctly credited passage would
 block.**
 
@@ -277,17 +280,21 @@ measurements are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    odd/even skip-grams in the same index framework -- the CoReMo design.
    Catches synonym swaps and inflection changes while staying objective
    enough to gate eventually. Built (#133), `src/overlap_skipgram.py`,
-   findings carry `tier: "skip-gram"`. Shipped **advisory only**
-   (discussion #115: "start advisory, promote with evidence") -- nothing
-   in `scan` decides gate-eligibility for it; that is #130's decision,
-   unchanged by this tier existing. **Measured 2026-08-14 (#180), and it
-   stays advisory on the strength of it**: over a real 15-chapter book,
+   findings carry `tier: "skip-gram"`. Shipped **advisory only**, on
+   discussion #115's "start advisory, promote with evidence". Nothing in
+   `scan` decides gate-eligibility for it; that is #130's decision, and
+   this tier existing does not change it.
+
+   **Measured 2026-08-14 (#180), and it stays advisory on the strength of
+   it.** Over a real 15-chapter book,
    2 of 27 findings were reuse a reviewer would act on, and the exact
    tier already reported both of those passages -- so tier 2 contributed
-   nothing tier 1 had not. That number is only trustworthy because the
-   same measurement first found two mechanical bugs behind 163 of the
-   190 raw findings (bare numbers treated as distinctive content, and
-   the same finding emitted once per diagonal group). One book whose
+   nothing tier 1 had not.
+
+   That number is only trustworthy because the same measurement first
+   found two mechanical bugs behind 163 of the 190 raw findings: bare
+   numbers treated as distinctive content, and the same finding emitted
+   once per diagonal group. One book whose
    reuse happens to be verbatim is not evidence tier 2 cannot work, but
    it is not the evidence discussion #115 asks for before promoting it.
    See `bench/RESULTS.md`'s #180 section before trusting a clean `scan`

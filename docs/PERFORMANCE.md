@@ -516,8 +516,8 @@ artifact by artifact, and `bench/RESULTS.md`'s 2026-08-07 section has the
 measurement. Both are stated once, there.
 
 Two corrections to figures that once stood in this document, kept
-because the retracted versions were quoted elsewhere: the earlier "6
+because the retracted versions were quoted elsewhere. The earlier "6
 files differ, under 0.06%" understated the effect by counting bytes
-rather than passages, and "repeating a run at the same worker count
-reproduces exactly" is **false** -- 5 of 572 same-configuration
-comparisons differ in bytes and 2 in passage text.
+rather than passages. And "repeating a run at the same worker count
+reproduces exactly" is **false**: 5 of 572 same-configuration
+comparisons differ in bytes, and 2 in passage text.

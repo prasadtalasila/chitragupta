@@ -229,7 +229,8 @@ answer is a file rather than better summarising. **Implemented**: the
 pasted material is now the one line
 `python -m src.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
-**An estimated 15k equivalents saved, in the 5x direction**, which is the
+
+**An estimated 15k equivalents saved, in the 5x direction.** That is the
 same order as the entire resident cost the issue set out to attack,
 arrived at from the opposite side.
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#dispatching-from-the-dossier) has
@@ -560,12 +561,13 @@ real material available to check the fixed recipe against):
 | A | 199 | 34,902,281 | 93 (5) | 4,277,676 |
 | B | 268 | 66,634,805 | 69 (4) | 3,555,862 |
 
-Orchestrator input outweighs subagent input by roughly 8-19x on these two
--- the direction [the resident multiplier](#the-resident-multiplier)
-predicts (the orchestrator's context is append-only and re-billed every
-turn; a subagent's is paid once and discarded), but the ratio itself is
-two data points from unrelated engineering sessions, not a
-`deep-research` or `survey-writer` run, and should not be read as this
+Orchestrator input outweighs subagent input by roughly 8-19x on these
+two. That is the direction [the resident
+multiplier](#the-resident-multiplier) predicts: the orchestrator's
+context is append-only and re-billed every turn, while a subagent's is
+paid once and discarded. The ratio itself is two data points from
+unrelated engineering sessions rather than a `deep-research` or
+`survey-writer` run, and should not be read as this
 skill's own boundary saving. [The dispatch payload, measured on real
 material](#the-dispatch-payload-measured-on-real-material) below is the
 number that answers that question, for the one boundary it was measured
@@ -723,11 +725,13 @@ actually comparable:
 | Saving | **61.5%** |
 
 That reproduces Example 1's ~61% almost exactly on real material, which
-is the useful check: the method is internally consistent, and the gap
-between the estimate and this run is measurement noise, not a modelling
-error. **Then add the cost Example 1's text describes but its total
-omits** -- the rejected list re-entering the orchestrator's context, once
-at 1.25x and resident for the same ~20 turns as everything else it holds:
+is the useful check. The method is internally consistent, and the gap
+between the estimate and this run is measurement noise rather than a
+modelling error.
+
+**Then add the cost Example 1's text describes but its total omits**:
+the rejected list re-entering the orchestrator's context, once at 1.25x
+and resident for the same ~20 turns as everything else it holds:
 
 | | Input-token equivalents (rejected list costed both ways) |
 |---|---|

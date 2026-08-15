@@ -821,11 +821,12 @@ separate for that reason.
 ### One draft, in time order
 
 The full workflow with time on the vertical axis instead of dependency.
-Useful for two things in particular: seeing that **the gate runs twice**
--- the PostToolUse hook fires on every write under `content/drafts/`, so a
-bad citekey cannot reach disk even if a skill forgets, and the skill then
-runs the gate itself, because the hook only fires on the tool call that
-wrote the file -- and seeing the **loop** that wraps both of them.
+Useful for two things in particular. The first is seeing that **the gate
+runs twice**: the PostToolUse hook fires on every write under
+`content/drafts/`, so a bad citekey cannot reach disk even if a skill
+forgets, and the skill then runs the gate itself, because the hook fires
+only on the tool call that wrote the file. The second is seeing the
+**loop** that wraps both of them.
 
 ```mermaid
 sequenceDiagram

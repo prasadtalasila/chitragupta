@@ -571,12 +571,13 @@ sources, and a measured `docling`-vs-`pdftotext` backend comparison.
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other two review aids: `0` on every
-successful invocation, findings or not -- advisory, never a gate.
-`recheck` included: a draft that got worse still exits 0. `1` for a draft
-this layer will not read (missing, or resolving outside `content/`). `2`
-for a malformed invocation, the usual CLI-usage error, not a verdict --
-which is also how `recheck` reports a baseline it cannot compare against.
+**Exit codes**, shared with the other two review aids. `0` on every
+successful invocation, findings or not: these are advisory, never a gate.
+That includes `recheck` -- a draft that got worse still exits 0. `1` is a
+draft this layer will not read, because it is missing or resolves outside
+`content/`. `2` is a malformed invocation, the usual CLI-usage error
+rather than a verdict. `recheck` also uses `2` for a baseline it cannot
+compare against.
 
 ```bash
 python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
@@ -589,25 +590,32 @@ python -m src.review verbatim scan content/drafts/survey.md
 # python -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
 
-**`--json`, and who it is for.** The findings were text and nothing else
-until 5.4.0, so a programmatic consumer external to this module --
-a remediation loop, an eventual overlap gate -- had to regex the printed
-lines back into data. `--json` prints the same findings list as a payload
-instead: the envelope every review aid's JSON carries (a notice that this
-is not a verdict, the aid, the draft, the exact command, the version),
-the three flags that set the reporting floor (`min_run`, `gap`, `limit`),
-how many findings the allowlist suppressed (`suppressed`, see below),
-which tiers did not run at all and why (`tiers_not_run`, see below), and
-one object per finding with `id`, `citekey`, `page`, `end_page`, `tier`,
-`span_words`, `matched_words`, `start`, `line`, `char_start`, `char_end`,
-`draft_text`, `fragment`, `context`, `cites_source`, `quoted`, `score`, and
-`severity` -- the same `long`/`short`/`quoted` bucket the
-written report groups by (see below), so a consumer of the payload reads
-the same severity a human reviewer sees. It is an additional
-serialisation of what `scan` already computed, never a second
-computation, so the payload and the two printed forms cannot disagree
-about what was found. A clean draft emits `"findings": []` and still
-exits 0 -- "nothing found" is data too.
+**`--json`, and who it is for.** Until 5.4.0 the findings were text and
+nothing else, so any programmatic consumer -- a remediation loop, an
+eventual overlap gate -- had to regex the printed lines back into data.
+`--json` prints the same findings as a payload instead.
+
+The payload carries four things:
+
+- The envelope every review aid's JSON carries: a notice that this is not
+  a verdict, the aid, the draft, the exact command, the version.
+- The three flags that set the reporting floor: `min_run`, `gap`,
+  `limit`.
+- How many findings the allowlist suppressed (`suppressed`), and which
+  tiers did not run at all and why (`tiers_not_run`). Both are described
+  below.
+- One object per finding, with `id`, `citekey`, `page`, `end_page`,
+  `tier`, `span_words`, `matched_words`, `start`, `line`, `char_start`,
+  `char_end`, `draft_text`, `fragment`, `context`, `cites_source`,
+  `quoted`, `score` and `severity`.
+
+`severity` is the same `long`/`short`/`quoted` bucket the written report
+groups by, so the payload and a human reviewer read the same severity.
+
+The payload serialises what `scan` already computed. It never recomputes,
+so it cannot disagree with the two printed forms about what was found. A
+clean draft emits `"findings": []` and still exits 0 -- "nothing found"
+is data too.
 
 `cites_source: false` is the printed form's `UNCITED SOURCE`, and
 `quoted: true` its `quoted`: booleans rather than those labels, because a
@@ -623,13 +631,14 @@ anything the other tiers publish.
 
 `tiers_not_run` is one `{"tier", "reason"}` object per detection tier
 that could not run at all, and `[]` when every tier ran. Only the
-embedding tier can appear there today: it needs the optional enrichment
-layer, a built `content/chroma/`, the Docling passage sidecars and the
-draft's own dossier, and any of those can be absent on a healthy
-checkout. `findings: []` alone cannot distinguish a draft that was
-checked and is clean from one a tier never looked at, which is what this
-field is for -- the printed and written reports say the same thing in
-prose.
+embedding tier can appear there today. It needs four things: the optional
+enrichment layer, a built `content/chroma/`, the Docling passage
+sidecars, and the draft's own dossier. A healthy checkout can be missing
+any of them.
+
+That is what the field is for. `findings: []` alone cannot distinguish a
+draft that was checked and is clean from one a tier never looked at. The
+printed and written reports say the same thing in prose.
 
 `page` and `end_page` are the lowest and highest page an n-gram in the
 run actually *starts* on (#131), equal for an ordinary single-page run.
@@ -695,18 +704,19 @@ their own issues, which is why
 each aid's JSON as optional.
 
 **`recheck`, and what it is for.** `scan` says what a draft borrows.
-`recheck` says what changed since a particular scan, which is the
-question anyone repairing those findings actually has -- *did that
-rewrite fix the finding, and did it break anything else?* Deciding that
-by reading two reports side by side is a judgement, and it is one that
-should not be a judgement, so this makes it arithmetic.
+`recheck` says what changed since a particular scan. That is the question
+anyone repairing those findings actually has: *did that rewrite fix the
+finding, and did it break anything else?* Reading two reports side by
+side makes that a judgement. It should not be one, so `recheck` makes it
+arithmetic.
 
-Given a baseline payload it re-scans and reports each finding as
-`resolved` (in the baseline, gone now), `persisting` or `new`, together
-with `objective_before`, `objective_after` and `objective_delta`.
-"Objective" means the `long` and `short` buckets: a run that is both
+Given a baseline payload, `recheck` re-scans and reports each finding as
+`resolved` (in the baseline, gone now), `persisting` or `new`. It also
+reports `objective_before`, `objective_after` and `objective_delta`.
+
+"Objective" means the `long` and `short` buckets. A run that is both
 quoted and cited is excluded, because converting a lift into a properly
-attributed quotation is one of the two repairs available and it must not
+attributed quotation is one of the two repairs available, and it must not
 score as no improvement. A rewrite that resolves its own finding by
 lifting from a *different* source shows up as a `new` finding and a delta
 that did not fall, which is the case the count exists to catch.
@@ -810,27 +820,31 @@ re-fingerprints the corpus for tier 2 once -- roughly the same cost
 again as the tier-1 build above, paid once. See
 [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
-`scan` groups a match's `(citekey, diagonal)` -- the source position minus
-the draft position, held constant across a run, where the source position
-is global across the whole document rather than reset per page (#131) --
-and merges runs on the same diagonal within `--gap` words of each other,
-so a single edited word inside an otherwise-verbatim passage still
-reports as one run, and so does a genuine lift that spans a source page
-break: it used to report as two (or more) shorter findings, with a short
-remainder stranded alone on the far side of the break falling under
-`--min-run` and vanishing entirely; it now merges into one finding. That
-finding's `page`/`end_page` name every page an n-gram in the run actually
-*starts* on, which is usually but not always the full range: a remainder
-shorter than the index's own n-gram size has no gram starting on its
-page at all (nothing that short can start one), so it is recovered into
-the merged run's word content without moving `end_page` to cover it.
-Each finding reports whether the containing draft paragraph
-actually cites that source (`UNCITED SOURCE` if not) and whether the run
-sits inside quote delimiters -- both informational on stdout; `--write`'s
-report goes one step further and *groups* findings most-damning-first
-(long runs, then short, then quoted) so a reviewer reads the worst one
-first, though the underlying findings are the same ones `scan` produces
-for a later gate to be tuned against.
+`scan` groups a match by its `(citekey, diagonal)`. The diagonal is the
+source position minus the draft position, which holds constant across a
+run; the source position is global across the whole document rather than
+reset per page (#131). `scan` then merges runs on the same diagonal that
+sit within `--gap` words of each other.
+
+Two things survive that merge as one finding. A single edited word inside
+an otherwise-verbatim passage still reports as one run. So does a genuine
+lift spanning a source page break, which used to report as two or more
+shorter findings -- and a short remainder stranded on the far side of the
+break fell under `--min-run` and vanished entirely.
+
+A finding's `page`/`end_page` name every page an n-gram in the run
+actually *starts* on. That is usually the full range, but not always: a
+remainder shorter than the index's own n-gram size has no gram starting
+on its page, because nothing that short can start one. `scan` recovers it
+into the merged run's word content without moving `end_page` to cover it.
+
+Each finding also reports two bits: whether the containing draft
+paragraph cites that source (`UNCITED SOURCE` if not), and whether the
+run sits inside quote delimiters. Both are informational on stdout.
+`--write`'s report goes further and *groups* findings most-damning-first
+-- long runs, then short, then quoted -- so a reviewer reads the worst
+one first. The underlying findings are the same ones `scan` produces, for
+a later gate to be tuned against.
 
 **The allowlist.** `scan` also consults `content/verbatim_allowlist.toml`
 if present -- a per-host, gitignored list of acronyms, phrases,
@@ -858,12 +872,13 @@ for PDF) on `PATH`, but no Python package from the enrich group.
 Citations render IEEE-style -- `[1]`, and `[3]–[6]` for a consecutive run
 -- over a numbered bibliography of complete entries, via the CSL style
 vendored at `assets/csl/ieee.csl`. In the copy handed to pandoc, the
-draft's own References section (if `python -m src.draft references` added one)
-keeps its heading but has its entries replaced by citeproc's placement
-anchor, so the output carries exactly one bibliography -- citeproc's,
-the one that can be numbered consistently with the inline markers --
-under the draft's own heading, including a numbered one like
-`## 6. References`. The draft file itself is never modified.
+draft's own References section -- if `python -m src.draft references`
+added one -- keeps its heading, but its entries are replaced by
+citeproc's placement anchor. The output therefore carries exactly one
+bibliography, citeproc's, which is the one that can be numbered
+consistently with the inline markers. It appears under the draft's own
+heading, including a numbered heading like `## 6. References`. The draft
+file itself is never modified.
 
 **Where the output lands.** `<slug>` may itself contain directories --
 `content/drafts/dt-for-engineers/survey.md`, or
@@ -1060,7 +1075,7 @@ $ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.m
       python -m src.enrich --stages embed
 ```
 
-That is a tier, not a ladder ([LADDERS.md](LADDERS.md)): `embed` writes a
+That is a tier, not a ladder ([LADDERS.md](LADDERS.md)). `embed` writes a
 Chroma collection carrying no record of how much of the corpus it covers,
 and every skill that reads it decides by asking only whether
 `content/chroma/` exists -- so a collection holding eleven papers would
@@ -1175,12 +1190,12 @@ already parsed.
 carries almost every warning, per-document progress line, and the run
 summary, at the level `[logging].level` sets -- a cron or systemd
 wrapper around these commands doesn't need its own `>> some.log 2>&1` to
-get a durable record of those. Three messages are the exception and stay
-terminal-only by design: a docling worker's GPU-OOM fallback (runs in a
-child process with no route back to the file), the Ctrl+C interrupt
-notice (runs in a signal handler, deliberately kept to a bare `print`),
-and the "another run already holds the lock" refusal (the losing side of
-a race must not touch a file the winner is writing). All three are rare
+get a durable record of those. Three messages stay terminal-only by
+design. A docling worker's GPU-OOM fallback runs in a child process with
+no route back to the file. The Ctrl+C interrupt notice runs in a signal
+handler, deliberately kept to a bare `print`. The "another run already
+holds the lock" refusal comes from the losing side of a race, which must
+not touch a file the winner is writing. All three are rare
 and none is the kind of thing a schedule needs to recover from
 unattended.
 

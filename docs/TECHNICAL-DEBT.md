@@ -159,12 +159,13 @@ the finding rather than the total:
 
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
 the second-largest module in the repository with no annotations at all,
-against three siblings that were effectively complete -- the
+against three siblings that were effectively complete. That breaks the
 [Be consistent](CODE-STANDARDS.md#understandability) rule, which that
-document calls "the highest-value one in this list." Annotated in full
-while #133 (the skip-gram detection tier) was already touching every
-function in the file, no behaviour change, per [What to take
-first](#what-to-take-first) item 4 below. `runlock.py` and `sync.py`
+document calls "the highest-value one in this list."
+
+It was annotated in full while #133, the skip-gram detection tier, was
+already touching every function in the file. No behaviour changed, per
+[What to take first](#what-to-take-first) item 4 below. `runlock.py` and `sync.py`
 remain the two real partial modules; nothing here claims those are
 resolved.
 
@@ -488,12 +489,13 @@ mechanism is worth stating precisely, because the obvious reading --
 cases.
 
 - **`test_removed_command_scan.py`** allowlists the three files that may
-  legitimately name the command removed in 5.2.0 (the direct `src.sync`
-  entry point, since replaced by `python -m src.corpus sync`) --
-  spelled indirectly here, because that scan reads this file too and is
-  right to: `src/sync.py` (the
-  refusal), `tests/test_corpus_entrypoint.py` (which runs it), and
-  itself. `_ALLOWED` holds **exact relative paths**, so the same file at
+  legitimately name the command removed in 5.2.0 -- the direct
+  `src.sync` entry point, since replaced by `python -m src.corpus sync`.
+  It is spelled indirectly here, because that scan reads this file too
+  and is right to. The three are `src/sync.py` (the refusal),
+  `tests/test_corpus_entrypoint.py` (which runs it), and the scan itself.
+
+  `_ALLOWED` holds **exact relative paths**, so the same file at
   `.claude/worktrees/<name>/src/sync.py` is a different path, misses the
   allowlist, and is reported. The copy is not stale; it is the same
   refusal machinery, at a path the allowlist cannot name.
@@ -581,12 +583,14 @@ a run happens where one is expected.
 
 **Adopted and enforced in 5.8.0.** `ci.yml`'s `lint` job runs
 `pylint --rcfile=.pylintrc src scripts` at a binary zero-messages bar.
-The residue below is fixed rather than suppressed: 3.1's encoding sites
-first (the whole item, not pylint's visible seven), then the long lines,
-then the two context-manager names into `good-names` and the four
-miscellaneous findings. The categories listed as decisions are now in
-`.pylintrc`'s own `disable=`, each with its reason beside it, so this
-table and that file cannot drift into disagreeing.
+The residue below is fixed rather than suppressed, in this order: 3.1's
+encoding sites first -- the whole item, not pylint's visible seven --
+then the long lines, then the two context-manager names into `good-names`
+and the four miscellaneous findings.
+
+The categories listed as decisions now live in `.pylintrc`'s own
+`disable=`, each with its reason beside it, so this table and that file
+cannot drift into disagreeing.
 
 Two consequences worth carrying forward. Wrapping the long lines **grew
 ten registered files** -- `line-too-long` and the C2 length ratchet pull
@@ -617,18 +621,22 @@ already decided against leaves **44 real findings**:
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
 The categories disabled, and why, since each is a decision rather than an
-oversight: `import-outside-toplevel` (24 -- the documented lazy-import
-pattern that keeps tier-1 modules stdlib-only at import time),
-`missing-function-docstring`/`missing-class-docstring` (71 -- this
-project requires *why*-comments, and a docstring on every small private
-helper is the "obvious noise" the same checklist bans),
-`too-many-*` (35 -- C1/C2 already measure size, more strictly, and two
-detectors for one rule is the two-debt-lists problem build-order item 2
-names), `duplicate-code` (4 -- two are deliberate and documented, one is
-now [3.7](#37-the-bibtex-author-name-grammar-exists-twice)),
-`broad-exception-caught` (10 -- each carries a stated cause),
-`protected-access`, `global-statement`, `unused-argument`,
-`attribute-defined-outside-init`, `redefined-outer-name`, `cyclic-import`.
+oversight:
+
+- `import-outside-toplevel` (24) -- the documented lazy-import pattern
+  that keeps tier-1 modules stdlib-only at import time.
+- `missing-function-docstring`/`missing-class-docstring` (71) -- this
+  project requires *why*-comments, and a docstring on every small private
+  helper is the "obvious noise" the same checklist bans.
+- `too-many-*` (35) -- C1/C2 already measure size, more strictly, and two
+  detectors for one rule is the two-debt-lists problem build-order item 2
+  names.
+- `duplicate-code` (4) -- two are deliberate and documented, one is now
+  [3.7](#37-the-bibtex-author-name-grammar-exists-twice).
+- `broad-exception-caught` (10) -- each carries a stated cause.
+- `protected-access`, `global-statement`, `unused-argument`,
+  `attribute-defined-outside-init`, `redefined-outer-name` and
+  `cyclic-import`.
 
 **Why it was not wired into CI in the change that measured it.** Two of
 the four residue rows are the two things that must not be papered over.
