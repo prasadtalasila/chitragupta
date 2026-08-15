@@ -45,7 +45,16 @@ HOOKS = REPO_ROOT / ".claude" / "hooks"
 
 
 def load(name: str):
-    """A fresh module object, so one test's monkeypatching cannot leak."""
+    """A fresh module object, so one test's monkeypatching cannot leak.
+
+    `.claude/hooks` goes on `sys.path` first because a hook is run by
+    absolute path in production, which puts its own directory there --
+    that is what makes `import draft_target` resolve with no path
+    manipulation inside the hook. Loading by spec does not reproduce it,
+    so the test harness has to.
+    """
+    if str(HOOKS) not in sys.path:
+        sys.path.insert(0, str(HOOKS))
     spec = importlib.util.spec_from_file_location(name, HOOKS / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -73,16 +82,23 @@ def emitted(capsys) -> dict | None:
 
 
 class TestCitationGateHookModule:
-    """`citation_gate_hook.main()`, branch by branch. The hook derives its
-    repo root from the module's own `__file__`, which is a module global
-    read at call time -- so pointing it at a temporary tree is enough to
-    make it gate that tree instead of this checkout."""
+    """`citation_gate_hook.main()`, branch by branch.
+
+    Since the draft-detection branches moved to `draft_target.py` this
+    class covers what is left: the gate call itself and the block. The
+    detection cases live in `tests/test_draft_target.py`, and are reached
+    here only through the two that survive at this level -- a payload that
+    names no draft, and one that does."""
 
     @pytest.fixture
     def rooted(self, gate, tmp_path, monkeypatch):
-        """The hook, believing it lives in `tmp_path/.claude/hooks/`."""
-        monkeypatch.setattr(gate, "__file__",
-                            str(tmp_path / ".claude" / "hooks" / "citation_gate_hook.py"))
+        """The hook, believing it lives in `tmp_path/.claude/hooks/`.
+
+        The root now comes from `draft_target.REPO_ROOT`, so that is what
+        moves. Both the hook and the helper read it at call time, which is
+        what makes one patch enough.
+        """
+        monkeypatch.setattr(gate.draft_target, "REPO_ROOT", tmp_path)
         (tmp_path / "content" / "drafts").mkdir(parents=True)
         return gate, tmp_path
 
