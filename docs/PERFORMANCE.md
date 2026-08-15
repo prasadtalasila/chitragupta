@@ -301,7 +301,7 @@ Timing each run's phases separates the candidates:
   slower because the pool got bigger.)
 - **The CPU is heading for saturation**, 56% to 78% across the same
   range. Read alone, "70% busy at 32" suggests headroom; read against 56%
-  at 24 and 78% at 48, it is clearly *becoming* the limit.
+  at 24 and 78% at 48, it is *becoming* the limit.
 - **The long-document tail is not the story** — 5-8s throughout, under 4%.
 
 Neither cost alone explains the plateau; together they account for it,

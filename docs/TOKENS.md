@@ -263,7 +263,7 @@ The third row is the underrated one. Today a long run that hits
 compaction either loses packet detail silently or pays six interviewer
 dispatches to get it back. With the packets on disk, compaction becomes a
 cheap operation instead of a lossy one -- which is a *resident*-pool
-effect, just an indirect one.
+effect, but an indirect one.
 
 ### The one way to cut residency, and what it would cost
 
@@ -694,7 +694,7 @@ measurement discrepancy: Phase 5's `brief` replaces detailed evidence with
 a one-line file reference, discarding nearly all of the payload from the
 orchestrator's side. Step 2a's boundary discards nothing -- the packet
 still carries a `relevance:`/`support:` pair for every kept citekey and a
-reason for every rejected one, the full judgment, just restructured
+reason for every rejected one, the full judgment, restructured
 rather than thrown away. Rejecting harder wouldn't close the gap either,
 per Example 1's own point: the tokens are spent at retrieval regardless
 of what survives judging.

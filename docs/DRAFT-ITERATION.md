@@ -119,7 +119,7 @@ renders at all: it matches them by their path relative to
 | `revisions.md` | append-only log of what changed and why | **nowhere** |
 | `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
 
-Two of those were already specified and simply weren't durable. The
+Two of those were already specified but never made durable. The
 two that were missing entirely are the two that matter most:
 
 - **`rejected.md`.** Without it, the next revision re-searches and
@@ -303,7 +303,7 @@ prose that they write nothing.
 **The second effect, which is not about tokens.** Until now, an
 orchestrator that moved past Phase 2 without transcribing lost six
 packets' worth of judgment and nothing reported it -- the draft looked
-finished and the record was simply absent. A run that *dispatches* from
+finished and the record was absent. A run that *dispatches* from
 the file cannot skip the file: `brief` exits 1 when nothing resolves and
 names every citekey with no block, and `--check` lets the orchestrator
 find that out before four writers are already running. Silent loss became

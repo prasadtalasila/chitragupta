@@ -35,7 +35,7 @@ retrieve is something a draft may cite -- see
 [`src/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/corpus.py)
 and AGENTS.md's citekey
 invariant. (Earlier versions did have such a directory, `papers/pdfs/`;
-it is gone. A PDF there is now simply ignored.)
+it is gone. A PDF there is now ignored.)
 
 To add more papers later: add the entry in Zotero, re-export the same way
 (re-check **Export Files** so new attachments are included), then re-run

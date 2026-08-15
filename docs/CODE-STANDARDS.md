@@ -82,7 +82,7 @@ and every one of those edits passes its own re-check.
 
 So: a small number of binary rules with a detector and a register, and a
 larger number of judgement rules with neither. The judgement rules are
-not weaker -- they are what review is for. They are simply not things a
+not weaker -- they are what review is for. They are not things a
 machine may drive to zero.
 
 **The loop stays open.** This document borrows AUTO-IMPROVEMENT.md's

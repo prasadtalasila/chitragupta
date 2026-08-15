@@ -139,7 +139,7 @@ rules actually require. But they are a suppression list for a tool that
 cannot read them, which means it has never been checked that the
 suppressed set is the *right* set. Build-order item 2 anticipates exactly
 this ("the register above and ruff's ignore list are two debt lists; they
-should be one") -- it just assumes ruff arrives first. It has not.
+should be one") -- it assumes ruff arrives first. It has not.
 
 ### Type annotations: 394 of 433
 
@@ -562,7 +562,7 @@ comment carries "Please upload report for BASE" and shows `?` in the base
 column, and the project dashboard has nothing to display. It reads as
 "Codecov is broken" or "coverage is zero"; in fact the uploads work
 perfectly -- the PR reports parse cleanly at 100.00% across 28 files,
-with both matrix flags separated. There was simply never a baseline to
+with both matrix flags separated. There was never a baseline to
 compare against, because the run that would have produced one never
 happened.
 
@@ -869,7 +869,7 @@ A second, quieter defect: `squash_merge_commit_title` is
 `COMMIT_OR_PR_TITLE`, so GitHub uses the PR title on a multi-commit
 branch and the *commit's* title on a single-commit one.
 `DEVELOPER-AGENTS.md` asserted the PR title unconditionally, which was
-simply wrong for the one-commit case -- corrected in this change.
+wrong for the one-commit case -- corrected in this change.
 
 **The fix is three settings**, recorded in
 [DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#merging)

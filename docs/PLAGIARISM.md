@@ -234,7 +234,7 @@ paragraphs = [
 ```
 
 **Suppression is mask-and-remeasure, not exact-match.** `scan` cannot
-simply drop a finding whose text equals an allowlisted phrase: the
+drop a finding whose text equals an allowlisted phrase: the
 gap-tolerant merge above means the same boilerplate phrase produces a
 different-length fragment depending on what non-matching prose happens
 to sit next to it, so exact equality would rarely fire twice, and it

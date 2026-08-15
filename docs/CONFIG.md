@@ -238,7 +238,7 @@ The values in full:
 - **`long_word_chars`** / **`min_tokens`** -- any number; the fractional
   part is truncated.
 - **`long_word_ratio`** -- a fraction between 0.0 and 1.0. The range is
-  not enforced, so a value above 1.0 loads fine and simply disables the
+  not enforced, so a value above 1.0 loads fine and disables the
   warning, since no document can exceed it.
 
 ### `[logging]` -- the pipeline log file

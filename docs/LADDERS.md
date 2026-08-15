@@ -345,7 +345,7 @@ also used by
 | 3 | `pdftotext -layout` into a temp file | for a bib item the corpus layer has not parsed -- a parse that failed, or one not re-run since the PDF was attached |
 
 This ladder is why the enrichment layer's `embed` stage does not *require*
-its `docling` stage: running `--stages embed` alone works, just on
+its `docling` stage: running `--stages embed` alone works, but on
 plainer text.
 
 **What the bottom rungs cost you.** Less than in ladder 1, and for a

@@ -73,7 +73,7 @@ point.
 | `python -m src.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
 | `python -m src.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
 | `python -m src.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
-| *nothing* | a sentence that is simply badly written | -- | human, by hand |
+| *nothing* | a badly written sentence | -- | human, by hand |
 
 Two things stand out. **Most of the surface is still text only.** When
 this was written, `--json` on `dossier status --all` was the single
