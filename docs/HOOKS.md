@@ -64,16 +64,18 @@ Crashing the session to report it would be the larger harm.
 Both upstream collections this document borrows from encode the
 fail-silent half explicitly, and both are right to:
 
-```
+```bat
 REM No bash found - exit silently rather than error
 REM (plugin still works, just without SessionStart context injection)
 exit /b 0
 ```
+
 -- `obra/superpowers`, `hooks/run-hook.cmd`
 
-```
+```bash
 [ -f "$SCRIPT" ] && bash "$SCRIPT" || true
 ```
+
 -- `addyosmani/agent-skills`, `hooks/hooks.json`
 
 Neither may be applied to the citation gate.
@@ -85,7 +87,7 @@ question is already answered:
 
 | | **Gate class** | **Advisory class** |
 |---|---|---|
-| Members | `citation_gate_hook.py` | `style_check_hook.py` (#185), the session preflight |
+| Members | `citation_gate_hook.py` | `session_start_hook.py`, `style_check_hook.py` (#185) |
 | What it protects | the citekey invariant | a recorded preference, or the operator's attention |
 | May emit a blocking decision | yes -- the only one that may | never |
 | On its own internal failure | must be detectable | exit 0, say nothing |
@@ -194,7 +196,7 @@ Both `PostToolUse` hooks answer the same three questions in the same order
 back?* -- and differ only in the middle one. The design that serves both is
 three layers with a rule about what may live in each.
 
-```
+```text
 .claude/
 ├── settings.json               the launcher: one exec-form entry per hook
 └── hooks/
