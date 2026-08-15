@@ -1,0 +1,10 @@
+# Acronyms so common that expanding them insults the reader. Project-
+# normative rather than a user's own domain vocabulary -- see README.md
+# in this directory. A user's own file, pointed at by `[style].acronyms`
+# in config.toml, is merged over this one, not instead of it.
+
+PDF = "Portable Document Format"
+CPU = "Central Processing Unit"
+URL = "Uniform Resource Locator"
+API = "Application Programming Interface"
+HTML = "HyperText Markup Language"

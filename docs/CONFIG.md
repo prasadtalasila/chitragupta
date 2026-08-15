@@ -20,7 +20,7 @@ this document can stay a reference rather than an argument.
 - [Every setting](#every-setting)
   - [Paths](#paths)
   - [`[render]` -- citation style](#render----citation-style)
-  - [`[style]` -- prose conformance](#style----prose-conformance)
+  - [`[style]` -- prose conformance and the acronym vocabulary](#style----prose-conformance-and-the-acronym-vocabulary)
   - [`[parser]` -- PDF text extraction](#parser----pdf-text-extraction)
   - [`[logging]` -- the pipeline log file](#logging----the-pipeline-log-file)
   - [`[provenance]` -- citation-support bands](#provenance----citation-support-bands)
@@ -174,15 +174,20 @@ citation gate.
   unmodified. A style that already sets `collapse` itself is never
   overridden. See `assets/csl/README.md`.
 
-### `[style]` -- prose conformance
+### `[style]` -- prose conformance and the acronym vocabulary
 
-Used only by `python -m src.draft style`, which is a **review aid**: it
-exits 0 whatever it finds, and nothing in this pipeline blocks on it.
+`vale_config` and `language` are used only by `python -m src.draft
+style`, which is a **review aid**: it exits 0 whatever it finds, and
+nothing in this pipeline blocks on it. `acronyms`, below, is the one key
+in this section that command does not read -- it is read directly by the
+five genre-writing skills at drafting time (`docs/GENRE.md`), not by
+`src.draft style`.
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
 | `vale_config` | `VALE_CONFIG` | path | `assets/vale/vale.ini` |
 | `language` | `STYLE_LANGUAGE` | BCP-47 tag | unset |
+| `acronyms` | `ACRONYMS` | path | `assets/style/acronyms.toml` |
 
 - **`vale_config`** -- the Vale configuration and rule package a draft's
   prose is checked against. Vendored for the same two reasons `csl` is:
@@ -210,6 +215,15 @@ exits 0 whatever it finds, and nothing in this pipeline blocks on it.
   measures the draft both ways and **proposes** a tag with the
   `dossier set-language` command that would record it -- it never writes
   one itself.
+- **`acronyms`** -- a genre skill's acronym vocabulary at step 0, read
+  alongside the dialect. `assets/style/acronyms.toml` is the vendored
+  floor (`PDF`, `CPU`, `URL`, `API`, `HTML`) and always loads; point this
+  at your own file to merge your field's vocabulary over it -- your
+  definition wins if you redefine one of the vendored five, and every
+  vendored entry you don't redefine still applies. `assets/style/README.md`
+  has the file's shape and provenance, and `python -m src.draft dossier
+  acronyms-suggest <draft>` proposes new entries for it from a draft's
+  glossary without ever writing to it.
 
 ### `[parser]` -- PDF text extraction
 

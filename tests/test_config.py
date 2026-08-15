@@ -118,6 +118,14 @@ class TestRealConfigToml:
     def test_citations_collapse_by_default(self):
         assert config.RENDER_COLLAPSE_CITATIONS is True
 
+    def test_acronyms_defaults_to_the_vendored_toml(self):
+        assert config.ACRONYMS_PATH == config.ACRONYMS_DEFAULT_PATH
+        assert config.ACRONYMS_DEFAULT_PATH == (
+            config.REPO_ROOT / "assets" / "style" / "acronyms.toml"
+        )
+        # Vendored, not fetched: the loader has to work with no network.
+        assert config.ACRONYMS_DEFAULT_PATH.is_file()
+
 
 class TestGetWorkers:
     """[parser].workers is the one setting that isn't a plain str/float/

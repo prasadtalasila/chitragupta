@@ -81,9 +81,12 @@ csl = "assets/csl/ieee.csl"
 collapse_citations = true
 
 [style]
-# What `python -m src.draft style` checks a draft's prose against. That
-# command is a review aid: it exits 0 whatever it finds, and nothing in
-# this pipeline blocks on it (docs/ARCHITECTURE.md, "Layer 4").
+# `vale_config` and `language` are what `python -m src.draft style`
+# checks a draft's prose against -- a review aid: it exits 0 whatever it
+# finds, and nothing in this pipeline blocks on it
+# (docs/ARCHITECTURE.md, "Layer 4"). `acronyms`, below, is read by the
+# five genre-writing skills at drafting time instead, not by this
+# command.
 
 # The Vale configuration and rule package. Vendored, for the reason the
 # CSL style above is: a style fetched at run time is not the style that
@@ -113,6 +116,14 @@ vale_config = "assets/vale/vale.ini"
 # what it looks like instead, with the command to record it.
 #                                                          Default: unset
 # language = "en-GB"
+
+# The acronym vocabulary a genre skill reads at step 0: PDF, CPU, URL and
+# similar are vendored (assets/style/acronyms.toml, always loaded);
+# point this at your own file to add your field's vocabulary on top of
+# it, merged rather than replacing it -- your domain acronyms are your
+# data, not this project's. See assets/style/README.md.
+#                                          Default: assets/style/acronyms.toml
+# acronyms = "assets/style/acronyms.toml"
 
 [parser]
 # Which backend `python -m src.corpus sync` uses to turn a PDF into
