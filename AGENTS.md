@@ -156,10 +156,11 @@ enrichment layer is optional and nothing above it needs it.
 
   `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus one,
   and the complement of the citation gate: the gate proves every citekey
-  is real, the scan reports what wording came along with them. It is the
-  exact detection tier, and the paraphrase tiers beside it are unbuilt,
-  so a clean run is not a clean bill of health --
-  [docs/PLAGIARISM.md](docs/PLAGIARISM.md). Its `recheck` mode compares a
+  is real, the scan reports what wording came along with them. It runs
+  three detection tiers, and the one that sees a genuine restatement
+  needs an optional stack a checkout may not have -- so a clean run is
+  not a clean bill of health, and the scan names any tier that did not
+  run. [docs/PLAGIARISM.md](docs/PLAGIARISM.md). Its `recheck` mode compares a
   re-scan against a payload `scan --write` filed earlier, so "is this
   finding gone, and did fixing it break anything else" is arithmetic
   rather than two reports read side by side. Advisory like the rest: it
