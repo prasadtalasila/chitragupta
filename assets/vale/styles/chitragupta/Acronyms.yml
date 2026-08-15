@@ -10,6 +10,30 @@ second: '(?:\b[A-Z][a-z]+[\s-]){1,5}\(([A-Z]{2,6})\)'
 # drafts: "Part II" and "Chapter III" are not acronyms. Listed rather
 # than excluded by pattern, because III and IV are also plausible
 # initialisms and a pattern would hide a real one.
+#
+# The three groups after them were added when this rule was first run
+# over `docs/` rather than over a draft: 536 findings across 96 tokens,
+# which is why CI has never linted this repository's own prose. They are
+# grouped by *why* each is not a finding, because the three want
+# different things if one is ever revisited:
+#
+#   1. Not acronyms at all -- literal values this project's own config,
+#      log levels and status strings use (`INFO`, `NEVER`, `FAILED`).
+#      They read as prose here because they are quoted inline in a
+#      sentence rather than in a code span.
+#   2. Document names -- `README`, `SKILL`, `CODE`. The `.md` form is
+#      handled in vale.ini's TokenIgnores; these are the bare stem, as
+#      in "every SKILL.md" or "the CODE-STANDARDS register".
+#   3. Acronyms this document set's reader already knows. The rule
+#      exists to catch jargon a reader would have to look up, and
+#      `CPU`/`JSON`/`URL` were already exempt on exactly that ground --
+#      this extends the same judgement to the rest of the general
+#      computing vocabulary these documents use.
+#
+# Deliberately still reported, so the rule keeps doing its job: domain
+# jargon a reader plausibly would look up -- GROBID, TEI, CJK, UMAP,
+# ONNX, SBERT, IDF, TATR, CSL, BCP, CPS, and the venue and project names
+# (PAN, NAACL, OVAL, STORM, MOSS, BAAI, TWE, MTA, LPT).
 exceptions:
   - I
   - II
@@ -39,3 +63,71 @@ exceptions:
   - UTC
   - XML
   - YAML
+  # 1. Literal values, not acronyms
+  - BASE
+  - FAILED
+  - FOUND
+  - INFO
+  - NEVER
+  - "NO"
+  - STOP
+  - TODO
+  # 2. Document names, bare stem
+  - CODE
+  - DESIGN
+  - DRAFT
+  - README
+  - REVIEW
+  - SKILL
+  # 3. General computing vocabulary this reader knows
+  - AI
+  - ASCII
+  - CI
+  - CLI
+  - CUDA
+  - DPI
+  - DRY
+  - ETL
+  - GB
+  - GIL
+  - GUI
+  - IBM
+  - ID
+  - "IN"
+  - ISO
+  - JDK
+  - JSONL
+  - KB
+  - LLM
+  - MB
+  - MIT
+  - NN
+  - NVIDIA
+  - OCR
+  - OOM
+  - OS
+  - PATH
+  - PEP
+  - PID
+  - POSIX
+  - PR
+  - SIGINT
+  - SOLID
+  - SVG
+  - TOML
+  - TTL
+  - UI
+  - US
+  - UTF
+  - VRAM
+  # Creative Commons licence components, which appear as bare initials
+  # in the attribution sections (CC-BY, CC-BY-SA, CC-BY-NC).
+  - BY
+  - CC
+  - NC
+  - SA
+  - SM
+  # Metadata and citation identifiers
+  - ACM
+  - DOI
+  - TF
