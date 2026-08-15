@@ -491,9 +491,15 @@ The tests worth having are the negative ones:
 - a checker crash still exits 0;
 - for an advisory hook, a findings payload never emits a blocking decision;
 - **stdout parses as JSON**, because that failure is otherwise invisible;
-- every shape a settings file can arrive in, since a preflight that raises
-  on one of them reports nothing at all -- a `hooks` key that was a string
-  rather than a mapping crashed `launcher_faults` until a test found it.
+- every shape a settings file can arrive in. This one is worth spelling
+  out, because it is the failure the preflight is least able to report: a
+  raise anywhere in reading that file reaches the catch-all that keeps a
+  broken preflight from breaking a session, so the *whole* report goes
+  silent -- the corpus stage and the gate check with it -- over a settings
+  file it merely found odd. Five shapes did exactly that before they were
+  fixed: a `hooks` key that was a string, an event holding a mapping
+  instead of a list, an entry or hook that was a bare string, a
+  whitespace-only `command`, and an `args` element that was not a string.
 
 Two limits to state plainly rather than paper over. First, **no test here
 exercises the real `.claude/settings.json`** -- a hook that never spawns

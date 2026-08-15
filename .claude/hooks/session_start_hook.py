@@ -55,14 +55,30 @@ def launcher_faults() -> list[str]:
         events = json.loads((REPO / ".claude" / "settings.json").read_text())["hooks"]
     except (OSError, ValueError, KeyError, TypeError):
         return []
-    if not isinstance(events, dict):
-        return []  # a "hooks" key of the wrong shape is unusable, not a fault
     faults = []
-    for entries in events.values():
-        for entry in entries:
-            for hook in entry.get("hooks", []):
-                faults.extend(_launcher_fault(hook))
+    for entries in _items(events):
+        for entry in _items(entries):
+            for hook in _items(entry.get("hooks") if isinstance(entry, dict) else None):
+                if isinstance(hook, dict):
+                    faults.extend(_launcher_fault(hook))
     return faults
+
+
+def _items(value) -> list:
+    """Whatever `value` holds, as a list -- and nothing at all if it is the
+    wrong shape.
+
+    Every level of a settings file is checked through this, because at each
+    one the shape is the harness's to define and not this hook's to assume.
+    A wrong shape anywhere used to raise, and since `main` swallows
+    everything to keep a broken preflight from breaking a session, the
+    result was the whole report going silent -- the corpus stage and the
+    gate check with it. Reporting nothing because a settings file is odd is
+    the failure this hook exists to notice in other hooks.
+    """
+    if isinstance(value, dict):
+        return list(value.values())
+    return list(value) if isinstance(value, list) else []
 
 
 def _launcher_fault(hook: dict) -> list[str]:
@@ -74,11 +90,12 @@ def _launcher_fault(hook: dict) -> list[str]:
     shell is PowerShell on a Windows host without Git Bash -- where that
     syntax names an undefined variable and expands to nothing.
     """
-    command = hook.get("command", "")
-    if not command:
-        return []
+    command = hook.get("command")
+    if not isinstance(command, str) or not command.split():
+        return []  # nothing names a program here, so nothing can fail to start
+    args = [a for a in _items(hook.get("args")) if isinstance(a, str)]
     program = command if "args" in hook else command.split()[0]
-    text = " ".join([command, *hook.get("args", [])])
+    text = " ".join([command, *args])
     faults = []
     if not shutil.which(program):
         faults.append(f"`{program}` is not on PATH, so a hook cannot start.")
@@ -161,7 +178,10 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except SystemExit:
-        raise
-    except BaseException as exc:  # a broken preflight is never a broken session
+    # Exception, not BaseException: a broken preflight is never a broken
+    # session, but SystemExit and KeyboardInterrupt are not breakage.
+    # Catching those too would swallow this hook's own exit status and an
+    # operator's Ctrl-C alike, and would need a re-raising SystemExit
+    # clause above to undo half of itself.
+    except Exception as exc:
         raise SystemExit(0) from exc

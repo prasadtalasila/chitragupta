@@ -218,6 +218,28 @@ class TestLauncherFaults:
     def test_an_entry_with_no_command_is_skipped(self, preflight):
         assert preflight._launcher_fault({"type": "command"}) == []
 
+    @pytest.mark.parametrize("events,why", [
+        ({"PostToolUse": {"not": "a list"}}, "an event holding a mapping"),
+        ({"PostToolUse": ["a bare string"]}, "an entry that is not a mapping"),
+        ({"PostToolUse": [{"hooks": "not a list"}]}, "hooks of the wrong shape"),
+        ({"PostToolUse": [{"hooks": ["a bare string"]}]}, "a hook that is not a mapping"),
+        ({"PostToolUse": [{"hooks": [{"command": "   "}]}]}, "a whitespace-only command"),
+        ({"PostToolUse": [{"hooks": [{"command": 42}]}]}, "a command that is not a string"),
+        ({"PostToolUse": [{"hooks": [{"command": "python3", "args": [7]}]}]},
+         "an argument that is not a string"),
+        ({"PostToolUse": [{"hooks": [{"command": "python3", "args": "not a list"}]}]},
+         "args of the wrong shape"),
+    ])
+    def test_a_settings_file_of_any_shape_is_survivable(self, rooted, events, why):
+        """Every level of this file is the harness's shape to define, not
+        this hook's to assume. A raise anywhere here reaches `main`'s
+        catch-all and takes the *whole* report down with it -- the corpus
+        stage and the gate check included -- so the hook would go silent
+        over a settings file it merely found odd."""
+        hook, root = rooted
+        self.settings(root, {"hooks": events})
+        assert hook.launcher_faults() == [], why
+
 
 class TestCorpusStage:
     """`session_start_hook.corpus_stage()`: three answers, one of which is
