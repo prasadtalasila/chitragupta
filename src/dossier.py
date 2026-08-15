@@ -295,6 +295,45 @@ def recorded_corpus(dossier: Path) -> tuple[int, str] | None:
     return int(match.group(1)), match.group(2)
 
 
+# `- **Term** -- definition` bullets under a `## Glossary` heading in
+# scope.md. A forgiving parser, not a schema: #190's resolving comment
+# found a real 15-chapter book had already converged on this exact shape
+# with no format rule in force, so this reads what a genre skill's step 0
+# already writes by hand rather than imposing a new one. A line that
+# doesn't match -- a human typed it differently -- is skipped, the same
+# "degrades to unavailable rather than to an error" policy
+# docs/DRAFT-ITERATION.md states for the rest of this file.
+_GLOSSARY_HEADING = re.compile(r"^## Glossary\s*$", re.MULTILINE)
+_NEXT_HEADING = re.compile(r"^## ", re.MULTILINE)
+_GLOSSARY_TERM = re.compile(r"^-\s*\*\*(?P<term>[^*]+)\*\*\s*--\s*", re.MULTILINE)
+
+
+def glossary_terms(draft: Path) -> dict[str, str]:
+    """Recorded `term -> definition` pairs from the draft's `## Glossary`.
+
+    `{}` if there's no dossier yet, no `## Glossary` heading, or no
+    bullet in the recognised shape -- never an error.
+    """
+    scope = dossier_dir(draft) / SCOPE_MD
+    if not scope.is_file():
+        return {}
+    text = scope.read_text(encoding="utf-8")
+    heading = _GLOSSARY_HEADING.search(text)
+    if not heading:
+        return {}
+    next_heading = _NEXT_HEADING.search(text, heading.end())
+    body = text[heading.end():next_heading.start() if next_heading else len(text)]
+
+    matches = list(_GLOSSARY_TERM.finditer(body))
+    terms: dict[str, str] = {}
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        definition = body[match.end():end].strip()
+        if definition:
+            terms[match.group("term").strip()] = definition
+    return terms
+
+
 def _citekeys_in(dossier: Path, names: tuple[str, ...]) -> set[str]:
     found: set[str] = set()
     for name in names:
