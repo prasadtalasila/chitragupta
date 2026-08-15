@@ -193,14 +193,16 @@ where the plan is replaced by what the finished report actually cites.
 
 ### Why not merge the provenance JSON into the rest of the dossier
 
-`thesis-chapter-writer` and `deep-research` also write a `provenance.json`
-(and, for the thesis genre, an `evidence.json`). Both live **inside** the
-dossier directory --
-`content/dossiers/<draft path minus suffix>/provenance.json` -- for two
-reasons: they are drafting state, produced by the run that wrote the
-draft, so they belong with the rest of that run's state; and
-`dossier_dir()` mirrors the draft's path, so two drafts named `survey.md`
-in different topics do not share one file.
+`thesis-chapter-writer` and `deep-research` also write a
+`provenance.json`, and the thesis genre additionally writes an
+`evidence.json`. Both live **inside** the dossier directory, at
+`content/dossiers/<draft path minus suffix>/provenance.json`, for two
+reasons.
+
+They are drafting state, produced by the run that wrote the draft, so
+they belong with the rest of that run's state. And `dossier_dir()`
+mirrors the draft's path, so two drafts named `survey.md` in different
+topics do not share one file.
 
 They stay separate *files*, and neither replaces the other, because they
 answer different questions for different readers. The argument for that
@@ -303,16 +305,20 @@ failure here that no downstream check catches.
 **What it does not do, and cannot.** It does not reduce what the
 orchestrator is already carrying. A context is append-only between
 compactions, so six packets returned into it in Phase 2 stay there
-whether or not they are also on disk, and reading an extract back *adds*
-tokens rather than removing any. The only way to avoid that residency
-would be to let each interviewer write its own file so the long-form
-material never enters the orchestrator at all -- which would cost the
-invariant that makes a dossier trustworthy (**one writer, one record**),
-and is written down as a rejected trade in
+whether or not they are also on disk. Reading an extract back *adds*
+tokens rather than removing any.
+
+The only way to avoid that residency would be to let each interviewer
+write its own file, so the long-form material never enters the
+orchestrator at all. That would cost the invariant which makes a dossier
+trustworthy -- **one writer, one record** -- and it is written down as a
+rejected trade in
 [TOKENS.md](TOKENS.md#the-one-way-to-cut-residency-and-what-it-would-cost)
-rather than implemented here. The three subagent definitions still
-declare `tools: Bash, Read, Grep, Glob` with no `Write`, and still say in
-prose that they write nothing.
+rather than implemented here.
+
+The three subagent definitions still declare
+`tools: Bash, Read, Grep, Glob` with no `Write`, and still say in prose
+that they write nothing.
 
 **The second effect, which is not about tokens.** Until now, an
 orchestrator that moved past Phase 2 without transcribing lost six

@@ -79,10 +79,12 @@ Two consequences run through everything below.
 
 **A resident token is roughly a tenth of a fresh one, not free.** Twenty
 turns of cached residency come to `20 x 0.1` = 2x the base rate, against
-1.25x to put the material in context in the first place -- so a long run
-pays more to keep a snippet than it paid to fetch it. But any figure
-computed as `bytes x turns` overstates the bill by about six times if it
-forgets the 0.1x, which is an easy mistake to make in this direction.
+1.25x to put the material in context in the first place. A long run
+therefore pays more to keep a snippet than it paid to fetch it.
+
+But any figure computed as `bytes x turns` overstates the bill about
+sixfold if it forgets the 0.1x, which is an easy mistake to make in this
+direction.
 
 **Output is the expensive direction, at 50x a cached input token.**
 Anything the orchestrator *writes* -- a draft, a dossier entry, a
@@ -130,10 +132,12 @@ when a sub-theme comes up thin.
 The sharp part is what happens next. `reference.md` §1 sets "results kept
 per query ~ top 3" out of fifteen. **The roughly 80% that get rejected
 cost exactly what the kept ones cost, and then stay resident for the rest
-of the run anyway.** Rejecting a candidate saves no tokens at all; it only
-saves you from citing it. [REJECTION.md](REJECTION.md) is the full
-argument, including why a cheaper first read aimed at this cost was built
-and then withdrawn.
+of the run anyway.**
+
+Rejecting a candidate saves no tokens at all. It only saves you from
+citing it. [REJECTION.md](REJECTION.md) is the full argument, including
+why a cheaper first read aimed at this cost was built and then
+withdrawn.
 
 ### 2. Fan-out results held across phases
 
@@ -396,12 +400,14 @@ answers that are properties of the current code rather than intentions.
 
 **Do the later phases write the packets to disk?** No. Every write to
 `content/dossiers/` is done by the orchestrating run, in the phase that
-dispatched the subagent, before that phase closes. The subagents cannot
-write: `deep-research-interviewer`, `deep-research-writer` and
-`peer-reviewer` each declare `tools: Bash, Read, Grep, Glob` in their
-frontmatter, and each is told in prose that it writes no files and that
-anything not in its returned packet is lost when it exits. `Bash` is a
-theoretical escape hatch; nothing instructs them through it.
+dispatched the subagent, before that phase closes.
+
+The subagents cannot write. `deep-research-interviewer`,
+`deep-research-writer` and `peer-reviewer` each declare
+`tools: Bash, Read, Grep, Glob` in their frontmatter. Each is told in
+prose that it writes no files, and that anything not in its returned
+packet is lost when it exits. `Bash` is a theoretical escape hatch;
+nothing instructs them through it.
 
 The failure mode that remains is therefore **loss, not corruption**: an
 orchestrator that moves to Phase 3 without transcribing has lost six
