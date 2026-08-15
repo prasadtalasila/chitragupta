@@ -99,7 +99,13 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.coverage.run]
-source = ["src", "scripts"]
+# .claude/hooks is in scope because those two files enforce the citekey
+# invariant and report when that enforcement has stopped -- code the bar
+# should apply to at least as much as anything under src/. It only became
+# measurable once tests/test_hook_modules.py started importing them:
+# spawning a hook, which is how the harness runs it and what the other two
+# hook test files do, contributes no coverage at all.
+source = ["src", "scripts", ".claude/hooks"]
 branch = true
 omit = [
     "*/enrich/__init__.py",

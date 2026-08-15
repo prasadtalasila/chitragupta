@@ -122,9 +122,11 @@ candidate for the chapter.
    and before any retrieval, settle who this chapter is for and what they
    already know ("Audience first" above), and what it will and won't cover.
    Then create the dossier and record those decisions there:
-   ```
+
+   ```bash
    python -m src.draft dossier init content/drafts/<slug>.md --genre textbook-chapter
    ```
+
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a book
    chapter in `books/software-engineering`" means
@@ -156,16 +158,19 @@ candidate for the chapter.
    already. A student who can't tell whether they're equipped for a chapter
    will either bounce off it or waste an hour discovering they were missing
    background.
-3. **Motivation: establish the need before the mechanism.** A short section on why this topic
+3. **Motivation: establish the need before the mechanism.** A short
+   section on why this topic
    matters, pitched at an undergraduate who has not read the literature. A
    chapter that presents mechanism without ever answering "why would anyone
    need this" produces students who can follow the steps and can't transfer
    them.
    If you search the synced corpus for a motivating example, use the same
    retrieval discipline as the other skills: over-fetch
-   ```
+
+   ```bash
    python -m src.draft retrieve search "<topic>" --k 15 --log content/drafts/<slug>.md
    ```
+
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
    every call**, even here where citing is optional -- it is what a later
    `dossier status` re-asks against the corpus to say which newly synced
@@ -228,9 +233,11 @@ candidate for the chapter.
    single step here.
 9. **Map the chapter's sections.** Once the draft is saved, derive the
    dossier's `sections.md` rather than writing it by hand:
-   ```
+
+   ```bash
    python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
    ```
+
    so a later revision can find the section that owns a change without
    reading the whole chapter. It skips fenced code, so a `# Step 1`
    comment inside an example listing is neither mistaken for a heading
@@ -239,17 +246,21 @@ candidate for the chapter.
    is what a reviser navigates by either way.
 10. **Never write a citekey you didn't get from `search()`.** If you do include
     any citations, save the draft as `content/drafts/<slug>.md` and gate it:
-    ```
+
+    ```bash
     python -m src.draft gate content/drafts/<slug>.md
     ```
+
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save to
     `content/drafts/<slug>.md`.
 11. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
-    ```
+
+    ```bash
     python -m src.draft references content/drafts/<slug>.md
     ```
+
     Stdlib-only, like the citation gate -- bare `python`, no venv. Writes
     numbered IEEE-style entries from `content/ledger.sqlite`, ordered by
     first appearance so the numbers match the rendered PDF's, each keeping
@@ -265,11 +276,13 @@ candidate for the chapter.
     citations at all -- same as the gate step.
 12. **Render tex and pdf.** Once saved (and gated/referenced, if it has
     citations), also render the other three formats:
-    ```
+
+    ```bash
     python -m src.draft render content/drafts/<slug>.md --format tex
     python -m src.draft render content/drafts/<slug>.md --format pdf
     python -m src.draft render content/drafts/<slug>.md --format md
     ```
+
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
     `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic
@@ -293,9 +306,11 @@ candidate for the chapter.
     the table.
 14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
-    ```
+
+    ```bash
     python -m src.review verbatim scan content/drafts/<slug>.md
     ```
+
     It reports wording the chapter shares with **any** parsed source,
     cited or not -- including a source the citing paragraph never names,
     and reuse in the connective prose between worked examples, which

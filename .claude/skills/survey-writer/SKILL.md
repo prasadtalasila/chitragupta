@@ -17,7 +17,8 @@ layer: deterministic, safe to run unattended).
 - `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
   `sync` reads it, it is never regenerated
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
+- `src/retrieval.py` --
+  `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -102,9 +103,11 @@ collapse them for the sake of a cleaner narrative.
    including what's deliberately excluded, so a reader can tell an
    omission from an oversight. Then create the dossier and record the same
    decisions there:
-   ```
+
+   ```bash
    python -m src.draft dossier init content/drafts/<slug>.md --genre survey
    ```
+
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a survey for
    the `books/software-engineering` book" means
@@ -126,9 +129,11 @@ collapse them for the sake of a cleaner narrative.
    the ledger has moved since.
 1. **Retrieve broadly, over-fetching on purpose.** Break the requested topic
    into 2-4 sub-themes if it's broad. For each:
-   ```
+
+   ```bash
    python -m src.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<slug>.md
    ```
+
    Pull more candidates than you expect to use. This is a keyword-overlap
    ranker, not embeddings (unless `src/enrich/embed_index.py` has been built
    for this corpus) -- a high score means the query's words are in the
@@ -147,9 +152,11 @@ collapse them for the sake of a cleaner narrative.
 
    Where a snippet is not enough to decide on a source you are minded to
    keep, read more of that one document:
-   ```
+
+   ```bash
    python -m src.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
    ```
+
    Use it to be **more careful about something you are about to cite** -- not
    as a routine second pass over everything. `docs/REJECTION.md` explains why
    the reverse, a cheap screen used to reject faster, was tried and withdrawn:
@@ -217,9 +224,11 @@ collapse them for the sake of a cleaner narrative.
 8. **Map sections to citekeys.** Save the draft to
    `content/drafts/<slug>.md` first if you haven't already, then derive
    the map rather than writing it by hand:
-   ```
+
+   ```bash
    python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
    ```
+
    It joins each heading's line range to the citekeys cited inside it and
    writes the dossier's `sections.md`, so a later revision can tell which
    section owns a citation without reading the draft. Drop `--write` to
@@ -229,23 +238,27 @@ collapse them for the sake of a cleaner narrative.
    don't hand-edit the table, which is regenerated from the draft.
 9. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
    (this is the canonical, source-of-truth format), then run:
-   ```
+
+   ```bash
    python -m src.draft gate content/drafts/<slug>.md
    ```
+
    If it reports `FAIL`, fix the offending line(s) — either correct the citekey
    or remove the claim — and re-run until it reports `OK`. Never show the user
    a draft that hasn't passed.
 10. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
-    ```
+
+    ```bash
     python -m src.draft references content/drafts/<slug>.md
     ```
+
     Stdlib-only, like the citation gate — bare `python`, no venv. Writes
     numbered IEEE-style entries (`[1] J. Doe and R. Roe, "A Paper," *IEEE
     Trans. Testing*, vol. 3, pp. 1–9, 2024. \`doe_paper_2024\``) from
     `content/ledger.sqlite`, ordered by first appearance so the numbers
     match the rendered PDF's. Each entry keeps its citekey in a trailing
-    code span, so a reader can trace every `[@citekey]` marker in the body
+    code span, so a reader can trace every`[@citekey]` marker in the body
     back to an entry by that same key.
 
     Leave the body's inline citations as `[@citekey]` — do **not**
@@ -253,11 +266,13 @@ collapse them for the sake of a cleaner narrative.
     hook verify; pandoc assigns the numbers at render time.
 11. **Render tex and pdf.** Once the gate passes and the references section
     is built, also render the other three formats:
-    ```
+
+    ```bash
     python -m src.draft render content/drafts/<slug>.md --format tex
     python -m src.draft render content/drafts/<slug>.md --format pdf
     python -m src.draft render content/drafts/<slug>.md --format md
     ```
+
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
     `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic
@@ -283,9 +298,11 @@ collapse them for the sake of a cleaner narrative.
     about it will undo it.
 14. **Offer the verbatim scan.** Before presenting, offer this — don't run
     it silently, and never make it a condition of presenting:
-    ```
+
+    ```bash
     python -m src.review verbatim scan content/drafts/<slug>.md
     ```
+
     It reports wording the draft shares with **any** parsed source, cited
     or not — including a source the citing paragraph never names, and
     reuse in connective prose that cites nothing. A review aid, not a

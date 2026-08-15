@@ -55,6 +55,8 @@ def launcher_faults() -> list[str]:
         events = json.loads((REPO / ".claude" / "settings.json").read_text())["hooks"]
     except (OSError, ValueError, KeyError, TypeError):
         return []
+    if not isinstance(events, dict):
+        return []  # a "hooks" key of the wrong shape is unusable, not a fault
     faults = []
     for entries in events.values():
         for entry in entries:

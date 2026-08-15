@@ -139,7 +139,7 @@ jobs:
           set -o pipefail
           fail_under=100
           [ "$RUNNER_OS" = "Linux" ] || fail_under=95
-          poetry run python -m pytest --cov=src --cov=scripts --cov-report=term-missing \
+          poetry run python -m pytest --cov --cov-report=term-missing \
             --cov-report=xml --cov-fail-under="$fail_under" -rf | tee pytest-output.txt
 
       # Which test failed is the only actionable part of a red run.
@@ -276,7 +276,7 @@ jobs:
         run: python -m pip install pylint==4.0.7 bibtexparser==1.4.4
 
       - name: pylint
-        run: pylint --rcfile=.pylintrc src scripts
+        run: pylint --rcfile=.pylintrc src scripts .claude/hooks
 
       - uses: actions/setup-node@v4
         with:
@@ -291,8 +291,12 @@ jobs:
 
       # Same globs as .markdownlint.yaml's own "Run it with" comment, so
       # what CI checks and what a contributor runs cannot drift apart.
+      # .claude/ is in scope because its SKILL.md files are prose this
+      # project ships and a reader follows, not configuration -- and
+      # because the two fence rules that dominate the baseline there are
+      # the same ones that reached docs/ unnoticed.
       - name: markdownlint
-        run: markdownlint-cli2 "*.md" "docs/**/*.md"
+        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
 
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a

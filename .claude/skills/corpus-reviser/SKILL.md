@@ -42,7 +42,8 @@ sentence; being wrongly wide costs the tokens, and the user did not
 agree to spend them.
 
 **Read-only over the corpus layer**, exactly as everywhere else. Never
-run `python -m src.corpus sync` and never run `python -m src.enrich`: both take the
+run `python -m src.corpus sync` and never run `python -m src.enrich`: both
+take the
 pipeline's write lock and can run for tens of minutes, and they are the
 user's to run.
 

@@ -365,6 +365,7 @@ the first that supports the claim:
    replacement there is.
 3. A fresh search -- here it *is* right, unlike the candidate path,
    because a claim left unsupported is genuinely new ground:
+
    ```bash
    python -m src.draft retrieve search "<the claim>" --k 15 --log content/drafts/<path>
    ```
@@ -425,7 +426,7 @@ Then two things specific to this mode.
 from the report's `current` field -- it is the record that this draft was
 re-grounded against that corpus:
 
-```
+```text
 - corpus: 503 citekeys, digest `f6e5d4c3b2a1`
 ```
 

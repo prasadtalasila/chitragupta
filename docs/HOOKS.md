@@ -445,21 +445,55 @@ it. That is precisely what the session preflight would check live.
 
 ## Testing a hook
 
-Hook tests live in `tests/` and run under pytest with the rest of the
-suite, but **`.claude/` is outside `[tool.coverage.run].source`**, which is
-`src` and `scripts`. A hook is a script the harness runs, not a module the
-suite imports, so its tests contribute nothing to the 100% bar and have to
-earn their keep behaviourally instead -- they spawn the real hook as a
-subprocess and read what it writes.
-`tests/test_citation_gate_hook.py` and `tests/test_session_start_hook.py`
-are the two models to copy. The tests worth having are the negative ones:
+Hook tests live in `tests/`, run under pytest with the rest of the suite,
+and **`.claude/hooks` is inside `[tool.coverage.run].source`**, so the same
+100% line-and-branch bar applies to a hook as to anything under `src/`.
+Given what these two files enforce, a lower bar for them than for the code
+they call would be the wrong way round.
+
+Getting there needs both halves of a deliberate split, because a hook is
+run by the harness as `python <path>` and **a spawned process contributes
+no coverage**:
+
+| | subprocess tests | module tests |
+|---|---|---|
+| Files | `test_citation_gate_hook.py`, `test_session_start_hook.py` | `test_hook_modules.py` |
+| Run the hook as | the harness does | an imported module |
+| Prove | the stdin/stdout contract | every branch |
+| Contribute coverage | no | yes |
+
+Neither half is redundant: a refactor that broke the stdin envelope would
+pass the module tests and fail the subprocess ones. The numbers behind
+this, measured before the split existed: 22 passing subprocess tests left
+`session_start_hook.py` at **0.00%**, while `citation_gate_hook.py` sat at
+an accidental 76.74% -- accidental because it depended on which tests
+happened to inherit pytest-cov's subprocess bootstrap rather than strip it,
+so it measured the test harness and not the hook.
+
+**Instrumenting the children instead is ruled out, on the record.**
+`tests/test_citation_gate_hook.py`'s `_IS_COVERAGE_BOOTSTRAP` documents
+what happens: coverage started in a child with a different working
+directory records statement-only data while the parent records branch
+data, and the run then dies at combine time *after* every test has passed.
+Importing the module avoids the problem rather than fighting it.
+
+One consequence worth knowing before it surprises someone: the scope is
+declared once, in `[tool.coverage.run].source`, and the suite is run with a
+bare `--cov` rather than `--cov=src --cov=scripts`. A command line naming
+the paths would silently keep measuring the old set after a new one is
+added.
+
+The tests worth having are the negative ones:
 
 - a write outside `content/drafts/` is ignored;
 - a write with a non-gated suffix is ignored;
 - each of the three malformed-stdin shapes exits 0;
 - a checker crash still exits 0;
 - for an advisory hook, a findings payload never emits a blocking decision;
-- **stdout parses as JSON**, because that failure is otherwise invisible.
+- **stdout parses as JSON**, because that failure is otherwise invisible;
+- every shape a settings file can arrive in, since a preflight that raises
+  on one of them reports nothing at all -- a `hooks` key that was a string
+  rather than a mapping crashed `launcher_faults` until a test found it.
 
 Two limits to state plainly rather than paper over. First, **no test here
 exercises the real `.claude/settings.json`** -- a hook that never spawns
