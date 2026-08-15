@@ -1,9 +1,10 @@
 # Hooks: what runs automatically, and what is allowed to block
 
-Status: **partly built, as of 5.13.0.** Written 2026-08-15. One hook exists
-(`.claude/hooks/citation_gate_hook.py`). The prose check's hook is #185,
-its launcher is not portable (#197), and the session preflight described
-below is not yet proposed as an issue.
+Status: **partly built, as of 5.14.0.** Written 2026-08-15. Two hooks exist
+-- `citation_gate_hook.py` and `session_start_hook.py` -- and both launch
+in exec form. The prose check's hook is #185. #197 stays open for its
+second hazard only, the interpreter name, now that the placeholder half is
+fixed and the preflight reports a launcher that cannot start.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is
@@ -112,7 +113,7 @@ guarantees anything about what the agent then does.
 |---|---|---|---|---|
 | `PostToolUse` | `Write\|Edit` | `citation_gate_hook.py` | gate | built |
 | `PostToolUse` | `Write\|Edit` | `style_check_hook.py` | advisory | #185 |
-| `SessionStart` | -- | preflight | advisory | proposed here only |
+| `SessionStart` | `startup\|clear` | `session_start_hook.py` | advisory | built |
 
 **Two entries on one matcher, not one dispatcher.** Both `PostToolUse`
 hooks are separate processes with separate settings entries. The reason is
@@ -133,22 +134,58 @@ tested with `is_relative_to` rather than a substring match on
 
 ### The session preflight
 
-Not yet an issue; described here because it is the only available
-mitigation for the failure mode #197 is about -- a launcher that never
-starts the process, which is the first of the
-[open questions](#open-questions) below. A hook
-that never launches cannot report that it never launched, so the only way
-to notice is to check from somewhere else.
+`session_start_hook.py` exists because a hook that fails to start cannot
+report that it failed to start. The settings file still lists it, its tests
+still pass, and the citation gate silently stops enforcing anything. No
+test in this repository can catch that -- a launcher is a line in a config
+file the harness consumes, not code the suite imports -- so the only
+available detector is a second hook that looks from outside.
 
-At `SessionStart` it would verify that `config.toml` exists, that the
-ledger has rows, and that the gate hook actually blocks -- by running it
-against a known-bad fixture and confirming the blocking decision comes
-back -- then inject the result as advisory context. The motivating failures
-are real and were both hit while writing this document: a worktree with no
-`config.toml` makes `python -m src.draft gate` raise `FileNotFoundError`,
-so the gate hook emits a block on *every* draft write; and an empty ledger
-reports every citekey as unknown. Neither is visible until a drafting
-session is already underway.
+It makes three checks, of which **only the first two are faults**:
+
+| Checked | How | Verdict |
+|---|---|---|
+| Can each registered hook's launcher start? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged | fault |
+| Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
+| Has the corpus been synced? | `python -m src.corpus ledger` | **stage** |
+| all three fine | -- | says nothing at all |
+
+Note the inversion in the second: the alarm is the bad probe *passing*.
+
+#### Why a pre-sync corpus is a stage and not a fault
+
+This is the design decision the hook turns on, and the naive version gets
+it wrong. The normal sequence is clone -> `config.toml` ->
+`python -m src.corpus sync` -> drafting. A user who starts a session before
+that third step has done nothing wrong; they are not there yet. A
+preflight that called an empty ledger a failure would fire on every first
+session in every clone, and would teach people to ignore the one channel
+reserved for real faults. So it is reported as a position in that sequence,
+with the command that advances it, and never as `BROKEN`.
+
+That distinction is what lets the hook run this early at all. Both fault
+checks are corpus-independent by construction:
+
+- The launcher check reads a config file and calls `shutil.which`. No
+  corpus, no interpreter beyond the one already running.
+- **A fabricated citekey is absent from an empty ledger and a full one
+  alike.** Measured before it was relied on: with no `ledger.sqlite`
+  present at all, `src.draft gate` exits 0 on a citation-free draft and
+  non-zero on a fabricated key, exactly as against a populated one.
+
+Two smaller things learned building it, both from a failing test rather
+than from reasoning. There are **two** pre-sync states, not one -- no
+ledger file, and a ledger file with no rows -- and the corpus layer prints
+a different sentence for each, so matching either one alone leaves the
+other silent; the hook matches the instruction they share instead. And a
+non-zero exit is not enough to call the gate live: a gate rejecting the
+probe for its *location* would also exit non-zero, so the probe insists on
+seeing the fabricated key in the output, or a broken gate would report as a
+working one.
+
+Cost: **126 ms** for both subprocesses, against 16 ms for a bare
+interpreter. It writes nothing under the user's `content/` and reads no
+draft of theirs.
 
 ## The shared design, in files
 
@@ -245,10 +282,14 @@ argument with no quoting, and ignores the shell entirely:
 }
 ```
 
-The interpreter name in that example is **the current one, not a settled
-one** -- it is the first of the [open questions](#open-questions) below,
-and the paragraph after next says why. Everything else in the block is the
-recommendation.
+That is not an example: it is what `.claude/settings.json` now contains,
+for both hooks. Exec form and the braced placeholder were confirmed
+working before being adopted -- the harness substituted the placeholder to
+an absolute path and the gate still returned its blocking decision on a
+fabricated citekey. The interpreter name is **the current one, not a
+settled one**: it is the first of the [open questions](#open-questions)
+below, and the paragraph after next says why. Everything else in the block
+is settled.
 
 **Brace every placeholder.** `${CLAUDE_PROJECT_DIR}` is substituted by
 Claude Code itself, into `command` and into each `args` element, before any
@@ -356,6 +397,23 @@ What that settles:
 Also observed incidentally: a `settings.json` hook change took effect
 **mid-session**, with no restart.
 
+Three further facts were measured the same way while building the
+preflight, each before it was relied on:
+
+- **Exec form works, and the harness substitutes the braced placeholder.**
+  A probe hook launched as `{"command": "python3", "args":
+  ["${CLAUDE_PROJECT_DIR}/…"]}` received the absolute path in `argv[1]`,
+  and the citation gate converted to that form still returned its blocking
+  decision on a fabricated citekey.
+- **The gate is corpus-independent in both directions.** With no
+  `ledger.sqlite` present at all, it exits 0 on a citation-free draft and
+  non-zero on a fabricated citekey. That is what makes the preflight's
+  liveness probe runnable before a first sync.
+- **`python -m src.corpus ledger` exits 0 whether the corpus is synced or
+  not**, and prints a different sentence for each of the two pre-sync
+  states. It is read-only and takes no lock, so the preflight can call it
+  at every session start without contending with anything.
+
 ### How much an advisory hook would actually say
 
 The standing worry about a per-write check is noise. Measured rather than
@@ -386,8 +444,13 @@ it. That is precisely what the session preflight would check live.
 ## Testing a hook
 
 Hook tests live in `tests/` and run under pytest with the rest of the
-suite, at the same 100% line-and-branch bar. `tests/test_citation_gate_hook.py`
-is the model to copy. The tests worth having are the negative ones:
+suite, but **`.claude/` is outside `[tool.coverage.run].source`**, which is
+`src` and `scripts`. A hook is a script the harness runs, not a module the
+suite imports, so its tests contribute nothing to the 100% bar and have to
+earn their keep behaviourally instead -- they spawn the real hook as a
+subprocess and read what it writes.
+`tests/test_citation_gate_hook.py` and `tests/test_session_start_hook.py`
+are the two models to copy. The tests worth having are the negative ones:
 
 - a write outside `content/drafts/` is ignored;
 - a write with a non-gated suffix is ignored;
@@ -397,10 +460,12 @@ is the model to copy. The tests worth having are the negative ones:
 - **stdout parses as JSON**, because that failure is otherwise invisible.
 
 Two limits to state plainly rather than paper over. First, **no test here
-exercises `.claude/settings.json`** -- the artefact under test is a config
-file the harness consumes, not code the suite imports, so the launcher is
-unverified by construction and a hook that never spawns passes every test
-in the repository. That is the gap the preflight fills. Second, hook tests
+exercises the real `.claude/settings.json`** -- a hook that never spawns
+passes every test in the repository, because nothing in the suite starts a
+hook the way the harness does. That is the gap
+`session_start_hook.py` fills, and its own tests write a settings file into
+a throwaway root rather than reading the live one, so they check the rule
+and not this repository's current answer to it. Second, hook tests
 that live outside the normal suite rot: one upstream collection ships a
 hook test asserting fields (`priority`, `message`) that its own hook no
 longer emits. Keeping these in pytest, where CI runs them, is the whole
@@ -511,6 +576,9 @@ whoever is changing a hook and wants the sources.
 4. **What an older harness does with an unrecognised `if` key.** Decides
    whether conditional spawning is safe for advisory hooks on every host or
    only on recent ones.
-5. **Whether the preflight is worth its startup cost.** It runs a gate
-   against a fixture at every session start. Cheap, but not free, and it
-   has no issue yet.
+5. **Whether a session-start message is the right register for a fault.**
+   The preflight reports once and cannot re-report: a user who runs
+   `python -m src.corpus sync` two minutes later keeps stale advice in
+   context for the rest of the session, which is why the message says so
+   in its own last line. Whether that is good enough will only be answered
+   by living with it.
