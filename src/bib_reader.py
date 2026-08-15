@@ -29,7 +29,7 @@ import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
-from src import config
+from src import bib_collections, config
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
 # Previously sync.py only ever saw a bare pdf_path of None and reported
@@ -67,6 +67,7 @@ class Reference:
     doi: str | None
     url: str | None
     fields: dict[str, str] = field(default_factory=dict)
+    collections: tuple[str, ...] = ()
     pdf_path: str | None = None
     pdf_resolution: str = PDF_NO_FILE_FIELD
 
@@ -275,6 +276,8 @@ def read_library() -> list[Reference]:
                 doi=entry.get("doi"),
                 url=entry.get("url"),
                 fields=entry,
+                collections=bib_collections.parse(
+                    entry.get(config.BIB_COLLECTIONS_FIELD)),
                 pdf_path=pdf_path,
                 pdf_resolution=pdf_resolution,
             )

@@ -28,6 +28,47 @@ general feature):
    as an error).
 5. Re-run `python -m src.corpus sync`.
 
+## Keeping your collections (optional)
+
+Zotero organises a library into collections and subcollections, and that
+tree is a judgement you have already made -- *these are the modelling
+papers*. This pipeline can use it to scope a draft's retrieval to the
+subset you curated for it, rather than to the whole library (#195):
+
+```bash
+python -m src.corpus ledger --collections               # what exists
+python -m src.corpus ledger --collection "Digital twins"
+python -m src.draft retrieve search "surrogate models" --collection "Digital twins"
+```
+
+**Zotero's own BibTeX exporter drops collection membership entirely**, so
+none of that works on a plain export -- the commands run, and nothing is
+in any collection. Keeping it needs
+[Better BibTeX](https://retorque.re/zotero-better-bibtex/):
+
+1. Install Better BibTeX and restart Zotero.
+2. **Edit -> Settings -> Better BibTeX -> Export -> Fields**, and turn on
+   **Export JabRef-specific fields**. That writes JabRef's `groups` field
+   into every entry, naming each collection the item belongs to.
+3. Export as **Better BibTeX** rather than the built-in BibTeX, with
+   **Export Files** checked as in step 2 above.
+4. Re-run `python -m src.corpus sync`.
+
+**The cost, which Better BibTeX states plainly:** that option disables its
+export cache, so exports get slower. If you do not want collections, leave
+it off -- nothing else in this pipeline reads the field.
+
+Two conventions come with `groups`, and both are JabRef's rather than
+ours. Several collections are comma-separated, and a subcollection
+arrives as its path from the root (`Digital twins > Modelling`). Asking
+for a parent selects everything beneath it, so `--collection "Digital
+twins"` also returns the modelling papers. Matching ignores case, and it
+is per-segment rather than by substring: `Modelling` will not match a
+different collection called `Modelling notes`.
+
+If your exporter writes them somewhere else, point `[bib].collections_field`
+in `config.toml` at that field instead ([CONFIG.md](CONFIG.md)).
+
 A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into to have it indexed:
 the enrichment layer's corpus is the bibliography, so anything it can

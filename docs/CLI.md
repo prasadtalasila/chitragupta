@@ -234,6 +234,8 @@ a sync is running. With no flags it prints a summary.
 | `--list` | off | List every item |
 | `--status STATUS` | -- | List only items with this status: `parsed`, `no_pdf`, `discovered`, `parse_failed` |
 | `--citekey CITEKEY` | -- | Show one item in full |
+| `--collections` | off | List every Zotero collection the corpus holds, and stop |
+| `--collection NAME` | -- | List only items in this collection, or one beneath it |
 
 ```bash
 python -m src.corpus ledger
@@ -241,7 +243,16 @@ python -m src.corpus ledger
 # python -m src.corpus ledger --status parse_failed
 # python -m src.corpus ledger --status no_pdf
 # python -m src.corpus ledger --citekey talasila_composable_2025
+# python -m src.corpus ledger --collections
+# python -m src.corpus ledger --collection "Digital twins"
 ```
+
+Collections need a Better BibTeX export with JabRef fields enabled --
+Zotero's own exporter drops them, in which case `--collections` prints
+nothing and says why. See
+[ZOTERO.md](ZOTERO.md#keeping-your-collections-optional). Asking for a
+parent collection selects everything beneath it, matching is
+case-insensitive, and it is per-segment rather than by substring.
 
 ### `python -m src.draft gate`
 
@@ -467,6 +478,13 @@ venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
 |---|---|
 | `search "<query>"` | Rank the corpus and return a snippet per candidate |
 | `evidence "<query>" --citekey KEY` | The passages of that one document that bear on the query (`--windows`, 2 by default) |
+
+`search` also takes `--collection NAME`, which restricts the ranking to a
+Zotero collection or one beneath it -- the curated-subset case from #195,
+where a chapter on modelling retrieves only from the modelling shelf.
+Scoring stays corpus-wide, so a filtered result carries the same score it
+would unfiltered; only the candidate set narrows. Needs the export
+described in [ZOTERO.md](ZOTERO.md#keeping-your-collections-optional).
 
 `evidence` is a lookup, not a stage: use it when a `search` snippet is not
 enough to judge a source you are minded to cite. Nothing is obliged to
