@@ -250,9 +250,8 @@ def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
 # *that* a run touches quote delimiters (`_run_is_quoted`, which reads
 # these spans as overlap rather than containment) is a cheap,
 # deterministic bit attached to a finding; whether that should downgrade
-# severity (a
-# legitimate page-anchored quotation vs. unmarked reuse) is Phase 2's
-# policy call, not this one's.
+# severity (a legitimate page-anchored quotation vs. unmarked reuse) is
+# Phase 2's policy call, not this one's.
 _QUOTE_SPAN_RE = re.compile(r'["“]([^"”]{2,})["”]')
 
 

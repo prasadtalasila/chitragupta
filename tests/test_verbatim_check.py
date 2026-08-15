@@ -432,8 +432,9 @@ class TestSkipgramTierQuoting:
     """The tier-2 half of #189. Three of the 27 hand-labelled findings in
     `bench/results/2026-08-14-skipgram-precision/labels.json` are
     `attributed-quotation` -- quoted and cited, legitimate scholarship --
-    and all three read `quoted: false`, because a skip-gram window is
-    wider than the quotation it evidences and starts outside it."""
+    and all three read `quoted: false` before this was fixed, because a
+    skip-gram window is wider than the quotation it evidences and starts
+    outside it."""
 
     def test_a_window_straddling_the_opening_quote_mark_is_still_quoted(
         self, ledger_con, tmp_path
