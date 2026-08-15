@@ -5,9 +5,9 @@ Status: **reference.** Written 2026-08-03.
 **Written for** anyone running this pipeline, at any level of
 familiarity: it is the reference you keep open beside a terminal.
 **Assumed:** nothing beyond [README.md](../README.md)'s Quickstart.
-**Not covered here:** why any of it is built the way it is -- that is
-[ARCHITECTURE.md](ARCHITECTURE.md) for the shape and
-[DESIGN.md](DESIGN.md) for the constraints, both written for someone
+**Not covered here:** why any of it is built the way it is.
+[ARCHITECTURE.md](ARCHITECTURE.md) has the shape and
+[DESIGN.md](DESIGN.md) the constraints. Both are written for someone
 changing the code rather than running it.
 
 Every command this repository provides, every flag it accepts, and which
