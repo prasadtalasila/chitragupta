@@ -2,6 +2,11 @@
 
 Status: **reasoning document.** Written 2026-08-07.
 
+**Written for** someone weighing a change to retrieval, or wondering why
+a stage that looks obviously useful was built and withdrawn. **Assumed:**
+[RETRIEVAL.md](RETRIEVAL.md). **Not covered here:** how retrieval is run,
+which is [CLI.md](CLI.md).
+
 Why turning a source *down* is the load-bearing judgment in this
 pipeline; why a two-stage retrieval read built to make rejection cheaper
 was withdrawn before it shipped; and what was kept from it.

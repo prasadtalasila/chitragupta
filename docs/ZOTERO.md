@@ -2,6 +2,10 @@
 
 Status: **how-to.** Written 2026-08-03.
 
+**Written for** anyone getting their own library into this pipeline for
+the first time. **Assumed:** nothing. **Not covered here:** what the
+pipeline then does with it -- [CLI.md](CLI.md) has the commands.
+
 How to get a `.bib` file and its PDFs into the shape this pipeline
 expects. See [../README.md](../README.md) for the Quickstart that
 refers here.
@@ -76,7 +80,7 @@ retrieve is something a draft may cite -- see
 [`src/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/corpus.py)
 and AGENTS.md's citekey
 invariant. (Earlier versions did have such a directory, `papers/pdfs/`;
-it is gone. A PDF there is now simply ignored.)
+it is gone. A PDF there is now ignored.)
 
 To add more papers later: add the entry in Zotero, re-export the same way
 (re-check **Export Files** so new attachments are included), then re-run
@@ -87,13 +91,14 @@ By default `sync` only *reports* citekeys that dropped out of the bib file
 (`stale   <citekey> (no longer in bibliography.bib)`, one line per
 citekey, plus a single summary note pointing at `--remove-stale`) -- it
 doesn't delete their `content/ledger.sqlite` row until you re-run with
-`--remove-stale`. This is deliberate: a bib export that comes back short a
-citekey is far more often a botched re-export or `BIB_FILE` pointing at the
-wrong path than an intentional deletion, so the default keeps the ledger
-untouched until a human confirms. `--remove-stale` still refuses (raises)
-if the bib file comes back completely empty against a non-empty ledger,
-for the same reason -- fix the export/path rather than deleting everything
-in one run.
+`--remove-stale`. This is deliberate. A bib export that comes back short
+a citekey is far more often a botched re-export, or `BIB_FILE` pointing
+at the wrong path, than an intentional deletion -- so the default keeps
+the ledger untouched until a human confirms.
+
+`--remove-stale` still refuses, raising, if the bib file comes back
+completely empty against a non-empty ledger. Same reason: fix the export
+or the path rather than deleting everything in one run.
 
 ## Citekeys have to work as filenames
 

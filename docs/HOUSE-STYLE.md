@@ -172,9 +172,10 @@ artefact that nothing reconciles across drafts:
   quite as first framed here: `content/verbatim_allowlist.toml` is
   per-host, gitignored data, the same footing as `config.toml`, not
   version-controlled. A phrase waved through once still does not get
-  re-flagged in the next draft on the *same* host -- the file is one
-  per clone, not one per draft, so it persists across everything that
-  clone drafts -- but "auditable" now means "in this host's own file,"
+  re-flagged in the next draft on the *same* host, because the file is
+  one per clone rather than one per draft and persists across everything
+  that clone drafts. But "auditable" now means "in this host's own
+  file,"
   not "visible in the project's git history to every contributor." See
   [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist) for the
   shipped design and why.

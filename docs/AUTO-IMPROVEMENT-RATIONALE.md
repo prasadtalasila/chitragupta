@@ -73,7 +73,7 @@ point.
 | `python -m src.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
 | `python -m src.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
 | `python -m src.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
-| *nothing* | a sentence that is simply badly written | -- | human, by hand |
+| *nothing* | a badly written sentence | -- | human, by hand |
 
 Two things stand out. **Most of the surface is still text only.** When
 this was written, `--json` on `dossier status --all` was the single
@@ -452,13 +452,14 @@ every citekey and *audits* citations against it"), it is dialect-neutral,
 and it is unused as an identifier anywhere in the tree.
 
 **It is still wrong, and [NAME.md](NAME.md) is why.** That document maps
-the myth onto the code, and it spends its third and fourth points mapping
-exactly this register onto the **citation gate**: "a draft's claims are
-checked against the ledger at the moment of reckoning, and a `FAIL` is
-final -- a gate, not a suggestion", then "The audit is incorruptible, not
-well-intentioned." Naming a never-blocking aid `audit` would file the
-review layer's softest output under the word this project reserves for its
-hardest check.
+the myth onto the code. Its third and fourth points map exactly this
+register onto the **citation gate**: "a draft's claims are checked
+against the ledger at the moment of reckoning, and a `FAIL` is final -- a
+gate, not a suggestion", then "The audit is incorruptible, not
+well-intentioned."
+
+Naming a never-blocking aid `audit` would file the review layer's softest
+output under the word this project reserves for its hardest check.
 
 So there is a rule here, and it binds any future aid as much as this one:
 
@@ -469,17 +470,19 @@ So there is a rule here, and it binds any future aid as much as this one:
 > reading is not the ruling.
 
 That disposes of a whole family at once, and what survives has to come
-from the deliberation register rather than the judgement one. Against
-`agenda`, the rest were weighed and each is worse: `worklist` and
-`backlog` presume the items are accepted work, when three of six classes
-are undecided; `remediation` names only the half the aid does not do;
-`findings` is what all three existing aids already emit; `digest` suggests
-condensing rather than prioritising; `snags` is exact but colloquial, and
-opaque outside British usage; `docket` reads as a delivery note in that
-same British usage; and `triage` is spoken for --
-[REJECTION.md](REJECTION.md) records a retrieval stage of that name built
-and withdrawn, and reusing it here would collide with a documented
-refusal.
+from the deliberation register rather than the judgement one. Every
+alternative weighed against `agenda` is worse:
+
+- `worklist` and `backlog` presume the items are accepted work, when
+  three of six classes are undecided.
+- `remediation` names only the half the aid does not do.
+- `findings` is what all three existing aids already emit.
+- `digest` suggests condensing rather than prioritising.
+- `snags` is exact but colloquial, and opaque outside British usage.
+- `docket` reads as a delivery note in that same British usage.
+- `triage` is spoken for. [REJECTION.md](REJECTION.md) records a
+  retrieval stage of that name built and withdrawn, and reusing it here
+  would collide with a documented refusal.
 
 `agenda` wins on register: the ordered list of matters put before a
 decision-maker, none of them decided by the person who drew it up. That is

@@ -2,6 +2,12 @@
 
 Status: **reference.** Written 2026-08-03.
 
+**Written for** anyone setting this pipeline up on their own machine.
+**Assumed:** [CLI.md](CLI.md) for the commands these settings change.
+**Not covered here:** what each setting *costs*, which is measured in
+[PERFORMANCE.md](PERFORMANCE.md), and why the defaults are what they are,
+which is [DESIGN.md](DESIGN.md)'s job.
+
 Every setting, what values it accepts, and what it defaults to.
 
 What each setting *costs* lives in [PERFORMANCE.md](PERFORMANCE.md), so
@@ -250,7 +256,7 @@ The values in full:
 - **`long_word_chars`** / **`min_tokens`** -- any number; the fractional
   part is truncated.
 - **`long_word_ratio`** -- a fraction between 0.0 and 1.0. The range is
-  not enforced, so a value above 1.0 loads fine and simply disables the
+  not enforced, so a value above 1.0 loads fine and disables the
   warning, since no document can exceed it.
 
 ### `[logging]` -- the pipeline log file
@@ -357,21 +363,26 @@ removed through that same seam.
 | `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#parserbackend----pdftotext-or-docling) |
 
 **Page boundaries are not cosmetic, which is why both backends now keep
-them.** `src/review/verbatim_check.py` reports which PDF page a verbatim run
-came from by splitting on those form feeds; before `docling` asked for
-them, a citekey parsed that way reported `pdf p.1` for every hit
+them.** `src/review/verbatim_check.py` reports which PDF page a verbatim
+run came from by splitting on those form feeds. Before `docling` asked
+for them, a citekey parsed that way reported `pdf p.1` for every hit,
 regardless of where the text sat.
 
 **What separates the two backends now is quoting, not paging.**
 `pdftotext -layout` preserves a page's visual arrangement rather than its
-reading order, so an excerpt cut from it can splice two columns together;
-the passage ladder therefore refuses to quote from it and reports a page
-number instead. `docling` resolves reading order, and the corpus layer
-keeps that resolution as `content/parsed/<citekey>.passages.json` -- so
-choosing it here buys real quotable passages without running the
-enrichment layer at all. The mechanism is in
+reading order, so an excerpt cut from it can splice two columns together.
+The passage ladder therefore refuses to quote from it, and reports a page
+number instead.
+
+`docling` resolves reading order, and the corpus layer keeps that
+resolution as `content/parsed/<citekey>.passages.json`. Choosing it here
+therefore buys real quotable passages without running the enrichment
+layer at all.
+
+The mechanism is in
 [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#what-the-corpus-layer-keeps-when-it-uses-docling),
-and the ladder it feeds is in [LADDERS.md](LADDERS.md#ladder-1-evidence-passages).
+and the ladder it feeds is in
+[LADDERS.md](LADDERS.md#ladder-1-evidence-passages).
 
 [PDF-PARSER.md](PDF-PARSER.md) has the full fidelity comparison.
 
@@ -393,11 +404,14 @@ They are two consumers of the same library, with different scopes:
 They no longer duplicate the parse, though. When this setting is
 `docling`, the enrichment stage adopts the corpus layer's output for a
 citekey instead of parsing the PDF a second time -- a file copy in place
-of 6.65s per document. It falls back to a real parse for a citekey the
+of 6.65s per document.
+
+It falls back to a real parse in three cases. First, for a citekey the
 corpus layer wrote no text for -- a PDF whose parse failed at sync time,
-say -- for a run with `[enrich].docling_images` on, because the corpus
-layer writes no figure bitmaps to adopt, or when the artefacts are older
-than the PDF, which means the PDF has been replaced since the corpus
+say. Second, for a run with `[enrich].docling_images` on, because the
+corpus layer writes no figure bitmaps to adopt. Third, when the artefacts
+are older than the PDF, which means the PDF has been replaced since the
+corpus
 layer read it. The dependency only ever runs that way round: the
 enrichment layer reads the corpus layer's files, and the corpus layer is
 not shaped by this at all.
@@ -422,12 +436,13 @@ machine can be far larger. For `docling` that count is divided by 4:
 | `workers = "auto"` resolves to | 1 | 2 | 4 | 12 |
 
 **That divisor of 4 is measurably too conservative.** It models a docling
-worker as occupying about 4 CPUs, which a full-corpus sweep does not
-support: at 32 workers the CPU is only ~70% busy, and 32 workers run
-**1.41x faster** than the 12 this table allows -- and 48 workers are no
-worse, so the honest reading is "much smaller than 4", not a specific
-replacement. Changing it is a behaviour change and has not been
-made -- see
+worker as occupying about 4 CPUs, and a full-corpus sweep does not
+support that. At 32 workers the CPU is only ~70% busy, and 32 workers run
+**1.41x faster** than the 12 this table allows. 48 workers are no worse.
+
+The honest reading is "much smaller than 4" rather than a specific
+replacement. Changing it is a behaviour change and has not been made --
+see
 [PERFORMANCE.md](PERFORMANCE.md#parserworkers----document-level-parallelism).
 
 So a four-core desktop resolves to 2, and asking for 15 there still gets
