@@ -1688,7 +1688,7 @@ dossiers predate the current `sections.md` heading convention):
 |---|---|
 | Embedding findings | 162, across 15 chapters and 93 distinct citekeys |
 | Reporting cap | 1 alignment per section, 5 shortlisted sources per section |
-| Severity mix | 151 `long`, 7 `short`, 4 `quoted` |
+| Severity mix | 151 `long`, 7 `short`, 4 `quoted` (measured before #189; a tier-3 alignment is a whole sentence and so straddles a quotation more often than either lexical tier, and this mix would shift toward `quoted` on a re-run) |
 | `UNCITED SOURCE` | 8 of 162 |
 | Alignment score | min 0.005, median 0.157, max 0.608 |
 | Median span | 20 words |
