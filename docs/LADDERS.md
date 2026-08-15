@@ -8,9 +8,10 @@ lost by it. **Assumed:** [CLI.md](CLI.md) for the commands named here.
 [ARCHITECTURE.md](ARCHITECTURE.md)'s territory.
 
 Most of this repository does one job per module. This page is about the
-places where it does *one job two ways* -- where the same question ("what
-text supports this claim?", "how do I turn a draft into a PDF?") has more
-than one answer, and something has to pick.
+places where it does *one job two ways*: where the same question has more
+than one answer, and something has to pick. "What text supports this
+claim?" is one such question. "How do I turn a draft into a PDF?" is
+another.
 
 There are six such places. Three pick for you, silently, at run time.
 Three you pick yourself, in a config file or on a command line. Telling
@@ -201,27 +202,29 @@ Every command above and the flags it takes are in
 ### What the enrichment layer works on
 
 Worth stating plainly, because the natural assumption is the expensive
-one and it is wrong: **by default the enrichment layer parses your whole
+one and it is wrong. **By default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
-for one of the three stages; the rest of this section is what it does and
-does not reach.
+for one of the three stages. The rest of this section is its reach.
 
-`src/enrich/__main__.py` calls `corpus.build_corpus()`, which returns **every
-row in the ledger, and nothing else.** `ledger.all_items()` is a bare
-`SELECT * FROM items`, so this is every citekey your BibTeX export
+`src/enrich/__main__.py` calls `corpus.build_corpus()`, which returns
+**every row in the ledger, and nothing else.** `ledger.all_items()` is a
+bare `SELECT * FROM items`. So this is every citekey your BibTeX export
 produced, including entries whose reference-manager record has no PDF
-attached at all.
+attached.
 
 That the bibliography is the *only* source is a guarantee the rest of the
-layer is built on, not an accident of the current implementation: every
-document carries a real citekey, which is its whole identity, and so every Chroma
-hit, every topic member and every figure record names something a draft
-is allowed to cite. An earlier version also swept a hand-filled directory
-of raw PDFs into the corpus under ids the citation gate would always
-reject, which cost every stage downstream a permanently non-citable case
-in exchange for indexing evidence no draft was ever allowed to use. If a
-paper is worth indexing it is worth cataloguing: put it in your reference
-manager, re-export, and re-run `python -m src.corpus sync`.
+layer is built on, not an accident of the current implementation. Every
+document carries a real citekey, which is its whole identity. So every
+Chroma hit, every topic member and every figure record names something a
+draft is allowed to cite.
+
+An earlier version also swept a hand-filled directory of raw PDFs into
+the corpus, under ids the citation gate would always reject. That cost
+every stage downstream a permanently non-citable case, in exchange for
+indexing evidence no draft was ever allowed to use.
+
+If a paper is worth indexing it is worth cataloguing: put it in your
+reference manager, re-export, and re-run `python -m src.corpus sync`.
 
 Every stage then receives that whole list, and unless you say otherwise
 nothing filters it by draft, by reference list, or by citation: a draft
@@ -242,13 +245,15 @@ first Docling pass is 3330s serial and 310s at twelve workers
 
 `--for-draft content/drafts/<slug>.md` narrows that list to the papers
 the named draft cites, read out of it with the same
-`citation_gate.extract_citekeys` the hard gate uses. It exists because
-the honest advice was otherwise "run it over everything, once, and budget
-an hour", which is a decision most people defer rather than take -- and
-deferring it is why rung 1 of the passage ladder below is so often
-absent. The flag makes the layer something you can try on one chapter and
-judge before committing the machine to the whole library. Flags and
-worked output are in [docs/CLI.md](CLI.md#enriching-one-drafts-papers).
+`citation_gate.extract_citekeys` the hard gate uses.
+
+It exists because the honest advice was otherwise "run it over
+everything, once, and budget an hour". Most people defer that decision
+rather than take it, and deferring it is why rung 1 of the passage ladder
+below is so often absent. The flag makes the layer something you can try
+on one chapter and judge before committing the machine to the whole
+library. Flags and worked output are in
+[docs/CLI.md](CLI.md#enriching-one-drafts-papers).
 
 Which stages it reaches is the part worth being precise about, because it
 is fewer than it sounds:
@@ -264,28 +269,33 @@ and the other two are deliberately out of reach.
 
 The two refusals are a **tier**, not a ladder, in this page's vocabulary,
 and they are the reason the flag is safe to offer at all. Asked to scope
-`embed`, the run stops and prints the two commands to use instead. It
-does not descend to a neighbouring answer -- neither "run it over the
-whole corpus anyway", which is the hour of work `--for-draft` exists to
-avoid, nor "index the eleven", which is the silently-partial artefact
-this page's opening worries about. Allowing the second would need the
-Chroma collection to record its own coverage first; until it does, the
-honest answer is to refuse.
+`embed`, the run stops and prints the two commands to use instead.
+
+It does not descend to a neighbouring answer. Not "run it over the whole
+corpus anyway", which is the hour of work `--for-draft` exists to avoid.
+And not "index the eleven", which is the silently-partial artefact this
+page's opening worries about. Allowing the second would need the Chroma
+collection to record its own coverage first. Until it does, the honest
+answer is to refuse.
 
 What makes the scoped `docling` run safe in the other direction is that
-its cache is per-document and is never rewritten to match the scope: a
-narrow run followed by a full one, or a full run followed by a narrow
-one, parses nothing twice.
+its cache is per-document, and is never rewritten to match the scope. A
+narrow run followed by a full one parses nothing twice, and neither does
+a full run followed by a narrow one.
 
 It is also why the `docling` stage now adopts the corpus layer's parse
 where it can. When `[parser].backend = "docling"` has already parsed a
 citekey, the two layers would otherwise produce the same document twice
 from the same PDF, and the second pass buys nothing. The dependency runs
-one way only -- the enrichment layer reads `content/parsed/`, and the
-corpus layer neither knows nor cares that it does. Reuse is refused for a
-document the corpus layer wrote no parsed text for (a bib entry with no
-PDF attached, or one whose parse failed), for a run with figures on (the
-corpus layer writes no bitmaps), and for artefacts older than their PDF.
+one way only: the enrichment layer reads `content/parsed/`, and the
+corpus layer neither knows nor cares that it does.
+
+Reuse is refused in three cases:
+
+- a document the corpus layer wrote no parsed text for -- a bib entry
+  with no PDF attached, or one whose parse failed;
+- a run with figures on, because the corpus layer writes no bitmaps;
+- artefacts older than their PDF.
 
 ## The three ladders
 
@@ -307,31 +317,36 @@ read by
 | 4 | `pdftotext -layout` run fresh on the PDF | nobody; computed on demand | no -- page only |
 
 Rungs 1 and 2 hold the same kind of record, from
-`passages.passage_records()` -- one entry per prose text item, carrying
-the text, its semantic label, its page and its bounding box. They are
-separate files because the two layers own separate directories and re-run
-on separate schedules: the corpus layer must be able to invalidate *its*
-sidecar on every re-parse without deleting an enrichment sidecar it did
-not write and cannot reproduce. Rung 1 wins when both exist, because the
-enrichment stage parses the PDF a second time under its own OCR and figure
-settings.
+`passages.passage_records()`: one entry per prose text item, carrying the
+text, its semantic label, its page and its bounding box.
+
+They are separate files because the two layers own separate directories
+and re-run on separate schedules. The corpus layer must be able to
+invalidate *its* sidecar on every re-parse without deleting an enrichment
+sidecar it did not write and cannot reproduce. Rung 1 wins when both
+exist, because the enrichment stage parses the PDF a second time under
+its own OCR and figure settings.
 
 Rung 2 is self-healing. `sync` treats a citekey it calls `parsed` whose
-sidecar is missing as one that needs parsing again, so a corpus parsed
-before this project kept Docling's document model gains passages on the
-next run, and a sidecar deleted by hand comes back. That check is skipped
-for `pdftotext`, which resolves no reading order and writes no sidecar --
-demanding one would re-parse the whole corpus on every run.
+sidecar is missing as one that needs parsing again. A corpus parsed
+before this project kept Docling's document model therefore gains
+passages on the next run, and a sidecar deleted by hand comes back.
+
+That check is skipped for `pdftotext`, which resolves no reading order
+and writes no sidecar. Demanding one would re-parse the whole corpus on
+every run.
 
 **What the bottom two rungs cost you.** `pdftotext -layout` preserves a
-page's *visual* arrangement rather than its reading order, so on a
-two-column paper a single output line can splice together two unrelated
-columns -- 82%-89% of long lines on 4 of the 10 papers in this project's
-sample. Ranking survives that; quoting does not, because an excerpt cut
-from spliced text is a collage of two arguments that *reads* as evidence.
-So rungs 3 and 4 return a `Passage` whose `text` is `None`. The guarantee
-is structural, not advisory: a caller that wants to quote has nothing to
-quote. See [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
+page's *visual* arrangement rather than its reading order. On a
+two-column paper a single output line can therefore splice together two
+unrelated columns -- 82%-89% of long lines on 4 of the 10 papers in this
+project's sample.
+
+Ranking survives that. Quoting does not, because an excerpt cut from
+spliced text is a collage of two arguments that *reads* as evidence. So
+rungs 3 and 4 return a `Passage` whose `text` is `None`. The guarantee is
+structural rather than advisory: a caller that wants to quote has nothing
+to quote. See [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 
 ### Ladder 2: Enrichment text source
 
@@ -406,13 +421,16 @@ here.
 Three here, four in
 [ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)'s tier-set table,
 and both are right. The fourth is the **detection tiers** behind
-`src/review/verbatim_check.py`'s `scan`, and it has no section here because
-this page's question -- *where does the pipeline choose, and what does it
-choose between?* -- has no answer for it: nothing picks a detection tier,
-every built one runs, and the findings are unioned. It is a tier set only
-in the sense the table's third column asks about, namely what happens
-when an option is unavailable. [PLAGIARISM.md](PLAGIARISM.md) treats it
-for a reader of a report, and
+`src/review/verbatim_check.py`'s `scan`.
+
+It has no section here because this page's question -- *where does the
+pipeline choose, and what does it choose between?* -- has no answer for
+it. Nothing picks a detection tier: every available one runs, and the
+findings are unioned. It is a tier set only in the sense the table's
+third column asks about, namely what happens when an option is
+unavailable.
+
+[PLAGIARISM.md](PLAGIARISM.md) treats it for a reader of a report, and
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for someone changing one.
 
 ### Tier 1: Parser backend
@@ -484,8 +502,8 @@ they aren't mistaken for rungs:
 
 Everything above at once. Read left to right: *when a decision is made,
 which decision it is, what implements it, and what it leaves behind.* The
-three ladders all sit in the right-hand column of "decided at run time";
-the three tiers are all settled before a single PDF is opened.
+three ladders all sit in the right-hand column of "decided at run time".
+The three tiers are all settled before a single PDF is opened.
 
 ```mermaid
 flowchart LR
@@ -552,13 +570,16 @@ flowchart LR
   class O3,O5 none
 ```
 
-Two things that diagram makes visible and the table below doesn't. The
-parser backend is the only decision that reaches into two others -- it is
-what decides whether the evidence ladder has a rung 2 to land on, and it
-shares `src/pdf_text.py` with the accelerator ladder. And two decisions
-leave nothing on disk at all: they change what you are *allowed to do*
-with the files, or how long it takes to get them, which is exactly why
-neither shows up in a backup and neither can be inspected after the fact.
+Two things that diagram makes visible and the table below does not.
+
+The parser backend is the only decision that reaches into two others. It
+decides whether the evidence ladder has a rung 2 to land on, and it
+shares `src/pdf_text.py` with the accelerator ladder.
+
+And two decisions leave nothing on disk at all. They change what you are
+*allowed to do* with the files, or how long it takes to get them. That is
+exactly why neither shows up in a backup, and neither can be inspected
+after the fact.
 
 The same thing as a table. Read a row as: *this decision selects this
 thing, is made here, is implemented there, and shows up on disk as that.*
@@ -585,8 +606,9 @@ The two lock-holders never run at once: the second to start exits `2`
 rather than interleaving writes to `content/`.
 
 Review's "none" is load-bearing rather than incidental: the layer is
-read-only over the corpus and must keep working during a `sync`. It is
-also the row easiest to make false by accident: an enrichment stage
+read-only over the corpus and must keep working during a `sync`.
+
+It is also the row easiest to make false by accident. An enrichment stage
 wrapping `provenance` or `render` would sit inside that layer's lock, so
 a review aid and a drafting-layer render would each take a lock their own
 layer says they do not. Keeping those two out of the stage list is what
