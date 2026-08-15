@@ -32,6 +32,7 @@ def make_repo(tmp_path):
     (repo / ".github" / "workflows" / "ci.yml").write_text("name: ci")
     (repo / ".gitignore").write_text("content/parsed/\n")
     (repo / "sonar-project.properties").write_text("sonar.projectKey=x\n")
+    (repo / "codecov.yml").write_text("codecov:\n  notify:\n    after_n_builds: 2\n")
     (repo / "AGENTS.md").write_text("agent guidance")
     (repo / "DEVELOPER-AGENTS.md").write_text("agent guidance for developing this repo")
     (repo / "SOUL.md").write_text("why this exists")
@@ -83,6 +84,17 @@ class TestTrackedFiles:
         # names this repo's Sonar project key specifically.
         paths = release.tracked_files()
         assert "sonar-project.properties" not in paths
+
+    def test_excludes_codecov_yml(self, repo):
+        # Same category as the two above, and the worst of the three to
+        # ship. It is not merely inert in someone else's checkout: it says
+        # `after_n_builds: 2`, so a consumer who unzips a release into
+        # their own repo and pushes it gets a Codecov that waits for a
+        # second upload their CI never makes, and every coverage status
+        # hangs pending. That is the exact failure mode codecov.yml's own
+        # comment warns about, exported to someone who never opted into it.
+        paths = release.tracked_files()
+        assert "codecov.yml" not in paths
 
     def test_ships_all_three_agent_guidance_files(self, repo):
         # All three ship. .claude/ and its genre skills ship too, and they

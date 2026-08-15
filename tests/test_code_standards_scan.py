@@ -64,7 +64,7 @@ LEGACY_LONG_FUNCTIONS = {
     "src/sync.py::_parse_parallel",  # 33
     "src/enrich/topic_model.py::run_topic_model",  # 32
     "src/render_output.py::render",  # 31
-    "tests/test_release.py::make_repo",  # 30
+    "tests/test_release.py::make_repo",  # 31
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
     "src/overlap_skipgram.py::build_corpus_index",  # 27

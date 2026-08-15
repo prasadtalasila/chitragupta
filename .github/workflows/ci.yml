@@ -171,29 +171,6 @@ jobs:
             echo "::error::${{ matrix.os }}: ${line}"
           done
 
-      # Codecov gets the run's coverage.xml, which the step above now emits
-      # alongside the terminal report it already printed. Both matrix legs
-      # upload under their own flag, because they measure different things
-      # and merging them silently would hide that: the Linux leg installs
-      # os-deps and runs the whole suite, the Windows leg gets python-deps
-      # only, so ~30 render/pdf tests self-skip there and
-      # src/render_output.py lands near 76%. Two flags keep those two
-      # numbers separable in Codecov's UI, the same reason the two legs
-      # hold two different --cov-fail-under floors here.
-      #
-      # `if: ${{ !cancelled() }}` rather than the default: a run that went
-      # red on the coverage floor is exactly the run whose report is worth
-      # looking at, and skipping the upload there would leave Codecov
-      # showing the last *passing* commit as current.
-      #
-      # `fail_ci_if_error: false` is deliberate and worth revisiting once
-      # the first upload is confirmed. The pass/fail decision on coverage
-      # is already made locally by pyproject's `fail_under = 100`, which
-      # needs no network -- so an upload problem (a missing token, a
-      # Codecov outage, a rate limit) would be turning this repository's
-      # CI red for something that is not a fact about the code. Flip it to
-      # true if uploads prove reliable and you want a silent upload
-      # failure to be loud.
       # The `sonarqube` job's own coverage-on-new-code condition needs a
       # coverage.xml -- it does not run the suite itself (see that job's
       # own comment for why: a second full install+pytest for a report
@@ -208,6 +185,53 @@ jobs:
           path: coverage.xml
           retention-days: 1
 
+      # Codecov gets the run's coverage.xml, which the test step above
+      # emits alongside the terminal report it already printed. Both matrix
+      # legs upload under their own flag, because they measure different
+      # things and merging them silently would hide that: the Linux leg
+      # installs os-deps and runs the whole suite, the Windows leg gets
+      # python-deps only, so ~30 render/pdf tests self-skip there and
+      # src/render_output.py lands near 76%. Two flags keep those two
+      # numbers separable in Codecov's UI, the same reason the two legs
+      # hold two different --cov-fail-under floors here. They are not
+      # decorative: Codecov's flags API reports `ubuntu-latest: 100.0` and
+      # `windows-latest: 99.29` as separate figures today, and the PR
+      # comment renders both. Uploading only the Linux report would also
+      # have fixed the timing problem below, and was rejected for that --
+      # it would leave the Windows gap visible only as slack under a
+      # coarse 95 floor rather than as a measured number.
+      #
+      # `if: ${{ !cancelled() }}` rather than the default: a run that went
+      # red on the coverage floor is exactly the run whose report is worth
+      # looking at, and skipping the upload there would leave Codecov
+      # showing the last *passing* commit as current.
+      #
+      # `fail_ci_if_error: false` is deliberate and stays. The pass/fail
+      # decision on coverage is already made locally by pyproject's
+      # `fail_under = 100`, which needs no network -- so an upload problem
+      # (a missing token, a Codecov outage, a rate limit) would be turning
+      # this repository's CI red for something that is not a fact about
+      # the code.
+      #
+      # An earlier version of this comment invited the next reader to flip
+      # it to true "if uploads prove reliable and you want a silent upload
+      # failure to be loud." That points down a path the evidence rules
+      # out. When `codecov/project` scored a 100% branch as a regression on
+      # #199 and #204, no upload had been silently dropped: both legs
+      # logged `Upload queued for processing complete`, and Codecov's
+      # commit API reports `sessions: 2` for #199's head SHA -- on the
+      # first attempt, with no re-run. The status had simply been computed
+      # against one session. `fail_ci_if_error: true` cannot fire on an
+      # upload the client completed successfully. The gate that does help
+      # is `after_n_builds` in this repository's `codecov.yml`, which holds
+      # the notification until both uploads are in; see that file.
+      #
+      # `disable_search: true` because `files:` below names the one report
+      # that matters and the CLI otherwise walks the tree for more. It
+      # found some: `.venv-full/bin/coverage-3.12` on Linux and
+      # `codecov.exe.SHA256SUM.sig` on Windows, both uploaded as coverage
+      # data on every run. Neither caused the problem above -- this makes
+      # the upload exactly what the step says it is, nothing more.
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
         # Pinned to a commit SHA rather than the `v5` tag (which currently
@@ -220,6 +244,7 @@ jobs:
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
         with:
           files: ./coverage.xml
+          disable_search: true
           flags: ${{ matrix.os }}
           name: ${{ matrix.os }}
           token: ${{ secrets.CODECOV_TOKEN }}

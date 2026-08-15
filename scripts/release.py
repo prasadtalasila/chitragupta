@@ -60,6 +60,14 @@ EXCLUDE_TOP_LEVEL = {
     # actively wrong -- a scan run from there would report someone else's
     # code against prasadtalasila_chitragupta.
     "sonar-project.properties",
+    # Same category, and the one root-level CI file that is worse than
+    # inert in an unzipped release. It holds `after_n_builds: 2`, which is
+    # a fact about *this* repository's two-leg test matrix; carried into a
+    # repository whose CI makes one upload, it leaves every Codecov status
+    # waiting for a second that never comes. The file's own comment names
+    # that failure mode as the accepted cost here -- exporting it to
+    # someone who never chose it is a different thing.
+    "codecov.yml",
 }
 
 # Ships as an empty placeholder directory instead of its tracked contents
