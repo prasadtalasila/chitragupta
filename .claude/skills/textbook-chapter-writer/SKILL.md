@@ -144,7 +144,11 @@ candidate for the chapter.
    Settle the **dialect** with the reader in the same breath and write it to
    `scope.md`'s `language:` line, which ships unset -- the course's own
    institution decides it, and a chapter whose dialect nobody chose silently
-   gets the model's own (`docs/WRITING-STANDARDS.md` §8). Where
+   gets the model's own (`docs/WRITING-STANDARDS.md` §8). Read the acronym
+   vocabulary too -- the vendored floor at `assets/style/acronyms.toml`,
+   plus the user's own file if `[style].acronyms` in `config.toml` points
+   at one -- and use its recorded expansion the first time a term comes
+   up rather than inventing one. Where
    a ledger is present, `init` also stamps the corpus fingerprint, which is
    what lets a later revision tell whether the ledger has moved since. Do this
    even if the chapter will carry no citations.
