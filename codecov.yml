@@ -1,0 +1,43 @@
+# Codecov configuration. One setting, and it exists to stop a green branch
+# being reported as a coverage regression.
+#
+# `.github/workflows/ci.yml`'s test matrix uploads two reports per commit,
+# and they measure different amounts of the suite on purpose: the Linux leg
+# installs os-deps and runs all of it, the Windows leg gets python-deps only
+# (os-deps is apt-only: pandoc, TeX Live, poppler), so ~30 render/pdf tests
+# self-skip there and src/render_output.py lands near 76%. Merged, the two
+# come to 100%. The Windows one alone comes to ~99%.
+#
+# Codecov scores a commit against whatever sessions it has finished
+# processing when the notification fires, so with no gate here it can score
+# the first upload to land and call a 100% branch a -0.78% regression. That
+# happened on #199 and #204. #199 is the clean case: one attempt, no re-run,
+# both legs logging `Upload queued for processing complete`, and Codecov's
+# own commit API reporting `sessions: 2, coverage: 100.0` for that head SHA
+# today. Nothing was lost in transport -- the status was computed early.
+#
+# Which is why the obvious-looking fix is not here. `fail_ci_if_error: true`
+# on the action cannot fire on an upload the client completed successfully,
+# and `wait_for_ci` (already on by default) waits for CI rather than for the
+# second upload. Both address a dropped upload; this was not one.
+#
+# The accepted cost, stated because it is the failure mode a future reader
+# will hit: if a leg dies before producing coverage.xml, only one session
+# ever arrives and this status stays *pending* rather than posting a wrong
+# number. That run is already red for the real reason, so pending is the
+# honest state -- but a permanently pending `codecov/project` on a PR means
+# a missing upload, not a stuck Codecov.
+#
+# `notify` rather than `comment`, because it is the status check and not the
+# PR comment that goes red: Codecov's YAML reference defines this key as "how
+# many uploaded reports Codecov should wait to receive before sending
+# statuses". And this file is read from the branch under test rather than from
+# `main`, so a change to it is exercised by its own PR's run.
+#
+# The number is the count of uploads a run makes, which today is the size of
+# ci.yml's `os:` matrix. tests/test_codecov_upload_gate.py pins the two
+# together, because adding a third leg without moving this line would
+# quietly go back to scoring two reports out of three.
+codecov:
+  notify:
+    after_n_builds: 2

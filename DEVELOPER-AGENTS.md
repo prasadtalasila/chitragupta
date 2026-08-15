@@ -282,6 +282,36 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
+### Reading a red `codecov/project` on a branch you believe is 100%
+
+Believe your local run first, and check the session count before you go
+looking for the coverage you lost -- because twice now there was none to
+find.
+
+Each matrix leg uploads its own report, and the two are only correct
+merged: score the Windows one alone and a 100% branch reads ~99%. Codecov
+computes a status from whatever sessions it has finished processing at
+that moment, so a status computed before the second upload lands blames
+the branch for a difference the matrix creates by design. The tell is the
+session count, from Codecov's own API rather than the PR page:
+
+```bash
+curl -s https://api.codecov.io/api/v2/github/prasadtalasila/repos/chitragupta/commits/<head-sha> \
+  | python3 -c 'import json,sys; t=json.load(sys.stdin)["totals"]; print(t["sessions"], t["coverage"])'
+```
+
+Two sessions and 100.0 against a status that reported ~99% means the
+status was computed early, not that an upload was lost. Note what that
+rules out: on #199 both legs logged `Upload queued for processing
+complete` on the first attempt, so the upload step being green was
+accurate and `fail_ci_if_error: true` would have changed nothing.
+`codecov.yml`'s `after_n_builds` is the gate that holds the notification
+until both uploads are in; that file carries the reasoning, and
+`tests/test_codecov_upload_gate.py` keeps its number in step with the
+matrix. **One session** is the different problem -- a leg that never
+produced a `coverage.xml` -- and there the status will sit pending rather
+than post a wrong number.
+
 ### The linters, which are enforced
 
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
