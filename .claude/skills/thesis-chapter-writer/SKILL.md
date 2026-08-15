@@ -272,14 +272,14 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     run**, so a clean scan is not a clean bill of health
     (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
     the report goes to `content/review/`, mirroring the draft's path, beside
-    any provenance and coverage reports for the same draft. 14. Present the
-    `.tex` fragment (the deliverable to `\input`) plus, if rendering succeeded,
-    the `.md`/`.pdf` preview paths -- or the warning if it didn't. Tell the
-    user where the dossier is, that changes to this chapter should go through
-    `draft-reviser` rather than another run of this skill, and that
-    `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
-    src.draft dossier export <slug>` is how a draft and its working state get
-    backed up.
+    any provenance and coverage reports for the same draft.
+14. Present the `.tex` fragment (the deliverable to `\input`) plus, if
+    rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
+    it didn't. Tell the user where the dossier is, that changes to this
+    chapter should go through `draft-reviser` rather than another run of this
+    skill, and that `content/drafts/` and `content/dossiers/` are gitignored
+    -- so `python -m src.draft dossier export <slug>` is how a draft and its
+    working state get backed up.
 
 ## Sources
 

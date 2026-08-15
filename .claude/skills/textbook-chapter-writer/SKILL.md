@@ -320,15 +320,15 @@ candidate for the chapter.
     can run**, so a clean scan is not a clean bill of health
     (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
     the report goes to `content/review/`, mirroring the draft's path, beside
-    any provenance and coverage reports for the same draft. 15. **Present the
-    draft** plus a short note on what it assumes as prior knowledge, what it
-    deliberately leaves out, and where a student is meant to go next -- and
-    report the render outcome (paths to the `.tex`/`.pdf` if they succeeded, or
-    the warning if not). Tell the user where the dossier is, that changes to
-    this chapter should go through `draft-reviser` rather than another run of
-    this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python -m src.draft dossier export <slug>` is how a draft
-    and its working state get backed up.
+    any provenance and coverage reports for the same draft.
+15. **Present the draft** plus a short note on what it assumes as prior
+    knowledge, what it deliberately leaves out, and where a student is meant
+    to go next -- and report the render outcome (paths to the `.tex`/`.pdf` if
+    they succeeded, or the warning if not). Tell the user where the dossier
+    is, that changes to this chapter should go through `draft-reviser` rather
+    than another run of this skill, and that `content/drafts/` and
+    `content/dossiers/` are gitignored -- so `python -m src.draft dossier
+    export <slug>` is how a draft and its working state get backed up.
 
 ## House style for this genre
 
