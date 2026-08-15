@@ -127,7 +127,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    it to `scope.md`'s `language:` line, which ships unset -- the examiner's
    institution decides it (an Indian university is `en-IN` or `en-GB`), and
    a chapter whose dialect nobody chose silently gets the model's own
-   (`docs/WRITING-STANDARDS.md` §8). `init` also stamps the corpus
+   (`docs/WRITING-STANDARDS.md` §8). Read the acronym vocabulary too --
+   the vendored floor at `assets/style/acronyms.toml`, plus the user's own
+   file if `[style].acronyms` in `config.toml` points at one -- and use its
+   recorded expansion at an acronym's first use rather than inventing one.
+   `init` also stamps the corpus
    fingerprint, which is what lets a
    later revision tell whether the ledger has moved since.
 1. **Clarify the research question** the chapter serves, if not already given

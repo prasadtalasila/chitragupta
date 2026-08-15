@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from src import config, dossier
+from src import acronyms, config, dossier
 
 
 @pytest.fixture
@@ -254,6 +254,157 @@ class TestInit:
         scope = (dossier.dossier_dir(draft) / "scope.md").read_text()
         assert "- language: not settled" in scope
         assert "en-GB" in scope
+
+
+def _write_glossary(draft, body):
+    """Replace the shipped `## Glossary` placeholder with real bullets.
+
+    Shared by TestGlossaryTerms and TestSuggestAcronyms.
+    """
+    scope = dossier.dossier_dir(draft) / "scope.md"
+    placeholder = (
+        "## Glossary\n\n"
+        "<!-- Each recurring term with the one definition the whole "
+        "draft uses. -->\n"
+    )
+    text = scope.read_text()
+    assert placeholder in text
+    scope.write_text(text.replace(placeholder, f"## Glossary\n\n{body}\n"))
+
+
+class TestGlossaryTerms:
+    """`## Glossary`'s `- **Term** -- definition` bullets, read back out.
+
+    The shape is the one #190's resolving comment found a real 15-chapter
+    book already converged on with no schema in force -- a forgiving
+    parser, not a schema, so a hand-typed line that doesn't match is
+    skipped rather than an error (docs/DRAFT-ITERATION.md's "degrades to
+    unavailable" policy).
+    """
+
+    def test_returns_empty_dict_without_a_dossier(self, draft):
+        assert dossier.glossary_terms(draft) == {}
+
+    def test_the_shipped_placeholder_has_no_terms(self, draft):
+        dossier.init(draft, "survey")
+        assert dossier.glossary_terms(draft) == {}
+
+    def test_returns_empty_when_scope_has_no_glossary_heading_at_all(self, draft):
+        dossier.init(draft, "survey")
+        scope = dossier.dossier_dir(draft) / "scope.md"
+        scope.write_text(scope.read_text().replace("## Glossary", "## Not a glossary"))
+        assert dossier.glossary_terms(draft) == {}
+
+    def test_a_bullet_with_no_definition_text_is_skipped(self, draft):
+        dossier.init(draft, "survey")
+        _write_glossary(
+            draft,
+            "- **DTaaS** --\n"
+            "- **FMU** -- Functional Mock-up Unit.",
+        )
+        assert dossier.glossary_terms(draft) == {"FMU": "Functional Mock-up Unit."}
+
+    def test_parses_a_single_bullet(self, draft):
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+        assert dossier.glossary_terms(draft) == {
+            "DTaaS": "Digital Twin as a Service."
+        }
+
+    def test_parses_several_bullets(self, draft):
+        dossier.init(draft, "survey")
+        _write_glossary(
+            draft,
+            "- **DTaaS** -- Digital Twin as a Service.\n"
+            "- **FMU** -- Functional Mock-up Unit, the packaging format "
+            "co-simulation tools exchange.",
+        )
+        terms = dossier.glossary_terms(draft)
+        assert terms["DTaaS"] == "Digital Twin as a Service."
+        assert terms["FMU"].startswith("Functional Mock-up Unit")
+
+    def test_a_definition_can_run_to_several_lines(self, draft):
+        dossier.init(draft, "survey")
+        _write_glossary(
+            draft,
+            "- **Twin state** -- the digital object's current best\n"
+            "  estimate of the physical twin's condition. *Estimate*, not\n"
+            "  *reading*: it may include quantities no sensor measures.",
+        )
+        terms = dossier.glossary_terms(draft)
+        assert terms["Twin state"].startswith(
+            "the digital object's current best"
+        )
+        assert "*Estimate*, not" in terms["Twin state"]
+
+    def test_a_hand_typed_line_that_does_not_match_is_skipped_not_an_error(self, draft):
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "DTaaS: Digital Twin as a Service (no bullet)")
+        assert dossier.glossary_terms(draft) == {}
+
+    def test_stops_at_the_next_heading(self, draft):
+        # ## Glossary is the last section _scope() writes, so appending
+        # a further heading is what exercises the "don't read past
+        # Glossary" branch.
+        dossier.init(draft, "survey")
+        scope = dossier.dossier_dir(draft) / "scope.md"
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+        scope.write_text(
+            scope.read_text()
+            + "\n## Not glossary\n\n- **Not a term** -- should not appear.\n"
+        )
+        assert dossier.glossary_terms(draft) == {
+            "DTaaS": "Digital Twin as a Service."
+        }
+
+
+class TestSuggestAcronyms:
+    """suggest_acronyms() proposes; it never writes anything -- #190's
+    own rule, restated in docs/HOUSE-STYLE.md: this class of feature
+    proposes and the human accepts.
+
+    The acronym-shape and already-in-vocabulary matching itself is
+    `acronyms.suggest()`, tested directly in
+    tests/test_acronyms.py::TestSuggest -- these tests only cover this
+    module's own part: turning a draft path into the glossary
+    `acronyms.suggest()` needs, and the CLI wrapper around it.
+    """
+
+    def test_returns_empty_without_a_dossier(self, draft):
+        assert dossier.suggest_acronyms(draft) == {}
+
+    def test_delegates_to_acronyms_suggest_with_this_drafts_glossary(
+        self, draft, monkeypatch
+    ):
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary",
+            lambda: {"PDF": "Portable Document Format"},
+        )
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+        assert dossier.suggest_acronyms(draft) == {
+            "DTaaS": "Digital Twin as a Service."
+        }
+
+    def test_cli_reports_no_new_acronyms(self, draft, capsys, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        dossier.init(draft, "survey")
+        assert dossier.main(["acronyms-suggest", str(draft)]) == 0
+        assert "No new acronyms" in capsys.readouterr().out
+
+    def test_cli_prints_a_suggestion_and_writes_nothing(self, draft, capsys, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+        vendored = config.REPO_ROOT / "assets" / "style" / "acronyms.toml"
+        vocab_before = vendored.read_text()
+
+        assert dossier.main(["acronyms-suggest", str(draft)]) == 0
+
+        out = capsys.readouterr().out
+        assert "DTaaS" in out
+        assert "Digital Twin as a Service" in out
+        assert vendored.read_text() == vocab_before
 
 
 class TestKnownCitekeys:

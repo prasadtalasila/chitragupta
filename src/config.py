@@ -447,6 +447,21 @@ RENDER_COLLAPSE_CITATIONS = _get_bool(
     "RENDER_COLLAPSE_CITATIONS", "render", "collapse_citations", default=True
 )
 
+# The acronym vocabulary a genre skill reads at step 0, so an author's
+# own domain expansions travel from one draft to the next instead of
+# being re-derived or re-asked in chat every time -- docs/HOUSE-STYLE.md,
+# "What persists across drafts". Same declaration shape as
+# CSL_STYLE_PATH/VALE_CONFIG_PATH: a vendored default in assets/, one
+# config.toml key. Unlike those two, resolving this is never a full
+# replacement -- src/acronyms.py always loads ACRONYMS_DEFAULT_PATH and
+# merges ACRONYMS_PATH's file over it when the two differ, because a
+# user's own vocabulary and this project's PDF/CPU/URL floor are
+# additive, not alternatives. See assets/style/README.md.
+ACRONYMS_DEFAULT_PATH = REPO_ROOT / "assets" / "style" / "acronyms.toml"
+ACRONYMS_PATH = REPO_ROOT / _get(
+    "ACRONYMS", "style", "acronyms", default="assets/style/acronyms.toml"
+)
+
 EMBEDDING_MODEL = _get(
     "EMBEDDING_MODEL", "enrich", "embedding_model",
     default="sentence-transformers/all-MiniLM-L6-v2",

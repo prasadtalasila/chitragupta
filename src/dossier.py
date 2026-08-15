@@ -65,6 +65,7 @@ Usage:
     python -m src.draft dossier status --all [--json]
     python -m src.draft dossier sections content/drafts/<name>.md
     python -m src.draft dossier brief content/drafts/<name>.md --section "2. Failure modes"
+    python -m src.draft dossier acronyms-suggest content/drafts/<name>.md
     python -m src.draft dossier list
     python -m src.draft dossier export [<name> ...] [--out FILE] [--with-rendered]
     python -m src.draft dossier restore <archive.tar.gz> [--force]
@@ -81,7 +82,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from src import citation_gate, config, review
+from src import acronyms, citation_gate, config, review
 
 # One constant per dossier filename, because each recurs across this
 # module -- as FILES keys, template keys, path joins and report lookups
@@ -293,6 +294,45 @@ def recorded_corpus(dossier: Path) -> tuple[int, str] | None:
     if not match:
         return None
     return int(match.group(1)), match.group(2)
+
+
+# `- **Term** -- definition` bullets under a `## Glossary` heading in
+# scope.md. A forgiving parser, not a schema: #190's resolving comment
+# found a real 15-chapter book had already converged on this exact shape
+# with no format rule in force, so this reads what a genre skill's step 0
+# already writes by hand rather than imposing a new one. A line that
+# doesn't match -- a human typed it differently -- is skipped, the same
+# "degrades to unavailable rather than to an error" policy
+# docs/DRAFT-ITERATION.md states for the rest of this file.
+_GLOSSARY_HEADING = re.compile(r"^## Glossary\s*$", re.MULTILINE)
+_NEXT_HEADING = re.compile(r"^## ", re.MULTILINE)
+_GLOSSARY_TERM = re.compile(r"^-\s*\*\*(?P<term>[^*]+)\*\*\s*--\s*", re.MULTILINE)
+
+
+def glossary_terms(draft: Path) -> dict[str, str]:
+    """Recorded `term -> definition` pairs from the draft's `## Glossary`.
+
+    `{}` if there's no dossier yet, no `## Glossary` heading, or no
+    bullet in the recognised shape -- never an error.
+    """
+    scope = dossier_dir(draft) / SCOPE_MD
+    if not scope.is_file():
+        return {}
+    text = scope.read_text(encoding="utf-8")
+    heading = _GLOSSARY_HEADING.search(text)
+    if not heading:
+        return {}
+    next_heading = _NEXT_HEADING.search(text, heading.end())
+    body = text[heading.end():next_heading.start() if next_heading else len(text)]
+
+    matches = list(_GLOSSARY_TERM.finditer(body))
+    terms: dict[str, str] = {}
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        definition = body[match.end():end].strip()
+        if definition:
+            terms[match.group("term").strip()] = definition
+    return terms
 
 
 def _citekeys_in(dossier: Path, names: tuple[str, ...]) -> set[str]:
@@ -2221,6 +2261,35 @@ def _cmd_set_language(args) -> int:
     return 0
 
 
+def suggest_acronyms(draft: Path) -> dict[str, str]:
+    """Glossary terms that look like an acronym and aren't in the
+    vocabulary yet -- candidates for the user's own acronyms file.
+
+    Never writes anything. `python -m src.draft dossier acronyms-suggest`
+    only prints these: #190's own rule is that this feature proposes and
+    the human accepts, the same as every other vocabulary file this
+    pipeline reads but never edits (papers/bibliography.bib,
+    content/verbatim_allowlist.toml). The matching itself is
+    `acronyms.suggest()` -- this is just glossary_terms() handed to it.
+    """
+    return acronyms.suggest(glossary_terms(draft))
+
+
+def _cmd_acronyms_suggest(args) -> int:
+    candidates = suggest_acronyms(Path(args.draft))
+    if not candidates:
+        print("  No new acronyms to suggest.")
+        return 0
+    print(
+        "  New acronyms in this draft's glossary, not yet in your "
+        "vocabulary. Nothing is written -- add what you want to your own "
+        "[style].acronyms file:\n"
+    )
+    for term, definition in sorted(candidates.items()):
+        print(f'  {term} = "{definition}"')
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m src.draft dossier",
@@ -2283,6 +2352,13 @@ def main(argv: list[str] | None = None) -> int:
     p_set_language.add_argument("draft", help="Path to the draft under content/drafts/")
     p_set_language.add_argument("language", help="a BCP-47 tag: en-GB, en-US, en-IN")
     p_set_language.set_defaults(func=_cmd_set_language)
+
+    p_suggest = sub.add_parser(
+        "acronyms-suggest",
+        help="Acronyms this draft's glossary defines that aren't in your vocabulary yet",
+    )
+    p_suggest.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_suggest.set_defaults(func=_cmd_acronyms_suggest)
 
     p_list = sub.add_parser("list", help="Every dossier on this machine")
     p_list.set_defaults(func=_cmd_list)

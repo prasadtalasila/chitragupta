@@ -1,0 +1,8 @@
+# A template for your own acronym file -- copy this somewhere and point
+# [style].acronyms in config.toml at it. Merged over the vendored floor
+# in acronyms.toml (PDF, CPU, URL, API, HTML): keep only your own
+# field's terms here, not a copy of the vendored ones. See README.md.
+
+DT = "Digital Twin"
+DS = "Digital Shadow"
+CPS = "Cyber-Physical System"

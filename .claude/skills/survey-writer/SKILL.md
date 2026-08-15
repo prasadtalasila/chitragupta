@@ -124,7 +124,11 @@ collapse them for the sake of a cleaner narrative.
    `language:` line, which ships unset: a survey for an IEEE submission is
    `en-US` and one for a European funder is usually `en-GB`, and a draft
    whose dialect nobody chose silently gets the model's own
-   (`docs/WRITING-STANDARDS.md` §8). `init` also stamps the
+   (`docs/WRITING-STANDARDS.md` §8). Read the acronym vocabulary too --
+   the vendored floor at `assets/style/acronyms.toml`, plus the user's
+   own file if `[style].acronyms` in `config.toml` points at one -- and
+   use its recorded expansion at an acronym's first use rather than
+   inventing one. `init` also stamps the
    corpus fingerprint, which is what lets a later revision tell whether
    the ledger has moved since.
 1. **Retrieve broadly, over-fetching on purpose.** Break the requested topic

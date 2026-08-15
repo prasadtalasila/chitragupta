@@ -143,7 +143,10 @@ the lesson design is the part worth keeping either way.
      environments you are deliberately refusing, so a later session can tell
      a scope decision from an oversight.
    - **Glossary** -- each recurring term with the one definition the whole
-     lesson uses.
+     lesson uses. Check the acronym vocabulary first --
+     `assets/style/acronyms.toml`, plus the user's own file if
+     `[style].acronyms` in `config.toml` points at one -- for a term's
+     recorded expansion before inventing one.
    - **`language:`** -- the dialect, a BCP-47 tag, settled with the reader.
      The line ships unset, and a lesson whose dialect nobody chose silently
      gets the model's own (`docs/WRITING-STANDARDS.md` §8). Command output
