@@ -41,7 +41,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import citation_gate, config, ledger, review
+from src import citation_gate, config, ledger, review, sentences
 from src.passages import Passage, distinctive, source_passages
 
 
@@ -243,11 +243,11 @@ def _sentence_around(text: str, citekey: str) -> str:
     """The sentence within `text` containing `citekey`, citation markup
     stripped so the markers themselves don't score as content.
 
-    Sentence splitting avoids breaking on the abbreviations these drafts
-    actually contain -- "Fig. 1", "e.g.", "Sect. 1.2" -- since splitting
-    there would reintroduce the fragment problem one level down.
+    The split itself is `src/sentences.py`'s, shared with tier 3 of the
+    overlap scan (`src/overlap_embed.py`) -- see that module on why the
+    two aids must not each keep their own idea of where a sentence ends.
     """
-    for part in _SENTENCE_SPLIT.split(text.strip()):
+    for part in sentences.split(text):
         if citekey in part:
             return _tidy(part)
     return _tidy(text)
@@ -271,15 +271,6 @@ def _tidy(text: str) -> str:
     stripped = re.sub(r"\s++([.,;:!?)])", r"\1", stripped)
     stripped = re.sub(r"\(\s+", "(", stripped)
     return re.sub(r"\s{2,}", " ", stripped).strip(" ,;:")
-
-
-# Split after . ! ? only when followed by whitespace and a capital or an
-# opening bracket, and not when the preceding token is a known
-# abbreviation or a single initial.
-_SENTENCE_SPLIT = re.compile(
-    r"(?<![A-Z])(?<!\bFig)(?<!\bSect)(?<!\bEq)(?<!\bRef)(?<!\be\.g)(?<!\bi\.e)(?<!\bcf)"
-    r"(?<=[.!?])\s+(?=[A-Z\[(])"
-)
 
 
 def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | None]:

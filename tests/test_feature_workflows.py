@@ -837,6 +837,49 @@ class TestVerbatimScanEndToEnd:
         assert "no verbatim run" in result.stdout
         assert _findings(result.stdout) == []
 
+    def test_the_embedding_tier_says_it_did_not_run_rather_than_going_quiet(
+        self, planted_draft
+    ):
+        """The end-to-end half of tier 3's availability contract (#134).
+
+        This corpus has no `content/chroma/`, no Docling sidecars and no
+        dossier -- which is the state of most checkouts, and exactly the
+        state in which "found nothing" and "never looked" are
+        indistinguishable unless something says which. The in-process
+        tests in tests/test_verbatim_check.py pin the wording; this pins
+        that it survives the real CLI, into the payload a consumer reads.
+
+        Asserted through `--json` rather than the printed form because
+        the payload is the half a remediation loop consumes, and a
+        report that told a person the truth while telling a program
+        nothing would be the more dangerous of the two failures.
+        """
+        result = _run_scan(planted_draft, "--json")
+
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(result.stdout)
+        not_run = payload["tiers_not_run"]
+        assert [entry["tier"] for entry in not_run] == ["embedding"]
+        assert not_run[0]["reason"], "a tier that did not run must say why"
+
+    def test_every_finding_carries_the_score_field_even_where_it_is_null(
+        self, planted_draft
+    ):
+        """`published()` projects `_PAYLOAD_FIELDS` with a hard
+        `KeyError`, so a field added for one tier has to be carried by
+        all of them. `score` is `None` on the two deterministic tiers
+        rather than absent or `0.0` -- absent breaks the projection, and
+        zero would read as "aligned, badly", which is a different claim
+        from "this tier does not measure that".
+        """
+        result = _run_scan(planted_draft, "--json")
+
+        assert result.returncode == 0, result.stderr
+        findings = json.loads(result.stdout)["findings"]
+        assert findings, "expected the planted runs to be found"
+        assert all("score" in f for f in findings)
+        assert all(f["score"] is None for f in findings if f["tier"] != "embedding")
+
     def test_first_scan_builds_the_index_on_disk(self, planted_draft):
         """The command builds the real index, not a stand-in for one.
 

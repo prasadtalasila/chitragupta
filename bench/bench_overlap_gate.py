@@ -40,7 +40,7 @@ of `scan`, but this benchmark predates its precision being measured, so
 its findings are excluded rather than silently counted as gateable; a
 low finding count here is still not a clean bill of health, and genuine
 restatement is invisible to both deterministic tiers regardless -- see
-docs/PLAGIARISM.md. Nor does it measure whether a blocked draft is
+docs/PLAGIARISM-DESIGN.md. Nor does it measure whether a blocked draft is
 *fixable*: the
 `long` runs it counts are exactly the class `overlap-reviser` refuses to
 rewrite unattended, referring the paraphrase-or-quote choice to a person.
@@ -92,7 +92,7 @@ def eligible(finding):
     """Whether the predicate under test could ever block on `finding`.
 
     Only `exact` is included. `skip-gram` (#133) is deterministic too and
-    is gate-eligible *in principle* per docs/PLAGIARISM.md, but its
+    is gate-eligible *in principle* per docs/PLAGIARISM-DESIGN.md, but its
     real-corpus precision has not been measured -- bench_overlap_skipgram.py
     ran only the capability arm (see bench/RESULTS.md's 2026-08-13
     section), never against this corpus. Folding it into this sweep now
@@ -171,7 +171,7 @@ def scan_all(drafts, references_masked, allowlist=None):
         out = []
         total_suppressed = 0
         for draft in drafts:
-            found, _, suppressed = vc.scan_findings(str(draft))
+            found, _, suppressed, _ = vc.scan_findings(str(draft))
             total_suppressed += suppressed
             for f in found:
                 record = {k: vc.published(f)[k] for k in KEPT_FIELDS}
@@ -214,7 +214,7 @@ def self_check():
                      "quoted": False, "cites_source": False})
     assert not eligible({"id": "d", "tier": "embedding", "span_words": 99,
                          "quoted": False, "cites_source": False}), (
-        "only deterministic tiers may gate (docs/PLAGIARISM.md)")
+        "only deterministic tiers may gate (docs/PLAGIARISM-DESIGN.md)")
     assert not eligible({"id": "e", "tier": "skip-gram", "span_words": 99,
                          "quoted": False, "cites_source": False}), (
         "skip-gram is deterministic but its precision is unmeasured -- "

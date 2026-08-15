@@ -129,7 +129,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   the pass most able to import someone else's phrasing into a paragraph
   that credits no one. A review aid, not a gate: it exits 0 either way.
   Say what it misses when you offer it -- verbatim and near-verbatim
-  reuse only, and **genuine restatement is not detected**, so a clean scan is not
+  reuse only, and **genuine restatement is only detected where the embedding tier can run**, so a clean scan is not
   a clean bill of health (`docs/PLAGIARISM.md`).
   If the user wants the finding kept, add `--write`: the report
   goes to `content/review/`, mirroring the draft's path, beside any
