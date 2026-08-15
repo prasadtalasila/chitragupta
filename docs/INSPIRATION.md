@@ -99,6 +99,22 @@ came from.
   measures the deterministic half only, and #63's parked evaluation
   harness is the open thread.
 
+- **Four public hook collections**, read together when working out what a
+  second `PostToolUse` hook should look like (#185) and why the existing
+  launcher is not portable (#197). What each contributed, and what was
+  refused, is set out in [HOOKS.md](HOOKS.md); in brief:
+
+  | Upstream | Taken | Not taken |
+  |---|---|---|
+  | [obra/superpowers](https://github.com/obra/superpowers) | The fail-silent contract for a context injection, and the caution that the advisory-context field name differs per host | The polyglot `run-hook.cmd`, which needs shell form and so cannot coexist with exec form |
+  | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | The standard-envelope rule, and testing that a hook's payload parses | Its `jq` dependency, against the stdlib-only posture |
+  | [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) | The survey of hook events, output fields and version-gated options behind this project's `if` and `async` notes | Its per-hook enable/disable config -- the gate must not be individually disableable |
+  | [affaan-m/ECC](https://github.com/affaan-m/ECC) | The principle that paths are resolved in the interpreter, not in the shell | The dispatcher process, which trades away fault isolation |
+
+  The refusals matter as much as the borrowings. Three of the four are
+  fail-silent by design, which is right for what they protect and would be
+  a silently inert citation gate if copied across.
+
 ## The rule on borrowing
 
 Stated once, because it is the same rule the pipeline applies to drafts:
