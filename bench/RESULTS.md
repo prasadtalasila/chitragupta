@@ -1689,7 +1689,7 @@ dossiers predate the current `sections.md` heading convention):
 |---|---|
 | Embedding findings | 162, across 15 chapters and 93 distinct citekeys |
 | Reporting cap | 1 alignment per section, 5 shortlisted sources per section |
-| Severity mix | 151 `long`, 7 `short`, 4 `quoted` (measured before #189 changed how `quoted` is computed; a re-run is needed to know the current mix, and this one has not been re-run) |
+| Severity mix | 151 `long`, 7 `short`, 4 `quoted` (measured before #189 changed how `quoted` is computed; re-run on the [2026-08-16 section](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with), same model and corpus, which found the current mix: 146/7/9) |
 | `UNCITED SOURCE` | 8 of 162 |
 | Alignment score | min 0.005, median 0.157, max 0.608 |
 | Median span | 20 words |
