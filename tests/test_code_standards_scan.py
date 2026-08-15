@@ -78,7 +78,7 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/dossier.py",  # 1714
+    "src/dossier.py",  # 1770
     "src/review/verbatim_check.py",  # 1880
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 522
@@ -90,7 +90,7 @@ LEGACY_LONG_FILES = {
     "src/retrieval.py",  # 397
     "src/references.py",  # 366
     "src/overlap_skipgram.py",  # 315
-    "src/config.py",  # 297
+    "src/config.py",  # 301
 }
 
 
