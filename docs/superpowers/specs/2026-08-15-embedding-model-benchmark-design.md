@@ -63,11 +63,22 @@ string:
   drop-ins (`all-MiniLM-L6-v2`, `all-mpnet-base-v2`,
   `multi-qa-mpnet-base-dot-v1`), symmetric `SentenceTransformer.encode`.
 - `embed_paper(model_key, citekey) -> vector` — SPECTER2 base +
-  proximity adapter, fed `title [SEP] abstract` sourced from the ledger's
-  `bib_fields` column (same column `src/references.py` already reads;
-  no new data dependency).
+  proximity adapter, fed `title [SEP] abstract`.
 - `embed_query(model_key, text) -> vector` — SPECTER2 base + adhoc_query
   adapter, fed the raw query string.
+
+**The abstract has no home in the ledger.** `src/ledger.py`'s
+`_BIB_FIELDS_KEPT` allowlist drops `abstract` on purpose ("per-host noise
+... that nothing formats"), so `bib_fields` cannot supply it. What can:
+`content/docling/<citekey>.passages.json` — measured across the 497
+sidecars on this host, 132 (27%) carry a `section_header` passage whose
+text is exactly `Abstract` (case-insensitive), and the `text`-labelled
+passages between it and the next `section_header` are the abstract.
+`embed_paper` uses that where it exists and falls back to `title [SEP]
+""` — SPECTER2's own documented behaviour for a missing abstract —
+for the other 73%, recording per-paper which source supplied the
+abstract so Arm B's SPECTER2 rows can report the split rather than
+silently averaging degraded and full-quality vectors together.
 
 Lives in `bench/`, confirmed excluded from both the 250-line/module and
 25-statement/function ratchets (`tests/test_code_standards_scan.py`) and
@@ -100,13 +111,27 @@ precision-arm finding volume (162 today, for `all-mpnet-base-v2`) as a
 rough false-positive proxy — more findings is not free, since each is a
 reviewer's time.
 
-**Safety.** Must run against a throwaway `content/`-shaped scratch
-directory, never `/workspace/content/chroma` directly — that Chroma
-collection is shared with other sessions on this host.
-`embed_index.collection_name()` already namespaces by model, so nothing
-here needs to touch the real collection to get a clean per-model
-comparison; the scratch directory is about not writing to shared state
-at all, not about avoiding collisions within it.
+**Safety, corrected from an earlier draft of this spec.** No scratch
+`CONTENT_DIR` — a scratch directory would have no `ledger.sqlite`,
+`parsed/` or `docling/` sidecars, so tier-3 could not run there at all.
+`bench_overlap_embed.py._staged()` already stages the fixture inside the
+real `config.DRAFTS_DIR` and removes it in `_unstage()`, and
+`embed_index.collection_name()` already namespaces each Chroma collection
+by model — one model's embed run cannot corrupt or shadow another's. Both
+mechanisms already exist and need no new safety layer; running each
+candidate model's embed against the real `content/chroma` is exactly what
+they were built for.
+
+**Cost, stated rather than assumed.** `--stages embed` has no `--for-draft`
+narrowing — `src/enrich/__main__.py`'s `SCOPE_REFUSED` refuses it
+explicitly, because the Chroma collection is one whole-corpus artefact
+with no partial form. So every candidate model costs one full re-embed of
+all ~501 documents, at whatever `all-mpnet-base-v2`'s (undocumented, so
+far) full-corpus embed time and Chroma's ~795 MB per model cost. Before
+sweeping three models, time one full `--stages embed` run and multiply —
+the same "measure a sample before committing to the batch" discipline
+`bench/estimate.py` already uses — and report that number rather than
+running the sweep blind.
 
 ### 3. Arm B — retrieval and reranking, all four models plus a cascade
 
@@ -115,11 +140,31 @@ bare BM25" ask: the comparison isn't candidate-model-vs-BM25, it's
 candidate-model-in-a-retrieve-then-rerank-pipeline, with BM25 kept as one
 row for context rather than as the thing being beaten.
 
-**Ground truth.** Reconstructed from
-`content/dossiers/books/digital-twins-for-software-engineers/*/retrieval.md`
-+ `evidence.md` + `rejected.md` (restored from `content/backup/`, per
-above) — for each chapter, its logged queries and its kept-citekey set as
-that chapter's relevant set. No new hand-labelling.
+**Ground truth.** `bench/results/2026-08-15-organic-paraphrase-hunt/labels.json`
+is already committed: 48 real `(chapter, citekey, judgment)` rows, each
+with a stable id (e.g. `ch13-ferko_standardisation_2023-32`) encoding the
+chapter, citekey and source line. **All 48 are valid `(query, citekey)`
+retrieval pairs, regardless of judgment** — `paraphrase`/`no-match`/`no`/
+`quoted`/`third-party-echo` all describe how closely the claim restates
+the source passage, which has nothing to do with whether the citekey is
+the paper that claim actually cites in the real book. It is, in every
+row. An earlier draft of this spec restricted this to the 22
+`paraphrase` rows; that was wrong.
+
+What `labels.json` does not carry is the claim *text* — `pairs.json`
+(the `--extract` output the judgments were made from) is gitignored, on
+the same "no draft/source prose in a committed result" discipline
+`bench_overlap_embed.py`'s `KEPT_FIELDS` already documents. Recovering it
+means restoring the book (`content/drafts/books/` and
+`content/dossiers/books/digital-twins-for-software-engineers/`, from
+`content/backup/content-20260809.zip` — the same restore step the tier-3
+precision arm already documents) and re-running
+`bench_paraphrase_hunt.py --extract`. **This is not guaranteed to
+reproduce the same 48 ids** — the id encodes a line number, the backup is
+from 2026-08-09, and extraction runs against today's ledger/passages —
+so the first task of implementing this arm is restoring, re-extracting,
+and checking that all 48 ids resolve, with an explicit stop-and-report
+(not a silent partial join) if any don't.
 
 **Rows compared**, all against the same query set and relevant sets,
 scored by recall@k and nDCG@k:
@@ -132,11 +177,12 @@ scored by recall@k and nDCG@k:
 | SPECTER2 (`adhoc_query` query side, `proximity` paper side), dense-only | Standalone; nothing to rerank at chunk level since it never sees a chunk |
 | Cascade: SPECTER2 paper-level shortlist → best drop-in's dense+rerank within that shortlist | The "cascading models" option #194 explicitly allows |
 
-**Reranker.** One CPU-tolerable cross-encoder, per discussion #43 §3's
-proposal 3 and roadmap issue #54's PR9 framing (`flashrank`'s ONNX models
-or `sentence-transformers`' `CrossEncoder`) — reranks only the ~50-100
-survivors of each row's first-pass retrieval, never the whole corpus, so
-the per-query cost stays bounded regardless of corpus size.
+**Reranker.** `sentence-transformers` (already a pinned `enrich`-group
+dependency, `>=5.6,<6.0`) ships `CrossEncoder` directly — no new
+dependency, unlike `flashrank`, for the same CPU-tolerable job discussion
+#43 §3's proposal 3 and roadmap issue #54's PR9 describe. Reranks only
+the ~50-100 survivors of each row's first-pass retrieval, never the whole
+corpus, so the per-query cost stays bounded regardless of corpus size.
 
 **Relationship to issue #54's roadmap, stated once here rather than
 argued twice.** Track 2 of that roadmap lists PR5 ("retrieval evaluation
@@ -174,6 +220,20 @@ becomes a documented option — still not a new default.
 - Formally completing #54's PR5 or PR9 (CI integration, the merge
   decision on reranking) — this produces evidence toward both, not the
   PRs themselves.
+
+## Sequencing
+
+Two stacked PRs, not one — this repo's `pyproject.toml` version line
+means concurrent PRs always conflict, so two things that could ship
+independently ship as two:
+
+- **Plan 1 (Arm A).** No new dependency. Reuses `bench_overlap_embed.py`
+  and `bench_paraphrase_hunt.py` unmodified. Ships and merges first.
+- **Plan 2 (Arm B).** Adds `adapters` (SPECTER2's adapter loading) to
+  `pyproject.toml`'s `enrich` group; uses `sentence-transformers`'
+  already-pinned `CrossEncoder` rather than a second new dependency.
+  `bench/embed_models.py` belongs here, not in Plan 1 — Arm A never
+  touches SPECTER2.
 
 ## Testing
 
