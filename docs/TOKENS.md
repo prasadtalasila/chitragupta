@@ -2,6 +2,13 @@
 
 Status: **reasoning document.** Written 2026-08-08.
 
+**Written for** someone deciding where to spend engineering effort on
+cost, or reviewing a proposal that claims a saving. **Assumed:**
+[ARCHITECTURE.md](ARCHITECTURE.md) for the layers, and
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) for the dossier. **Not covered
+here:** how to run anything -- this is a reasoning document, not a
+reference.
+
 Where a drafting run's tokens actually go, which of the two pools each
 cost lands in, what the dossier does and does not recover -- and how to
 put a number on any of it without paying for a full seven-phase run.
@@ -72,10 +79,12 @@ Two consequences run through everything below.
 
 **A resident token is roughly a tenth of a fresh one, not free.** Twenty
 turns of cached residency come to `20 x 0.1` = 2x the base rate, against
-1.25x to put the material in context in the first place -- so a long run
-pays more to keep a snippet than it paid to fetch it. But any figure
-computed as `bytes x turns` overstates the bill by about six times if it
-forgets the 0.1x, which is an easy mistake to make in this direction.
+1.25x to put the material in context in the first place. A long run
+therefore pays more to keep a snippet than it paid to fetch it.
+
+But any figure computed as `bytes x turns` overstates the bill about
+sixfold if it forgets the 0.1x, which is an easy mistake to make in this
+direction.
 
 **Output is the expensive direction, at 50x a cached input token.**
 Anything the orchestrator *writes* -- a draft, a dossier entry, a
@@ -123,10 +132,12 @@ when a sub-theme comes up thin.
 The sharp part is what happens next. `reference.md` §1 sets "results kept
 per query ~ top 3" out of fifteen. **The roughly 80% that get rejected
 cost exactly what the kept ones cost, and then stay resident for the rest
-of the run anyway.** Rejecting a candidate saves no tokens at all; it only
-saves you from citing it. [REJECTION.md](REJECTION.md) is the full
-argument, including why a cheaper first read aimed at this cost was built
-and then withdrawn.
+of the run anyway.**
+
+Rejecting a candidate saves no tokens at all. It only saves you from
+citing it. [REJECTION.md](REJECTION.md) is the full argument, including
+why a cheaper first read aimed at this cost was built and then
+withdrawn.
 
 ### 2. Fan-out results held across phases
 
@@ -229,7 +240,8 @@ answer is a file rather than better summarising. **Implemented**: the
 pasted material is now the one line
 `python -m src.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
-**An estimated 15k equivalents saved, in the 5x direction**, which is the
+
+**An estimated 15k equivalents saved, in the 5x direction.** That is the
 same order as the entire resident cost the issue set out to attack,
 arrived at from the opposite side.
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#dispatching-from-the-dossier) has
@@ -263,7 +275,7 @@ The third row is the underrated one. Today a long run that hits
 compaction either loses packet detail silently or pays six interviewer
 dispatches to get it back. With the packets on disk, compaction becomes a
 cheap operation instead of a lossy one -- which is a *resident*-pool
-effect, just an indirect one.
+effect, but an indirect one.
 
 ### The one way to cut residency, and what it would cost
 
@@ -388,12 +400,14 @@ answers that are properties of the current code rather than intentions.
 
 **Do the later phases write the packets to disk?** No. Every write to
 `content/dossiers/` is done by the orchestrating run, in the phase that
-dispatched the subagent, before that phase closes. The subagents cannot
-write: `deep-research-interviewer`, `deep-research-writer` and
-`peer-reviewer` each declare `tools: Bash, Read, Grep, Glob` in their
-frontmatter, and each is told in prose that it writes no files and that
-anything not in its returned packet is lost when it exits. `Bash` is a
-theoretical escape hatch; nothing instructs them through it.
+dispatched the subagent, before that phase closes.
+
+The subagents cannot write. `deep-research-interviewer`,
+`deep-research-writer` and `peer-reviewer` each declare
+`tools: Bash, Read, Grep, Glob` in their frontmatter. Each is told in
+prose that it writes no files, and that anything not in its returned
+packet is lost when it exits. `Bash` is a theoretical escape hatch;
+nothing instructs them through it.
 
 The failure mode that remains is therefore **loss, not corruption**: an
 orchestrator that moves to Phase 3 without transcribing has lost six
@@ -560,12 +574,13 @@ real material available to check the fixed recipe against):
 | A | 199 | 34,902,281 | 93 (5) | 4,277,676 |
 | B | 268 | 66,634,805 | 69 (4) | 3,555,862 |
 
-Orchestrator input outweighs subagent input by roughly 8-19x on these two
--- the direction [the resident multiplier](#the-resident-multiplier)
-predicts (the orchestrator's context is append-only and re-billed every
-turn; a subagent's is paid once and discarded), but the ratio itself is
-two data points from unrelated engineering sessions, not a
-`deep-research` or `survey-writer` run, and should not be read as this
+Orchestrator input outweighs subagent input by roughly 8-19x on these
+two. That is the direction [the resident
+multiplier](#the-resident-multiplier) predicts: the orchestrator's
+context is append-only and re-billed every turn, while a subagent's is
+paid once and discarded. The ratio itself is two data points from
+unrelated engineering sessions rather than a `deep-research` or
+`survey-writer` run, and should not be read as this
 skill's own boundary saving. [The dispatch payload, measured on real
 material](#the-dispatch-payload-measured-on-real-material) below is the
 number that answers that question, for the one boundary it was measured
@@ -694,7 +709,7 @@ measurement discrepancy: Phase 5's `brief` replaces detailed evidence with
 a one-line file reference, discarding nearly all of the payload from the
 orchestrator's side. Step 2a's boundary discards nothing -- the packet
 still carries a `relevance:`/`support:` pair for every kept citekey and a
-reason for every rejected one, the full judgment, just restructured
+reason for every rejected one, the full judgment, restructured
 rather than thrown away. Rejecting harder wouldn't close the gap either,
 per Example 1's own point: the tokens are spent at retrieval regardless
 of what survives judging.
@@ -723,11 +738,13 @@ actually comparable:
 | Saving | **61.5%** |
 
 That reproduces Example 1's ~61% almost exactly on real material, which
-is the useful check: the method is internally consistent, and the gap
-between the estimate and this run is measurement noise, not a modelling
-error. **Then add the cost Example 1's text describes but its total
-omits** -- the rejected list re-entering the orchestrator's context, once
-at 1.25x and resident for the same ~20 turns as everything else it holds:
+is the useful check. The method is internally consistent, and the gap
+between the estimate and this run is measurement noise rather than a
+modelling error.
+
+**Then add the cost Example 1's text describes but its total omits**:
+the rejected list re-entering the orchestrator's context, once at 1.25x
+and resident for the same ~20 turns as everything else it holds:
 
 | | Input-token equivalents (rejected list costed both ways) |
 |---|---|

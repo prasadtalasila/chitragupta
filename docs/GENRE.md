@@ -3,10 +3,16 @@
 Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
 as it stands.
 
+**Written for** anyone choosing which skill to ask for, and anyone
+wondering why a skill refused something. **Assumed:**
+[AGENTS.md](../AGENTS.md), the drafting contract these skills work under.
+**Not covered here:** how a skill is written or changed. That is
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md).
+
 Which skill writes what, how to pick between them, and what each one
-refuses to do. Eight skills live in `.claude/`: five that write a new
-draft, and three that change an existing one -- one cheap and scoped, one
-that goes back to the whole corpus when you ask it to, and one that
+refuses to do. Eight skills live in `.claude/`: five write a new draft,
+and three change an existing one. Of those three, one is cheap and
+scoped, one goes back to the whole corpus when you ask it to, and one
 repairs what a verbatim scan found.
 
 You do not invoke any of them by name. Each has a `description` in its
@@ -61,12 +67,13 @@ skill.
 | someone who needs several perspectives on the topic reconciled, and where the corpus disagrees with itself | multi-perspective research report | `deep-research` |
 
 The pair that gets confused is the teaching pair, and the skills say so
-themselves: if the request is "write something teaching X", the question
-to ask is *will the reader be reading this, or doing it?* Reading is
-`textbook-chapter-writer`; doing is `tutorial-writer`. They have opposite
-rules about explanation -- digression into *why* is a feature of one and a
-defect in the other -- so a wrong guess produces a document that fails at
-both.
+themselves. If the request is "write something teaching X", ask *will the
+reader be reading this, or doing it?* Reading is
+`textbook-chapter-writer`; doing is `tutorial-writer`.
+
+They have opposite rules about explanation. Digression into *why* is a
+feature of one and a defect in the other, so a wrong guess produces a
+document that fails at both.
 
 ## At a glance
 
@@ -153,13 +160,14 @@ skill is a driving lesson -- the point is not to get from A to B, the
 point is that the student can drive afterwards. The route is a pretext.
 
 Its rule, from which everything else follows: **a tutorial that doesn't
-work is worse than no tutorial**, because a learner who follows your
-instructions exactly and gets an error concludes that they are the
-problem. So the lesson is single-path with no options or branches, every
-value is concrete rather than a placeholder, every step that produces
-output says what the learner should see, and the whole thing is run end
-to end before it is presented. Citations appear only in a closing "Where
-to go next", never mid-lesson.
+work is worse than no tutorial.** A learner who follows your instructions
+exactly and gets an error concludes that they are the problem.
+
+So the lesson is single-path, with no options or branches. Every value is
+concrete rather than a placeholder. Every step that produces output says
+what the learner should see. And the whole thing is run end to end before
+it is presented. Citations appear only in a closing "Where to go next",
+never mid-lesson.
 
 Its two failure directions are drifting into explanation (the lesson
 stalls while you explain the architecture) and drifting into a how-to
@@ -175,12 +183,14 @@ adapted from `hadufer/claude-storm`'s implementation of Stanford OVAL's
 STORM method, retooled to cite only real citekeys from this project's
 corpus instead of live web sources.
 
-What you get that no other genre produces: a **contradiction map** --
-where sources in your corpus disagree, both sides by citekey -- a blind
-spot naming what no perspective's searches turned up at all, findings
-ranked by how well the corpus actually supports them, and a peer-review
-scorecard from four independent reviewers including a dedicated
-adversarial one.
+Four things no other genre produces:
+
+- a **contradiction map**, showing where sources in your corpus disagree,
+  both sides by citekey;
+- a blind spot, naming what no perspective's searches turned up at all;
+- findings ranked by how well the corpus actually supports them;
+- a peer-review scorecard from four independent reviewers, including a
+  dedicated adversarial one.
 
 Three depth presets trade cost against breadth:
 
@@ -201,40 +211,45 @@ remaining thing that could reduce it -- is
 Not a genre. The skill that changes a draft one of the five already
 wrote, including in a session that has never seen it.
 
-It reads the dossier instead of the corpus: `scope.md` and `steering.md`
-bound what the revision may change, `sections.md` maps the change onto
-line ranges so only the affected sections are read and edited, and
-`rejected.md` is consulted before any new retrieval so the same
-candidates are not re-judged. A request that contradicts the recorded
-scope is a scope change and gets said out loud rather than quietly
-applied.
+It reads the dossier instead of the corpus. `scope.md` and `steering.md`
+bound what the revision may change. `sections.md` maps the change onto
+line ranges, so only the affected sections are read and edited. And
+`rejected.md` is consulted before any new retrieval, so the same
+candidates are not re-judged.
+
+A request that contradicts the recorded scope is a scope change. It gets
+said out loud rather than quietly applied.
 
 It also runs the other way round, from the corpus rather than from a
 request. When `dossier status --all` reports that a sync removed a paper
-a draft cites, `draft-reviser` re-grounds it: reads the drift report as
-JSON, repairs the broken citations in the sections that carry them,
-weighs only the new candidates that bear on the sub-theme in play, leaves
-previously declined papers declined unless their recorded reason has
-stopped holding, and re-stamps the corpus fingerprint once the gate
-passes. What that promises is no *missing* citations, not an empty
+a draft cites, `draft-reviser` re-grounds it. It reads the drift report
+as JSON and repairs the broken citations in the sections that carry them.
+It weighs only the new candidates bearing on the sub-theme in play, and
+leaves previously declined papers declined unless their recorded reason
+has stopped holding. Once the gate passes, it re-stamps the corpus
+fingerprint. What that promises is no *missing* citations, not an empty
 candidate list -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#re-grounding-after-the-corpus-moves).
 
-Drafts written before `src/dossier.py` existed have no dossier, and so do
-hand-written ones. It bootstraps rather than refusing -- `dossier init`,
-then fill in what the draft itself can tell you -- and says in chat that
-`evidence.md` and `rejected.md` are empty, so the first revision may have
-to re-retrieve for a sub-theme a real dossier would have answered from
-disk. It gets cheaper from the second revision on. It does not invent
-evidence entries to fill the file: an empty `evidence.md` is honest, and
-a fabricated one is the same failure class as a fabricated citekey.
+Drafts written before `src/dossier.py` existed have no dossier, and
+neither do hand-written ones. It bootstraps rather than refusing:
+`dossier init`, then fill in what the draft itself can tell you.
+
+It says in chat that `evidence.md` and `rejected.md` are empty, so the
+first revision may have to re-retrieve for a sub-theme a real dossier
+would have answered from disk. It gets cheaper from the second revision
+on.
+
+It does not invent evidence entries to fill the file. An empty
+`evidence.md` is honest; a fabricated one is the same failure class as a
+fabricated citekey.
 
 **Every one of the five drafting skills routes here for changes.** Each
-carries the rule twice: as a row in its own routing table -- *user asks
-to change something that already exists -> use `draft-reviser`, never
-re-run this skill* -- and as a clause in its frontmatter `description`,
-which is the surface that decides which skill is picked in the first
-place. The table alone is not enough: it is read only after a skill has
+carries the rule twice. Once as a row in its own routing table: *user
+asks to change something that already exists -> use `draft-reviser`,
+never re-run this skill*. Once as a clause in its frontmatter
+`description`, which is the surface that decides which skill is picked in
+the first place. The table alone is not enough: it is read only after a skill has
 already been chosen. [TOKENS.md](TOKENS.md) is why the rule exists.
 
 **It is a default, not a gate.** Nothing enforces it; no hook checks it,
@@ -253,10 +268,12 @@ sub-theme a change touches.
 
 **It is a separate skill so that the choice is yours, and structural.**
 `draft-reviser` contains no instructions for a wide search, so following
-it cannot drift into one; asking for `corpus-reviser` is how you say the
-cost is worth it. A rule that lived as a paragraph inside one skill would
-depend on the model noticing it, which is exactly the kind of enforcement
-this project does not trust.
+it cannot drift into one. Asking for `corpus-reviser` is how you say the
+cost is worth it.
+
+A rule that lived as a paragraph inside one skill would depend on the
+model noticing it, which is exactly the kind of enforcement this project
+does not trust.
 
 Invoke it when you ask for a whole-corpus pass in as many words, when a
 scope change you agreed to has invalidated the recorded queries, or when
@@ -267,11 +284,13 @@ pick `draft-reviser` and say so: being wrongly narrow costs a clarifying
 sentence, being wrongly wide costs the tokens.
 
 What it does *not* relax is the point of doing it here rather than by
-re-running the genre skill. It still consults and honours `rejected.md`,
-still logs every call to `retrieval.md`, still edits section by section
-rather than rewriting the file -- a wide *search* does not imply a wide
-*rewrite* -- still writes the dossier back, and still exits through the
-gate. It keeps the rejections and their reasons, the reader, the glossary
+re-running the genre skill. It still consults and honours `rejected.md`.
+It still logs every call to `retrieval.md`. It still edits section by
+section rather than rewriting the file, because a wide *search* does not
+imply a wide *rewrite*. It still writes the dossier back, and still exits
+through the gate.
+
+So it keeps the rejections and their reasons, the reader, the glossary
 and the steering, and spends tokens only on what is genuinely unknown.
 
 The thing that stays never, in both skills, is re-running the genre
@@ -282,28 +301,33 @@ version of it.
 
 Not a genre either, and narrower than both revisers above: its input is
 one report rather than a request in prose. `python -m src.review verbatim
-scan --json` lists every run of wording a draft shares with the corpus;
-this skill works that list, repairing each finding and re-checking the
-repair before keeping it. **Paraphrase is not detected** by that scan, so
-finishing the list is not a clean bill of health -- see
+scan --json` lists every run of wording a draft shares with the corpus.
+This skill works that list, repairing each finding and re-checking the
+repair before keeping it.
+
+**A genuine restatement is only detected where the embedding tier can
+run**, so finishing the list is not a clean bill of health. See
 [PLAGIARISM.md](PLAGIARISM.md).
 
 **What it may do without asking is decided by the report, not by the
-model.** #128's severity buckets are the line: a `short` run is reworded
-unattended, a `long` one stops and asks the human whether to paraphrase
-or to quote, and a run that is both quoted and cited is reported as
-already correct and left alone. The paraphrase-or-quote choice on a long
-run is an authorial one -- the field states some things one particular
-way -- and [SOUL.md](../SOUL.md) puts deciding it for you under *what you
-will not do*.
+model.** #128's severity buckets are the line. A `short` run is reworded
+unattended. A `long` one stops and asks the human whether to paraphrase
+or to quote. A run that is both quoted and cited is reported as already
+correct and left alone.
+
+The paraphrase-or-quote choice on a long run is an authorial one, since
+the field states some things one particular way.
+[SOUL.md](../SOUL.md) puts deciding it for you under *what you will not
+do*.
 
 **Every repair is verified before it is kept.** `python -m src.draft
 gate` and `python -m src.review verbatim recheck` both have to come back
 clean, the finding has to be gone, and the count of objective findings
-must not have risen -- a rewrite that fixes its own finding by lifting
-from a different source is caught by that last one. Two attempts per
-finding, one pass per invocation, and every attempt is logged in
-`revisions.md` with its outcome, refusals included.
+must not have risen. That last condition catches a rewrite that fixes its
+own finding by lifting from a different source.
+
+Two attempts per finding, one pass per invocation. Every attempt is
+logged in `revisions.md` with its outcome, refusals included.
 
 **Only a person starts it.** No hook, no scheduled job, no genre skill at
 the end of its run, and not `draft-reviser` on its own initiative. The
@@ -354,14 +378,14 @@ anyway.
 **The verbatim scan is offered, never run silently and never a gate.**
 Once the gate has passed and the renders are done, and before presenting,
 each skill offers `python -m src.review verbatim scan
-content/drafts/<path>` -- which reports wording the draft shares with
-*any* parsed source, cited or not. It cannot block a draft and no skill
-treats it as a condition of presenting. The offer carries its own
-caveat, in every skill, because the drafter is the one it is about: two
+content/drafts/<path>`. That reports wording the draft shares with *any*
+parsed source, cited or not. It cannot block a draft, and no skill treats
+it as a condition of presenting. The offer carries its own
+caveat, in every skill, because the drafter is the one it is about. Two
 of the three detection tiers see wording only, so a genuine restatement
-is invisible to them, and the third runs only where the optional
-enrichment layer, the Docling sidecars and the draft's dossier are all
-present -- so a clean scan is not a clean bill of health.
+is invisible to them. The third sees one, but runs only where the
+optional enrichment layer, the Docling sidecars and the draft's dossier
+are all present. So a clean scan is not a clean bill of health.
 [PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that;
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
 it sees.

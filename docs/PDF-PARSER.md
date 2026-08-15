@@ -2,6 +2,11 @@
 
 Status: **reasoning document.** Written 2026-08-02.
 
+**Written for** someone choosing `[parser].backend`, or revisiting that
+choice. **Assumed:** [CONFIG.md](CONFIG.md) for how to set it. **Not
+covered here:** the measured cost of each backend, which is
+[PERFORMANCE.md](PERFORMANCE.md).
+
 ## Short summary
 
 This repository needs PDF processing that balances speed, text quality,

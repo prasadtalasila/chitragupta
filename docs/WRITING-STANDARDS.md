@@ -2,6 +2,12 @@
 
 Status: **reference.** Written 2026-08-03.
 
+**Written for** anyone drafting with this pipeline, and for the skills
+that draft on their behalf. **Assumed:** [GENRE.md](GENRE.md) for which
+skill does what. **Not covered here:** the prose standard this
+repository's *own* documentation is held to, which is
+[HOUSE-STYLE.md](HOUSE-STYLE.md).
+
 Shared prose standards for every skill in `.claude/skills/`. Each SKILL.md
 points here rather than restating them, and adds only the rules specific to
 its own genre.
@@ -108,9 +114,9 @@ skips reasoning, notation changes meaning mid-document, or a claim assumes
 something never established.
 
 This pass catches more real problems than any other single step. The
-technical-communication literature's stronger form of it is a usability test
-with a real member of the audience; that isn't available inside a drafting
-run, so this reread is the substitute -- and it should be a genuine second
+technical-communication literature's stronger form of it is a usability
+test with a real member of the audience. That is not available inside a
+drafting run, so this reread is the substitute. Make it a genuine second
 pass, not a skim of what you just wrote.
 
 ## 7. Say what you don't know
@@ -140,10 +146,10 @@ material keeps its source's spelling, and so do a cited title, a proper
 noun, and a dataset or code identifier: changing those is a misquotation,
 not a correction.
 
-**House style is the same field's second half.** Where a target venue
-imposes conventions these standards do not settle -- serial comma or not,
-"Section 3" or "§3", how a figure is captioned -- record the decision
-beside the dialect rather than re-deciding it section by section.
+**House style is the same field's second half.** A target venue may
+impose conventions these standards do not settle: serial comma or not,
+"Section 3" or "§3", how a figure is captioned. Record the decision
+beside the dialect, rather than re-deciding it section by section.
 
 **A caveat this section owns.** §2's defect-marker list is English
 literals, and §4's voice rules are an Anglophone technical-writing
@@ -154,10 +160,10 @@ they carry over unchanged.
 ## 9. What is checked mechanically, and what is not
 
 Some rules above have a decidable answer and some do not. The split
-matters in both directions, and getting it wrong fails in opposite ways:
-mechanising §4's "short sentences" builds a machine that splits sentences
-past the point the argument survives, while leaving §2's literals to
-memory means they are checked only when someone remembers to.
+matters in both directions, and getting it wrong fails in opposite ways.
+Mechanising §4's "short sentences" builds a machine that splits sentences
+past the point the argument survives. Leaving §2's literals to memory
+means they are checked only when someone remembers to.
 
 | Rule | Section | Decidable? | May a machine act on it unattended? |
 |---|---|---|---|
@@ -173,11 +179,13 @@ memory means they are checked only when someone remembers to.
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A
-readability index is the tempting exception and the instructive one: a
+readability index is the tempting exception, and the instructive one. A
 loop minimising grade level splits sentences past the point the argument
-survives and replaces precise technical vocabulary with shorter, vaguer
-words, because a polysyllabic term is indistinguishable to the metric
-from bad writing. It may be reported; it may never be optimised.
+survives, and replaces precise technical vocabulary with shorter, vaguer
+words -- because a polysyllabic term is indistinguishable to the metric
+from bad writing.
+
+It may be reported. It may never be optimised.
 [HOUSE-STYLE.md](HOUSE-STYLE.md) has that argument in full.
 
 **Quoted spans are exempt from every row, and this is the one place that

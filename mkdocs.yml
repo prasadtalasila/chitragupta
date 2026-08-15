@@ -153,9 +153,6 @@ nav:
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
       - Retrieval: docs/RETRIEVAL.md
-      - Rejection: docs/REJECTION.md
-      - Tokens: docs/TOKENS.md
-      - Iterating on a draft: docs/DRAFT-ITERATION.md
   - Choosing settings:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
@@ -165,6 +162,9 @@ nav:
       - Writing standards: docs/WRITING-STANDARDS.md
   - Working on it:
       - Design constraints: docs/DESIGN.md
+      - Iterating on a draft: docs/DRAFT-ITERATION.md
+      - Tokens: docs/TOKENS.md
+      - Rejection: docs/REJECTION.md
       - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md

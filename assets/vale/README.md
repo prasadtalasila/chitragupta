@@ -31,7 +31,7 @@ whose rules differ between two clones is not a check.
 | `DialectGB.yml` | §8 -- en-US spellings in an en-GB draft | warning |
 | `DialectUS.yml` | §8 -- en-GB spellings in an en-US draft | warning |
 | `DialectIN.yml` | §8 -- Oxford `-ize` in an en-IN draft | warning |
-| `Acronyms.yml` | §2 -- expansion at first use | suggestion |
+| `Acronyms.yml` | §2 -- expansion at first use | suggestion |  <!-- see the exceptions note below -->
 
 `Just.yml` is separate from the other five markers because
 [§9](../../docs/WRITING-STANDARDS.md) says it is: the adverb ("just add
@@ -48,6 +48,34 @@ dialect gets none of them and is told so.
 and Oxford `-ize`, so `DialectGB` cannot flag `-ize` without reporting
 correct prose; Indian English prefers `-ise`, and `DialectIN` is that one
 extra check layered on `DialectGB`.
+
+### The `Acronyms` exceptions, and why they are grouped
+
+This rule was written against *drafts*, where the reader is an outsider
+to the field and an unexpanded acronym is a real defect. Run over this
+repository's own `docs/` it reported **536 findings across 96 tokens** --
+which is why `.github/workflows/ci.yml` says a prose lint of this
+repository "would fail today" and does not run one.
+
+Almost none of them were the defect the rule is for. Two changes took it
+to **91 findings across 23 tokens** without weakening it:
+
+- **`vale.ini` ignores Markdown document names as tokens.** `AGENTS.md`,
+  `CODE-STANDARDS.md` and `SOUL.md` are filenames, not prose, and were
+  119 findings on their own. Ignored there rather than in this rule's
+  exceptions, so a genuine `CODE` or `DESIGN` elsewhere still reports.
+- **The exceptions list gained three labelled groups**: literal config
+  and status values (`INFO`, `NEVER`, `FAILED`), bare document-name stems
+  (`README`, `SKILL`), and the general computing vocabulary this
+  document set's reader already knows (`CI`, `CLI`, `LLM`, `POSIX`).
+  That last group is the same judgement `CPU`, `JSON` and `URL` were
+  already exempt on.
+
+What still reports is what the rule is for: domain jargon a reader would
+plausibly look up -- `GROBID`, `TEI`, `CJK`, `UMAP`, `ONNX`, `SBERT`,
+`IDF`, `TATR`, `CSL`, `BCP`, `CPS`, `DF`, `VLM` -- and the venue and
+project names (`PAN`, `NAACL`, `OVAL`, `STORM`, `MOSS`, `BAAI`). Those 91
+are a backlog to work through, not noise to suppress.
 
 ## Word pairs deliberately left out
 

@@ -2,6 +2,12 @@
 
 Status: **measurements.** Written 2026-08-03.
 
+**Written for** anyone choosing settings on their own hardware and
+wanting the measured cost rather than a guess. **Assumed:**
+[CONFIG.md](CONFIG.md) for what each setting does. **Not covered here:**
+the parallelism design behind these numbers, which is
+[PARALLELISM.md](PARALLELISM.md), written for someone changing it.
+
 What each setting in [CONFIG.md](CONFIG.md) costs, measured rather than
 estimated. [CONFIG.md](CONFIG.md) says what a setting *does* and what
 values it takes; this says what it *costs*, so neither document has to
@@ -168,11 +174,11 @@ text of **8 of those 16 documents**:
   complete tables embedded as images, and another lost a paragraph of
   body prose set in a graphical text box.
 
-So `false` suits born-digital papers. Set `true` for scans (with OCR off,
-docling extracts almost nothing from a scan) or where tables-as-images
-matter more than parse time. **The parse-quality guard will not catch a
-wrong choice here** -- it looks for run-together words, not for content
-that never arrived.
+So `false` suits born-digital papers. Set `true` for scans, since with
+OCR off docling extracts almost nothing from one, or where
+tables-as-images matter more than parse time. **The parse-quality guard
+will not catch a wrong choice here**: it looks for run-together words,
+not for content that never arrived.
 
 ## GPU vs CPU -- it depends entirely on OCR
 
@@ -301,15 +307,15 @@ Timing each run's phases separates the candidates:
   slower because the pool got bigger.)
 - **The CPU is heading for saturation**, 56% to 78% across the same
   range. Read alone, "70% busy at 32" suggests headroom; read against 56%
-  at 24 and 78% at 48, it is clearly *becoming* the limit.
+  at 24 and 78% at 48, it is *becoming* the limit.
 - **The long-document tail is not the story** — 5-8s throughout, under 4%.
 
 Neither cost alone explains the plateau; together they account for it,
 and both worsen with every worker added.
 
 **Corpus size still decides whether raising this is worth anything.** Over
-8 documents, 4 workers gave 1.90x and 8 gave none at all (34.6s / 18.3s /
-19.3s): each worker pays its own ~8.5s model load, so the benefit is
+8 documents, 4 workers gave 1.90x and 8 gave none at all -- 34.6s / 18.3s
+/ 19.3s. Each worker pays its own ~8.5s model load, so the benefit is
 proportional to how much work there is to amortise it over. That is why
 the resolved count is also capped by the number of documents needing a
 parse.
@@ -452,11 +458,11 @@ including the conclusions later ones overturned.
 
 ## What a drift sweep costs
 
-Everything above is the corpus layer -- `sync` and the enrichment
-stages, where a run is measured in minutes. `python -m src.draft dossier
-status --all` sits in the drafting layer and is measured in seconds, but
-it is worth pricing here for one reason: it is meant to be run **after
-every sync**, so "cheap enough to be habitual" is a requirement, not a
+Everything above is the corpus layer: `sync` and the enrichment stages,
+where a run is measured in minutes. `python -m src.draft dossier status
+--all` sits in the drafting layer and is measured in seconds. It is worth
+pricing here for one reason: it is meant to be run **after every sync**,
+so "cheap enough to be habitual" is a requirement rather than a
 nicety.
 
 The sweep builds a BM25 index in memory and discards it, rather than
@@ -499,9 +505,9 @@ excludes.
 ## What raising the worker count costs in reproducibility
 
 Worth pricing alongside the speedups above, because it is the one cost of
-parallelism that is not measured in seconds: **the more workers, the less
+parallelism not measured in seconds: **the more workers, the less
 reproducible the parse.** Docling groups dense reference blocks into
-elements differently under contention, which changes both the parsed text
+elements differently under contention. That changes both the parsed text
 and the passage spans quoted from it.
 
 At the scale this matters: comparing runs over all 501 documents, ~1.4%
@@ -516,8 +522,8 @@ artifact by artifact, and `bench/RESULTS.md`'s 2026-08-07 section has the
 measurement. Both are stated once, there.
 
 Two corrections to figures that once stood in this document, kept
-because the retracted versions were quoted elsewhere: the earlier "6
+because the retracted versions were quoted elsewhere. The earlier "6
 files differ, under 0.06%" understated the effect by counting bytes
-rather than passages, and "repeating a run at the same worker count
-reproduces exactly" is **false** -- 5 of 572 same-configuration
-comparisons differ in bytes and 2 in passage text.
+rather than passages. And "repeating a run at the same worker count
+reproduces exactly" is **false**: 5 of 572 same-configuration
+comparisons differ in bytes, and 2 in passage text.

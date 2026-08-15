@@ -2,6 +2,12 @@
 
 Status: **implemented.** Written 2026-08-06.
 
+**Written for** someone changing the drafting layer or the dossier
+format. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md) for the layers
+and [TOKENS.md](TOKENS.md) for the two cost pools. **Not covered here:**
+how to *use* a dossier day to day, which is [CLI.md](CLI.md)'s
+`dossier` section.
+
 Why drafting costs what it costs, and how a draft is revised weeks later
 without re-running the pipeline that produced it.
 
@@ -52,12 +58,14 @@ scores each claim against its source. None of them needs to know what
 searches were run or which candidates were turned down.
 
 The drafting layer is the exception. A genre skill's real product is not
-only the draft -- it is also the judgment that produced it: which
-sub-themes the topic was broken into, which of the fifteen retrieved
-candidates were worth keeping, why the other twelve weren't, who the
-reader is, which definition of a contested term the draft settled on, and
-what the user asked for in chat that the prose doesn't show. Before this
-module, all of that lived in one conversation and died with it.
+only the draft -- it is also the judgment that produced it. Which
+sub-themes the topic was broken into. Which of the fifteen retrieved
+candidates were worth keeping, and why the other twelve weren't. Who the
+reader is. Which definition of a contested term the draft settled on. And
+what the user asked for in chat that the prose doesn't show.
+
+Before this module, all of that lived in one conversation and died with
+it.
 
 So "shorten section 3" cost a full re-run: retrieve, score every
 candidate again, re-cluster, rewrite. **That is a structural cost, not a
@@ -70,16 +78,18 @@ The accounting lives in [TOKENS.md](TOKENS.md), together with the same
 argument from [REJECTION.md](REJECTION.md) and two worked examples --
 one subject, kept in one place.
 
-The part this document depends on, in one paragraph: costs split into
-two pools, **orchestrator-resident** (re-sent on every remaining turn of
-the run, and so multiplied by everything that comes after it) and
-**subagent one-shot** (paid once, because the context is discarded when
-the subagent returns). Four things load the first pool -- retrieved
-candidates that are rejected but stay resident, fan-out packets held
-across phases, whole-file rewrites, and **no revision path at all**.
+The part this document depends on, in one paragraph. Costs split into
+two pools. **Orchestrator-resident** costs are re-sent on every remaining
+turn of the run, and so multiplied by everything that comes after them.
+**Subagent one-shot** costs are paid once, because the context is
+discarded when the subagent returns.
 
-The fourth is the one this module exists to remove, and it is the only
-one of the four that is *structural* rather than a constant factor: before
+Four things load the first pool: retrieved candidates that are rejected
+but stay resident, fan-out packets held across phases, whole-file
+rewrites, and **no revision path at all**.
+
+The fourth is the one this module exists to remove, and the only one of
+the four that is *structural* rather than a constant factor. Before
 `src/dossier.py` and the `draft-reviser` skill, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run Phase 1 through Phase 7 again.
@@ -119,7 +129,7 @@ renders at all: it matches them by their path relative to
 | `revisions.md` | append-only log of what changed and why | **nowhere** |
 | `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
 
-Two of those were already specified and simply weren't durable. The
+Two of those were already specified but never made durable. The
 two that were missing entirely are the two that matter most:
 
 - **`rejected.md`.** Without it, the next revision re-searches and
@@ -183,14 +193,16 @@ where the plan is replaced by what the finished report actually cites.
 
 ### Why not merge the provenance JSON into the rest of the dossier
 
-`thesis-chapter-writer` and `deep-research` also write a `provenance.json`
-(and, for the thesis genre, an `evidence.json`). Both live **inside** the
-dossier directory --
-`content/dossiers/<draft path minus suffix>/provenance.json` -- for two
-reasons: they are drafting state, produced by the run that wrote the
-draft, so they belong with the rest of that run's state; and
-`dossier_dir()` mirrors the draft's path, so two drafts named `survey.md`
-in different topics do not share one file.
+`thesis-chapter-writer` and `deep-research` also write a
+`provenance.json`, and the thesis genre additionally writes an
+`evidence.json`. Both live **inside** the dossier directory, at
+`content/dossiers/<draft path minus suffix>/provenance.json`, for two
+reasons.
+
+They are drafting state, produced by the run that wrote the draft, so
+they belong with the rest of that run's state. And `dossier_dir()`
+mirrors the draft's path, so two drafts named `survey.md` in different
+topics do not share one file.
 
 They stay separate *files*, and neither replaces the other, because they
 answer different questions for different readers. The argument for that
@@ -223,15 +235,19 @@ dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
 
 The ledger is opened read-only with `timeout=0`, exactly as
-`python -m src.corpus ledger` does: this is an inspection, and it must not take
-a write lock, run a migration, or block behind a sync that is mid-run.
+`python -m src.corpus ledger` does. This is an inspection: it must not
+take a write lock, run a migration, or block behind a sync that is
+mid-run.
+
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers
-could bear on. That is a claim about a corpus that *grew*; a corpus that
-lost a paper the draft cites has produced a broken citation, which is
-fixed whether or not anyone asked. The line between the two is drawn in
-"Two findings, and they are not the same kind of thing" below, and acted
-on in "Re-grounding after the corpus moves".
+could bear on. That is a claim about a corpus that *grew*. A corpus that
+*lost* a paper the draft cites has produced a broken citation, which is
+fixed whether or not anyone asked.
+
+The line between the two is drawn in "Two findings, and they are not the
+same kind of thing" below, and acted on in "Re-grounding after the corpus
+moves".
 
 The fingerprint is written once, by `init`, and is not maintained by any
 command -- the only thing that rewrites it is a re-grounding pass, which
@@ -289,21 +305,25 @@ failure here that no downstream check catches.
 **What it does not do, and cannot.** It does not reduce what the
 orchestrator is already carrying. A context is append-only between
 compactions, so six packets returned into it in Phase 2 stay there
-whether or not they are also on disk, and reading an extract back *adds*
-tokens rather than removing any. The only way to avoid that residency
-would be to let each interviewer write its own file so the long-form
-material never enters the orchestrator at all -- which would cost the
-invariant that makes a dossier trustworthy (**one writer, one record**),
-and is written down as a rejected trade in
+whether or not they are also on disk. Reading an extract back *adds*
+tokens rather than removing any.
+
+The only way to avoid that residency would be to let each interviewer
+write its own file, so the long-form material never enters the
+orchestrator at all. That would cost the invariant which makes a dossier
+trustworthy -- **one writer, one record** -- and it is written down as a
+rejected trade in
 [TOKENS.md](TOKENS.md#the-one-way-to-cut-residency-and-what-it-would-cost)
-rather than implemented here. The three subagent definitions still
-declare `tools: Bash, Read, Grep, Glob` with no `Write`, and still say in
-prose that they write nothing.
+rather than implemented here.
+
+The three subagent definitions still declare
+`tools: Bash, Read, Grep, Glob` with no `Write`, and still say in prose
+that they write nothing.
 
 **The second effect, which is not about tokens.** Until now, an
 orchestrator that moved past Phase 2 without transcribing lost six
 packets' worth of judgment and nothing reported it -- the draft looked
-finished and the record was simply absent. A run that *dispatches* from
+finished and the record was absent. A run that *dispatches* from
 the file cannot skip the file: `brief` exits 1 when nothing resolves and
 names every citekey with no block, and `--check` lets the orchestrator
 find that out before four writers are already running. Silent loss became

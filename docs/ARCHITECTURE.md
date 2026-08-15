@@ -5,9 +5,10 @@ Status: **reference.** Written 2026-08-06.
 What actually runs, what each part writes, and which parts are optional.
 
 **Written for** someone who has the pipeline working and now wants to
-change something: pick a parser backend, decide whether the enrichment
-layer is worth building, wire a new script into the chain, or work out why a
-command needs a virtual environment when the one next to it doesn't.
+change something. Pick a parser backend, decide whether the enrichment
+layer is worth building, wire a new script into the chain, or work out
+why a command needs a virtual environment when the one next to it does
+not.
 
 **Assumed** you have run [the Quickstart](../README.md#quickstart) at least
 once. **Not covered here:** every flag of every command
@@ -190,30 +191,35 @@ Each skill retrieves from the corpus layer, drafts into
    from the citekeys actually cited.
 
 **Grounding is enforced, not requested.** The gate runs twice on the same
-draft, and neither run is the skill's own good intentions: a PostToolUse
+draft, and neither run is the skill's own good intentions. A PostToolUse
 hook runs it on every write under `content/drafts/`, so a draft cannot be
-saved with an unverifiable citation even if a skill forgets to check, and
-the skill runs it again before presenting anything. A second hook checks at
-session start that the first one can still start at all, since a hook that
-fails to launch cannot report that it failed --
+saved with an unverifiable citation even if a skill forgets to check. The
+skill then runs it again before presenting anything.
+
+A second hook checks at session start that the first one can still start
+at all, since a hook that fails to launch cannot report that it failed.
 [HOOKS.md](HOOKS.md) is where that layer's rules live.
 
-**The skills never run the corpus layer for you.** They read it; they do
-not write `content/ledger.sqlite`, and they do not run `python -m
-src.corpus sync` -- that command takes the write lock, and a first full-corpus
-parse can run for tens of minutes, so starting one is your decision, not a
-side effect of asking for a draft. On an empty ledger the three
-citation-grounded genres (`survey-writer`, `thesis-chapter-writer`,
-`deep-research`) say so and stop. The two teaching genres, where citations
-are optional, say so and ask whether to continue uncited.
+**The skills never run the corpus layer for you.** They read it. They do
+not write `content/ledger.sqlite`, and they do not run
+`python -m src.corpus sync`. That command takes the write lock, and a
+first full-corpus parse can run for tens of minutes, so starting one is
+your decision rather than a side effect of asking for a draft.
 
-**No skill runs the enrichment layer.** They consume its output when a human
-has already built it -- `deep-research` checks for `content/chroma/`
-before reaching for embedding search, `peer-reviewer` reads
-`content/docling/<citekey>.md` if it exists -- and fall back to the
-lightweight default when it isn't there. Building that stack is your
-decision, not a side effect of asking for a draft. See [layer 3, the
-enrichment layer](#layer-3-the-enrichment-layer) below.
+On an empty ledger, the three citation-grounded genres --
+`survey-writer`, `thesis-chapter-writer`, `deep-research` -- say so and
+stop. The two teaching genres, where citations are optional, say so and
+ask whether to continue uncited.
+
+**No skill runs the enrichment layer.** They consume its output when a
+human has already built it. `deep-research` checks for `content/chroma/`
+before reaching for embedding search; `peer-reviewer` reads
+`content/docling/<citekey>.md` if it exists. Both fall back to the
+lightweight default when it is not there.
+
+Building that stack is your decision, not a side effect of asking for a
+draft. See [layer 3, the enrichment
+layer](#layer-3-the-enrichment-layer) below.
 
 ## Layer 3: the enrichment layer
 
@@ -240,20 +246,23 @@ ever reads what it produced.
 
 **Three stages, and no more than three.** A review report and a draft
 render are deliberately *not* among them, though both would be three-line
-wrappers around `python -m src.review provenance` and `python -m
-src.draft render` -- conveniences rather than enrichment work. Hosting
-either here would cost two things: it would make the enrichment layer
-*import* the review and drafting layers, the one cycle the four-layer
-picture otherwise has none of; and because the lock wraps every stage, it
-would make a review aid and a draft render wait on a running `sync`.
-Called directly they need no venv at all, so the direct form is cheaper
-than the wrapper would be.
+wrappers around `python -m src.review provenance` and
+`python -m src.draft render`. They are conveniences rather than
+enrichment work.
+
+Hosting either here would cost two things. It would make the enrichment
+layer *import* the review and drafting layers -- the one cycle the
+four-layer picture otherwise has none of. And because the lock wraps
+every stage, it would make a review aid and a draft render wait on a
+running `sync`. Called directly they need no venv at all, so the direct
+form is cheaper than the wrapper would be.
 
 The default unit of work is the whole corpus. `--for-draft` narrows it to
-the papers one draft cites, which reaches `docling` only: `embed` and
+the papers one draft cites, and reaches `docling` only. `embed` and
 `bertopic` each write one whole-corpus artefact with no partial form, so
-they are refused rather than scoped. [LADDERS.md](LADDERS.md#scoping-a-run-to-one-draft)
-has the reasoning and [CLI.md](CLI.md#enriching-one-drafts-papers) the flags.
+they are refused rather than scoped.
+[LADDERS.md](LADDERS.md#scoping-a-run-to-one-draft) has the reasoning,
+and [CLI.md](CLI.md#enriching-one-drafts-papers) the flags.
 
 Each stage probes its own prerequisites and reports `ok`, `partial`,
 `skipped`, `missing-binary` or `error`, so a missing dependency is a
@@ -276,18 +285,19 @@ which is why it lives in `src/` rather than in the package.
 
 **A skill must not run it.** A skill runs inline with the same Bash
 access as the session that invoked it, so it *can* shell out to
-`src/enrich/__main__.py` -- and must not, which is what AGENTS.md and all
-seven `SKILL.md` files say. Two reasons: this layer takes the same write
-lock as `sync`, so a skill invoking it can block or be blocked by the
-user's own run; and a first full-corpus Docling parse is measured in tens
-of minutes, which is not a cost a skill may incur on the user's behalf
-without being asked.
+`src/enrich/__main__.py`. It must not, which is what AGENTS.md and all
+seven `SKILL.md` files say.
 
-What a skill *does* do is **read** what this layer produced, which is the
-only edge between the two: check the stack exists before using it
-(`content/chroma/` for embeddings, `content/docling/` for passages), and
-degrade to the lightweight default rather than erroring when it doesn't.
-Reading an artefact is not calling a layer.
+Two reasons. This layer takes the same write lock as `sync`, so a skill
+invoking it can block or be blocked by the user's own run. And a first
+full-corpus Docling parse is measured in tens of minutes, which is not a
+cost a skill may incur on the user's behalf without being asked.
+
+What a skill *does* do is **read** what this layer produced, and that is
+the only edge between the two. It checks the stack exists before using it
+-- `content/chroma/` for embeddings, `content/docling/` for passages --
+and degrades to the lightweight default rather than erroring when it does
+not. Reading an artefact is not calling a layer.
 
 ## Layer 4: the review layer
 
@@ -302,10 +312,10 @@ Nothing invokes them automatically, and none of them gates anything:
 | `python -m src.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
 
 **Advisory, not a gate**, and named accordingly. *Review* rather than
-*verification* because `src.draft gate` is verification, it lives in
-the drafting layer, and it is that layer's only exit -- a "verification
-layer" that excluded the gate would split the concept across two layers.
-The contrast is the point, not a competition.
+*verification*, because `src.draft gate` is the verification: it lives in
+the drafting layer and is that layer's only exit. A "verification layer"
+that excluded the gate would split the concept across two layers. The
+contrast is the point, not a competition.
 
 **It takes no lock.** These are read-only over the corpus and must keep
 working during a `sync`, like `python -m src.corpus ledger` and
@@ -326,12 +336,13 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
 ```
 
-`src.review provenance` writes by default; `verbatim scan` and
-`coverage` write under `--write`, printing being the usual use
-for both. Every report opens with a banner saying it is not a verdict --
-a file found on disk months later is exactly the case the docs cannot
-reach -- and **carries no timestamp**, because the reason to write one is
-that it diffs cleanly against the next revision's.
+`src.review provenance` writes by default. `verbatim scan` and `coverage`
+write under `--write`, since printing is the usual use for both.
+
+Every report opens with a banner saying it is not a verdict, because a
+file found on disk months later is exactly the case the docs cannot
+reach. Every report also **carries no timestamp**, so that it diffs
+cleanly against the next revision's.
 
 The `.json` beside `survey.verbatim.md` is that report's findings as
 data, for a caller that would otherwise parse the printed form (#127). A
@@ -356,19 +367,22 @@ evidence and leave the call to you.
 
 **Which side a check falls on is decided by what it is measured against,
 not by how decidable its answer is.** The two are easy to conflate, and
-the conflation is the one that would erode the gate. The gate compares a
-citekey to the ledger -- ground truth, built from the human's own `.bib`
-export and a real parse of a real PDF -- and no state of the world makes
-a citekey absent from it legitimately present, so an absolute verdict is
-available. A check compared against a *recorded preference* fails
-differently even when its answer is just as mechanical: the preference is
-a line someone typed, so it can be wrong, stale, or deliberately
-overridden by a quoted title or a proper noun, and blocking on it refuses
-a correct draft on a bad target -- a failure the gate cannot have by
-construction. Such a check reports and never blocks, whichever layer it
-lives in, and its enforcement is of *invocation* rather than of
-conformance: a harness may guarantee that it runs and that its findings
-are seen, never that they were obeyed. Decidable is not the same as
+that conflation is the one that would erode the gate.
+
+The gate compares a citekey to the ledger: ground truth, built from the
+human's own `.bib` export and a real parse of a real PDF. No state of the
+world makes a citekey absent from it legitimately present, so an absolute
+verdict is available. A check compared against a *recorded preference* fails
+differently, even when its answer is just as mechanical. The preference
+is a line someone typed, so it can be wrong, stale, or deliberately
+overridden by a quoted title or a proper noun. Blocking on it refuses a
+correct draft on a bad target -- a failure the gate cannot have by
+construction.
+
+Such a check reports and never blocks, whichever layer it lives in. What
+is enforced is *invocation* rather than conformance: a harness may
+guarantee that it runs and that its findings are seen, never that they
+were obeyed. Decidable is not the same as
 gateable, which is why
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) bars promoting any new
 check into a gate beside `src/citation_gate.py` outright, rather than
@@ -377,15 +391,17 @@ leaving it to a judgement about how precise the check is.
 `scan` is worth placing against the gate specifically, because the two
 are complements and both are deterministic. The gate proves every citekey
 is *real*; the scan reports what *wording* came along with them. Same
-corpus, same determinism, opposite halves of one question -- and the
-reason the second is a review aid anyway is not that it is fuzzy, but
-that "this sentence resembles its source" has no single right answer the
-way ledger membership does. Its findings are what a later severity policy
-would be tuned against, not a verdict waiting to be switched on:
+corpus, same determinism, opposite halves of one question.
+
+The second is a review aid anyway, and not because it is fuzzy. "This
+sentence resembles its source" has no single right answer the way ledger
+membership does. Its findings are what a later severity policy would be
+tuned against, not a verdict waiting to be switched on:
 [SOUL.md](../SOUL.md) commits to verbatim checks *staying* review aids.
-Note also what a clean run does not mean -- `scan` is the exact detection
-tier, and the paraphrase tiers beside it are unbuilt, so it comes up short
-by being silently incomplete rather than by being wrong. See
+Note also what a clean run does not mean. `scan` runs three detection
+tiers, but the third needs an optional stack a checkout may not have, so
+a clean run can be incomplete rather than wrong. It names any tier that
+did not run. See
 [docs/PLAGIARISM.md](PLAGIARISM.md).
 
 ## Incremental by default, honest about failure
@@ -393,12 +409,13 @@ by being silently incomplete rather than by being wrong. See
 Two properties run through every stage, and both are load-bearing rather
 than incidental.
 
-**Nothing is recomputed without a reason.** `sync` skips a PDF whose bytes
-haven't changed; the embedding index skips a document whose text hashes
-the same as what is already stored; the topic model re-encodes only
-documents that moved, even though it must re-cluster all of them; the
-Docling stage fingerprints each PDF by size and modification time. A
-second run over an unchanged corpus therefore costs close to nothing,
+**Nothing is recomputed without a reason.** `sync` skips a PDF whose
+bytes have not changed. The embedding index skips a document whose text
+hashes the same as what is already stored. The topic model re-encodes
+only documents that moved, even though it must re-cluster all of them.
+The Docling stage fingerprints each PDF by size and modification time.
+
+A second run over an unchanged corpus therefore costs close to nothing,
 which is what makes it safe to put `sync` on a schedule.
 
 **A stage that cannot run says so.** Every stage probes for the binaries
@@ -439,15 +456,17 @@ a specific span of a specific source.
 
 Docling groups dense reference blocks into elements slightly differently
 under contention, and `src/passages.py` writes **one passage record per
-element**. So the instability does not stop at byte offsets: measured
-over 286 across-configuration document comparisons, **4 (1.4%)** differed
-in their passage records and **3 (1.0%)** in the passage *text* itself --
-the gap being label changes on byte-identical text, which are real
-instability but not a changed quotation. The observed text-level
-mechanisms are a bibliography entry splitting in two (leaving a reference
-truncated before its publisher and pages) and two entries merging into
-one. Same-configuration runs are not exempt: 2 of 572 comparisons (0.3%)
-changed a passage's text.
+element**. So the instability does not stop at byte offsets.
+
+Measured over 286 across-configuration document comparisons, **4 (1.4%)**
+differed in their passage records and **3 (1.0%)** in the passage *text*
+itself. The gap between those two is label changes on byte-identical
+text: real instability, but not a changed quotation.
+
+Two text-level mechanisms were observed. A bibliography entry splits in
+two, leaving a reference truncated before its publisher and pages; or two
+entries merge into one. Same-configuration runs are not exempt either --
+2 of 572 comparisons (0.3%) changed a passage's text.
 
 Two consequences worth stating plainly:
 
@@ -461,14 +480,15 @@ Two consequences worth stating plainly:
   not been observed to vary.
 
 This is Docling's behaviour under load, not something this repository's
-parallelism introduced, and it cannot be switched off: Docling exposes no
-determinism setting, and the only lever below it -- torch's
-`use_deterministic_algorithms` -- *raises* rather than degrades on an op
-with no deterministic implementation, which would turn a cosmetic
-difference into a hard failure. `bench/RESULTS.md`'s
-"2026-08-07: does the *quotable passage* survive a re-parse?" has the
-measurement, the three mechanisms it separates, and its own statement of
-how little 286 comparisons can pin down.
+parallelism introduced, and it cannot be switched off. Docling exposes no
+determinism setting. The only lever below it, torch's
+`use_deterministic_algorithms`, *raises* rather than degrades on an op
+with no deterministic implementation -- which would turn a cosmetic
+difference into a hard failure.
+
+`bench/RESULTS.md`'s "2026-08-07: does the *quotable passage* survive a
+re-parse?" has the measurement, the three mechanisms it separates, and
+its own statement of how little 286 comparisons can pin down.
 
 ## What this architecture does not do
 
@@ -512,27 +532,32 @@ tier each command is in; this is the reason there are tiers at all.
 
 **The gate chain is deliberately in tier 1.** `src.draft gate` ->
 `src.draft references` -> `src.draft render` runs on the system
-interpreter with no third-party import anywhere in it, so the pipeline's
-one safety guarantee cannot be blocked by a virtual environment that is
-broken, absent, or built for a different Python. That matters more than
-it sounds: PEP 668 blocks `pip install` outside a venv on most current
-distributions, so "the venv is broken" is not always a five-second fix.
+interpreter with no third-party import anywhere in it. The pipeline's one
+safety guarantee therefore cannot be blocked by a virtual environment
+that is broken, absent, or built for a different Python.
+
+That matters more than it sounds. PEP 668 blocks `pip install` outside a
+venv on most current distributions, so "the venv is broken" is not always
+a five-second fix.
 
 Tier 2 is one package. `src.corpus sync` needs `bibtexparser` because parsing
 BibTeX correctly -- nested braces, LaTeX escapes, multi-line values -- is
 not worth hand-rolling.
 
-**Directory membership is not the same axis, and has twice disagreed
-with it.** `render_output.py` once sat in the enrichment layer's own
-directory while needing no package from that dependency group at all --
-it is the drafting layer's publish step, and it now lives in `src/`
-beside the rest of that layer. The last residue of the same confusion was
-`verbatim_check.py`, a review-layer command living in `scripts/`, the
-directory that then held the enrichment layer's entry point. It ran on
-bare `python` like the other two aids and was in no way heavier; only its
-path suggested otherwise. It is `src/review/verbatim_check.py` now, and
-`scripts/` holds no layer entry point at all, leaving only genuine dev
-tooling behind. Both moves were corrections of a label, not of a cost.
+**Directory membership is not the same axis, and has twice disagreed with
+it.** `render_output.py` once sat in the enrichment layer's own directory
+while needing no package from that dependency group at all. It is the
+drafting layer's publish step, and it now lives in `src/` beside the rest
+of that layer.
+
+The last residue of the same confusion was `verbatim_check.py`, a
+review-layer command living in `scripts/` -- the directory that then held
+the enrichment layer's entry point. It ran on bare `python` like the
+other two aids and was in no way heavier; only its path suggested
+otherwise. It is `src/review/verbatim_check.py` now, and `scripts/` holds
+no layer entry point at all, leaving only genuine dev tooling behind.
+
+Both moves were corrections of a label, not of a cost.
 
 What the aid needs is `pandoc` and `pdflatex`, which are operating-system
 packages, probed at runtime and reported as `missing-binary` when absent.
@@ -545,59 +570,67 @@ corpus layer, `src.draft <verb>` for drafting, `src.enrich --stages …`
 for enrichment, `src.review <aid>` for review. A layer's package may nest as
 deep as its code wants; its *command surface* does not. The submodules
 inside `src/enrich/` and `src/review/` carry no `__main__` block, so
-`python -m src.enrich.docling_parse` or `python -m src.review.verbatim_check`
-imports a module and exits 0 having done nothing -- a trap, but a silent
-and harmless one, and the price of there being exactly one `--help` per
-layer. The drafting layer's five commands carry the same trap without
-moving into a package: `citation_gate.py`, `dossier.py`, `references.py`,
-`render_output.py` and `retrieval.py` stayed flat in `src/` --
+`python -m src.enrich.docling_parse` or
+`python -m src.review.verbatim_check` imports a module and exits 0 having
+done nothing. That is a trap, but a silent and harmless one, and it is
+the price of there being exactly one `--help` per layer.
+
+The drafting layer's five commands carry the same trap without moving
+into a package. `citation_gate.py`, `dossier.py`, `references.py`,
+`render_output.py` and `retrieval.py` stayed flat in `src/`;
 `src/draft.py` beside them is what dropped their `__main__` blocks and
-gave the layer its one front door -- so `python -m src.dossier` (or any
-of the other four) is the same silent no-op as the nested form above.
+gave the layer its one front door. So `python -m src.dossier`, or any of
+the other four, is the same silent no-op as the nested form above.
 
 **One module refuses instead: `src/sync.py`.** Silence is the right price
-everywhere above because nobody schedules those commands -- a no-op is
-seen by the person who typed it, in the second after they typed it.
-Running `src/sync.py` as a module is the exception: it was the corpus
+everywhere above because nobody schedules those commands. A no-op is seen
+by the person who typed it, in the second after they typed it.
+
+Running `src/sync.py` as a module is the exception. It was the corpus
 layer's entry point until 5.2.0, and it is the one spelling here that
 plausibly sits in a crontab or a systemd unit, where "exited 0" is all
 anyone ever reads. It ran that way for a release. Issue #151 found the
 cost in this repository's own `bench/`, where two measurement harnesses
 timed a sync that never happened and recorded the result -- wrong data,
-not missing data. So that module carries a `__main__` block that prints
-`python -m src.corpus sync` and exits **64** -- deliberately none of the
-three codes [CLI.md](CLI.md#running-sync-on-a-schedule) publishes as
-`sync`'s API, since a scheduler reads `2` there as "expected, do
-nothing" -- and #153 removed the old spelling from the documentation.
-It is not a second way in: it parses no
-arguments, offers no `--help`, takes no lock and syncs nothing. There is
-still exactly one `--help` per layer, which is what this invariant is
-about.
+not missing data.
+
+So that module carries a `__main__` block that prints
+`python -m src.corpus sync` and exits **64**. That is deliberately none
+of the three codes [CLI.md](CLI.md#running-sync-on-a-schedule) publishes
+as `sync`'s API, since a scheduler reads `2` there as "expected, do
+nothing". #153 removed the old spelling from the documentation.
+
+It is not a second way in: it parses no arguments, offers no `--help`,
+takes no lock and syncs nothing. There is still exactly one `--help` per
+layer, which is what this invariant is about.
 
 `tests/test_removed_command_scan.py` keeps the old spelling out of the
-tree. It matches the *invocation* -- the `-m` flag and the module
-together, in prose and in the quoted argument-list form that got past #150's
-hand sweep -- rather than the module path, which is legitimate
-and common: `src.sync` is also the pinned logger name in every
-`logs/pipeline.log` line.
+tree. It matches the *invocation*: the `-m` flag and the module together,
+in prose and in the quoted argument-list form that got past #150's hand
+sweep. It deliberately does not match the module path, which is
+legitimate and common -- `src.sync` is also the pinned logger name in
+every `logs/pipeline.log` line.
 
 **Why those two layers are flat while the other two are packages** is a
-question about code cohesion, and it is independent of the rule above:
+question about code cohesion, independent of the rule above:
 `python -m src.draft <verb>` and `python -m src.corpus <verb>` already
-satisfy it. What makes `src/enrich/` and `src/review/` packages is that
-their submodules form clusters -- `topic_model` imports `embed_index`
-imports `corpus`, and all three review aids share
-`src/review/__init__.py`'s output contract. The five drafting modules
-share little beyond `src/config.py`, so there is no cluster to name a
-package after. The dependencies also run the wrong way for one:
-`src/review/` imports four of the five, and `src/enrich/__main__.py`
-imports `citation_gate`, so an `src/draft/` package would have the review
-and enrichment layers importing the drafting layer by name -- the shape
-of the cycle that keeping `provenance` and `render` out of the stage list
-prevents. `src.retrieval` is additionally a documented *Python API*
-across the skills, which such a move would rename for no gain to a
-command surface that is already one level deep. Issue #147 has that
-argument in full.
+satisfy it.
+
+What makes `src/enrich/` and `src/review/` packages is that their
+submodules form clusters. `topic_model` imports `embed_index` imports
+`corpus`, and all three review aids share `src/review/__init__.py`'s
+output contract. The five drafting modules share little beyond
+`src/config.py`, so there is no cluster to name a package after.
+
+The dependencies also run the wrong way for one. `src/review/` imports
+four of the five, and `src/enrich/__main__.py` imports `citation_gate`.
+An `src/draft/` package would therefore have the review and enrichment
+layers importing the drafting layer by name -- the shape of the cycle
+that keeping `provenance` and `render` out of the stage list prevents.
+
+`src.retrieval` is additionally a documented *Python API* across the
+skills. Such a move would rename it for no gain, to a command surface
+that is already one level deep. Issue #147 has that argument in full.
 
 The corpus layer is flat for the same reason: `src/corpus.py` beside
 `sync.py` and `ledger.py`, rather than a `src/corpus/` package that would
@@ -665,14 +698,16 @@ what is missing.
 | Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + pdflatex) | reported as `missing-binary`. No format is silently downgraded to another |
 | Detection | `exact` word-n-gram runs, a deterministic skip-gram tier, and an embedding tier (all three built; the second and third advisory-only) | the embedding tier needs the optional enrichment layer's `content/chroma/`, the Docling passage sidecars *and* the draft's own dossier; without any of them it is unavailable and says which, rather than falling back to the exact tier and reporting less |
 
-One difference worth stating, because it is the exception to the word
+One difference is worth stating, because it is the exception to the word
 *tier* as used above: the detection tiers are **not mutually exclusive**.
-The other three tier sets are a menu you pick exactly one option from;
-`scan` runs every detection tier that exists and unions the findings,
-labelling each with the tier that produced it -- which is what the
-`tier: "exact"` field on a finding is for, with one value so far. The
-practical consequence is the one every place that offers `scan` repeats:
-a tier that could not run now says so by name, so a clean run means
+The other three tier sets are a menu you pick exactly one option from.
+`scan` instead runs every detection tier that can run, unions the
+findings, and labels each with the tier that produced it. That is what a
+finding's `tier` field is for, and it currently takes three values:
+`exact`, `skip-gram` and `embedding`.
+
+The practical consequence is the one every place that offers `scan`
+repeats. A tier that could not run says so by name, so a clean run means
 "nothing found by the tiers that ran", never "no borrowed wording".
 [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has the three tiers
 and the literature behind them.

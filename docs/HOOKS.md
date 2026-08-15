@@ -95,15 +95,17 @@ question is already answered:
 | May use conditional spawning (`if`) | no | yes |
 | May run `async` | no | no, see [below](#deliberately-not-done) |
 
-Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) --
-*"A gate `FAIL` is a failing test, not a lint warning"* -- and
+Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) -- *"A gate
+`FAIL` is a failing test, not a lint warning"* -- and
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) both bar promoting any new
-check into a gate beside `src/citation_gate.py`, and #183 records the
-argument in full: the gate compares a citekey against the ledger, which is
-ground truth, whereas every other check compares prose against something a
-human typed, which can be wrong, stale, or deliberately overridden.
-Blocking on the second kind refuses a *correct* draft on a *bad target*, a
-failure the gate cannot have by construction.
+check into a gate beside `src/citation_gate.py`. #183 records the argument
+in full.
+
+The gate compares a citekey against the ledger, which is ground truth.
+Every other check compares prose against something a human typed, which
+can be wrong, stale, or deliberately overridden. Blocking on the second
+kind refuses a *correct* draft on a *bad target* -- a failure the gate
+cannot have by construction.
 
 The operating formula, from #183: **invocation is enforced, conformance is
 not.** A hook guarantees the findings reach the agent. Only the gate
@@ -125,14 +127,15 @@ argument for consolidating -- controlling how several checks' findings
 merge into a single stdout -- does not apply, because the harness already
 merges them correctly; see [the trial table](#what-is-measured-and-what-is-merely-documented).
 
-The two share exactly one decision, *is this write a draft?*, and that is
-factored into one helper beside them rather than copied, because a copy is
-what drifts. The subtleties it holds are recorded in
-`citation_gate_hook.py`'s docstring and were learned from a real near-miss:
-`file_path` may be relative, the repo root must be derived from the hook's
-own location rather than from the target path, and containment must be
-tested with `is_relative_to` rather than a substring match on
-`/content/drafts/`.
+The two share exactly one decision -- *is this write a draft?* -- and it
+is factored into one helper beside them rather than copied, because a
+copy is what drifts.
+
+The subtleties it holds are recorded in `citation_gate_hook.py`'s
+docstring, and were learned from a real near-miss. `file_path` may be
+relative. The repo root must be derived from the hook's own location
+rather than from the target path. And containment must be tested with
+`is_relative_to`, not a substring match on `/content/drafts/`.
 
 ### The session preflight
 
@@ -221,11 +224,13 @@ hand as `python -m src.draft <verb>`.
 
 **Layer 2, `.claude/hooks/`, holds adapters.** An adapter reads a
 `PostToolUse` payload on stdin, decides whether it is interested, shells
-out to layer 1, and writes one JSON document. The rule that keeps this
-layer honest: **an adapter contains no logic anyone could want to run by
-hand.** That is what makes the check usable from a skill, a terminal or CI
-without going near the hook, and it is why a skill that invoked the hook
-would be [inverting the dependency](#a-skill-that-runs-the-hook).
+out to layer 1, and writes one JSON document.
+
+One rule keeps this layer honest: **an adapter contains no logic anyone
+could want to run by hand.** That is what makes the check usable from a
+skill, a terminal or CI without going near the hook. It is also why a
+skill that invoked the hook would be [inverting the
+dependency](#a-skill-that-runs-the-hook).
 
 **Layer 3, `settings.json`, holds the launcher**, and nothing else. See
 [the launcher contract](#the-launcher-contract).
@@ -307,14 +312,15 @@ of #197. `python3` is standard on Linux and generally absent on Windows;
 Whatever is chosen, it must be chosen deliberately and written down, not
 inherited.
 
-**What does not transfer.** `obra/superpowers` solves the adjacent problem
--- bash being absent rather than a variable being unexpanded -- with a
-polyglot `run-hook.cmd` that is simultaneously a valid batch file and a
-valid shell script, so `cmd.exe` runs the batch half and finds Git Bash
-while `bash` reads the batch half as a no-op heredoc. It is a good trick
-and it is **incompatible with exec form**, which is what this repository
-needs: a shebang-less polyglot invoked through `execve` fails outright. The
-two fixes are alternatives, not layers.
+**What does not transfer.** `obra/superpowers` solves the adjacent
+problem -- bash being absent, rather than a variable being unexpanded --
+with a polyglot `run-hook.cmd`. That file is simultaneously a valid batch
+file and a valid shell script, so `cmd.exe` runs the batch half and finds
+Git Bash, while `bash` reads the batch half as a no-op heredoc.
+
+It is a good trick, and it is **incompatible with exec form**, which is
+what this repository needs: a shebang-less polyglot invoked through
+`execve` fails outright. The two fixes are alternatives, not layers.
 
 One narrower thing does transfer, as a caution rather than a change: that
 file's scripts are deliberately *extensionless* because Claude Code's

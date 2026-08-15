@@ -73,16 +73,17 @@ is how a standard produces worse code than none.
 
 That rule was written for drafts. It applies here unchanged, and it is
 why this document is split the way it is. "No function exceeds 25
-statements" is binary and is enforced. "This code is clean" is a score,
-and a score invites the same Goodhart failure
+statements" is binary and is enforced. "This code is clean" is a score.
+
+A score invites the same Goodhart failure
 [HOUSE-STYLE.md](HOUSE-STYLE.md#why-a-readability-index-is-a-trap)
-describes for readability indices: a maintainability metric is minimised
-by splitting functions past the point where the logic survives the break,
-and every one of those edits passes its own re-check.
+describes for readability indices. A maintainability metric is minimised
+by splitting functions past the point where the logic survives the break
+-- and every one of those edits passes its own re-check.
 
 So: a small number of binary rules with a detector and a register, and a
 larger number of judgement rules with neither. The judgement rules are
-not weaker -- they are what review is for. They are simply not things a
+not weaker -- they are what review is for. They are not things a
 machine may drive to zero.
 
 **The loop stays open.** This document borrows AUTO-IMPROVEMENT.md's
@@ -247,13 +248,15 @@ functions were quietly not counted.
 SonarQube's Python analysis ships S3776 -- "Cognitive Complexity of
 functions should not be too high" -- with a default threshold of **15**.
 That default is not this project's standard. **The standard here is
-25**, deliberately aligned with C1's 25-statement rule: the two measure
+25**, deliberately aligned with C1's 25-statement rule. The two measure
 different things -- how much a function *does* against how hard its
 control flow is to *follow* -- but they draw the line at the same
-altitude, and a complexity bar lower than the statement bar would drive
-exactly the over-splitting [R3](#the-rule-that-decides-everything) warns
-about: functions cut past the point where the logic survives the break,
-with every cut passing its own re-check.
+altitude.
+
+A complexity bar lower than the statement bar would drive exactly the
+over-splitting [R3](#the-rule-that-decides-everything) warns about:
+functions cut past the point where the logic survives the break, with
+every cut passing its own re-check.
 
 Operationally:
 
@@ -403,23 +406,27 @@ the thing is for, not what type it returns. `MAX_STATEMENTS` and
 
 ### Source code structure
 
-Vertical separation of concepts, related code dense, variables declared
-near use, dependent and similar functions close, functions in downward
-dependency order, short lines, no horizontal alignment, whitespace to
-group, consistent indentation -- all **review** standards, adopted as
-written. "Keep lines short" is the one that could cheaply become a
-detector; [Build order](#build-order) puts it with `ruff`, which enforces
-it as `E501` rather than needing its own scanner.
+All **review** standards, adopted as written: vertical separation of
+concepts, related code dense, variables declared near use, dependent and
+similar functions close, functions in downward dependency order, short
+lines, no horizontal alignment, whitespace to group, consistent
+indentation.
+
+"Keep lines short" is the one that could cheaply become a detector.
+[Build order](#build-order) puts it with `ruff`, which enforces it as
+`E501` rather than needing its own scanner.
 
 ### Objects and data structures
 
-Largely **N/A**, and the reason is worth stating rather than leaving as an
-omission: `src/` has almost no classes, and the few it has
-(`interrupt_guard`, `_AnnotatedStream`) are small context managers and
-wrappers. "Prefer data structures" and "hide internal structure" are what
-the codebase already does -- modules expose functions over plain dicts,
-tuples and `sqlite3` rows. "Should be small", "do one thing" and "small
-number of instance variables" apply to any class that does appear, and C1
+Largely **N/A**, and the reason is worth stating rather than leaving as
+an omission. `src/` has almost no classes, and the few it has --
+`interrupt_guard`, `_AnnotatedStream` -- are small context managers and
+wrappers.
+
+"Prefer data structures" and "hide internal structure" are what the
+codebase already does: modules expose functions over plain dicts, tuples
+and `sqlite3` rows. "Should be small", "do one thing" and "small number
+of instance variables" apply to any class that does appear, and C1
 already covers its methods.
 
 ### Tests
