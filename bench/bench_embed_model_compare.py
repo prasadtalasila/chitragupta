@@ -69,6 +69,115 @@ def self_check():
     )
 
 
+def _venv_python():
+    """Path to the `enrich` Poetry group interpreter (chromadb,
+    sentence-transformers, torch).
+
+    Prefers this checkout's own `.venv-full`, matching every other bench
+    script's documented `.venv-full/bin/python bench/...` invocation. On
+    this host, though, a freshly created worktree does not carry its own
+    multi-GB venv -- `.venv-full` lives once, in the checkout the
+    worktree branched from -- so this falls back to that checkout,
+    located the same way git itself finds it (`--git-common-dir`), rather
+    than a hardcoded sibling path that would break on a different host
+    layout."""
+    local = REPO / ".venv-full" / "bin" / "python"
+    if local.exists():
+        return str(local)
+    common_dir = subprocess.run(
+        ["git", "rev-parse", "--git-common-dir"],
+        cwd=REPO, capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    shared = (REPO / common_dir).resolve().parent / ".venv-full" / "bin" / "python"
+    if shared.exists():
+        return str(shared)
+    raise RuntimeError(
+        f"no .venv-full/bin/python at {local} or {shared} -- "
+        "run `poetry install --with enrich` in one of those checkouts"
+    )
+
+
+def _run(cmd, env_extra=None):
+    """One subprocess call, with EMBEDDING_MODEL (or nothing) layered
+    onto this process's own environment -- never a bare os.environ
+    replacement, which would drop PATH and silently break every
+    .venv-full/bin/python call downstream of it."""
+    import os
+    env = dict(os.environ)
+    if env_extra:
+        env.update(env_extra)
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        print(result.stdout, file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        raise RuntimeError(f"{' '.join(cmd)} exited {result.returncode}")
+    return result
+
+
+def run_model(model, tag, out_dir):
+    """Builds `model`'s Chroma collection if it isn't already current,
+    scans the fixture and the real book with it, and cross-checks
+    against the organic ground truth. Returns the three JSON payloads
+    this model produced.
+
+    Each step shells out to the real command a human would run --
+    bench_overlap_embed.py and bench_paraphrase_hunt.py are never
+    imported, only invoked -- so this script measures exactly what
+    `bench/README.md` tells a person to run, not an approximation of it.
+    """
+    slug = model_slug(model)
+    py = _venv_python()
+    env = {"EMBEDDING_MODEL": model}
+
+    # DRAFTS_DIR is relative ("content/drafts/books/..."), and
+    # bench_overlap_embed.py/bench_paraphrase_hunt.py resolve --drafts as
+    # a literal filesystem path, not through config.py -- so it only
+    # finds the real restored book when made absolute against
+    # config.CONTENT_DIR (config.toml's `[content] dir`, per-host and
+    # possibly outside this checkout), not against this checkout's own
+    # (mostly empty) content/ directory.
+    from src import config  # noqa: PLC0415 -- deferred so self_check() alone stays import-light
+    drafts_dir = str(config.CONTENT_DIR.parent / DRAFTS_DIR)
+
+    print(f"\n=== {model} ===", flush=True)
+    print("  building/confirming the Chroma collection ...", flush=True)
+    _run([py, "-m", "src.enrich", "--stages", "embed"], env_extra=env)
+
+    model_tag = f"{tag}-{slug}"
+    print("  running the capability + precision arms ...", flush=True)
+    _run([py, "bench/bench_overlap_embed.py", "--fixture",
+          "--drafts", drafts_dir, "--tag", model_tag], env_extra=env)
+
+    model_out = BENCH_DIR / "results" / model_tag
+    capability = json.loads((model_out / "embed_capability.json").read_text(encoding="utf-8"))
+    precision = json.loads((model_out / "embed_precision.json").read_text(encoding="utf-8"))
+
+    organic_tag = f"{model_tag}-organic"
+    organic_out = BENCH_DIR / "results" / organic_tag
+    organic_out.mkdir(parents=True, exist_ok=True)
+    organic_labels_copy = organic_out / "labels.json"
+    organic_labels_copy.write_text(ORGANIC_LABELS.read_text(encoding="utf-8"), encoding="utf-8")
+
+    print("  cross-checking against the 22 organic close-paraphrase pairs ...", flush=True)
+    _run([py, "bench/bench_paraphrase_hunt.py", "--crosscheck",
+          "--drafts", drafts_dir, "--tag", organic_tag,
+          "--embed-record", str(model_out / "embed_precision.json")])
+
+    organic = json.loads(organic_labels_copy.read_text(encoding="utf-8"))
+    caught_by_embedding = sum(
+        1 for row in organic["candidates"]
+        if row["judgment"] == "paraphrase" and "embedding" in row["tiers"]
+    )
+    total_paraphrase = sum(1 for row in organic["candidates"] if row["judgment"] == "paraphrase")
+
+    return {
+        "model": model,
+        "grades_caught": {row["grade"]: row["tiers"] for row in capability["grades"]},
+        "embedding_findings": precision["embedding_findings"],
+        "organic_recall": f"{caught_by_embedding}/{total_paraphrase}",
+    }
+
+
 if __name__ == "__main__":
     self_check()
     print("self_check() passed")
