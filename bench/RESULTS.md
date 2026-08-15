@@ -30,8 +30,9 @@ if it is obvious which is which, so:
 | [2026-08-13b: does a gram's corpus document frequency separate boilerplate from reuse?](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse) | **Current** | Follows the section above, which found the discriminating feature and quantified it only partly. Measured at gram rather than finding granularity it explains 12 of 14, against that section's 8 |
 | [2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses) | **Current, capability arm only** | Confirms the every-Nth-word design works synthetically. Its "precision arm: not run" half is superseded by the section below, which ran it |
 | [2026-08-14: tier 2's first real precision number, and the two bugs that had to be fixed to get it (#180)](#2026-08-14-tier-2s-first-real-precision-number-and-the-two-bugs-that-had-to-be-fixed-to-get-it-180) | **Current** | The precision arm the section above could not run. Two mechanical bugs accounted for 163 of 190 raw findings; on the 27 that survive, precision is 2/27 and both true positives are passages the exact tier already reports |
-| [2026-08-15: does the embedding tier (#134/#164) catch what neither deterministic tier can?](#2026-08-15-does-the-embedding-tier-134164-catch-what-neither-deterministic-tier-can) | **Current** | Tier 3's first measurement. Establishes that a *sentence* is the wrong comparison unit in this corpus -- the one hand-verified organic pair scores 0.55 as a sentence against 0.59-0.61 of same-paper noise, and 0.71 windowed -- and that both organic pairs #134 names are reported. Its capability arm is a graded fixture and its two organic pairs are the ones #134 names in prose; its precision arm reports a 162-finding population and **no precision number** -- none of it is labelled, and the 59-candidate dataset #134's plan assumes as ground truth was never committed |
+| [2026-08-15: does the embedding tier (#134/#164) catch what neither deterministic tier can?](#2026-08-15-does-the-embedding-tier-134164-catch-what-neither-deterministic-tier-can) | **Partly superseded** | Tier 3's first measurement. Establishes that a *sentence* is the wrong comparison unit in this corpus -- the one hand-verified organic pair scores 0.55 as a sentence against 0.59-0.61 of same-paper noise, and 0.71 windowed -- and that both organic pairs #134 names are reported. Its capability arm is a graded fixture and its two organic pairs are the ones #134 names in prose; its precision arm reports a 162-finding population and **no precision number** -- none of it is labelled. Its severity-mix figure (151 `long`/7 `short`/4 `quoted`) was flagged as stale after #189 changed how `quoted` is computed; the [2026-08-16 section](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with) re-ran the same model and corpus and found 146/7/9 -- that is the current mix |
 | [2026-08-15b: the recall question, asked by reading](#2026-08-15b-the-recall-question-asked-by-reading----how-much-organic-paraphrase-does-each-tier-see) | **Current** | The only recall measurement here, and the one #134's plan assumed existed: 48 claims judged by reading each against the source it cites. 22 are close paraphrase; tier 3 is the only tier firing on 8 of them, against skip-gram's 2-of-59 measured the same way before tier 3 existed. Re-derives, by a committed script, what the 2026-08-14 session produced and did not commit |
+| [2026-08-16: which drop-in embedding model does tier-3 overlap detection see the most with?](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with) | **Current** | The first cross-model comparison. All three candidates catch all four graded-ladder rungs; organic recall over the same 22 close-paraphrase pairs ranges 11/22-13/22, with `all-mpnet-base-v2` (the shipped `config.toml.example` default) ahead by 2 pairs at a middling finding-volume cost. Not a precision measurement -- see its own "what this does not measure" |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1843,3 +1844,157 @@ corpus digest still matches.
 is written beside `labels.json` and is **not committed**: `bench/`'s
 recorded-field rule keeps draft and source prose out of `bench/results/`,
 and that file is nothing else. The script regenerates it.
+
+## 2026-08-16: which drop-in embedding model does tier-3 overlap detection see the most with?
+
+The two sections above measure tier 3 with one model,
+`all-mpnet-base-v2`. `docs/CONFIG.md` documents three models as safe,
+symmetric drop-ins for `embed_index.py`'s un-prefixed `encode()` call
+(`all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `multi-qa-mpnet-base-dot-v1`);
+this asks whether the choice matters. `bench/bench_embed_model_compare.py`
+drives `bench_overlap_embed.py` (capability + precision arms) and
+`bench_paraphrase_hunt.py --crosscheck` (the 22-pair organic recall
+question from 2026-08-15b) once per candidate, unmodified, via the
+`EMBEDDING_MODEL` environment variable -- neither script is touched, this
+is an orchestrator. SPECTER2 is not a candidate here: it embeds a whole
+paper's title+abstract, and all four graded-ladder rungs below restate
+the *same* paper's *same* claim, so there is nothing for it to
+discriminate with (see the script's own docstring and the design spec's
+Arm A section).
+
+Host: as the sections above. `all-MiniLM-L6-v2` and `all-mpnet-base-v2`
+already had a built `content/chroma/` collection on this host;
+`multi-qa-mpnet-base-dot-v1` did not, so its run paid a fresh embed of
+the whole corpus. Measured wall clock for the full three-model sweep,
+`time`'d end to end: **29m10.838s** (398m3.689s user, 21m22.982s sys --
+`torch`'s intra-op threading across the run). Read off each model's
+output-directory timestamp, the three legs took roughly 4m37s
+(MiniLM), 8m35s (mpnet-base), and 15m59s (multi-qa-mpnet, the one that
+built a collection from scratch) -- so reproducing this on a host where
+all three collections already exist should cost a small fraction of
+29 minutes, not the whole figure.
+
+### The comparison table
+
+Printed by `main()`, and written to
+`bench/results/2026-08-16-model-compare/comparison.json`:
+
+| model | embedding findings | organic recall | grades caught |
+|---|---|---|---|
+| `sentence-transformers/all-MiniLM-L6-v2` | 157 | 11/22 | 4/4 |
+| `sentence-transformers/all-mpnet-base-v2` | 162 | 13/22 | 4/4 |
+| `sentence-transformers/multi-qa-mpnet-base-dot-v1` | 163 | 11/22 | 4/4 |
+
+**All three candidates catch all four graded-ladder rungs**, and catch
+them the same way: `Verbatim` by the exact tier, `Word substitution`/
+`Light paraphrase`/`Genuine restatement` by the embedding tier, in every
+one of the three per-model `embed_capability.json` records. The
+2026-08-15 finding that tier 2 catches nothing on this ladder --
+including the word-substitution rung it was built for -- and that the
+verbatim rung is caught by tier 1 and correctly not double-reported by
+tier 3, both hold for all three candidates, not only the shipped
+default. Nothing about *which* embedding model runs changes what the
+deterministic tiers see; that was never in question, but it is now
+checked rather than assumed.
+
+**`all-mpnet-base-v2` has the best organic recall of the three (13/22)
+at a middling finding-volume cost (162, between MiniLM's 157 and
+multi-qa-mpnet's 163).** That is a description of what was measured, not
+a recommendation to change `EMBEDDING_MODEL`'s shipped default -- the
+design spec is explicit that this benchmark produces a recommendation in
+this file, not a config change, and one 15-chapter book is not enough
+corpus to retire that constraint on.
+
+### Precision arm: the same population question, three times
+
+| model | findings | distinct citekeys | severity: long/short/quoted | `UNCITED SOURCE` | score min/median/max | median span |
+|---|---|---|---|---|---|---|
+| `all-MiniLM-L6-v2` | 157 | 88 | 142/7/8 | 13 | 0.000/0.165/0.569 | 20 |
+| `all-mpnet-base-v2` | 162 | 93 | 146/7/9 | 8 | 0.005/0.157/0.608 | 20 |
+| `multi-qa-mpnet-base-dot-v1` | 163 | 92 | 142/14/7 | 28 | 0.006/0.150/0.542 | 20 |
+
+None of these three populations is hand-labelled -- `precision` is
+`null` in every `embed_precision.json`, and each one's own integrity
+check reports "N of N embedding finding(s) are unlabelled", same as
+2026-08-15's baseline. **The `all-mpnet-base-v2` row above reproduces
+that baseline run exactly** on every axis it reported -- 162 findings,
+93 citekeys, score range 0.005-0.608, 8 `UNCITED SOURCE` -- confirming
+the collection and the model are unchanged since. The one figure that
+moved is the severity mix: 2026-08-15 reported 151 `long`/7 `short`/4
+`quoted`, flagged at the time as measured before #189 changed how
+`quoted` is computed, with "a re-run is needed to know the current mix".
+This run is that re-run: **146 `long`/7 `short`/9 `quoted`** is the
+current mix for `all-mpnet-base-v2`, and the open item 2026-08-15 left
+is closed.
+
+`multi-qa-mpnet-base-dot-v1` stands out on `UNCITED SOURCE` -- 28 of 163
+(17%), against 8/162 (5%) for mpnet-base and 13/157 (8%) for MiniLM.
+Whether that is the model surfacing genuine uncited reuse the other two
+miss, or reporting weaker section-to-source alignment as `UNCITED
+SOURCE` more often, is exactly the question labelling would answer and
+this run does not.
+
+### Organic recall: the same 22 pairs, three models
+
+The 22 close-paraphrase pairs are 2026-08-15b's judged-by-reading
+ground truth, copied per model (`ORGANIC_LABELS`) before each
+`--crosscheck` run so one model's tier assignments never overwrite
+another's.
+
+**10 of the 22 pairs are caught by all three models**, regardless of
+which one runs. Each model also catches a small number the other two
+miss entirely:
+
+| Model | Unique catch (not seen by either other model) |
+|---|---|
+| `all-MiniLM-L6-v2` | `mertens_continuous_2024` (chapter 14) |
+| `all-mpnet-base-v2` | `hugues_twinops_2022` (ch. 6), `esterle_autonomous_2024-1` (ch. 2), `rasheed_digital_2020` (ch. 4) |
+| `multi-qa-mpnet-base-dot-v1` | `alskaif_evolution_2025` (ch. 1) |
+
+10 common + each model's unique catches accounts for all three
+totals (10+1=11, 10+3=13, 10+1=11). `all-mpnet-base-v2`'s 3 unique
+catches is why its 13/22 leads the other two, not a difference in the
+shared 10.
+
+### What this does not measure
+
+- **Precision.** `embedding_findings` (157/162/163) is a volume proxy,
+  not `tp`/`fp` -- none of the three models' 482 combined findings are
+  hand-labelled, and that labelling is out of scope here, same as the
+  2026-08-15 baseline it extends. A model that reports more findings is
+  not shown to be more *right*; it is shown to fire on more sections.
+- **A recommendation to change the default.** See above: the design
+  spec scopes this benchmark to a recommendation recorded in this file,
+  not a `config.toml.example`/`src/config.py` change.
+- **`EMBEDDING_MODEL`'s other consumers.** Only the overlap-scan path
+  (`embed_index.py`'s symmetric, un-prefixed `encode()`, feeding
+  `overlap_embed.py`) is exercised. `src/enrich/topic_model.py` reads
+  the same setting for its own embedding cache; that path is untouched
+  by this sweep. `src/retrieval.py`'s search is unaffected either way --
+  it is BM25, not embedding-based.
+- **A second corpus or a second book.** One 15-chapter book, one bib
+  corpus, one host. Whether the ranking (mpnet-base > MiniLM ~
+  multi-qa-mpnet on organic recall) holds on different prose is not
+  tested.
+- **Cost beyond the one-time embed.** The 29m10.838s figure is
+  dominated by `multi-qa-mpnet-base-dot-v1` building a `content/chroma/`
+  collection from nothing; a host that already has all three built would
+  see mostly the capability- and precision-arm cost, not this total.
+
+### Reproducing
+
+```bash
+.venv-full/bin/python bench/bench_embed_model_compare.py \
+    --tag 2026-08-16-model-compare
+```
+
+Needs the `enrich` Poetry group (`chromadb`, `sentence-transformers`,
+torch), the restored 15-chapter book under
+`content/drafts/books/digital-twins-for-software-engineers` (gitignored,
+from a content backup -- see 2026-08-15's reproduction note), and
+`bench/results/2026-08-15-organic-paraphrase-hunt/labels.json` on disk
+(`self_check()` refuses to run without it -- it is the hand-labelled
+ground truth `bench_paraphrase_hunt.py --crosscheck` needs, and is
+committed). Building a Chroma collection for a model that does not
+already have one is the expensive part; budget the time this section
+measured, not the "few minutes" a single fresh embed alone costs.

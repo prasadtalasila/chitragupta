@@ -178,6 +178,30 @@ def run_model(model, tag, out_dir):
     }
 
 
-if __name__ == "__main__":
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--tag", required=True,
+                    help="names bench/results/<tag>/ for this run's comparison table "
+                         "(per-model results also land under bench/results/<tag>-<model-slug>/)")
+    args = ap.parse_args(argv)
+
     self_check()
-    print("self_check() passed")
+    out_dir = BENCH_DIR / "results" / Path(args.tag).name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = [run_model(model, args.tag, out_dir) for model in CANDIDATES]
+
+    print(f"\n{'model':40}  {'embedding findings':>19}  organic recall  grades caught")
+    for row in rows:
+        caught = sum(1 for tiers in row["grades_caught"].values() if tiers)
+        print(f"{row['model']:40}  {row['embedding_findings']:>19}  "
+              f"{row['organic_recall']:>14}  {caught}/4")
+
+    record = out_dir / "comparison.json"
+    record.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    print(f"\nRecord: {record}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

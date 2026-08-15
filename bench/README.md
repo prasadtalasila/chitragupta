@@ -72,6 +72,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | Does a gram's corpus document frequency tell field boilerplate apart from genuine reuse (#133/#134)? | **`bench_overlap_df.py`** -- stdlib only, no GPU; reuses `bench_overlap_gate.py`'s labels and adds a planted-reuse control arm |
 | Does the skip-gram tier (#133) catch a synonym-swapped paraphrase, and is it precise on real prose? | **`bench_overlap_skipgram.py`** -- stdlib only, no GPU; a synthetic capability sweep needs no corpus, the precision arm needs a synced one |
 | Does the embedding tier (#134/#164) catch a restatement the other two structurally cannot, and is it precise on real prose? | **`bench_overlap_embed.py`** -- the one script here that needs the `enrich` group and a built `content/chroma/`; a graded-fixture capability arm and a hand-labelled precision arm, neither a threshold sweep (this tier ranks rather than thresholds) |
+| Which drop-in embedding model gives tier 3 the best recall on this corpus, at what finding-volume cost? | **`bench_embed_model_compare.py`** -- runs `bench_overlap_embed.py` and `bench_paraphrase_hunt.py` once per `docs/CONFIG.md`-documented candidate model, unmodified, via `EMBEDDING_MODEL` |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -151,6 +152,7 @@ being tested.
 | `bench_overlap_df.py` | Asks whether the **corpus document frequency** of a run's 8-grams -- distinct citekeys in `overlap_index.postings_for_gram`, so a projection of the #110 index rather than a new artefact -- tells a field's stock phrasing apart from genuine reuse. Two arms, because the book supplies only false positives: the labelled book, and the planted-reuse fixture as the one true positive |
 | `bench_overlap_skipgram.py` | Sweeps a synthetic every-Nth-word paraphrase against the skip-gram tier (#133) at a range of strides, no corpus needed; with `--drafts`, also isolates real `tier == "skip-gram"` findings and scores them against hand labels the same way `bench_overlap_gate.py` does |
 | `bench_overlap_embed.py` | Runs one real corpus claim at four gradings -- verbatim, substituted in place, lightly edited, genuinely restated, each its own section of `fixtures/graded-paraphrase-of-singh-offload-2022.md` -- through the whole scan and reports which tier caught each; with `--drafts`, also isolates real `tier == "embedding"` findings and scores them against hand labels. Not a threshold sweep: tier 3 can never gate and does not threshold |
+| `bench_embed_model_compare.py` | Orchestrates `bench_overlap_embed.py` and `bench_paraphrase_hunt.py --crosscheck` once per candidate model in `docs/CONFIG.md`'s "Choosing an embedding model", via `EMBEDDING_MODEL` -- neither script is modified, only invoked once per model |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
 `repro_check.py` is the odd one out here, and deliberately so: every other
