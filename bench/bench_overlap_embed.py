@@ -102,14 +102,19 @@ def _staged(fixture):
     (target / dossier.SECTIONS_MD).write_text(
         dossier.sections_markdown(staged.read_text(encoding="utf-8")), encoding="utf-8"
     )
-    return staged, (staged.parent, target)
+    return staged, (staged.parent, target.parent)
 
 
 def _unstage(directories):
     """Remove what `_staged` created. A bench script writing into the
     configured content directory has to take it back out again: the next
     `dossier status --all` would otherwise report a draft nobody wrote,
-    and `bench-embed` is not a topic."""
+    and `bench-embed` is not a topic.
+
+    The dossier's *parent* (`content/dossiers/bench-embed/`), not the
+    dossier itself -- `dossier_dir` appends the draft's own stem, so
+    removing only that leaves the topic directory behind, which is the
+    half a reader would still see."""
     for directory in directories:
         shutil.rmtree(directory, ignore_errors=True)
 

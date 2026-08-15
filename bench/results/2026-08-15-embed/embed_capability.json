@@ -1,5 +1,7 @@
 {
  "fixture": "graded-paraphrase-of-singh-offload-2022.md",
+ "section_limit": 1,
+ "shortlist_sources": 5,
  "grades": [
   {
    "grade": "Verbatim",

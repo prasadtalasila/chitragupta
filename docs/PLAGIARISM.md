@@ -61,7 +61,7 @@ thin result and a thorough one look identical.
 | Sees an uncited source's wording? | No -- structurally cannot, by design | Yes |
 | Sees connective prose citing nothing? | No | Yes |
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
-| Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after |
+| Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after -- **but minutes rather than seconds wherever tier 3 runs**, since it embeds each shortlisted source's sentences. Measured: ~100s for one chapter of the 15-chapter book, dominated by that. See below |
 
 Both belong to the **review layer** and are advisory, not gates: a successful
 run exits 0 whether it
@@ -687,6 +687,19 @@ measurements are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    group, a built `content/chroma/`, Docling sidecars, and the draft's
    dossier. Any of those missing and it reports *which*, rather than
    contributing nothing silently.
+
+   **What it costs, and what is not cached.** The enrichment layer's
+   incremental-by-text-hash cache does *not* cover this tier's vectors,
+   and a reader who assumes it does will misjudge the cost. That cache
+   holds `content/chroma/`'s 200-word *chunk* embeddings, which tier 3
+   uses only to rank citekeys -- its alignment runs over ~20-word
+   windows of the passage sidecars, which are embedded on demand and
+   held only for the duration of one `scan`. Each source is therefore
+   embedded once per scanned draft, not once per corpus. On the
+   15-chapter book that is ~100s per chapter. A persistent
+   window-level cache is the obvious next step and is deliberately not
+   in this change: nothing has yet measured whether the tier is worth
+   running often enough to need one.
 
 Because the drafts this pipeline produces are LLM-written and literal
 paraphrase is their normal failure mode, tiers 2-3 were prioritized

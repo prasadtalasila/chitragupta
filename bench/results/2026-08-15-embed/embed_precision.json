@@ -16,6 +16,8 @@
   "14-running-twins-in-production.md",
   "15-twins-at-scale.md"
  ],
+ "section_limit": 1,
+ "shortlist_sources": 5,
  "embedding_findings": 162,
  "labelled_tp": 0,
  "labelled_fp": 0,
