@@ -2,6 +2,10 @@
 
 Status: **how-to.** Written 2026-08-03.
 
+**Written for** anyone getting their own library into this pipeline for
+the first time. **Assumed:** nothing. **Not covered here:** what the
+pipeline then does with it -- [CLI.md](CLI.md) has the commands.
+
 How to get a `.bib` file and its PDFs into the shape this pipeline
 expects. See [../README.md](../README.md) for the Quickstart that
 refers here.

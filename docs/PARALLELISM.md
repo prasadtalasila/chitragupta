@@ -2,6 +2,11 @@
 
 Status: **implemented.** Written 2026-08-03.
 
+**Written for** someone changing how the parse path schedules work.
+**Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md). **Not covered here:**
+which worker count to choose on your own machine -- that is
+[PERFORMANCE.md](PERFORMANCE.md), written for someone running it.
+
 How the PDF parse path runs work in parallel, what each component is for,
 and what is planned next.
 

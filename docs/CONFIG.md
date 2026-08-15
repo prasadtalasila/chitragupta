@@ -2,6 +2,12 @@
 
 Status: **reference.** Written 2026-08-03.
 
+**Written for** anyone setting this pipeline up on their own machine.
+**Assumed:** [CLI.md](CLI.md) for the commands these settings change.
+**Not covered here:** what each setting *costs*, which is measured in
+[PERFORMANCE.md](PERFORMANCE.md), and why the defaults are what they are,
+which is [DESIGN.md](DESIGN.md)'s job.
+
 Every setting, what values it accepts, and what it defaults to.
 
 What each setting *costs* lives in [PERFORMANCE.md](PERFORMANCE.md), so

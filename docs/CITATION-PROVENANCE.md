@@ -2,6 +2,11 @@
 
 Status: **implemented.** Written 2026-08-01.
 
+**Written for** anyone reading a provenance report and deciding what to
+do about a low-scoring claim. **Assumed:** a drafted, gated document.
+**Not covered here:** the scoring internals a change to them would need,
+which are in the module's own docstrings.
+
 ## Background: what this repository does
 
 Skip this section if you already know the codebase.

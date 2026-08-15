@@ -2,6 +2,12 @@
 
 Status: **measurements.** Written 2026-08-03.
 
+**Written for** anyone choosing settings on their own hardware and
+wanting the measured cost rather than a guess. **Assumed:**
+[CONFIG.md](CONFIG.md) for what each setting does. **Not covered here:**
+the parallelism design behind these numbers, which is
+[PARALLELISM.md](PARALLELISM.md), written for someone changing it.
+
 What each setting in [CONFIG.md](CONFIG.md) costs, measured rather than
 estimated. [CONFIG.md](CONFIG.md) says what a setting *does* and what
 values it takes; this says what it *costs*, so neither document has to

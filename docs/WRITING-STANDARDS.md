@@ -2,6 +2,12 @@
 
 Status: **reference.** Written 2026-08-03.
 
+**Written for** anyone drafting with this pipeline, and for the skills
+that draft on their behalf. **Assumed:** [GENRE.md](GENRE.md) for which
+skill does what. **Not covered here:** the prose standard this
+repository's *own* documentation is held to, which is
+[HOUSE-STYLE.md](HOUSE-STYLE.md).
+
 Shared prose standards for every skill in `.claude/skills/`. Each SKILL.md
 points here rather than restating them, and adds only the rules specific to
 its own genre.

@@ -3,6 +3,12 @@
 Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
 as it stands.
 
+**Written for** anyone choosing which skill to ask for, and anyone
+wondering why a skill refused something. **Assumed:**
+[AGENTS.md](../AGENTS.md), which is the drafting contract these skills
+work under. **Not covered here:** how a skill is written or changed --
+that is [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md).
+
 Which skill writes what, how to pick between them, and what each one
 refuses to do. Eight skills live in `.claude/`: five that write a new
 draft, and three that change an existing one -- one cheap and scoped, one

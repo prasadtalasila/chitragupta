@@ -2,6 +2,12 @@
 
 Status: **implemented.** Written 2026-08-06.
 
+**Written for** someone changing the drafting layer or the dossier
+format. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md) for the layers
+and [TOKENS.md](TOKENS.md) for the two cost pools. **Not covered here:**
+how to *use* a dossier day to day, which is [CLI.md](CLI.md)'s
+`dossier` section.
+
 Why drafting costs what it costs, and how a draft is revised weeks later
 without re-running the pipeline that produced it.
 

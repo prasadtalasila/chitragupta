@@ -2,6 +2,14 @@
 
 Status: **reference.** Written 2026-08-03.
 
+**Written for** anyone running this pipeline, at any level of
+familiarity: it is the reference you keep open beside a terminal.
+**Assumed:** nothing beyond [README.md](../README.md)'s Quickstart.
+**Not covered here:** why any of it is built the way it is -- that is
+[ARCHITECTURE.md](ARCHITECTURE.md) for the shape and
+[DESIGN.md](DESIGN.md) for the constraints, both written for someone
+changing the code rather than running it.
+
 Every command this repository provides, every flag it accepts, and which
 interpreter each one needs. [README.md](../README.md)'s Quickstart is the
 short path; this is the full set.
@@ -45,12 +53,12 @@ against the project's venv for tiers 2 and 3.
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m src.enrich` |
 
-Tier 1 is deliberate, not incidental. The chain that enforces the one rule
--- `src.draft gate` -> `src.draft references` -> `src.draft render` --
-imports nothing outside the standard library, so it cannot be blocked by
-a virtual environment that is broken, missing, or built for a different
-Python. `docs/ARCHITECTURE.md` has the [full
-reasoning](ARCHITECTURE.md#which-interpreter-and-why).
+Tier 1 is deliberate, not incidental. The chain that enforces the one
+rule -- `src.draft gate` -> `src.draft references` -> `src.draft render`
+-- imports nothing outside the standard library. A broken, missing or
+wrong-Python virtual environment therefore cannot block it.
+`docs/ARCHITECTURE.md` has the
+[full reasoning](ARCHITECTURE.md#which-interpreter-and-why).
 
 Two commands look like they belong in a higher tier and don't:
 
@@ -263,10 +271,10 @@ python -m src.draft gate content/drafts/survey.md
 ```
 
 A file that resolves outside `content/` is reported as a `FAIL` for that
-document and the remaining files are still checked -- this command's
-contract is that you hand it several drafts and get a verdict on each, so
-one unusable path must not hide the others. It exits 1 rather than the
-usage code 2 for the same reason: it is a document that did not pass,
+document, and the remaining files are still checked. The contract is that
+you hand this command several drafts and get a verdict on each, so one
+unusable path must not hide the others. It exits 1 rather than the usage
+code 2 for the same reason: this is a document that did not pass,
 alongside the rest.
 
 **Check the spelling in any script or CI step that runs this.**
@@ -316,13 +324,20 @@ python -m src.draft references content/drafts/survey.md
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
 relative to `content/drafts/`, minus the suffix -- so
-`content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`. Seven
-Markdown files: `scope.md` (the reader, the dialect, the scope, the
-glossary),
-`evidence.md` (the kept evidence), `rejected.md` (the rejected candidates
-and why), `sections.md` (which section cites which citekey), `steering.md`
-(the user's steering), `revisions.md` (a revision log), and `retrieval.md`
-(every retrieval call, plus a `mark-revision` boundary per revision pass).
+`content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`.
+
+It holds eight Markdown files. `README.md` explains the other seven to
+whoever opens the directory next; those seven are:
+
+- `scope.md` -- the reader, the dialect, the scope, the glossary.
+- `evidence.md` -- the kept evidence.
+- `rejected.md` -- the rejected candidates, and why.
+- `sections.md` -- which section cites which citekey.
+- `steering.md` -- the user's steering.
+- `revisions.md` -- a revision log.
+- `retrieval.md` -- every retrieval call, plus a `mark-revision` boundary
+  per revision pass.
+
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
 
 Stdlib only, and never a gate: it takes no lock and only ever opens the
@@ -342,8 +357,8 @@ still gets a full report of what it has.
 
 That test only works without `--json`. Adding it puts the command on the
 machine-readable path, which reports a missing dossier as an almost-empty
-entry and **exits 0** like every other `--json` call -- consistent with
-"the caller branches on the contents", but worth knowing if you were
+entry and **exits 0**, like every other `--json` call. That is consistent
+with "the caller branches on the contents", but worth knowing if you were
 relying on the exit code. Check `recorded` and `draft` in the payload
 instead.
 
@@ -383,14 +398,16 @@ See [DRAFT-ITERATION.md](DRAFT-ITERATION.md#dispatching-from-the-dossier)
 and [TOKENS.md](TOKENS.md).
 
 Its exit code is the contract, because a dispatch prompt cannot read a
-paragraph: **0 when it printed at least one block, 1 when it could not
-print any** -- no dossier, an unknown section, a section whose row
-assigns no citekeys, or not one of the asked-for citekeys transcribed.
-The last three are different gaps and the message says which. Everything
-except the evidence itself goes to stderr, so stdout is only ever the
-blocks. A citekey with no block is
-named in a warning rather than dropped: it means the run that found it
-never transcribed it, and that material is gone rather than mislaid.
+paragraph. **0 when it printed at least one block, 1 when it could not
+print any.** It prints none when there is no dossier, an unknown section,
+a section whose row assigns no citekeys, or not one of the asked-for
+citekeys transcribed. The last three are different gaps, and the message
+says which.
+
+Everything except the evidence itself goes to stderr, so stdout is only
+ever the blocks. A citekey with no block is named in a warning rather
+than dropped: the run that found it never transcribed it, so that
+material is gone rather than mislaid.
 
 | Subcommand | What it does |
 |---|---|
@@ -573,11 +590,12 @@ sources, and a measured `docling`-vs-`pdftotext` backend comparison.
 
 **Exit codes**, shared with the other two review aids. `0` on every
 successful invocation, findings or not: these are advisory, never a gate.
-That includes `recheck` -- a draft that got worse still exits 0. `1` is a
-draft this layer will not read, because it is missing or resolves outside
-`content/`. `2` is a malformed invocation, the usual CLI-usage error
-rather than a verdict. `recheck` also uses `2` for a baseline it cannot
-compare against.
+That includes `recheck` -- a draft that got worse still exits 0.
+
+`1` is a draft this layer will not read, because it is missing or
+resolves outside `content/`. `2` is a malformed invocation, the usual
+CLI-usage error rather than a verdict. `recheck` also uses `2` for a
+baseline it cannot compare against.
 
 ```bash
 python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025

@@ -2,6 +2,13 @@
 
 Status: **reasoning document.** Written 2026-08-08.
 
+**Written for** someone deciding where to spend engineering effort on
+cost, or reviewing a proposal that claims a saving. **Assumed:**
+[ARCHITECTURE.md](ARCHITECTURE.md) for the layers, and
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) for the dossier. **Not covered
+here:** how to run anything -- this is a reasoning document, not a
+reference.
+
 Where a drafting run's tokens actually go, which of the two pools each
 cost lands in, what the dossier does and does not recover -- and how to
 put a number on any of it without paying for a full seven-phase run.
