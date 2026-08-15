@@ -399,10 +399,14 @@ and [TOKENS.md](TOKENS.md).
 
 Its exit code is the contract, because a dispatch prompt cannot read a
 paragraph. **0 when it printed at least one block, 1 when it could not
-print any.** It prints none when there is no dossier, an unknown section,
-a section whose row assigns no citekeys, or not one of the asked-for
-citekeys transcribed. The last three are different gaps, and the message
-says which.
+print any.** It prints none in four cases:
+
+- there is no dossier;
+- the section is unknown;
+- the section's row assigns no citekeys;
+- none of the asked-for citekeys was transcribed.
+
+The last three are different gaps, and the message says which.
 
 Everything except the evidence itself goes to stderr, so stdout is only
 ever the blocks. A citekey with no block is named in a warning rather
@@ -576,10 +580,11 @@ so that subcommand needs poppler-utils on `PATH`. `overlap`, `scan` and
 instead. Run with no arguments to print its usage.
 
 [PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
-section: what `overlap`/`scan` catch and don't (verbatim and
-light-paraphrase word-swaps -- genuine restatement is a later, unbuilt
-detection tier), the fingerprinting technique and its literature
-sources, and a measured `docling`-vs-`pdftotext` backend comparison.
+section. It covers what `overlap` and `scan` catch and what they do not,
+the severity buckets and the allowlist, and a measured
+`docling`-vs-`pdftotext` backend comparison.
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has the fingerprinting
+technique and its literature sources.
 
 | Subcommand | Arguments | What it does |
 |---|---|---|
@@ -609,7 +614,7 @@ python -m src.review verbatim scan content/drafts/survey.md
 ```
 
 **`--json`, and who it is for.** Until 5.4.0 the findings were text and
-nothing else, so any programmatic consumer -- a remediation loop, an
+nothing else. Any programmatic consumer -- a remediation loop, an
 eventual overlap gate -- had to regex the printed lines back into data.
 `--json` prints the same findings as a payload instead.
 
@@ -642,10 +647,10 @@ caller that has to match display text is back where it started.
 `tier` names which detection tier produced the finding -- `exact`,
 `skip-gram` or `embedding` (see
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#where-this-sits-in-a-bigger-plan)).
-`score` is the embedding tier's alignment strength and is `null` on the
-two deterministic tiers, which have no similarity to report; it is a
-ranking within a section, not a probability, and not comparable to
-anything the other tiers publish.
+`score` is the embedding tier's alignment strength, and `null` on the two
+deterministic tiers, which have no similarity to report. It ranks within
+a section. It is not a probability, and not comparable to anything the
+other tiers publish.
 
 `tiers_not_run` is one `{"tier", "reason"}` object per detection tier
 that could not run at all, and `[]` when every tier ran. Only the
@@ -659,14 +664,16 @@ draft that was checked and is clean from one a tier never looked at. The
 printed and written reports say the same thing in prose.
 
 `page` and `end_page` are the lowest and highest page an n-gram in the
-run actually *starts* on (#131), equal for an ordinary single-page run.
-`end_page > page` means the run spans a source page break; the printed
-forms render that as `p.N-M` instead of picking one side. It is not the
-converse: a remainder shorter than the index's own n-gram size has no
-gram starting on its page at all, so it is recovered into the merged
-run's word content without moving `end_page` to cover it -- `page` ==
-`end_page` does not by itself mean every word in the run sits on one
-page.
+run actually *starts* on (#131). They are equal for an ordinary
+single-page run. `end_page > page` means the run spans a source page
+break, and the printed forms render that as `p.N-M` rather than picking
+one side.
+
+It does not work the other way. A remainder shorter than the index's own
+n-gram size has no gram starting on its page, so `scan` recovers it into
+the merged run's word content without moving `end_page`. `page` ==
+`end_page` therefore does not by itself mean every word in the run sits
+on one page.
 
 `start`, `fragment` and `context` describe the **normalised word stream**
 -- the draft masked (code and the References section blanked), citation
@@ -682,28 +689,32 @@ space-joined. Those three locate a passage for a *reader*.
 for the passage and risking the wrong match. `line` is 1-based.
 
 The span covers **every original character between the run's first and
-last matched word**, those two words included: original casing, interior
-punctuation, line breaks, and any citation marker sitting inside the run.
+last matched word**, those two words included. That means original
+casing, interior punctuation, line breaks, and any citation marker
+sitting inside the run.
+
 It ends at the last word rather than at the end of the sentence, so a
-trailing period or closing quote falls just outside `char_end` -- which
-is what you want, since a rewrite substituted for `draft_text` should
-leave the sentence's own punctuation alone. Leading punctuation is
-outside the span for the same reason.
+trailing period or closing quote falls just outside `char_end`. That is
+what you want: a rewrite substituted for `draft_text` should leave the
+sentence's own punctuation alone. Leading punctuation is outside the span
+for the same reason.
 
 `id` names the finding: a 12-hex-character digest of `(citekey, page,
 fragment)`, and deliberately not of its position. An identity built on
 `start` would rename every remaining finding the moment the first one was
-repaired, so nothing could decide whether a given finding had survived a
-revision -- which is precisely what `recheck` below has to decide. Two
-identical runs from the same source page therefore share an `id`, and
+repaired, so nothing could decide whether a finding had survived a
+revision -- which is precisely what `recheck` below has to decide.
+
+Two identical runs from the same source page therefore share an `id`, and
 `recheck` understates progress in that case rather than overstating it.
+
 For a run spanning a page break (`end_page > page`, #131), `id` is keyed
-on `page` -- the lower of the two, where the run starts -- not
-`end_page`; if a later scan merges a run differently (a wider gap-tolerant
-run absorbing a previously-separate one, say), the merged run's `page`
-can change, and with it the `id`. That is the correct read -- a run whose
-extent changed really is a different finding to `recheck` -- but it means
-`id` stability holds across re-runs at the same `--gap`/`--min-run`, not
+on `page`, the lower of the two, where the run starts. If a later scan
+merges a run differently -- a wider gap-tolerant run absorbing a
+previously-separate one, say -- the merged run's `page` can change, and
+with it the `id`. That is the correct read, since a run whose extent
+changed really is a different finding to `recheck`. But it means `id`
+stability holds across re-runs at the same `--gap`/`--min-run`, not
 across every possible one.
 
 `--write` files the payload as `content/review/<topic>/<stem>.verbatim.json`,
@@ -753,13 +764,15 @@ naming the remedy:
 - one written under `--limit`. Truncation happens after sorting, so
   "absent" cannot be distinguished from "cut".
 - one missing a field the comparison prints, or otherwise not shaped like
-  a findings list. The likeliest of the five: a payload filed by an
-  earlier version sits at exactly the path a caller is told to look at.
-  The check names the fields it needs rather than probing for `id` alone,
-  because `resolved` findings are printed straight out of the baseline
-  and never rescanned -- so a payload can carry an `id` and still be
-  missing something the output line reads, which is exactly what one
-  written between `id` and `end_page` landing does.
+  a findings list. This is the likeliest of the five: a payload filed by
+  an earlier version sits at exactly the path a caller is told to look
+  at.
+
+  The check names the fields it needs rather than probing for `id` alone.
+  `resolved` findings are printed straight out of the baseline and never
+  rescanned. So a payload can carry an `id` and still be missing
+  something the output line reads, which is exactly what one written
+  between `id` and `end_page` landing does.
 - one from a **different release series** (`major.minor`). What counts as
   one finding changes between releases -- #131 made a run that used to
   report as two merge into one, giving wording nobody touched a different
@@ -792,50 +805,57 @@ clean. Nothing obliges you to use it -- `recheck` is as free and as
 advisory as every other command here.
 
 **What `scan` does not see, and why that matters more than it sounds.**
-`scan` runs the **exact** and **skip-gram** tiers (findings labelled
-`tier: "exact"` / `tier: "skip-gram"` in `--json` output) of three
-planned detection tiers; the third, embedding-based, is not built. The
-exact tier matches word n-grams, so a single substituted word breaks it
-by construction; the skip-gram tier (#133) tolerates that, catching a
-synonym swap or inflection change, but neither tier sees genuine
-restatement -- the same claim in a different sentence structure. Because
-the drafts this pipeline produces are LLM-written, and drifting into
-that kind of restatement is an LLM's normal failure mode, the reuse mode
-`scan` still cannot see remains a real gap. Read a clean run as "no
-exact or near-exact copying, and no word-swapped paraphrase, found",
-never "no borrowed wording found". The skip-gram tier also ships
-advisory-only, and its real-corpus false-positive rate **has now been
-measured** (`bench/RESULTS.md`, 2026-08-14): over a real 15-chapter
-book, 2 of 27 findings were reuse a reviewer would act on, and the
-exact tier already reported both of those passages. So treat its
-findings with *more* scrutiny than the exact tier's, not less, and
-certainly not more trust because it is newer.
-See [PLAGIARISM.md](PLAGIARISM.md) and
-[discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
-for the three-tier plan.
+`scan` runs all three detection tiers, and each finding names the one
+that produced it in `--json` output.
+
+The **exact** tier matches word n-grams, so a single substituted word
+breaks it by construction. The **skip-gram** tier (#133) tolerates that,
+catching a synonym swap or inflection change. Neither sees genuine
+restatement -- the same claim in a different sentence structure. The
+**embedding** tier (#134/#164) does, but it runs only where the optional
+enrichment layer, the Docling sidecars and the draft's own dossier are
+all present, and it compares a section only against the sources that
+section already cites.
+
+So the gap has narrowed rather than closed. Read a clean run as "nothing
+found by the tiers that ran", never "no borrowed wording found". `scan`
+names any tier that did not run, and why, in every form of its output.
+
+Both paraphrase tiers ship advisory-only. Skip-gram's real-corpus
+precision **has been measured** (`bench/RESULTS.md`, 2026-08-14): over a
+real 15-chapter book, 2 of 27 findings were reuse a reviewer would act
+on, and the exact tier already reported both passages. Treat its findings
+with *more* scrutiny than the exact tier's, not less.
+
+See [PLAGIARISM.md](PLAGIARISM.md) for how to read them, and
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for the three-tier design.
 
 **The disk cache, and what the first run costs.** `scan` builds a
 corpus-wide index the first time it runs -- `content/overlap/index.bin`
 plus an `index.json` header -- merged from the per-document fingerprints
 in `content/overlap/docs/<citekey>.fpr`. That first build is the only
-slow part (~27s over this project's 497-document corpus); every later
-scan over an unchanged corpus reloads the merged index and is
-sub-second. The header key covers the n-gram size, the tokenizer version
-and, per document, its `pdf_hash` *together with the parsed file's own
-size and mtime* -- so a `sync` that changes one PDF re-fingerprints that
-one document and re-merges, rather than rebuilding from scratch. Both
-halves of that per-document key earn their place: re-parsing the corpus
-under a different `[parser].backend` rewrites the text without touching
-the PDF, and the parsed-file stat is the only part that notices. The
-whole directory is a cache, not an output:
-delete it and the next run rebuilds whatever it needs.
+slow part -- ~27s over this project's 497-document corpus. Every later
+scan over an unchanged corpus reloads the merged index and is sub-second.
 
-The skip-gram tier keeps its own pair of files in the same directory
-(`skipgram_index.bin`/`.json`, and `docs/<citekey>.skipgram.fpr`) under
+The header key covers the n-gram size, the tokenizer version and, per
+document, its `pdf_hash` *together with the parsed file's own size and
+mtime*. A `sync` that changes one PDF therefore re-fingerprints that one
+document and re-merges, rather than rebuilding from scratch.
+
+Both halves of that per-document key earn their place. Re-parsing the
+corpus under a different `[parser].backend` rewrites the text without
+touching the PDF, and the parsed-file stat is the only part that notices.
+
+The whole directory is a cache, not an output: delete it and the next run
+rebuilds whatever it needs.
+
+The skip-gram tier keeps its own pair of files in the same directory --
+`skipgram_index.bin`/`.json`, and `docs/<citekey>.skipgram.fpr` -- under
 its own tokenizer version, so the two tiers never cross-invalidate.
-**5.11.0 bumps that version**, so the first `scan` after upgrading
-re-fingerprints the corpus for tier 2 once -- roughly the same cost
-again as the tier-1 build above, paid once. See
+
+**5.11.0 bumps that version.** The first `scan` after upgrading therefore
+re-fingerprints the corpus for tier 2, at roughly the same cost again as
+the tier-1 build above. It is paid once. See
 [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
 
 `scan` groups a match by its `(citekey, diagonal)`. The diagonal is the
@@ -918,18 +938,23 @@ always has, and an input under `content/` but outside `content/drafts/`
 (`content/loose.md`, say) has no path to mirror and lands flat too.
 
 **Both reading and writing are confined to `content/`.** The input must
-resolve under the content directory -- a draft kept
-outside it is refused by name rather than rendered, so that one directory
-stays the whole record of the work. Every path this command *writes*,
-resolves inside `content/`: only the part of a draft's path below
-`content/drafts/` is ever carried over, and both sides are resolved
-before they are compared, so no argument -- a `..`, a symlinked draft --
-mirrors anywhere else. The three ways a write could still escape are
-configuration or symlinks rather than arguments, and each is refused
-with `[error]` rather than redirected: a `content/rendered` or
-`content/drafts` that resolves out of the content directory, and a
-topic directory under `content/rendered/` that is a symlink pointing
-off-tree.
+resolve under the content directory. A draft kept outside it is refused
+by name rather than rendered, so that one directory stays the whole
+record of the work.
+
+Every path this command *writes* resolves inside `content/` too. Only the
+part of a draft's path below `content/drafts/` is ever carried over, and
+both sides are resolved before they are compared. No argument -- a `..`,
+a symlinked draft -- mirrors anywhere else.
+
+A write could still escape three ways, all configuration or symlinks
+rather than arguments. Each is refused with `[error]` rather than
+redirected:
+
+- a `content/rendered` that resolves out of the content directory;
+- a `content/drafts` that does the same;
+- a topic directory under `content/rendered/` that is a symlink pointing
+  off-tree.
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -944,14 +969,16 @@ off-tree.
 | `--no-collapse-citations` | off | Render a run as `[3], [4], [5], [6]` instead of `[3]–[6]`, i.e. leave the style exactly as it is on disk |
 
 `--format md` on a **Markdown** draft is a special case, and the one
-output you can read without a PDF viewer: it writes a `.md` beside the
+output you can read without a PDF viewer. It writes a `.md` beside the
 draft's other renders, with the citekeys replaced by the same IEEE
 numbers the PDF uses (`[1]`, `[3]–[6]`) over a reference list built from
-the ledger. It needs no `pandoc`, because pandoc's Markdown writer is the
-wrong tool for it -- that writer escapes every marker (`\[1\]`, since
-`[1]` could be a link reference) and emits the bibliography as `:::`
-fenced divs full of `[...]{.csl-left-margin}` spans, none of which render
-anywhere except pandoc.
+the ledger.
+
+It needs no `pandoc`, because pandoc's Markdown writer is the wrong tool
+for it. That writer escapes every marker -- `\[1\]`, since `[1]` could be
+a link reference -- and emits the bibliography as `:::` fenced divs full
+of `[...]{.csl-left-margin}` spans. None of that renders anywhere except
+pandoc.
 
 The draft itself is never modified: it keeps its `[@citekey]` markers,
 which are what `citation_gate` verifies and what `--citeproc` resolves
@@ -981,10 +1008,10 @@ python -m src.draft style content/drafts/<path> --json
 ```
 
 It is not a gate and cannot be made one, not even behind a flag. The gate
-is measured against the ledger, which is ground truth; this is measured
+is measured against the ledger, which is ground truth. This is measured
 against a `language:` line someone typed into `scope.md`, which can be
-wrong, stale, or deliberately overridden -- so blocking on it would refuse
-a correct draft on a bad target. [ARCHITECTURE.md](ARCHITECTURE.md)'s
+wrong, stale, or deliberately overridden -- so blocking on it would
+refuse a correct draft on a bad target. [ARCHITECTURE.md](ARCHITECTURE.md)'s
 "Layer 4" has the axis, and DEVELOPER-AGENTS.md bars promoting any new
 check into a gate beside the citation gate.
 
@@ -1030,11 +1057,11 @@ settles any of them.
 
 ### `python -m src.enrich`
 
-Orchestrates the enrichment layer: docling -> embeddings/Chroma -> BERTopic
--> provenance -> render. **Needs the venv.** Each stage probes its own
-prerequisites and reports a real per-stage status, so a
-`skipped/missing-binary` result on a machine without TeX Live is a
-correct answer rather than a bug.
+Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
+BERTopic -> provenance -> render. **Needs the venv.** Each stage probes
+its own prerequisites and reports a real per-stage status. A
+`skipped/missing-binary` result on a machine without TeX Live is
+therefore a correct answer rather than a bug.
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -1059,9 +1086,10 @@ correct answer rather than a bug.
 
 By default the unit of work is the corpus: every ledger item, whether a
 draft cites it or not. `--for-draft` narrows that to the papers one draft
-cites, read out of the draft with the same reader the citation gate uses
-(`src.citation_gate.extract_citekeys`), so a draft resting on twenty-three
-papers costs twenty-three parses rather than the whole library:
+cites. It reads them out of the draft with the same reader the citation
+gate uses, `src.citation_gate.extract_citekeys`. A draft resting on
+twenty-three papers therefore costs twenty-three parses rather than the
+whole library:
 
 ```console
 $ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
@@ -1094,20 +1122,21 @@ $ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.m
 ```
 
 That is a tier, not a ladder ([LADDERS.md](LADDERS.md)). `embed` writes a
-Chroma collection carrying no record of how much of the corpus it covers,
-and every skill that reads it decides by asking only whether
-`content/chroma/` exists -- so a collection holding eleven papers would
+Chroma collection carrying no record of how much of the corpus it covers.
+Every skill that reads it decides by asking only whether
+`content/chroma/` exists, so a collection holding eleven papers would
 answer as though it held 642. `bertopic` overwrites `content/topics.json`
 whole, so a scoped run would replace a corpus-wide topic model with an
 eleven-document one. Neither is worth a silently smaller answer, so the
 run stops and names the command to use instead (exit status 3).
 
 A citekey the draft cites and the ledger has never heard of is named, not
-quietly dropped, and a scope matching nothing at all stops rather than
-reporting `ok` over zero documents. The Docling cache is per-document and
-never rewritten to match the scope, so a scoped run and a full run do no
-duplicate work in either order -- narrow first and widen later, or the
-reverse, and nothing is parsed twice.
+quietly dropped. A scope matching nothing at all stops rather than
+reporting `ok` over zero documents.
+
+The Docling cache is per-document and never rewritten to match the scope,
+so a scoped run and a full run do no duplicate work in either order.
+Narrow first and widen later, or the reverse: nothing is parsed twice.
 
 The `embed` stage names each document as it reaches it, so a run over a
 real corpus is legible rather than silent for its whole duration:
@@ -1182,12 +1211,12 @@ archive. Every prose document ships: `docs/`, `README.md`, `SOUL.md`,
 
 ## Running sync on a schedule
 
-`python -m src.corpus sync` is deterministic, idempotent, and takes its own
-write lock (`src.runlock`) -- it was already safe to run unattended.
-What makes it worth *actually* putting on a schedule is the other two
-things: exit codes an unattended caller can branch on without parsing
-any text, and `logs/pipeline.log` (rotated; see `[logging]` in
-`config.toml.example`) as a persistent transcript to check afterwards.
+`python -m src.corpus sync` is deterministic, idempotent, and takes its
+own write lock (`src.runlock`), so it was already safe to run unattended.
+Two other things make it worth *actually* putting on a schedule: exit
+codes an unattended caller can branch on without parsing any text, and
+`logs/pipeline.log` as a persistent transcript to check afterwards. That
+log is rotated -- see `[logging]` in `config.toml.example`.
 
 `src/enrich/__main__.py` writes to the same file, so a host that schedules
 both has one transcript rather than two. Each line names its source in
@@ -1206,9 +1235,9 @@ already parsed.
 
 **Don't hand-roll a log redirect for most of this.** `logs/pipeline.log`
 carries almost every warning, per-document progress line, and the run
-summary, at the level `[logging].level` sets -- a cron or systemd
-wrapper around these commands doesn't need its own `>> some.log 2>&1` to
-get a durable record of those. Three messages stay terminal-only by
+summary, at the level `[logging].level` sets. A cron or systemd wrapper
+around these commands does not need its own `>> some.log 2>&1` to get a
+durable record of those. Three messages stay terminal-only by
 design. A docling worker's GPU-OOM fallback runs in a child process with
 no route back to the file. The Ctrl+C interrupt notice runs in a signal
 handler, deliberately kept to a bare `print`. The "another run already
@@ -1227,12 +1256,14 @@ unattended.
 
 **A schedule written before 5.2.0 now fails instead of lying.** That
 release moved this command behind `python -m src.corpus sync` and left
-the old spelling importing a module and exiting **0** -- so an unedited
-crontab kept reporting success while syncing nothing, for a release. It
-now prints the line above and exits **64**, which is deliberately none of
-the three codes in the table: a caller that reads `2` as "expected, do
+the old spelling importing a module and exiting **0**. An unedited
+crontab therefore kept reporting success while syncing nothing, for a
+release.
+
+It now prints the line above and exits **64**, deliberately none of the
+three codes in the table: a caller that reads `2` as "expected, do
 nothing" must not read this as that. If a schedule of yours starts
-failing after upgrading, the message names the replacement; that is the
+failing after upgrading, the message names the replacement. That is the
 whole fix.
 
 ### cron

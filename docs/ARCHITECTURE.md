@@ -385,9 +385,10 @@ that "this sentence resembles its source" has no single right answer the
 way ledger membership does. Its findings are what a later severity policy
 would be tuned against, not a verdict waiting to be switched on:
 [SOUL.md](../SOUL.md) commits to verbatim checks *staying* review aids.
-Note also what a clean run does not mean -- `scan` is the exact detection
-tier, and the paraphrase tiers beside it are unbuilt, so it comes up short
-by being silently incomplete rather than by being wrong. See
+Note also what a clean run does not mean. `scan` runs three detection
+tiers, but the third needs an optional stack a checkout may not have, so
+a clean run can be incomplete rather than wrong. It names any tier that
+did not run. See
 [docs/PLAGIARISM.md](PLAGIARISM.md).
 
 ## Incremental by default, honest about failure
