@@ -280,7 +280,8 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
             """
             INSERT INTO items
                 (citekey, item_type, title, year, doi, url,
-                 pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, status, last_synced, bib_fields, collections)
+                 pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, status, last_synced,
+                 bib_fields, collections)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (ref.citekey, ref.item_type, ref.title, ref.year,
