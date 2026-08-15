@@ -111,9 +111,10 @@ Uncapped -- **never pass `--limit` to a baseline**. A capped payload lists
 only the longest findings, so it cannot say what was absent, and
 `recheck` refuses it for that reason.
 
-If the scan reports nothing, say so and stop. There is nothing here to
-do -- and the draft is not thereby clean, because **genuine restatement is only detected where the
-embedding tier can run** by either deterministic tier this baseline came from.
+If the scan reports nothing, say so and stop. There is nothing here to do --
+and the draft is not thereby clean, because **genuine restatement is only
+detected where the embedding tier can run** by either deterministic tier this
+baseline came from.
 
 This files the payload at `content/review/<topic>/<stem>.verbatim.json`.
 That file is the recorded baseline: every claim you make at the end is
@@ -240,11 +241,11 @@ has to be said when you present is what it does **not** cover:
 python -m src.review verbatim scan content/drafts/<path>
 ```
 
-It reports verbatim and near-verbatim reuse against any parsed source,
-cited or not, and **genuine restatement is only detected where the embedding tier can run** -- these drafts are
-LLM-written and literal paraphrase is an LLM's normal failure mode -- so
-a clean scan, and a clean `recheck`, is not a clean bill of health
-(`docs/PLAGIARISM.md`). Say that plainly rather than letting a zero read
+It reports verbatim and near-verbatim reuse against any parsed source, cited or
+not, and **genuine restatement is only detected where the embedding tier can
+run** -- these drafts are LLM-written and literal paraphrase is an LLM's normal
+failure mode -- so a clean scan, and a clean `recheck`, is not a clean bill of
+health (`docs/PLAGIARISM.md`). Say that plainly rather than letting a zero read
 as an all-clear. A review aid, not a gate: it exits 0 either way.
 
 ## Guardrails

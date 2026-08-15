@@ -8,7 +8,7 @@
 # two linters were adopted in.
 #
 # Run it with:
-#   markdownlint-cli2 "*.md" "docs/**/*.md"
+#   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
 default: true
 
 # Inline HTML. This repository's README uses a <picture>/<source srcset>

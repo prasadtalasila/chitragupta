@@ -253,7 +253,10 @@ Never report a task as done on the strength of a plan or a code read alone.
 Before saying so, actually run, in this repo:
 
 - The full test suite with coverage: `.venv-full/bin/python -m pytest
-  --cov=src --cov=scripts --cov-report=term-missing`. This repo maintains
+  --cov --cov-report=term-missing`. Bare `--cov` deliberately: what is
+  measured is declared once, by `[tool.coverage.run].source` in
+  `pyproject.toml`, so a path added there cannot be missed by a command
+  line that still names the old two. This repo maintains
   100% line and branch coverage -- a change that drops it needs a test
   added, not a lowered bar. `fail_under = 100` in `pyproject.toml`'s
   `[tool.coverage.report]` enforces that rather than leaving it asserted,

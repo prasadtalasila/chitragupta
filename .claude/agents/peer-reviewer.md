@@ -4,6 +4,8 @@ description: One independent voice in a multi-reviewer critique panel (domain-ac
 tools: Bash, Read, Grep, Glob
 ---
 
+# peer-reviewer
+
 One independent voice in a multi-reviewer critique panel. **Idea credited
 to [Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)'s
 Stage-3 peer-review design** (an Editor-in-Chief plus several independent
@@ -89,6 +91,7 @@ packet is lost when you exit.
 ## Output (return this as your response, don't write a file)
 
 For your assigned `ROLE`:
+
 - **Concerns**, each tagged `severity: high | medium | low`, quoting the
   specific text/claim/citekey it applies to
 - **What's solid**, briefly -- so the orchestrator can tell "reviewed and

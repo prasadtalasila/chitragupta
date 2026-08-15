@@ -226,18 +226,17 @@ a condition of presenting:
 python -m src.review verbatim scan content/drafts/<path>
 ```
 
-It reports wording the draft shares with **any** parsed source, cited or
-not. Worth offering after a revision specifically: text you rewrote to
-sit closer to a source is exactly the text most likely to have drifted
-into its wording, and a revision that moved a claim between sections can
-strand borrowed phrasing in a paragraph that no longer cites anything. A
-review aid, not a gate: it exits 0 either way and cannot block the draft.
-Say what it misses when you offer it -- it sees verbatim and
-near-verbatim reuse only, and **genuine restatement is only detected where the embedding tier can run**, so a clean
-scan is not a clean bill of health (`docs/PLAGIARISM.md`).
-If the user wants the finding kept, add `--write`: the report
-goes to `content/review/`, mirroring the draft's path, beside any
-provenance and coverage reports for the same draft.
+It reports wording the draft shares with **any** parsed source, cited or not.
+Worth offering after a revision specifically: text you rewrote to sit closer to
+a source is exactly the text most likely to have drifted into its wording, and
+a revision that moved a claim between sections can strand borrowed phrasing in
+a paragraph that no longer cites anything. A review aid, not a gate: it exits 0
+either way and cannot block the draft. Say what it misses when you offer it --
+it sees verbatim and near-verbatim reuse only, and **genuine restatement is
+only detected where the embedding tier can run**, so a clean scan is not a
+clean bill of health (`docs/PLAGIARISM.md`). If the user wants the finding
+kept, add `--write`: the report goes to `content/review/`, mirroring the
+draft's path, beside any provenance and coverage reports for the same draft.
 
 ## Copy-edit mode
 
@@ -365,6 +364,7 @@ the first that supports the claim:
    replacement there is.
 3. A fresh search -- here it *is* right, unlike the candidate path,
    because a claim left unsupported is genuinely new ground:
+
    ```bash
    python -m src.draft retrieve search "<the claim>" --k 15 --log content/drafts/<path>
    ```
@@ -425,7 +425,7 @@ Then two things specific to this mode.
 from the report's `current` field -- it is the record that this draft was
 re-grounded against that corpus:
 
-```
+```text
 - corpus: 503 citekeys, digest `f6e5d4c3b2a1`
 ```
 

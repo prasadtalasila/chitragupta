@@ -6,9 +6,24 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/citation_gate_hook.py\"",
+            "command": "python3",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/citation_gate_hook.py"],
             "timeout": 30,
             "statusMessage": "Checking citekeys against the ledger..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session_start_hook.py"],
+            "timeout": 30,
+            "statusMessage": "Checking the project is ready to draft..."
           }
         ]
       }

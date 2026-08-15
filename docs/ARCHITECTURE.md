@@ -193,7 +193,10 @@ Each skill retrieves from the corpus layer, drafts into
 draft, and neither run is the skill's own good intentions: a PostToolUse
 hook runs it on every write under `content/drafts/`, so a draft cannot be
 saved with an unverifiable citation even if a skill forgets to check, and
-the skill runs it again before presenting anything.
+the skill runs it again before presenting anything. A second hook checks at
+session start that the first one can still start at all, since a hook that
+fails to launch cannot report that it failed --
+[HOOKS.md](HOOKS.md) is where that layer's rules live.
 
 **The skills never run the corpus layer for you.** They read it; they do
 not write `content/ledger.sqlite`, and they do not run `python -m

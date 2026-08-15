@@ -4,6 +4,8 @@ description: Perspective-driven interviewer for the deep-research skill's Phase 
 tools: Bash, Read, Grep, Glob
 ---
 
+# deep-research-interviewer
+
 Adapted from [hadufer/claude-storm](https://github.com/hadufer/claude-storm)'s
 `agents/storm-researcher.md` (MIT License) -- a perspective-driven
 interviewer, retooled here to ground claims in this project's closed corpus
@@ -28,21 +30,30 @@ synced corpus, simulating one editorial angle on the topic.
    earlier in this interview; go deeper each round.
 2. Formulate up to 3 search-query reformulations of that question.
 3. Run each against this project's corpus:
-   ```
+
+   ```bash
    python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
    ```
+
    Pass `--log` on every call. The dispatching skill hands you the draft
    path; it records your query in the shared dossier, which is what lets a
    later `dossier status` tell this report which newly synced papers it has
    never seen. Appending is concurrency-safe, so every interviewer logs.
    or, if `content/chroma/` exists (the embedding stack has been built for
    this corpus):
-   ```
+
+   ```bash
    python -c "from src.enrich import embed_index; [print(r) for r in embed_index.search('<query>', k=15)]"
    ```
+
    Where a 500-character snippet is not enough to decide on a source you
    are minded to cite, read more of that one document:
-   `python -m src.draft retrieve evidence "<query>" --citekey <key> --log <draft path>`.
+
+   ```bash
+   python -m src.draft retrieve evidence "<query>" --citekey <key> \
+     --log <draft path>
+   ```
+
 4. **Filter before using anything as evidence.** A hit is a candidate, not
    evidence: a high score means the query's words are in the document, not
    that it supports a claim. Judge each snippet yourself and discard what
@@ -85,6 +96,7 @@ packet is lost when you exit.
 ## Required output (return this to the orchestrator, don't write a file)
 
 Markdown containing:
+
 - **Perspective name** and core position (2 sentences)
 - **Key claims**, each with its citekey(s)
 - **Unique insight** only this perspective's questions surfaced

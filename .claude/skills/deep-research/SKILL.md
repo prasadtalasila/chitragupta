@@ -176,7 +176,7 @@ dossier.** Settle who this report is for (a research group? a decision
 the user has to make? a chapter's background?) and what it will and won't
 cover, then create the dossier:
 
-```
+```bash
 python -m src.draft dossier init content/drafts/deep-research-<slug>.md --genre deep-research
 ```
 
@@ -334,7 +334,7 @@ parallel** (one per section), each given `TOPIC`, `READER`, `GLOSSARY`,
 its section outline fragment, and the one line that stands in for the
 evidence:
 
-```
+```bash
 Your evidence: python -m src.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
@@ -434,27 +434,33 @@ covering every section's citekeys. This is the machine record, and it is
 not the dossier: the JSON maps section -> citekey for tooling, while the
 dossier holds the working state a human or a later revision reads. Write
 both. Then:
-```
+
+```bash
 python -m src.draft gate content/drafts/deep-research-<slug>.md
 ```
+
 Fix and re-run until `OK`. Never present a draft that hasn't passed.
 
 **(d) Save and render.** Write to `content/drafts/deep-research-<slug>.md`
 (the canonical, source-of-truth format). Then fill in the `## References`
 section (reference.md §5's template) from exactly the gated citekeys,
 rather than hand-assembling it:
-```
+
+```bash
 python -m src.draft references content/drafts/deep-research-<slug>.md
 ```
+
 Stdlib-only, like the citation gate -- bare `python`, no venv. It writes
 numbered IEEE-style entries; leave the body's inline citations as
 `[@citekey]` rather than hand-numbering them to `[1]`, since pandoc
 assigns the numbers at render time. Then render the other three formats:
-```
+
+```bash
 python -m src.draft render content/drafts/deep-research-<slug>.md --format tex
 python -m src.draft render content/drafts/deep-research-<slug>.md --format pdf
 python -m src.draft render content/drafts/deep-research-<slug>.md --format md
 ```
+
 All three land beside the draft: a draft at
 `content/drafts/<topic>/<name>.md` renders to
 `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic directory
@@ -475,10 +481,12 @@ a rendering failure never blocks presenting the `.md` report.
   block) is cited and unlisted, and one it was handed but never used is
   listed and uncited. Replace the plan with what the report actually
   cites, derived rather than corrected by hand:
+
   ```bash
   python -m src.draft dossier sections content/drafts/deep-research-<slug>.md \
       --citekeys --write
   ```
+
   It overwrites the file with the heading -> citekey relation read out of
   the report itself, which is the same relation as (c)'s provenance JSON,
   written for the reviser rather than for tooling. **Do this only here,
@@ -501,18 +509,18 @@ run it silently, and never make it a condition of presenting:
 python -m src.review verbatim scan content/drafts/deep-research-<slug>.md
 ```
 
-It reports wording the report shares with **any** parsed source, cited or
-not. This genre earns the check more than most: a dozen subagents wrote
-sections independently, so no single context ever saw the whole report,
-and the synthesis prose stitching their sections together cites nothing
-at all -- exactly the text no per-citekey check can see. A review aid,
-not a gate: it exits 0 either way and cannot block the report. Say what
-it misses when you offer it -- it sees verbatim and near-verbatim reuse
-only, and **genuine restatement is only detected where the embedding tier can run**, so a clean scan is not a clean
-bill of health (`docs/PLAGIARISM.md`).
-If the user wants the finding kept, add `--write`: the report
-goes to `content/review/`, mirroring the draft's path, beside any
-provenance and coverage reports for the same draft.
+It reports wording the report shares with **any** parsed source, cited or not.
+This genre earns the check more than most: a dozen subagents wrote sections
+independently, so no single context ever saw the whole report, and the
+synthesis prose stitching their sections together cites nothing at all --
+exactly the text no per-citekey check can see. A review aid, not a gate: it
+exits 0 either way and cannot block the report. Say what it misses when you
+offer it -- it sees verbatim and near-verbatim reuse only, and **genuine
+restatement is only detected where the embedding tier can run**, so a clean
+scan is not a clean bill of health (`docs/PLAGIARISM.md`). If the user wants
+the finding kept, add `--write`: the report goes to `content/review/`,
+mirroring the draft's path, beside any provenance and coverage reports for the
+same draft.
 
 **(g) Present.** Give the user: headline finding, the single most
 important contradiction, the actionable insight, the overall grade, any

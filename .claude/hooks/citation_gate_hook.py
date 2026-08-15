@@ -74,7 +74,7 @@ def main() -> int:
     # is known to exist and is the one settings.json chose.
     result = subprocess.run(
         [sys.executable, "-m", "src.draft", "gate", str(file_path)],
-        cwd=repo_root,
+        check=False, cwd=repo_root,
         capture_output=True,
         text=True,
     )

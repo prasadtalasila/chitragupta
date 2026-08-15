@@ -36,8 +36,8 @@ if there is none.]
 What was actually run, not what was intended (see DEVELOPER-AGENTS.md,
 "Before claiming a task complete"):
 
-- [ ] Full suite with coverage: `.venv-full/bin/python -m pytest --cov=src
-      --cov=scripts --cov-report=term-missing` -- still 100% line and branch
+- [ ] Full suite with coverage: `.venv-full/bin/python -m pytest --cov
+      --cov-report=term-missing` -- still 100% line and branch
 - [ ] `poetry check`
 - [ ] At least one real end-to-end smoke test against real dependencies,
       not only mocked unit tests -- [name it here]

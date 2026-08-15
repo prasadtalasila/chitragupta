@@ -118,9 +118,11 @@ the lesson design is the part worth keeping either way.
 
    Then, once the artifact and the draft's path are settled and before any
    retrieval or drafting, create the dossier:
-   ```
+
+   ```bash
    python -m src.draft dossier init content/drafts/<slug>.md --genre tutorial
    ```
+
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "a lab for
    the `books/software-engineering` course" means
@@ -215,9 +217,11 @@ the lesson design is the part worth keeping either way.
    corpus genuinely has something -- cite it here.
    Same retrieval discipline as the other skills if you do search:
    over-fetch
-   ```
+
+   ```bash
    python -m src.draft retrieve search "<topic>" --k 15 --log content/drafts/<slug>.md
    ```
+
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
    every call**, even here where citing is optional -- it is what a later
    `dossier status` re-asks against the corpus to say which newly synced
@@ -267,9 +271,11 @@ the lesson design is the part worth keeping either way.
     `content/drafts/<slug>.md` first if you haven't already -- `sections`
     reads the file and reports `No such draft` if it isn't on disk yet. Then
     derive `sections.md` rather than writing it by hand:
-    ```
+
+    ```bash
     python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
     ```
+
     It writes one row per heading, and it skips fenced code -- which matters
     more here than anywhere else, since a `# Step 1: ...` comment inside a
     shell block is indistinguishable from a heading to anything that doesn't
@@ -283,9 +289,11 @@ the lesson design is the part worth keeping either way.
 
 11. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`. If
     it contains any `[@citekey]`, run:
-    ```
+
+    ```bash
     python -m src.draft gate content/drafts/<slug>.md
     ```
+
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save the file.
     Note: the gate blanks fenced code, inline code spans and LaTeX verbatim
@@ -294,9 +302,11 @@ the lesson design is the part worth keeping either way.
     real teaching code to appease it.
 
 12. **Build the References section**, only if the draft cites anything:
-    ```
+
+    ```bash
     python -m src.draft references content/drafts/<slug>.md --heading "Further reading"
     ```
+
     Stdlib-only, bare `python`, no venv. Entries are numbered IEEE-style;
     leave the inline citations as `[@citekey]` rather than hand-numbering
     them. `--heading "Further reading"` suits this genre better than the
@@ -313,11 +323,13 @@ the lesson design is the part worth keeping either way.
     a single bibliography matters more for a given tutorial.
 
 13. **Render tex, pdf, and numbered md.**
-    ```
+
+    ```bash
     python -m src.draft render content/drafts/<slug>.md --format tex
     python -m src.draft render content/drafts/<slug>.md --format pdf
     python -m src.draft render content/drafts/<slug>.md --format md
     ```
+
     All three land beside the draft: a draft at
     `content/drafts/<topic>/<name>.md` renders to
     `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic
@@ -340,21 +352,22 @@ the lesson design is the part worth keeping either way.
 
 15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
-    ```
+
+    ```bash
     python -m src.review verbatim scan content/drafts/<slug>.md
     ```
-    It reports wording the tutorial shares with **any** parsed source,
-    cited or not. That matters here even though this genre barely cites:
-    the prose between steps cites nothing, so it is exactly the text no
-    per-citekey check can see. A review aid, not a gate: it exits 0
-    either way and cannot block the draft. It skips fenced code, so your
-    commands and file contents won't light it up. Say what it misses
-    when you offer it -- it sees verbatim and near-verbatim reuse only,
-    and **genuine restatement is only detected where the embedding tier can run**, so a clean scan is not a clean
-    bill of health (`docs/PLAGIARISM.md`).
-    If the user wants the finding kept, add `--write`: the report
-    goes to `content/review/`, mirroring the draft's path, beside any
-    provenance and coverage reports for the same draft.
+
+    It reports wording the tutorial shares with **any** parsed source, cited or
+    not. That matters here even though this genre barely cites: the prose
+    between steps cites nothing, so it is exactly the text no per-citekey check
+    can see. A review aid, not a gate: it exits 0 either way and cannot block
+    the draft. It skips fenced code, so your commands and file contents won't
+    light it up. Say what it misses when you offer it -- it sees verbatim and
+    near-verbatim reuse only, and **genuine restatement is only detected where
+    the embedding tier can run**, so a clean scan is not a clean bill of health
+    (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
+    the report goes to `content/review/`, mirroring the draft's path, beside
+    any provenance and coverage reports for the same draft.
 
 16. **Present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,

@@ -17,7 +17,8 @@ layer (generative, on-demand, user-reviewed) -- distinct from
   point the thesis document's `\addbibresource` (biblatex) or `\bibliography`
   (bibtex) at this file directly rather than a copy
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
+- `src/retrieval.py` --
+  `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -104,9 +105,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    condescending. Settle too what the chapter will and won't cover, and
    the slug it will be saved under. Then create the dossier and record
    the same decisions there:
-   ```
+
+   ```bash
    python -m src.draft dossier init content/drafts/<slug>.tex --genre thesis-chapter
    ```
+
    **Settle `<slug>` with the user before running that.** It is a path
    under `content/drafts/` and it may contain directories: "the methods
    chapter of `thesis/`" means
@@ -133,9 +136,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 2. **Retrieve broadly, then filter.** Search against the RQ and its
    component concepts -- over-fetch rather than assuming the top few hits
    are automatically the right ones:
-   ```
+
+   ```bash
    python -m src.draft retrieve search "<concept>" --k 15 --log content/drafts/<slug>.tex
    ```
+
    `--log` records the query and the call's size in the dossier's
    `retrieval.md`. **Pass it on every call.** It is what makes the run's
    cost measurable instead of estimated, and it is also the list a later
@@ -146,7 +151,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    judge relevance yourself; a high score is a proxy, not a verdict. Keep
    only what actually supports part of the argument; write the kept set to
    `content/dossiers/<draft path minus suffix>/evidence.json` (citekey + why
-   it's relevant + the supporting quote/paraphrase) before drafting prose. Record the same
+   it's relevant + the supporting quote/paraphrase) before drafting prose.
+   Record the same
    judgment in the dossier while the snippets are still in front of you --
    the kept citekeys into `evidence.md`, and every candidate you turned
    down into `rejected.md` with the query that surfaced it and a few words
@@ -179,9 +185,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 8. **Map sections to citekeys in the dossier.** Save the fragment to
    `content/drafts/<slug>.tex` first, then derive the map rather than
    writing it by hand:
-   ```
+
+   ```bash
    python -m src.draft dossier sections content/drafts/<slug>.tex --citekeys --write
    ```
+
    It reads `\citep`/`\citet` as readily as `[@key]` and tracks
    `verbatim`/`lstlisting`/`minted`, so a `\section`-like line inside a
    code environment is neither a heading nor a citation. The result is
@@ -192,19 +200,23 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 9. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
    (this remains the canonical deliverable -- the one meant to be `\input`-ed),
    then run:
-   ```
+
+   ```bash
    python -m src.draft gate content/drafts/<slug>.tex
    ```
+
    Fix and re-run until `OK`. Never present a draft that hasn't passed.
 10. **Render md and pdf previews.** The `.tex` fragment stays the canonical
     deliverable exactly as-is -- don't wrap it in a preamble or change its
     `\input`-able shape. In addition, render an `.md` and a `.pdf` preview
     from that same fragment (pandoc's LaTeX reader handles a preamble-less
     fragment fine):
-    ```
+
+    ```bash
     python -m src.draft render content/drafts/<slug>.tex --format md
     python -m src.draft render content/drafts/<slug>.tex --format pdf
     ```
+
     Both previews land beside the fragment: a draft at
     `content/drafts/<topic>/<name>.tex` renders to
     `content/rendered/<topic>/<name>.{md,pdf}`, so one topic directory
@@ -246,26 +258,28 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     that doesn't know about it will undo it.
 13. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
-    ```
+
+    ```bash
     python -m src.review verbatim scan content/drafts/<slug>.tex
     ```
-    It reports wording the chapter shares with **any** parsed source,
-    cited or not -- including a source the citing paragraph never names,
-    and reuse in the connective prose an examiner reads as your own. A
-    review aid, not a gate: it exits 0 either way and cannot block the
-    fragment. Say what it misses when you offer it -- it sees verbatim
-    and near-verbatim reuse only, and **genuine restatement is only detected where the embedding tier can run**, so
-    a clean scan is not a clean bill of health (`docs/PLAGIARISM.md`).
-    If the user wants the finding kept, add `--write`: the report
-    goes to `content/review/`, mirroring the draft's path, beside any
-    provenance and coverage reports for the same draft.
-14. Present the `.tex` fragment (the deliverable to `\input`) plus, if
-    rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning
-    if it didn't. Tell the user where the dossier is, that changes to this
-    chapter should go through `draft-reviser` rather than another run of
-    this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python -m src.draft dossier export <slug>` is how a draft
-    and its working state get backed up.
+
+    It reports wording the chapter shares with **any** parsed source, cited or
+    not -- including a source the citing paragraph never names, and reuse in
+    the connective prose an examiner reads as your own. A review aid, not a
+    gate: it exits 0 either way and cannot block the fragment. Say what it
+    misses when you offer it -- it sees verbatim and near-verbatim reuse only,
+    and **genuine restatement is only detected where the embedding tier can
+    run**, so a clean scan is not a clean bill of health
+    (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
+    the report goes to `content/review/`, mirroring the draft's path, beside
+    any provenance and coverage reports for the same draft. 14. Present the
+    `.tex` fragment (the deliverable to `\input`) plus, if rendering succeeded,
+    the `.md`/`.pdf` preview paths -- or the warning if it didn't. Tell the
+    user where the dossier is, that changes to this chapter should go through
+    `draft-reviser` rather than another run of this skill, and that
+    `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
+    src.draft dossier export <slug>` is how a draft and its working state get
+    backed up.
 
 ## Sources
 
