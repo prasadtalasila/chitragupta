@@ -319,15 +319,17 @@ corpus layer's parser (`[parser].backend = "docling"`) and the enrichment
 layer's `docling` stage are separate consumers of the same library, and
 what each keeps decides what you can quote.
 
-The corpus layer once built the full document model -- verified on a real
-17-page paper, 336 of 336 text items carried a page number, a bounding
-box and a semantic label -- kept only `export_to_markdown()`, and
-discarded the object. Reading order survived inside the text; page
-numbers, labels and boxes did not. The consequence ran against intuition:
-choosing the better parser bought *worse* quotations, because Markdown
-carries no form feeds, so the passage ladder found a single "page",
-declined it, and fell through to a fresh `pdftotext` run -- the
-column-splicing tool the ladder exists to avoid quoting from.
+The corpus layer once built the full document model, kept only
+`export_to_markdown()`, and discarded the object. That model was verified
+on a real 17-page paper: 336 of 336 text items carried a page number, a
+bounding box and a semantic label. Reading order survived inside the
+text; page numbers, labels and boxes did not.
+
+The consequence ran against intuition. Choosing the better parser bought
+*worse* quotations. Markdown carries no form feeds, so the passage ladder
+found a single "page", declined it, and fell through to a fresh
+`pdftotext` run -- the column-splicing tool the ladder exists to avoid
+quoting from.
 
 Both halves of that are now kept:
 
@@ -479,29 +481,32 @@ don't create the same problem one level down). The same draft went from
 
 Widening the unit from a line to a blank-line paragraph had no upper
 bound, and a markdown table has no blank lines in it. A citation in a
-table cell therefore took the **entire table** as its claim -- and a
-table citing seven papers quoted that table seven times. Measured on
-`digital-twins-tutorial.md`: 9 of 100 citations sat in a table, they
-produced only 2 distinct claims between them, each 105 or 179 words
-against a 40-word prose median, and 271 pipe characters reached the
+table cell therefore took the **entire table** as its claim, and a table
+citing seven papers quoted that table seven times.
+
+Measured on `digital-twins-tutorial.md`: 9 of 100 citations sat in a
+table. They produced only 2 distinct claims between them, each 105 or 179
+words against a 40-word prose median. And 271 pipe characters reached the
 report's blockquotes, where pandoc renders every one as `\textbar{}`.
 
 The damage was not only cosmetic. Scoring divides by the claim's own
 distinctive words, so a whole-table claim inflated the denominator from a
-row's 15-23 words to 61 or 91 -- cutting the *maximum achievable* score
-to roughly a quarter and pushing genuinely supported citations under the
-band thresholds. That is the same false "no support found" the paragraph
-change was made to remove, reappearing one level up. It also defeated the
-reason claims are sentences rather than paragraphs: five citekeys in one
-table shared a single claim, so the report could not say which of them
-was the weak one.
+row's 15-23 words to 61 or 91. That cut the *maximum achievable* score to
+roughly a quarter, pushing genuinely supported citations under the band
+thresholds. It is the same false "no support found" the paragraph change
+was made to remove, reappearing one level up.
 
-The unit is now the **block**, not everything between two blank lines: a
-table row and a list item are each their own claim, a row is flattened to
-`cell -- cell -- cell` prose so no pipe reaches the report, and a heading
-is not glued to the paragraph beneath it. Prose is unaffected -- it is
-one block, read exactly as before. The same draft now yields 9 distinct
-claims of ~27 words and 0 pipe characters.
+It also defeated the reason claims are sentences rather than paragraphs.
+Five citekeys in one table shared a single claim, so the report could not
+say which of them was the weak one.
+
+The unit is now the **block**, not everything between two blank lines. A
+table row and a list item are each their own claim. A row is flattened to
+`cell -- cell -- cell` prose, so no pipe reaches the report. And a
+heading is not glued to the paragraph beneath it.
+
+Prose is unaffected: it is one block, read exactly as before. The same
+draft now yields 9 distinct claims of ~27 words and 0 pipe characters.
 
 **Both syntaxes, because every genre skill exports `.tex` and `.pdf`
 beside the Markdown.** A `tabular` had the same defect with one extra
