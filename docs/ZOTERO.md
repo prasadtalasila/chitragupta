@@ -58,9 +58,21 @@ in any collection. Keeping it needs
    **Export Files** checked as in step 2 above.
 4. Re-run `python -m src.corpus sync`.
 
-**The cost, which Better BibTeX states plainly:** that option disables its
-export cache, so exports get slower. If you do not want collections, leave
-it off -- nothing else in this pipeline reads the field.
+**The stated cost, and why it is probably not a cost for you.** Better
+BibTeX warns that this option "will disable caching in exports", and its
+[performance notes](https://retorque.re/zotero-better-bibtex/support/performance/)
+put the difference at roughly 9 seconds against 3-4 on an 86-item library.
+But those same notes say the cache "will not be active" when **Export
+Files** is enabled -- and step 2 above requires Export Files, because
+without the attachments there is nothing for this pipeline to parse. So an
+export done the way this page describes never had the cache to lose.
+Turning JabRef fields on costs you nothing further.
+
+Two things follow. If you also keep a *separate* Better BibTeX export for
+something else -- a `.bib` for a LaTeX document, an auto-export on a timer
+-- that one does lose its cache, since the preference is global rather than
+per-export. And if you do not want collections, leave the option off:
+nothing else in this pipeline reads the field.
 
 Two conventions come with `groups`, and both are JabRef's rather than
 ours. Several collections are comma-separated, and a subcollection
