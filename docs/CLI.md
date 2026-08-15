@@ -615,7 +615,7 @@ caller that has to match display text is back where it started.
 
 `tier` names which detection tier produced the finding -- `exact`,
 `skip-gram` or `embedding` (see
-[PLAGIARISM.md](PLAGIARISM.md#where-this-sits-in-a-bigger-plan)).
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#where-this-sits-in-a-bigger-plan)).
 `score` is the embedding tier's alignment strength and is `null` on the
 two deterministic tiers, which have no similarity to report; it is a
 ranking within a section, not a probability, and not comparable to

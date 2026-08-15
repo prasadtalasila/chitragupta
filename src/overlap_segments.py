@@ -58,7 +58,7 @@ from src import dossier, passages, sentences
 # it dominates the vector, and every sentence in a paper about that
 # manufacturer then looks equally close. A window is short enough that
 # the restated clause is most of what is in it. This is the concrete
-# form of the warning `docs/PLAGIARISM.md` records from
+# form of the warning `docs/PLAGIARISM-DESIGN.md` records from
 # `bench_overlap_df.py`: in a single-field corpus, topical similarity is
 # high by default, so a detector has to compare something smaller than a
 # topic.
@@ -143,7 +143,7 @@ def draft_sections(
     heading to anything that does not track fences.
 
     A section `sections.md` records no citekeys for is dropped, not
-    scanned against the whole corpus: `docs/PLAGIARISM.md` argues at
+    scanned against the whole corpus: `docs/PLAGIARISM-DESIGN.md` argues at
     length that a whole-corpus search is the wrong shape for this corpus,
     and falling back to one wherever the dossier happened to be thin
     would reintroduce exactly that, silently.

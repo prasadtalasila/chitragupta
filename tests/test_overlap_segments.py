@@ -32,7 +32,7 @@ class TestDraftSections:
 
     def test_a_section_with_no_recorded_citekeys_is_dropped(self):
         # Never scanned against the whole corpus instead:
-        # docs/PLAGIARISM.md argues at length that a whole-corpus search
+        # docs/PLAGIARISM-DESIGN.md argues at length that a whole-corpus search
         # is the wrong shape here, and a silent fallback would be it.
         text = "# Kept\n\nProse.\n\n# Dropped\n\nMore prose.\n"
         titles = [s.title for s in segments(text, {"Kept": ["smith_2024"]})]

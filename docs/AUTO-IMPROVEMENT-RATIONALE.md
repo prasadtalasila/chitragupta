@@ -19,7 +19,7 @@ house-style axis has its own document,
 
 Assumes [ARCHITECTURE.md](ARCHITECTURE.md) for the four layers,
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) for the dossier and the drift
-sweep, and [PLAGIARISM.md](PLAGIARISM.md) for the detection tiers.
+sweep, and [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for the detection tiers.
 
 ## Table of contents
 

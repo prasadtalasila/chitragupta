@@ -357,11 +357,14 @@ each skill offers `python -m src.review verbatim scan
 content/drafts/<path>` -- which reports wording the draft shares with
 *any* parsed source, cited or not. It cannot block a draft and no skill
 treats it as a condition of presenting. The offer carries its own
-caveat, in every skill, because the drafter is the one it is about: the
-scan is the exact detection tier, so it sees verbatim and near-verbatim
-reuse only and paraphrase is invisible to it -- a clean scan is not a
-clean bill of health.
-[PLAGIARISM.md](PLAGIARISM.md) has what the unbuilt tiers would add.
+caveat, in every skill, because the drafter is the one it is about: two
+of the three detection tiers see wording only, so a genuine restatement
+is invisible to them, and the third runs only where the optional
+enrichment layer, the Docling sidecars and the draft's dossier are all
+present -- so a clean scan is not a clean bill of health.
+[PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that;
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
+it sees.
 
 ## The boundaries, and why they are enforced
 

@@ -1123,7 +1123,7 @@ unlabelled, for the same reason.
 ### What this does not measure
 
 - **Paraphrase.** The exact tier cannot see it, and
-  [PLAGIARISM.md](../docs/PLAGIARISM.md) names literal paraphrase an
+  [PLAGIARISM-DESIGN.md](../docs/PLAGIARISM-DESIGN.md) names literal paraphrase an
   LLM's default failure mode. "Zero true positives" means zero *verbatim*
   reuse, not no borrowed wording. This is the single largest caveat: the
   tier that would gate is the tier blind to the likeliest offence.
@@ -1284,7 +1284,7 @@ the same findings, the same hand-authored file.
 
 ## 2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?
 
-Discussion #115 and docs/PLAGIARISM.md call for "start advisory, promote
+Discussion #115 and docs/PLAGIARISM-DESIGN.md call for "start advisory, promote
 with evidence" before the skip-gram tier is trusted with anything. This
 is the first evidence, and only the easier half of it.
 
@@ -1339,7 +1339,7 @@ way the exact tier did before References masking was fixed.
 
 **What this does not measure**, beyond the precision arm above: embedding-
 level paraphrase (tier 3, #134, unbuilt) -- restatement in genuinely new
-sentence structure rather than a word-for-word swap. See docs/PLAGIARISM.md.
+sentence structure rather than a word-for-word swap. See docs/PLAGIARISM-DESIGN.md.
 
 Nor is **cold-build cost** measured. `scan` now builds two corpus
 indices instead of one, and `overlap_skipgram.stem()` runs pure-Python

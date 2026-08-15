@@ -1,7 +1,7 @@
 """Tier 3 of the overlap scan: embedding-based paraphrase detection, by
 local alignment over sentence embeddings.
 
-The third and last of the detection tiers `docs/PLAGIARISM.md` names
+The third and last of the detection tiers `docs/PLAGIARISM-DESIGN.md` names
 (#134, #164, closing #132). Tiers 1 and 2 -- `src/overlap_index.py`'s
 exact word-8-grams and `src/overlap_skipgram.py`'s stemmed odd/even
 skip-grams -- both match on *token position*, so both break the moment a
@@ -14,7 +14,7 @@ not care about token position, which is why this tier exists.
 **Advisory only, permanently.** `content/chroma/` is namespaced per
 `[enrich].embedding_model` precisely because vectors change when that
 setting does, so a finding here is not reproducible across a config edit
-and can never satisfy `docs/PLAGIARISM.md`'s "only deterministic checks
+and can never satisfy `docs/PLAGIARISM-DESIGN.md`'s "only deterministic checks
 may block" line. There is no gate-eligibility check *here* to enforce
 that, because nothing in `src/` decides gate-eligibility for any tier
 today (#130, undecided) and inventing a gate path to exclude this tier
@@ -40,7 +40,7 @@ works here. This pipeline aims at a deep single-field corpus and the
 drafts are written *from* it via `src.retrieval`, so a draft segment's
 nearest corpus neighbours are, by construction, the passages it was
 legitimately grounded in: a corpus-wide cosine threshold would re-detect
-the pipeline's own retrieval step. `docs/PLAGIARISM.md` carries the
+the pipeline's own retrieval step. `docs/PLAGIARISM-DESIGN.md` carries the
 argument and the measurement (`bench/bench_overlap_df.py`) behind it.
 
 ## What it reports
@@ -89,6 +89,7 @@ SHORTLIST_SOURCES = 5
 # paraphrase in the chapter (`singh_digital_2023`), which is the
 # strongest alignment *in its own section*. Per section, it is reported.
 SECTION_LIMIT = 1
+
 
 @dataclass
 class Scope:
@@ -167,7 +168,7 @@ def _dossier_scope(draft: Path) -> tuple[dict[str, list[str]] | None, str | None
         return None, (
             f"{directory}/sections.md records no citekeys for any section -- "
             "this tier compares each section against the sources it was written from, "
-            "and never against the whole corpus (docs/PLAGIARISM.md)"
+            "and never against the whole corpus (docs/PLAGIARISM-DESIGN.md)"
         )
     return mapping, None
 

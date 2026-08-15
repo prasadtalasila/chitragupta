@@ -676,7 +676,7 @@ def _cites_source(
     correctly quoted, correctly credited block quote, which then never
     reached the `quoted`-and-cited exemption `_bucket` gives an
     attributed quotation, because that exemption also keyed off this
-    same single-citekey check (docs/PLAGIARISM.md's Kritzinger case,
+    same single-citekey check (docs/PLAGIARISM-DESIGN.md's Kritzinger case,
     surfaced by PR #162's benchmark: a taxonomy quoted and cited to
     `kritzinger_digital_2018` also matches `barbie_toward_2024`, which
     reproduces the same taxonomy and is never mentioned in the
@@ -876,7 +876,7 @@ def _skipgram_tier_findings(
 ) -> tuple[list[dict], int]:
     """Tier 2: deterministic light-paraphrase detection via stemmed
     skip-grams (`src/overlap_skipgram.py`, #133, the CoReMo design --
-    discussion #115, docs/PLAGIARISM.md). Same shared contract as
+    discussion #115, docs/PLAGIARISM-DESIGN.md). Same shared contract as
     `_exact_tier_findings` -- `(citekey, diagonal)` grouping, allowlist,
     `_cites_source` -- against `overlap_skipgram`'s own corpus-wide
     index instead of the exact tier's.

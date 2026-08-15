@@ -193,7 +193,7 @@ class TestGradedParaphraseDetection:
         # The tier's honest boundary: genuine restatement in new
         # structure -- not a word-for-word substitution -- shares no
         # skip-gram, the same way it shares no exact 8-gram. #133 does
-        # not claim to catch this; docs/PLAGIARISM.md's caveat still
+        # not claim to catch this; docs/PLAGIARISM-DESIGN.md's caveat still
         # applies to tier 2.
         restated = (
             "engineers routinely check that a simulated model still tracks "

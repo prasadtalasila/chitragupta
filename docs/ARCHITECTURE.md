@@ -638,7 +638,7 @@ either. None of it is left to someone comparing files by eye.
 Both words appear across these docs, and they are not the same thing.
 Summarised here; each one is treated in full, with what its bottom rung
 costs you, in [docs/LADDERS.md](LADDERS.md) -- except the detection
-tiers, whose full treatment is [docs/PLAGIARISM.md](PLAGIARISM.md).
+tiers, whose full treatment is [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
 
 A **ladder** is an ordered chain the code walks *automatically*: it tries
 the first rung, and falls to the next when that one can't answer. A
@@ -669,10 +669,10 @@ The other three tier sets are a menu you pick exactly one option from;
 labelling each with the tier that produced it -- which is what the
 `tier: "exact"` field on a finding is for, with one value so far. The
 practical consequence is the one every place that offers `scan` repeats:
-an unbuilt tier contributes nothing and nothing says so, so a clean run
-means "no exact or near-exact copying found", never "no borrowed
-wording". [docs/PLAGIARISM.md](PLAGIARISM.md) has the three tiers and the
-literature behind them.
+a tier that could not run now says so by name, so a clean run means
+"nothing found by the tiers that ran", never "no borrowed wording".
+[docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has the three tiers
+and the literature behind them.
 
 ## One writer at a time
 

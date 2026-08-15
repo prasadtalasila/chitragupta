@@ -1,6 +1,6 @@
 """Tier 2: deterministic light-paraphrase detection via stemmed skip-grams
 (the CoReMo 2.1 design, Torrejon & Ramos, PAN 2013 winner on quality and
-runtime -- discussion #115, docs/PLAGIARISM.md). Catches the every-few-
+runtime -- discussion #115, docs/PLAGIARISM-DESIGN.md). Catches the every-few-
 words synonym swap or inflection change an LLM's paraphrase leaves --
 exactly what tier 1's exact 8-gram index (src/overlap_index.py) is blind
 to by construction, since a single substituted word breaks every
@@ -56,7 +56,7 @@ Advisory only for now (discussion #115: "start advisory, promote with
 evidence") -- nothing in this module or in
 `src/review/verbatim_check.py`'s tier-2 finder decides gate-eligibility;
 that is a later, separate decision (issue #130), unlike tier 3
-(embedding), which docs/PLAGIARISM.md rules out from ever gating, by
+(embedding), which docs/PLAGIARISM-DESIGN.md rules out from ever gating, by
 construction.
 """
 
