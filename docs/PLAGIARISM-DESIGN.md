@@ -51,13 +51,19 @@ corpus's real scale (~7,000,000 grams), the birthday-bound collision
 probability at 64 bits is on the order of 1e-6: real, but small enough
 not to matter in practice.
 
-Two disk caches, both under `content/overlap/` (gitignored, regenerable):
-a per-document fingerprint (`docs/<citekey>.fpr`, keyed by the ledger's
-`pdf_hash` plus the parsed file's own stat -- so a `sync --reparse` or a
-backend switch invalidates it, a `pdf_hash`-only key would not), and a
-merged, binary-searchable corpus-wide index (`index.bin`/`index.json`,
-sorted gram hashes with parallel citekey/page/position postings arrays).
-`overlap` only ever needs the first; `scan` builds and reuses the second.
+Two disk caches, both under `content/overlap/`, gitignored and
+regenerable:
+
+- **A per-document fingerprint**, `docs/<citekey>.fpr`. It is keyed by the
+  ledger's `pdf_hash` plus the parsed file's own stat, so a
+  `sync --reparse` or a backend switch invalidates it. A `pdf_hash`-only
+  key would not.
+- **A merged, binary-searchable corpus-wide index**,
+  `index.bin`/`index.json`: sorted gram hashes with parallel
+  citekey/page/position postings arrays.
+
+`overlap` only ever needs the first. `scan` builds and reuses the
+second.
 
 ## Measured: what a blocking overlap gate would block (#130)
 
@@ -98,10 +104,12 @@ positive available anywhere in this repository -- the planted lift in
 it.
 
 So a threshold low enough to catch the genuine lift admits nine false
-positives longer than it, and a threshold high enough to clear the false
-positives misses the genuine lift. **No T separates them.** #130's
-premise is that a generous span threshold makes a gate tolerable; on this
-evidence the variable it proposes to tune does not discriminate.
+positives longer than it. A threshold high enough to clear the false
+positives misses the genuine lift. **No T separates them.**
+
+The premise of #130 is that a generous span threshold makes a gate
+tolerable. On this evidence, the variable it proposes to tune does not
+discriminate.
 
 ### Why the false positives are structural, not tunable
 
@@ -145,11 +153,12 @@ far better than it establishes how often it would fire *rightly*.
 
 The measurement above ends on an unfinished observation. Having shown
 that span length does not separate the two populations, it notes that
-something else partly does: the large false-positive clusters are each
-matched by **4 distinct citekeys**, where the one true positive available
-anywhere in this repository -- the planted `aguzzi_cloud_2020` lift --
-matches exactly **1**. That accounted for 8 of the 14 gateable findings
-and no more.
+something else partly does.
+
+The large false-positive clusters are each matched by **4 distinct
+citekeys**. The one true positive available anywhere in this repository,
+the planted `aguzzi_cloud_2020` lift, matches exactly **1**. That
+accounted for 8 of the 14 gateable findings, and no more.
 
 `bench/bench_overlap_df.py` finishes it, and the result changes the order
 tiers 2 and 3 should be built in.
@@ -267,11 +276,11 @@ collection is namespaced per embedding model precisely because vectors
 change when `[enrich].embedding_model` does -- so it can never gate, only
 advise.
 
-That produces **three detection tiers** -- cumulative, not a menu you
-pick one option from -- of which this document covers tier 1 in depth;
-tier 2's own mechanism is documented in `src/overlap_skipgram.py`'s
-module docstring and tier 3's in `src/overlap_embed.py`'s, and their
-measurements are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
+That produces **three detection tiers**, cumulative rather than a menu
+you pick one option from. This document covers tier 1 in depth. Tier 2's
+own mechanism is documented in `src/overlap_skipgram.py`'s module
+docstring, and tier 3's in `src/overlap_embed.py`'s. Their measurements
+are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
 2026-08-15 embedding sections:
 
 1. **Exact tier (here).** Inverted word-8-gram index, whole-corpus `scan`,
