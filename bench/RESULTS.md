@@ -31,6 +31,7 @@ if it is obvious which is which, so:
 | [2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses) | **Current, capability arm only** | Confirms the every-Nth-word design works synthetically. Its "precision arm: not run" half is superseded by the section below, which ran it |
 | [2026-08-14: tier 2's first real precision number, and the two bugs that had to be fixed to get it (#180)](#2026-08-14-tier-2s-first-real-precision-number-and-the-two-bugs-that-had-to-be-fixed-to-get-it-180) | **Current** | The precision arm the section above could not run. Two mechanical bugs accounted for 163 of 190 raw findings; on the 27 that survive, precision is 2/27 and both true positives are passages the exact tier already reports |
 | [2026-08-15: does the embedding tier (#134/#164) catch what neither deterministic tier can?](#2026-08-15-does-the-embedding-tier-134164-catch-what-neither-deterministic-tier-can) | **Current** | Tier 3's first measurement. Establishes that a *sentence* is the wrong comparison unit in this corpus -- the one hand-verified organic pair scores 0.55 as a sentence against 0.59-0.61 of same-paper noise, and 0.71 windowed -- and that both organic pairs #134 names are reported. Its capability arm is a graded fixture and its two organic pairs are the ones #134 names in prose; its precision arm reports a 162-finding population and **no precision number** -- none of it is labelled, and the 59-candidate dataset #134's plan assumes as ground truth was never committed |
+| [2026-08-15b: the recall question, asked by reading](#2026-08-15b-the-recall-question-asked-by-reading----how-much-organic-paraphrase-does-each-tier-see) | **Current** | The only recall measurement here, and the one #134's plan assumed existed: 48 claims judged by reading each against the source it cites. 22 are close paraphrase; tier 3 is the only tier firing on 8 of them, against skip-gram's 2-of-59 measured the same way before tier 3 existed. Re-derives, by a committed script, what the 2026-08-14 session produced and did not commit |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1733,3 +1734,112 @@ same limitation every corpus-dependent entry in this file has. Both
 arms stage the fixture under `content/drafts/bench-embed/` with a
 generated dossier and remove it again afterwards, because tier 3 will
 not scan a draft that has no dossier.
+
+## 2026-08-15b: the recall question, asked by reading -- how much organic paraphrase does each tier see?
+
+Every other overlap section in this file starts from what a tier
+*found*. This one starts from what a reader *finds by reading* and asks
+how much of it a tier saw. The two have opposite failure modes, and a
+tier that reports nothing scores perfect precision on all of them.
+
+**This re-derives, by a method that is now a committed script, what
+#134's 2026-08-14 session produced by hand and did not commit.** That
+session's `candidates.md` -- 59 candidates, named in #134's
+implementation plan as tier 3's primary validation dataset -- existed
+only in its own context. It is not recoverable, and the numbers below are
+not it. They are a fresh derivation from the same book, and they are
+smaller and differently biased; `bench/bench_paraphrase_hunt.py` is the
+method, so the next person needing this does not start from nothing.
+
+### Population, and the cap
+
+| | |
+|---|---|
+| Citations in the 15 chapters | 866 |
+| With a readable cited source, and a claim rather than a pointer | 825 |
+| Skipped: further-reading pointers, bare citekey lists, unreadable source | 41 |
+| Shortlisted at lexical support >= 0.5 | 128 |
+| **Judged by reading** | **48** |
+
+The 80 shortlisted but unjudged, and the 697 below the shortlist, are
+not evidence of anything and are not counted below. The cap is a reading
+budget, stated rather than applied silently.
+
+### What the 48 turned out to be
+
+| Judgment | n |
+|---|---|
+| **close paraphrase** of the cited source | **22** |
+| `no-match` -- retrieval surfaced no corresponding passage, so nothing could be judged | 13 |
+| `no` -- independent statement, or ordinary attribution of a finding | 8 |
+| `quoted` -- borrowed wording inside quote marks, cited | 3 |
+| `third-party-echo` -- shared wording belongs to a third party both cite (NASA's definition, the FMI standard) | 2 |
+
+### Which tiers see the 22
+
+| Caught by | n | share |
+|---|---|---|
+| `embedding` **alone** | **8** | 36% |
+| `embedding` + `exact` | 5 | 23% |
+| `exact` + `skip-gram` | 2 | 9% |
+| `exact` alone | 1 | 5% |
+| **nothing** | **6** | 27% |
+
+**Tier 3 fires on 13 of 22, and is the only tier firing on 8.** Set that
+against the same question asked before tier 3 existed: the 2026-08-14
+hand read found skip-gram's unique contribution to be **2 of 59**, and
+58% caught by neither tier. Both numbers move in the direction the tier
+was built for -- the never-caught share falls from 58% to 27%, and the
+new tier's unique contribution is an order of magnitude above the tier
+it follows.
+
+Cross-checking is at `(citekey, chapter)` granularity -- "did the scanner
+find *something* for that citekey in that chapter" -- which is the
+granularity the 2026-08-14 read used, so the two are comparable.
+
+### The bias, and why 22 is a floor
+
+Candidates are found by retrieving passages **within the cited document
+only** -- the citekey already says which paper, so there is no
+cross-document search and nothing here embeds anything. That is what
+keeps the dataset independent of the tier it measures: build the
+candidate list with the same similarity tier 3 uses and "tier 3 catches
+N% of candidates" measures nothing.
+
+The retrieval within that document is lexical, and that is the cost. For
+a **genuine restatement** -- exactly the class tier 3 exists for -- the
+top passages of the right paper may not include the one actually
+restated, and the pair reads as `no-match` rather than as a candidate.
+13 of 48 landed there. So 22 is a floor on the close paraphrase in these
+48, the true share of `embedding`-only catches is probably higher rather
+than lower, and no number here should be quoted as an estimate of how
+much paraphrase the book contains.
+
+### Reproducing
+
+```bash
+.venv-full/bin/python bench/bench_paraphrase_hunt.py --extract \
+  --drafts content/drafts/books/digital-twins-for-software-engineers \
+  --tag 2026-08-15-organic-paraphrase-hunt
+
+# judge the pairs it writes, into labels.json, then:
+
+.venv-full/bin/python bench/bench_paraphrase_hunt.py --crosscheck \
+  --drafts content/drafts/books/digital-twins-for-software-engineers \
+  --tag 2026-08-15-organic-paraphrase-hunt
+```
+
+The book is restored from `content/backup/`'s archive, which was written
+by **chitragupta 3.12.0**. One thing has to be ported before any of this
+runs: `sections.md` recorded section names as `1.1 / Subsection` paths
+then and records the heading verbatim now, so every dossier needs
+`python -m src.draft dossier sections <chapter> --citekeys --write`
+first. Without it tier 3 matches no section and reports itself
+unavailable -- correctly, but the run measures nothing. Everything else
+in those dossiers reads unchanged, and `dossier status` confirms the
+corpus digest still matches.
+
+`candidates.md` -- the same 48 rows with the quoted draft/source pairs --
+is written beside `labels.json` and is **not committed**: `bench/`'s
+recorded-field rule keeps draft and source prose out of `bench/results/`,
+and that file is nothing else. The script regenerates it.
