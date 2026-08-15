@@ -61,7 +61,7 @@ line, so this skill does not invent a second threshold:
 
 | Bucket | What it is | This skill |
 |---|---|---|
-| `quoted` | Inside quote marks **and** citing the source | Report it as already correct. Do not touch it |
+| `quoted` | Touching quote marks **and** citing the source | Report it as already correct. Do not touch it |
 | `short` | Under 15 words, not a marked quotation | Repair unattended |
 | `long` | 15 words or more, not a marked quotation | **Stop and ask.** Present paraphrase and quotation as two options and let the human choose |
 

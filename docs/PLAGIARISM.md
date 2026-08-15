@@ -162,10 +162,21 @@ the converse: a remainder shorter than the index's own n-gram size has no
 gram starting on its page, so it is recovered into the run's word content
 without moving `end_page`), whether the containing paragraph actually cites that
 source (`UNCITED SOURCE` if
-not), whether the run sits inside quote delimiters (straight/curly double
+not), whether the run touches quote delimiters (straight/curly double
 quotes or a Markdown blockquote line -- a deterministic bit, not a
 severity judgment), and `tier: "exact"` -- one key now, reserved for the
 tiers below.
+
+**`quoted` reads as overlap, not containment**, and the difference is not
+cosmetic. A matched run is wider than the quotation that evidences it and
+routinely opens a word or two before the opening mark, in the draft's own
+framing prose. Requiring the *whole* run to sit inside the marks -- the
+original reading -- therefore reported `quoted: false` on correctly quoted,
+correctly credited passages, which is precisely the material the flag
+exists to let a reader skip (#189). Four hand-labelled
+`attributed-quotation` findings across tiers 1 and 2 had that shape, two
+of them with the quoted words a minority of the span, so a
+majority-of-span rule does not reach them either.
 
 ## Severity buckets, and the boilerplate allowlist
 
@@ -178,7 +189,7 @@ longest-first, unchanged -- it's read once, in a terminal, mid-review.
 into three sections: *long* verbatim runs (`LONG_RUN_WORDS`, currently
 15 words, is the boundary), *short* ones, and *quoted* ones. A run demotes to
 the low-priority *quoted* group only when
-it is **both** inside quote delimiters **and** cites the source it
+it is **both** touching quote delimiters **and** citing the source it
 matched -- a quoted run from a source the paragraph does *not* cite is
 still the finding `overlap` structurally cannot make, so it is grouped by
 length like any other uncited run, not buried under `quoted` just for
