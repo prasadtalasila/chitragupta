@@ -76,6 +76,11 @@ def preflight():
     return load("session_start_hook")
 
 
+@pytest.fixture
+def style():
+    return load("style_check_hook")
+
+
 def emitted(capsys) -> dict | None:
     out = capsys.readouterr().out.strip()
     return json.loads(out) if out else None
@@ -345,3 +350,153 @@ class TestRunAndMain:
         assert "BROKEN: a launcher is wrong" in context
         assert "did not refuse a fabricated citekey" in context
         assert "not synced yet" in context
+
+
+class TestStyleCheckHookModule:
+    """`style_check_hook`, the advisory half of the PostToolUse pair.
+
+    Every case here is about *not* speaking. An advisory hook that reports
+    on every write is one the reader learns to skip -- and it shares a
+    matcher with the citation gate, so the attention it spends is spent on
+    the gate's channel too.
+    """
+
+    @pytest.fixture
+    def rooted(self, style, tmp_path, monkeypatch):
+        monkeypatch.setattr(style.draft_target, "REPO_ROOT", tmp_path)
+        (tmp_path / "content" / "drafts").mkdir(parents=True)
+        return style, tmp_path
+
+    @staticmethod
+    def feed(monkeypatch, file_path) -> None:
+        monkeypatch.setattr(sys, "stdin", io.StringIO(
+            json.dumps({"tool_input": {"file_path": str(file_path)}})))
+
+    @staticmethod
+    def checker(monkeypatch, hook, stdout):
+        monkeypatch.setattr(hook.subprocess, "run",
+                            lambda *a, **k: completed(0, stdout=stdout))
+
+    @staticmethod
+    def payload(findings, language=None):
+        return json.dumps({"notice": "Review aid, not a gate.", "warnings": [],
+                           "drafts": [{"draft": "d.md", "language": language,
+                                       "language_source": "nothing",
+                                       "findings": findings,
+                                       "proposed_language": None}]})
+
+    def test_a_draft_with_findings_is_reported(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "a.md"
+        draft.write_text("obviously fine\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "chitragupta.DefectMarkers", "match": "obviously", "line": 1,
+              "message": "'obviously' is a defect marker", "severity": "warning",
+              "count": 1}], language="en-GB"))
+        self.feed(monkeypatch, draft)
+        assert hook.main() == 0
+        context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+        assert "defect marker" in context
+        assert "§9's decidable rules only" in context
+
+    def test_it_never_emits_a_blocking_decision(self, rooted, monkeypatch, capsys):
+        """The rule that separates this hook from the one beside it."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "b.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 1, "message": "msg",
+              "severity": "warning", "count": 1}]))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        out = capsys.readouterr().out
+        assert "decision" not in out
+        assert json.loads(out)["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
+
+    def test_a_repeated_finding_carries_its_count(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "c.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 2, "message": "msg",
+              "severity": "warning", "count": 4}], language="en-GB"))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        assert "(x4)" in emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+
+    def test_an_unrecorded_dialect_is_flagged_beside_the_findings(
+            self, rooted, monkeypatch, capsys):
+        """With no `language:` line no dialect rule runs, so the list is not
+        the whole picture -- the same trap the verbatim caveat prevents."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "d.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 1, "message": "msg",
+              "severity": "warning", "count": 1}], language=None))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        assert "dialect: not checked" in \
+            emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+
+    def test_a_recorded_dialect_is_not_mentioned(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "e.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 1, "message": "msg",
+              "severity": "warning", "count": 1}], language="en-GB"))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        assert "dialect: not checked" not in \
+            emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+
+    @pytest.mark.parametrize("stdout,why", [
+        ("", "the checker produced nothing at all"),
+        ("not json", "unparseable stdout"),
+        ("[]", "valid JSON of the wrong shape"),
+        ('{"warnings": ["vale is not on PATH"]}', "no drafts key -- vale missing"),
+        ('{"drafts": ["a bare string"]}', "a draft entry that is not a mapping"),
+        ('{"drafts": [{"findings": []}]}', "a draft with no findings"),
+        ('{"drafts": [{"findings": null}]}', "findings explicitly null"),
+        ('{"drafts": [{"findings": ["not a mapping"]}]}', "a finding of the wrong shape"),
+    ])
+    def test_it_stays_silent(self, rooted, monkeypatch, capsys, stdout, why):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "f.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, stdout)
+        self.feed(monkeypatch, draft)
+        assert hook.main() == 0, why
+        assert capsys.readouterr().out == "", why
+
+    def test_a_write_that_is_not_a_draft_never_runs_the_checker(
+            self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        elsewhere = root / "notes.md"
+        elsewhere.write_text("obviously\n")
+
+        def explode(*a, **k):
+            raise AssertionError("the checker must not run for a non-draft")
+
+        monkeypatch.setattr(hook.subprocess, "run", explode)
+        self.feed(monkeypatch, elsewhere)
+        assert hook.main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_a_draft_that_vanished_is_not_reported_as_clean(
+            self, rooted, monkeypatch, capsys):
+        """The measured trap: `src.draft style` returns zero findings for a
+        path that does not exist, because it never inspects vale's return
+        code. Reporting that as a clean draft is the one thing an advisory
+        check must never fake, so the hook stats the file itself."""
+        hook, root = rooted
+        gone = root / "content" / "drafts" / "gone.md"
+
+        def explode(*a, **k):
+            raise AssertionError("the checker must not run for a missing file")
+
+        monkeypatch.setattr(hook.subprocess, "run", explode)
+        self.feed(monkeypatch, gone)
+        assert hook.main() == 0
+        assert capsys.readouterr().out == ""
