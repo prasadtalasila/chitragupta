@@ -1,0 +1,34 @@
+{
+ "fixture": "graded-paraphrase-of-singh-offload-2022.md",
+ "grades": [
+  {
+   "grade": "Verbatim",
+   "citekey": "singh_offload_2022",
+   "tiers": [
+    "exact"
+   ]
+  },
+  {
+   "grade": "Word substitution",
+   "citekey": "singh_offload_2022",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "grade": "Light paraphrase",
+   "citekey": "singh_offload_2022",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "grade": "Genuine restatement",
+   "citekey": "singh_offload_2022",
+   "tiers": [
+    "embedding"
+   ]
+  }
+ ],
+ "tiers_not_run": []
+}

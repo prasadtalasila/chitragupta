@@ -68,7 +68,6 @@ LEGACY_LONG_FUNCTIONS = {
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
     "src/overlap_skipgram.py::build_corpus_index",  # 27
-    "src/review/verbatim_check.py::render_scan_markdown",  # 27
     "scripts/release.py::build_release",  # 26
 }
 
@@ -80,13 +79,13 @@ LEGACY_LONG_FUNCTIONS = {
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
     "src/dossier.py",  # 1714
-    "src/review/verbatim_check.py",  # 1606
+    "src/review/verbatim_check.py",  # 1848
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 522
     "src/overlap_index.py",  # 492
     "src/render_output.py",  # 456
     "src/sync.py",  # 519
-    "src/review/citation_provenance.py",  # 392
+    "src/review/citation_provenance.py",  # 388
     "src/ledger.py",  # 395
     "src/retrieval.py",  # 376
     "src/references.py",  # 366

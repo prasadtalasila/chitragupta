@@ -1,8 +1,10 @@
 # Plagiarism / verbatim-reuse detection
 
-Status: **implemented, two detection tiers of a planned three -- the
-second shipped advisory-only, its real-corpus precision not yet
-measured.** Written 2026-08-10, tier 2 added 2026-08-13 (#133).
+Status: **implemented, three detection tiers of a planned three -- the
+second and third shipped advisory-only, and the third runs only where
+the optional enrichment layer, the Docling passage sidecars and the
+draft's own dossier are all present.** Written 2026-08-10, tier 2 added
+2026-08-13 (#133), tier 3 added 2026-08-15 (#134/#164).
 
 **Written for** someone deciding whether `src/review/verbatim_check.py`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
@@ -37,11 +39,18 @@ to both deterministic tiers by construction. That matters more than it
 would elsewhere in this project because **the drafts this pipeline
 produces are LLM-written**, and literal paraphrase is an LLM's default
 failure mode when it drifts too close to a source, not an edge case.
-Treat a clean `scan` as "no exact or near-exact copying, and no
-word-swapped paraphrase, found", never as "no borrowed wording found" --
-see [Where this sits in a bigger plan](#where-this-sits-in-a-bigger-plan)
-for the tier that still closes that gap. That is this tier set's
-characteristic failure: an unbuilt tier does not announce itself, so a
+Treat a clean `scan` as "no exact or near-exact copying, no
+word-swapped paraphrase, and -- where tier 3 ran -- no close
+restatement of a source a section's dossier records", never as "no
+borrowed wording found". Tier 3 (below) closes the restatement gap, but
+only within each section's own recorded citekeys and only where the
+optional stack it needs is installed; a lift from a source a section
+never cited is still tiers 1 and 2' business alone.
+
+That is this tier set's characteristic failure and the reason `scan`
+now names the tiers that **did not run**, with the reason, in both its
+printed and written forms and as `tiers_not_run` in the JSON payload.
+An unbuilt or unavailable tier does not otherwise announce itself, so a
 thin result and a thorough one look identical.
 
 ## The two tools, and when each is right
@@ -596,8 +605,9 @@ advise.
 That produces **three detection tiers** -- cumulative, not a menu you
 pick one option from -- of which this document covers tier 1 in depth;
 tier 2's own mechanism is documented in `src/overlap_skipgram.py`'s
-module docstring, and its first (synthetic-only) measurement is in
-`bench/RESULTS.md`'s 2026-08-13 skip-gram section:
+module docstring and tier 3's in `src/overlap_embed.py`'s, and their
+measurements are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
+2026-08-15 embedding sections:
 
 1. **Exact tier (here).** Inverted word-8-gram index, whole-corpus `scan`,
    gap-tolerant merge. Built (#110, #111).
@@ -620,21 +630,72 @@ module docstring, and its first (synthetic-only) measurement is in
    it is not the evidence discussion #115 asks for before promoting it.
    See `bench/RESULTS.md`'s #180 section before trusting a clean `scan`
    on this tier any more than on tier 1.
-3. **Embedding literal-paraphrase tier (proposed, not built).** Embed
-   draft segments, k-NN against the existing `content/chroma/` collection
-   (already built by the optional enrichment layer; reuses its
-   incremental-by-text-hash embedding cache), flag high-cosine +
-   low-lexical-overlap pairs. Advisory only, by construction, and gated
-   on the enrichment layer being installed at all -- a blocking check
-   cannot depend on an optional layer.
+3. **Embedding paraphrase tier.** Built (#134/#164, 2026-08-15),
+   `src/overlap_embed.py` with `src/overlap_align.py`,
+   `src/overlap_segments.py` and `src/overlap_chroma.py`; findings carry
+   `tier: "embedding"` and a `score`. **Not** the k-NN-against-the-whole-
+   corpus-and-threshold shape this list originally proposed -- that form
+   is the one [the DF measurement](#measured-document-frequency-and-what-a-single-field-corpus-changes)
+   argues against, and it was replaced before any of it was written. What
+   shipped instead:
+
+   - **Scoped to the dossier.** Each section is compared against the
+     citekeys its `sections.md` records that section as written from,
+     never against the whole corpus. The chroma collection ranks that
+     handful (one `collection.query()` per section, read at citekey
+     granularity only); the alignment then runs against the Docling
+     passage sidecars, which are the only source text carrying the page
+     a finding must report.
+   - **Windowed, not sentence-level.** Segments are ~20-word overlapping
+     windows on both sides. This is the measurement the tier turns on:
+     the one hand-verified organic paraphrase in chapter 1 of the real
+     book scores **0.55** against the source sentence it restates while
+     three unrelated sentences *of that same paper* score 0.59-0.61 --
+     so at sentence granularity the true pair sits below the topical
+     noise and no threshold recovers it. The same prose windowed scores
+     **0.71** against the true source and 0.40 against the same noise.
+   - **Local alignment, not a cosine.** Smith-Waterman over the windowed
+     cosine matrix (#164): a bi-encoder gives a number per pair and a
+     finding needs a span.
+   - **Ranked, not thresholded.** The strongest alignment per section,
+     with its score, always -- no cutoff to tune and no pretence of a
+     verdict, exactly as #134's redesign asks. The ranking is per
+     *section* because scores are not comparable across sections; a
+     draft-wide top-N dropped the one hand-verified paraphrase in
+     chapter 1, which is the strongest alignment in its own section.
+   - **Deduplicated against the deterministic tiers by checking, not by
+     guessing.** #134 asks for a low-lexical-overlap filter so tier 3
+     does not re-report what tier 1 or 2 already caught. That goal is
+     kept and the mechanism is not: `scan_findings` drops any alignment
+     a real exact or skip-gram finding overlaps. A lexical ceiling is an
+     a-priori guess at the same thing, and a measured one -- it threw
+     away the strongest alignment in `bench/`'s graded fixture, which
+     neither deterministic tier caught, because substituting words also
+     moved them.
+
+   **Advisory only, permanently and by construction.** `content/chroma/`
+   is namespaced per `[enrich].embedding_model` because vectors change
+   when that setting does, so a finding here is not reproducible across a
+   config edit and can never satisfy the "only deterministic checks may
+   block" line above. It is also gated on an optional layer, which a
+   blocking check must never be. The structural guarantee lives in
+   `bench/bench_overlap_gate.py::eligible()`, which admits `exact` and
+   nothing else and whose own self-test asserts a `tier: "embedding"`
+   finding is ineligible.
+
+   **Unavailable, and says so.** The tier needs the `enrich` Poetry
+   group, a built `content/chroma/`, Docling sidecars, and the draft's
+   dossier. Any of those missing and it reports *which*, rather than
+   contributing nothing silently.
 
 Because the drafts this pipeline produces are LLM-written and literal
 paraphrase is their normal failure mode, tiers 2-3 were prioritized
 immediately after the exact tier rather than parked indefinitely.
 
-**Between the two, tier 2 goes first**, and [the DF
+**Tier 2 went first**, and [the DF
 measurement](#measured-document-frequency-and-what-a-single-field-corpus-changes)
-is why. Three things follow from it, all recorded in #133 and #134:
+is why. Three things followed from it, all recorded in #133 and #134,
+and all three held up when tier 3 was finally built:
 
 - Skip-grams are lexically anchored, so the topical similarity that
   saturates a single-field corpus does not inflate them, and they live in
@@ -643,11 +704,20 @@ is why. Three things follow from it, all recorded in #133 and #134:
 - Tier 3's stated form -- k-NN against the whole corpus, thresholded --
   is the form the same measurement argues against. The redesign in #134
   scopes it to the citekeys a section's dossier already records and ranks
-  rather than thresholds.
+  rather than thresholds. That is what shipped, and building it produced
+  a second, sharper version of the same finding: not only is a
+  corpus-wide threshold wrong, a *sentence-level* comparison is too. In
+  this corpus a draft sentence's framing is enough topic to outweigh the
+  claim inside it, so the true pair scores below the noise from the very
+  paper it restates. Windows, not sentences, are what make the tier work
+  at all.
 - Tier 3 also needs a step this list never named: a **local alignment**,
-  because a cosine score is not a finding. That is #164, and it changes
+  because a cosine score is not a finding. That was #164, and it changed
   the tier's dependency list from `content/chroma/` alone to chroma plus
-  the Docling passage sidecars.
+  the Docling passage sidecars -- plus, once the tier was scoped to the
+  dossier, the draft's dossier as well. All three are why tier 3 reports
+  itself unavailable rather than running on a checkout that has only
+  some of them.
 
 A **cross-encoder reranker** over tier-1 and tier-2 candidates is the
 obvious fourth option and is deliberately not a tier. It cannot search --

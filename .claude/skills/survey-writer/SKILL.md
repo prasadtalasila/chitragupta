@@ -291,7 +291,7 @@ collapse them for the sake of a cleaner narrative.
     reuse in connective prose that cites nothing. A review aid, not a
     gate: it exits 0 either way and cannot block the draft. Say what it
     misses when you offer it — it sees verbatim and near-verbatim reuse
-    only, and **genuine restatement is not detected**, so a clean scan is not a
+    only, and **genuine restatement is only detected where the embedding tier can run**, so a clean scan is not a
     clean bill of health (`docs/PLAGIARISM.md`).
     If the user wants the finding kept, add `--write`: the report
     goes to `content/review/`, mirroring the draft's path, beside any

@@ -179,7 +179,7 @@ def scan_arm(index, drafts):
 
     out = []
     for draft in drafts:
-        found, _, _ = vc.scan_findings(str(draft))
+        found, _, _, _ = vc.scan_findings(str(draft))
         for finding in found:
             payload = vc.published(finding)
             if payload["span_words"] < SWEEP_FLOOR:

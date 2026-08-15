@@ -40,8 +40,15 @@ logger = logging.getLogger("src.enrich.embed_index")
 _COLLECTION_PREFIX = "corpus"
 
 
-def _collection_name() -> str:
+def collection_name() -> str:
     """Chroma collection name for the currently configured embedding model.
+
+    Public rather than private because `src/overlap_embed.py` (tier 3 of
+    the overlap scan) has to ask whether *this* model's collection has
+    been built before it can say the tier is available -- and asking that
+    by recomputing the name would put the namespacing rule below in two
+    places, which is the one way the two could start disagreeing about
+    which collection is the current one.
 
     Different models produce different-dimensioned vectors (e.g.
     MiniLM-L6-v2's 384 vs mpnet-base-v2's 768). A single shared collection
@@ -153,7 +160,7 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     interrupted run is exactly the part worth keeping.
     """
     client, model = get_client_and_model()
-    collection = client.get_or_create_collection(_collection_name())
+    collection = client.get_or_create_collection(collection_name())
 
     counts = {}
     n_embedded = n_unchanged = n_no_text = 0
@@ -258,7 +265,7 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     embed. A bib entry whose PDF is missing or failed to parse is
     therefore searchable by title and not by meaning."""
     client, model = get_client_and_model()
-    collection = client.get_or_create_collection(_collection_name())
+    collection = client.get_or_create_collection(collection_name())
     query_embedding = model.encode([query], show_progress_bar=False).tolist()
     raw = collection.query(query_embeddings=query_embedding, n_results=k)
 

@@ -171,7 +171,7 @@ def scan_all(drafts, references_masked, allowlist=None):
         out = []
         total_suppressed = 0
         for draft in drafts:
-            found, _, suppressed = vc.scan_findings(str(draft))
+            found, _, suppressed, _ = vc.scan_findings(str(draft))
             total_suppressed += suppressed
             for f in found:
                 record = {k: vc.published(f)[k] for k in KEPT_FIELDS}

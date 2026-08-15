@@ -11,15 +11,23 @@ notice is a reader comparing seven files by eye.
 
 Two halves, and the second is the one worth having. The offer alone is
 a command; the caveat is what stops a clean result being read as a clean
-bill of health. `scan` runs two deterministic tiers of a detection stack
-whose embedding tier is unbuilt (docs/PLAGIARISM.md,
-docs/LADDERS.md#the-one-stack): exact runs, and skip-gram matches
-tolerant of a substituted word. Genuine restatement -- reworded well
-past a word swap, the reuse mode neither deterministic tier can see --
-is still invisible, and the drafts these skills produce are LLM-written,
-so that is the *likely* failure mode. The skill file is the only place
-the drafter reads, which makes it the only place the caveat can reach
-the one whose habit it is about.
+bill of health. `scan` runs three detection tiers (docs/PLAGIARISM.md,
+docs/LADDERS.md#the-one-stack): exact runs, skip-gram matches tolerant
+of a substituted word, and -- since #134/#164 -- an embedding tier that
+does see genuine restatement.
+
+The caveat did not stop being needed when that tier landed; it changed
+shape. Tier 3 runs only where the optional enrichment layer, the Docling
+passage sidecars and the draft's own dossier are all present, which is
+not the state of an ordinary checkout, and even where it runs it only
+compares a section against the sources that section already cites. So
+the phrase pinned below is conditional rather than absolute, and it has
+to stay conditional: the drafts these skills produce are LLM-written, so
+restatement is the *likely* failure mode, and a skill that promised
+coverage the reader's host cannot deliver would be worse than the
+unconditional warning it replaced. The skill file is the only place the
+drafter reads, which makes it the only place the caveat can reach the
+one whose habit it is about.
 
 A text scan over `.claude/skills/`, in the shape of
 tests/test_skill_retrieval_logging.py, and for the same reason: what the
@@ -44,7 +52,7 @@ _OFFER = re.compile(r"-m src\.review verbatim scan\b")
 # characters, and the offers are the last step in each file, so a
 # window this size cannot reach a *different* offer's caveat.
 _LOOKAHEAD_CHARS = 900
-_CAVEAT = "genuine restatement is not detected"
+_CAVEAT = "genuine restatement is only detected where the embedding tier can run"
 
 
 def _skill_files():
@@ -88,9 +96,10 @@ def test_every_offer_says_what_the_scan_cannot_see():
 
     assert not offenders, (
         f"`-m src.review verbatim scan` is offered without {_CAVEAT!r} nearby in "
-        f"{sorted(offenders)}. Neither deterministic tier can see genuine "
-        "restatement, and these drafts are LLM-written, so a clean run must "
-        "never be presented as a clean bill of health -- see docs/PLAGIARISM.md."
+        f"{sorted(offenders)}. The embedding tier is the only one that sees "
+        "genuine restatement and it does not run on every host, while these "
+        "drafts are LLM-written -- so a clean run must never be presented as a "
+        "clean bill of health. See docs/PLAGIARISM.md."
     )
 
 

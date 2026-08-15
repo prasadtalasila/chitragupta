@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from src.review import verbatim_check as vc
-from src import config, ledger, overlap_index
+from src import config, ledger, overlap_embed, overlap_index
 from tests.conftest import make_reference
 
 
@@ -407,7 +407,7 @@ class TestSkipgramTierPrecision:
         draft = tmp_path / "draft.md"
         draft.write_text("[@cited_2024] " + " ".join(swapped) + " end.\n")
 
-        findings, _min_run, _suppressed = vc.scan_findings(draft, min_run=8)
+        findings, _min_run, _suppressed, _ = vc.scan_findings(draft, min_run=8)
 
         assert [f["tier"] for f in findings] == ["skip-gram"]
         assert len(findings) == len({f["id"] for f in findings})
@@ -423,7 +423,7 @@ class TestSkipgramTierPrecision:
         draft = tmp_path / "draft.md"
         draft.write_text("1 0 2 1 3 5 0 2 5 4 2 9 8 7\n")
 
-        findings, _min_run, _suppressed = vc.scan_findings(draft, min_run=8)
+        findings, _min_run, _suppressed, _ = vc.scan_findings(draft, min_run=8)
 
         assert findings == []
 
@@ -1374,7 +1374,7 @@ class TestScanPayload:
             "id", "citekey", "page", "end_page", "tier", "span_words",
             "matched_words", "start", "line", "char_start", "char_end",
             "draft_text", "fragment", "context", "cites_source", "quoted",
-            "severity",
+            "score", "severity",
         ]
 
     def test_the_flags_are_booleans_not_the_printed_labels(self, ledger_con, tmp_path, capsys):
@@ -1417,7 +1417,7 @@ class TestScanPayload:
         about agreement rather than about spelling."""
         draft = self._planted(ledger_con, tmp_path)
 
-        findings, min_run, suppressed = vc.scan_findings(str(draft))
+        findings, min_run, suppressed, _ = vc.scan_findings(str(draft))
         vc.cmd_scan(str(draft), as_json=True)
         payload = json.loads(capsys.readouterr().out)
 
@@ -1794,7 +1794,7 @@ class TestRecheck:
         return draft
 
     def _baseline(self, draft, tmp_path, **kwargs):
-        findings, min_run, suppressed = vc.scan_findings(str(draft), **kwargs)
+        findings, min_run, suppressed, _ = vc.scan_findings(str(draft), **kwargs)
         command = vc.scan_command(
             str(draft), min_run, kwargs.get("gap", 1), kwargs.get("limit"), False, True
         )
@@ -2485,3 +2485,248 @@ class TestCliDispatch:
         )
         assert result.returncode == 2
         assert "usage: python -m src.review verbatim locate" in result.stderr
+
+
+# ---------------------------------------------------------------------
+# Tier 3 (embedding), wired into `scan`. The tier's own logic is tested
+# in tests/test_overlap_embed.py; what these hold is the *wiring* --
+# that a tier which cannot run says so, that one which can produces a
+# finding in the shared payload shape, and that it does not re-report
+# what a deterministic tier already found.
+# ---------------------------------------------------------------------
+
+
+class FakeScopeEmbedder:
+    """`encode` is the identity and `similarity` a lookup table, so a
+    test can name the pair that should align without a model."""
+
+    def __init__(self, scores):
+        self.scores = scores
+
+    def encode(self, texts):
+        return list(texts)
+
+    def encode_lists(self, texts):
+        return [[float(len(text))] for text in texts]
+
+    def similarity(self, left, right):
+        return [[max((score for (a, b), score in self.scores.items()
+                      if a in first and b in second), default=0.0)
+                 for second in right] for first in left]
+
+
+@pytest.fixture
+def tier3(monkeypatch, ledger_con):
+    """Put tier 3 in a state where it runs, with a scored pair supplied
+    by the caller. Returns a function taking `{(draft_fragment,
+    source_fragment): cosine}`."""
+    def install(scores, sections=None):
+        class FakeCollection:
+            def query(self, query_embeddings, n_results, where):
+                return {"metadatas": [[]], "distances": [[]]}
+
+        scope = overlap_embed.Scope(
+            sections if sections is not None else {"Section": ["source_2024"]},
+            FakeCollection(), ledger_con, FakeScopeEmbedder(scores),
+        )
+        monkeypatch.setattr(overlap_embed, "open_scope", lambda draft: (scope, None))
+        return scope
+    return install
+
+
+def _tier3_draft(text):
+    """A draft under `content/drafts/`, which is where a dossier can
+    mirror it -- tier 3 refuses anything else."""
+    path = config.DRAFTS_DIR / "topic" / "draft.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _add_sidecar(citekey, records):
+    path = config.DOCLING_DIR / f"{citekey}.passages.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(records), encoding="utf-8")
+
+
+class TestEmbeddingTier:
+    def test_a_restatement_is_reported_with_its_tier_and_score(
+        self, ledger_con, tmp_path, tier3
+    ):
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar("source_2024", [
+            {"text": "Firms save their return on investment while adapting to "
+                     "modern technologies with minimal risk.",
+             "label": "text", "page": 9},
+        ])
+        tier3({("protecting", "save their"): 0.95})
+        draft = _tier3_draft(
+            "# Section\n\nThe study reports a strategy of protecting profit "
+            "while adopting new tooling at low exposure.\n"
+        )
+
+        findings, _min_run, _suppressed, not_run = vc.scan_findings(str(draft))
+
+        [found] = [f for f in findings if f["tier"] == "embedding"]
+        assert found["citekey"] == "source_2024"
+        assert found["page"] == found["end_page"] == 9
+        assert found["score"] > 0
+        assert not_run == []
+
+    def test_the_finding_locates_itself_in_the_draft_as_written(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # The same `draft[char_start:char_end] == draft_text` contract
+        # #129 needs from every tier, so a remediation loop can hand this
+        # one to `Edit` like any other.
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar("source_2024", [
+            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+        ])
+        tier3({("protecting", "restated claim"): 0.95})
+        body = "# Section\n\nThe study reports a strategy of protecting profit here.\n"
+        draft = _tier3_draft(body)
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        [found] = [f for f in findings if f["tier"] == "embedding"]
+        assert body[found["char_start"]:found["char_end"]] == found["draft_text"]
+
+    def test_a_passage_a_deterministic_tier_already_found_is_not_reported_twice(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # Overlap, not containment: a tier-3 alignment is a whole
+        # passage and normally *contains* the exact run rather than the
+        # other way round, so containment would never fire.
+        shared = "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", shared)
+        _add_sidecar("source_2024", [
+            {"text": shared + ".", "label": "text", "page": 1},
+        ])
+        tier3({("alpha", "alpha"): 0.95})
+        draft = _tier3_draft(f"# Section\n\n{shared} and then some more prose.\n")
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        assert [f["tier"] for f in findings if f["tier"] == "embedding"] == []
+        assert any(f["tier"] == "exact" for f in findings)
+
+    def test_the_allowlist_suppresses_a_tier_three_finding_too(
+        self, ledger_con, tmp_path, tier3, monkeypatch
+    ):
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar("source_2024", [
+            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+        ])
+        boilerplate = ("the digital twin consistency framework applies here as "
+                       "described in the standard")
+        tier3({("digital twin", "restated claim"): 0.95})
+        draft = _tier3_draft(f"# Section\n\n{boilerplate}.\n")
+        config.VERBATIM_ALLOWLIST_PATH.write_text(
+            f'phrases = ["{boilerplate}"]\n', encoding="utf-8"
+        )
+
+        findings, _, suppressed, _ = vc.scan_findings(str(draft))
+
+        assert [f for f in findings if f["tier"] == "embedding"] == []
+        assert suppressed == 1
+
+    def test_an_alignment_shorter_than_the_floor_is_not_reported(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # `--min-run` is a reporting floor for every tier, not only the
+        # two that measure a run of words.
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar("source_2024", [
+            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+        ])
+        tier3({("brief", "restated claim"): 0.95})
+        draft = _tier3_draft("# Section\n\nA brief note.\n")
+
+        findings, _, suppressed, _ = vc.scan_findings(str(draft))
+
+        assert [f for f in findings if f["tier"] == "embedding"] == []
+        assert suppressed == 0
+
+    def test_an_allowlist_that_covers_only_part_of_a_span_leaves_it_reported(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # The same rule tier 1 follows: a real lift that merely contains
+        # a defined term is not excused by the term being allowlisted.
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar("source_2024", [
+            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+        ])
+        tier3({("digital twin", "restated claim"): 0.95})
+        draft = _tier3_draft(
+            "# Section\n\nthe digital twin consistency framework applies here as "
+            "described in the standard.\n"
+        )
+        config.VERBATIM_ALLOWLIST_PATH.write_text(
+            'acronyms = ["digital twin"]\n', encoding="utf-8"
+        )
+
+        findings, _, suppressed, _ = vc.scan_findings(str(draft))
+
+        assert [f["tier"] for f in findings if f["tier"] == "embedding"] == ["embedding"]
+        assert suppressed == 0
+
+    def test_an_unavailable_tier_is_named_with_its_reason_not_silently_empty(
+        self, ledger_con, tmp_path
+    ):
+        # The whole reason this tier is wired in on a host that cannot
+        # run it: a report of a never-checked draft must not read like a
+        # report of a clean one.
+        draft = tmp_path / "draft.md"
+        draft.write_text("Some prose with no dossier anywhere.\n")
+
+        findings, _, _, not_run = vc.scan_findings(str(draft))
+
+        assert findings == []
+        assert [entry["tier"] for entry in not_run] == ["embedding"]
+        assert "no dossier" in not_run[0]["reason"]
+
+    def test_a_dossier_naming_no_section_of_this_draft_says_how_to_fix_it(
+        self, ledger_con, tmp_path, tier3
+    ):
+        tier3({}, sections={"A Heading That Was Renamed": ["source_2024"]})
+        draft = _tier3_draft("# Current Heading\n\nProse under it.\n")
+
+        _findings, _, _, not_run = vc.scan_findings(str(draft))
+
+        assert "sections.md" in not_run[0]["reason"]
+        assert "--citekeys --write" in not_run[0]["reason"]
+
+
+class TestReportingWhatDidNotRun:
+    def test_the_printed_form_names_the_tier_and_the_reason(self):
+        text = vc.format_scan([], 8, 0, [{"tier": "embedding", "reason": "no dossier"}])
+        assert "tier embedding did not run: no dossier" in text
+
+    def test_the_written_report_distinguishes_never_ran_from_found_nothing(self):
+        incomplete = vc.render_scan_markdown(
+            Path("content/drafts/d.md"), [], 8, None, "cmd", 0,
+            [{"tier": "embedding", "reason": "no dossier"}],
+        )
+        complete = vc.render_scan_markdown(
+            Path("content/drafts/d.md"), [], 8, None, "cmd", 0, [],
+        )
+        assert "this run was" in incomplete and "not complete" in incomplete
+        assert "The tier that can see one did" in incomplete
+        assert "not complete" not in complete
+        assert "checked against all three tiers" in complete
+
+    def test_the_payload_carries_what_did_not_run(self, ledger_con, tmp_path, capsys):
+        draft = tmp_path / "draft.md"
+        draft.write_text("Prose with no dossier anywhere at all.\n")
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["tiers_not_run"][0]["tier"] == "embedding"
+
+    def test_a_score_rides_inside_the_tier_note_only_when_there_is_one(self):
+        assert vc._tier_note({"tier": "exact", "score": None}) == "tier=exact"
+        assert vc._tier_note({"tier": "embedding", "score": 0.41}) == (
+            "tier=embedding, score=0.41"
+        )

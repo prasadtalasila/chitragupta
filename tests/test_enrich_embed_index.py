@@ -228,7 +228,7 @@ class TestBuildIndex:
         assert counts["b2024"] == 0
 
         client = FakeChromaClient.instances[-1]
-        collection = client.collections[embed_index._collection_name()]
+        collection = client.collections[embed_index.collection_name()]
         assert len(collection.upserted) == 1
         upsert_call = collection.upserted[0]
         assert upsert_call["ids"] == ["a2024::0"]
@@ -265,7 +265,7 @@ class TestBuildIndexIncremental:
         text = embed_index.get_text(doc)
 
         client, _ = embed_index.get_client_and_model()
-        collection = client.get_or_create_collection(embed_index._collection_name())
+        collection = client.get_or_create_collection(embed_index.collection_name())
         collection.upsert(
             ids=["a2024::0"],
             documents=[" ".join(text.split())],
@@ -290,7 +290,7 @@ class TestBuildIndexIncremental:
         embed_index.build_index([doc])
 
         client = FakeChromaClient.instances[-1]
-        collection = client.collections[embed_index._collection_name()]
+        collection = client.collections[embed_index.collection_name()]
         upserts_before = len(collection.upserted)
 
         counts = embed_index.build_index([doc])
@@ -307,7 +307,7 @@ class TestBuildIndexIncremental:
         counts = embed_index.build_index([doc2])
 
         client = FakeChromaClient.instances[-1]
-        collection = client.collections[embed_index._collection_name()]
+        collection = client.collections[embed_index.collection_name()]
         remaining = collection.get(where={"citekey": "a2024"})
 
         assert counts["a2024"] == len(remaining["ids"]) > 1
@@ -318,7 +318,7 @@ class TestBuildIndexIncremental:
         doc_long = self.make_doc(tmp_path, "word " * 300)
         embed_index.build_index([doc_long])
         client = FakeChromaClient.instances[-1]
-        collection = client.collections[embed_index._collection_name()]
+        collection = client.collections[embed_index.collection_name()]
         long_chunk_count = len(collection.get(where={"citekey": "a2024"})["ids"])
         assert long_chunk_count > 1
 
@@ -439,22 +439,22 @@ class TestBuildIndexReporting:
         # The first document's chunks are already in Chroma, and the next
         # run's text-hash check will skip them -- so the run is worth
         # something and the message has to say so.
-        collection = FakeChromaClient.instances[-1].collections[embed_index._collection_name()]
+        collection = FakeChromaClient.instances[-1].collections[embed_index.collection_name()]
         assert collection.get(where={"citekey": "a2024"})["ids"]
 
 
 class TestCollectionName:
     def test_sanitizes_model_name_into_a_valid_chroma_collection_name(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-        name = embed_index._collection_name()
+        name = embed_index.collection_name()
         assert name == "corpus-sentence-transformers-all-MiniLM-L6-v2"
         assert re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]", name)
 
     def test_different_models_get_different_collection_names(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-        name_a = embed_index._collection_name()
+        name_a = embed_index.collection_name()
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2")
-        name_b = embed_index._collection_name()
+        name_b = embed_index.collection_name()
         assert name_a != name_b
 
 
@@ -478,14 +478,14 @@ class TestBuildIndexModelChange:
         embed_index.build_index([doc])
 
         client = FakeChromaClient.instances[-1]
-        collection_a = client.collections[embed_index._collection_name()]
+        collection_a = client.collections[embed_index.collection_name()]
         assert len(collection_a.upserted) == 1
 
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-b")
         counts = embed_index.build_index([doc])
 
         client2 = FakeChromaClient.instances[-1]
-        collection_b = client2.collections[embed_index._collection_name()]
+        collection_b = client2.collections[embed_index.collection_name()]
 
         assert collection_b is not collection_a
         assert len(collection_b.upserted) == 1  # freshly re-embedded, not skipped
@@ -496,7 +496,7 @@ class TestBuildIndexModelChange:
 class TestSearch:
     def test_combines_metadata_snippet_and_distance(self, isolated_config, fake_enrich_deps):
         client, _ = embed_index.get_client_and_model()
-        collection = client.get_or_create_collection(embed_index._collection_name())
+        collection = client.get_or_create_collection(embed_index.collection_name())
         collection.query_response = {
             "documents": [["some long document text " * 5]],
             "metadatas": [[{"citekey": "a2024", "title": "A"}]],

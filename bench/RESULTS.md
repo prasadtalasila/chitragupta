@@ -30,6 +30,7 @@ if it is obvious which is which, so:
 | [2026-08-13b: does a gram's corpus document frequency separate boilerplate from reuse?](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse) | **Current** | Follows the section above, which found the discriminating feature and quantified it only partly. Measured at gram rather than finding granularity it explains 12 of 14, against that section's 8 |
 | [2026-08-13: does the skip-gram tier (#133) catch what the exact tier misses?](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses) | **Current, capability arm only** | Confirms the every-Nth-word design works synthetically. Its "precision arm: not run" half is superseded by the section below, which ran it |
 | [2026-08-14: tier 2's first real precision number, and the two bugs that had to be fixed to get it (#180)](#2026-08-14-tier-2s-first-real-precision-number-and-the-two-bugs-that-had-to-be-fixed-to-get-it-180) | **Current** | The precision arm the section above could not run. Two mechanical bugs accounted for 163 of 190 raw findings; on the 27 that survive, precision is 2/27 and both true positives are passages the exact tier already reports |
+| [2026-08-15: does the embedding tier (#134/#164) catch what neither deterministic tier can?](#2026-08-15-does-the-embedding-tier-134164-catch-what-neither-deterministic-tier-can) | **Current** | Tier 3's first measurement. Establishes that a *sentence* is the wrong comparison unit in this corpus -- the one hand-verified organic pair scores 0.55 as a sentence against 0.59-0.61 of same-paper noise, and 0.71 windowed -- and that both organic pairs #134 names are reported. Its capability arm is a graded fixture and its two organic pairs are the ones #134 names in prose; its precision arm reports a 162-finding population and **no precision number** -- none of it is labelled, and the 59-candidate dataset #134's plan assumes as ground truth was never committed |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1557,3 +1558,178 @@ vale --config=assets/vale/vale.ini --no-exit --output=line \
 The book is restored from a content backup and is gitignored, so this run
 is not reproducible from a fresh clone. That is the same limitation every
 corpus-dependent entry in this file has.
+
+## 2026-08-15: does the embedding tier (#134/#164) catch what neither deterministic tier can?
+
+The question tier 3 was built to answer, asked twice: once against a
+graded fixture built from one real corpus claim, and once against the
+same 15-chapter book every overlap section above uses.
+
+**Read the two arms differently.** The capability arm is a controlled
+ladder and its result is clean. The precision arm is a hand-labelled
+count over one book, and this section states up front what it is *not*:
+it is not the 59-candidate organic-paraphrase dataset #134's
+implementation plan names as tier 3's calibration ground truth. That
+dataset was produced in a session that never committed it -- the issue
+comment says so at the time ("labels and raw results are local to this
+session (not yet committed to a branch)") -- and it is not recoverable.
+Every number below is measured against what does exist: four constructed
+gradings, and the two organic pairs the plan names in prose
+(`singh_digital_2023` in chapter 1, `frasheri_addressing_2023` in
+chapter 5).
+
+### The measurement the tier turns on: sentences are the wrong unit
+
+Before any of the arms, the thing that decides whether an embedding tier
+can work in this corpus at all. Take the one organic close-paraphrase
+pair #134's own plan names as the acceptance check -- chapter 1
+restating `singh_digital_2023`'s "save their Return on Investment (ROI)
+while adapting to modern technologies with minimal risk" as "protecting
+return on investment while adopting modern technology with minimal risk
+and investment" -- and score it with `all-mpnet-base-v2`:
+
+| Unit | Cosine, true pair | Cosine, unrelated sentences *of the same paper* |
+|---|---|---|
+| Whole sentence | **0.55** | 0.59, 0.59, 0.61 |
+| ~20-word window | **0.71** | 0.40, 0.39, 0.37 |
+
+At sentence granularity the true pair scores *below* the topical noise
+of the very paper it restates, and no threshold recovers it. The cause
+is framing: "A case study of a small-to-medium roll-to-roll
+label-printing manufacturer reports ..." is half the draft sentence and
+is pure topic, so it dominates the vector and every sentence in a paper
+about that manufacturer looks equally close.
+
+This is the concrete, sentence-level form of the warning the
+[2026-08-13b document-frequency section](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse)
+records at corpus level: in a single-field corpus, topical similarity is
+high by default, so a detector has to compare something smaller than a
+topic. It is why `src/overlap_segments.py` windows both sides, and it is
+the single change without which none of the results below happen.
+
+It is also why `src/overlap_embed.report` ranks rather than thresholds.
+Even windowed, no cutoff separates the classes: in that same section of
+chapter 1 the true pair's window scores 0.62 against the source sentence
+it restates while the *opening clause of the same draft sentence* scores
+0.74 against that paper's own description of its case study. Both are
+that sentence leaning on that paper. A ranking puts the sentence at the
+top of its section either way; a threshold has to choose, and there is
+nothing to choose between.
+
+### Capability arm: a graded ladder, four rungs
+
+`bench/fixtures/graded-paraphrase-of-singh-offload-2022.md` restates one
+real claim from `singh_offload_2022` four times, each in its own cited
+section, at four distances from the original.
+
+```
+               grade  caught by
+            Verbatim  exact
+   Word substitution  embedding
+    Light paraphrase  embedding
+ Genuine restatement  embedding
+```
+
+Two things in that table are worth more than the "yes" column.
+
+**Tier 2 catches nothing on this ladder, including the rung it was built
+for.** The word-substitution grade swaps words in place -- exactly the
+perturbation `src/overlap_skipgram.py`'s odd/even family split is
+designed to tolerate -- and skip-gram misses it, because substituting
+words also *moved* them (a six-word phrase became five). That is the
+finding #134's 2026-08-14 comment reached by controlled ablation,
+reproduced here as a committed fixture: the determining factor is not
+how much wording changed, it is whether word *position* changed, and
+real paraphrase moves words by nature.
+
+**The verbatim rung is caught by tier 1 and not double-reported.** Tier
+3 aligns it too, and `scan_findings` drops that alignment because an
+exact-tier finding overlaps it. That is the check that replaced #134's
+proposed low-lexical-overlap ceiling -- and the replacement is not
+cosmetic. A ceiling at 0.55 threw away the **strongest alignment in the
+whole fixture** (0.83, the word-substitution rung), which no
+deterministic tier caught. A ceiling guesses that high wording overlap
+implies another tier found it; the dedup checks.
+
+### The two organic pairs, on the real book
+
+The plan's own "single most important manual check": run `scan` on a
+chapter with a known organic miss and confirm tier 3 catches what tiers
+1 and 2 did not.
+
+| Pair | Chapter | Reported by tier 3 |
+|---|---|---|
+| `singh_digital_2023` | 1 | yes, score 0.192 |
+| `frasheri_addressing_2023` | 5 | yes, score 0.229 |
+
+Both are close paraphrases of a *cited* source -- restated too closely,
+not lifted from an uncredited paper -- which is the shape #134's hand
+read found the organic candidates overwhelmingly take, and the only
+shape tier 3 can see: it compares a section against the citekeys that
+section's dossier records, so reuse from a source a section never cited
+remains tier 1 and tier 2's business alone.
+
+Neither would have been reported under a draft-wide top-N. Chapter 1's
+`singh_digital_2023` alignment is the strongest in *its own section* and
+nowhere near the strongest in the chapter, which is why
+`SECTION_LIMIT` ranks per section: alignment scores are not comparable
+across sections, because a section whose sources are written in the
+draft's own register scores higher throughout than one whose sources are
+equations and tables.
+
+### Precision arm: the population, and why there is no precision number yet
+
+Over the same 15-chapter book, with a dossier regenerated for each
+chapter (`dossier sections --citekeys --write`, since the restored
+dossiers predate the current `sections.md` heading convention):
+
+| | |
+|---|---|
+| Embedding findings | 162, across 15 chapters and 93 distinct citekeys |
+| Reporting cap | 1 alignment per section, 5 shortlisted sources per section |
+| Severity mix | 151 `long`, 7 `short`, 4 `quoted` |
+| `UNCITED SOURCE` | 8 of 162 |
+| Alignment score | min 0.005, median 0.157, max 0.608 |
+| Median span | 20 words |
+| Allowlist suppressed | 0 |
+| **Labelled** | **0 of 162** |
+
+**Precision is `None`, and the tool says so itself** -- its integrity
+check reports "162 of 162 embedding finding(s) are unlabelled" rather
+than printing a ratio over an empty label set. This is the same state
+[the 2026-08-13 skip-gram section](#2026-08-13-does-the-skip-gram-tier-133-catch-what-the-exact-tier-misses)
+shipped in ("precision arm: not run"), for the same reason: labelling is
+a hand read of every finding against its source, and it has not been
+done for this population.
+
+What *is* labelled is the two organic pairs above, both reported. Those
+are two points, not a precision estimate, and nothing here should be
+quoted as one.
+
+**What labelling this population would settle**, and nothing else will:
+whether the 151 `long` findings are close restatement worth a reviewer's
+time or the tier re-detecting the pipeline's own retrieval step -- the
+failure mode
+[the document-frequency section](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse)
+predicts for any similarity-based tier over a single-field corpus, and
+the one dossier-scoping narrows rather than removes. Until that read
+happens, tier 3 stays exactly where tier 2 is: advisory, on discussion
+#115's "start advisory, promote with evidence" discipline, with the
+evidence still owed.
+
+### Reproducing
+
+```bash
+.venv-full/bin/python bench/bench_overlap_embed.py --fixture --tag 2026-08-15-embed
+
+.venv-full/bin/python bench/bench_overlap_embed.py --tag 2026-08-15-embed \
+  --drafts content/drafts/books/digital-twins-for-software-engineers
+```
+
+The capability arm needs the `enrich` group, a built `content/chroma/`
+and the Docling sidecars, but not the book. The precision arm needs the
+book, which is restored from a content backup and is gitignored -- the
+same limitation every corpus-dependent entry in this file has. Both
+arms stage the fixture under `content/drafts/bench-embed/` with a
+generated dossier and remove it again afterwards, because tier 3 will
+not scan a draft that has no dossier.

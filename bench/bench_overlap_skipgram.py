@@ -121,7 +121,7 @@ def scan_all(drafts):
     out = []
     total_suppressed = 0
     for draft in drafts:
-        found, _, suppressed = vc.scan_findings(str(draft))
+        found, _, suppressed, _ = vc.scan_findings(str(draft))
         total_suppressed += suppressed
         for f in found:
             if not eligible(f):

@@ -596,10 +596,11 @@ lines back into data. `--json` prints the same findings list as a payload
 instead: the envelope every review aid's JSON carries (a notice that this
 is not a verdict, the aid, the draft, the exact command, the version),
 the three flags that set the reporting floor (`min_run`, `gap`, `limit`),
-how many findings the allowlist suppressed (`suppressed`, see below), and
+how many findings the allowlist suppressed (`suppressed`, see below),
+which tiers did not run at all and why (`tiers_not_run`, see below), and
 one object per finding with `id`, `citekey`, `page`, `end_page`, `tier`,
 `span_words`, `matched_words`, `start`, `line`, `char_start`, `char_end`,
-`draft_text`, `fragment`, `context`, `cites_source`, `quoted`, and
+`draft_text`, `fragment`, `context`, `cites_source`, `quoted`, `score`, and
 `severity` -- the same `long`/`short`/`quoted` bucket the
 written report groups by (see below), so a consumer of the payload reads
 the same severity a human reviewer sees. It is an additional
@@ -611,6 +612,24 @@ exits 0 -- "nothing found" is data too.
 `cites_source: false` is the printed form's `UNCITED SOURCE`, and
 `quoted: true` its `quoted`: booleans rather than those labels, because a
 caller that has to match display text is back where it started.
+
+`tier` names which detection tier produced the finding -- `exact`,
+`skip-gram` or `embedding` (see
+[PLAGIARISM.md](PLAGIARISM.md#where-this-sits-in-a-bigger-plan)).
+`score` is the embedding tier's alignment strength and is `null` on the
+two deterministic tiers, which have no similarity to report; it is a
+ranking within a section, not a probability, and not comparable to
+anything the other tiers publish.
+
+`tiers_not_run` is one `{"tier", "reason"}` object per detection tier
+that could not run at all, and `[]` when every tier ran. Only the
+embedding tier can appear there today: it needs the optional enrichment
+layer, a built `content/chroma/`, the Docling passage sidecars and the
+draft's own dossier, and any of those can be absent on a healthy
+checkout. `findings: []` alone cannot distinguish a draft that was
+checked and is clean from one a tier never looked at, which is what this
+field is for -- the printed and written reports say the same thing in
+prose.
 
 `page` and `end_page` are the lowest and highest page an n-gram in the
 run actually *starts* on (#131), equal for an ordinary single-page run.
