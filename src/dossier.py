@@ -65,6 +65,7 @@ Usage:
     python -m src.draft dossier status --all [--json]
     python -m src.draft dossier sections content/drafts/<name>.md
     python -m src.draft dossier brief content/drafts/<name>.md --section "2. Failure modes"
+    python -m src.draft dossier acronyms-suggest content/drafts/<name>.md
     python -m src.draft dossier list
     python -m src.draft dossier export [<name> ...] [--out FILE] [--with-rendered]
     python -m src.draft dossier restore <archive.tar.gz> [--force]
@@ -81,7 +82,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from src import citation_gate, config, review
+from src import acronyms, citation_gate, config, review
 
 # One constant per dossier filename, because each recurs across this
 # module -- as FILES keys, template keys, path joins and report lookups
@@ -2260,6 +2261,47 @@ def _cmd_set_language(args) -> int:
     return 0
 
 
+# A shape close enough to Acronyms.yml's own heuristic (a short run of
+# capital letters) to flag as "probably an acronym" without a false
+# positive on an ordinary capitalised glossary term: "DTaaS" and "FMU"
+# both match; "Twin state" and "Connector" don't, because neither starts
+# with two or more capitals in a row.
+_LOOKS_LIKE_AN_ACRONYM = re.compile(r"^[A-Z]{2,}[A-Za-z]*$")
+
+
+def suggest_acronyms(draft: Path) -> dict[str, str]:
+    """Glossary terms that look like an acronym and aren't in the
+    vocabulary yet -- candidates for the user's own acronyms file.
+
+    Never writes anything. `python -m src.draft dossier acronyms-suggest`
+    only prints these: #190's own rule is that this feature proposes and
+    the human accepts, the same as every other vocabulary file this
+    pipeline reads but never edits (papers/bibliography.bib,
+    content/verbatim_allowlist.toml).
+    """
+    vocabulary = acronyms.load_vocabulary()
+    return {
+        term: definition
+        for term, definition in glossary_terms(draft).items()
+        if _LOOKS_LIKE_AN_ACRONYM.match(term) and term not in vocabulary
+    }
+
+
+def _cmd_acronyms_suggest(args) -> int:
+    candidates = suggest_acronyms(Path(args.draft))
+    if not candidates:
+        print("  No new acronyms to suggest.")
+        return 0
+    print(
+        "  New acronyms in this draft's glossary, not yet in your "
+        "vocabulary. Nothing is written -- add what you want to your own "
+        "[style].acronyms file:\n"
+    )
+    for term, definition in sorted(candidates.items()):
+        print(f'  {term} = "{definition}"')
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m src.draft dossier",
@@ -2322,6 +2364,13 @@ def main(argv: list[str] | None = None) -> int:
     p_set_language.add_argument("draft", help="Path to the draft under content/drafts/")
     p_set_language.add_argument("language", help="a BCP-47 tag: en-GB, en-US, en-IN")
     p_set_language.set_defaults(func=_cmd_set_language)
+
+    p_suggest = sub.add_parser(
+        "acronyms-suggest",
+        help="Acronyms this draft's glossary defines that aren't in your vocabulary yet",
+    )
+    p_suggest.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_suggest.set_defaults(func=_cmd_acronyms_suggest)
 
     p_list = sub.add_parser("list", help="Every dossier on this machine")
     p_list.set_defaults(func=_cmd_list)

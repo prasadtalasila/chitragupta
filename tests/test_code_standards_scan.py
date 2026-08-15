@@ -58,7 +58,7 @@ CODE_LINE_ROOTS = ("src", "scripts")
 # 5.8.x SonarCloud-debt series split the worst offenders and delisted
 # each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    "src/dossier.py::main",  # 46
+    "src/dossier.py::main",  # 49
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/sync.py::_parse_parallel",  # 33
