@@ -1,6 +1,6 @@
 # Hooks: what runs automatically, and what is allowed to block
 
-Status: **partly built, as of 5.14.0.** Written 2026-08-15. Two hooks exist
+Status: **partly built, as of 5.15.0.** Written 2026-08-15. Two hooks exist
 -- `citation_gate_hook.py` and `session_start_hook.py` -- and both launch
 in exec form. The prose check's hook is #185. #197 stays open for its
 second hazard only, the interpreter name, now that the placeholder half is

@@ -509,18 +509,18 @@ run it silently, and never make it a condition of presenting:
 python -m src.review verbatim scan content/drafts/deep-research-<slug>.md
 ```
 
-It reports wording the report shares with **any** parsed source, cited or
-not. This genre earns the check more than most: a dozen subagents wrote
-sections independently, so no single context ever saw the whole report,
-and the synthesis prose stitching their sections together cites nothing
-at all -- exactly the text no per-citekey check can see. A review aid,
-not a gate: it exits 0 either way and cannot block the report. Say what
-it misses when you offer it -- it sees verbatim and near-verbatim reuse
-only, and **genuine restatement is only detected where the embedding tier can run**, so a clean scan is not a clean
-bill of health (`docs/PLAGIARISM.md`).
-If the user wants the finding kept, add `--write`: the report
-goes to `content/review/`, mirroring the draft's path, beside any
-provenance and coverage reports for the same draft.
+It reports wording the report shares with **any** parsed source, cited or not.
+This genre earns the check more than most: a dozen subagents wrote sections
+independently, so no single context ever saw the whole report, and the
+synthesis prose stitching their sections together cites nothing at all --
+exactly the text no per-citekey check can see. A review aid, not a gate: it
+exits 0 either way and cannot block the report. Say what it misses when you
+offer it -- it sees verbatim and near-verbatim reuse only, and **genuine
+restatement is only detected where the embedding tier can run**, so a clean
+scan is not a clean bill of health (`docs/PLAGIARISM.md`). If the user wants
+the finding kept, add `--write`: the report goes to `content/review/`,
+mirroring the draft's path, beside any provenance and coverage reports for the
+same draft.
 
 **(g) Present.** Give the user: headline finding, the single most
 important contradiction, the actionable insight, the overall grade, any
