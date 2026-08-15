@@ -139,6 +139,15 @@ def _get_bool(env_var: str, *toml_path: str, default: bool) -> bool:
 # (pathlib behavior), so env var overrides may be absolute or relative.
 BIB_FILE_PATH = REPO_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibliography.bib")
 
+# Which BibTeX field carries Zotero collection membership. `groups` is
+# JabRef's, and what Better BibTeX writes under "Export JabRef-specific
+# fields" -- see src/bib_collections.py for why that option is the only
+# way collections reach a .bib at all. Configurable rather than hardcoded
+# because a user whose exporter puts them somewhere else (a `keywords`
+# convention, say) should not have to patch the parser to be read.
+BIB_COLLECTIONS_FIELD = _get("BIB_COLLECTIONS_FIELD", "bib", "collections_field",
+                             default="groups").strip().lower()
+
 CONTENT_DIR = REPO_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
 LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"

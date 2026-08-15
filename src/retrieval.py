@@ -48,7 +48,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import config, ledger
+from src import bib_collections, config, ledger
 
 _STOPWORDS = {
     "a", "an", "the", "of", "on", "in", "for", "and", "to", "with",
@@ -278,8 +278,17 @@ def _bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
     return scores
 
 
-def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[SearchResult]:
+def search(query: str, k: int = 5, snippet_chars: int = 500,
+           collection: str | None = None) -> list[SearchResult]:
     """Rank ledger items by BM25 relevance to `query`. Returns top-k.
+
+    `collection` restricts the result to items in that Zotero collection
+    or one beneath it (src/bib_collections.py), which is #195's curated
+    subset: a chapter on modelling searching only the modelling shelf.
+    Scoring is deliberately left corpus-wide and the filter applied to the
+    ranking -- narrowing the index instead would change every IDF, so the
+    same query would score differently depending on the filter, and the
+    cached index could not be shared between filtered and unfiltered runs.
 
     `snippet_chars` defaults to enough context for a caller (e.g. a genre
     skill) to judge relevance itself before citing -- see the "Retrieve"
@@ -298,9 +307,15 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[SearchResul
 
     index = _load_index(items)
     scores = _bm25_scores(index, terms)
+    by_citekey = {item["citekey"]: item for item in items}
+    if collection is not None:
+        scores = {
+            citekey: score for citekey, score in scores.items()
+            if bib_collections.matches(
+                bib_collections.of_row(by_citekey[citekey]), collection)
+        }
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:k]
 
-    by_citekey = {item["citekey"]: item for item in items}
     term_set = set(terms)
     results = []
     for citekey, score in ranked:
@@ -430,6 +445,12 @@ def _build_parser():
     p_search.add_argument("query")
     p_search.add_argument("--k", type=int, default=5, help="Results to return (default 5)")
     p_search.add_argument("--chars", type=int, default=500, help="Snippet size (default 500)")
+    p_search.add_argument(
+        "--collection", metavar="NAME",
+        help="Only items in this Zotero collection, or one beneath it. Needs a "
+             "Better BibTeX export with JabRef fields on (docs/ZOTERO.md); with "
+             "any other export nothing is in any collection and this matches "
+             "nothing")
 
     p_evidence = sub.add_parser(
         "evidence", help="The passages of one document that bear on the query")
@@ -468,7 +489,8 @@ def _run_evidence(args) -> "tuple[int, int] | None":
 def _run_search(args) -> tuple[int, int]:
     """The search subcommand: prints the ranking and returns
     (results, chars)."""
-    found = search(args.query, k=args.k, snippet_chars=args.chars)
+    found = search(args.query, k=args.k, snippet_chars=args.chars,
+                   collection=args.collection)
     if not found:
         print("No results.")
     chars = _print_results(found)

@@ -32,6 +32,59 @@ general feature):
    as an error).
 5. Re-run `python -m src.corpus sync`.
 
+## Keeping your collections (optional)
+
+Zotero organises a library into collections and subcollections, and that
+tree is a judgement you have already made -- *these are the modelling
+papers*. This pipeline can use it to scope a draft's retrieval to the
+subset you curated for it, rather than to the whole library (#195):
+
+```bash
+python -m src.corpus ledger --collections               # what exists
+python -m src.corpus ledger --collection "Digital twins"
+python -m src.draft retrieve search "surrogate models" --collection "Digital twins"
+```
+
+**Zotero's own BibTeX exporter drops collection membership entirely**, so
+none of that works on a plain export -- the commands run, and nothing is
+in any collection. Keeping it needs
+[Better BibTeX](https://retorque.re/zotero-better-bibtex/):
+
+1. Install Better BibTeX and restart Zotero.
+2. **Edit -> Settings -> Better BibTeX -> Export -> Fields**, and turn on
+   **Export JabRef-specific fields**. That writes JabRef's `groups` field
+   into every entry, naming each collection the item belongs to.
+3. Export as **Better BibTeX** rather than the built-in BibTeX, with
+   **Export Files** checked as in step 2 above.
+4. Re-run `python -m src.corpus sync`.
+
+**The stated cost, and why it is probably not a cost for you.** Better
+BibTeX warns that this option "will disable caching in exports", and its
+[performance notes](https://retorque.re/zotero-better-bibtex/support/performance/)
+put the difference at roughly 9 seconds against 3-4 on an 86-item library.
+But those same notes say the cache "will not be active" when **Export
+Files** is enabled -- and step 2 above requires Export Files, because
+without the attachments there is nothing for this pipeline to parse. So an
+export done the way this page describes never had the cache to lose.
+Turning JabRef fields on costs you nothing further.
+
+Two things follow. If you also keep a *separate* Better BibTeX export for
+something else -- a `.bib` for a LaTeX document, an auto-export on a timer
+-- that one does lose its cache, since the preference is global rather than
+per-export. And if you do not want collections, leave the option off:
+nothing else in this pipeline reads the field.
+
+Two conventions come with `groups`, and both are JabRef's rather than
+ours. Several collections are comma-separated, and a subcollection
+arrives as its path from the root (`Digital twins > Modelling`). Asking
+for a parent selects everything beneath it, so `--collection "Digital
+twins"` also returns the modelling papers. Matching ignores case, and it
+is per-segment rather than by substring: `Modelling` will not match a
+different collection called `Modelling notes`.
+
+If your exporter writes them somewhere else, point `[bib].collections_field`
+in `config.toml` at that field instead ([CONFIG.md](CONFIG.md)).
+
 A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into to have it indexed:
 the enrichment layer's corpus is the bibliography, so anything it can

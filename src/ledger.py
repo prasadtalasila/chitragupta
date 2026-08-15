@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src import config, passages
+from src import bib_collections, config, passages
 
 if TYPE_CHECKING:
     # Only for the upsert_reference type hint -- citation_gate.py imports
@@ -110,6 +110,15 @@ _MIGRATIONS: list[tuple[tuple[str, str], ...]] = [
         # `python -m src.corpus sync` backfills it.
         ("bib_fields", "ALTER TABLE items ADD COLUMN bib_fields TEXT"),
     ),
+    (
+        # version 4: Zotero collection membership, as a JSON array of normalised
+        # paths (src/bib_collections.py). NULL for a row synced before
+        # this column existed and for the majority of libraries, whose
+        # export carries no such field at all -- both read as "no
+        # collections recorded", which is what every caller already does
+        # with an empty list.
+        ("collections", "ALTER TABLE items ADD COLUMN collections TEXT"),
+    ),
 ]
 
 
@@ -163,6 +172,17 @@ _BIB_FIELDS_KEPT = (
     "address", "location", "edition", "howpublished", "organization",
     "eprint", "eprinttype", "archiveprefix", "primaryclass",
 )
+
+
+def _collections_json(ref: Reference) -> str | None:
+    """`ref`'s Zotero collection paths as a JSON array, or None for no rows.
+
+    None rather than `"[]"` so a library exported without Better BibTeX's
+    JabRef fields leaves the column NULL rather than writing an empty
+    array into every row -- the two mean the same thing to a reader, and
+    NULL is what a pre-migration row already holds.
+    """
+    return json.dumps(list(ref.collections)) if ref.collections else None
 
 
 def _bib_fields_json(ref: Reference) -> str | None:
@@ -260,12 +280,13 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
             """
             INSERT INTO items
                 (citekey, item_type, title, year, doi, url,
-                 pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, status, last_synced, bib_fields)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, status, last_synced,
+                 bib_fields, collections)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (ref.citekey, ref.item_type, ref.title, ref.year,
              ref.doi, ref.url, ref.pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, status, now,
-             _bib_fields_json(ref)),
+             _bib_fields_json(ref), _collections_json(ref)),
         )
     else:
         new_status, must_reparse = _next_status(row, pdf_hash, force, ref.citekey)
@@ -275,12 +296,12 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
             UPDATE items SET
                 item_type = ?, title = ?, year = ?, doi = ?,
                 url = ?, pdf_path = ?, pdf_hash = ?, pdf_size = ?, pdf_mtime_ns = ?,
-                status = ?, last_synced = ?, bib_fields = ?
+                status = ?, last_synced = ?, bib_fields = ?, collections = ?
             WHERE citekey = ?
             """,
             (ref.item_type, ref.title, ref.year, ref.doi,
              ref.url, ref.pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, new_status, now,
-             _bib_fields_json(ref), ref.citekey),
+             _bib_fields_json(ref), _collections_json(ref), ref.citekey),
         )
     con.commit()
     return needs_parse
@@ -491,6 +512,11 @@ def main(argv: "list[str] | None" = None) -> int:
     parser.add_argument("--status", help="List only items with this status "
                                          f"({', '.join(_STATUS_LABELS)})")
     parser.add_argument("--citekey", help="Show one item in full")
+    parser.add_argument("--collection", metavar="NAME",
+                        help="List only items in this Zotero collection, or one "
+                             "beneath it (docs/ZOTERO.md)")
+    parser.add_argument("--collections", action="store_true",
+                        help="List every collection the corpus holds, and stop")
     args = parser.parse_args(argv)
 
     if not config.LEDGER_PATH.exists():
@@ -508,10 +534,12 @@ def main(argv: "list[str] | None" = None) -> int:
     # so that adding one doesn't silently shift the output.
     con.row_factory = sqlite3.Row
     try:
+        if args.collections:
+            return _list_collections(con)
         if args.citekey:
             return _show_item(con, args.citekey)
-        if args.status or args.list:
-            return _list_items(con, args.status)
+        if args.status or args.list or args.collection:
+            return _list_items(con, args.status, args.collection)
         return _show_summary(con)
     finally:
         con.close()
@@ -529,18 +557,37 @@ def _show_item(con, citekey) -> int:
     return 0
 
 
-def _list_items(con, status) -> int:
-    """`--list`/`--status`: every matching item, then the count."""
+def _list_items(con, status, collection=None) -> int:
+    """`--list`/`--status`/`--collection`: matching items, then the count.
+
+    The collection filter is applied in Python rather than in SQL because
+    matching is hierarchical -- `Modelling` selects `Modelling >
+    Continuous` too -- and expressing that as a LIKE would have to
+    reproduce bib_collections' normalisation in a second place.
+    """
     rows = con.execute(
         "SELECT * FROM items WHERE (? IS NULL OR status = ?) ORDER BY citekey",
         (status, status),
     ).fetchall()
+    if collection is not None:
+        rows = [r for r in rows
+                if bib_collections.matches(bib_collections.of_row(r), collection)]
     if not rows:
-        print(f"No items with status {status!r}.")
+        print(f"No items with status {status!r}."
+              if collection is None else
+              f"No items in collection {collection!r}.")
     else:
         for row in rows:
             _print_item(row)
         print(f"\n  {len(rows)} item(s).")
+    return 0
+
+
+def _list_collections(con) -> int:
+    """`--collections`: what a `--collection` filter can be given."""
+    rows = con.execute("SELECT citekey, collections FROM items").fetchall()
+    for line in bib_collections.report(rows):
+        print(line)
     return 0
 
 

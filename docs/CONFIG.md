@@ -96,11 +96,23 @@ used as given.
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
 | `[bib] path` | `BIB_FILE` | path | `papers/bibliography.bib` |
+| `[bib] collections_field` | `BIB_COLLECTIONS_FIELD` | field name | `groups` |
 | `[content] dir` | `CONTENT_DIR` | path | `content` |
 
 - **`[bib] path`** -- the BibTeX export `src/bib_reader.py` parses. The
   only source of citekeys; nothing in the pipeline invents or renames
   one. Gitignored per-host data.
+- **`[bib] collections_field`** -- which BibTeX field carries Zotero
+  collection membership, read by `src/bib_collections.py` and used by
+  `python -m src.corpus ledger --collection` and
+  `python -m src.draft retrieve search --collection` to scope a draft to
+  a curated subset of the library. `groups` is JabRef's field and what
+  Better BibTeX writes under *Export JabRef-specific fields*. **Zotero's
+  own BibTeX exporter drops collections**, so on a plain export the field
+  is simply absent, nothing is in any collection, and no command changes
+  behaviour -- see [ZOTERO.md](ZOTERO.md#keeping-your-collections-optional)
+  for how to keep them and what that costs. Lower-cased on read, since
+  BibTeX field names are case-insensitive.
 - **`[content] dir`** -- everything every layer writes: `sync`'s
   `ledger.sqlite` and `parsed/`, the drafting layer's `drafts/`,
   `dossiers/` and `rendered/`, the review layer's `review/`, and

@@ -22,6 +22,15 @@
 # Relative to the repo root, or absolute.  Default: papers/bibliography.bib
 path = "papers/bibliography.bib"
 
+# Which BibTeX field carries Zotero collection membership, so a draft can
+# retrieve from the subset you curated for it rather than the whole
+# library. `groups` is JabRef's field, and what Better BibTeX writes under
+# "Export JabRef-specific fields" -- Zotero's own exporter drops
+# collections entirely, so on a plain export nothing is in any collection
+# and every command behaves as it did before. docs/ZOTERO.md has the
+# click-path.                                             Default: groups
+collections_field = "groups"
+
 [content]
 # Everything this pipeline writes lives under here: sync's ledger.sqlite
 # and parsed/, the drafting layer's drafts/, dossiers/ and rendered/, the
