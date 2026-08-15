@@ -47,6 +47,11 @@ it is the only one. What the tiers distinguish is not the *name* but
 **which environment**: a bare interpreter from `PATH` for tier 1,
 against the project's venv for tiers 2 and 3.
 
+One place is not free to choose: `.claude/settings.json` launches the hooks
+by a name that has to resolve without a human present, and a name that does
+not resolve there fails silently. It says `python`, and
+[HOOKS.md](HOOKS.md#the-launcher-contract) records why.
+
 | Tier | Interpreter | Commands |
 |---|---|---|
 | 1 | **`python`** -- stdlib only, no venv | `src.draft` (all six commands), `src.corpus ledger`, `src.review` (all three aids) |

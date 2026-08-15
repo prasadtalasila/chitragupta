@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
+            "command": "python",
             "args": [
               "${CLAUDE_PROJECT_DIR}/.claude/hooks/citation_gate_hook.py"
             ],
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
+            "command": "python",
             "args": [
               "${CLAUDE_PROJECT_DIR}/.claude/hooks/style_check_hook.py"
             ],
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3",
+            "command": "python",
             "args": [
               "${CLAUDE_PROJECT_DIR}/.claude/hooks/session_start_hook.py"
             ],

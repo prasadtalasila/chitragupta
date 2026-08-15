@@ -8,8 +8,12 @@ and only the first two are faults:
 1. **Can each registered hook's launcher start?** A hook that fails to
    spawn cannot report that it failed to spawn -- the settings file still
    lists it, the tests still pass, and the citation gate silently stops
-   enforcing CLAUDE.md's one invariant. Nothing else in the tree can
-   notice that, which is the whole reason this hook exists (#197).
+   enforcing CLAUDE.md's one invariant. Noticing that is the whole reason
+   this hook exists (#197). It is not, on its own, enough: **this hook is
+   launched by the same interpreter name it vets**, so the one host where
+   the gate's launcher is missing is a host where this report never
+   arrives either. `src/hook_launchers.py` holds the check for that
+   reason, and `python -m src.draft gate` makes it too.
 2. **Does `python -m src.draft gate` still refuse a fabricated citekey?**
 3. **Has the corpus been synced?** -- reported as a *stage*, not a fault.
 
@@ -33,76 +37,46 @@ import, and nothing here needs the venv.
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
+
+# Not at the top, because the path this import needs is the line above it:
+# the hook is run as a script by the harness, from a directory that is not
+# the repository, so `src` is only importable once the root it derived from
+# its own location is on the path. Module level rather than inside the
+# function on purpose -- a local `try: ... except ImportError: return []`
+# would turn a genuine breakage into the exact silence this hook exists to
+# notice, and a crashed advisory hook (which can never block) is the safer
+# half of that trade. `scripts/release.py` ships every git-tracked path bar
+# tests/, .github/ and bench/, so `src/` and `.claude/hooks/` always travel
+# together in a release bundle.
+#
+# Appended rather than prepended: nothing else supplies a `src` package in
+# a real run, so the position costs nothing there, while prepending would
+# let a repo root shadow anything already importable -- including, in this
+# repository's own tests, the stub `src/` a test plants to simulate a dead
+# gate for the hook's *children*.
+sys.path.append(str(REPO))
+from src import hook_launchers  # noqa: E402  pylint: disable=wrong-import-position
+
 FABRICATED = "preflight_probe_not_a_real_citekey"
 
 
 def launcher_faults() -> list[str]:
     """Registered hook commands that cannot start, read from settings.json.
 
-    Static, because the alternative is not available: a launcher is a line
-    in a config file the harness consumes, no test imports it, and CI never
-    executes it. Absent or unreadable settings mean there is nothing to
-    check rather than something wrong -- this hook does not own that file.
+    The check itself is `src/hook_launchers.py`, shared with
+    `python -m src.draft gate` -- see this module's docstring for why one
+    reporter is not enough. The settings path is passed rather than looked
+    up there so that this hook keeps deriving the repository root from its
+    own on-disk location, which is what lets a test point it at a
+    throwaway tree.
     """
-    try:
-        events = json.loads((REPO / ".claude" / "settings.json").read_text())["hooks"]
-    except (OSError, ValueError, KeyError, TypeError):
-        return []
-    faults = []
-    for entries in _items(events):
-        for entry in _items(entries):
-            for hook in _items(entry.get("hooks") if isinstance(entry, dict) else None):
-                if isinstance(hook, dict):
-                    faults.extend(_launcher_fault(hook))
-    return faults
-
-
-def _items(value) -> list:
-    """Whatever `value` holds, as a list -- and nothing at all if it is the
-    wrong shape.
-
-    Every level of a settings file is checked through this, because at each
-    one the shape is the harness's to define and not this hook's to assume.
-    A wrong shape anywhere used to raise, and since `main` swallows
-    everything to keep a broken preflight from breaking a session, the
-    result was the whole report going silent -- the corpus stage and the
-    gate check with it. Reporting nothing because a settings file is odd is
-    the failure this hook exists to notice in other hooks.
-    """
-    if isinstance(value, dict):
-        return list(value.values())
-    return list(value) if isinstance(value, list) else []
-
-
-def _launcher_fault(hook: dict) -> list[str]:
-    """One hook entry's launcher problems, in both of the two forms.
-
-    Exec form (`args` present) names the program in `command`; shell form
-    puts it first in a command line. An unbraced `$CLAUDE_PROJECT_DIR` is
-    expanded by the shell rather than substituted by the harness, and the
-    shell is PowerShell on a Windows host without Git Bash -- where that
-    syntax names an undefined variable and expands to nothing.
-    """
-    command = hook.get("command")
-    if not isinstance(command, str) or not command.split():
-        return []  # nothing names a program here, so nothing can fail to start
-    args = [a for a in _items(hook.get("args")) if isinstance(a, str)]
-    program = command if "args" in hook else command.split()[0]
-    text = " ".join([command, *args])
-    faults = []
-    if not shutil.which(program):
-        faults.append(f"`{program}` is not on PATH, so a hook cannot start.")
-    if "$CLAUDE_PROJECT_DIR" in text.replace("${CLAUDE_PROJECT_DIR}", ""):
-        faults.append(f"`{program}` uses an unbraced $CLAUDE_PROJECT_DIR, which the "
-                      "shell expands rather than the harness (docs/HOOKS.md).")
-    return faults
+    return hook_launchers.faults(REPO / ".claude" / "settings.json")
 
 
 def gate_is_live() -> bool:
