@@ -45,7 +45,16 @@ HOOKS = REPO_ROOT / ".claude" / "hooks"
 
 
 def load(name: str):
-    """A fresh module object, so one test's monkeypatching cannot leak."""
+    """A fresh module object, so one test's monkeypatching cannot leak.
+
+    `.claude/hooks` goes on `sys.path` first because a hook is run by
+    absolute path in production, which puts its own directory there --
+    that is what makes `import draft_target` resolve with no path
+    manipulation inside the hook. Loading by spec does not reproduce it,
+    so the test harness has to.
+    """
+    if str(HOOKS) not in sys.path:
+        sys.path.insert(0, str(HOOKS))
     spec = importlib.util.spec_from_file_location(name, HOOKS / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -67,22 +76,34 @@ def preflight():
     return load("session_start_hook")
 
 
+@pytest.fixture
+def style():
+    return load("style_check_hook")
+
+
 def emitted(capsys) -> dict | None:
     out = capsys.readouterr().out.strip()
     return json.loads(out) if out else None
 
 
 class TestCitationGateHookModule:
-    """`citation_gate_hook.main()`, branch by branch. The hook derives its
-    repo root from the module's own `__file__`, which is a module global
-    read at call time -- so pointing it at a temporary tree is enough to
-    make it gate that tree instead of this checkout."""
+    """`citation_gate_hook.main()`, branch by branch.
+
+    Since the draft-detection branches moved to `draft_target.py` this
+    class covers what is left: the gate call itself and the block. The
+    detection cases live in `tests/test_draft_target.py`, and are reached
+    here only through the two that survive at this level -- a payload that
+    names no draft, and one that does."""
 
     @pytest.fixture
     def rooted(self, gate, tmp_path, monkeypatch):
-        """The hook, believing it lives in `tmp_path/.claude/hooks/`."""
-        monkeypatch.setattr(gate, "__file__",
-                            str(tmp_path / ".claude" / "hooks" / "citation_gate_hook.py"))
+        """The hook, believing it lives in `tmp_path/.claude/hooks/`.
+
+        The root now comes from `draft_target.REPO_ROOT`, so that is what
+        moves. Both the hook and the helper read it at call time, which is
+        what makes one patch enough.
+        """
+        monkeypatch.setattr(gate.draft_target, "REPO_ROOT", tmp_path)
         (tmp_path / "content" / "drafts").mkdir(parents=True)
         return gate, tmp_path
 
@@ -329,3 +350,173 @@ class TestRunAndMain:
         assert "BROKEN: a launcher is wrong" in context
         assert "did not refuse a fabricated citekey" in context
         assert "not synced yet" in context
+
+
+class TestStyleCheckHookModule:
+    """`style_check_hook`, the advisory half of the PostToolUse pair.
+
+    Every case here is about *not* speaking. An advisory hook that reports
+    on every write is one the reader learns to skip -- and it shares a
+    matcher with the citation gate, so the attention it spends is spent on
+    the gate's channel too.
+    """
+
+    @pytest.fixture
+    def rooted(self, style, tmp_path, monkeypatch):
+        monkeypatch.setattr(style.draft_target, "REPO_ROOT", tmp_path)
+        (tmp_path / "content" / "drafts").mkdir(parents=True)
+        return style, tmp_path
+
+    @staticmethod
+    def feed(monkeypatch, file_path) -> None:
+        monkeypatch.setattr(sys, "stdin", io.StringIO(
+            json.dumps({"tool_input": {"file_path": str(file_path)}})))
+
+    @staticmethod
+    def checker(monkeypatch, hook, stdout):
+        monkeypatch.setattr(hook.subprocess, "run",
+                            lambda *a, **k: completed(0, stdout=stdout))
+
+    @staticmethod
+    def payload(findings, language=None):
+        return json.dumps({"notice": "Review aid, not a gate.", "warnings": [],
+                           "drafts": [{"draft": "d.md", "language": language,
+                                       "language_source": "nothing",
+                                       "findings": findings,
+                                       "proposed_language": None}]})
+
+    def test_a_draft_with_findings_is_reported(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "a.md"
+        draft.write_text("obviously fine\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "chitragupta.DefectMarkers", "match": "obviously", "line": 1,
+              "message": "'obviously' is a defect marker", "severity": "warning",
+              "count": 1}], language="en-GB"))
+        self.feed(monkeypatch, draft)
+        assert hook.main() == 0
+        context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+        assert "defect marker" in context
+        assert "§9's decidable rules only" in context
+
+    def test_it_never_emits_a_blocking_decision(self, rooted, monkeypatch, capsys):
+        """The rule that separates this hook from the one beside it."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "b.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 1, "message": "msg",
+              "severity": "warning", "count": 1}]))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        out = capsys.readouterr().out
+        assert "decision" not in out
+        assert json.loads(out)["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
+
+    def test_a_repeated_finding_carries_its_count(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "c.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 2, "message": "msg",
+              "severity": "warning", "count": 4}], language="en-GB"))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        assert "(x4)" in emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+
+    def test_an_unrecorded_dialect_is_flagged_beside_the_findings(
+            self, rooted, monkeypatch, capsys):
+        """With no `language:` line no dialect rule runs, so the list is not
+        the whole picture -- the same trap the verbatim caveat prevents."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "d.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 1, "message": "msg",
+              "severity": "warning", "count": 1}], language=None))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        assert "dialect: not checked" in \
+            emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+
+    def test_a_recorded_dialect_is_not_mentioned(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "e.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, self.payload(
+            [{"rule": "r", "match": "m", "line": 1, "message": "msg",
+              "severity": "warning", "count": 1}], language="en-GB"))
+        self.feed(monkeypatch, draft)
+        hook.main()
+        assert "dialect: not checked" not in \
+            emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+
+    @pytest.mark.parametrize("stdout,why", [
+        ("", "the checker produced nothing at all"),
+        ("not json", "unparseable stdout"),
+        ("[]", "valid JSON of the wrong shape"),
+        ('{"warnings": ["vale is not on PATH"]}', "no drafts key -- vale missing"),
+        ('{"drafts": ["a bare string"]}', "a draft entry that is not a mapping"),
+        ('{"drafts": [{"findings": []}]}', "a draft with no findings"),
+        ('{"drafts": [{"findings": null}]}', "findings explicitly null"),
+        ('{"drafts": [{"findings": ["not a mapping"]}]}', "a finding of the wrong shape"),
+    ])
+    def test_it_stays_silent(self, rooted, monkeypatch, capsys, stdout, why):
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "f.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, stdout)
+        self.feed(monkeypatch, draft)
+        assert hook.main() == 0, why
+        assert capsys.readouterr().out == "", why
+
+    @pytest.mark.parametrize("count", [None, "3", [], {}])
+    def test_a_malformed_count_costs_one_line_not_the_whole_report(
+            self, rooted, monkeypatch, capsys, count):
+        """Found by an OpenCodeReview pass. `None > 1` raises, and that
+        exception is caught at the module tail -- so a single bad count in
+        another command's output would silently cost the entire report
+        rather than the one line it belongs to."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "g.md"
+        draft.write_text("x\n")
+        self.checker(monkeypatch, hook, json.dumps({"drafts": [{
+            "language": "en-GB",
+            "findings": [{"rule": "r", "match": "m", "line": 1,
+                          "message": "msg", "count": count}]}]}))
+        self.feed(monkeypatch, draft)
+        assert hook.main() == 0
+        context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+        assert "msg" in context
+        assert "(x" not in context
+
+    def test_a_write_that_is_not_a_draft_never_runs_the_checker(
+            self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        elsewhere = root / "notes.md"
+        elsewhere.write_text("obviously\n")
+
+        def explode(*a, **k):
+            raise AssertionError("the checker must not run for a non-draft")
+
+        monkeypatch.setattr(hook.subprocess, "run", explode)
+        self.feed(monkeypatch, elsewhere)
+        assert hook.main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_a_draft_that_vanished_is_not_reported_as_clean(
+            self, rooted, monkeypatch, capsys):
+        """The measured trap: `src.draft style` returns zero findings for a
+        path that does not exist, because it never inspects vale's return
+        code. Reporting that as a clean draft is the one thing an advisory
+        check must never fake, so the hook stats the file itself."""
+        hook, root = rooted
+        gone = root / "content" / "drafts" / "gone.md"
+
+        def explode(*a, **k):
+            raise AssertionError("the checker must not run for a missing file")
+
+        monkeypatch.setattr(hook.subprocess, "run", explode)
+        self.feed(monkeypatch, gone)
+        assert hook.main() == 0
+        assert capsys.readouterr().out == ""

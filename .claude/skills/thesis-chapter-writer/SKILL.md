@@ -260,7 +260,34 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     background recap" -- append it to the dossier's `steering.md`, dated.
     It is invisible in the prose and has nowhere else to live; a revision
     that doesn't know about it will undo it.
-13. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+13. **Run the prose check.** After the gate passes and before
+    presenting:
+
+    ```bash
+    python -m src.draft style content/drafts/<slug>.tex
+    ```
+
+    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+    -- §2's defect markers, an acronym never expanded at first use, and
+    §8's dialect against `scope.md`'s `language:` line. It says nothing
+    about whether a paragraph leads with its point or whether a hedge
+    carries information, and it cannot tell a quotation from the chapter's own
+    voice, so a marker inside a quoted passage reports and is correct as
+    it stands. The fragment is scanned as Markdown, so
+    `verbatim` environments and `\cite` arguments are skipped and the prose
+    is not.
+
+    **Report every finding and fix none of them.** A finding is a place to
+    look, not a defect: the first pass of this check over this
+    repository's own docs kept 59 of its 73 marker hits on inspection. If
+    the user wants any of them acted on, that is `draft-reviser`'s
+    copy-edit mode, which reads the recorded dialect and logs one
+    `revisions.md` entry -- never an edit made here. Report the header
+    lines too: `dialect: not checked` means nobody ever recorded one, so a
+    short list is not a clean draft. A review aid, not a gate -- it
+    exits 0 whatever it finds, and a missing `vale` binary is a one-line
+    warning that blocks nothing.
+14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -276,14 +303,14 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     run**, so a clean scan is not a clean bill of health
     (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
     the report goes to `content/review/`, mirroring the draft's path, beside
-    any provenance and coverage reports for the same draft. 14. Present the
-    `.tex` fragment (the deliverable to `\input`) plus, if rendering succeeded,
-    the `.md`/`.pdf` preview paths -- or the warning if it didn't. Tell the
-    user where the dossier is, that changes to this chapter should go through
-    `draft-reviser` rather than another run of this skill, and that
-    `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
-    src.draft dossier export <slug>` is how a draft and its working state get
-    backed up.
+    any provenance and coverage reports for the same draft.
+15. Present the `.tex` fragment (the deliverable to `\input`) plus, if
+    rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
+    it didn't. Tell the user where the dossier is, that changes to this
+    chapter should go through `draft-reviser` rather than another run of this
+    skill, and that `content/drafts/` and `content/dossiers/` are gitignored
+    -- so `python -m src.draft dossier export <slug>` is how a draft and its
+    working state get backed up.
 
 ## Sources
 

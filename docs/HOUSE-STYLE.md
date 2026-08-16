@@ -25,9 +25,10 @@ does, which is
 (`scope.md`'s `language:` line, and
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8), so what this document
 called *the objective function* is now normative in that file's §9 rather
-than proposed here. What remains unbuilt is the machinery: the detector
-(#107), its automatic invocation (#183), and everything under "What
-persists across drafts" below, which no issue yet covers.
+than proposed here. What remains unbuilt is the machinery: everything under "What
+persists across drafts" below, which no issue yet covers. The detector
+(#107) shipped in 5.13.0, and its automatic invocation (#183) in 5.18.0 --
+a PostToolUse hook per write and a step in all eight skills.
 
 ## Table of contents
 

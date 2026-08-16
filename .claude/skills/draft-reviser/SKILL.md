@@ -217,6 +217,32 @@ assume:
   with what you actually ran on. **Never present an unrun tutorial as if
   it were tested**; if you could not run it, say exactly that.
 
+### Run the prose check
+
+After step 7 and before presenting:
+
+```bash
+python -m src.draft style content/drafts/<path>
+```
+
+**It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
+§2's defect markers, an acronym never expanded at first use, and §8's
+dialect against `scope.md`'s `language:` line. It says nothing about
+whether a paragraph leads with its point, and it cannot tell a quotation
+from the draft's own voice.
+
+**Report every finding and fix none of them, and say which are yours.**
+The check reads the whole file, so most of what it reports predates this
+revision; a reviser who tidies all of it has made a whole-document change
+nobody asked for. A finding is a place to look, not a defect -- the first
+pass of this check over this repository's own docs kept 59 of its 73
+marker hits on inspection. If the user wants them acted on, that is
+**copy-edit mode** below: this same skill, one `revisions.md` entry
+naming the convention. Report the header lines too: `dialect: not
+checked` means nobody ever recorded one, so a short list is not a clean
+draft. A review aid, not a gate -- it exits 0 whatever it finds, and a
+missing `vale` binary is a one-line warning that blocks nothing.
+
 ### Offer the verbatim scan
 
 Before presenting, offer this -- don't run it silently, and never make it
@@ -263,6 +289,7 @@ What changes, relative to the loop above:
 | 5. Edit in place | Unchanged, and load-bearing for a second reason -- below |
 | 6. Write the dossier back | `revisions.md` only, one entry. There is no evidence delta, no new rejection and no moved section to record |
 | 7. Gate, reference, render | Unchanged. Run the gate even though you changed no citation: that is the point |
+| Run the prose check | **Inverted, and this is the one place it inverts.** The findings are this pass's work list rather than a report: the user asked for exactly this class of change. Run it before you start, to scope the pass, and again at the end, to say what is left |
 
 If `scope.md`'s `language:` still says `not settled`, ask which dialect
 before converting, and write the answer to that line as part of the pass.
@@ -448,6 +475,10 @@ draft body, so a citekey the draft cites that was never recorded in the
 dossier will not appear in the report at all. `python -m
 src.draft gate` is the check that reads the draft, and it is what
 decides the draft is presentable. A clean drift report never does.
+
+The loop's two riders still apply, and neither is a gate. A re-grounding
+pass rewrites sentences around a swapped citation, which is new prose
+whatever prompted it.
 
 Expect the draft to keep showing candidates in the next sweep, and say
 so. A query returns fifteen hits and a revision accepts one or two;

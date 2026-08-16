@@ -353,7 +353,33 @@ the lesson design is the part worth keeping either way.
     path in the first place, it is invisible in the prose, and it has nowhere
     else to live; a revision that doesn't know about it will undo it.
 
-15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+15. **Run the prose check.** After the gate passes and before
+    presenting:
+
+    ```bash
+    python -m src.draft style content/drafts/<slug>.md
+    ```
+
+    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+    -- §2's defect markers, an acronym never expanded at first use, and
+    §8's dialect against `scope.md`'s `language:` line. It says nothing
+    about whether a paragraph leads with its point or whether a hedge
+    carries information, and it cannot tell a quotation from the lesson's own
+    voice, so a marker inside a quoted passage reports and is correct as
+    it stands. Fenced code is skipped, so your commands and
+    their expected output are not scanned.
+
+    **Report every finding and fix none of them.** A finding is a place to
+    look, not a defect: the first pass of this check over this
+    repository's own docs kept 59 of its 73 marker hits on inspection. If
+    the user wants any of them acted on, that is `draft-reviser`'s
+    copy-edit mode, which reads the recorded dialect and logs one
+    `revisions.md` entry -- never an edit made here. Report the header
+    lines too: `dialect: not checked` means nobody ever recorded one, so a
+    short list is not a clean draft. A review aid, not a gate -- it
+    exits 0 whatever it finds, and a missing `vale` binary is a one-line
+    warning that blocks nothing.
+16. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -372,7 +398,7 @@ the lesson design is the part worth keeping either way.
     the report goes to `content/review/`, mirroring the draft's path, beside
     any provenance and coverage reports for the same draft.
 
-16. **Present**, reporting: the draft path, the render outcome (or warning),
+17. **Present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of

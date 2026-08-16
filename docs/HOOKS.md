@@ -1,10 +1,10 @@
 # Hooks: what runs automatically, and what is allowed to block
 
-Status: **partly built, as of 5.15.0.** Written 2026-08-15. Two hooks exist
--- `citation_gate_hook.py` and `session_start_hook.py` -- and both launch
-in exec form. The prose check's hook is #185. #197 stays open for its
-second hazard only, the interpreter name, now that the placeholder half is
-fixed and the preflight reports a launcher that cannot start.
+Status: **built, as of 5.18.0.** Written 2026-08-15. Three hooks exist --
+`citation_gate_hook.py`, `style_check_hook.py` and
+`session_start_hook.py` -- sharing one `draft_target.py`, all launching in
+exec form. #197 stays open for its second hazard only, the interpreter
+name, now that the placeholder half is fixed.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is
@@ -116,7 +116,7 @@ guarantees anything about what the agent then does.
 | Event | Matcher | Script | Class | Status |
 |---|---|---|---|---|
 | `PostToolUse` | `Write\|Edit` | `citation_gate_hook.py` | gate | built |
-| `PostToolUse` | `Write\|Edit` | `style_check_hook.py` | advisory | #185 |
+| `PostToolUse` | `Write\|Edit` | `style_check_hook.py` | advisory | built |
 | `SessionStart` | `startup\|clear` | `session_start_hook.py` | advisory | built |
 
 **Two entries on one matcher, not one dispatcher.** Both `PostToolUse`
@@ -205,7 +205,7 @@ three layers with a rule about what may live in each.
 └── hooks/
     ├── draft_target.py         shared -- payload in, draft path or None out
     ├── citation_gate_hook.py   gate class     -- may block
-    └── style_check_hook.py     advisory class -- never blocks          (#185)
+    └── style_check_hook.py     advisory class -- never blocks
 
 src/
 ├── draft.py                    `python -m src.draft <gate|style|...>`
@@ -214,8 +214,8 @@ src/
 
 tests/
 ├── test_draft_target.py        the shared helper, both classes of caller
-├── test_citation_gate_hook.py  exists -- the model for the one below
-└── test_style_check_hook.py                                            (#185)
+├── test_citation_gate_hook.py  the model the other two follow
+└── test_style_check_hook.py    the process contract, not the branches
 ```
 
 **Layer 1, `src/`, holds the checks.** They are importable, tested, and
@@ -237,7 +237,9 @@ dependency](#a-skill-that-runs-the-hook).
 
 ### What the shared helper holds, and why sharing it is safe
 
-`draft_target.py` answers *was this write a draft?* and nothing else. Both
+`draft_target.py` answers *was this write a draft?* and nothing else. It
+was described here before it existed, and extracted when the second hook
+arrived rather than after there were two copies to drift apart. Both
 hooks need the identical answer, and the question is subtler than it looks
 -- `citation_gate_hook.py`'s docstring records each part as learned from a
 real near-miss:

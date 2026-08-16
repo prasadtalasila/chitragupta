@@ -106,6 +106,11 @@ class HookRepo:
         self.hook = root / ".claude" / "hooks" / "citation_gate_hook.py"
         self.hook.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(HOOK_PATH, self.hook)
+        # The helper too, or the copy cannot `import draft_target`: a hook
+        # is run by absolute path, so Python puts *its* directory first on
+        # sys.path, and that directory is this temporary one.
+        shutil.copy2(HOOK_PATH.parent / "draft_target.py",
+                     self.hook.parent / "draft_target.py")
         self.drafts = root / "content" / "drafts"
         self.drafts.mkdir(parents=True, exist_ok=True)
         self.env = {

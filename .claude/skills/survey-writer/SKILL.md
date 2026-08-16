@@ -300,7 +300,32 @@ collapse them for the sake of a cleaner narrative.
     append it to the dossier's `steering.md`, dated. It is invisible in
     the prose and has nowhere else to live; a revision that doesn't know
     about it will undo it.
-14. **Offer the verbatim scan.** Before presenting, offer this — don't run
+14. **Run the prose check.** After the gate passes and before
+    presenting:
+
+    ```bash
+    python -m src.draft style content/drafts/<slug>.md
+    ```
+
+    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+    — §2's defect markers, an acronym never expanded at first use, and
+    §8's dialect against `scope.md`'s `language:` line. It says nothing
+    about whether a paragraph leads with its point or whether a hedge
+    carries information, and it cannot tell a quotation from the draft's own
+    voice, so a marker inside a quoted passage reports and is correct as
+    it stands.
+
+    **Report every finding and fix none of them.** A finding is a place to
+    look, not a defect: the first pass of this check over this
+    repository's own docs kept 59 of its 73 marker hits on inspection. If
+    the user wants any of them acted on, that is `draft-reviser`'s
+    copy-edit mode, which reads the recorded dialect and logs one
+    `revisions.md` entry — never an edit made here. Report the header
+    lines too: `dialect: not checked` means nobody ever recorded one, so a
+    short list is not a clean draft. A review aid, not a gate — it
+    exits 0 whatever it finds, and a missing `vale` binary is a one-line
+    warning that blocks nothing.
+15. **Offer the verbatim scan.** Before presenting, offer this — don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -316,14 +341,15 @@ collapse them for the sake of a cleaner narrative.
     a clean bill of health (`docs/PLAGIARISM.md`). If the user wants the
     finding kept, add `--write`: the report goes to `content/review/`,
     mirroring the draft's path, beside any provenance and coverage reports for
-    the same draft. 15. Present the draft plus a one-paragraph summary of
-    thin-coverage areas and any unresolved cross-source disagreement, and
-    report the render outcome (paths to the `.tex`/`.pdf` if they succeeded, or
-    the warning if not). Tell the user where the dossier is, that changes to
-    this draft should go through `draft-reviser` rather than another run of
-    this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python -m src.draft dossier export <slug>` is how a draft
-    and its working state get backed up.
+    the same draft.
+16. Present the draft plus a one-paragraph summary of thin-coverage areas and
+    any unresolved cross-source disagreement, and report the render outcome
+    (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
+    Tell the user where the dossier is, that changes to this draft should go
+    through `draft-reviser` rather than another run of this skill, and that
+    `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
+    src.draft dossier export <slug>` is how a draft and its working state get
+    backed up.
 
 ## Sources
 
