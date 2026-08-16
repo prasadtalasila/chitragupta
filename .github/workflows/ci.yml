@@ -307,7 +307,7 @@ jobs:
       # main. Needs the base ref and the tags, neither of which the default
       # shallow checkout fetches.
       - name: Fetch main and tags for the version check
-        run: git fetch --quiet --depth=1 origin main +refs/tags/*:refs/tags/*
+        run: git fetch --quiet --depth=1 origin "+refs/heads/main:refs/remotes/origin/main" "+refs/tags/*:refs/tags/*"
 
       - name: Version bump has not been lost to a collision
         run: python3 scripts/check_version_bump.py

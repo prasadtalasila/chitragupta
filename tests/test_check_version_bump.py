@@ -15,6 +15,7 @@ and open-ended when a person pushes the tag by hand.
 """
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -101,28 +102,70 @@ class TestParsingPyproject:
         assert check.version_in('[tool.poetry]\nversion = "5.20.0"\n') == "5.20.0"
 
 
+def git_repo(root: Path, base_version: str, head_version: str, tag: str | None):
+    """A throwaway repository with a real commit to compare against.
+
+    The command is exercised against real `git`, not a mock -- but against
+    a repository this function built, never this checkout. An earlier
+    version of these tests ran `main()` against the real repo and passed
+    locally while failing in CI twice over: the `test` jobs check out
+    shallow and have no `origin/main` at all, and on a `pull_request` event
+    `HEAD` is the *merge* commit, so it already contains the branch's own
+    bump. A test whose result depends on which refs a CI job happens to
+    fetch is testing the CI job.
+    """
+    def run(*args):
+        subprocess.run(["git", *args], cwd=root, check=True,
+                       capture_output=True, text=True)
+
+    run("init", "--quiet", "-b", "main")
+    run("config", "user.email", "t@example.com")
+    run("config", "user.name", "t")
+    pyproject = root / "pyproject.toml"
+    pyproject.write_text(f'[tool.poetry]\nversion = "{base_version}"\n',
+                         encoding="utf-8")
+    run("add", "pyproject.toml")
+    run("commit", "--quiet", "-m", "base")
+    if tag:
+        run("tag", tag)
+    pyproject.write_text(f'[tool.poetry]\nversion = "{head_version}"\n',
+                         encoding="utf-8")
+    return root
+
+
 class TestTheCommand:
-    def test_this_repository_passes_against_its_own_history(self, check, capsys):
-        """Run for real, against real git output. The branch this lands on
-        must out-rank main, which is the thing being asserted."""
-        assert check.main([]) == 0
+    """`main()` against real git, in a repository the test built."""
+
+    @pytest.fixture
+    def in_repo(self, check, tmp_path, monkeypatch):
+        def build(base, head, tag=None):
+            git_repo(tmp_path, base, head, tag)
+            monkeypatch.setattr(check, "REPO_ROOT", tmp_path)
+            return tmp_path
+        return build
+
+    def test_a_real_bump_passes(self, check, in_repo, capsys):
+        in_repo("5.19.0", "5.20.0")
+        assert check.main(["--base-ref", "main"]) == 0
         assert "out-ranks" in capsys.readouterr().out
 
-    def test_a_collision_exits_one_and_says_why(self, check, capsys, monkeypatch):
-        monkeypatch.setattr(check, "_git", lambda *a: (
-            '[tool.poetry]\nversion = "9.9.9"\n' if a[0] == "show" else "v9.9.9"))
-        monkeypatch.setattr(check.Path, "read_text",
-                            lambda *a, **k: '[tool.poetry]\nversion = "9.9.9"\n')
-        assert check.main([]) == 1
+    def test_a_collision_exits_one_and_says_why(self, check, in_repo, capsys):
+        in_repo("5.19.0", "5.19.0")
+        assert check.main(["--base-ref", "main"]) == 1
         assert "::error::" in capsys.readouterr().err
 
-    def test_the_base_ref_is_configurable(self, check, capsys):
-        """CI compares against origin/main; a person checking locally may
-        not have that ref, or may want to compare against another branch.
-        The ref travels into the message, so a passing run says what it
-        actually compared."""
-        assert check.main(["--base-ref", "HEAD"]) == 0
-        assert "HEAD's" in capsys.readouterr().out
+    def test_a_released_version_is_caught_through_real_tags(self, check, in_repo,
+                                                            capsys):
+        in_repo("5.19.0", "5.20.0", tag="v5.20.0")
+        assert check.main(["--base-ref", "main"]) == 1
+        assert "already released" in capsys.readouterr().err
+
+    def test_the_base_ref_travels_into_the_message(self, check, in_repo, capsys):
+        """A passing run says what it actually compared, so a wrong ref is
+        visible rather than silently reassuring."""
+        in_repo("5.19.0", "5.20.0")
+        assert check.main(["--base-ref", "main"]) == 0
+        assert "main's" in capsys.readouterr().out
 
 
 class TestItFailsReadably:
