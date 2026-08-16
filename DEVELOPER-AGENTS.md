@@ -268,6 +268,16 @@ Before saying so, actually run, in this repo:
   Windows leg -- which installs no `os-deps` and so self-skips the render
   and pdf tests -- holds 95, low enough not to need re-tuning whenever
   toolchain-only code is added and high enough to catch a real collapse.
+- **Both linters, at their full paths** (see "The linters, which are
+  enforced" below). They are not optional and not CI's job alone --
+  `markdownlint` in particular fails on prose that no test touches, so a
+  green suite says nothing about it:
+
+  ```bash
+  pylint --rcfile=.pylintrc src scripts .claude/hooks
+  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
+  ```
+
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --
@@ -317,13 +327,19 @@ than post a wrong number.
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
 [DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
-from. Run both before you push; `ci.yml`'s `lint` job runs exactly these
-two commands:
+from. Run both before you push; `ci.yml`'s `lint` job runs exactly these,
+and the paths are part of the command rather than a detail -- a narrower
+glob is how a tree stops being checked without anyone deciding it should:
 
 ```bash
-pylint --rcfile=.pylintrc src scripts        # needs the project's deps importable
-markdownlint-cli2 "*.md" "docs/**/*.md"      # npm i -g markdownlint-cli2
+pylint --rcfile=.pylintrc src scripts .claude/hooks
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"   # npm i -g markdownlint-cli2
 ```
+
+**Read the linter's own exit code, not a pipeline's.** `pylint … | tail`
+reports `tail`'s status, so a real finding passes for a clean run. That is
+not hypothetical: it put a `line-too-long` through a local check and into
+CI on 2026-08-15.
 
 **Both are blocking, at a binary zero-messages bar** -- never a
 `fail-under` score, because
