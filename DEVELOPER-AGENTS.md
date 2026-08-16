@@ -395,6 +395,21 @@ does not have. `review` additionally needs `OCR_LLM_URL`/`OCR_LLM_TOKEN`/
 `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`; with none set it exits on
 `resolve LLM endpoint` and nothing has been reviewed.
 
+**Say how much of the branch it saw, not only which mode ran.** OCR
+cannot review Markdown at all -- every `.md` file comes back excluded as
+`unsupported_ext` -- so on a prose-heavy branch the review covers a
+fraction of the diff. Measured on three consecutive PRs: 9 files of 25
+(#199), 8 of 12 (#204), 10 of 21 (#209). "OCR reviewed the branch" is a
+much weaker claim on the first kind of branch than the second, and the
+test plan should carry the count so a reader can tell them apart.
+
+**Two things about installing it**, neither guessable and both hit on
+this host. `npm i -g @alibaba-group/open-code-review` puts the binary at
+`$(npm root -g)/../bin/ocr`, which is not on `PATH` by default; and npm's
+`allow-scripts` default blocks the package's postinstall, which is
+survivable -- the shipped binary still runs -- but prints a warning that
+reads like a failed install.
+
 Whichever runs, **say which one did.** "OCR reviewed the branch" and "I
 reviewed the branch against OCR's rules" are different claims, and only
 one of them is usually true.
@@ -617,10 +632,27 @@ succeeded -- not merely started:
    issues are resolved. Use judgement on a genuinely trivial finding
    rather than treating every comment as mandatory -- but "trivial" means
    actually inconsequential (a wording nit), not "inconvenient to fix."
-7. Squash-merge the PR.
-8. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
+7. **Check that `main` has not moved since CI last ran.** If it has,
+   merge or rebase onto it and **do the whole cycle again from step 2** --
+   re-decide the version bump, re-run every local check, and wait for CI
+   on the new head. A branch that went green against an older `main` is
+   not evidence about the merge commit, which is what actually lands.
+
+   This is not bookkeeping. CI already builds the *merge* commit for a
+   `pull_request` event, so a stale branch can go red for something it did
+   not do -- and, worse, can go **green on a state that no longer
+   exists**. Both were seen on 2026-08-15: #204's `lint` failed on
+   over-length lines that arrived from `main` in #198, and #209 merged
+   cleanly onto a version `main` had already taken, landing on `main`
+   claiming a release it was not. The version is the usual casualty,
+   because two branches picking the *same* number produce a
+   byte-identical line that git merges without a conflict --
+   `scripts/check_version_bump.py` now fails CI on that, but it can only
+   fail on a run that actually happened.
+8. Squash-merge the PR.
+9. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
    push the tag.
-9. Confirm `.github/workflows/release.yml` completed and the resulting
+10. Confirm `.github/workflows/release.yml` completed and the resulting
    GitHub Release has its `chitragupta-<version>.zip` asset
    attached -- this is the actual deliverable, not the tag or the merge
    by itself.
