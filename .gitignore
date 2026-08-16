@@ -77,6 +77,16 @@ bench/par_*/
 bench/results/*/pairs.json
 bench/results/*/ground_truth.json
 
+# bench_retrieval_compare.py's own subprocess-worker payloads
+# (_dense_worker_<model>.json, _cascade_worker.json) are scratch --
+# comparison.json already carries every number they fed into it -- and
+# embed_models.py's specter2_paper_cache.json is a 10MB+ per-host SPECTER2
+# vector cache with no invalidation key (see embed_paper()'s own
+# docstring), not evidence to keep. None of the three should ever land
+# in a `git add bench/results/<tag>`.
+bench/results/*/_*_worker*.json
+bench/results/specter2_paper_cache.json
+
 # config.toml is per-host: every user edits it (parser backend, paths,
 # worker count) and those edits are nobody else's defaults. The tracked
 # file is config.toml.example; src/config.py fails with a copy-this

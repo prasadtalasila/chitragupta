@@ -223,7 +223,6 @@ def _cascade_worker(ground_truth, shortlist_size):
     from sentence_transformers import CrossEncoder
     from src.enrich import embed_index
 
-    con_citekeys = sorted({row["citekey"] for row in ground_truth})
     # A corpus-wide SPECTER2 shortlist needs the whole ledger, not just
     # this ground truth's own citekeys -- otherwise every shortlist is
     # trivially exactly right by construction.
@@ -241,6 +240,9 @@ def _cascade_worker(ground_truth, shortlist_size):
     collection = client.get_or_create_collection(embed_index.collection_name())
     reranker = CrossEncoder(RERANK_MODEL)
 
+    from sentence_transformers import SentenceTransformer
+    dense_model = SentenceTransformer(embed_index.config.EMBEDDING_MODEL)
+
     ranked_by_query = {}
     for row in ground_truth:
         key = (row["chapter"], row["line"], row["citekey"])
@@ -248,8 +250,6 @@ def _cascade_worker(ground_truth, shortlist_size):
         shortlist = sorted(all_citekeys,
                            key=lambda c: -cosine(query_vector, paper_vectors[c]))[:shortlist_size]
 
-        from sentence_transformers import SentenceTransformer
-        dense_model = SentenceTransformer(embed_index.config.EMBEDDING_MODEL)
         query_embedding = dense_model.encode([row["query"]], show_progress_bar=False).tolist()
         raw = collection.query(query_embeddings=query_embedding, n_results=K_POOL,
                                where={"citekey": {"$in": shortlist}})
@@ -329,7 +329,7 @@ def main(argv=None):
         rows += [dense, rerank]
     rows.append(specter2_row(ground_truth))
 
-    dense_rerank_rows = rows[2::2]  # every "dense+rerank: ..." row, in DENSE_MODELS order
+    dense_rerank_rows = [r for r in rows if r["row"].startswith("dense+rerank: ")]
     winner = max(dense_rerank_rows, key=lambda r: r[f"ndcg@{K_REPORT}"] or 0.0)
     winning_model = winner["row"].removeprefix("dense+rerank: ")
     rows.append(cascade_row(winning_model, ground_truth, args.tag))

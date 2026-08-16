@@ -2046,7 +2046,14 @@ sample paid the same full-corpus pass this real 48-query run would have
 otherwise paid. Reusing both caches is the caching design's intended
 job, not a shortcut taken for this write-up -- but it does mean this
 run's wall clock **excludes** the cost a first-ever run on a fresh host
-would pay for both.
+would pay for both. The SPECTER2 cache carries a real limitation worth
+flagging here, too: `embed_paper()` keys it by citekey alone -- no model
+id, adapter name, or text hash, unlike `build_index()`'s own
+`text_hash`-keyed cache -- so it will keep serving a stale vector after
+a re-parse or corpus re-sync changes a paper's title or recovered
+abstract. A future reader relying on cache reuse should delete
+`bench/results/specter2_paper_cache.json` by hand after either event,
+not assume it is safe to keep.
 
 Measured wall clock, `time`'d end to end:
 
@@ -2064,7 +2071,7 @@ subprocess's output-file mtime: roughly 2m14s for `all-MiniLM-L6-v2`,
 (each leg runs 48 queries through that model's own Chroma collection,
 then reranks the pooled 50 hits with `cross-encoder/ms-marco-MiniLM-L6-v2`),
 and the remaining ~2m40s split between the corpus-restricted SPECTER2
-standalone row (fast -- its 48-citekey pool's vectors were already
+standalone row (fast -- its 41-citekey pool's vectors were already
 cached) and the cascade leg (48 SPECTER2-shortlisted Chroma queries, each
 reranked the same way).
 
@@ -2089,19 +2096,25 @@ All nine rows scored all 48 of 48 ground-truth queries -- `n_missing` is
 0 throughout `comparison.json`; no row's average is over a partial
 population.
 
-**Three different candidate-pool sizes sit under the same table
-columns, and the smaller two are not directly comparable to the
-642-paper row.** BM25 and the three dense-only/dense+rerank rows rank
-over this corpus's full 642 papers / 40,741 chunks (BM25 via
-`src/retrieval.py`'s corpus-wide index; the dense rows via the full
-Chroma collections). `specter2_row()` (Task 4's own documented,
-deliberate simplification) ranks only the ground truth's own 48-citekey
-set -- roughly 13x fewer candidate papers, trivially easier to find the
-right answer in by construction. **The cascade is narrower still**:
-`_cascade_worker()` restricts its Chroma query to
+**Four different candidate-pool sizes sit under the same table columns,
+and only BM25 ranks over the whole ledger.** BM25 ranks over all 642
+ledger entries (`src/retrieval.py`'s corpus-wide index indexes every
+item's title whether or not it has parsed text -- see
+`embed_index.search()`'s own docstring: a bib entry whose PDF is missing
+or failed to parse is searchable by title there even though it never
+entered a Chroma collection). The three dense-only/dense+rerank rows
+rank over the 40,741 chunks in the full Chroma collections, but those
+chunks span only **497** distinct citekeys, not 642 -- the other 145
+ledger entries have no parsed text to embed, so they were never
+chunked. `specter2_row()` (Task 4's own documented, deliberate
+simplification) ranks only the ground truth's own 41-citekey set (the
+48 rows share some citekeys) -- roughly 12x fewer candidate papers than
+the dense rows' 497, roughly 15.7x fewer than BM25's 642, trivially
+easier to find the right answer in by construction. **The cascade is
+narrower still**: `_cascade_worker()` restricts its Chroma query to
 `where={"citekey": {"$in": shortlist}}`, so it searches at most the 50
 papers SPECTER2's own shortlist selected -- a pool the same order of
-size as SPECTER2 standalone's, not the 642-paper pool the plain
+size as SPECTER2 standalone's, not the 497-citekey pool the plain
 dense/rerank rows see. That SPECTER2 standalone still loses to every
 corpus-wide row despite its much smaller haystack is, if anything, a
 stronger statement about it than the raw number alone conveys -- and
@@ -2145,12 +2158,24 @@ rather than asserting it.
 
 **SPECTER2 standalone underperforms every dense drop-in** -- nDCG 0.4132,
 below even the weakest dense-*only* row (`all-MiniLM-L6-v2` at 0.4407),
-despite ranking over a pool of roughly 13x fewer candidate papers (see
-the comparability note above). This is the mismatch
+despite ranking over a pool of roughly 12x fewer candidate papers than
+the dense rows' 497 (15.7x fewer than BM25's 642 -- see the
+comparability note above). This is the mismatch
 [docs/CONFIG.md](../docs/CONFIG.md)'s "Not without a code change first"
 section already names: SPECTER2 answers "which papers are alike", not
-"which chunk answers this query", and this run is the first real
-evidence for that claim rather than a model-card-derived expectation.
+"which chunk answers this query". But this run cannot cleanly isolate
+that mechanism from a second, real confound it does not control for:
+per the committed SPECTER2 paper cache
+(`bench/results/specter2_paper_cache.json`), 510 of the 642 cached
+papers (79%) were encoded title-only -- `abstract_for()` found no
+"Abstract" section for them -- and within the 41-paper gold pool this
+row actually ranks, 31 of 41 (76%) were likewise title-only. A model
+whose document side is mostly a bare title cannot be expected to
+distinguish "which chunk answers this query" even in principle, so this
+run is real evidence that SPECTER2 underperforms on this corpus, not
+clean evidence for *why*: the model-card mismatch and the title-only
+coverage gap are both live explanations, and nothing here separates
+them.
 
 **The cascade underperforms its own base model, and is the single
 worst-scoring row in the table.** `multi-qa-mpnet-base-dot-v1`'s own
@@ -2161,10 +2186,17 @@ own 0.4132. The mechanism is a hard pre-filter: when the correct paper
 does not land in SPECTER2's own top-50 for a query, no amount of
 downstream Chroma search or cross-encoder reranking can recover it --
 the answer was removed from contention before the winning model ever
-saw it. "Cascading models" is the option #194 explicitly asked this
-benchmark to allow for; measured here, it does not help. This is a real
-negative result, not a tuning miss to soften: the shortlist stage's
-false negatives cost more than its shortlisting saves.
+saw it. Part of that pre-filter's cost is structural, not purely a
+question of SPECTER2's ranking quality: `_cascade_worker()` builds its
+shortlist by ranking all 642 ledger citekeys, but 145 of those have zero
+chunks in any Chroma collection (no parsed text to embed), so on
+average, in expectation, roughly 11 of every 50-paper shortlist are
+papers the dense/rerank stage could return nothing for regardless of
+how SPECTER2 ranked them. "Cascading models" is the option #194
+explicitly asked this benchmark to allow for; measured here, it does
+not help. This is a real negative result, not a tuning miss to soften:
+the shortlist stage's false negatives cost more than its shortlisting
+saves.
 
 **No change to `docs/CONFIG.md` follows from this run.** The brief
 scoped a `docs/CONFIG.md` edit to whether SPECTER2's numbers are "worth
@@ -2202,6 +2234,11 @@ by measurement rather than revising it.
   vocabulary-diverse corpus -- the exact axis
   [docs/RETRIEVAL.md](../docs/RETRIEVAL.md) names as where embeddings
   earn their cost -- is not tested here.
+- **A `BM25 + rerank` row.** No such row exists here -- not a scope
+  deviation, the plan never asked for one -- but BM25 is the winning row
+  and reranking measurably helps two of the three dense models, so
+  whether reranking BM25's own top-K would beat everything in this table
+  is a real, untested combination.
 - **Precision beyond recall@5/nDCG@5.** Every row is scored only against
   whether the *known-cited* paper appears in the top 5; no row is
   checked for whether its other top-5 hits would have been reasonable

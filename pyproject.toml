@@ -50,9 +50,12 @@ bibtexparser = ">=1.4,<2.0"
 # drag transformers with it again. The 2026-07-30 functional
 # verification above predates this and was against transformers 5.x;
 # `tests/` (docling/chromadb/bertopic/sentence-transformers modules, 211
-# tests) was re-run against 4.57.6 the same day and passed, but that is
-# the unit-test suite, not the corpus-level functional check the
-# paragraph above describes -- re-verify that too before relying on it.
+# tests) was re-run against 4.57.6 the same day and passed. The
+# corpus-level functional check the paragraph above describes was also
+# re-run, separately from the unit suite: sentence-transformers (real
+# encode), chromadb (real embed+search), bertopic (real fit) and docling
+# (real parse of a real corpus PDF) were each exercised for real against
+# transformers 4.57.6 on 2026-08-16 and all four passed.
 #
 # torch itself is NOT listed here -- it's a transitive dependency (pulled
 # in by sentence-transformers/docling/accelerate), and

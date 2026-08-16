@@ -9,8 +9,13 @@ The abstract has no home in the ledger -- src/ledger.py's
 _BIB_FIELDS_KEPT drops it on purpose. abstract_for() recovers it from
 content/docling/<citekey>.passages.json instead: the text between an
 "Abstract" section_header and the next one. Measured on this host: 132
-of 497 sidecars (27%) carry that header. The other 73% fall back to
-title-only, SPECTER2's own documented behaviour for a missing abstract.
+of the 497 citekeys with a docling sidecar (27%) carry that header --
+but that 497 is the parsed-text subset, not the 642-citekey ledger this
+benchmark's own run ranks SPECTER2 over (the other 145 have no PDF text
+and so no sidecar to look in). Against the full 642, the same 132 is
+132/642 = 21%; quote whichever population matches the claim being made,
+not the other one. The rest fall back to title-only, SPECTER2's own
+documented behaviour for a missing abstract.
 """
 
 import json
@@ -79,7 +84,15 @@ def embed_paper(citekeys):
     citekey, since a synced corpus's title+abstract text does not change
     between benchmark runs -- re-encoding all ~501 papers on every row
     that needs SPECTER2 would pay the same cost three times over for no
-    reason."""
+    reason.
+
+    The cache has no invalidation key: unlike src/enrich/embed_index.py's
+    build_index(), which keys its own cache by a per-chunk text_hash
+    specifically to avoid this, PAPER_CACHE_PATH is keyed by citekey
+    alone -- no model id, adapter name, or text hash. It will keep
+    serving a stale vector after a re-parse or corpus re-sync changes a
+    paper's title or recovered abstract. Delete PAPER_CACHE_PATH by hand
+    when that happens; this script does not detect it for you."""
     con = ledger.connect()
     cache = (json.loads(PAPER_CACHE_PATH.read_text(encoding="utf-8"))
              if PAPER_CACHE_PATH.exists() else {})
