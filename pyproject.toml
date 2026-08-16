@@ -42,6 +42,18 @@ bibtexparser = ">=1.4,<2.0"
 # after any `poetry lock` re-resolution rather than assuming this note
 # still describes what's actually pinned.
 #
+# 2026-08-16: adding `adapters` below re-resolved this lock and pulled
+# transformers down from 5.x (5.8.1/5.14.1, split by platform marker) to
+# a single 4.57.6 everywhere, and huggingface-hub from 1.26.0 to 0.36.2
+# to match -- adapters 1.3.0 pins `transformers = ">=4.57.6,<4.58.0"`, a
+# single-patch-version window, so any future adapters bump will likely
+# drag transformers with it again. The 2026-07-30 functional
+# verification above predates this and was against transformers 5.x;
+# `tests/` (docling/chromadb/bertopic/sentence-transformers modules, 211
+# tests) was re-run against 4.57.6 the same day and passed, but that is
+# the unit-test suite, not the corpus-level functional check the
+# paragraph above describes -- re-verify that too before relying on it.
+#
 # torch itself is NOT listed here -- it's a transitive dependency (pulled
 # in by sentence-transformers/docling/accelerate), and
 # scripts/install_full_pipeline.sh's ensure_gpu_torch deliberately
@@ -59,6 +71,17 @@ sentence-transformers = ">=5.6,<6.0"
 chromadb = ">=1.5,<2.0"
 bertopic = ">=0.17,<0.18"
 docling = ">=2.115,<3.0"
+
+# adapters is SPECTER2-only -- allenai/specter2_base loads its
+# task-specific adapter weights (proximity/classification/etc.) through
+# this library, not through sentence-transformers/transformers alone.
+# Added for issue #194's Arm B (retrieval/reranking benchmark); not
+# imported by anything else in src/enrich, so if SPECTER2 is ever
+# dropped from that arm this is the line to remove with it. Resolved to
+# 1.3.0 and import-verified (`from adapters import AutoAdapterModel`) in
+# .venv-full on 2026-08-16 -- see the note above this dependency block
+# about the transformers downgrade this pin forces.
+adapters = ">=1.2,<2.0"
 
 # Optional group (`poetry install --with dev`): pytest/pytest-cov are
 # dev-time tooling, not needed to run the pipeline itself -- but the test
