@@ -34,6 +34,7 @@ if it is obvious which is which, so:
 | [2026-08-15b: the recall question, asked by reading](#2026-08-15b-the-recall-question-asked-by-reading----how-much-organic-paraphrase-does-each-tier-see) | **Current** | The only recall measurement here, and the one #134's plan assumed existed: 48 claims judged by reading each against the source it cites. 22 are close paraphrase; tier 3 is the only tier firing on 8 of them, against skip-gram's 2-of-59 measured the same way before tier 3 existed. Re-derives, by a committed script, what the 2026-08-14 session produced and did not commit |
 | [2026-08-16: which drop-in embedding model does tier-3 overlap detection see the most with?](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with) | **Current** | The first cross-model comparison. All three candidates catch all four graded-ladder rungs; organic recall over the same 22 close-paraphrase pairs ranges 11/22-13/22, with `all-mpnet-base-v2` (the shipped `config.toml.example` default) ahead by 2 pairs at a middling finding-volume cost. Not a precision measurement -- see its own "what this does not measure" |
 | [2026-08-16: retrieval and reranking, against real drafting judgments](#2026-08-16-retrieval-and-reranking-against-real-drafting-judgments) | **Current** | Arm B of #194. A different question than the section above: not "which embedding model does tier 3 agree with most", but "which retrieval configuration finds the citekey a real drafting session cited", scored against 48 real (query, citekey) pairs. **BM25 outright wins** every row here, dense+rerank and the SPECTER2 cascade included |
+| [2026-08-16: retrieval quality against what a drafting session actually logged](#2026-08-16-retrieval-quality-against-what-a-drafting-session-actually-logged) | **Current** | Same nine rows as the section above, a different ground truth: 96 real `search`-mode queries logged live by `retrieval.md` across all 15 chapters, scored against each chapter's real kept-citekey set rather than a reconstructed single-citekey pair. **BM25 still wins on nDCG@5**, but SPECTER2 standalone has the best recall@5 here, and reranking is not uniformly helpful -- it actively hurts `all-MiniLM-L6-v2`. Its nDCG numbers are **not comparable in magnitude** to the section above's -- see the section's own methodological note before quoting one against the other |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -2272,3 +2273,169 @@ cache yet, should budget for Arm A's whole-corpus dense-embed cost
 *and* one whole-corpus SPECTER2 `embed_paper()` pass on top of the
 9m51.879s measured here -- this run paid neither, because both were
 already built by earlier tasks in this same plan.
+
+## 2026-08-16: retrieval quality against what a drafting session actually logged
+
+The section above answers "which retrieval configuration finds the
+citekey a real drafting session cited" from ground truth *reconstructed*
+after the fact -- a claim's text re-extracted from the restored book,
+joined back onto a committed judgment. This section asks the same
+question a different way: from what `src.retrieval`/`embed_index`
+actually *logged* while the session ran, no reconstruction, no
+book-restore-and-rejoin risk. Same nine rows, same scoring
+(`bench_retrieval_live_logs.py` imports `recall_at_k`/`ndcg_at_k`/
+`collapse_to_citekeys`/`_venv_python` from `bench_retrieval_compare.py`
+rather than reimplementing them), a different ground truth shape.
+
+### The ground truth, and why it is coarser than the section above
+
+Every restored chapter's `retrieval.md` logs the query text, the mode
+(`search`/`evidence`), and how much the call asked for and got back --
+never which citekeys a call returned. So there is no per-query
+`(query, citekey)` pair available from these logs the way there was from
+`bench_paraphrase_hunt.py`'s citation-claim extraction. What is
+available: 96 real `search`-mode queries (`evidence`-mode excluded --
+that mode fetches supporting text for a citekey the session already
+chose, a different intent than "find the right paper"), each paired with
+its *whole chapter's* real kept-citekey set from `evidence.md` -- 15 to
+45 citekeys per chapter, median 26.
+
+`evidence.md` turned out to use two different prose formats across this
+book's 15 chapters -- a `| Citekey | Used for | Supporting content |`
+table in 8, `## `citekey`` headings in the other 7 (an artefact of which
+chitragupta version drafted which chapter; `docs/DRAFT-ITERATION.md`
+documents the current heading convention, which only half the book
+predates). Matching either structure directly is fragile against a third
+format nobody has seen yet. Matching "a real citekey inside backticks,
+validated against the live ledger" is not: every citekey in both formats
+is backtick-quoted, and cross-checking each backtick token against
+`content/ledger.sqlite`'s 642 real citekeys discards anything else that
+happens to be backtick-quoted in the surrounding prose (a handful of
+tokens per chapter, per a live count -- see `self_check()`'s own
+assertion against chapter 9, independently reproducible).
+
+### The comparison table
+
+| row | recall@5 | nDCG@5 |
+|---|---|---|
+| BM25 (`src/retrieval.py`) | 0.8542 | **0.4707** |
+| dense-only: `all-MiniLM-L6-v2` | 0.8125 | 0.3499 |
+| dense+rerank: `all-MiniLM-L6-v2` | 0.7292 | 0.3132 |
+| dense-only: `all-mpnet-base-v2` | 0.8125 | 0.3286 |
+| dense+rerank: `all-mpnet-base-v2` | 0.8021 | 0.3357 |
+| dense-only: `multi-qa-mpnet-base-dot-v1` | 0.6458 | 0.2818 |
+| dense+rerank: `multi-qa-mpnet-base-dot-v1` | 0.6979 | 0.2982 |
+| SPECTER2 (adhoc_query + proximity) | **0.8854** | 0.3411 |
+| cascade: SPECTER2 shortlist(50) -> `all-mpnet-base-v2` +rerank | 0.8125 | 0.3235 |
+
+All nine rows scored all 96 of 96 real queries -- `n_missing` is 0
+throughout `bench/results/2026-08-16-retrieval-live-logs/comparison.json`.
+The cascade's winning dense+rerank model this run is `all-mpnet-base-v2`
+(nDCG 0.3357, the best of the three) -- **not**
+`multi-qa-mpnet-base-dot-v1`, the winner in the section above. The two
+ground truths do not agree on which drop-in model reranking helps most,
+which the next section reads as a real finding, not noise to average
+away.
+
+### Why these nDCG numbers are not comparable to the section above's
+
+**This is the one number in this section a reader must not carry across
+sections.** `ndcg_at_k`'s ideal (`IDCG`) is `min(len(relevant), k)` --
+the best score the top `k` results could possibly earn. The section
+above's ground truth has exactly one relevant citekey per query, so
+`IDCG = 1` always: the ideal top-5 is "the right paper, ranked first,
+anything after it." This section's relevant sets run 15-45 citekeys, so
+`min(len(relevant), 5) = 5` for every one of the 96 queries: the ideal
+top-5 here is "five *different* relevant citekeys, all correctly
+predicted" -- a structurally harder bar, at the same `k`. An nDCG of
+0.47 here and 0.66 there are not "worse" and "better" versions of the
+same measurement; they come from different IDCG denominators by
+construction. **Only rankings within this table's own nine rows are
+meaningful**, not a cross-section comparison of the raw numbers.
+
+recall@5 is comparable in *direction* but not in *difficulty*: with 15-45
+relevant citekeys instead of 1, hitting *something* in top-5 is
+mechanically easier here, which is most of why every row's recall@5 is
+higher in this table than in the section above's.
+
+### What this measures, stated plainly
+
+**BM25 still wins on nDCG@5** (0.4707, ahead of every other row), the
+same qualitative finding as the section above, now checked against a
+second, independently-constructed ground truth rather than resting on
+one. That agreement is worth more than either number alone: two
+different ways of asking "does BM25 find what a real session needed"
+reach the same answer.
+
+**SPECTER2 standalone has the best recall@5 (0.8854), and this reads
+differently than the section above's SPECTER2 result.** There, SPECTER2
+underperformed every dense drop-in. Here, at chapter-level relevance
+with 15-45 correct answers per query, SPECTER2's paper-level
+whole-document similarity is a good match for "is this chapter's general
+topic represented among the top-5" -- exactly the granularity a
+paper-to-paper model is built for, and exactly the granularity this
+ground truth's coarseness rewards. Its nDCG@5 (0.3411) is still below
+BM25's, so it is not finding the *right* paper first any better than
+that -- it is finding *a* topically-relevant paper more reliably. The
+two sections' SPECTER2 results are not in tension; they are answering
+"is this a good match for this corpus's retrieval, at chunk granularity"
+(no) and "is this a good match at chapter-topic granularity" (better
+than expected) with the same model, honestly.
+
+**Reranking is not uniformly helpful, and for one model it actively
+hurts.** `all-MiniLM-L6-v2`'s dense+rerank row scores *worse* than
+dense-only on both metrics (recall 0.8125 -> 0.7292, nDCG 0.3499 ->
+0.3132) -- the cross-encoder's re-ordering of the pooled 50 hits made
+this ground truth's outcome worse, not better, for this model.
+`all-mpnet-base-v2` gains modestly (nDCG 0.3286 -> 0.3357); `multi-qa-
+mpnet-base-dot-v1` gains more (0.2818 -> 0.2982) but stays the weakest
+dense row either way. The section above found reranking "close to a wash"
+for MiniLM and a real gain for the other two; this section finds an
+actual regression for MiniLM. Read together: reranking's value is not a
+fixed property of a model, it depends on what the first-pass pool
+already contained for a *particular* query set, and a caller cannot
+assume a cross-encoder is a free win without checking on their own
+queries.
+
+**The cascade is unremarkable here**, unlike the section above's
+sharpest finding. At 0.8125/0.3235 it sits within the pack of dense rows
+rather than being the single worst row -- the hard-pre-filter mechanism
+the section above identified (a correct paper missing SPECTER2's top-50
+costs more than the shortlist saves) still applies, but a 15-45-citekey
+relevant set is far more forgiving of losing any *one* correct paper to
+the pre-filter than a single-citekey relevant set is. This does not
+contradict the section above; it is the same mechanism, diluted by a
+coarser ground truth that has room to absorb it.
+
+### What this does not measure
+
+- **Per-query relevance finer than "this chapter's whole kept-citekey
+  set."** `retrieval.md` genuinely does not log which citekeys a call
+  returned, so there is no way to check, from these logs alone, whether
+  a specific query's top-5 contained the citekey that query's own call
+  was actually *for* -- only whether it contained something the chapter
+  eventually kept. A finer signal would need instrumenting `log_retrieval`
+  to record result citekeys going forward; nothing here does that
+  retroactively.
+- **`evidence`-mode queries.** Excluded by design (see above) -- a
+  second, smaller comparison scoring those against the same chapter-level
+  ground truth is possible from the same restored data and was not run.
+- **A recommendation to change `EMBEDDING_MODEL`'s default, or to
+  restructure `evidence.md`'s two coexisting formats.** Neither follows
+  from this measurement.
+- **A second corpus, or a second book.** Same limitation as every section
+  above it.
+
+### Reproducing
+
+```bash
+.venv-full/bin/python bench/bench_retrieval_live_logs.py \
+    --tag <date>-retrieval-live-logs
+```
+
+Needs the restored 15-chapter book (dossiers included -- `evidence.md`/
+`retrieval.md`, not just the drafts) and the same `enrich` group as the
+section above. This run reused all three Chroma collections and the
+SPECTER2 paper-vector cache Arm A and the section above already built;
+a host with neither should budget the same first-run costs documented
+there.
