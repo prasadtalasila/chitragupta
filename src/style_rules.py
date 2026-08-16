@@ -13,11 +13,14 @@ can. Its own module so neither imports the other.
 # en-IN is not an alias for en-GB. British English accepts both -ise and
 # Oxford -ize, so DialectGB cannot flag -ize without reporting correct
 # prose; Indian English prefers -ise, and DialectIN is that one check.
+_DIALECT_GB = "chitragupta.DialectGB"
+_DIALECT_US = "chitragupta.DialectUS"
+_DIALECT_IN = "chitragupta.DialectIN"
+
 DIALECT_RULES = {
-    "en-GB": "chitragupta.DialectGB",
-    "en-US": "chitragupta.DialectUS",
-    "en-IN": ("chitragupta.DialectGB", "chitragupta.DialectIN"),
+    "en-GB": _DIALECT_GB,
+    "en-US": _DIALECT_US,
+    "en-IN": (_DIALECT_GB, _DIALECT_IN),
 }
 
-_ALL_DIALECT_RULES = ("chitragupta.DialectGB", "chitragupta.DialectUS",
-                      "chitragupta.DialectIN")
+_ALL_DIALECT_RULES = (_DIALECT_GB, _DIALECT_US, _DIALECT_IN)

@@ -264,7 +264,7 @@ def main(argv=None):
         except MissingBinary as exc:
             warnings.append(str(exc))
             break  # the binary will not appear between two drafts
-        except (FileNotFoundError, OSError) as exc:
+        except OSError as exc:
             warnings.append(f"{draft}: {exc}")
     if args.json:
         print(json.dumps({"notice": "Review aid, not a gate.",

@@ -2290,6 +2290,9 @@ def _cmd_acronyms_suggest(args) -> int:
     return 0
 
 
+_DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m src.draft dossier",
@@ -2300,7 +2303,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_init = sub.add_parser("init", help="Create a dossier skeleton for a draft")
-    p_init.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_init.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_init.add_argument("--genre", required=True,
                         help="survey, thesis-chapter, textbook-chapter, tutorial, deep-research")
     p_init.set_defaults(func=_cmd_init)
@@ -2317,7 +2320,7 @@ def main(argv: list[str] | None = None) -> int:
     p_mark_revision = sub.add_parser(
         "mark-revision",
         help="Record a revision-session boundary, so retrieval cost totals per revision")
-    p_mark_revision.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_mark_revision.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_mark_revision.add_argument(
         "--label", default="",
         help="Short name for this revision (the date is already recorded)")
@@ -2349,7 +2352,7 @@ def main(argv: list[str] | None = None) -> int:
         "set-language",
         help="Record the draft's dialect, so `src.draft style` can check it",
     )
-    p_set_language.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_set_language.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_set_language.add_argument("language", help="a BCP-47 tag: en-GB, en-US, en-IN")
     p_set_language.set_defaults(func=_cmd_set_language)
 
@@ -2357,7 +2360,7 @@ def main(argv: list[str] | None = None) -> int:
         "acronyms-suggest",
         help="Acronyms this draft's glossary defines that aren't in your vocabulary yet",
     )
-    p_suggest.add_argument("draft", help="Path to the draft under content/drafts/")
+    p_suggest.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_suggest.set_defaults(func=_cmd_acronyms_suggest)
 
     p_list = sub.add_parser("list", help="Every dossier on this machine")
