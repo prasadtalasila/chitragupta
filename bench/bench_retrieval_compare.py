@@ -211,6 +211,81 @@ def specter2_row(ground_truth):
     return {"row": "SPECTER2 (adhoc_query + proximity)", **score_rows(ranked_by_query, ground_truth)}
 
 
+def _cascade_worker(ground_truth, shortlist_size):
+    """Runs inside a subprocess with EMBEDDING_MODEL set to whichever
+    drop-in model won Task 4's dense+rerank rows. For each query: SPECTER2
+    (adhoc_query) ranks the corpus's papers, the top `shortlist_size`
+    become a Chroma `where` filter, and the winning model's own
+    collection is queried restricted to that shortlist -- so the cascade
+    only ever reranks chunks from papers SPECTER2 already thought were
+    close, rather than the whole corpus."""
+    import embed_models as em
+    from sentence_transformers import CrossEncoder
+    from src.enrich import embed_index
+
+    con_citekeys = sorted({row["citekey"] for row in ground_truth})
+    # A corpus-wide SPECTER2 shortlist needs the whole ledger, not just
+    # this ground truth's own citekeys -- otherwise every shortlist is
+    # trivially exactly right by construction.
+    from src import ledger
+    all_citekeys = [r[0] for r in ledger.connect().execute("SELECT citekey FROM items")]
+    paper_vectors = em.embed_paper(all_citekeys)
+
+    def cosine(a, b):
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = sum(x * x for x in a) ** 0.5
+        norm_b = sum(y * y for y in b) ** 0.5
+        return dot / (norm_a * norm_b) if norm_a and norm_b else 0.0
+
+    client, _model = embed_index.get_client_and_model()
+    collection = client.get_or_create_collection(embed_index.collection_name())
+    reranker = CrossEncoder(RERANK_MODEL)
+
+    ranked_by_query = {}
+    for row in ground_truth:
+        key = (row["chapter"], row["line"], row["citekey"])
+        query_vector = em.embed_query(row["query"])
+        shortlist = sorted(all_citekeys,
+                           key=lambda c: -cosine(query_vector, paper_vectors[c]))[:shortlist_size]
+
+        from sentence_transformers import SentenceTransformer
+        dense_model = SentenceTransformer(embed_index.config.EMBEDDING_MODEL)
+        query_embedding = dense_model.encode([row["query"]], show_progress_bar=False).tolist()
+        raw = collection.query(query_embeddings=query_embedding, n_results=K_POOL,
+                               where={"citekey": {"$in": shortlist}})
+        hits = [{**meta, "snippet": doc[:500]}
+               for doc, meta in zip(raw["documents"][0], raw["metadatas"][0])]
+        if not hits:
+            ranked_by_query[key] = []
+            continue
+        scores = reranker.predict([(row["query"], hit["snippet"]) for hit in hits])
+        reranked_hits = [hit for _score, hit in
+                         sorted(zip(scores, hits), key=lambda pair: -pair[0])]
+        ranked_by_query[key] = collapse_to_citekeys(reranked_hits)[:K_REPORT]
+    return ranked_by_query
+
+
+def cascade_row(winning_model, ground_truth, tag, shortlist_size=50):
+    env = dict(os.environ, EMBEDDING_MODEL=winning_model)
+    payload_path = BENCH_DIR / "results" / tag / "_cascade_worker.json"
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        [_venv_python(), str(Path(__file__)), "--cascade-worker", winning_model,
+         "--ground-truth-inline", "-", "--out", str(payload_path),
+         "--shortlist-size", str(shortlist_size)],
+        input=json.dumps(ground_truth), env=env, cwd=str(REPO),
+        capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        print(result.stdout, file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        raise RuntimeError(f"cascade worker exited {result.returncode}")
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    ranked_by_query = {tuple(k): v for k, v in payload["ranked"]}
+    return {"row": f"cascade: SPECTER2 shortlist({shortlist_size}) -> {winning_model} +rerank",
+           **score_rows(ranked_by_query, ground_truth)}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--ground-truth", help="path to a ground_truth.json from Task 1")
@@ -219,6 +294,8 @@ def main(argv=None):
                     help=argparse.SUPPRESS)  # internal: subprocess-only
     ap.add_argument("--ground-truth-inline", default=None, help=argparse.SUPPRESS)
     ap.add_argument("--out", default=None, help=argparse.SUPPRESS)
+    ap.add_argument("--cascade-worker", default=None, metavar="MODEL", help=argparse.SUPPRESS)
+    ap.add_argument("--shortlist-size", type=int, default=50, help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
 
     self_check()
@@ -232,6 +309,14 @@ def main(argv=None):
         }), encoding="utf-8")
         return 0
 
+    if args.cascade_worker:
+        ground_truth = json.loads(sys.stdin.read() if args.ground_truth_inline == "-"
+                                  else Path(args.ground_truth_inline).read_text(encoding="utf-8"))
+        ranked_by_query = _cascade_worker(ground_truth, args.shortlist_size)
+        Path(args.out).write_text(
+            json.dumps({"ranked": list(ranked_by_query.items())}), encoding="utf-8")
+        return 0
+
     if not args.ground_truth or not args.tag:
         print("--ground-truth and --tag are required outside --dense-worker mode",
               file=sys.stderr)
@@ -243,6 +328,11 @@ def main(argv=None):
         dense, rerank = dense_and_rerank_rows(model, ground_truth, args.tag)
         rows += [dense, rerank]
     rows.append(specter2_row(ground_truth))
+
+    dense_rerank_rows = rows[2::2]  # every "dense+rerank: ..." row, in DENSE_MODELS order
+    winner = max(dense_rerank_rows, key=lambda r: r[f"ndcg@{K_REPORT}"] or 0.0)
+    winning_model = winner["row"].removeprefix("dense+rerank: ")
+    rows.append(cascade_row(winning_model, ground_truth, args.tag))
 
     print(f"\n{'row':45}  {'n':>3}  recall@{K_REPORT}  ndcg@{K_REPORT}")
     for row in rows:
