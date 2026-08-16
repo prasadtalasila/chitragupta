@@ -1,0 +1,338 @@
+[
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 32,
+  "citekey": "ferko_standardisation_2023",
+  "query": "Adoption of ISO 23247, the manufacturing twin reference architecture, is \"still in its embryonic stages\", and \"we are far from being able to properly measure the compliance of existing digital twin architectures\" with it.",
+  "judgment": "quoted"
+ },
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 35,
+  "citekey": "mattila_interoperability_2025",
+  "query": "Existing digital-twin description formats \"present information in an incompatible way, hindering interoperability between different Digital Twins\".",
+  "judgment": "quoted"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 173,
+  "citekey": "kritzinger_digital_2018",
+  "query": "> **Digital twin (DT).** The data flows are automated in *both* directions. > The physical object changes the digital object, and the digital object > changes the physical object.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "07-should-you-trust-the-twin.md",
+  "line": 464,
+  "citekey": "gomes_calibration_2024",
+  "query": "It > finds values that optimise the model's accuracy about the future evolution > of the modelled system.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 603,
+  "citekey": "esterle_autonomous_2024-1",
+  "query": "It is the difference that gives a twin its ability to support reconfiguration of the physical twin with some degree of autonomy, letting the physical twin respond to changes in its environment.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 362,
+  "citekey": "bottjer_review_2023-1",
+  "query": "The manufacturing standard defines a digital twin as a fit-for-purpose digital representation of an observable manufacturing element, with a means to enable convergence between the element and its representation at an appropriate rate of synchronisation.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 324,
+  "citekey": "fitzgerald_engineering_2024-1",
+  "query": "Data from the physical twin tells the twin what state the physical twin is in; models tell it how the physical twin is expected to behave from that state.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 101,
+  "citekey": "anwer_developing_2025",
+  "query": "Three main classes of approach are consistently reported -- model-based, data-driven, and hybrid.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "08-where-ai-fits.md",
+  "line": 276,
+  "citekey": "stadtmann_diagnostic_2024",
+  "query": "Diagnostic twins for offshore wind do exactly this -- unsupervised learning builds a normal operation model, detects anomalies and provides diagnosis, on an operational floating turbine monitored through measurements.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "15-twins-at-scale.md",
+  "line": 622,
+  "citekey": "combemale_challenges_2025",
+  "query": "A review of digital-twin integration, using a smart city as its worked example, identifies **nine key integration challenges that still need to be addressed** and issues a call to the community to investigate them.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 344,
+  "citekey": "ali_modeling_2024",
+  "query": "The aerospace definition describes a twin as an integrated multi-physics, multi-scale, probabilistic simulation of an as-built vehicle or system, using the best available physical models, sensor updates and fleet history to mirror the life of its flying twin -- an ultra-realistic, high-fidelity conception.",
+  "judgment": "third-party-echo"
+ },
+ {
+  "chapter": "01-why-anyone-pays-for-a-digital-twin.md",
+  "line": 354,
+  "citekey": "alskaif_evolution_2025",
+  "query": "The twin has to track both continuous change such as wear and discontinuous change such as a replaced component.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 169,
+  "citekey": "kritzinger_digital_2018",
+  "query": "A change in the state of the > physical object leads to a change in the state of the digital object -- > but not the other way round.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "08-where-ai-fits.md",
+  "line": 1018,
+  "citekey": "stadtmann_diagnostic_2024",
+  "query": "Diagnostic twins for floating offshore wind do exactly this: unsupervised learning builds a model of normal operation, detects anomalies and supports diagnosis on an operational turbine.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "06-simulators.md",
+  "line": 781,
+  "citekey": "hugues_twinops_2022",
+  "query": "It defines an interface an FMU implements, which a simulation environment calls to instantiate and simulate it, typically in combination with other models.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 182,
+  "citekey": "leirmo_digital_2024",
+  "query": "Another states it as manual exchange in both directions being a model, automatic physical-to-digital without a reaction being a shadow, and bilateral communication being a twin.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 383,
+  "citekey": "vanderhorn_digital_2021",
+  "query": "A generalisation exercise across the published definitions proposes a twin as a virtual representation of a physical system, and its associated environment and processes, that is updated through the exchange of information between the physical and virtual systems.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "06-simulators.md",
+  "line": 778,
+  "citekey": "friedrich_cofmpy_2025",
+  "query": "The **Functional Mock-up Interface (FMI)** is the widely used standard for that: it provides a standardised way to share and co-simulate models packaged as **Functional Mock-up Units (FMUs)**.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "11-twin-services.md",
+  "line": 764,
+  "citekey": "frasheri_advanced_2024",
+  "query": "> A what-if simulation evaluates the behaviour of the physical twin under > different circumstances and hypotheses; where unwanted behaviour is > detected, it lets a human operator or the twin itself compare > interventions and inspect the consequences before applying them, so a more > informed decision can be made.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "15-twins-at-scale.md",
+  "line": 421,
+  "citekey": "kapteyn_probabilistic_2021",
+  "query": "Probabilistic graphical formulations of twin calibration make the same claim from the other direction: a principled, unified calibration and updating process **able to scale to an entire fleet of digital twins**.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "07-should-you-trust-the-twin.md",
+  "line": 109,
+  "citekey": "pinon_fischer_fundamentals_2024",
+  "query": "In the literature this is put as the requirement that a measure of confidence be provided for the *outputs and predictions*, which in turn requires the sources of uncertainty in them to have been identified.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "12-platforms-and-composability.md",
+  "line": 517,
+  "citekey": "van_schalkwyk_achieving_2023",
+  "query": "A composable approach is argued for in twin practice explicitly as the route to scale -- offering re-use of effort, accelerated time to results, general applicability, and enough dynamic range to cover both simple and complex cases across an enterprise.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 309,
+  "citekey": "schweiger_empirical_2019",
+  "query": "An empirical survey of co-simulation practice reports the same finding from the research side: the main needs are modular, stable, valid coupling of simulation units and standard interfaces for it.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 445,
+  "citekey": "parle_comparative_2024",
+  "query": "Platform comparisons note that twins present data as 3D models and interactive dashboards to help stakeholders follow complex processes.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 542,
+  "citekey": "rasheed_digital_2020",
+  "query": "Surrogate and reduced-order models sit at the intersection of high-fidelity physics simulation and data-driven modelling, and they trade some accuracy for much greater computational speed.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 545,
+  "citekey": "kapteyn_toward_2020",
+  "query": "The motivation is that traditional large-scale physics-based models are often intractable in real-time or many-query settings, so time is invested offline to build a cheap approximation that can be used online.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "08-where-ai-fits.md",
+  "line": 279,
+  "citekey": "worden_artificial_2023",
+  "query": "The same pattern is the origin of machine learning in structural health monitoring: features representing normal conditions, then a test for novelty.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 257,
+  "citekey": "bottjer_review_2023-1",
+  "query": "Chapter 2 Sec. 2.5.2 took its definition -- a fit-for-purpose digital representation of an observable manufacturing element, with a means to enable convergence at an appropriate rate of synchronisation.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 530,
+  "citekey": "thelen_comprehensive_2022",
+  "query": "The common realisation adds a physics-informed term to the loss function, which penalises predictions that do not comply with first principles and so constrains training toward physically compliant solutions -- reported as the most common way to build hybrid physics-machine-learning models.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 816,
+  "citekey": "tygesen_state---art_2019",
+  "query": "That is the shape the offshore literature describes as grey-box: physics-based prediction enhanced with machine-learning components where the physics is not fully understood.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "05-just-enough-simulation.md",
+  "line": 103,
+  "citekey": "gomes_sensing_2024",
+  "query": "Studies of twins for cyber-physical systems put this plainly -- the wall-clock time a twin service takes to process a message is a crucial factor, preferably faster than the gap in simulated time between successive messages, and speed may come at the price of accuracy, which is a trade-off to be considered when the system is set up.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 615,
+  "citekey": "lugaresi_digital_2025",
+  "query": "The principle is stated bluntly in the literature: all uses of models, including the trustworthy operation of twins, depend critically on the fact that these models are only used within their validity range.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 425,
+  "citekey": "chae_survey_2023",
+  "query": "**AI quality standards.** Work on AI in cyber-physical systems reports a family of standards under development for evaluating AI system performance and for data quality in machine learning -- covering terms, quality requirements, a measurement process framework.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "11-twin-services.md",
+  "line": 245,
+  "citekey": "bohlbro_visualisation_2024",
+  "query": "**It widens the audience.** Visualisation lets people with a modest system-level understanding use and act on what the twin knows, taking the target group beyond the data engineer to workers in the field with a non-technical background.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "01-why-anyone-pays-for-a-digital-twin.md",
+  "line": 110,
+  "citekey": "pinon_fischer_fundamentals_2024",
+  "query": "The name \"digital twin\" attached later, and NASA's 2010 technology roadmap gave the first detailed definition in the aerospace context.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "06-simulators.md",
+  "line": 798,
+  "citekey": "hugues_twinops_2022",
+  "query": "That is the split, stated in the standard's own terms: an FMU may either have its own solver, or require the simulation environment to perform numerical integration.",
+  "judgment": "third-party-echo"
+ },
+ {
+  "chapter": "07-should-you-trust-the-twin.md",
+  "line": 1212,
+  "citekey": "shao_analysis_2023",
+  "query": "The word for the bundle is **credibility assessment**: verification and validation establish that the twin meets its intended purpose, and uncertainty quantification supplies a measure of performance that users apply as part of that assessment, applied across the twin's whole life cycle rather than once at the end.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "11-twin-services.md",
+  "line": 740,
+  "citekey": "van_dinter_reference_2023",
+  "query": "It has its own systematic literature, its own reference architectures, and its own overviews.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 37,
+  "citekey": "jacoby_open-source_2023",
+  "query": "Open-source implementations of the Asset Administration Shell are **incompatible with one another**.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "14-running-twins-in-production.md",
+  "line": 649,
+  "citekey": "mertens_continuous_2024",
+  "query": "The purpose dimension is sharper still: twins are developed for a specific purpose, and the constant evolution of systems, users' needs and environments demands that the twin adapt -- a family home's twin whose purpose is \"expanded, changed and re-prioritized throughout its ongoing lifecycle\" is the worked case.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "03-anatomy-of-a-twin.md",
+  "line": 483,
+  "citekey": "tao_five-dimension_2019",
+  "query": "The three-dimension model extended to five: physical entity, virtual entity (a set of models), services, twin data, and the connections tying them together.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "05-just-enough-simulation.md",
+  "line": 672,
+  "citekey": "schweiger_empirical_2019",
+  "query": "This is not a solved problem, and the honest evidence is that practitioners find it hard: an empirical survey of co-simulation reports that many experts identified difficulty choosing the right macro step size, defining tolerances, and dealing with numerical stability, and concludes there is a need for frameworks that ease those choices.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "04-just-enough-modeling.md",
+  "line": 496,
+  "citekey": "chen_service_2024",
+  "query": "Reviews of specific domains report the same trend: relying solely on data-driven models for precise prediction is difficult, physics-based modelling is often needed to aid the predictive models, and the result is a rising use of hybrid models.",
+  "judgment": "no-match"
+ },
+ {
+  "chapter": "13-standards-and-open-source.md",
+  "line": 1156,
+  "citekey": "cavalieri_proposal_2023",
+  "query": "*Asset description:* is the specification; on mapping between AAS and OPC UA; and on integration work around it; and on applications.",
+  "judgment": "no"
+ },
+ {
+  "chapter": "15-twins-at-scale.md",
+  "line": 103,
+  "citekey": "martinelli_hierarchical_2024",
+  "query": "Hierarchical composition is a recognised architectural capability rather than an improvisation: the ability to compose two or more digitalised entities into a higher-level entity \"that lives thanks to information flowing from the underlying structures\" is one of the named properties such architectures set out to provide.",
+  "judgment": "quoted"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 443,
+  "citekey": "bohlbro_visualisation_2024",
+  "query": "Visualisation is genuinely valuable -- it lets a user spot features, patterns, trends and relationships that are not apparent in raw data, and can surface issues that a model alone would obscure.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "01-why-anyone-pays-for-a-digital-twin.md",
+  "line": 108,
+  "citekey": "grieves_digital_2017",
+  "query": "The concept traces to a 2002 presentation by Michael Grieves at the University of Michigan, proposing what he then called a *Mirrored Spaces Model* for product lifecycle management: a real space, a virtual space, and a data link between them.",
+  "judgment": "paraphrase"
+ },
+ {
+  "chapter": "02-twin-shadow-model-simulation.md",
+  "line": 179,
+  "citekey": "pfeiffer_towards_2025",
+  "query": "One review describes the twin case as the digital object having an automated data flow back to the physical asset, so that changes on the digital object also entail changes on the asset.",
+  "judgment": "no-match"
+ }
+]
