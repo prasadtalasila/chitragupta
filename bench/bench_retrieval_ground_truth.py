@@ -15,6 +15,16 @@ vs "no-match" vs "no" describes how closely the claim restates the
 source *passage*, which has no bearing on whether the citekey is the
 paper that claim actually cites. It is, in every row.
 
+**This script's own output is not committed either.** `ground_truth.json`'s
+`query` field is the claim text itself -- the same drafted book prose
+`pairs.json` carries and, for the reason given above, never commits. So
+`ground_truth.json` is gitignored (see .gitignore's "no draft/source prose
+in a committed result" entry) alongside `pairs.json`, and every downstream
+task (Task 4 on) regenerates it locally via `build_ground_truth()` rather
+than reading a committed copy. Only `labels.json` -- ids, chapters, lines,
+citekeys, judgments, no claim text -- is committed, same as
+bench_paraphrase_hunt.py's own convention.
+
     .venv-full/bin/python bench/bench_retrieval_ground_truth.py \\
         --drafts content/drafts/books/digital-twins-for-software-engineers \\
         --tag 2026-08-16-retrieval-ground-truth

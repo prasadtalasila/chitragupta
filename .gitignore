@@ -68,6 +68,15 @@ bench/corpus.json
 bench/sample*.json
 bench/par_*/
 
+# Same "no draft/source prose in a committed result" discipline as
+# bench_overlap_embed.py's KEPT_FIELDS: pairs.json (bench_paraphrase_hunt.py)
+# and ground_truth.json (bench_retrieval_ground_truth.py) both carry claim
+# text quoted straight out of the drafted book, so neither is committed --
+# only labels.json (judgments, no claim text) is. Each script's docstring
+# says how to regenerate its file locally.
+bench/results/*/pairs.json
+bench/results/*/ground_truth.json
+
 # config.toml is per-host: every user edits it (parser backend, paths,
 # worker count) and those edits are nobody else's defaults. The tracked
 # file is config.toml.example; src/config.py fails with a copy-this
