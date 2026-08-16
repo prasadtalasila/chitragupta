@@ -1,0 +1,59 @@
+[
+ {
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "grades_caught": {
+   "Verbatim": [
+    "exact"
+   ],
+   "Word substitution": [
+    "embedding"
+   ],
+   "Light paraphrase": [
+    "embedding"
+   ],
+   "Genuine restatement": [
+    "embedding"
+   ]
+  },
+  "embedding_findings": 157,
+  "organic_recall": "11/22"
+ },
+ {
+  "model": "sentence-transformers/all-mpnet-base-v2",
+  "grades_caught": {
+   "Verbatim": [
+    "exact"
+   ],
+   "Word substitution": [
+    "embedding"
+   ],
+   "Light paraphrase": [
+    "embedding"
+   ],
+   "Genuine restatement": [
+    "embedding"
+   ]
+  },
+  "embedding_findings": 162,
+  "organic_recall": "13/22"
+ },
+ {
+  "model": "sentence-transformers/multi-qa-mpnet-base-dot-v1",
+  "grades_caught": {
+   "Verbatim": [
+    "exact"
+   ],
+   "Word substitution": [
+    "embedding"
+   ],
+   "Light paraphrase": [
+    "embedding"
+   ],
+   "Genuine restatement": [
+    "embedding"
+   ]
+  },
+  "embedding_findings": 163,
+  "organic_recall": "11/22"
+ }
+]

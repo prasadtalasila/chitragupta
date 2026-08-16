@@ -1,0 +1,65 @@
+[
+ {
+  "row": "BM25 (src/retrieval.py)",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.7708,
+  "ndcg@5": 0.6641
+ },
+ {
+  "row": "dense-only: sentence-transformers/all-MiniLM-L6-v2",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.5208,
+  "ndcg@5": 0.4407
+ },
+ {
+  "row": "dense+rerank: sentence-transformers/all-MiniLM-L6-v2",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.5208,
+  "ndcg@5": 0.442
+ },
+ {
+  "row": "dense-only: sentence-transformers/all-mpnet-base-v2",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.5417,
+  "ndcg@5": 0.4664
+ },
+ {
+  "row": "dense+rerank: sentence-transformers/all-mpnet-base-v2",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.6042,
+  "ndcg@5": 0.4918
+ },
+ {
+  "row": "dense-only: sentence-transformers/multi-qa-mpnet-base-dot-v1",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.5833,
+  "ndcg@5": 0.4956
+ },
+ {
+  "row": "dense+rerank: sentence-transformers/multi-qa-mpnet-base-dot-v1",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.6458,
+  "ndcg@5": 0.5467
+ },
+ {
+  "row": "SPECTER2 (adhoc_query + proximity)",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.4792,
+  "ndcg@5": 0.4132
+ },
+ {
+  "row": "cascade: SPECTER2 shortlist(50) -> sentence-transformers/multi-qa-mpnet-base-dot-v1 +rerank",
+  "n_queries": 48,
+  "n_missing": 0,
+  "recall@5": 0.4375,
+  "ndcg@5": 0.3912
+ }
+]
