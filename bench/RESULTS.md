@@ -35,6 +35,7 @@ if it is obvious which is which, so:
 | [2026-08-16: which drop-in embedding model does tier-3 overlap detection see the most with?](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with) | **Current** | The first cross-model comparison. All three candidates catch all four graded-ladder rungs; organic recall over the same 22 close-paraphrase pairs ranges 11/22-13/22, with `all-mpnet-base-v2` (the shipped `config.toml.example` default) ahead by 2 pairs at a middling finding-volume cost. Not a precision measurement -- see its own "what this does not measure" |
 | [2026-08-16: retrieval and reranking, against real drafting judgments](#2026-08-16-retrieval-and-reranking-against-real-drafting-judgments) | **Current** | Arm B of #194. A different question than the section above: not "which embedding model does tier 3 agree with most", but "which retrieval configuration finds the citekey a real drafting session cited", scored against 48 real (query, citekey) pairs. **BM25 outright wins** every row here, dense+rerank and the SPECTER2 cascade included |
 | [2026-08-16: retrieval quality against what a drafting session actually logged](#2026-08-16-retrieval-quality-against-what-a-drafting-session-actually-logged) | **Current** | Same nine rows as the section above, a different ground truth: 96 real `search`-mode queries logged live by `retrieval.md` across all 15 chapters, scored against each chapter's real kept-citekey set rather than a reconstructed single-citekey pair. **BM25 still wins on nDCG@5**, but SPECTER2 standalone has the best recall@5 here, and reranking is not uniformly helpful -- it actively hurts `all-MiniLM-L6-v2`. Its nDCG numbers are **not comparable in magnitude** to the section above's -- see the section's own methodological note before quoting one against the other |
+| [2026-08-16: retrieval quality with a ground truth no retrieval method built](#2026-08-16-retrieval-quality-with-a-ground-truth-no-retrieval-method-built) | **Current** | A fairness correction, not a third opinion: the two sections above both score against citekeys a session *kept after BM25 surfaced them* -- a paper dense retrieval found that BM25 never showed a human has no way to score as a hit. This section's ground truth comes from neither: 256 real bib entries' own author-assigned keywords, query = the keywords, correct answer = that entry itself. **BM25 still wins outright** (recall@5 0.80, nDCG@5 0.73, the highest of any row in any of these three sections) -- the strongest evidence yet that the win is real, not an artifact of who built the test. But the SPECTER2 cascade, the worst row in both sections above, is here the **second-best row overall**, beating every standalone dense/rerank row -- read as a property of this section's self-retrieval task favouring paper-level similarity, not a bug fixed in the cascade's own code, which is unchanged from the sections above |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -2439,3 +2440,165 @@ section above. This run reused all three Chroma collections and the
 SPECTER2 paper-vector cache Arm A and the section above already built;
 a host with neither should budget the same first-run costs documented
 there.
+
+## 2026-08-16: retrieval quality with a ground truth no retrieval method built
+
+The two sections above both score against citekeys that reached
+`evidence.md` because a real drafting session's `retrieval.md` shows
+only one retrieval tool in use -- `src.retrieval.search()` (BM25). A
+paper dense retrieval or SPECTER2 would have surfaced but BM25 never
+did was never shown to a human to judge, so it can never be scored as a
+hit in either section above, independent of how good a citation it
+would have been. Discussion #43's own follow-up comment names this
+exactly: *"a retriever that finds what BM25 missed scores no better
+without new judgements."* Both sections above inherited that bias
+uncorrected.
+
+This section sidesteps it rather than correcting for it after the fact.
+The query for each of 256 bib entries is *that entry's own
+author-assigned `keywords` field* (`bibliography.bib`, read via
+`src.bib_reader.read_library()` -- the project's one sanctioned bib
+parser; `keywords` is absent from `content/ledger.sqlite`, dropped by
+the same "per-host noise" exclusion `src/ledger.py` applies to
+`abstract`). The correct answer is the entry itself. No retrieval
+method's search history decided that -- the paper's own author did,
+once, independent of BM25, dense retrieval, SPECTER2, and the cascade
+alike.
+
+### The ground truth
+
+285 of 646 bib entries carry a non-empty `keywords` field. Restricted to
+the 256 that also have parsed text (`parsed_path IS NOT NULL` in the
+ledger): dense retrieval and SPECTER2 structurally cannot find an
+unparsed entry regardless of query quality, so including one would only
+ever penalize those rows for a reason unrelated to what this section
+measures. A real example, unmodified: entry `richstein_characterizing_2024`'s
+query is its own keyword string, `"archetypes, design, digital twin,
+structural health monitoring, structural mechanics, taxonomy,
+lifecycle"`; the correct answer is `richstein_characterizing_2024`
+itself. `self_check()` asserts this exact pair against the real ledger
+before anything expensive runs, and separately asserts a *known
+excluded* entry (`kapteyn_toward_nodate-1` -- has keywords, has no
+parsed text) does not leak into the ground truth, since that filter is
+the one this section's fairness argument rests on.
+
+**One deliberate difference from the two sections above, made for the
+same fairness reason the ground truth itself was chosen for:** this
+section's `specter2_row()` ranks over the *whole* 642-entry ledger, not
+just the ground truth's own citekeys the way the two sections above's
+standalone SPECTER2 row does. `_cascade_worker()`'s shortlist stage was
+already full-corpus in both earlier sections -- unchanged here -- so the
+only thing this fixes is the standalone row's own pool size, to match
+what BM25 and the cascade already search. Every row in this table
+answers "did you find it among everything."
+
+### The comparison table
+
+| row | recall@5 | nDCG@5 |
+|---|---|---|
+| BM25 (`src/retrieval.py`) | **0.8047** | **0.7314** |
+| dense-only: `all-MiniLM-L6-v2` | 0.6367 | 0.5186 |
+| dense+rerank: `all-MiniLM-L6-v2` | 0.6406 | 0.5354 |
+| dense-only: `all-mpnet-base-v2` | 0.6367 | 0.5069 |
+| dense+rerank: `all-mpnet-base-v2` | 0.6641 | 0.5592 |
+| dense-only: `multi-qa-mpnet-base-dot-v1` | 0.3359 | 0.2646 |
+| dense+rerank: `multi-qa-mpnet-base-dot-v1` | 0.4375 | 0.3462 |
+| SPECTER2 (adhoc_query + proximity, full corpus) | 0.5195 | 0.4201 |
+| cascade: SPECTER2 shortlist(50) -> `all-mpnet-base-v2` +rerank | 0.7109 | 0.6037 |
+
+All nine rows scored all 256 of 256 queries -- `n_missing` is 0
+throughout `bench/results/2026-08-16-retrieval-keyword-selfretrieval/comparison.json`.
+The cascade's winning dense+rerank model this run is `all-mpnet-base-v2`
+again (nDCG 0.5592, ahead of the other two), the same winner the live-log
+section found and a different one than the reconstructed-ground-truth
+section's `multi-qa-mpnet-base-dot-v1`.
+
+### What this measures, stated plainly
+
+**BM25 wins outright, and this is the strongest evidence for it of the
+three sections.** recall@5 0.8047 and nDCG@5 0.7314 are both the highest
+of any row in any of the three retrieval-quality sections in this file --
+against a ground truth built with no retrieval method's fingerprints on
+it, at more than twice the sample size of either earlier section (256
+against 48 or 96). Three independently-constructed ground truths --
+reconstructed claims, live session logs, and now author keywords -- all
+find the same winner. That agreement, not any single number, is the
+finding.
+
+**`multi-qa-mpnet-base-dot-v1` is the *worst* dense-only row here**
+(recall 0.3359, nDCG 0.2646), a reversal from the
+reconstructed-ground-truth section, where it was the *best* dense/rerank
+combination. The likely reason is query shape, not corpus coverage: that
+model is trained specifically for short-query-vs-long-passage retrieval
+(`docs/CONFIG.md` names this explicitly), and a comma-joined keyword list
+is neither a short natural question nor a passage -- it is closer to
+what BM25's term-overlap scoring was built for than to anything either
+dense objective was trained against. `all-mpnet-base-v2`, the
+general-purpose model with no retrieval-specific training assumption
+about query shape, is the strongest dense-only row here (0.5069) for
+the same likely reason, read in reverse.
+
+**The SPECTER2 cascade reverses from the worst row in both sections
+above to the second-best row here, and this is the section's most
+surprising result.** At 0.7109/0.6037 it beats every standalone
+dense/rerank row and closes roughly two-thirds of the earlier
+gap to BM25 (recall@5: 0.71 against BM25's 0.80, versus 0.44/0.38 in the
+two sections above). The cascade's own code did not change between
+sections -- `_cascade_worker()`'s shortlist was already full-corpus
+before this section existed. What changed is the task: SPECTER2 is a
+paper-level similarity model, and this section's ground truth is
+literally "find the paper whose own topic these keywords describe" --
+close to the question SPECTER2 was trained to answer, and closer than
+either earlier section's "find the specific passage that supports this
+claim/query" framing. Read together with the section above's finding
+that a hard pre-filter's false negatives can cost more than the
+shortlist saves: that mechanism has not gone away here (SPECTER2
+standalone, at 0.5195/0.4201, is still well below BM25 and below the
+cascade's own base model's reranked score), but the pre-filter is
+choosing from a stronger starting ranking on a task SPECTER2 is
+comparatively good at, so what it excludes costs less than what it
+gets right. **This is a hypothesis, not something this run isolates
+directly** -- nothing here separates "the pre-filter's ranking quality
+improved" from "the base model's own dense/rerank result had more room
+to be helped" as the dominant cause, and both are plausible from the
+numbers alone.
+
+**No change to `docs/CONFIG.md` or `EMBEDDING_MODEL`'s default follows
+from this section either**, for the same reasons the two sections above
+already give.
+
+### What this does not measure
+
+- **Why the cascade reverses here**, beyond the hypothesis above --
+  isolating "better pre-filter ranking" from "more headroom in the base
+  model's score" would need running the cascade at several shortlist
+  sizes and reading where the curve bends, which this run does not do
+  (the section above already names shortlist-size sweeping as untested).
+- **The 285 - 256 = 29 keyword-bearing entries this section drops** for
+  having no parsed text. Their existence is a real, separate finding
+  about the corpus (not every well-catalogued entry has a readable PDF)
+  that this section does not chase further.
+- **Whether `keywords` fields are representative of what a real query
+  looks like.** They are short, comma-joined technical phrases an author
+  or a reference manager assigned -- closer to index terms than to
+  anything a drafting session or a reader would type. That is exactly
+  what makes them a fair, retrieval-method-independent ground truth; it
+  does not make them a realistic query distribution, and this section's
+  numbers should not be read as "how retrieval performs for a typical
+  user", only as "which method finds a paper from its own declared
+  topic terms."
+- **A second corpus, or a second book.** Same limitation as every
+  section above it.
+
+### Reproducing
+
+```bash
+.venv-full/bin/python bench/bench_retrieval_keyword_selfretrieval.py \
+    --tag <date>-retrieval-keyword-selfretrieval
+```
+
+Needs `bibliography.bib` (already required for anything in this
+repository), the synced ledger, and the same `enrich` group and warm
+Chroma/SPECTER2 caches as the two sections above. No book restore
+needed -- this section's ground truth comes entirely from the
+bibliography and the ledger, not from any drafted content.
