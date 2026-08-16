@@ -33,6 +33,7 @@ if it is obvious which is which, so:
 | [2026-08-15: does the embedding tier (#134/#164) catch what neither deterministic tier can?](#2026-08-15-does-the-embedding-tier-134164-catch-what-neither-deterministic-tier-can) | **Partly superseded** | Tier 3's first measurement. Establishes that a *sentence* is the wrong comparison unit in this corpus -- the one hand-verified organic pair scores 0.55 as a sentence against 0.59-0.61 of same-paper noise, and 0.71 windowed -- and that both organic pairs #134 names are reported. Its capability arm is a graded fixture and its two organic pairs are the ones #134 names in prose; its precision arm reports a 162-finding population and **no precision number** -- none of it is labelled. Its severity-mix figure (151 `long`/7 `short`/4 `quoted`) was flagged as stale after #189 changed how `quoted` is computed; the [2026-08-16 section](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with) re-ran the same model and corpus and found 146/7/9 -- that is the current mix |
 | [2026-08-15b: the recall question, asked by reading](#2026-08-15b-the-recall-question-asked-by-reading----how-much-organic-paraphrase-does-each-tier-see) | **Current** | The only recall measurement here, and the one #134's plan assumed existed: 48 claims judged by reading each against the source it cites. 22 are close paraphrase; tier 3 is the only tier firing on 8 of them, against skip-gram's 2-of-59 measured the same way before tier 3 existed. Re-derives, by a committed script, what the 2026-08-14 session produced and did not commit |
 | [2026-08-16: which drop-in embedding model does tier-3 overlap detection see the most with?](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with) | **Current** | The first cross-model comparison. All three candidates catch all four graded-ladder rungs; organic recall over the same 22 close-paraphrase pairs ranges 11/22-13/22, with `all-mpnet-base-v2` (the shipped `config.toml.example` default) ahead by 2 pairs at a middling finding-volume cost. Not a precision measurement -- see its own "what this does not measure" |
+| [2026-08-16: retrieval and reranking, against real drafting judgments](#2026-08-16-retrieval-and-reranking-against-real-drafting-judgments) | **Current** | Arm B of #194. A different question than the section above: not "which embedding model does tier 3 agree with most", but "which retrieval configuration finds the citekey a real drafting session cited", scored against 48 real (query, citekey) pairs. **BM25 outright wins** every row here, dense+rerank and the SPECTER2 cascade included |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -1998,3 +1999,231 @@ ground truth `bench_paraphrase_hunt.py --crosscheck` needs, and is
 committed). Building a Chroma collection for a model that does not
 already have one is the expensive part; budget the time this section
 measured, not the "few minutes" a single fresh embed alone costs.
+
+## 2026-08-16: retrieval and reranking, against real drafting judgments
+
+Arm B of #194, and a different question than the section above. That
+section asked which embedding model tier-3 *overlap detection* agrees
+with most on a graded paraphrase ladder. This one asks which retrieval
+configuration -- bare BM25, a dense drop-in alone, a dense drop-in
+reranked by a cross-encoder, SPECTER2 standalone, or a SPECTER2-shortlist
+cascade -- actually finds the citekey a real drafting session cited, for
+a real query.
+
+### The ground truth
+
+`bench_retrieval_ground_truth.py` (Task 1) recovers 48 real `(query,
+citekey)` pairs by joining `bench_paraphrase_hunt.py`'s committed
+judgments (`bench/results/2026-08-15-organic-paraphrase-hunt/labels.json`)
+back onto claim text freshly re-extracted from the restored 15-chapter
+book -- the query is a real drafted sentence, the citekey is the real
+paper it cites in the book. **All 48 of 48 labelled rows resolved** on
+the `(chapter, line, citekey)` join, with zero unresolved ids. A second,
+independent check went further than the join itself: `labels.json`'s
+carried-over `lexical_support` field was cross-checked against the top
+lexical score re-derived from a second fresh extraction, for all 48 rows
+-- **0 mismatches**, confirming the recovered `query` text is the exact
+text the judgments were made against, not merely a coordinate-matching
+row.
+
+All 48 rows are valid ground truth regardless of judgment -- judgment
+describes how closely the claim restates the cited *passage*, which has
+no bearing on whether the citekey is the paper that claim actually cites
+(it is, in every row). The 48 break down as 22 `paraphrase`, 13
+`no-match`, 8 `no`, 3 `quoted`, 2 `third-party-echo`.
+
+### What ran, and what it cost
+
+Host: as the sections above. All three drop-in models'
+`content/chroma/` collections (40,741 chunks each) already existed --
+built by Arm A's own sweep -- so this run needed no fresh whole-corpus
+dense re-embed. The cascade's full-corpus SPECTER2 proximity-adapter
+cache (one vector per ledger citekey, 642 of 642) was likewise already
+fully populated, by Task 5's own cascade smoke test -- `embed_paper()`
+computes vectors for every citekey it is asked about up front regardless
+of how many ground-truth queries call it, so that smoke test's 3-row
+sample paid the same full-corpus pass this real 48-query run would have
+otherwise paid. Reusing both caches is the caching design's intended
+job, not a shortcut taken for this write-up -- but it does mean this
+run's wall clock **excludes** the cost a first-ever run on a fresh host
+would pay for both.
+
+Measured wall clock, `time`'d end to end:
+
+```bash
+time /workspace/.venv-full/bin/python bench/bench_retrieval_compare.py \
+    --ground-truth bench/results/2026-08-16-retrieval-ground-truth/ground_truth.json \
+    --tag 2026-08-16-retrieval-compare
+```
+
+**9m51.879s** (7m44.845s user, 0m42.657s sys) -- against Arm A's own
+29m10.838s for its three-model sweep, cheaper as expected since nothing
+here paid a from-scratch Chroma build. Read off each dense-worker
+subprocess's output-file mtime: roughly 2m14s for `all-MiniLM-L6-v2`,
+2m22s for `all-mpnet-base-v2`, 2m21s for `multi-qa-mpnet-base-dot-v1`
+(each leg runs 48 queries through that model's own Chroma collection,
+then reranks the pooled 50 hits with `cross-encoder/ms-marco-MiniLM-L6-v2`),
+and the remaining ~2m40s split between the corpus-restricted SPECTER2
+standalone row (fast -- its 48-citekey pool's vectors were already
+cached) and the cascade leg (48 SPECTER2-shortlisted Chroma queries, each
+reranked the same way).
+
+### The comparison table
+
+Printed by `main()`, and written to
+`bench/results/2026-08-16-retrieval-compare/comparison.json`:
+
+| row | n | recall@5 | nDCG@5 |
+|---|---|---|---|
+| BM25 (`src/retrieval.py`) | 48 | **0.7708** | **0.6641** |
+| dense-only: `all-MiniLM-L6-v2` | 48 | 0.5208 | 0.4407 |
+| dense+rerank: `all-MiniLM-L6-v2` | 48 | 0.5208 | 0.4420 |
+| dense-only: `all-mpnet-base-v2` | 48 | 0.5417 | 0.4664 |
+| dense+rerank: `all-mpnet-base-v2` | 48 | 0.6042 | 0.4918 |
+| dense-only: `multi-qa-mpnet-base-dot-v1` | 48 | 0.5833 | 0.4956 |
+| dense+rerank: `multi-qa-mpnet-base-dot-v1` | 48 | 0.6458 | 0.5467 |
+| SPECTER2 (adhoc_query + proximity) | 48 | 0.4792 | 0.4132 |
+| cascade: SPECTER2 shortlist(50) -> `multi-qa-mpnet-base-dot-v1` +rerank | 48 | 0.4375 | 0.3912 |
+
+All nine rows scored all 48 of 48 ground-truth queries -- `n_missing` is
+0 throughout `comparison.json`; no row's average is over a partial
+population.
+
+**The SPECTER2 standalone row is not scored over the same candidate
+pool as the other eight, and its number is not directly comparable to
+theirs.** BM25, every dense-only/dense+rerank row, and the cascade all
+rank over this corpus's full 642 papers / 40,741 chunks (BM25 via
+`src/retrieval.py`'s corpus-wide index; the dense rows via the full
+Chroma collections). `specter2_row()` (Task 4's own documented,
+deliberate simplification) ranks only the ground truth's own 48-citekey
+set -- a pool roughly 13x smaller, and one that is trivially easier to
+find the right answer in by construction. That SPECTER2 still loses to
+every other row despite the smaller haystack is, if anything, a stronger
+statement about it than the raw number alone conveys -- see the
+discussion below.
+
+### What this measures, stated plainly
+
+**BM25 wins outright, by a real margin.** recall@5 0.7708 against the
+best dense/rerank row's 0.6458 (+0.125), nDCG@5 0.6641 against 0.5467
+(+0.1174). This is not a close call decided by rounding. It is exactly
+the question [docs/RETRIEVAL.md](../docs/RETRIEVAL.md) already poses in
+prose -- "On a small, vocabulary-consistent corpus, BM25 is usually
+enough -- which is why it stays the default" -- now checked against 48
+real judged queries on this repository's own corpus rather than asserted
+from general reasoning. The measurement agrees with the prose. Nothing
+in this run argues for changing `EMBEDDING_MODEL`'s default or for
+routing retrieval through a dense/rerank/cascade path in place of BM25;
+if anything, it is evidence that BM25 already is the right default *for
+this corpus*, not a gap this benchmark's more elaborate rows needed to
+close.
+
+**Reranking is not a uniform win across the three dense models.** It
+helps `multi-qa-mpnet-base-dot-v1` meaningfully (nDCG 0.4956 ->
+0.5467, +0.0511) and `all-mpnet-base-v2` meaningfully (0.4664 -> 0.4918,
++0.0254), but is close to a wash for `all-MiniLM-L6-v2` (0.4407 ->
+0.4420, +0.0013) -- within noise at n=48. The cross-encoder's value
+tracks how good the first-pass pool already was, not a fixed uplift a
+caller can assume applies to any dense model.
+
+**`multi-qa-mpnet-base-dot-v1` is the best-performing dense/rerank
+combination**, both alone (nDCG 0.4956, ahead of the other two
+dense-only rows) and reranked (nDCG 0.5467, the best of any non-BM25
+row). It is the one drop-in [docs/CONFIG.md](../docs/CONFIG.md) already
+describes as "trained specifically on short-query-vs-long-passage
+retrieval -- the closest match to what `search()` actually does"; this
+run is the first real measurement that bears that description out
+rather than asserting it.
+
+**SPECTER2 standalone underperforms every dense drop-in** -- nDCG 0.4132,
+below even the weakest dense-*only* row (`all-MiniLM-L6-v2` at 0.4407),
+despite ranking over a candidate pool roughly 13x smaller (see the
+comparability note above). This is the mismatch
+[docs/CONFIG.md](../docs/CONFIG.md)'s "Not without a code change first"
+section already names: SPECTER2 answers "which papers are alike", not
+"which chunk answers this query", and this run is the first real
+evidence for that claim rather than a model-card-derived expectation.
+
+**The cascade underperforms its own base model, and is the single
+worst-scoring row in the table.** `multi-qa-mpnet-base-dot-v1`'s own
+dense+rerank row alone scores nDCG 0.5467; restricting that same model
+to a SPECTER2 paper-level top-50 shortlist first *drops* it to 0.3912
+(-0.1555 nDCG, -0.2083 recall@5) -- lower even than SPECTER2 standalone's
+own 0.4132. The mechanism is a hard pre-filter: when the correct paper
+does not land in SPECTER2's own top-50 for a query, no amount of
+downstream Chroma search or cross-encoder reranking can recover it --
+the answer was removed from contention before the winning model ever
+saw it. "Cascading models" is the option #194 explicitly asked this
+benchmark to allow for; measured here, it does not help. This is a real
+negative result, not a tuning miss to soften: the shortlist stage's
+false negatives cost more than its shortlisting saves.
+
+**No change to `docs/CONFIG.md` follows from this run.** The brief
+scoped a `docs/CONFIG.md` edit to whether SPECTER2's numbers are "worth
+documenting as an option" -- they are not: SPECTER2 standalone loses to
+every drop-in, and the cascade loses to the drop-in it shortlists for,
+so nothing measured here contradicts or extends
+`docs/CONFIG.md`'s existing "Not without a code change first" framing.
+That section already correctly says SPECTER2 answers a different
+question than this pipeline's retrieval needs; this run confirms that
+by measurement rather than revising it.
+
+### What this does not measure
+
+- **Per-query cost of the cross-encoder and SPECTER2 stages, at this
+  corpus's real query volume.** The wall-clock figures above are
+  aggregate, over 48 queries at once; no row reports a per-query
+  latency, and a caller weighing whether reranking is affordable in an
+  interactive drafting session has no number here to check against.
+- **The cascade's shortlist size was fixed at 50, not swept.** A larger
+  shortlist would put more of the correct-paper false negatives back
+  into contention -- at a proportionally larger per-query Chroma-query
+  and rerank cost -- and might change whether the cascade's underlying
+  mechanism (described above) still dominates at, say, 100 or 200. This
+  run says nothing about where that trade-off turns around, only that
+  50 loses badly.
+- **A recommendation to change `EMBEDDING_MODEL`'s default.** BM25
+  winning this comparison is not evidence to touch
+  `config.toml.example`'s embedding-model setting -- `search()` (BM25)
+  and `embed_index.search()` (dense) are two different code paths a
+  caller chooses between; this benchmark did not touch which one any
+  genre skill calls by default.
+- **A second corpus or a second book.** One 15-chapter book, 48 queries
+  drawn from real drafting sessions against it, one bib corpus, one
+  host. Whether BM25's win margin holds on a larger or more
+  vocabulary-diverse corpus -- the exact axis
+  [docs/RETRIEVAL.md](../docs/RETRIEVAL.md) names as where embeddings
+  earn their cost -- is not tested here.
+- **Precision beyond recall@5/nDCG@5.** Every row is scored only against
+  whether the *known-cited* paper appears in the top 5; no row is
+  checked for whether its other top-5 hits would have been reasonable
+  citations too (a plausible substitute paper counted as a "miss" here
+  the same as an irrelevant one).
+
+### Reproducing
+
+```bash
+# Task 1: recover the 48-pair ground truth (needs the restored book;
+# not committed -- see bench_retrieval_ground_truth.py's own docstring).
+/workspace/.venv-full/bin/python bench/bench_retrieval_ground_truth.py \
+    --drafts content/drafts/books/digital-twins-for-software-engineers \
+    --tag 2026-08-16-retrieval-ground-truth
+
+# Task 3: exercise the SPECTER2 encoder seam on its own (self_check()
+# only -- embed_paper()/embed_query() are called by the sweep itself).
+/workspace/.venv-full/bin/python bench/embed_models.py
+
+# Task 6: the real sweep -- all nine rows, all 48 queries.
+/workspace/.venv-full/bin/python bench/bench_retrieval_compare.py \
+    --ground-truth bench/results/2026-08-16-retrieval-ground-truth/ground_truth.json \
+    --tag 2026-08-16-retrieval-compare
+```
+
+Needs the `enrich` Poetry group (`chromadb`, `sentence-transformers`,
+`transformers`, `adapters`, torch) and the restored 15-chapter book (see
+2026-08-15's reproduction note for the restore step). A host with none
+of the three Chroma collections built, and no SPECTER2 paper-vector
+cache yet, should budget for Arm A's whole-corpus dense-embed cost
+*and* one whole-corpus SPECTER2 `embed_paper()` pass on top of the
+9m51.879s measured here -- this run paid neither, because both were
+already built by earlier tasks in this same plan.
