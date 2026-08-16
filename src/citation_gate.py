@@ -28,7 +28,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import config, ledger
+from src import config, hook_launchers, ledger
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -196,6 +196,20 @@ def check_document(path: Path, known_citekeys: set[str]) -> GateResult:
 
 
 def run(paths: list[str]) -> int:
+    # Said here because here is the only place it can be said. The hook
+    # that runs this gate after every write cannot report its own failure
+    # to start, and neither can the session preflight written to report it
+    # -- that hook is launched by the same interpreter name (#197). This
+    # command runs on an interpreter that has demonstrably started, so it
+    # is the one caller in the chain whose warning survives the launcher
+    # being dead. When the hook is what invoked this, the launcher plainly
+    # resolved and nothing is printed.
+    for fault in hook_launchers.faults():
+        print(f"WARNING: {fault} This gate ran because something invoked it, but "
+              "it is no longer running automatically after every write to a "
+              "draft -- see docs/HOOKS.md.",
+              file=sys.stderr)
+
     con = ledger.connect()
     try:
         known = ledger.known_citekeys(con)

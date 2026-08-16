@@ -1,10 +1,11 @@
 # Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.19.0.** Written 2026-08-15. Three hooks exist --
+Status: **built, as of 5.20.0.** Written 2026-08-15. Three hooks exist --
 `citation_gate_hook.py`, `style_check_hook.py` and
 `session_start_hook.py` -- sharing one `draft_target.py`, all launching in
-exec form. #197 stays open for its second hazard only, the interpreter
-name, now that the placeholder half is fixed.
+exec form, as `python`. #197 is closed: the placeholder is braced, the
+interpreter name is settled below, and a launcher that cannot start is now
+reported from two sides rather than one.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is
@@ -142,9 +143,19 @@ rather than from the target path. And containment must be tested with
 `session_start_hook.py` exists because a hook that fails to start cannot
 report that it failed to start. The settings file still lists it, its tests
 still pass, and the citation gate silently stops enforcing anything. No
-test in this repository can catch that -- a launcher is a line in a config
-file the harness consumes, not code the suite imports -- so the only
-available detector is a second hook that looks from outside.
+test in this repository can start a hook the way the harness does -- a
+launcher is a line in a config file the harness consumes, not code the
+suite imports -- so the detector has to be something that looks from
+outside.
+
+**One such detector is not enough, and this took a second attempt to
+see.** The preflight is launched by the same interpreter name it vets. If
+`python` is missing, the preflight is missing too, and the report that was
+supposed to arrive never does -- on precisely the host where the gate is
+dead. The check therefore lives in `src/hook_launchers.py`, and
+`python -m src.draft gate` makes it as well: that command runs on an
+interpreter which has demonstrably started, and every genre skill runs it.
+The two reporters share one implementation.
 
 It makes three checks, of which **only the first two are faults**:
 
@@ -210,10 +221,13 @@ three layers with a rule about what may live in each.
 src/
 ├── draft.py                    `python -m src.draft <gate|style|...>`
 ├── citation_gate.py            what the gate hook shells out to
+├── hook_launchers.py           can the registered launchers start?
 └── style_check.py              what the style hook shells out to
 
 tests/
 ├── test_draft_target.py        the shared helper, both classes of caller
+├── test_hook_launchers.py      the launcher check, every shape
+├── test_settings_launchers.py  the real settings.json, against the contract
 ├── test_citation_gate_hook.py  the model the other two follow
 └── test_style_check_hook.py    the process contract, not the branches
 ```
@@ -221,6 +235,14 @@ tests/
 **Layer 1, `src/`, holds the checks.** They are importable, tested, and
 know nothing about hooks, harnesses or JSON envelopes. Each is reachable by
 hand as `python -m src.draft <verb>`.
+
+`hook_launchers.py` is the one exception, and the rule names it rather than
+being quietly broken: **layer 1 may read the launcher config, never a
+payload or an envelope.** That line is where the boundary actually falls.
+An adapter is defined by handling the harness's stdin/stdout contract, and
+this module handles neither -- it reads `settings.json` and returns English
+sentences. It has to be here, because the preflight cannot report its own
+interpreter missing and [the gate can](#the-session-preflight).
 
 **Layer 2, `.claude/hooks/`, holds adapters.** An adapter reads a
 `PostToolUse` payload on stdin, decides whether it is interested, shells
@@ -284,7 +306,7 @@ argument with no quoting, and ignores the shell entirely:
 ```json
 {
   "type": "command",
-  "command": "python3",
+  "command": "python",
   "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/citation_gate_hook.py"],
   "timeout": 30,
   "statusMessage": "Checking citekeys against the ledger..."
@@ -292,13 +314,11 @@ argument with no quoting, and ignores the shell entirely:
 ```
 
 That is not an example: it is what `.claude/settings.json` now contains,
-for both hooks. Exec form and the braced placeholder were confirmed
-working before being adopted -- the harness substituted the placeholder to
-an absolute path and the gate still returned its blocking decision on a
-fabricated citekey. The interpreter name is **the current one, not a
-settled one**: it is the first of the [open questions](#open-questions)
-below, and the paragraph after next says why. Everything else in the block
-is settled.
+for all three hooks, and `tests/test_settings_launchers.py` asserts it of
+every entry in that file rather than of any named one. Exec form and the
+braced placeholder were confirmed working before being adopted -- the
+harness substituted the placeholder to an absolute path and the gate still
+returned its blocking decision on a fabricated citekey.
 
 **Brace every placeholder.** `${CLAUDE_PROJECT_DIR}` is substituted by
 Claude Code itself, into `command` and into each `args` element, before any
@@ -308,11 +328,40 @@ relying on *the shell* to expand it -- and the shell defaults to
 names an undefined variable and expands to nothing. This repository runs a
 blocking `windows-latest` leg in CI, so that is not a hypothetical host.
 
-**The interpreter name has no portable answer**, and this is the open half
-of #197. `python3` is standard on Linux and generally absent on Windows;
-`python` is present on Windows and often absent on Debian-family Linux.
-Whatever is chosen, it must be chosen deliberately and written down, not
-inherited.
+**The interpreter name is `python`.** It has no *portable* answer --
+`python3` is standard on Linux and generally absent on Windows, `python` is
+present on Windows and often absent on Debian-family Linux -- so it was
+the second hazard of #197, and it is decided rather than inherited, on
+three findings:
+
+- **A venv guarantees `python` everywhere and `python3` only on POSIX.**
+  Read out of CPython 3.13's `venv/__init__.py`: the POSIX branch creates
+  `python`, `python3` and `python3.13`; the Windows branch writes
+  `python.exe` and `pythonw.exe`, with debug and free-threaded variants,
+  and no `python3.exe` at all.
+- **The rest of this repository already requires `python`.** Every
+  documented invocation across `.claude/skills/`, `AGENTS.md`,
+  `README.md` and `docs/` is `python -m src.*` -- some 470 of them,
+  against a handful of `python3` in `bench/RESULTS.md`. The hook launcher
+  was the outlier, not the standard-bearer.
+- **That makes the losing host a different kind of host.** `python`'s
+  failure case is a Debian or Homebrew clone with no venv active, where
+  *nothing else here works either*, so the user finds out from the first
+  command they run. `python3`'s failure case is Windows, where the rest of
+  the pipeline runs fine and only the gate goes quiet -- which is the
+  silent degradation this document exists to prevent.
+
+The launcher does not have to be the venv's interpreter, which is what
+makes the choice this narrow: the gate is [tier 1](CLI.md#which-interpreter)
+and runs under a bare interpreter with no venv, measured.
+
+**A dead launcher is silent, so something else has to say so.** A hook
+whose `command` does not resolve produces nothing at all -- no error to the
+model, nothing in a log (see [the trials](#what-is-measured-and-what-is-merely-documented)).
+`session_start_hook.py` cannot cover that alone, being launched by the same
+name; `python -m src.draft gate` prints the same warning from an
+interpreter that has demonstrably started. Both call
+`src/hook_launchers.py`.
 
 **What does not transfer.** `obra/superpowers` solves the adjacent
 problem -- bash being absent, rather than a variable being unexpanded --
@@ -364,6 +413,13 @@ exits non-zero *without* the block, so the draft lands ungated. A hard gate
 that degrades to advisory depending on which interpreter aliases a host
 happens to have is the worst of the available failure modes.
 
+This does not contradict [the launcher](#the-launcher-contract), which is
+a bare `python` by decision. The difference is what each process has to
+inherit from: a hook already running *is* an interpreter, so naming it
+again is a needless second chance to fail, while the launcher has nothing
+to inherit and a name is the only thing `settings.json` can give the
+harness. Resolve by name once, at the outermost edge, and never again.
+
 **Emit only the field this host consumes.** A hook written for several
 harnesses has to branch: Claude Code reads
 `hookSpecificOutput.additionalContext`, Cursor reads a top-level
@@ -375,7 +431,7 @@ recorded because it is not guessable from the field names.
 
 ## What is measured, and what is merely documented
 
-Five trials, run against this repository's own gate hook with a throwaway
+Six trials, run against this repository's own gate hook with a throwaway
 second entry beside it, on 2026-08-15. Recorded because two of the answers
 are not in the documentation and one contradicts a reasonable reading of
 it:
@@ -387,11 +443,22 @@ it:
 | 1b | `Edit` | plain text only | nothing arrived |
 | 2 | `Edit` | JSON only, gate blocking in the same turn | **both** arrived |
 | 3 | `Write` | JSON only | `additionalContext` arrived |
+| 4 | `Write` | *never ran* -- `command` not on PATH | nothing arrived |
+
+Trial 4 is #197's premise, and it was measured the same way rather than
+assumed: a bogus launcher and a working control hook in one entry, one
+`Write`, and the control's payload arrived while the bogus one produced
+nothing whatever -- no error to the model, nothing findable under
+`~/.claude/`. Whether the user's terminal shows something transiently is
+*not* measured. That silence is why a dead launcher needs a reporter that
+does not share its interpreter.
 
 Each arrival reached the model as a system reminder reading
 `PostToolUse:<Tool> hook additional context: <payload>`. A disk log in the
-probe confirmed the hook fired in all five, so the two nulls are delivery
-failures rather than invocation failures.
+probe confirmed the hook fired in the first five, so the two nulls there
+are delivery failures rather than invocation failures -- unlike trial 4,
+where nothing was invoked at all and the outcome is identical from the
+outside. That indistinguishability is the whole problem.
 
 What that settles:
 
@@ -509,13 +576,17 @@ The tests worth having are the negative ones:
   instead of a list, an entry or hook that was a bare string, a
   whitespace-only `command`, and an `args` element that was not a string.
 
-Two limits to state plainly rather than paper over. First, **no test here
-exercises the real `.claude/settings.json`** -- a hook that never spawns
-passes every test in the repository, because nothing in the suite starts a
-hook the way the harness does. That is the gap
-`session_start_hook.py` fills, and its own tests write a settings file into
-a throwaway root rather than reading the live one, so they check the rule
-and not this repository's current answer to it. Second, hook tests
+Two limits to state plainly rather than paper over. First, **no test can
+start a hook the way the harness does**, so a hook that never spawns still
+passes every test in the repository. `tests/test_settings_launchers.py`
+narrows that gap without closing it: it is the one test that reads the
+*live* `.claude/settings.json`, and it asserts of every entry -- so the
+prose check's entry inherited the contract without a line being added here
+-- that the entry is exec form, launches `python`, braces every
+placeholder, and names a script that exists. What it cannot assert is that
+the harness ran any of it. The other hook tests still
+write a settings file into a throwaway root, which is how they check the
+rule rather than this repository's current answer to it. Second, hook tests
 that live outside the normal suite rot: one upstream collection ships a
 hook test asserting fields (`priority`, `message`) that its own hook no
 longer emits. Keeping these in pytest, where CI runs them, is the whole
@@ -617,8 +688,13 @@ whoever is changing a hook and wants the sources.
 
 ## Open questions
 
-1. **Which interpreter name.** #197's second hazard. Needs a trial on a
-   Windows clone without Git Bash, not an argument.
+1. **Whether `python` really starts a hook on a bare Windows clone.**
+   The name is [settled](#the-launcher-contract) and #197 is closed, but
+   the Windows half of the reasoning is read off CPython's `venv` module
+   and the harness documentation -- no Windows host without Git Bash was
+   available to try it on. The Linux half is measured. If the answer there
+   is ever *no*, the failure is at least audible now: `python -m src.draft
+   gate` says so.
 2. **Whether `{"decision": "block"}` on `PostToolUse` stays supported.**
    Measured working, documented nowhere. The preflight is the tripwire.
 3. **Whether `async` output reaches the model.** One probe would settle it

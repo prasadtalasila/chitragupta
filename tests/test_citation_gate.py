@@ -283,6 +283,47 @@ class TestRun:
         assert f"FAIL  {bad}" in out
 
 
+class TestDeadLauncherWarning:
+    """The gate is the one caller in the chain that can report a hook
+    launcher which cannot start.
+
+    Neither hook can: the gate hook cannot report its own failure to spawn,
+    and `session_start_hook.py` -- written to report it -- is launched by
+    the same interpreter name, so it is missing on exactly the host where
+    the gate is (#197). This command runs on an interpreter that has
+    demonstrably started, and every genre skill runs it.
+    """
+
+    @staticmethod
+    def draft(cfg) -> str:
+        """A draft that passes, against a ledger with something in it -- so
+        the only thing that can reach stderr is the launcher warning."""
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        con.close()
+        path = content_draft(cfg, "draft.md")
+        path.write_text("A claim [@smith2024].\n", encoding="utf-8")
+        return str(path)
+
+    def test_a_dead_launcher_is_warned_about_without_changing_the_verdict(
+            self, isolated_config, monkeypatch, capsys):
+        monkeypatch.setattr(citation_gate.hook_launchers, "faults",
+                            lambda: ["`python` is not on PATH, so a hook cannot start."])
+        rc = citation_gate.run([self.draft(isolated_config)])
+        captured = capsys.readouterr()
+
+        assert rc == 0
+        assert "OK" in captured.out
+        assert "`python` is not on PATH" in captured.err
+        assert "docs/HOOKS.md" in captured.err
+        assert "WARNING" not in captured.out, "the verdict stream stays the verdict"
+
+    def test_a_sound_launcher_says_nothing(self, isolated_config, monkeypatch, capsys):
+        monkeypatch.setattr(citation_gate.hook_launchers, "faults", list)
+        assert citation_gate.run([self.draft(isolated_config)]) == 0
+        assert capsys.readouterr().err == ""
+
+
 class TestCliEntrypoint:
     def test_no_args_prints_usage_and_exits_2(self, isolated_config):
         result = subprocess.run(
