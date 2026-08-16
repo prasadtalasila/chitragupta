@@ -2189,10 +2189,10 @@ the answer was removed from contention before the winning model ever
 saw it. Part of that pre-filter's cost is structural, not purely a
 question of SPECTER2's ranking quality: `_cascade_worker()` builds its
 shortlist by ranking all 642 ledger citekeys, but 145 of those have zero
-chunks in any Chroma collection (no parsed text to embed), so on
-average, in expectation, roughly 11 of every 50-paper shortlist are
-papers the dense/rerank stage could return nothing for regardless of
-how SPECTER2 ranked them. "Cascading models" is the option #194
+chunks in any Chroma collection (no parsed text to embed), so in
+expectation roughly 11 of every 50-paper shortlist are papers the
+dense/rerank stage could return nothing for regardless of how SPECTER2
+ranked them. "Cascading models" is the option #194
 explicitly asked this benchmark to allow for; measured here, it does
 not help. This is a real negative result, not a tuning miss to soften:
 the shortlist stage's false negatives cost more than its shortlisting
