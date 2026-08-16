@@ -1,6 +1,9 @@
-# Embedding Model Benchmark, Arm B (retrieval + reranking + SPECTER2) Implementation Plan
+# Embedding Model Benchmark Arm B (Retrieval, Reranking, SPECTER2) Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Benchmark retrieval quality (recall@5 / nDCG@5) across BM25,
 the three drop-in dense models, each drop-in with cross-encoder
@@ -61,10 +64,12 @@ plan's spec flags as **not guaranteed to succeed**, so this task verifies
 it before anything downstream depends on it.
 
 **Files:**
+
 - Create: `bench/bench_retrieval_ground_truth.py`
 - Creates (data, committed): `bench/results/<tag>/ground_truth.json`
 
 **Interfaces:**
+
 - Produces: `build_ground_truth(drafts_dir, labels_path) -> list[dict]`
   (each dict: `chapter`, `line`, `citekey`, `query`, `judgment`), consumed
   by Task 4's `bench_retrieval_compare.py`.
@@ -78,7 +83,7 @@ unzip -o content/backup/content-20260809.zip \
     "content/dossiers/books/digital-twins-for-software-engineers/*"
 ```
 
-- [ ] **Step 2: Write `build_ground_truth()`, with a hard stop on any unresolved row**
+- [ ] **Step 2: Write `build_ground_truth()`, hard-stopping on any unresolved row**
 
 ```python
 """Retrieval ground truth for Arm B: 48 real (query, citekey) pairs,
@@ -190,7 +195,7 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-- [ ] **Step 3: Run it for real, and confirm it either resolves all 48 or fails loudly**
+- [ ] **Step 3: Run it for real -- confirm it resolves all 48, or fails loudly**
 
 ```bash
 cd /workspace/.claude/worktrees/bridge-cse_01Snq32sGD7GtN7Fco3wPwDG
@@ -223,6 +228,7 @@ git commit -m "Add bench_retrieval_ground_truth.py, recovering Arm B's 48-pair g
 ## Task 2: Add the `adapters` dependency
 
 **Files:**
+
 - Modify: `pyproject.toml` (`[tool.poetry.group.enrich.dependencies]`)
 - Modify: `poetry.lock` (via `poetry lock`)
 
@@ -237,7 +243,7 @@ adapters = ">=1.2,<2.0"
 
 Match the existing block's comment style — note beside it that this is
 SPECTER2-only (`allenai/specter2_base`'s adapter loading), added for
-#194's Arm B, the same way the existing block documents what verified
+issue #194's Arm B, the same way the existing block documents what verified
 each entry.
 
 - [ ] **Step 2: Re-lock and reinstall**
@@ -277,9 +283,11 @@ git commit -m "Add adapters dependency for SPECTER2's adapter loading"
 ## Task 3: `bench/embed_models.py` — the SPECTER2 encoder seam
 
 **Files:**
+
 - Create: `bench/embed_models.py`
 
 **Interfaces:**
+
 - Produces: `title_for(con, citekey) -> str`, `abstract_for(con, citekey)
   -> str`, `embed_paper(citekeys: list[str]) -> dict[str, list[float]]`,
   `embed_query(text: str) -> list[float]` — all consumed by Task 4 and
@@ -458,12 +466,14 @@ git commit -m "Add bench/embed_models.py, the SPECTER2 encoder seam"
 
 ---
 
-## Task 4: `bench/bench_retrieval_compare.py` — scoring, BM25, the three drop-ins, SPECTER2 standalone
+## Task 4: `bench_retrieval_compare.py` -- scoring, BM25, the drop-ins, SPECTER2
 
 **Files:**
+
 - Create: `bench/bench_retrieval_compare.py`
 
 **Interfaces:**
+
 - Consumes: `build_ground_truth()` (Task 1), `embed_models.embed_paper`/
   `embed_query` (Task 3).
 - Produces: `recall_at_k(ranked, relevant, k)`, `ndcg_at_k(ranked,
@@ -577,7 +587,7 @@ def self_check():
         ["x", "y"], "collapse_to_citekeys should de-duplicate, keeping first-seen order"
 ```
 
-- [ ] **Step 2: Run `self_check()` standalone to confirm the hand-verified numbers actually match**
+- [ ] **Step 2: Run `self_check()` standalone, confirm the numbers match**
 
 ```bash
 cd /workspace/.claude/worktrees/bridge-cse_01Snq32sGD7GtN7Fco3wPwDG
@@ -750,7 +760,7 @@ Expected: usage text naming `--ground-truth`/`--tag`, no traceback, and
 no `--dense-worker`/`--ground-truth-inline`/`--out` shown (they're
 `argparse.SUPPRESS`d — internal-only, confirmed by their absence here).
 
-- [ ] **Step 8: Smoke-test the dense-worker subprocess path against 3 rows only, before running all 48**
+- [ ] **Step 8: Smoke-test the dense-worker path against 3 rows, not all 48**
 
 ```bash
 cd /workspace/.claude/worktrees/bridge-cse_01Snq32sGD7GtN7Fco3wPwDG
@@ -792,9 +802,11 @@ rows — a reviewer should be able to accept Task 4's four rows without
 having to also accept this one.
 
 **Files:**
+
 - Modify: `bench/bench_retrieval_compare.py`
 
 **Interfaces:**
+
 - Consumes: `embed_models.embed_paper`/`embed_query` (Task 3),
   `collapse_to_citekeys`/`score_rows` (Task 4).
 - Produces: `cascade_row(winning_model, ground_truth, shortlist_size)`,
@@ -941,6 +953,7 @@ git commit -m "Add the SPECTER2-shortlist cascade row"
 ## Task 6: Run the real sweep, write up `bench/RESULTS.md`, ship
 
 **Files:**
+
 - Modify: `bench/RESULTS.md` (new dated section)
 - Modify: `bench/README.md`
 - Modify: `docs/CONFIG.md` ("Choosing an embedding model") only if

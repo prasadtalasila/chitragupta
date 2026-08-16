@@ -1,6 +1,9 @@
 # Embedding Model Benchmark, Arm A (tier-3 overlap) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Benchmark the three documented drop-in embedding models
 (`all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `multi-qa-mpnet-base-dot-v1`)
@@ -51,7 +54,7 @@ Arm B (retrieval + reranking + SPECTER2) is a separate plan.
 
 ---
 
-## Task 1: Restore the book, regenerate its dossiers' `sections.md`, measure one fresh model's embed cost
+## Task 1: Restore the book, regenerate sections.md, measure the embed cost
 
 This task produces no new code. It gets the real 15-chapter book onto
 this host (needed by both harnesses' precision arms) and answers the one
@@ -59,6 +62,7 @@ open question that gates whether Task 4's three-model sweep is cheap or
 expensive, before any code is written against an assumed cost.
 
 **Files:**
+
 - None created or modified. Restores `content/drafts/books/` and
   `content/dossiers/books/` from the committed backup archive (both
   gitignored, per-host content — restoring them is not a git change).
@@ -149,9 +153,11 @@ rest of this codebase applies via pytest, adapted to how this directory
 verifies itself.
 
 **Files:**
+
 - Create: `bench/bench_embed_model_compare.py`
 
 **Interfaces:**
+
 - Produces: `CANDIDATES` (tuple of 3 model name strings), `self_check()`
   (raises `AssertionError` on a bad candidate list), used by Task 3's
   `main()`.
@@ -235,7 +241,7 @@ if __name__ == "__main__":
     print("self_check() passed")
 ```
 
-- [ ] **Step 2: Run it against a deliberately broken candidate list to confirm the check actually catches something**
+- [ ] **Step 2: Run it against a broken list, confirm the check catches it**
 
 ```bash
 cd /workspace/.claude/worktrees/bridge-cse_01Snq32sGD7GtN7Fco3wPwDG
@@ -254,7 +260,7 @@ except AssertionError as e:
 
 Expected: `correctly caught: a candidate is listed twice`.
 
-- [ ] **Step 3: Run the real self_check() to confirm it passes against the actual constants**
+- [ ] **Step 3: Run self_check() for real, confirm it passes for real**
 
 ```bash
 cd /workspace/.claude/worktrees/bridge-cse_01Snq32sGD7GtN7Fco3wPwDG
@@ -282,9 +288,11 @@ Add the functions that do the real work, driven off the constants and
 `self_check()` Task 2 already verified.
 
 **Files:**
+
 - Modify: `bench/bench_embed_model_compare.py`
 
 **Interfaces:**
+
 - Consumes: `CANDIDATES`, `DRAFTS_DIR`, `ORGANIC_LABELS`, `model_slug()`
   from Task 2.
 - Produces: `run_model(model, tag, out_dir) -> dict` (one model's
@@ -402,12 +410,14 @@ git commit -m "Add run_model(): build, scan and crosscheck one candidate model"
 ## Task 4: `main()`, the comparison table, and the real three-model sweep
 
 **Files:**
+
 - Modify: `bench/bench_embed_model_compare.py`
 - Modify: `bench/RESULTS.md` (new dated section)
 - Modify: `bench/README.md` ("Which tool to reach for" table and "What
   each file is" table)
 
 **Interfaces:**
+
 - Consumes: `run_model()` from Task 3, `CANDIDATES` from Task 2.
 - Produces: `bench/results/<tag>/comparison.json`, the CLI entry point.
 

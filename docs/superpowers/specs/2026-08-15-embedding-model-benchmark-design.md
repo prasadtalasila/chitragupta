@@ -4,8 +4,8 @@
 
 `[enrich].embedding_model` (`config.EMBEDDING_MODEL`) feeds two consumers:
 the tier-3 overlap/paraphrase detector (`src/overlap_embed.py`) and the
-retrieval upgrade path (`src/enrich/embed_index.py`, `search()`). Issue
-#194 reports the current default isn't working well on this narrow
+retrieval upgrade path (`src/enrich/embed_index.py`, `search()`).
+Issue #194 reports the current default isn't working well on this narrow
 research corpus and asks for a benchmark of alternatives, including
 SPECTER2, allowing a cascade of models if that's what wins.
 
@@ -179,8 +179,8 @@ scored by recall@k and nDCG@k:
 
 **Reranker.** `sentence-transformers` (already a pinned `enrich`-group
 dependency, `>=5.6,<6.0`) ships `CrossEncoder` directly — no new
-dependency, unlike `flashrank`, for the same CPU-tolerable job discussion
-#43 §3's proposal 3 and roadmap issue #54's PR9 describe. Reranks only
+dependency, unlike `flashrank`, for the same CPU-tolerable job
+discussion #43 §3's proposal 3 and roadmap issue #54's PR9 describe. Reranks only
 the ~50-100 survivors of each row's first-pass retrieval, never the whole
 corpus, so the per-query cost stays bounded regardless of corpus size.
 
