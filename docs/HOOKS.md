@@ -1,6 +1,6 @@
 # Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.18.0.** Written 2026-08-15. Three hooks exist --
+Status: **built, as of 5.19.0.** Written 2026-08-15. Three hooks exist --
 `citation_gate_hook.py`, `style_check_hook.py` and
 `session_start_hook.py` -- sharing one `draft_target.py`, all launching in
 exec form. #197 stays open for its second hazard only, the interpreter
