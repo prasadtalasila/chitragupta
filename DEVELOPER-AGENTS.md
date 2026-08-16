@@ -268,6 +268,16 @@ Before saying so, actually run, in this repo:
   Windows leg -- which installs no `os-deps` and so self-skips the render
   and pdf tests -- holds 95, low enough not to need re-tuning whenever
   toolchain-only code is added and high enough to catch a real collapse.
+- **Both linters, at their full paths** (see "The linters, which are
+  enforced" below). They are not optional and not CI's job alone --
+  `markdownlint` in particular fails on prose that no test touches, so a
+  green suite says nothing about it:
+
+  ```bash
+  pylint --rcfile=.pylintrc src scripts .claude/hooks
+  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
+  ```
+
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --
@@ -317,13 +327,19 @@ than post a wrong number.
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
 [DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
-from. Run both before you push; `ci.yml`'s `lint` job runs exactly these
-two commands:
+from. Run both before you push; `ci.yml`'s `lint` job runs exactly these,
+and the paths are part of the command rather than a detail -- a narrower
+glob is how a tree stops being checked without anyone deciding it should:
 
 ```bash
-pylint --rcfile=.pylintrc src scripts        # needs the project's deps importable
-markdownlint-cli2 "*.md" "docs/**/*.md"      # npm i -g markdownlint-cli2
+pylint --rcfile=.pylintrc src scripts .claude/hooks
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"   # npm i -g markdownlint-cli2
 ```
+
+**Read the linter's own exit code, not a pipeline's.** `pylint … | tail`
+reports `tail`'s status, so a real finding passes for a clean run. That is
+not hypothetical: it put a `line-too-long` through a local check and into
+CI on 2026-08-15.
 
 **Both are blocking, at a binary zero-messages bar** -- never a
 `fail-under` score, because
@@ -394,6 +410,21 @@ does not have. `review` additionally needs `OCR_LLM_URL`/`OCR_LLM_TOKEN`/
 `OCR_LLM_MODEL`, `~/.opencodereview/config.json`, or
 `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`; with none set it exits on
 `resolve LLM endpoint` and nothing has been reviewed.
+
+**Say how much of the branch it saw, not only which mode ran.** OCR
+cannot review Markdown at all -- every `.md` file comes back excluded as
+`unsupported_ext` -- so on a prose-heavy branch the review covers a
+fraction of the diff. Measured on three consecutive PRs: 9 files of 25
+(#199), 8 of 12 (#204), 10 of 21 (#209). "OCR reviewed the branch" is a
+much weaker claim on the first kind of branch than the second, and the
+test plan should carry the count so a reader can tell them apart.
+
+**Two things about installing it**, neither guessable and both hit on
+this host. `npm i -g @alibaba-group/open-code-review` puts the binary at
+`$(npm root -g)/../bin/ocr`, which is not on `PATH` by default; and npm's
+`allow-scripts` default blocks the package's postinstall, which is
+survivable -- the shipped binary still runs -- but prints a warning that
+reads like a failed install.
 
 Whichever runs, **say which one did.** "OCR reviewed the branch" and "I
 reviewed the branch against OCR's rules" are different claims, and only
@@ -617,10 +648,27 @@ succeeded -- not merely started:
    issues are resolved. Use judgement on a genuinely trivial finding
    rather than treating every comment as mandatory -- but "trivial" means
    actually inconsequential (a wording nit), not "inconvenient to fix."
-7. Squash-merge the PR.
-8. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
+7. **Check that `main` has not moved since CI last ran.** If it has,
+   merge or rebase onto it and **do the whole cycle again from step 2** --
+   re-decide the version bump, re-run every local check, and wait for CI
+   on the new head. A branch that went green against an older `main` is
+   not evidence about the merge commit, which is what actually lands.
+
+   This is not bookkeeping. CI already builds the *merge* commit for a
+   `pull_request` event, so a stale branch can go red for something it did
+   not do -- and, worse, can go **green on a state that no longer
+   exists**. Both were seen on 2026-08-15: #204's `lint` failed on
+   over-length lines that arrived from `main` in #198, and #209 merged
+   cleanly onto a version `main` had already taken, landing on `main`
+   claiming a release it was not. The version is the usual casualty,
+   because two branches picking the *same* number produce a
+   byte-identical line that git merges without a conflict --
+   `scripts/check_version_bump.py` now fails CI on that, but it can only
+   fail on a run that actually happened.
+8. Squash-merge the PR.
+9. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
    push the tag.
-9. Confirm `.github/workflows/release.yml` completed and the resulting
+10. Confirm `.github/workflows/release.yml` completed and the resulting
    GitHub Release has its `chitragupta-<version>.zip` asset
    attached -- this is the actual deliverable, not the tag or the merge
    by itself.

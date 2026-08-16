@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""Fail a PR whose version bump has silently gone missing (#212).
+
+Every PR must raise `[tool.poetry].version`, because `release.yml`
+verifies the pushed tag against that value on `main`. Two branches
+therefore always touch the same line, and the two ways that goes wrong are
+not equally visible:
+
+- **Different numbers collide loudly.** Git reports a merge conflict, and
+  it is fixed in a minute.
+- **The same number merges silently.** Git sees a byte-identical line and
+  takes it without a word. The branch lands on `main` still claiming a
+  version that has already been spent, the bump is gone, and nothing says
+  so until `release.yml` refuses a tag with an error that names neither
+  the collision nor the PR that caused it.
+
+That happened three times on 2026-08-15, twice silently, and once
+(#209/#205) it reached `main` and needed a follow-up PR to correct.
+
+**The primary check is against `main`, not against the tags**, and this is
+the part worth reading before changing anything here. A tag-existence test
+looks like the obvious check and is blind to a real window: between a PR
+merging and its tag being pushed, the version is spent and no tag records
+it. On this repository that window has been as short as 34 seconds and, at
+the other extreme, lasts as long as it takes a person to reach step 8 of
+DEVELOPER-AGENTS.md's cycle. Comparing against `main` needs no tag to
+exist, so it closes that window; the tag check is kept as a cheap second
+line for the odd state where a tag runs ahead of `main`.
+
+Ordering is numeric, not lexical, because `5.9.0` sorts above `5.10.0` as
+a string and that is precisely the comparison this has to get right.
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def parse(version: str) -> tuple:
+    """`version` as a comparable tuple of integers.
+
+    A component that is not a plain integer keeps its string form and
+    sorts after the numbers, which is enough for the pre-release suffixes
+    this project does not currently use but might. The point is only that
+    two versions order correctly, never that this reimplements PEP 440.
+    """
+    parts = []
+    for chunk in version.strip().split("."):
+        parts.append((0, int(chunk)) if chunk.isdigit() else (1, chunk))
+    return tuple(parts)
+
+
+def version_in(text: str) -> str:
+    """The `[tool.poetry].version` in a pyproject.toml's contents."""
+    return tomllib.loads(text)["tool"]["poetry"]["version"]
+
+
+def problems(current: str, base: str, tags: "list[str] | tuple[str, ...]") -> list[str]:
+    """Every reason this version may not be merged, in the order to read them.
+
+    Returns an empty list when the bump is sound. Separated from the git
+    plumbing below so the rules can be tested without a repository.
+    """
+    found = []
+    if parse(current) <= parse(base):
+        found.append(
+            f"pyproject.toml says {current}, and main is already at {base}. "
+            "Another PR took that number while this branch was open -- an "
+            "identical version line merges without a conflict, so the bump "
+            "silently disappeared. Raise it above main's and re-run the "
+            "checks (DEVELOPER-AGENTS.md, 'Shipping a code change')."
+        )
+    if f"v{current}" in tags:
+        found.append(
+            f"pyproject.toml says {current}, which is already released as "
+            f"v{current}. Whatever this branch ships, it is not that."
+        )
+    return found
+
+
+def _git(*args: str) -> str:
+    """Git's stdout, decoded as UTF-8 rather than as the host's locale.
+
+    `text=True` alone decodes with `locale.getpreferredencoding()`, which
+    is cp1252 on CI's Windows leg -- and this reads a *file* out of git,
+    not just tag names, so a non-ASCII byte anywhere in `pyproject.toml`
+    would mangle or raise there and nowhere else.
+    """
+    return subprocess.run(["git", *args], check=True, capture_output=True,
+                          text=True, encoding="utf-8", cwd=REPO_ROOT).stdout
+
+
+def main(argv: "list[str] | None" = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python scripts/check_version_bump.py",
+        description="Fail when a PR's version bump has been lost to a collision.",
+    )
+    parser.add_argument("--base-ref", default="origin/main",
+                        help="What this branch must out-rank (default origin/main)")
+    args = parser.parse_args(argv)
+
+    # The working tree is the *merge* commit on a pull_request event, so
+    # its pyproject is already the merged value; reading it twice would
+    # compare a file with itself. The base side has to come out of git.
+    current = version_in((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    try:
+        base = version_in(_git("show", f"{args.base_ref}:pyproject.toml"))
+        tags = _git("tag", "--list").split()
+    except subprocess.CalledProcessError:
+        # Almost always a shallow clone that never fetched the base ref.
+        # Say that, rather than letting a CalledProcessError traceback
+        # stand in for it -- this runs in CI, where the traceback would be
+        # the whole of what a reader sees.
+        print(f"::error::cannot read {args.base_ref}. Fetch it first: "
+              "`git fetch --depth=1 origin main`, and the tags with "
+              "`+refs/tags/*:refs/tags/*`.", file=sys.stderr)
+        return 1
+
+    found = problems(current, base, tags)
+    for problem in found:
+        print(f"::error::{problem}", file=sys.stderr)
+    if not found:
+        print(f"version {current} out-ranks {args.base_ref}'s {base}, and is untagged.")
+    return 1 if found else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

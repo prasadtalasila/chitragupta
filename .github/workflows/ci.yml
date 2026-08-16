@@ -300,6 +300,18 @@ jobs:
       - name: Install pylint and the runtime dependency
         run: python -m pip install pylint==4.0.7 bibtexparser==1.4.4
 
+      # The bump is what release.yml verifies a tag against, and losing it
+      # is silent: two branches picking the *same* number produce a
+      # byte-identical line, which git merges without a conflict. #212 has
+      # the three collisions that motivated this, one of which reached
+      # main. Needs the base ref and the tags, neither of which the default
+      # shallow checkout fetches.
+      - name: Fetch main and tags for the version check
+        run: git fetch --quiet --depth=1 origin "+refs/heads/main:refs/remotes/origin/main" "+refs/tags/*:refs/tags/*"
+
+      - name: Version bump has not been lost to a collision
+        run: python3 scripts/check_version_bump.py
+
       - name: pylint
         run: pylint --rcfile=.pylintrc src scripts .claude/hooks
 
