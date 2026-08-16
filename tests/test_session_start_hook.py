@@ -42,12 +42,12 @@ HOOK_PATH = REPO_ROOT / ".claude" / "hooks" / "session_start_hook.py"
 
 EXEC_FORM_HOOK = {
     "type": "command",
-    "command": "python3",
+    "command": "python",
     "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/citation_gate_hook.py"],
 }
 SHELL_FORM_UNBRACED = {
     "type": "command",
-    "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/citation_gate_hook.py"',
+    "command": 'python "$CLAUDE_PROJECT_DIR/.claude/hooks/citation_gate_hook.py"',
 }
 
 
@@ -212,9 +212,15 @@ class TestGateLiveness:
 
 
 class TestLauncherFaults:
-    """Static checks over settings.json -- the only detector available for
-    a hook that fails to start, since such a hook cannot report anything
-    itself (#197)."""
+    """Static checks over settings.json, end to end through the real hook.
+
+    One of two detectors, not the only one. A hook that fails to start
+    cannot report anything itself, and this hook is started by the same
+    interpreter name it vets -- so it is silent on precisely the host where
+    the gate's launcher is missing. `python -m src.draft gate` makes the
+    same report from the other side of that gap (#197); the check they
+    share is `src/hook_launchers.py`.
+    """
 
     def test_exec_form_with_a_braced_placeholder_is_clean(self, synced):
         assert synced.run().stdout.strip() == ""

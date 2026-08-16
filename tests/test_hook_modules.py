@@ -174,92 +174,32 @@ class TestCitationGateHookModule:
 
 
 class TestLauncherFaults:
-    """`session_start_hook.launcher_faults()` over a settings file it owns."""
+    """`session_start_hook.launcher_faults()`, which is now a delegation.
 
-    @pytest.fixture
-    def rooted(self, preflight, tmp_path, monkeypatch):
+    The cases live in `tests/test_hook_launchers.py`, beside the code that
+    moved to `src/hook_launchers.py` (#197). What is left to check here is
+    the seam: that the preflight passes *its own* repo root -- the one it
+    derived from the hook file's on-disk location, not the one baked into
+    the module default -- and reports what comes back as a fault.
+    """
+
+    def test_the_settings_file_read_is_the_hooks_own_root(
+            self, preflight, tmp_path, monkeypatch):
         monkeypatch.setattr(preflight, "REPO", tmp_path)
-        (tmp_path / ".claude").mkdir()
-        return preflight, tmp_path
+        seen = []
+        monkeypatch.setattr(preflight.hook_launchers, "faults",
+                            lambda path: seen.append(path) or ["a fault"])
+        assert preflight.launcher_faults() == ["a fault"]
+        assert seen == [tmp_path / ".claude" / "settings.json"]
 
-    @staticmethod
-    def settings(root: Path, data) -> None:
-        path = root / ".claude" / "settings.json"
-        path.write_text(data if isinstance(data, str) else json.dumps(data))
-
-    def test_absent_settings_is_not_a_fault(self, rooted):
-        hook, _ = rooted
-        assert hook.launcher_faults() == []
-
-    @pytest.mark.parametrize("data,why", [
-        ("{not json", "unparseable"),
-        ({"permissions": {}}, "no hooks key"),
-        ({"hooks": "not a mapping"}, "hooks of the wrong shape"),
-    ])
-    def test_unusable_settings_is_not_a_fault(self, rooted, data, why):
-        hook, root = rooted
-        self.settings(root, data)
-        assert hook.launcher_faults() == [], why
-
-    def test_a_sound_exec_form_launcher_is_clean(self, rooted):
-        hook, root = rooted
-        self.settings(root, {"hooks": {"PostToolUse": [{"hooks": [
-            {"command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}]}})
-        assert hook.launcher_faults() == []
-
-    def test_an_entry_with_no_hooks_list_is_skipped(self, rooted):
-        hook, root = rooted
-        self.settings(root, {"hooks": {"PostToolUse": [{"matcher": "Write"}]}})
-        assert hook.launcher_faults() == []
-
-    def test_an_interpreter_off_path_is_a_fault(self, rooted):
-        hook, root = rooted
-        self.settings(root, {"hooks": {"SessionStart": [{"hooks": [
-            {"command": "python4.2", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}]}})
-        assert "not on PATH" in hook.launcher_faults()[0]
-
-    def test_an_unbraced_placeholder_is_a_fault(self, rooted):
-        hook, root = rooted
-        self.settings(root, {"hooks": {"PostToolUse": [{"hooks": [
-            {"command": 'python3 "$CLAUDE_PROJECT_DIR/x.py"'}]}]}})
-        assert "unbraced" in hook.launcher_faults()[0]
-
-    def test_a_braced_placeholder_in_shell_form_is_clean(self, rooted):
-        """The replace-then-search is what separates these two, and getting
-        it backwards would flag every correct launcher."""
-        hook, root = rooted
-        self.settings(root, {"hooks": {"PostToolUse": [{"hooks": [
-            {"command": 'python3 "${CLAUDE_PROJECT_DIR}/x.py"'}]}]}})
-        assert hook.launcher_faults() == []
-
-    def test_an_unbraced_placeholder_inside_args_is_a_fault(self, preflight):
-        assert "unbraced" in preflight._launcher_fault(
-            {"command": "python3", "args": ["$CLAUDE_PROJECT_DIR/x.py"]})[0]
-
-    def test_an_entry_with_no_command_is_skipped(self, preflight):
-        assert preflight._launcher_fault({"type": "command"}) == []
-
-    @pytest.mark.parametrize("events,why", [
-        ({"PostToolUse": {"not": "a list"}}, "an event holding a mapping"),
-        ({"PostToolUse": ["a bare string"]}, "an entry that is not a mapping"),
-        ({"PostToolUse": [{"hooks": "not a list"}]}, "hooks of the wrong shape"),
-        ({"PostToolUse": [{"hooks": ["a bare string"]}]}, "a hook that is not a mapping"),
-        ({"PostToolUse": [{"hooks": [{"command": "   "}]}]}, "a whitespace-only command"),
-        ({"PostToolUse": [{"hooks": [{"command": 42}]}]}, "a command that is not a string"),
-        ({"PostToolUse": [{"hooks": [{"command": "python3", "args": [7]}]}]},
-         "an argument that is not a string"),
-        ({"PostToolUse": [{"hooks": [{"command": "python3", "args": "not a list"}]}]},
-         "args of the wrong shape"),
-    ])
-    def test_a_settings_file_of_any_shape_is_survivable(self, rooted, events, why):
-        """Every level of this file is the harness's shape to define, not
-        this hook's to assume. A raise anywhere here reaches `main`'s
-        catch-all and takes the *whole* report down with it -- the corpus
-        stage and the gate check included -- so the hook would go silent
-        over a settings file it merely found odd."""
-        hook, root = rooted
-        self.settings(root, {"hooks": events})
-        assert hook.launcher_faults() == [], why
+    def test_a_fault_is_reported_as_broken(self, preflight, monkeypatch, capsys):
+        monkeypatch.setattr(preflight.hook_launchers, "faults",
+                            lambda path: ["`python` is not on PATH, so a hook cannot start."])
+        monkeypatch.setattr(preflight, "gate_is_live", lambda: True)
+        monkeypatch.setattr(preflight, "corpus_stage", lambda: None)
+        assert preflight.main() == 0
+        context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
+        assert "BROKEN: `python` is not on PATH" in context
 
 
 class TestCorpusStage:
