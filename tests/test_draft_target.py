@@ -17,6 +17,7 @@ is why the containment and suffix cases are pinned this hard.
 import importlib.util
 import io
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -95,9 +96,16 @@ class TestContainment:
 
     def test_a_substring_match_would_have_passed_the_escape(self, dt, root):
         """The case that makes this `is_relative_to` and not `in`: the raw
-        string contains "/content/drafts/" and the resolved path does not."""
+        string contains the drafts directory and the resolved path does not.
+
+        The needle is built with `os.sep` rather than written as
+        "/content/drafts/", because the separator is "\\" on Windows and a
+        literal would make this test assert something true only on POSIX --
+        which is what it did until CI's Windows leg said so.
+        """
         escape = "content/drafts/../../outside.md"
-        assert "/content/drafts/" in str(root / escape)
+        needle = f"{os.sep}content{os.sep}drafts{os.sep}"
+        assert needle in str(root / escape)
         assert dt.target(escape, root) is None
 
 
