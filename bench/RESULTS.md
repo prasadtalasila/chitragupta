@@ -2089,18 +2089,26 @@ All nine rows scored all 48 of 48 ground-truth queries -- `n_missing` is
 0 throughout `comparison.json`; no row's average is over a partial
 population.
 
-**The SPECTER2 standalone row is not scored over the same candidate
-pool as the other eight, and its number is not directly comparable to
-theirs.** BM25, every dense-only/dense+rerank row, and the cascade all
-rank over this corpus's full 642 papers / 40,741 chunks (BM25 via
+**Three different candidate-pool sizes sit under the same table
+columns, and the smaller two are not directly comparable to the
+642-paper row.** BM25 and the three dense-only/dense+rerank rows rank
+over this corpus's full 642 papers / 40,741 chunks (BM25 via
 `src/retrieval.py`'s corpus-wide index; the dense rows via the full
 Chroma collections). `specter2_row()` (Task 4's own documented,
 deliberate simplification) ranks only the ground truth's own 48-citekey
-set -- a pool roughly 13x smaller, and one that is trivially easier to
-find the right answer in by construction. That SPECTER2 still loses to
-every other row despite the smaller haystack is, if anything, a stronger
-statement about it than the raw number alone conveys -- see the
-discussion below.
+set -- roughly 13x fewer candidate papers, trivially easier to find the
+right answer in by construction. **The cascade is narrower still**:
+`_cascade_worker()` restricts its Chroma query to
+`where={"citekey": {"$in": shortlist}}`, so it searches at most the 50
+papers SPECTER2's own shortlist selected -- a pool the same order of
+size as SPECTER2 standalone's, not the 642-paper pool the plain
+dense/rerank rows see. That SPECTER2 standalone still loses to every
+corpus-wide row despite its much smaller haystack is, if anything, a
+stronger statement about it than the raw number alone conveys -- and
+the cascade losing *worse*, on a comparably narrow pool that a stronger
+paper-level pre-filter (SPECTER2, not chance) chose, only sharpens the
+finding below: the pre-filter itself is where the cascade loses ground,
+not the reranking after it.
 
 ### What this measures, stated plainly
 
@@ -2137,8 +2145,8 @@ rather than asserting it.
 
 **SPECTER2 standalone underperforms every dense drop-in** -- nDCG 0.4132,
 below even the weakest dense-*only* row (`all-MiniLM-L6-v2` at 0.4407),
-despite ranking over a candidate pool roughly 13x smaller (see the
-comparability note above). This is the mismatch
+despite ranking over a pool of roughly 13x fewer candidate papers (see
+the comparability note above). This is the mismatch
 [docs/CONFIG.md](../docs/CONFIG.md)'s "Not without a code change first"
 section already names: SPECTER2 answers "which papers are alike", not
 "which chunk answers this query", and this run is the first real
