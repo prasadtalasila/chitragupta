@@ -309,7 +309,14 @@ jobs:
       - name: Fetch main and tags for the version check
         run: git fetch --quiet --depth=1 origin "+refs/heads/main:refs/remotes/origin/main" "+refs/tags/*:refs/tags/*"
 
+      # pull_request only: on a push to main, the checked-out commit IS
+      # main, so the fetch above makes origin/main resolve to that same
+      # commit and the comparison is current-against-itself -- it would
+      # fail unconditionally, on every push, forever (confirmed on the
+      # pushes that landed #213 and #214). The check only means something
+      # while main is still a different, older commit than this branch.
       - name: Version bump has not been lost to a collision
+        if: github.event_name == 'pull_request'
         run: python3 scripts/check_version_bump.py
 
       - name: pylint

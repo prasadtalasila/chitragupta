@@ -15,6 +15,7 @@ and open-ended when a person pushes the tag by hand.
 """
 
 import importlib.util
+import re
 import subprocess
 from pathlib import Path
 
@@ -184,3 +185,33 @@ class TestItFailsReadably:
         import inspect
         source = inspect.getsource(check._git)
         assert 'encoding="utf-8"' in source
+
+
+class TestCIWiring:
+    """The CI step must run on `pull_request` only.
+
+    `ci.yml`'s `lint` job also runs `on: push: branches: [main]` (kept for
+    Codecov's base-report reasons). On that event the checked-out commit
+    *is* main, so the fetch step makes `origin/main` resolve to that same
+    commit -- current-against-itself, always `<=`, an unconditional
+    failure. Confirmed on the pushes that landed #213 and #214: both red
+    at this exact step. A text scan, not a workflow run, because that's
+    what would have caught it before either of those pushes -- the same
+    idiom as test_codecov_upload_gate.py.
+    """
+
+    def test_the_version_bump_step_is_scoped_to_pull_request(self):
+        ci_yml = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        # Steps in this job are each introduced by a `      - name:` line at
+        # a fixed indent, so splitting on that marker isolates one step's
+        # text without needing to reason about blank lines or comments
+        # inside it -- a lookahead regex over the whole file got this
+        # wrong (it skipped past blank lines into the *next* step).
+        steps = re.split(r"\n(?=      - name:)", ci_yml)
+        matches = [s for s in steps
+                   if s.startswith("      - name: Version bump has not been lost to a collision")]
+        assert matches, "ci.yml no longer has the version-bump step under this name"
+        assert "if: github.event_name == 'pull_request'" in matches[0], (
+            "the version-bump step lost its pull_request guard -- it will fail "
+            "unconditionally on every push to main"
+        )
