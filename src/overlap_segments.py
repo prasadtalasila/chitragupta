@@ -182,7 +182,7 @@ def _line_starts(text: str) -> list[int]:
 #
 # `src/review/citation_provenance.py` has a similar-looking `_OPENS_BLOCK`
 # doing a different job, and the two are deliberately not shared -- the
-# same call `src/dossier.py` makes about its own heading regexes, for the
+# same call `src/dossier/` makes about its own heading regexes, for the
 # same kind of reason. That one segments *claim-bearing* blocks for
 # lexical scoring against a source, and a blockquote is claim-bearing
 # prose it must keep whole; this one cuts *embedding units*, where a

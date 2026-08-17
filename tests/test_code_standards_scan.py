@@ -58,7 +58,10 @@ CODE_LINE_ROOTS = ("src", "scripts")
 # 5.8.x SonarCloud-debt series split the worst offenders and delisted
 # each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    "src/dossier.py::main",  # 49
+    # Unchanged by #219's split of src/dossier.py into src/dossier/: every
+    # _cmd_* handler moved out, but main()'s own argparse-tree statements
+    # didn't, so its count didn't either.
+    "src/dossier/_cli.py::main",  # 49
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/sync.py::_parse_parallel",  # 33
@@ -78,7 +81,6 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/dossier.py",  # 1778
     "src/review/verbatim_check.py",  # 1880
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 522

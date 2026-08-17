@@ -38,7 +38,7 @@ perspectives found the corpus disagreeing with itself -- and it belongs
 on disk, not in this conversation. Without it, changing one paragraph
 next month means running seven phases and a dozen subagents again.
 
-`src/dossier.py` owns that state, in Markdown, one directory per draft at
+`src/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before
 Phase 1's first retrieval call and fill it in as you go -- not at the end,
 when what you rejected has already fallen out of your context.

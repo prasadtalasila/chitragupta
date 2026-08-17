@@ -51,7 +51,7 @@ was chosen and **which candidates were tried and dropped, and why** -- and it
 belongs on disk, not in this conversation. Without it the next revision has to
 reconstruct the whole pedagogical design in order to change one exercise.
 
-`src/dossier.py` owns that state, in Markdown, one directory per draft at
+`src/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before you
 draft anything (step 0) and fill it in as you go -- not at the end, when the
 example you abandoned has already fallen out of your context.

@@ -6,7 +6,7 @@ the next the same way the dialect already does
 (docs/WRITING-STANDARDS.md §8) -- a skill file edited by hand later that
 drops the sentence is a silent regression this text-scan catches. It does
 not exercise the loader's own behaviour; src/acronyms.py and
-src/dossier.py::glossary_terms have that (tests/test_acronyms.py,
+src/dossier/_citekeys.py::glossary_terms have that (tests/test_acronyms.py,
 tests/test_dossier.py::TestGlossaryTerms).
 """
 

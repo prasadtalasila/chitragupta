@@ -333,7 +333,7 @@ def _output_dir(input_path: Path) -> Path:
     written out again here. It lives in `config` because this module's
     docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python`, which rules out importing `src/dossier.py`.
+    under bare `python`, which rules out importing `src/dossier/`.
     What stays here is the *policy* -- fall back flat, and refuse to
     write outside `content/` -- which is this module's to decide.
 

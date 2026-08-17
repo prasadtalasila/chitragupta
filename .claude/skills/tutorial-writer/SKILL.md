@@ -98,7 +98,7 @@ refused are precisely the judgment the finished prose cannot show.
 Without them on disk, the next revision has to re-derive the whole lesson
 design in order to change one step.
 
-`src/dossier.py` owns that state, in Markdown, one directory per draft at
+`src/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it in
 step 1, before you write anything, and fill it in as you go -- not at the
 end, when the alternatives you rejected have already fallen out of your
