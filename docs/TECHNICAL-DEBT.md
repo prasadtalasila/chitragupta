@@ -66,10 +66,16 @@ code -- exactly what the ratchet exists to avoid.
 
 ## Tier 1: the debt the ratchet already holds
 
-`tests/test_code_standards_scan.py` freezes **26 functions** over C1 (25
-statements) and **13 modules** over C2 (250 code lines), each with its
+`tests/test_code_standards_scan.py` freezes **10 functions** over C1 (25
+statements) and **11 modules** over C2 (250 code lines), each with its
 current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
+
+Those two counts had drifted badly -- this section claimed 26 and 13
+until #228 -- which is [build order](CODE-STANDARDS.md#build-order) item
+4, the doc-drift detector, demonstrating the exact failure it was
+proposed for. CODE-STANDARDS.md's copy of the same pair stayed correct
+throughout, because a test pins it and nothing pins this one.
 
 **That register is the authority. This section does not copy it** -- a
 debt stated in two places is a debt that will eventually be stated two
