@@ -200,6 +200,33 @@ exactly one that does.
 **Every verdict in the table is scoped to English**, for the reason §8
 gives.
 
+## 10. Figures
+
+A draft may include a figure only if it is wholly original --
+[DEVELOPER.md](../DEVELOPER.md)'s "Figures and copyright" already forbids
+inserting a paper's own extracted figure into a draft, and closely
+redrawing one from memory is the same violation in different pixels.
+Reading a source figure for understanding is fine; the boundary is what
+ends up in the draft.
+
+The supported form is a plain-ASCII diagram in a fenced code block --
+box characters, arrows and labels built from `+ - | / \ > < ^ v`, 7-bit
+characters only. Keep it to about 70 columns so it survives the
+rendered PDF's monospace block without wrapping.
+
+Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged:
+this pipeline renders PDF with `pdflatex`, which does not have those
+glyphs set up and fails the whole render with `Unicode character ┌
+(U+250C) not set up for use with LaTeX` -- verified against this
+project's own `render_output.py` call, not a general pandoc claim. A
+diagram that renders one figure and breaks every other one downstream
+in the same draft is worse than no diagram.
+
+This is not gated mechanically -- there is no equivalent of
+`citation_gate` for a figure's originality, the same gap DEVELOPER.md
+already names for copyright. Whether a diagram is genuinely original
+stays a judgement call, same as the figure's licence.
+
 ## Sources and attribution
 
 Three openly licensed works supply the principles above. All three require
