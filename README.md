@@ -85,7 +85,9 @@ before keeping it. Two more layers sit outside these
 phases. **Enrichment** deepens the same corpus with layout-aware parsing,
 semantic search and topic clustering, and nothing above needs it.
 **Review** is what you run afterwards on a finished draft -- provenance,
-verbatim and coverage reports, all advisory, none of them a gate.
+verbatim and coverage reports, all advisory, none of them a gate --
+advisory means nothing blocks you, not that borrowed wording is fine to
+leave once you've found it.
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
 by depth, by genre, and in time order -- and is where the figure above
