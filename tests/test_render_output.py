@@ -14,6 +14,7 @@ import pytest
 
 from src import ledger
 from src import render_output
+from src.render_output import _cli as _render_cli  # noqa: F401  (attribute access below)
 
 from tests.conftest import content_draft, make_reference
 
@@ -511,7 +512,7 @@ class TestRenderMarkdown:
 
         # Deliberately hidden: this path must not need pandoc, so a host
         # without it still gets a readable numbered draft.
-        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(str(draft), output_format="md")
         text = out_path.read_text()
 
@@ -578,7 +579,7 @@ class TestRenderMarkdown:
         draft.parent.mkdir(parents=True)
         draft.write_text("# T\n\nNo citations.\n")
 
-        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(str(draft), output_format="md")
 
         assert out_path == isolated_config.RENDERED_DIR / "dt" / "survey.md"
@@ -592,7 +593,7 @@ class TestRenderMarkdown:
             draft = isolated_config.DRAFTS_DIR / topic / "survey.md"
             draft.parent.mkdir(parents=True)
             draft.write_text(f"# T\n\n{body}")
-            monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+            monkeypatch.setattr(shutil, "which", lambda _: None)
             render_output.render(str(draft), output_format="md")
 
         assert "First topic." in (isolated_config.RENDERED_DIR / "dt" / "survey.md").read_text()
@@ -608,7 +609,7 @@ class TestRenderMarkdown:
         (draft.parent / "figure.png").write_bytes(b"fake png bytes")
         draft.write_text("# T\n\n![A caption](figure.png)\n")
 
-        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        monkeypatch.setattr(shutil, "which", lambda _: None)
         render_output.render(str(draft), output_format="md")
 
         copied = isolated_config.RENDERED_DIR / "dt" / "figure.png"
@@ -1030,7 +1031,7 @@ class TestInputsAreConfinedToContent:
         scratch.parent.mkdir(parents=True)
         scratch.write_text("# T\n\nNo citations.\n")
 
-        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(str(scratch), output_format="md")
 
         assert out_path == isolated_config.RENDERED_DIR / "notes.md"
@@ -1045,7 +1046,7 @@ class TestOutputDirOverride:
         report.parent.mkdir(parents=True)
         report.write_text("# T\n\nNo citations.\n")
 
-        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(
             str(report), output_format="md", output_dir=report.parent
         )
@@ -1059,7 +1060,7 @@ class TestOutputDirOverride:
         draft.parent.mkdir(parents=True)
         draft.write_text("# T\n\nNo citations.\n")
 
-        monkeypatch.setattr(render_output.shutil, "which", lambda _: None)
+        monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(str(draft), output_format="md")
 
         assert out_path == isolated_config.RENDERED_DIR / "dt" / "survey.md"
@@ -1086,3 +1087,348 @@ class TestOutputDirOverride:
                 str(draft), output_format="md",
                 output_dir=isolated_config.REVIEW_DIR / ".." / ".." / "outside",
             )
+
+
+# A figure is a pair of sibling files -- figures/<name>.tex holding the
+# TikZ picture and figures/<name>.txt holding the same diagram in
+# WRITING-STANDARDS.md §10's plain ASCII -- and each draft carries
+# whichever form is native to it inline, naming the other in a marker.
+ASCII_FIGURE = "  +-------+  read   +--------+\n  | model | ------> | solver |\n  +-------+         +--------+\n"
+TIKZ_FIGURE = "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n"
+
+
+def figure_pair(draft_dir, name="fig1"):
+    """Both halves of a figure on disk, returning the draft's directory."""
+    (draft_dir / "figures").mkdir(parents=True, exist_ok=True)
+    (draft_dir / "figures" / f"{name}.tex").write_text(TIKZ_FIGURE)
+    (draft_dir / "figures" / f"{name}.txt").write_text(ASCII_FIGURE)
+    return draft_dir
+
+
+MARKED_FENCE = (
+    "Before.\n\n<!-- tikz-alt: figures/fig1.tex -->\n\n```\n" + ASCII_FIGURE + "```\n\nAfter.\n"
+)
+MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%ascii-alt: figures/fig1.txt\n\nAfter.\n"
+
+
+class TestFigureRefs:
+    def test_a_markdown_marker_is_a_figure_reference(self):
+        # The marker is what makes the figure file visible to the copy
+        # step and the \usepackage{tikz} gate, both of which read the
+        # draft on disk rather than the substituted temp copy.
+        assert render_output._figure_refs(MARKED_FENCE) == ["figures/fig1.tex"]
+
+    def test_a_latex_input_is_a_figure_reference(self):
+        assert render_output._figure_refs(MARKED_INPUT) == ["figures/fig1.tex"]
+
+    def test_an_ascii_alt_marker_names_the_twin(self):
+        assert render_output._ascii_alt_refs(MARKED_INPUT) == ["figures/fig1.txt"]
+
+    def test_a_draft_with_no_figure_references_nothing(self):
+        assert render_output._figure_refs("Just prose.\n") == []
+        assert render_output._ascii_alt_refs("Just prose.\n") == []
+
+
+class TestResolveSibling:
+    def test_resolves_a_real_file_under_the_draft_directory(self, tmp_path):
+        figure_pair(tmp_path)
+        resolved = render_output._resolve_sibling(tmp_path, "figures/fig1.tex")
+        assert resolved == tmp_path / "figures" / "fig1.tex"
+
+    def test_refuses_absolute_and_parent_escaping_references(self, tmp_path):
+        secret = tmp_path / "secret.tex"
+        secret.write_text("marker")
+        draft_dir = tmp_path / "drafts"
+        draft_dir.mkdir()
+        assert render_output._resolve_sibling(draft_dir, str(secret)) is None
+        assert render_output._resolve_sibling(draft_dir, "../secret.tex") is None
+
+    def test_returns_none_for_a_reference_that_is_not_a_file(self, tmp_path):
+        assert render_output._resolve_sibling(tmp_path, "figures/absent.tex") is None
+
+
+class TestSubstituteTikzForAscii:
+    def test_a_marked_fence_becomes_an_input(self, tmp_path):
+        figure_pair(tmp_path)
+        out = render_output._substitute_tikz_for_ascii(MARKED_FENCE, tmp_path)
+        assert "\\input{figures/fig1.tex}" in out
+        # The fence goes too: leaving it in puts the ASCII diagram and the
+        # TikZ picture in the same PDF, one under the other.
+        assert "+-------+" not in out
+        assert "```" not in out
+
+    def test_a_marker_naming_a_missing_file_is_left_alone(self, tmp_path):
+        out = render_output._substitute_tikz_for_ascii(MARKED_FENCE, tmp_path)
+        assert out == MARKED_FENCE
+
+    def test_a_tilde_fence_is_matched_too(self, tmp_path):
+        figure_pair(tmp_path)
+        text = "<!-- tikz-alt: figures/fig1.tex -->\n~~~\n" + ASCII_FIGURE + "~~~\n"
+        assert "\\input{figures/fig1.tex}" in render_output._substitute_tikz_for_ascii(
+            text, tmp_path
+        )
+
+
+class TestSubstituteAsciiForTikz:
+    def test_an_input_with_a_twin_becomes_a_verbatim_block(self, tmp_path):
+        figure_pair(tmp_path)
+        out = render_output._substitute_ascii_for_tikz(MARKED_INPUT, tmp_path)
+        assert "\\begin{verbatim}" in out
+        assert "| model | ------> | solver |" in out
+        assert "\\input{figures/fig1.tex}" not in out
+
+    def test_a_twin_that_is_not_there_is_left_alone(self, tmp_path):
+        out = render_output._substitute_ascii_for_tikz(MARKED_INPUT, tmp_path)
+        assert out == MARKED_INPUT
+
+
+class TestWithFiguresFor:
+    def test_markdown_draft_to_pdf_takes_the_tikz_form(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.md"
+        out = render_output._with_figures_for(MARKED_FENCE, draft, "pdf")
+        assert "\\input{figures/fig1.tex}" in out
+
+    def test_markdown_draft_to_docx_keeps_the_ascii(self, tmp_path):
+        # pandoc cannot turn a tikzpicture into a Word drawing -- it drops
+        # the environment, so substituting there loses the figure entirely.
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.md"
+        assert render_output._with_figures_for(MARKED_FENCE, draft, "docx") == MARKED_FENCE
+
+    def test_latex_draft_to_md_takes_the_ascii_form(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.tex"
+        out = render_output._with_figures_for(MARKED_INPUT, draft, "md")
+        assert "\\begin{verbatim}" in out
+
+    def test_latex_draft_to_pdf_keeps_its_input(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.tex"
+        assert render_output._with_figures_for(MARKED_INPUT, draft, "pdf") == MARKED_INPUT
+
+
+class TestFigureHasCitekey:
+    def test_detects_a_pandoc_citekey(self, tmp_path):
+        fig = tmp_path / "fig.tex"
+        fig.write_text("\\node {see [@smith_thing_2020]};\n")
+        assert render_output._figure_has_citekey(fig) is True
+
+    def test_detects_a_latex_cite(self, tmp_path):
+        fig = tmp_path / "fig.tex"
+        fig.write_text("\\node {see \\citep{smith_thing_2020}};\n")
+        assert render_output._figure_has_citekey(fig) is True
+
+    def test_a_clean_figure_has_none(self, tmp_path):
+        fig = tmp_path / "fig.tex"
+        fig.write_text(TIKZ_FIGURE)
+        assert render_output._figure_has_citekey(fig) is False
+
+
+class TestFigureWarnings:
+    def test_a_clean_markdown_pair_warns_about_nothing(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.md"
+        assert render_output._figure_warnings(MARKED_FENCE, draft) == []
+
+    def test_a_clean_latex_pair_warns_about_nothing(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.tex"
+        assert render_output._figure_warnings(MARKED_INPUT, draft) == []
+
+    def test_the_wrong_marker_for_the_draft_language_is_flagged(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.md"
+        warnings = render_output._figure_warnings(MARKED_INPUT, draft)
+        assert any("wrong kind for a Markdown draft" in w for w in warnings)
+
+    def test_a_missing_figure_file_is_flagged(self, tmp_path):
+        draft = tmp_path / "draft.md"
+        warnings = render_output._figure_warnings(MARKED_FENCE, draft)
+        assert any("not a readable file" in w for w in warnings)
+
+    def test_a_citekey_in_a_figure_file_is_flagged(self, tmp_path):
+        figure_pair(tmp_path)
+        (tmp_path / "figures" / "fig1.tex").write_text("\\citep{smith_thing_2020}\n")
+        draft = tmp_path / "draft.md"
+        warnings = render_output._figure_warnings(MARKED_FENCE, draft)
+        # The gate does not follow \input, so a citekey here is ungated --
+        # forbidden by convention, warned about, deliberately not gated.
+        assert any("ungated" in w for w in warnings)
+
+    def test_an_input_with_no_ascii_twin_is_flagged(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.tex"
+        warnings = render_output._figure_warnings("\\input{figures/fig1.tex}\n", draft)
+        assert any("no `%ascii-alt:` twin" in w for w in warnings)
+
+
+class TestRequireTikz:
+    def test_says_nothing_when_kpsewhich_is_absent(self, monkeypatch):
+        # Cannot be probed, so it is not guessed: a TeX installation that
+        # ships its own tooling would otherwise be refused a render.
+        monkeypatch.setattr(shutil, "which", lambda name: None)
+        render_output._require_tikz()
+
+    def test_raises_when_the_probe_reports_tikz_missing(self, monkeypatch):
+        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/kpsewhich")
+        monkeypatch.setattr(
+            subprocess, "run",
+            lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1, b"", b""),
+        )
+        with pytest.raises(render_output.MissingBinary, match="texlive-pictures"):
+            render_output._require_tikz()
+
+    def test_says_nothing_when_the_probe_finds_tikz(self, monkeypatch):
+        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/kpsewhich")
+        monkeypatch.setattr(
+            subprocess, "run",
+            lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 0, b"ok", b""),
+        )
+        render_output._require_tikz()
+
+
+class TestCopyLocalTexIncludesFollowsMarkers:
+    def test_a_markdown_marker_gets_its_figure_copied(self, tmp_path):
+        # Without this the standalone .tex in content/rendered/ emits an
+        # \input for a file that was never copied beside it, and fails to
+        # compile on its own -- the exact regression #226's own copy test
+        # exists to catch, reintroduced through the marker path.
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.md"
+        draft.write_text(MARKED_FENCE)
+        dest = tmp_path / "rendered"
+        dest.mkdir()
+
+        render_output._copy_local_tex_includes(draft, dest)
+
+        assert (dest / "figures" / "fig1.tex").read_text() == TIKZ_FIGURE
+
+
+class TestFigurePairRenderReal:
+    """Both directions through the real toolchain, no mocking: the whole
+    point of the pair is that each output format gets the form it can
+    actually draw, and only a real render proves that."""
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_markdown_draft_renders_tikz_to_pdf(self, isolated_config, tmp_path, monkeypatch):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text("# Title\n\n" + MARKED_FENCE)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="pdf")
+
+        assert out_path.exists()
+        assert out_path.stat().st_size > 0
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_markdown_drafts_standalone_tex_compiles_on_its_own(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text("# Title\n\n" + MARKED_FENCE)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        assert "\\input{figures/fig1.tex}" in source
+        assert "| model | ------> | solver |" not in source
+        assert (out_path.parent / "figures" / "fig1.tex").exists()
+        compiled = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent, capture_output=True, text=True,
+        )
+        assert compiled.returncode == 0, compiled.stdout[-2000:]
+
+    @pytest.mark.skipif(
+        not pandoc_available, reason="pandoc not installed",
+    )
+    def test_a_tex_fragment_renders_its_ascii_twin_to_md(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        # The row this whole feature exists for: pandoc resolves the
+        # \input but drops the tikzpicture, so without the substitution
+        # the .md preview shows no figure at all.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "chapter.tex"
+        draft.write_text("\\section{Title}\n\n" + MARKED_INPUT)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="md")
+
+        rendered = out_path.read_text()
+        assert "| model | ------> | solver |" in rendered
+
+    def test_a_markdown_draft_to_md_keeps_its_ascii_fence(self, isolated_config, tmp_path):
+        # No pandoc on this path at all, so the fence passes straight
+        # through and the marker stays as an invisible HTML comment.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text("# Title\n\n" + MARKED_FENCE)
+
+        out_path = render_output.render(str(draft), output_format="md")
+
+        assert "| model | ------> | solver |" in out_path.read_text()
+
+    def test_a_figure_problem_is_warned_about_not_raised(
+        self, isolated_config, tmp_path, capsys
+    ):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text("# Title\n\n" + MARKED_FENCE)
+
+        out_path = render_output.render(str(draft), output_format="md")
+
+        assert out_path.exists()
+        assert "[figure]" in capsys.readouterr().err
+
+
+class TestFigureRepairHint:
+    """A malformed TikZ figure fails the whole pdf, and pdflatex's error
+    names a file without saying what to do about it."""
+
+    def test_names_the_figure_and_points_at_draft_reviser(self, tmp_path):
+        draft = tmp_path / "draft.md"
+        draft.write_text(MARKED_FENCE)
+        hint = render_output._cli._figure_repair_hint(str(draft))
+        assert "figures/fig1.tex" in hint
+        assert "draft-reviser" in hint
+
+    def test_a_draft_with_no_figure_gets_no_hint(self, tmp_path):
+        # An unrelated pandoc failure must not send the user chasing a
+        # figure that isn't there.
+        draft = tmp_path / "draft.md"
+        draft.write_text("# Title\n\nJust prose.\n")
+        assert render_output._cli._figure_repair_hint(str(draft)) == ""
+
+    def test_an_unreadable_input_gets_no_hint(self, tmp_path):
+        assert render_output._cli._figure_repair_hint(str(tmp_path / "absent.md")) == ""

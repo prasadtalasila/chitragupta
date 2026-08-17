@@ -209,17 +209,18 @@ draft, or closely redrawing one from memory, is the same violation in
 different pixels. Reading a source figure for understanding is fine; the
 boundary is what ends up in the draft.
 
-The supported form is a plain-ASCII diagram in a fenced code block --
-box characters, arrows and labels built from `+ - | / \ > < ^ v`, 7-bit
-characters only. Keep it to about 70 columns so it survives the
-rendered PDF's monospace block without wrapping.
+A figure's ASCII form is a diagram in a code block -- box characters,
+arrows and labels built from `+ - | / \ > < ^ v`, 7-bit characters only.
+Keep it to about 70 columns so it survives the rendered PDF's monospace
+block without wrapping.
 
-A `.tex` draft -- this pipeline's one LaTeX-sourced genre -- has no
-fenced code block to put one in; the same plain-ASCII content goes in a
-`verbatim` environment instead, same 7-bit-only rule, same reasoning.
-Verified through this pipeline's actual render path both ways: a
-`verbatim` diagram in a preamble-less fragment survives pandoc's LaTeX
-reader into both `--format pdf` and `--format md`.
+A code block, not specifically a fenced one. In a Markdown draft you
+write a fence and the `md` render keeps it. Where the renderer inlines
+the ASCII form into a `.tex`-sourced `.md` preview, pandoc emits a
+4-space indented block instead -- verified, and it is the shape to
+expect rather than a defect: every line is shifted by the same four
+spaces, so the diagram's alignment is intact and `^ \ < >` come through
+literally.
 
 Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged:
 this pipeline renders PDF with `pdflatex`, which does not have those
@@ -229,10 +230,149 @@ project's own `render_output.py` call, not a general pandoc claim. A
 diagram that renders one figure and breaks every other one downstream
 in the same draft is worse than no diagram.
 
+### Every figure has two forms
+
+ASCII is what a Markdown reader should see; it is not what a thesis
+wants. So a figure in this pipeline exists twice -- once as a TikZ
+picture, which sets as vector art at the consuming document's own font
+and line width, and once as the plain-ASCII diagram above.
+
+**The TikZ form is always a sibling file. Where the ASCII form lives
+depends on the genre**, and the rule is that each draft keeps its own
+native form *inline* and only the other form goes to a file. A Markdown
+draft's ASCII is already inline in its fence, which is what the `md`
+render emits, so it needs no `.txt` -- writing one anyway would leave
+two copies of the same diagram with nothing reading the second and
+nothing keeping them in step. The `.tex` genre is the case that needs
+the file, because its native form is the TikZ and a `verbatim` block of
+ASCII sitting in the fragment would print in the user's real thesis.
+
+```text
+content/drafts/<topic>/<draft>.md          ASCII inline, in a fence
+content/drafts/<topic>/figures/<name>.tex  the TikZ picture   (both genres)
+
+content/drafts/<topic>/<draft>.tex         TikZ inline, via \input
+content/drafts/<topic>/figures/<name>.tex  the TikZ picture
+content/drafts/<topic>/figures/<name>.txt  the ASCII form     (.tex genre only)
+```
+
+**A topic directory is mandatory for a draft that carries a figure.** A
+flat `content/drafts/<slug>.md` puts its figures in
+`content/drafts/figures/`, shared with every other flat draft, where two
+drafts that each name a figure `fig1` silently overwrite each other in
+`content/rendered/`. Each genre skill settles the draft's path at the
+start of its process, before a figure is on anyone's mind; deciding on a
+figure later is a reason to move the draft and its dossier, not a reason
+to `mkdir` beside a flat one.
+
+Each draft carries its **native** form inline and names the other with a
+marker comment. The marker is what lets a reader of the draft see that a
+second form exists, and what lets a reviser find every figure by `grep`
+rather than by parsing the draft.
+
+**Markdown drafts** -- `tutorial-writer`, `textbook-chapter-writer`,
+`survey-writer` -- keep the ASCII inline in its fence, with the marker
+on a line of its own just above it:
+
+```html
+<!-- tikz-alt: figures/<name>.tex -->
+```
+
+For `--format tex` and `--format pdf` the renderer replaces that marked
+fence with `\input{figures/<name>.tex}`. For `--format md` nothing
+changes, because an HTML comment is invisible in rendered Markdown -- so
+the marker costs the Markdown reader nothing, and pandoc's LaTeX writer
+drops it outright (verified) rather than leaking it into the `.tex`.
+
+**The `.tex` draft** -- `thesis-chapter-writer`, this pipeline's one
+LaTeX-sourced genre -- is the other way round. The TikZ is inline, via
+the `\input` a real thesis resolves for itself, and the marker follows
+it:
+
+```latex
+\input{figures/<name>.tex}
+%ascii-alt: figures/<name>.txt
+```
+
+For `--format md` the renderer substitutes the `.txt` contents for that
+`\input`, in a temp copy. Writing a `verbatim` block by hand is no
+longer the author's job here: the fragment on disk stays exactly what
+the user `\input`s into their own thesis, and the ASCII appears only in
+the preview that needs it.
+
+**The marker must be a comment, never a second `\input`.** A literal
+`\input{figures/<name>.txt}` makes pdflatex read the ASCII art *as LaTeX
+source*, and the alphabet above is full of math-mode-only characters:
+
+```text
+! Missing $ inserted.        exit=1
+```
+
+That failure lands in the user's own thesis build, where we never see
+it -- our own render substitutes the line away first. A LaTeX comment is
+inert to pdflatex, dropped by pandoc, and meaningful only to this
+pipeline.
+
+### What the pair requires
+
+- **Both forms, or no figure.** A figure is not finished until both
+  sibling files exist and the marker is in the draft. A pair with a
+  missing half renders in one format and disappears in the other, and a
+  draft that refers in prose to a figure the reader cannot see is worse
+  than one with no figure at all. "Both forms" means both *distinct*
+  forms, not both files: a Markdown draft's ASCII is the fence it
+  already carries, so its figure is complete with the `.tex` sibling
+  alone.
+- **Originality binds the TikZ identically.** A TikZ picture redrawn
+  from a source paper's figure is the same violation in different
+  pixels, and that a vector redraw is easier to produce than a traced
+  bitmap changes nothing about whose figure it is. Reading a source
+  figure for understanding is fine; the boundary is the same one as
+  above.
+- **No citekeys inside a figure file.** `python -m src.draft gate` reads
+  the draft and does not follow `\input`, so a citekey in a node label
+  or a caption inside `figures/<name>.tex` is invisible to the one check
+  standing between this pipeline and a fabricated reference. Cite in the
+  draft's prose, where the gate can see it. This is stated and not
+  gated, deliberately: `docs/CODE-STANDARDS.md` keeps `src.draft gate`
+  as the project's only gate, meaning exactly one thing -- a fabricated
+  citekey fails -- and giving it a second meaning would blunt the first.
+- **Verify the TikZ compiles before keeping it.** A figure that does not
+  compile fails the *whole* pdf render, not just the figure. Probe
+  `kpsewhich tikz.sty` first; if it is absent, write only the ASCII form
+  and no marker, and say so in chat. Do this at drafting time: a marker
+  written on a host without `tikz.sty` makes every later `tex`/`pdf`
+  render of that draft fail with `[missing-binary]`, because the
+  renderer refuses rather than silently falling back -- the same draft
+  has to produce the same output on every host. If it is present, wrap the figure
+  in a minimal `\documentclass{article}` + `\usepackage{tikz}` document,
+  run `pdflatex` on it, and never keep one that fails.
+- **Plain 7-bit ASCII in the ASCII form**, wherever it lives, same
+  alphabet and same reasoning as the Unicode exclusion above. It is
+  what every non-LaTeX render emits, and a draft with no TikZ figure at
+  all still renders its fence straight into the pdf -- which is exactly
+  the run where one Unicode box character takes the whole document down
+  with it.
+
+Where `tikz.sty` is absent and the draft is the `.tex` genre, the
+fallback is what this section required before the pair existed: the
+ASCII goes inline in a `verbatim` environment in the fragment, with no
+`\input` and no marker. That form survives pandoc's LaTeX reader into
+both `--format pdf` and `--format md` -- verified through this
+pipeline's actual render path both ways -- so the figure stays visible
+in every format such a host can produce. A Markdown draft needs no such
+fallback: without a marker its fence is carried into every format
+exactly as it was before.
+
 This is not gated mechanically -- there is no equivalent of
 `citation_gate` for a figure's originality. Whether a diagram is
 genuinely original, and whether a source figure's own licence would
-even permit reproducing it, stays a judgement call.
+even permit reproducing it, stays a judgement call. Nor is there one for
+agreement between the two forms: nothing can check that a TikZ picture
+and an ASCII diagram depict the same thing, so a revision that edits one
+and not the other leaves the pdf and the Markdown preview disagreeing,
+silently and indefinitely. `draft-reviser` carries the only defence
+there is -- touch a figure, touch both forms.
 
 ## Sources and attribution
 

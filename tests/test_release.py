@@ -40,6 +40,8 @@ def make_repo(tmp_path):
     (repo / ".claude" / "skills" / "survey-writer" / "SKILL.md").write_text("# survey")
     (repo / "bench").mkdir()
     (repo / "bench" / "bench_docling.py").write_text("x = 1")
+    (repo / "specs").mkdir()
+    (repo / "specs" / "2026-01-01-example-design.md").write_text("# Design")
     (repo / "content" / "drafts").mkdir(parents=True)
     (repo / "content" / "drafts" / "example-tutorial.md").write_text("# Example")
     (repo / "papers" / "pdfs").mkdir(parents=True)
@@ -95,6 +97,16 @@ class TestTrackedFiles:
         # comment warns about, exported to someone who never opted into it.
         paths = release.tracked_files()
         assert "codecov.yml" not in paths
+
+    def test_excludes_specs(self, repo):
+        # Design documents for in-progress work on *this* repository.
+        # Unlike docs/, which ships wholesale because its files
+        # cross-reference each other by name and stay true after a
+        # release, a spec is dated, addressed to a developer, and
+        # superseded by the code once it lands. Without this the denylist
+        # is silent about it and every design doc ships in the zip.
+        paths = release.tracked_files()
+        assert not any(p.startswith("specs/") for p in paths)
 
     def test_ships_all_three_agent_guidance_files(self, repo):
         # All three ship. .claude/ and its genre skills ship too, and they

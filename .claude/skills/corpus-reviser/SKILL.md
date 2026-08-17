@@ -122,7 +122,11 @@ turn a wide pass into the re-run this skill exists to avoid.
   `draft-reviser`: `scope.md`'s `genre:` line names the skill whose
   drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's
   figures apply -- and a `deep-research` draft gets none, wide pass or
-  not.
+  not. `draft-reviser`'s **touch a figure, touch both forms** rule
+  carries over unchanged: a figure exists as a TikZ picture and as a
+  plain-ASCII diagram, nothing can check that the two still depict the
+  same thing, and a wide pass is the one most likely to edit a figure
+  in passing while re-reading a section for something else.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m src.draft gate`.
 - **Run the prose check** -- `python -m src.draft style

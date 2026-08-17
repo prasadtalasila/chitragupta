@@ -274,6 +274,47 @@ the lesson design is the part worth keeping either way.
    still don't need one: if nothing in the path is clearer as a diagram
    than as text, move on.
 
+   A figure that does earn its place is a **pair of forms**, and §10 is
+   the contract. This genre's native form is the ASCII diagram, so it
+   stays inline in its fence exactly as before, with a marker line of its
+   own just above it naming the TikZ sibling:
+
+   ```html
+   <!-- tikz-alt: figures/<name>.tex -->
+   ```
+
+   Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
+   picture). No `.txt` sibling: this genre's ASCII form is the fence
+   already in the draft, which is what the `md` render emits, and a
+   second copy on disk would only be one more thing to keep in step. The
+   `--format md` render is
+   unchanged -- an HTML comment is invisible in rendered Markdown -- and
+   `--format tex`/`--format pdf` (step 14) replace the marked fence with
+   `\input{figures/<name>.tex}`, so a learner reading the PDF gets a
+   real picture instead of monospace art. Four riders, each of which §10
+   explains:
+
+   - **A topic directory is required.** If step 1 settled on a flat
+     `content/drafts/<slug>.md`, move the draft and its dossier before
+     adding a figure, or skip the figure. Figures under a flat draft
+     land in `content/drafts/figures/`, shared with every other flat
+     draft.
+   - **Verify the TikZ compiles before keeping it** -- the same
+     "actually run it" discipline step 8 applies to the lesson itself.
+     Run `kpsewhich tikz.sty` first: if it is absent, keep the fence,
+     write no marker and no `figures/`, and say so in chat. If it is
+     present, wrap `figures/<name>.tex` in a minimal
+     `\documentclass{article}` + `\usepackage{tikz}` document and run
+     `pdflatex` on it. A malformed figure fails the *whole* pdf render,
+     not just the figure.
+   - **No citekey inside either figure file.** Step 12's gate reads the
+     draft and does not follow `\input`, so a citekey in a node label
+     evades the one check this pipeline exists for. This genre's
+     citations belong in "Where to go next" anyway.
+   - **The TikZ must be as original as the ASCII.** A picture redrawn
+     from a source paper's figure is the same violation in different
+     pixels.
+
 10. **Reread as the beginner.** One pass as someone who has never seen the
    topic. Flag: undefined terms, steps that assume a prior action you never
    instructed, any point where the learner must decide something, any step
