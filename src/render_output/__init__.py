@@ -92,10 +92,11 @@ from src.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolv
 from src.render_output._errors import MissingBinary, OutsideContentDir, _require
 from src.render_output._figures import (
     _ASCII_ALT_RE, _INPUT_WITH_ASCII_ALT_RE, _LATEX_CITE_RE, _LATEX_INCLUDE_RE,
-    _MARKED_FENCE_RE, _TEX_FORMATS, _TIKZ_ALT_RE, _ascii_alt_refs, _figure_has_citekey,
-    _figure_refs, _figure_warnings, _local_tex_include_refs, _require_tikz,
-    _resolve_sibling, _substitute_ascii_for_tikz, _substitute_tikz_for_ascii,
-    _tikz_alt_refs, _with_figures_for,
+    _MARKED_FENCE_RE, _TEX_FORMATS, _TIKZ_ALT_RE, _ascii_alt_refs, _ascii_twin_ref,
+    _figure_has_citekey, _figure_refs, _figure_warnings, _local_tex_include_refs,
+    _markdown_twin_warnings, _normalised_diagram, _require_tikz, _resolve_sibling,
+    _substitute_ascii_for_tikz, _substitute_tikz_for_ascii, _tikz_alt_refs,
+    _with_figures_for,
 )
 from src.render_output._cli import main
 from src.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir

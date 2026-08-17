@@ -257,9 +257,10 @@ collapse them for the sake of a cleaner narrative.
    ```
 
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
-   picture). No `.txt` sibling: this genre's ASCII form is the fence
-   already in the draft, which is what the `md` render emits, and a
-   second copy on disk would only be one more thing to keep in step. The
+   picture) and `content/drafts/<topic>/figures/<name>.txt` (the same
+   diagram as the fence, same 7-bit alphabet §10 requires -- a Unicode
+   box character hard-fails `pdflatex`). Yes, that is the ASCII twice;
+   §10 says why, and the renderer warns if the two copies drift. The
    `--format md` render is
    unchanged -- an HTML comment is invisible in rendered Markdown -- and
    `--format tex`/`--format pdf` (step 12) replace the marked fence with

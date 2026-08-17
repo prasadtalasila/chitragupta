@@ -22,11 +22,18 @@ the shape that shipped:
 | `.tex` (thesis) | TikZ, via `\input` | `figures/<name>.txt` | `%ascii-alt: ...` |
 
 Each draft keeps its own native form inline and names the other in a
-marker; the renderer swaps them per output format. **Only the other form
-becomes a file.** A Markdown draft needs no `.txt` -- its ASCII is
-already the fence the `md` render emits, and writing one anyway would
-leave two copies of one diagram with nothing reading the second. That
-correction came out of the implementation, not the design.
+marker; the renderer swaps them per output format.
+
+**Both forms are files in every genre.** The implementation first
+dropped the `.txt` for Markdown drafts, on the grounds that their ASCII
+is already the fence and a second copy would only rot. The user
+overruled that: a figure has the same shape on disk whichever genre
+produced it, and the ASCII is reusable on its own. The rot objection was
+answered rather than dismissed -- the renderer now *checks* the second
+copy, warning when a Markdown draft's `.txt` is missing or has drifted
+from the fence beside its marker. One marker still names the pair; the
+`.txt` is derived from the `.tex` by suffix, so there is never a second
+reference to keep in step.
 
 One consequence the user should see recorded: #223 calibrated ASCII
 figures as fitting `tutorial-writer` *most* naturally, and a tutorial's

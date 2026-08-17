@@ -67,7 +67,7 @@ _MARKED_FENCE_RE = re.compile(
     r"^[ \t]*<!--[ \t]*tikz-alt:[ \t]*(\S+)[ \t]*-->[ \t]*\n"
     r"(?:[ \t]*\n)*"
     r"[ \t]*(`{3,}|~{3,})[^\n]*\n"
-    r"(?:[^\n]*\n)*?"
+    r"((?:[^\n]*\n)*?)"
     r"[ \t]*\2[ \t]*(?:\n|$)",
     re.MULTILINE,
 )
@@ -220,6 +220,54 @@ def _figure_has_citekey(path: Path) -> bool:
     )
 
 
+def _ascii_twin_ref(tikz_ref: str) -> str:
+    """The `.txt` twin of a `.tex` figure. One marker names the pair.
+
+    A second marker naming the `.txt` explicitly was the alternative and
+    is worse: two references to keep in step, and a draft that can name a
+    twin belonging to a different figure.
+    """
+    return str(Path(tikz_ref).with_suffix(".txt"))
+
+
+def _normalised_diagram(block: str) -> str:
+    """A diagram compared the way a reader sees it.
+
+    Trailing whitespace and surrounding blank lines are invisible on the
+    page, so two copies differing only there are the same diagram and
+    reporting them would train someone to ignore the warning.
+    """
+    return "\n".join(line.rstrip() for line in block.strip("\n").split("\n"))
+
+
+def _markdown_twin_warnings(text: str, draft_dir: Path) -> list[str]:
+    """Each marked fence checked against the `.txt` twin beside it.
+
+    A Markdown draft's ASCII is the fence, and no render path reads the
+    `.txt`. Holding both is a deliberate choice -- a figure has the same
+    shape on disk whichever genre produced it, and the ASCII is
+    reusable on its own -- but an unread copy is one that rots. So it is
+    *checked* rather than merely required: a missing twin, or one that
+    has drifted from the fence, is reported. Without that, the next
+    reviser finds two copies of a diagram and cannot tell which is
+    current.
+    """
+    found = []
+    for match in _MARKED_FENCE_RE.finditer(text):
+        twin_ref = _ascii_twin_ref(match.group(1))
+        twin = _resolve_sibling(draft_dir, twin_ref)
+        if twin is None:
+            found.append(f"{twin_ref}: no ASCII twin beside {match.group(1)}")
+        elif _normalised_diagram(twin.read_text(encoding="utf-8")) != _normalised_diagram(
+            match.group(3)
+        ):
+            found.append(
+                f"{twin_ref}: has drifted from the fence beside its marker -- the two "
+                "copies of this diagram no longer agree, and nothing else will say so"
+            )
+    return found
+
+
 def _figure_warnings(text: str, input_path: Path) -> list[str]:
     """Everything checkable about a figure pair, none of it worth failing over.
 
@@ -249,7 +297,9 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
                 "`python -m src.draft gate`, so a citekey here is ungated -- "
                 "move the claim into the prose"
             )
-    if not is_markdown:
+    if is_markdown:
+        found += _markdown_twin_warnings(text, input_path.parent)
+    else:
         paired = {ref for ref, _ in _INPUT_WITH_ASCII_ALT_RE.findall(text)}
         found += [
             f"{ref}: no `%ascii-alt:` twin, so every non-LaTeX render omits this figure"
