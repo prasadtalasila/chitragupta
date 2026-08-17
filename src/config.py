@@ -163,7 +163,7 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # artefact and does not -- it is drafting state, and lives in the
 # dossier directory.
 REVIEW_DIR = CONTENT_DIR / "review"
-# Where a genre skill saves its draft, and where src/dossier.py keeps the
+# Where a genre skill saves its draft, and where src/dossier/ keeps the
 # working state that produced it -- one dossier directory per draft,
 # mirroring the draft's own path under DRAFTS_DIR (docs/DRAFT-ITERATION.md).
 # Separate from REVIEW_DIR, which holds reports generated *from* a
@@ -537,7 +537,7 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
     Lives here rather than in either caller because `src/render_output.py`
     is committed to stdlib plus `config`/`citation_gate`/`references` so a
     genre skill can render under bare `python` -- it cannot import
-    `src/dossier.py`, and before this the rule was written out three times
+    `src/dossier/`, and before this the rule was written out three times
     and missed in a fourth place (`citation_provenance`), which is how
     two drafts named `survey.md` came to share one report.
     """

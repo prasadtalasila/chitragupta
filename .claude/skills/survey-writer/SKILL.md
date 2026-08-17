@@ -31,7 +31,7 @@ candidates were kept and **which were turned down and why** -- and it
 belongs on disk, not in this conversation. Without it the next revision
 has to re-retrieve and re-score the whole topic to change one paragraph.
 
-`src/dossier.py` owns that state, in Markdown, one directory per draft at
+`src/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before
 you search (step 0) and fill it in as you go -- not at the end, when what
 you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`

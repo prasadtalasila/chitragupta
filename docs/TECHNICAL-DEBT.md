@@ -96,8 +96,15 @@ different problem.
 
 ### `src/dossier.py` -- 1605 code lines, and four responsibilities
 
-The largest module in the tree, and the one whose split is least
-ambiguous. By line range it is already four modules stacked:
+**Resolved in #219.** Kept below as the historical record of what the
+split was measured against -- the actual result was `src/dossier/`, 12
+modules along finer seams than the four below (the CLI block alone
+needed splitting again once its formatting helpers moved with their
+`_cmd_*` handlers into the modules whose state they print, or it would
+have landed over the 250-code-line cap on its own).
+
+The largest module in the tree, and the one whose split was least
+ambiguous. By line range it was already four modules stacked:
 
 | Lines | Responsibility |
 |---|---|
@@ -112,10 +119,11 @@ which is the shape CODE-STANDARDS.md predicts: "a `main()` that parses
 arguments, does the work, and formats the output -- most of the C1
 register has that shape."
 
-Note what splitting it would *not* fix. C2 permits a registered module to
-grow ([deliberately](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register)),
-so nothing fails today; this is debt because a reader looking for the
-export format has to know it is not in the first 1500 lines.
+Note what splitting it would *not* have fixed on its own -- C2 permits a
+registered module to grow
+([deliberately](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register)),
+so nothing failed before this; it was debt because a reader looking for
+the export format had to know it was not in the first 1500 lines.
 
 ## Tier 2: the debt CODE-STANDARDS.md already named
 
@@ -155,7 +163,7 @@ the finding rather than the total:
 | `src/review/__init__.py` | 10 / 10 |
 | `src/runlock.py` | 3 / 7 |
 | `src/sync.py` | 4 / 8 |
-| `src/dossier.py` | 64 / 65 |
+| `src/dossier.py` | 64 / 65 as one file; split into `src/dossier/` by #219, not re-measured per module since |
 
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
 the second-largest module in the repository with no annotations at all,
@@ -187,7 +195,7 @@ locale codec:
 | `src/enrich/embed_index.py`, `src/enrich/topic_model.py` | 3 / 3 each |
 | `src/runlock.py` | 2 / 2 |
 | `src/citation_gate.py`, `src/review/citation_coverage.py`, `src/pdf_text.py`, `src/retrieval.py` | 1 / 1 each |
-| `src/dossier.py` | 1 / 12 |
+| `src/dossier.py` | 1 / 12 as one file; split into `src/dossier/` by #219, not re-measured per module since |
 
 This project already knows the rule. Four test modules --
 `test_code_standards_scan.py:194`, `test_command_depth_scan.py:39`,
@@ -949,8 +957,14 @@ Ordered by what breaks if it is left, not by size:
    them were split to bring cognitive complexity under SonarQube's
    threshold). See [Type
    annotations](#type-annotations-394-of-433).
-5. **[Tier 1] Split `src/dossier.py`** along the four ranges above, and
-   delist whatever comes back under C1 in the same PR.
+5. ~~**[Tier 1] Split `src/dossier.py`** along the four ranges above, and
+   delist whatever comes back under C1 in the same PR.~~ **Done**, in
+   #219: `src/dossier/`, 12 modules each under the 250-code-line cap.
+   `main()` stayed on the register -- still 49 statements, since the
+   split moved every `_cmd_*` handler out but left its own argparse-tree
+   statements where they were. See the `src/dossier.py` subsection
+   below, kept as the historical record of what the split was measured
+   against.
 6. **[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
    lines are done — the disable list and the 44-finding residue are
    already measured, so the remaining PR is small. `markdownlint`

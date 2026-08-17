@@ -164,7 +164,7 @@ every time, including for a gate failure that touches one citekey.
 
 ### 4. No revision path at all
 
-This was the big one, and it is what `src/dossier.py` plus the
+This was the big one, and it is what `src/dossier/` plus the
 `draft-reviser` skill exist to remove. Before them, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run every step again. That is a **structural**
@@ -314,7 +314,7 @@ eliminations are each recorded elsewhere:
 
 | Lever | Status for this skill |
 |---|---|
-| Remove the structural cost (no revision path) | Done -- `src/dossier.py` plus `draft-reviser` |
+| Remove the structural cost (no revision path) | Done -- `src/dossier/` plus `draft-reviser` |
 | Trim what retrieval returns (two-stage triage) | Withdrawn. See [REJECTION.md](REJECTION.md): `deep-research`'s reads already happen inside subagents, so triage optimises the *cheap* pool, adds an estimated 270 further process starts at standard depth, and discards exactly the qualifying passages contradiction mapping exists to find |
 | Move reads behind the subagent boundary | Done -- Phases 2, 5 and 7 all dispatch |
 | Cut the fan-out payload the orchestrator carries and re-emits | Done in 3.10.0 -- `dossier brief`, an estimated 15k equivalents |
@@ -435,7 +435,7 @@ reason is worth knowing because it is narrower than "the module is safe".
 - **`init` cannot clobber.** `src.dossier.init` only creates files that
   are missing, so re-running it against a part-filled dossier adds what
   is absent and touches nothing else.
-- **No locks, deliberately.** `src/dossier.py` takes no lock and is not a
+- **No locks, deliberately.** `src/dossier/` takes no lock and is not a
   gate. It must not block behind a `sync` that is mid-run, and a
   bookkeeping write is never allowed to fail the work it was recording.
 

@@ -86,14 +86,35 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         module and exits 0 having done nothing -- which is a trap, but a
         silent and harmless one, and the same one `src/enrich/`'s and
         `src/review/`'s submodules carry by design. With one, the layer
-        would have six entry points and no single --help."""
+        would have six entry points and no single --help.
+
+        `dossier` is a package since #219, not a flat file -- the
+        equivalent property for a package is no `__main__.py` inside it,
+        which `python -m` would run in the flat modules' place.
+        """
+        as_package = REPO_ROOT / "src" / module / "__init__.py"
+        if as_package.is_file():
+            assert not (REPO_ROOT / "src" / module / "__main__.py").is_file()
+            return
         source = (REPO_ROOT / "src" / f"{module}.py").read_text(encoding="utf-8")
         assert not _MAIN_BLOCK.search(source)
 
     @pytest.mark.parametrize("module", sorted(BACKING_MODULES.values()))
     def test_running_a_backing_module_directly_does_nothing(self, module):
-        """The observable half of the assertion above."""
+        """The observable half of the assertion above.
+
+        A package without `__main__.py` can't reach this silently:
+        Python's own `-m` machinery refuses to run it at all, exit 1
+        with a message on stderr rather than exit 0 with empty stdout.
+        Still nothing a drafting-layer command does -- checked here,
+        not assumed, the same as the flat-module case below it.
+        """
         result = _run("-m", f"src.{module}")
+        if (REPO_ROOT / "src" / module / "__init__.py").is_file():
+            assert result.returncode == 1
+            assert "cannot be directly executed" in result.stderr
+            assert result.stdout == ""
+            return
         assert result.returncode == 0
         assert result.stdout == ""
 

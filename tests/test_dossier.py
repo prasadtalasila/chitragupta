@@ -1,4 +1,4 @@
-"""Tests for src/dossier.py.
+"""Tests for src/dossier/ (#219 split it out of one src/dossier.py).
 
 Three things carry most of the weight here, because they are the three
 that can lose someone's work or waste the tokens the module exists to
@@ -19,6 +19,9 @@ from pathlib import Path
 import pytest
 
 from src import acronyms, config, dossier
+from src.dossier import (
+    _archive, _brief, _citekeys, _create, _drift, _retrieval, _sections, _status,
+)
 
 
 @pytest.fixture
@@ -283,17 +286,17 @@ class TestGlossaryTerms:
     """
 
     def test_returns_empty_dict_without_a_dossier(self, draft):
-        assert dossier.glossary_terms(draft) == {}
+        assert _citekeys.glossary_terms(draft) == {}
 
     def test_the_shipped_placeholder_has_no_terms(self, draft):
         dossier.init(draft, "survey")
-        assert dossier.glossary_terms(draft) == {}
+        assert _citekeys.glossary_terms(draft) == {}
 
     def test_returns_empty_when_scope_has_no_glossary_heading_at_all(self, draft):
         dossier.init(draft, "survey")
         scope = dossier.dossier_dir(draft) / "scope.md"
         scope.write_text(scope.read_text().replace("## Glossary", "## Not a glossary"))
-        assert dossier.glossary_terms(draft) == {}
+        assert _citekeys.glossary_terms(draft) == {}
 
     def test_a_bullet_with_no_definition_text_is_skipped(self, draft):
         dossier.init(draft, "survey")
@@ -302,12 +305,12 @@ class TestGlossaryTerms:
             "- **DTaaS** --\n"
             "- **FMU** -- Functional Mock-up Unit.",
         )
-        assert dossier.glossary_terms(draft) == {"FMU": "Functional Mock-up Unit."}
+        assert _citekeys.glossary_terms(draft) == {"FMU": "Functional Mock-up Unit."}
 
     def test_parses_a_single_bullet(self, draft):
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert dossier.glossary_terms(draft) == {
+        assert _citekeys.glossary_terms(draft) == {
             "DTaaS": "Digital Twin as a Service."
         }
 
@@ -319,7 +322,7 @@ class TestGlossaryTerms:
             "- **FMU** -- Functional Mock-up Unit, the packaging format "
             "co-simulation tools exchange.",
         )
-        terms = dossier.glossary_terms(draft)
+        terms = _citekeys.glossary_terms(draft)
         assert terms["DTaaS"] == "Digital Twin as a Service."
         assert terms["FMU"].startswith("Functional Mock-up Unit")
 
@@ -331,7 +334,7 @@ class TestGlossaryTerms:
             "  estimate of the physical twin's condition. *Estimate*, not\n"
             "  *reading*: it may include quantities no sensor measures.",
         )
-        terms = dossier.glossary_terms(draft)
+        terms = _citekeys.glossary_terms(draft)
         assert terms["Twin state"].startswith(
             "the digital object's current best"
         )
@@ -340,7 +343,7 @@ class TestGlossaryTerms:
     def test_a_hand_typed_line_that_does_not_match_is_skipped_not_an_error(self, draft):
         dossier.init(draft, "survey")
         _write_glossary(draft, "DTaaS: Digital Twin as a Service (no bullet)")
-        assert dossier.glossary_terms(draft) == {}
+        assert _citekeys.glossary_terms(draft) == {}
 
     def test_stops_at_the_next_heading(self, draft):
         # ## Glossary is the last section _scope() writes, so appending
@@ -353,7 +356,7 @@ class TestGlossaryTerms:
             scope.read_text()
             + "\n## Not glossary\n\n- **Not a term** -- should not appear.\n"
         )
-        assert dossier.glossary_terms(draft) == {
+        assert _citekeys.glossary_terms(draft) == {
             "DTaaS": "Digital Twin as a Service."
         }
 
@@ -371,7 +374,7 @@ class TestSuggestAcronyms:
     """
 
     def test_returns_empty_without_a_dossier(self, draft):
-        assert dossier.suggest_acronyms(draft) == {}
+        assert _citekeys.suggest_acronyms(draft) == {}
 
     def test_delegates_to_acronyms_suggest_with_this_drafts_glossary(
         self, draft, monkeypatch
@@ -382,7 +385,7 @@ class TestSuggestAcronyms:
         )
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert dossier.suggest_acronyms(draft) == {
+        assert _citekeys.suggest_acronyms(draft) == {
             "DTaaS": "Digital Twin as a Service."
         }
 
@@ -426,7 +429,7 @@ class TestKnownCitekeys:
 
 class TestStatus:
     def test_reports_a_missing_dossier_without_raising(self, draft):
-        report = dossier.status(draft)
+        report = _status.status(draft)
         assert report.files
         assert not any(f.present for f in report.files)
 
@@ -440,7 +443,7 @@ class TestStatus:
             "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n"
             "| `c_three_2022` | q | off-topic |\n"
         )
-        by_name = {f.name: f for f in dossier.status(draft).files}
+        by_name = {f.name: f for f in _status.status(draft).files}
         assert by_name["evidence.md"].entries == 2
         assert by_name["rejected.md"].entries == 1
 
@@ -458,14 +461,14 @@ class TestStatus:
 
     def test_a_skeleton_file_counts_as_empty(self, draft):
         dossier.init(draft, "survey")
-        by_name = {f.name: f for f in dossier.status(draft).files}
+        by_name = {f.name: f for f in _status.status(draft).files}
         assert by_name["evidence.md"].entries == 0
         assert by_name["rejected.md"].entries == 0
         assert by_name["steering.md"].entries == 0
 
     def test_the_outline_comes_back_with_the_status(self, draft):
         dossier.init(draft, "survey")
-        assert [s.title for s in dossier.status(draft).outline] == [
+        assert [s.title for s in _status.status(draft).outline] == [
             "A survey", "1. First", "2. Second",
         ]
 
@@ -473,7 +476,7 @@ class TestStatus:
         _seed_ledger(["a_one_2020"])
         dossier.init(draft, "survey")
         _seed_ledger(["b_two_2021"])
-        report = dossier.status(draft)
+        report = _status.status(draft)
         assert report.drifted
         assert report.recorded[0] == 1
         assert report.current[0] == 2
@@ -481,14 +484,14 @@ class TestStatus:
     def test_an_unchanged_corpus_does_not_drift(self, draft):
         _seed_ledger(["a_one_2020"])
         dossier.init(draft, "survey")
-        assert not dossier.status(draft).drifted
+        assert not _status.status(draft).drifted
 
     def test_citekeys_nowhere_in_the_dossier_are_named(self, draft):
         _seed_ledger(["a_one_2020", "b_two_2021"])
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "evidence.md").write_text("# Kept\n\n## `a_one_2020`\n")
-        assert dossier.status(draft).unconsidered == {"b_two_2021"}
+        assert _status.status(draft).unconsidered == {"b_two_2021"}
 
     def test_a_rejected_citekey_counts_as_considered(self, draft):
         _seed_ledger(["a_one_2020", "b_two_2021"])
@@ -497,14 +500,14 @@ class TestStatus:
         (target / "rejected.md").write_text(
             "| citekey | query | why |\n|---|---|---|\n| `b_two_2021` | q | off-topic |\n"
         )
-        assert "b_two_2021" not in dossier.status(draft).unconsidered
+        assert "b_two_2021" not in _status.status(draft).unconsidered
 
     def test_backticked_prose_is_not_mistaken_for_a_citekey(self, draft):
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "evidence.md").write_text(
             "# Kept\n\nRun `status` with `--force` on `content`.\n"
         )
-        assert dossier.cited_citekeys(dossier.dossier_dir(draft)) == set()
+        assert _citekeys.cited_citekeys(dossier.dossier_dir(draft)) == set()
 
     def test_a_separator_is_what_distinguishes_a_citekey_from_prose(self, draft):
         """Pins the rule `_CITEKEY_TOKEN`'s comment states: a letter start
@@ -515,26 +518,26 @@ class TestStatus:
             "Real: `talasila_composable_2025`, `zech_digital-twins-as--service_2024`.\n"
             "Prose: `status`, `--force`, `content`, `md`.\n"
         )
-        assert dossier.cited_citekeys(dossier.dossier_dir(draft)) == {
+        assert _citekeys.cited_citekeys(dossier.dossier_dir(draft)) == {
             "talasila_composable_2025",
             "zech_digital-twins-as--service_2024",
         }
 
     def test_drift_is_unavailable_rather_than_fatal_without_a_ledger(self, draft):
         dossier.init(draft, "survey")
-        report = dossier.status(draft)
+        report = _status.status(draft)
         assert report.current is None
         assert not report.drifted
 
     def test_accepts_the_dossier_directory_as_well_as_the_draft(self, draft):
         dossier.init(draft, "survey")
-        report = dossier.status(dossier.dossier_dir(draft))
+        report = _status.status(dossier.dossier_dir(draft))
         assert report.draft == draft
 
     def test_reports_a_dossier_that_outlived_its_draft(self, draft):
         dossier.init(draft, "survey")
         draft.unlink()
-        report = dossier.status(dossier.dossier_dir(draft))
+        report = _status.status(dossier.dossier_dir(draft))
         assert report.draft is None
         assert report.outline == []
 
@@ -557,7 +560,7 @@ class TestList:
 class TestExport:
     def test_bundles_the_draft_and_its_dossier(self, draft):
         dossier.init(draft, "survey")
-        names = {name for _, name in dossier.bundle_members([], with_rendered=False)}
+        names = {name for _, name in _archive.bundle_members([], with_rendered=False)}
         assert "drafts/dt-for-engineers/survey.md" in names
         assert "dossiers/dt-for-engineers/survey/scope.md" in names
 
@@ -566,11 +569,11 @@ class TestExport:
         (config.RENDERED_DIR / "survey.pdf").write_bytes(b"%PDF")
         assert not any(
             name.startswith("rendered/")
-            for _, name in dossier.bundle_members([], with_rendered=False)
+            for _, name in _archive.bundle_members([], with_rendered=False)
         )
         assert any(
             name.startswith("rendered/")
-            for _, name in dossier.bundle_members([], with_rendered=True)
+            for _, name in _archive.bundle_members([], with_rendered=True)
         )
 
     def test_a_name_selects_the_rendered_output_of_a_nested_draft(self, draft):
@@ -583,7 +586,7 @@ class TestExport:
         (rendered / "survey.pdf").write_bytes(b"%PDF")
         names = {
             name
-            for _, name in dossier.bundle_members(["dt-for-engineers"], with_rendered=True)
+            for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=True)
         }
         assert "rendered/dt-for-engineers/survey.pdf" in names
 
@@ -594,7 +597,7 @@ class TestExport:
         dossier.init(other, "tutorial")
         names = {
             name
-            for _, name in dossier.bundle_members(["dt-for-engineers"], with_rendered=False)
+            for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=False)
         }
         assert "drafts/dt-for-engineers/survey.md" in names
         assert "dossiers/dt-for-engineers/survey/scope.md" in names
@@ -604,7 +607,7 @@ class TestExport:
         config.DRAFTS_DIR.mkdir(parents=True)
         (config.DRAFTS_DIR / "survey.md").write_text("# s\n")
         (config.DRAFTS_DIR / "tutorial.md").write_text("# t\n")
-        names = {name for _, name in dossier.bundle_members(["survey"], with_rendered=False)}
+        names = {name for _, name in _archive.bundle_members(["survey"], with_rendered=False)}
         assert names == {"drafts/survey.md"}
 
     def _review_reports(self, topic="dt-for-engineers"):
@@ -620,7 +623,7 @@ class TestExport:
         evidence is findable from the draft. A bundle that dropped them
         would falsify that quietly."""
         self._review_reports()
-        names = {name for _, name in dossier.bundle_members([], with_rendered=False)}
+        names = {name for _, name in _archive.bundle_members([], with_rendered=False)}
         assert "review/dt-for-engineers/survey.provenance.md" in names
         assert "review/dt-for-engineers/survey.verbatim.md" in names
 
@@ -628,8 +631,8 @@ class TestExport:
         """--with-rendered gates PDFs, not text -- so the .md reports
         ship by default and their renders ride with the rest."""
         self._review_reports()
-        default = {name for _, name in dossier.bundle_members([], with_rendered=False)}
-        opted_in = {name for _, name in dossier.bundle_members([], with_rendered=True)}
+        default = {name for _, name in _archive.bundle_members([], with_rendered=False)}
+        opted_in = {name for _, name in _archive.bundle_members([], with_rendered=True)}
         assert "review/dt-for-engineers/survey.provenance.pdf" not in default
         assert "review/dt-for-engineers/survey.provenance.pdf" in opted_in
 
@@ -642,7 +645,7 @@ class TestExport:
         config.REVIEW_DIR.mkdir(parents=True, exist_ok=True)
         (config.REVIEW_DIR / "survey.v2.provenance.md").write_text("# p\n")
 
-        names = {name for _, name in dossier.bundle_members(["survey.v2"], with_rendered=False)}
+        names = {name for _, name in _archive.bundle_members(["survey.v2"], with_rendered=False)}
 
         assert names == {"drafts/survey.v2.md", "review/survey.v2.provenance.md"}
 
@@ -660,7 +663,7 @@ class TestExport:
 
         names = {
             name
-            for _, name in dossier.bundle_members(["dt-for-engineers"], with_rendered=True)
+            for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=True)
         }
 
         assert "review/dt-for-engineers/figure.png" in names
@@ -673,18 +676,18 @@ class TestExport:
         self._review_reports(topic="unrelated-topic")
         names = {
             name
-            for _, name in dossier.bundle_members(["dt-for-engineers/survey"], with_rendered=False)
+            for _, name in _archive.bundle_members(["dt-for-engineers/survey"], with_rendered=False)
         }
         assert "review/dt-for-engineers/survey.provenance.md" in names
         assert not any("unrelated-topic" in name for name in names)
 
     def test_exporting_nothing_is_an_error_rather_than_an_empty_archive(self, isolated_config):
         with pytest.raises(dossier.DossierError, match="Nothing to export"):
-            dossier.export([], Path("out.tar.gz"))
+            _archive.export([], Path("out.tar.gz"))
 
     def test_writes_an_archive(self, draft, tmp_path):
         dossier.init(draft, "survey")
-        out, count = dossier.export([], tmp_path / "bundle.tar.gz")
+        out, count = _archive.export([], tmp_path / "bundle.tar.gz")
         assert out.is_file()
         assert count >= 2
         with tarfile.open(out) as tar:
@@ -695,12 +698,12 @@ class TestRestore:
     @pytest.fixture
     def bundle(self, draft, tmp_path):
         dossier.init(draft, "survey")
-        out, _ = dossier.export([], tmp_path / "bundle.tar.gz")
+        out, _ = _archive.export([], tmp_path / "bundle.tar.gz")
         return out
 
     def test_is_a_dry_run_by_default(self, bundle, draft):
         draft.unlink()
-        plan = dossier.restore(bundle)
+        plan = _archive.restore(bundle)
         assert not plan.performed
         assert not draft.exists()
         assert draft in plan.new
@@ -709,7 +712,7 @@ class TestRestore:
         target = dossier.dossier_dir(draft)
         draft.unlink()
         (target / "scope.md").unlink()
-        plan = dossier.restore(bundle, force=True)
+        plan = _archive.restore(bundle, force=True)
         assert plan.performed
         assert draft.is_file()
         assert (target / "scope.md").is_file()
@@ -725,24 +728,24 @@ class TestRestore:
         report.parent.mkdir(parents=True, exist_ok=True)
         report.write_text("# provenance\n")
 
-        out, _ = dossier.export([], tmp_path / "bundle.tar.gz")
+        out, _ = _archive.export([], tmp_path / "bundle.tar.gz")
         report.unlink()
 
-        plan = dossier.restore(out, force=True)
+        plan = _archive.restore(out, force=True)
 
         assert plan.performed
         assert report.is_file()
         assert report.read_text() == "# provenance\n"
 
     def test_reports_which_files_it_would_overwrite(self, bundle, draft):
-        plan = dossier.restore(bundle)
+        plan = _archive.restore(bundle)
         assert draft in plan.overwrite
         assert not plan.new
 
     def test_round_trips_content_exactly(self, bundle, draft):
         original = draft.read_text()
         draft.write_text("# clobbered\n")
-        dossier.restore(bundle, force=True)
+        _archive.restore(bundle, force=True)
         assert draft.read_text() == original
 
     def test_a_path_too_long_for_a_tar_header_round_trips(self, isolated_config, tmp_path):
@@ -765,10 +768,10 @@ class TestRestore:
         assert len(str(draft.relative_to(config.DRAFTS_DIR))) > 100
 
         dossier.init(draft, "survey")
-        archive, _ = dossier.export([], tmp_path / "long.tar.gz")
+        archive, _ = _archive.export([], tmp_path / "long.tar.gz")
 
         draft.unlink()
-        plan = dossier.restore(archive, force=True)
+        plan = _archive.restore(archive, force=True)
         assert plan.performed
         assert draft.is_file()
         assert draft.read_text() == "# A survey with an inconveniently long path\n"
@@ -785,7 +788,7 @@ class TestRestore:
     def test_refuses_a_member_that_escapes_the_content_directory(self, isolated_config, tmp_path):
         archive = self._archive_containing(tmp_path, "drafts/../../../etc/passwd")
         with pytest.raises(dossier.DossierError, match="escapes"):
-            dossier.restore(archive, force=True)
+            _archive.restore(archive, force=True)
 
     def test_refuses_an_absolute_member(self, isolated_config, tmp_path):
         archive = tmp_path / "abs.tar.gz"
@@ -796,12 +799,12 @@ class TestRestore:
             with payload.open("rb") as handle:
                 tar.addfile(info, handle)
         with pytest.raises(dossier.DossierError, match="escapes|not under"):
-            dossier.restore(archive, force=True)
+            _archive.restore(archive, force=True)
 
     def test_refuses_a_member_outside_the_three_known_directories(self, isolated_config, tmp_path):
         archive = self._archive_containing(tmp_path, "ledger.sqlite")
         with pytest.raises(dossier.DossierError, match="not under"):
-            dossier.restore(archive, force=True)
+            _archive.restore(archive, force=True)
 
     def test_refuses_a_symlink_member(self, isolated_config, tmp_path):
         archive = tmp_path / "link.tar.gz"
@@ -811,7 +814,7 @@ class TestRestore:
             info.linkname = "/etc/passwd"
             tar.addfile(info)
         with pytest.raises(dossier.DossierError, match="not a regular file"):
-            dossier.restore(archive, force=True)
+            _archive.restore(archive, force=True)
 
     def test_an_unsafe_member_blocks_the_whole_archive(self, isolated_config, tmp_path):
         archive = tmp_path / "mixed.tar.gz"
@@ -821,7 +824,7 @@ class TestRestore:
             tar.add(good, arcname="drafts/good.md")
             tar.add(good, arcname="../escape.md")
         with pytest.raises(dossier.DossierError):
-            dossier.restore(archive, force=True)
+            _archive.restore(archive, force=True)
         assert not (config.DRAFTS_DIR / "good.md").exists()
 
 
@@ -1046,39 +1049,39 @@ class TestRevisionMarker:
     def test_calls_before_any_marker_are_the_initial_draft_segment(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
-        assert segments == [dossier.RevisionCost("initial draft", 1, 100)]
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert segments == [_retrieval.RevisionCost("initial draft", 1, 100)]
 
     def test_a_marker_starts_a_new_segment(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft, "shorten intro")
+        _retrieval.mark_revision(draft, "shorten intro")
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert segments == [
-            dossier.RevisionCost("initial draft", 1, 100),
-            dossier.RevisionCost("shorten intro", 1, 200),
+            _retrieval.RevisionCost("initial draft", 1, 100),
+            _retrieval.RevisionCost("shorten intro", 1, 200),
         ]
 
     def test_same_day_revisions_are_kept_separate(self, draft):
         """The whole point: a bare date column can't tell these apart,
         but two markers can, regardless of what `date.today()` writes."""
         dossier.init(draft, "survey")
-        dossier.mark_revision(draft, "morning pass")
+        _retrieval.mark_revision(draft, "morning pass")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft, "afternoon pass")
+        _retrieval.mark_revision(draft, "afternoon pass")
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert [s.label for s in segments] == ["morning pass", "afternoon pass"]
         assert [s.chars for s in segments] == [100, 200]
 
     def test_an_unlabelled_marker_is_numbered_by_order(self, draft):
         dossier.init(draft, "survey")
-        dossier.mark_revision(draft)
+        _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft)
+        _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert [s.label for s in segments] == ["revision 1", "revision 2"]
 
     def test_a_revision_that_logged_nothing_is_dropped_not_zeroed(self, draft):
@@ -1087,10 +1090,10 @@ class TestRevisionMarker:
         reported zero-cost revision cluttering the breakdown."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft, "no search needed")
-        dossier.mark_revision(draft, "this one searched")
+        _retrieval.mark_revision(draft, "no search needed")
+        _retrieval.mark_revision(draft, "this one searched")
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert [s.label for s in segments] == ["initial draft", "this one searched"]
 
     def test_marker_numbering_stays_stable_across_a_dropped_revision(self, draft):
@@ -1098,12 +1101,12 @@ class TestRevisionMarker:
         not "revision 1" renumbered after the empty one between them was
         dropped -- numbering tracks marker order, not display order."""
         dossier.init(draft, "survey")
-        dossier.mark_revision(draft)
+        _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft)  # logged nothing, dropped below
-        dossier.mark_revision(draft)
+        _retrieval.mark_revision(draft)  # logged nothing, dropped below
+        _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert [s.label for s in segments] == ["revision 1", "revision 3"]
 
     def test_no_markers_at_all_is_one_initial_draft_segment(self, draft):
@@ -1113,14 +1116,14 @@ class TestRevisionMarker:
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         dossier.log_retrieval(draft, "evidence", "q", 1, 3, 50)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
-        assert segments == [dossier.RevisionCost("initial draft", 2, 150)]
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert segments == [_retrieval.RevisionCost("initial draft", 2, 150)]
 
     def test_a_trailing_marker_with_nothing_after_it_is_dropped(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
-        dossier.mark_revision(draft, "just started")
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        _retrieval.mark_revision(draft, "just started")
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert [s.label for s in segments] == ["initial draft"]
 
     def test_marker_rows_are_excluded_from_retrieval_cost(self, draft):
@@ -1128,11 +1131,11 @@ class TestRevisionMarker:
         it as a call would inflate the aggregate by one per revision."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
-        dossier.mark_revision(draft, "pass two")
+        _retrieval.mark_revision(draft, "pass two")
         assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_creates_the_dossier_when_called_before_init(self, draft):
-        dossier.mark_revision(draft, "early")
+        _retrieval.mark_revision(draft, "early")
         assert (dossier.dossier_dir(draft) / "retrieval.md").is_file()
 
     def test_a_pipe_in_the_label_does_not_break_the_row(self, draft):
@@ -1142,9 +1145,9 @@ class TestRevisionMarker:
         the way out, so `dossier status` prints what the user wrote
         rather than the markdown-safe form."""
         dossier.init(draft, "survey")
-        dossier.mark_revision(draft, "shorten | tighten")
+        _retrieval.mark_revision(draft, "shorten | tighten")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert len(segments) == 1
         assert segments[0].label == "shorten | tighten"
 
@@ -1153,7 +1156,7 @@ class TestRevisionMarker:
     ):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft, "shorten intro")
+        _retrieval.mark_revision(draft, "shorten intro")
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
         dossier.main(["status", str(draft)])
         out = capsys.readouterr().out
@@ -1175,7 +1178,7 @@ class TestRevisionMarker:
     def test_cli_mark_revision_writes_a_row(self, draft, capsys):
         dossier.init(draft, "survey")
         assert dossier.main(["mark-revision", str(draft), "--label", "cli pass"]) == 0
-        segments = dossier.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         # No calls logged yet, so the marker alone produces no segment --
         # confirmed via the row itself instead.
         assert segments == []
@@ -1190,11 +1193,11 @@ class TestRevisionMarker:
         the two to agree regardless of which one changes first."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
-        dossier.mark_revision(draft, "shorten intro")
+        _retrieval.mark_revision(draft, "shorten intro")
         dossier.log_retrieval(draft, "search", "q2", 15, 15, 200)
-        dossier.mark_revision(draft, "no search needed")  # empty, dropped
+        _retrieval.mark_revision(draft, "no search needed")  # empty, dropped
 
-        report = dossier.status(draft)
+        report = _status.status(draft)
         calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
         assert (report.retrieval_calls, report.retrieval_chars) == (calls, chars) == (2, 300)
 
@@ -1257,7 +1260,7 @@ class TestRecordedQueries:
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         dossier.log_retrieval(draft, "evidence", "co-simulation", 2, 2, 100)
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == [
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == [
             "digital twin", "co-simulation",
         ]
 
@@ -1265,12 +1268,12 @@ class TestRecordedQueries:
         dossier.init(draft, "survey")
         for query in ("twin", "shadow", "twin"):
             dossier.log_retrieval(draft, "search", query, 5, 5, 100)
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == ["twin", "shadow"]
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["twin", "shadow"]
 
     def test_an_escaped_pipe_is_restored(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "twin | shadow", 5, 5, 100)
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == ["twin | shadow"]
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["twin | shadow"]
 
     def test_a_hand_edited_row_that_does_not_parse_is_skipped(self, draft):
         dossier.init(draft, "survey")
@@ -1278,19 +1281,19 @@ class TestRecordedQueries:
         with path.open("a", encoding="utf-8") as handle:
             handle.write("| 2026-01-01 | search | only three cells |\n")
         dossier.log_retrieval(draft, "search", "real query", 5, 5, 100)
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == ["real query"]
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["real query"]
 
     def test_an_empty_query_cell_is_not_a_query(self, draft):
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         with path.open("a", encoding="utf-8") as handle:
             handle.write("| 2026-01-01 | search |  | 5 | 5 | 100 |\n")
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == []
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == []
 
     def test_no_retrieval_file_means_no_queries(self, draft):
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "retrieval.md").unlink()
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == []
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == []
 
     def test_a_revision_label_is_never_reported_as_a_query(self, draft):
         """A marker's third cell holds `mark_revision`'s `--label` text,
@@ -1300,17 +1303,17 @@ class TestRecordedQueries:
         candidate matching)."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
-        dossier.mark_revision(draft, "shorten the introduction")
+        _retrieval.mark_revision(draft, "shorten the introduction")
         dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100)
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == [
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == [
             "digital twin", "co-simulation",
         ]
 
     def test_an_unlabelled_revision_marker_contributes_no_empty_query(self, draft):
         dossier.init(draft, "survey")
-        dossier.mark_revision(draft)
+        _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
-        assert dossier.recorded_queries(dossier.dossier_dir(draft)) == ["digital twin"]
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["digital twin"]
 
 
 class TestSectionCitekeys:
@@ -1320,19 +1323,19 @@ class TestSectionCitekeys:
             "| 1. First | `a_one_2024`, `b_two_2024` |\n"
             "| 2. Second | `b_two_2024` |\n"
         )
-        assert dossier.section_citekeys(grounded) == {
+        assert _citekeys.section_citekeys(grounded) == {
             "a_one_2024": ["1. First"],
             "b_two_2024": ["1. First", "2. Second"],
         }
 
     def test_a_missing_sections_file_maps_nothing(self, draft):
-        assert dossier.section_citekeys(dossier.dossier_dir(draft)) == {}
+        assert _citekeys.section_citekeys(dossier.dossier_dir(draft)) == {}
 
     def test_a_row_with_no_citekeys_contributes_nothing(self, grounded):
         (grounded / "sections.md").write_text(
             "# Sections\n\n| section | citekeys |\n|---|---|\n| 1. First | none yet |\n"
         )
-        assert dossier.section_citekeys(grounded) == {}
+        assert _citekeys.section_citekeys(grounded) == {}
 
     def test_the_at_form_a_draft_uses_is_read_too(self, grounded):
         """`@key` as well as `` `key` ``.
@@ -1347,7 +1350,7 @@ class TestSectionCitekeys:
             "| 1. First | @a_one_2024, @b_two_2024 |\n"
             "| 2. Second | `b_two_2024` |\n"
         )
-        assert dossier.section_citekeys(grounded) == {
+        assert _citekeys.section_citekeys(grounded) == {
             "a_one_2024": ["1. First"],
             "b_two_2024": ["1. First", "2. Second"],
         }
@@ -1359,18 +1362,18 @@ class TestSectionCitekeys:
             "# Sections\n\n| section | citekeys |\n|---|---|\n"
             "| 1. First | ask @someone, see @2 |\n"
         )
-        assert dossier.section_citekeys(grounded) == {}
+        assert _citekeys.section_citekeys(grounded) == {}
 
 
 class TestDrift:
     def test_a_cited_key_that_left_the_ledger_is_reported_with_its_sections(self, grounded):
         _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.missing == {"kept_paper_2024": ["1. First"]}
 
     def test_a_rejected_key_leaving_the_ledger_is_not_a_finding(self, grounded):
         _seed_corpus([("kept_paper_2024", "Kept", "text")])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.missing == {}
 
     def test_a_new_paper_matching_a_recorded_query_is_a_candidate(self, grounded):
@@ -1379,7 +1382,7 @@ class TestDrift:
             ("fresh_twin_2026", "A fresh twin paper", "digital twin co-simulation study"),
             ("unrelated_2026", "Baking bread", "sourdough starter hydration"),
         ])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
         assert report.candidates[0].queries == ["digital twin"]
 
@@ -1388,7 +1391,7 @@ class TestDrift:
             ("kept_paper_2024", "Kept", "digital twin"),
             ("turned_down_2023", "Turned down", "digital twin everywhere"),
         ])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == []
 
     def test_the_candidate_carries_why_it_was_reachable(self, grounded):
@@ -1396,11 +1399,11 @@ class TestDrift:
             ("kept_paper_2024", "Kept", "digital twin"),
             ("fresh_twin_2026", "Fresh", "digital twin"),
         ])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.candidates[0].title == "Fresh"
 
     def test_no_ledger_reports_unavailable_rather_than_raising(self, grounded):
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.corpus_available is False
         assert report.missing == {}
         assert report.candidates == []
@@ -1410,7 +1413,7 @@ class TestDrift:
         vanishing is a finding whether or not the dossier recorded one."""
         (grounded / "scope.md").write_text("# Scope\n\n- genre: survey\n")
         _seed_corpus([("other_paper_2025", "Other", "text")])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.recorded is None
         assert report.missing == {"kept_paper_2024": ["1. First"]}
 
@@ -1418,14 +1421,14 @@ class TestDrift:
         target = dossier.dossier_dir(draft)
         target.mkdir(parents=True)
         _seed_corpus([("any_paper_2025", "Any", "text")])
-        report = dossier.drift(target)
+        report = _drift.drift(target)
         assert report.missing == {}
         assert report.candidates == []
 
     def test_a_dossier_whose_draft_is_gone_is_still_reported(self, grounded, draft):
         draft.unlink()
         _seed_corpus([("kept_paper_2024", "Kept", "text")])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.draft is None
 
 
@@ -1444,7 +1447,7 @@ class TestEphemeralIndex:
             ("kept_paper_2024", "Kept", "digital twin"),
             ("fresh_twin_2026", "Fresh", "digital twin"),
         ])
-        dossier.drift(grounded)
+        _drift.drift(grounded)
         assert not config.RETRIEVAL_INDEX_PATH.exists()
 
     def test_an_existing_retrieval_index_is_left_byte_for_byte(self, grounded):
@@ -1454,7 +1457,7 @@ class TestEphemeralIndex:
         ])
         config.RETRIEVAL_INDEX_PATH.write_text('{"version": 1, "items": {}}')
         before = config.RETRIEVAL_INDEX_PATH.read_bytes()
-        dossier.drift(grounded)
+        _drift.drift(grounded)
         assert config.RETRIEVAL_INDEX_PATH.read_bytes() == before
 
     def test_a_warm_cache_entry_is_reused_rather_than_re_tokenized(self, grounded):
@@ -1477,7 +1480,7 @@ class TestEphemeralIndex:
                 "term_freqs": {"digital": 1, "twin": 1},
             }},
         }))
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["cached_paper_2026"]
 
     def test_a_stale_cache_entry_is_re_tokenized_in_memory(self, grounded):
@@ -1490,11 +1493,11 @@ class TestEphemeralIndex:
                 "term_freqs": {"sourdough": 1},
             }},
         }))
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
 
     def test_the_ledger_is_never_created_by_a_scan(self, grounded):
-        dossier.drift(grounded)
+        _drift.drift(grounded)
         assert not config.LEDGER_PATH.exists()
 
 
@@ -1523,8 +1526,12 @@ class TestDriftAll:
         _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
 
         calls = []
-        real = dossier._corpus_rows
-        monkeypatch.setattr(dossier, "_corpus_rows", lambda: calls.append(1) or real())
+        # Patched on _drift, not on dossier: drift_all() calls _corpus_rows()
+        # through _drift.py's own `from src.dossier import _corpus_rows`,
+        # which is its own name binding to the same function object --
+        # patching src.dossier's copy doesn't reach it (#219).
+        real = _drift._corpus_rows
+        monkeypatch.setattr(_drift, "_corpus_rows", lambda: calls.append(1) or real())
         dossier.drift_all()
         assert len(calls) == 1
 
@@ -1658,7 +1665,7 @@ class TestDriftEdges:
             "| 1. First | `kept_paper_2024` | stray fourth cell |\n"
             "| 2. Second | `also_kept_2024` |\n"
         )
-        assert dossier.section_citekeys(grounded) == {"also_kept_2024": ["2. Second"]}
+        assert _citekeys.section_citekeys(grounded) == {"also_kept_2024": ["2. Second"]}
 
     def test_a_query_of_nothing_but_stopwords_ranks_nothing(self, grounded):
         """`_tokenize` drops stopwords, so "the and of" reduces to no terms
@@ -1668,7 +1675,7 @@ class TestDriftEdges:
             "|---|---|---|---|---|---|\n| 2026-01-01 | search | the and of | 5 | 5 | 100 |\n"
         )
         _seed_corpus([("kept_paper_2024", "Kept", "digital twin")])
-        assert dossier.drift(grounded).candidates == []
+        assert _drift.drift(grounded).candidates == []
 
     def test_a_dossier_outside_the_dossiers_dir_falls_back_to_its_name(self, tmp_path):
         assert dossier.dossier_name(tmp_path / "stray-dossier") == "stray-dossier"
@@ -1676,24 +1683,24 @@ class TestDriftEdges:
 
 class TestRejectedReasons:
     def test_maps_a_citekey_to_why_it_was_turned_down(self, grounded):
-        assert dossier.rejected_reasons(grounded) == {"turned_down_2023": "off topic"}
+        assert _citekeys.rejected_reasons(grounded) == {"turned_down_2023": "off topic"}
 
     def test_a_row_with_the_wrong_cell_count_is_skipped(self, grounded):
         (grounded / "rejected.md").write_text(
             "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n"
             "| `broken_2023` | q |\n| `good_2023` | q | a real reason |\n"
         )
-        assert dossier.rejected_reasons(grounded) == {"good_2023": "a real reason"}
+        assert _citekeys.rejected_reasons(grounded) == {"good_2023": "a real reason"}
 
     def test_a_row_naming_no_citekey_contributes_nothing(self, grounded):
         (grounded / "rejected.md").write_text(
             "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n"
             "| none yet | q | r |\n"
         )
-        assert dossier.rejected_reasons(grounded) == {}
+        assert _citekeys.rejected_reasons(grounded) == {}
 
     def test_a_missing_file_maps_nothing(self, draft):
-        assert dossier.rejected_reasons(dossier.dossier_dir(draft)) == {}
+        assert _citekeys.rejected_reasons(dossier.dossier_dir(draft)) == {}
 
 
 class TestReconsider:
@@ -1707,7 +1714,7 @@ class TestReconsider:
             ("kept_paper_2024", "Kept", "digital twin"),
             ("turned_down_2023", "Turned down", "digital twin everywhere"),
         ])
-        (entry,) = dossier.drift(grounded).reconsider
+        (entry,) = _drift.drift(grounded).reconsider
         assert (entry.citekey, entry.reason) == ("turned_down_2023", "off topic")
         assert entry.queries == ["digital twin"]
 
@@ -1716,7 +1723,7 @@ class TestReconsider:
             ("kept_paper_2024", "Kept", "digital twin"),
             ("turned_down_2023", "Turned down", "sourdough starter hydration"),
         ])
-        assert dossier.drift(grounded).reconsider == []
+        assert _drift.drift(grounded).reconsider == []
 
     def test_it_never_duplicates_a_candidate(self, grounded):
         _seed_corpus([
@@ -1724,7 +1731,7 @@ class TestReconsider:
             ("turned_down_2023", "Turned down", "digital twin"),
             ("fresh_twin_2026", "Fresh", "digital twin"),
         ])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
         assert [r.citekey for r in report.reconsider] == ["turned_down_2023"]
 
@@ -1734,7 +1741,7 @@ class TestReconsider:
             "| `kept_paper_2024` | digital twin | a stale row, since kept |\n"
         )
         _seed_corpus([("kept_paper_2024", "Kept", "digital twin")])
-        assert dossier.drift(grounded).reconsider == []
+        assert _drift.drift(grounded).reconsider == []
 
     def test_it_does_not_by_itself_make_a_dossier_drifted(self, grounded, capsys):
         """A rejection that still matches is true on every sweep forever.
@@ -1745,7 +1752,7 @@ class TestReconsider:
             ("kept_paper_2024", "Kept", "digital twin"),
             ("turned_down_2023", "Turned down", "digital twin"),
         ])
-        report = dossier.drift(grounded)
+        report = _drift.drift(grounded)
         assert report.reconsider
         assert report.clean
         assert dossier.main(["status", "--all"]) == 0
@@ -1974,7 +1981,7 @@ class TestRestoreCLIOutput:
         for n in range(12):
             (config.DRAFTS_DIR / f"draft{n}.md").write_text(f"# {n}\n")
         archive = tmp_path / "all.tar.gz"
-        dossier.export([], archive)
+        _archive.export([], archive)
         assert dossier.main(["restore", str(archive)]) == 0
         out = capsys.readouterr().out
         assert "12 existing file(s) would be OVERWRITTEN" in out
@@ -2023,7 +2030,7 @@ def _fill_dossier(draft, evidence="", sections_rows=""):
     target = dossier.dossier_dir(draft)
     if evidence:
         (target / "evidence.md").write_text(
-            dossier._EVIDENCE_TEMPLATE + evidence, encoding="utf-8")
+            _create._EVIDENCE_TEMPLATE + evidence, encoding="utf-8")
     if sections_rows:
         (target / "sections.md").write_text(
             dossier._SECTIONS_TEMPLATE + sections_rows, encoding="utf-8")
@@ -2043,7 +2050,7 @@ _TWO_BLOCKS = (
 class TestEvidenceBlocks:
     def test_one_block_per_citekey_heading(self, draft):
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
-        blocks = dossier.evidence_blocks(target)
+        blocks = _citekeys.evidence_blocks(target)
         assert list(blocks) == ["ferko_architecting_2022", "talasila_composable_2025"]
         assert "service layer" in blocks["ferko_architecting_2022"]
         assert "composition rule" not in blocks["ferko_architecting_2022"]
@@ -2051,19 +2058,19 @@ class TestEvidenceBlocks:
     def test_a_heading_that_carries_prose_still_keys_on_the_citekey(self, draft):
         target = _fill_dossier(
             draft, evidence="## `ferko_architecting_2022` -- kept for section 3\n\nbody\n")
-        assert "ferko_architecting_2022" in dossier.evidence_blocks(target)
+        assert "ferko_architecting_2022" in _citekeys.evidence_blocks(target)
 
     def test_a_heading_without_backticks_keys_on_its_text(self, draft):
         """A hand-written dossier is a supported input everywhere else
         here, and a block nobody can address is a block that gets
         re-retrieved."""
         target = _fill_dossier(draft, evidence="## ferko_architecting_2022\n\nbody\n")
-        assert "ferko_architecting_2022" in dossier.evidence_blocks(target)
+        assert "ferko_architecting_2022" in _citekeys.evidence_blocks(target)
 
     def test_no_evidence_file_maps_nothing(self, draft):
         target = dossier.dossier_dir(draft)
         target.mkdir(parents=True)
-        assert dossier.evidence_blocks(target) == {}
+        assert _citekeys.evidence_blocks(target) == {}
 
 
 class TestCitekeysBySection:
@@ -2072,7 +2079,7 @@ class TestCitekeysBySection:
             "| 2. Failure modes | `ferko_architecting_2022`, `talasila_composable_2025` |\n"
             "| 3. Adoption | `zech_digital-twins-as--service_2024` |\n"
         ))
-        assert dossier.citekeys_by_section(target) == {
+        assert _citekeys.citekeys_by_section(target) == {
             "2. Failure modes": ["ferko_architecting_2022", "talasila_composable_2025"],
             "3. Adoption": ["zech_digital-twins-as--service_2024"],
         }
@@ -2082,25 +2089,25 @@ class TestCitekeysBySection:
         section it has not assigned evidence to must be reported as empty
         rather than as unknown -- the two want opposite fixes."""
         target = _fill_dossier(draft, sections_rows="| 4. Open questions |  |\n")
-        assert dossier.citekeys_by_section(target) == {"4. Open questions": []}
+        assert _citekeys.citekeys_by_section(target) == {"4. Open questions": []}
 
     def test_no_sections_file_maps_nothing(self, draft):
         target = dossier.dossier_dir(draft)
         target.mkdir(parents=True)
-        assert dossier.citekeys_by_section(target) == {}
+        assert _citekeys.citekeys_by_section(target) == {}
 
     def test_a_hand_mangled_row_is_skipped_rather_than_fatal(self, draft):
         target = _fill_dossier(draft, sections_rows=(
             "| 2. Failure modes | `ferko_architecting_2022` |\n"
             "| 3. Adoption | `a_b_2024` | stray fourth cell |\n"
         ))
-        assert list(dossier.citekeys_by_section(target)) == ["2. Failure modes"]
+        assert list(_citekeys.citekeys_by_section(target)) == ["2. Failure modes"]
 
 
 class TestBrief:
     def test_resolves_the_citekeys_it_is_given_in_order(self, draft):
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
-        report = dossier.brief(
+        report = _brief.brief(
             target, citekeys=["talasila_composable_2025", "ferko_architecting_2022"])
         assert [key for key, _ in report.blocks] == [
             "talasila_composable_2025", "ferko_architecting_2022"]
@@ -2108,7 +2115,7 @@ class TestBrief:
 
     def test_a_citekey_with_no_block_is_reported_not_dropped(self, draft):
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
-        report = dossier.brief(target, citekeys=["ferko_architecting_2022", "never_seen_2020"])
+        report = _brief.brief(target, citekeys=["ferko_architecting_2022", "never_seen_2020"])
         assert [key for key, _ in report.blocks] == ["ferko_architecting_2022"]
         assert report.missing == ["never_seen_2020"]
 
@@ -2117,7 +2124,7 @@ class TestBrief:
             "| 2. Failure modes | `ferko_architecting_2022` |\n"
             "| 3. Adoption | `talasila_composable_2025` |\n"
         ))
-        report = dossier.brief(target, section="2. Failure modes")
+        report = _brief.brief(target, section="2. Failure modes")
         assert report.section == "2. Failure modes"
         assert [key for key, _ in report.blocks] == ["ferko_architecting_2022"]
 
@@ -2125,7 +2132,7 @@ class TestBrief:
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
             "| 2. Failure modes | `ferko_architecting_2022` |\n"
         ))
-        report = dossier.brief(target, section="failure modes")
+        report = _brief.brief(target, section="failure modes")
         assert report.section == "2. Failure modes"
 
     def test_an_ambiguous_section_matches_nothing_and_offers_the_candidates(self, draft):
@@ -2135,7 +2142,7 @@ class TestBrief:
             "| 2. Failure modes in practice | `ferko_architecting_2022` |\n"
             "| 3. Failure modes in theory | `talasila_composable_2025` |\n"
         ))
-        report = dossier.brief(target, section="failure modes")
+        report = _brief.brief(target, section="failure modes")
         assert report.section is None
         assert len(report.known_sections) == 2
 
@@ -2143,7 +2150,7 @@ class TestBrief:
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
             "| 2. Failure modes | `ferko_architecting_2022` |\n"
         ))
-        report = dossier.brief(
+        report = _brief.brief(
             target,
             citekeys=["ferko_architecting_2022", "talasila_composable_2025"],
             section="2. Failure modes",
@@ -2155,7 +2162,7 @@ class TestBrief:
         target = _fill_dossier(draft, sections_rows=(
             "| 2. Failure modes | `ferko_architecting_2022` |\n"
         ))
-        report = dossier.brief(target, section="2. Failure modes")
+        report = _brief.brief(target, section="2. Failure modes")
         assert report.blocks == []
         assert report.missing == ["ferko_architecting_2022"]
 
@@ -2292,7 +2299,7 @@ class TestAttributeCitekeys:
     )
 
     def test_each_citekey_lands_in_the_section_that_cites_it(self):
-        per_section, unattributed = dossier.attribute_citekeys(self.MD)
+        per_section, unattributed = _sections.attribute_citekeys(self.MD)
         assert [(section.title, keys) for section, keys in per_section] == [
             ("Title", []),
             ("1. Background", ["a_one_2024", "b_two_2024"]),
@@ -2301,7 +2308,7 @@ class TestAttributeCitekeys:
         assert unattributed == ["early_2020"]
 
     def test_a_key_cited_twice_in_one_section_appears_once(self):
-        per_section, _ = dossier.attribute_citekeys(self.MD)
+        per_section, _ = _sections.attribute_citekeys(self.MD)
         background = dict((s.title, keys) for s, keys in per_section)["1. Background"]
         assert background.count("a_one_2024") == 1
 
@@ -2310,7 +2317,7 @@ class TestAttributeCitekeys:
         `extract_citekeys` skips it for keys -- so a `[@key]` printed by
         the shipped example tutorial's own Python must not become
         evidence."""
-        per_section, unattributed = dossier.attribute_citekeys(self.MD)
+        per_section, unattributed = _sections.attribute_citekeys(self.MD)
         every = [key for _, keys in per_section for key in keys] + unattributed
         assert "fenced_9999" not in every
 
@@ -2324,7 +2331,7 @@ class TestAttributeCitekeys:
             "\\end{verbatim}\n"
             "Another \\citep{a_one_2024}.\n"
         )
-        per_section, unattributed = dossier.attribute_citekeys(tex)
+        per_section, unattributed = _sections.attribute_citekeys(tex)
         assert [(section.title, keys) for section, keys in per_section] == [
             ("Intro", ["a_one_2024", "b_two_2024"]),
             ("Detail", ["a_one_2024"]),
@@ -2333,18 +2340,18 @@ class TestAttributeCitekeys:
 
     def test_a_key_cited_twice_above_every_heading_is_reported_once(self):
         text = "Prose [@a_one_2024], and again [@a_one_2024].\n\n## 1. First\n\ntext\n"
-        _, unattributed = dossier.attribute_citekeys(text)
+        _, unattributed = _sections.attribute_citekeys(text)
         assert unattributed == ["a_one_2024"]
 
     def test_a_draft_with_no_headings_attributes_nothing(self):
-        per_section, unattributed = dossier.attribute_citekeys("Just prose [@a_one_2024].\n")
+        per_section, unattributed = _sections.attribute_citekeys("Just prose [@a_one_2024].\n")
         assert per_section == []
         assert unattributed == ["a_one_2024"]
 
 
 class TestSectionsMarkdown:
     def test_it_writes_the_template_and_one_row_per_section(self):
-        table = dossier.sections_markdown(TestAttributeCitekeys.MD)
+        table = _sections.sections_markdown(TestAttributeCitekeys.MD)
         assert table.startswith("# Sections and their citekeys")
         assert "| section | citekeys |" in table
         assert "| 1. Background | `a_one_2024`, `b_two_2024` |" in table
@@ -2356,9 +2363,9 @@ class TestSectionsMarkdown:
         the other end of it: what is derived here must read back as the
         same relation, or a reviser and a writer disagree."""
         (tmp_path / "sections.md").write_text(
-            dossier.sections_markdown(TestAttributeCitekeys.MD), encoding="utf-8"
+            _sections.sections_markdown(TestAttributeCitekeys.MD), encoding="utf-8"
         )
-        assert dossier.citekeys_by_section(tmp_path) == {
+        assert _citekeys.citekeys_by_section(tmp_path) == {
             "Title": [],
             "1. Background": ["a_one_2024", "b_two_2024"],
             "2. Results": ["c_three_2022"],
@@ -2370,13 +2377,13 @@ class TestSectionsMarkdown:
         section name matches what `sections()` reports for the draft."""
         text = "## Results | caveats\n\nA claim [@a_one_2024].\n"
         (tmp_path / "sections.md").write_text(
-            dossier.sections_markdown(text), encoding="utf-8"
+            _sections.sections_markdown(text), encoding="utf-8"
         )
         assert r"| Results \| caveats |" in (tmp_path / "sections.md").read_text()
-        assert dossier.citekeys_by_section(tmp_path) == {
+        assert _citekeys.citekeys_by_section(tmp_path) == {
             "Results | caveats": ["a_one_2024"],
         }
-        assert list(dossier.citekeys_by_section(tmp_path)) == [
+        assert list(_citekeys.citekeys_by_section(tmp_path)) == [
             section.title for section in dossier.sections(text)
         ]
 

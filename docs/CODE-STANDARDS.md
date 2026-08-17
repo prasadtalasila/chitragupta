@@ -206,9 +206,11 @@ open:
   reviewer is looking at something else.
 
 That keeps what the rule is *for* -- decay is not permitted -- while
-keeping diffs reviewable. Concretely: noticing that `src/dossier.py` is on
-the register while fixing something unrelated in it is a reason to say so
-in the PR, not a licence to refactor it there.
+keeping diffs reviewable. Concretely: noticing that
+`src/review/verbatim_check.py` is on the register while fixing something
+unrelated in it is a reason to say so in the PR, not a licence to
+refactor it there. `src/dossier.py` was this example until #219 gave it
+its own PR and delisted it -- the ratchet doing exactly what it's for.
 
 The one case where the rule applies to your own edit unchanged is the
 orphan you created: an import, variable or helper that *your* change made
@@ -291,7 +293,7 @@ The ratchet takes the useful half of each. Concretely, here:
 
 - Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
   `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **11
-  functions** and **13 modules**. Those two counts are themselves pinned
+  functions** and **12 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale.
 - **New offenders fail.** Anything not in the register that crosses

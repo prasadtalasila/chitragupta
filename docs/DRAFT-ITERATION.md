@@ -90,7 +90,7 @@ rewrites, and **no revision path at all**.
 
 The fourth is the one this module exists to remove, and the only one of
 the four that is *structural* rather than a constant factor. Before
-`src/dossier.py` and the `draft-reviser` skill, no genre skill had a
+`src/dossier/` and the `draft-reviser` skill, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run Phase 1 through Phase 7 again.
 
@@ -143,7 +143,7 @@ two that were missing entirely are the two that matter most:
 
 Everything a dossier holds is read by a model or by a human, both of
 which read Markdown natively. Nothing in it is a data structure another
-module consumes -- `src/dossier.py` parses only two things out of it (the
+module consumes -- `src/dossier/` parses only two things out of it (the
 corpus fingerprint line and backticked citekeys), and both degrade to
 "unavailable" rather than to an error if a human has been editing freely.
 A restored tarball is also legible on its own a year later, without this
@@ -689,7 +689,7 @@ beats a gate that passes because there is nothing to check against.
 
 ## What this deliberately does not do
 
-**It is not a gate and it takes no lock.** Nothing in `src/dossier.py`
+**It is not a gate and it takes no lock.** Nothing in `src/dossier/`
 blocks a draft, and nothing in it writes to the corpus layer. A dossier
 that is missing, stale or hand-edited degrades the next revision's
 efficiency and can never make a draft wrong.

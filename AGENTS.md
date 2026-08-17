@@ -99,7 +99,7 @@ enrichment layer is optional and nothing above it needs it.
   whether to proceed uncited, and wait. Each run writes a **dossier**
   beside its draft
   (`content/dossiers/<the draft's path minus its suffix>/`, Markdown,
-  owned by `src/dossier.py`) holding the reader, scope, glossary, kept
+  owned by `src/dossier/`) holding the reader, scope, glossary, kept
   evidence, **rejected candidates and why**, and the steering the user
   gave in chat. That is what makes a draft revisable weeks later:
   `draft-reviser` reads the dossier and edits the affected sections
