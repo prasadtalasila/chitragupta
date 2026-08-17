@@ -9,7 +9,7 @@
 [tool.poetry]
 package-mode = false
 name = "chitragupta"
-version = "5.25.0"
+version = "5.26.0"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"

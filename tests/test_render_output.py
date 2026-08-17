@@ -19,6 +19,16 @@ from tests.conftest import content_draft, make_reference
 
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
+# tikz.sty is texlive-pictures (#222), a separate package from the ones
+# scripts/install_full_pipeline.sh already installed for lmodern etc. --
+# pdflatex being on PATH doesn't guarantee it, so this is its own probe
+# rather than folded into pdflatex_available.
+tikz_available = (
+    shutil.which("kpsewhich") is not None
+    and subprocess.run(
+        ["kpsewhich", "tikz.sty"], capture_output=True, check=False
+    ).returncode == 0
+)
 
 
 class TestResolveCsl:
@@ -269,6 +279,78 @@ class TestCopyLocalImages:
         render_output._copy_local_images(draft, dest_dir)
 
         assert (dest_dir / "figures" / "figure.png").read_bytes() == b"fake png bytes"
+
+
+class TestLocalTexIncludeRefs:
+    def test_extracts_input_and_include_paths(self):
+        text = "\\input{figures/fig1.tex}\n\nSome text \\include{figures/fig2.tex}.\n"
+        assert render_output._local_tex_include_refs(text) == [
+            "figures/fig1.tex", "figures/fig2.tex",
+        ]
+
+    def test_matches_inside_a_raw_latex_fenced_block_too(self):
+        # #222: a bare \input line and a ```{=latex} fence around the same
+        # line reach pandoc's LaTeX writer identically, so this doesn't
+        # special-case the fence.
+        text = "```{=latex}\n\\input{figures/fig1.tex}\n```\n"
+        assert render_output._local_tex_include_refs(text) == ["figures/fig1.tex"]
+
+    def test_no_includes_returns_empty_list(self):
+        assert render_output._local_tex_include_refs("Just text, no figures.\n") == []
+
+
+class TestCopyLocalTexIncludes:
+    def test_copies_an_existing_local_include(self, tmp_path):
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        (src_dir / "fig1.tex").write_text("\\begin{tikzpicture}\\end{tikzpicture}\n")
+        draft = src_dir / "draft.md"
+        draft.write_text("\\input{fig1.tex}\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_tex_includes(draft, dest_dir)
+
+        assert (dest_dir / "fig1.tex").read_text() == "\\begin{tikzpicture}\\end{tikzpicture}\n"
+
+    def test_skips_a_reference_that_does_not_resolve_to_a_real_file(self, tmp_path):
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        draft = src_dir / "draft.md"
+        draft.write_text("\\input{does-not-exist.tex}\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_tex_includes(draft, dest_dir)  # must not raise
+
+        assert list(dest_dir.iterdir()) == []
+
+    def test_skips_absolute_and_parent_escaping_paths(self, tmp_path):
+        secret = tmp_path / "secret.tex"
+        secret.write_text("marker")
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        draft = src_dir / "draft.md"
+        draft.write_text(f"\\input{{{secret}}}\n\n\\input{{../secret.tex}}\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_tex_includes(draft, dest_dir)
+
+        assert list(dest_dir.iterdir()) == []
+
+    def test_creates_nested_destination_directories(self, tmp_path):
+        src_dir = tmp_path / "drafts"
+        (src_dir / "figures").mkdir(parents=True)
+        (src_dir / "figures" / "fig1.tex").write_text("\\begin{tikzpicture}\\end{tikzpicture}\n")
+        draft = src_dir / "draft.md"
+        draft.write_text("\\input{figures/fig1.tex}\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_tex_includes(draft, dest_dir)
+
+        assert (dest_dir / "figures" / "fig1.tex").read_text() == "\\begin{tikzpicture}\\end{tikzpicture}\n"
 
 
 class TestOutputDir:
@@ -801,6 +883,72 @@ class TestRenderReal:
 
         assert not (isolated_config.RENDERED_DIR / "secret.png").exists()
         assert not (isolated_config.RENDERED_DIR.parent / "secret.png").exists()
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_tikz_figure_renders_to_pdf(self, isolated_config, tmp_path, monkeypatch):
+        # #222: a bare tikzpicture environment fails pandoc's default LaTeX
+        # template ("Environment tikzpicture undefined") without
+        # \usepackage{tikz}, and \input{figures/fig1.tex} doesn't resolve
+        # at all without TEXINPUTS -- render() succeeding (subprocess.run's
+        # check=True would raise otherwise) is the real assertion here, not
+        # a mocked call.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts"
+        (draft_dir / "figures").mkdir(parents=True)
+        (draft_dir / "figures" / "fig1.tex").write_text(
+            "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n"
+        )
+        draft = draft_dir / "draft.md"
+        draft.write_text("# Title\n\n\\input{figures/fig1.tex}\n\nNo citations.\n")
+
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="pdf")
+        assert out_path.exists()
+        assert out_path.stat().st_size > 0
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_tikz_figure_is_copied_so_standalone_tex_compiles(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        # Mirrors test_local_image_is_copied_to_rendered_dir_so_standalone_
+        # tex_compiles: rendering to `tex` only asks pandoc to emit
+        # \input{figures/fig1.tex} into the .tex source -- without
+        # _copy_local_tex_includes the standalone .tex landing in
+        # content/rendered/ can't find the figure and fails to compile on
+        # its own, even though TEXINPUTS (above) lets the *pdf* format's
+        # own pandoc-driven pdflatex pass find it.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts"
+        (draft_dir / "figures").mkdir(parents=True)
+        fig_source = "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n"
+        (draft_dir / "figures" / "fig1.tex").write_text(fig_source)
+        draft = draft_dir / "draft.md"
+        draft.write_text("# Title\n\n\\input{figures/fig1.tex}\n\nNo citations.\n")
+
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        copied_fig = out_path.parent / "figures" / "fig1.tex"
+        assert copied_fig.exists()
+        assert copied_fig.read_text() == fig_source
+
+        compile_result = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent, capture_output=True, text=True,
+        )
+        assert compile_result.returncode == 0, compile_result.stdout[-2000:]
 
     def test_missing_binary_path(self, isolated_config, tmp_path, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: None)

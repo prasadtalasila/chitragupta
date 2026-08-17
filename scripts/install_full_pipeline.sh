@@ -98,7 +98,7 @@ install_os_deps() {
         git curl ca-certificates unzip zip \
         pandoc \
         texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended latexmk \
-        lmodern \
+        lmodern texlive-pictures \
         libgl1 "$glib_pkg"
     # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
     # pip on this host regardless of root (see AGENTS.md), and Poetry is
@@ -112,6 +112,10 @@ install_os_deps() {
     # `lmodern.sty' not found", not a docling-side problem. Found
     # by hand rendering a real draft after the rest of the toolchain
     # reported fine.
+    # texlive-pictures ships tikz.sty (Debian/Ubuntu, confirmed via
+    # `dpkg -S`) -- src/render_output.py loads it conditionally for a
+    # draft with a \input/\include'd TikZ figure (#222), and none of the
+    # packages above pull it in.
     # zip/unzip: scripts/release.py itself only needs stdlib zipfile,
     # not these binaries -- they're here so a human can inspect/repack a
     # release archive by hand.

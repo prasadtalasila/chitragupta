@@ -75,6 +75,7 @@ imports for stages this one doesn't need. The genre-writing skills under
 """
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -294,6 +295,23 @@ def _local_image_refs(text: str) -> list[str]:
     ]
 
 
+# Matches raw-LaTeX \input{...}/\include{...}, however the draft spells
+# it -- a bare line or a ```{=latex} fenced block around the same line
+# both reach pandoc's LaTeX writer identically (#222), so this doesn't
+# need to distinguish them. It also matches one inside a fenced code
+# block that merely *discusses* LaTeX, the same property
+# `_local_image_refs` already has for `![...]()` -- inert there (no such
+# file, silently skipped below) and not worth special-casing.
+_LATEX_INCLUDE_RE = re.compile(r"\\(?:input|include)\{([^}]+)\}")
+
+
+def _local_tex_include_refs(text: str) -> list[str]:
+    """Every `\\input{...}`/`\\include{...}` path a draft references --
+    the TikZ-figure convention #222 exists for, not a general LaTeX
+    feature this project otherwise supports."""
+    return list(_LATEX_INCLUDE_RE.findall(text))
+
+
 def _output_dir(input_path: Path) -> Path:
     """Where `input_path`'s rendered output goes: `config.RENDERED_DIR`
     with the draft's own place under `config.DRAFTS_DIR` mirrored into
@@ -406,6 +424,27 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
         shutil.copy2(src, dst)
 
 
+def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
+    """Copies every `\\input{...}`/`\\include{...}` file `input_path`
+    references alongside the rendered output in `dest_dir`, mirroring
+    `_copy_local_images` exactly -- same skip rules (absolute, or
+    `..`-escaping, or not a real file under `input_path`'s own
+    directory), for the same reason: a `tex` output must be
+    self-contained and compilable on its own, and a draft's own
+    references are never a reason to write outside `dest_dir` (#222).
+    """
+    for ref in _local_tex_include_refs(input_path.read_text(encoding="utf-8")):
+        ref_path = Path(ref)
+        if ref_path.is_absolute() or ".." in ref_path.parts:
+            continue
+        src = input_path.parent / ref_path
+        if not src.is_file():
+            continue
+        dst = dest_dir / ref_path
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+
 def render(
     input_path: str,
     output_format: str = "pdf",
@@ -479,6 +518,7 @@ def render(
         # format conversion, and that fragment deliberately carries no
         # reference list of its own.
         _copy_local_images(input_path, out_dir)
+        _copy_local_tex_includes(input_path, out_dir)
         return references.write_numbered(input_path, out_dir)
 
     _require("pandoc")
@@ -487,6 +527,7 @@ def render(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     _copy_local_images(input_path, out_dir)
+    _copy_local_tex_includes(input_path, out_dir)
     out_path = out_dir / f"{input_path.stem}.{output_format}"
     csl_path = _resolve_csl(csl) if csl is not None else config.CSL_STYLE_PATH
     if collapse_citations is None:
@@ -535,10 +576,31 @@ def render(
             "--citeproc", "--bibliography", str(safe_bib),
             "--csl", str(csl_path),
         ]
+        # Loaded only for a draft that actually has a \input/\include'd
+        # figure (#222) -- pandoc's default LaTeX template has no
+        # \usepackage{tikz}, so a bare tikzpicture environment fails with
+        # "Environment tikzpicture undefined" without it, but the package
+        # load itself is inert for a draft that never draws one, so this
+        # stays conditional rather than always-on.
+        if _local_tex_include_refs(input_path.read_text(encoding="utf-8")):
+            cmd += ["--variable", r"header-includes=\usepackage{tikz}"]
+        env = None
         if output_format == "pdf":
             cmd += ["--pdf-engine", "pdflatex"]
+            # LaTeX's own \input/\include search path is separate from
+            # --resource-path above (that's pandoc's, for images pandoc
+            # reads itself). Without TEXINPUTS, pdflatex looks for
+            # figures/fig1.tex relative to its own working directory, not
+            # the draft's -- confirmed failing with "! LaTeX Error: File
+            # 'figures/fig1.tex' not found" otherwise. The trailing ':' is
+            # not optional: TEXINPUTS is a prefix, not a replacement, and
+            # dropping it loses the default search path pdflatex needs for
+            # its own style files. Merges with os.environ rather than
+            # replacing it -- env={"TEXINPUTS": ...} alone drops PATH, and
+            # the subprocess can't find pandoc at all.
+            env = {**os.environ, "TEXINPUTS": f"{input_path.resolve().parent}:"}
         cmd += ["-o", str(out_path)]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
 
     return out_path
 
