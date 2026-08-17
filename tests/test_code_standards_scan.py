@@ -65,11 +65,8 @@ LEGACY_LONG_FUNCTIONS = {
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/sync.py::_parse_parallel",  # 33
-    # Two statements for the specs/ fixture file that
-    # test_excludes_specs asserts is kept out of the release archive,
-    # moving this level with _parse_parallel.
-    "tests/test_release.py::make_repo",  # 33
     "src/enrich/topic_model.py::run_topic_model",  # 32
+    "tests/test_release.py::make_repo",  # 31
     "src/retrieval.py::_windows",  # 28
     "src/overlap_index.py::build_corpus_index",  # 27
     "src/overlap_skipgram.py::build_corpus_index",  # 27

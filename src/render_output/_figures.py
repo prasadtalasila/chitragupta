@@ -64,6 +64,15 @@ def _local_tex_include_refs(text: str) -> list[str]:
 # math-mode-only, and the build hard-fails with "! Missing $ inserted."
 # That failure happens in a document *this* pipeline never renders, so
 # nothing here would ever have caught it.
+#
+# Two ways to avoid needing a marker at all were tried and do not work,
+# recorded so they are not tried again:
+#   - Keeping *both* forms in the one figure file, with the ASCII behind
+#     `\iffalse ... \fi` so only pandoc sees it. Pandoc honours `\iffalse`
+#     too and drops the ASCII as well, so the md render gets nothing.
+#   - Deriving the sibling by convention with no marker in the draft.
+#     That works, but a reader of the draft cannot then see that a second
+#     form exists, and nothing is greppable for a reviser.
 _FIGURE_MARKER_MD_RE = re.compile(
     r"^[ \t]*<!--[ \t]*figure:[ \t]*(\S+)[ \t]*-->[ \t]*$", re.MULTILINE
 )

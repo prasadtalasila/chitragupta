@@ -129,7 +129,6 @@ exclude_docs: |
   papers/
   scripts/
   site/
-  specs/
   src/
   tests/
   CITATION.cff

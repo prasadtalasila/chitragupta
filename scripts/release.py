@@ -54,13 +54,6 @@ EXCLUDE_TOP_LEVEL = {
     ".github",
     ".gitignore",
     "bench",
-    # Design documents for work in progress on *this* repository: dated,
-    # superseded by the code once it lands, and addressed to a developer
-    # rather than a release consumer. docs/ ships wholesale precisely
-    # because its files cross-reference each other by name and stay true
-    # after a release; a spec is the opposite of that, so it lives here
-    # instead of under docs/.
-    "specs",
     # CI config that happens to live at the root rather than under
     # .github/: it names *this* repository's SonarQube project key and
     # organisation, so in an unzipped release it is either inert or
