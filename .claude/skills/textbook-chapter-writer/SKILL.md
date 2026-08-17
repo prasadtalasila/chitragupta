@@ -241,7 +241,7 @@ candidate for the chapter.
    sibling:
 
    ```html
-   <!-- tikz-alt: figures/<name>.tex -->
+   <!-- figure: figures/<name> -->
    ```
 
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ

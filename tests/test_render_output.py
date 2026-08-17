@@ -1106,9 +1106,9 @@ def figure_pair(draft_dir, name="fig1"):
 
 
 MARKED_FENCE = (
-    "Before.\n\n<!-- tikz-alt: figures/fig1.tex -->\n\n```\n" + ASCII_FIGURE + "```\n\nAfter.\n"
+    "Before.\n\n<!-- figure: figures/fig1 -->\n\n```\n" + ASCII_FIGURE + "```\n\nAfter.\n"
 )
-MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%ascii-alt: figures/fig1.txt\n\nAfter.\n"
+MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%figure: figures/fig1\n\nAfter.\n"
 
 
 class TestFigureRefs:
@@ -1163,7 +1163,7 @@ class TestSubstituteTikzForAscii:
 
     def test_a_tilde_fence_is_matched_too(self, tmp_path):
         figure_pair(tmp_path)
-        text = "<!-- tikz-alt: figures/fig1.tex -->\n~~~\n" + ASCII_FIGURE + "~~~\n"
+        text = "<!-- figure: figures/fig1 -->\n~~~\n" + ASCII_FIGURE + "~~~\n"
         assert "\\input{figures/fig1.tex}" in render_output._substitute_tikz_for_ascii(
             text, tmp_path
         )
@@ -1260,7 +1260,7 @@ class TestFigureWarnings:
         figure_pair(tmp_path)
         draft = tmp_path / "draft.tex"
         warnings = render_output._figure_warnings("\\input{figures/fig1.tex}\n", draft)
-        assert any("no `%ascii-alt:` twin" in w for w in warnings)
+        assert any("no `%figure:` marker" in w for w in warnings)
 
 
 class TestRequireTikz:

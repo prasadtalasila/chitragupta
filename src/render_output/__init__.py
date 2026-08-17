@@ -91,8 +91,9 @@ from src.render_output._citeproc import (
 from src.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from src.render_output._errors import MissingBinary, OutsideContentDir, _require
 from src.render_output._figures import (
-    _ASCII_ALT_RE, _INPUT_WITH_ASCII_ALT_RE, _LATEX_CITE_RE, _LATEX_INCLUDE_RE,
-    _MARKED_FENCE_RE, _TEX_FORMATS, _TIKZ_ALT_RE, _ascii_alt_refs, _figure_has_citekey,
+    _FIGURE_MARKER_MD_RE, _FIGURE_MARKER_TEX_RE, _INPUT_WITH_MARKER_RE, _LATEX_CITE_RE,
+    _LATEX_INCLUDE_RE, _MARKED_FENCE_RE, _TEX_FORMATS, _ascii_alt_refs, _ascii_path,
+    _figure_has_citekey, _tikz_path,
     _figure_refs, _figure_warnings, _local_tex_include_refs, _require_tikz,
     _resolve_sibling, _substitute_ascii_for_tikz, _substitute_tikz_for_ascii,
     _tikz_alt_refs, _with_figures_for,

@@ -270,12 +270,19 @@ marker comment. The marker is what lets a reader of the draft see that a
 second form exists, and what lets a reviser find every figure by `grep`
 rather than by parsing the draft.
 
+**One marker, one vocabulary, in both genres: `figure:`, naming the
+figure's base name without a suffix.** The renderer derives `<base>.tex`
+and `<base>.txt` from it. The two spellings below differ only because a
+comment in Markdown and a comment in LaTeX are written differently --
+the thing you write, and the rule you remember, is the same either way,
+and no draft ever names one figure twice.
+
 **Markdown drafts** -- `tutorial-writer`, `textbook-chapter-writer`,
 `survey-writer` -- keep the ASCII inline in its fence, with the marker
 on a line of its own just above it:
 
 ```html
-<!-- tikz-alt: figures/<name>.tex -->
+<!-- figure: figures/<name> -->
 ```
 
 For `--format tex` and `--format pdf` the renderer replaces that marked
@@ -291,7 +298,7 @@ it:
 
 ```latex
 \input{figures/<name>.tex}
-%ascii-alt: figures/<name>.txt
+%figure: figures/<name>
 ```
 
 For `--format md` the renderer substitutes the `.txt` contents for that

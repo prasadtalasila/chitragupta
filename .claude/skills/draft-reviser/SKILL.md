@@ -57,8 +57,8 @@ break:
   least (`survey`) to none at all (`deep-research`).
 - **Touch a figure, touch both forms.** Every figure exists twice -- as
   a TikZ picture in `figures/<name>.tex`, and as the plain-ASCII
-  diagram. Find the pair from the marker (`<!-- tikz-alt: ... -->` in a
-  Markdown draft, `%ascii-alt:` in a `.tex` one), which is greppable
+  diagram. Find the pair from the marker (`<!-- figure: ... -->` in a
+  Markdown draft, `%figure:` in a `.tex` one), which is greppable
   precisely so this is not a reading exercise. Relabel a box, add an
   arrow, rename a component in one form and you must make the same
   change in the other. **Where each form lives depends on the genre**:

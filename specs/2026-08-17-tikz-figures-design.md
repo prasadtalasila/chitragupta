@@ -18,8 +18,8 @@ the shape that shipped:
 
 | Draft | Native form, inline | Sibling file | Marker |
 |---|---|---|---|
-| `.md` (tutorial, textbook, survey) | ASCII, in a fence | `figures/<name>.tex` | `<!-- tikz-alt: ... -->` |
-| `.tex` (thesis) | TikZ, via `\input` | `figures/<name>.txt` | `%ascii-alt: ...` |
+| `.md` (tutorial, textbook, survey) | ASCII, in a fence | `figures/<name>.tex` | `<!-- figure: ... -->` |
+| `.tex` (thesis) | TikZ, via `\input` | `figures/<name>.txt` | `%figure: ...` |
 
 Each draft keeps its own native form inline and names the other in a
 marker; the renderer swaps them per output format. **Only the other form
@@ -137,7 +137,7 @@ The fragment references both at the figure's position:
 
 ```latex
 \input{figures/<name>.tex}
-%ascii-alt: figures/<name>.txt
+%figure: figures/<name>
 ```
 
 **Why the second line is a comment and not a second `\input`.** The
@@ -156,7 +156,7 @@ So the user's thesis would fail to build, in a way our own render never
 shows us -- our render strips the line first. A LaTeX comment is inert
 to pdflatex, dropped by pandoc, and meaningful only to this pipeline.
 
-A distinct `%ascii-alt:` marker rather than a commented-out `\input`
+A distinct `%figure:` marker rather than a commented-out `\input`
 reads as deliberate, not as code someone disabled -- and it is
 greppable, which is what lets `draft-reviser` and the drift check find
 figures without parsing LaTeX.
@@ -178,7 +178,7 @@ skills already follow; this makes it a precondition for a figure.
 | `md` (Markdown input) | None -- returns early without pandoc, so the fence passes straight through and the HTML marker stays invisible |
 
 For `--format md` on a LaTeX draft, in the temp copy only: each
-`\input{X.tex}` whose following `%ascii-alt:` marker names a readable
+`\input{X.tex}` whose following `%figure:` marker names a readable
 sibling becomes `\begin{verbatim}<contents>\end{verbatim}`, and the
 marker line is dropped.
 
@@ -282,7 +282,7 @@ The drift check below warns if it sees one.
 Nothing can check that a TikZ picture and an ASCII diagram depict the
 same thing. What is checkable, and what the render path warns on:
 
-- an `\input{X.tex}` with no `%ascii-alt:` marker;
+- an `\input{X.tex}` with no `%figure:` marker;
 - a marker naming a file that is not readable;
 - a citekey (`\cite`, `[@key]`) inside a referenced figure file;
 - a **Markdown** draft carrying a marker -- unsupported, and its `md`

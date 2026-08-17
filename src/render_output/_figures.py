@@ -50,29 +50,42 @@ def _local_tex_include_refs(text: str) -> list[str]:
     return list(_LATEX_INCLUDE_RE.findall(text))
 
 
-# The two figure markers, one per draft language. A figure is a *pair* of
-# sibling files -- `figures/<name>.tex` holding the TikZ picture and
-# `figures/<name>.txt` holding the same diagram in
-# `docs/WRITING-STANDARDS.md` §10's plain ASCII -- and a draft carries
-# whichever form is native to it inline, naming the other one in a marker.
+# The figure marker, in the two spellings the two draft languages force.
+# One vocabulary -- `figure:` -- and one value in both: the figure's base
+# name, *without* a suffix. The renderer derives `<base>.tex` and
+# `<base>.txt` from it, so a draft never names the same figure twice and
+# the two genres are one rule to learn rather than two.
 #
-# Both markers are comments *in their own language*, and the second one is
-# the load-bearing choice. A `.tex` fragment is the file a user
-# `\input`s into their own thesis, so spelling the ASCII reference as a
-# real `\input{figures/x.txt}` would make pdflatex read the ASCII art as
-# LaTeX source: §10's own alphabet contains `^`, `<` and `>`, which are
+# Both are comments *in their own language*, and the LaTeX one being a
+# comment is load-bearing rather than tidy. A `.tex` fragment is the file
+# a user `\input`s into their own thesis, so spelling the ASCII reference
+# as a real `\input{figures/x.txt}` would make pdflatex read the ASCII art
+# as LaTeX source: §10's own alphabet contains `^`, `<` and `>`, which are
 # math-mode-only, and the build hard-fails with "! Missing $ inserted."
 # That failure happens in a document *this* pipeline never renders, so
 # nothing here would ever have caught it.
-_TIKZ_ALT_RE = re.compile(r"^[ \t]*<!--[ \t]*tikz-alt:[ \t]*(\S+)[ \t]*-->[ \t]*$", re.MULTILINE)
-_ASCII_ALT_RE = re.compile(r"^[ \t]*%[ \t]*ascii-alt:[ \t]*(\S+)[ \t]*$", re.MULTILINE)
+_FIGURE_MARKER_MD_RE = re.compile(
+    r"^[ \t]*<!--[ \t]*figure:[ \t]*(\S+)[ \t]*-->[ \t]*$", re.MULTILINE
+)
+_FIGURE_MARKER_TEX_RE = re.compile(r"^[ \t]*%[ \t]*figure:[ \t]*(\S+)[ \t]*$", re.MULTILINE)
+
+
+def _tikz_path(base: str) -> str:
+    """The TikZ half of the figure a marker names."""
+    return f"{base}.tex"
+
+
+def _ascii_path(base: str) -> str:
+    """The ASCII half of the figure a marker names."""
+    return f"{base}.txt"
+
 
 # A marked ASCII figure in a Markdown draft: the marker, then the fenced
 # block holding the diagram. Both are replaced together by the `\input`,
 # because leaving the fence in place puts the ASCII *and* the TikZ in the
 # same PDF -- verified against pandoc, not assumed.
 _MARKED_FENCE_RE = re.compile(
-    r"^[ \t]*<!--[ \t]*tikz-alt:[ \t]*(\S+)[ \t]*-->[ \t]*\n"
+    r"^[ \t]*<!--[ \t]*figure:[ \t]*(\S+)[ \t]*-->[ \t]*\n"
     r"(?:[ \t]*\n)*"
     r"[ \t]*(`{3,}|~{3,})[^\n]*\n"
     r"(?:[^\n]*\n)*?"
@@ -82,10 +95,10 @@ _MARKED_FENCE_RE = re.compile(
 
 # The mirror of the above in a `.tex` fragment: the `\input` and the
 # comment naming its ASCII twin.
-_INPUT_WITH_ASCII_ALT_RE = re.compile(
+_INPUT_WITH_MARKER_RE = re.compile(
     r"^[ \t]*\\(?:input|include)\{([^}]+)\}[ \t]*\n"
     r"(?:[ \t]*\n)*"
-    r"[ \t]*%[ \t]*ascii-alt:[ \t]*(\S+)[ \t]*(?:\n|$)",
+    r"[ \t]*%[ \t]*figure:[ \t]*(\S+)[ \t]*(?:\n|$)",
     re.MULTILINE,
 )
 
@@ -98,8 +111,8 @@ _TEX_FORMATS = {"tex", "latex", "pdf"}
 
 
 def _tikz_alt_refs(text: str) -> list[str]:
-    """Every TikZ figure a Markdown draft names in a `tikz-alt` marker."""
-    return list(_TIKZ_ALT_RE.findall(text))
+    """Every TikZ figure a Markdown draft names in a `figure:` marker."""
+    return [_tikz_path(base) for base in _FIGURE_MARKER_MD_RE.findall(text)]
 
 
 def _figure_refs(text: str) -> list[str]:
@@ -180,9 +193,10 @@ def _substitute_tikz_for_ascii(text: str, draft_dir: Path) -> str:
     user, rather than this failing the render over a figure.
     """
     def replace(match: re.Match) -> str:
-        if _resolve_sibling(draft_dir, match.group(1)) is None:
+        ref = _tikz_path(match.group(1))
+        if _resolve_sibling(draft_dir, ref) is None:
             return match.group(0)
-        return f"\\input{{{match.group(1)}}}\n"
+        return f"\\input{{{ref}}}\n"
 
     return _MARKED_FENCE_RE.sub(replace, text)
 
@@ -201,18 +215,18 @@ def _substitute_ascii_for_tikz(text: str, draft_dir: Path) -> str:
     survive, which is what the diagram actually needs.
     """
     def replace(match: re.Match) -> str:
-        target = _resolve_sibling(draft_dir, match.group(2))
+        target = _resolve_sibling(draft_dir, _ascii_path(match.group(2)))
         if target is None:
             return match.group(0)
         body = target.read_text(encoding="utf-8").rstrip("\n")
         return f"\\begin{{verbatim}}\n{body}\n\\end{{verbatim}}\n"
 
-    return _INPUT_WITH_ASCII_ALT_RE.sub(replace, text)
+    return _INPUT_WITH_MARKER_RE.sub(replace, text)
 
 
 def _ascii_alt_refs(text: str) -> list[str]:
-    """Every ASCII twin a `.tex` fragment names in an `ascii-alt` marker."""
-    return list(_ASCII_ALT_RE.findall(text))
+    """Every ASCII twin a `.tex` fragment names in a `figure:` marker."""
+    return [_ascii_path(base) for base in _FIGURE_MARKER_TEX_RE.findall(text)]
 
 
 # `\cite`, `\citep`, `\citet` and friends. `_PANDOC_CITE_RE` covers the
@@ -241,7 +255,7 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
     """
     is_markdown = input_path.suffix.lower() in _MARKDOWN_SUFFIXES
     language = "Markdown" if is_markdown else "LaTeX"
-    wrong_marker = _ASCII_ALT_RE if is_markdown else _TIKZ_ALT_RE
+    wrong_marker = _FIGURE_MARKER_TEX_RE if is_markdown else _FIGURE_MARKER_MD_RE
     found = [
         f"{ref}: marker is the wrong kind for a {language} draft, so the figure "
         "will not be substituted"
@@ -258,9 +272,9 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
                 "move the claim into the prose"
             )
     if not is_markdown:
-        paired = {ref for ref, _ in _INPUT_WITH_ASCII_ALT_RE.findall(text)}
+        paired = {ref for ref, _ in _INPUT_WITH_MARKER_RE.findall(text)}
         found += [
-            f"{ref}: no `%ascii-alt:` twin, so every non-LaTeX render omits this figure"
+            f"{ref}: no `%figure:` marker, so every non-LaTeX render omits this figure"
             for ref in _local_tex_include_refs(text) if ref not in paired
         ]
     return found

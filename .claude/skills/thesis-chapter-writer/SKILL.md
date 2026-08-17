@@ -215,7 +215,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 
    ```latex
    \input{figures/<name>.tex}
-   %ascii-alt: figures/<name>.txt
+   %figure: figures/<name>
    ```
 
    with both `content/drafts/<topic>/figures/<name>.tex` and

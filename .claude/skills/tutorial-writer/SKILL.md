@@ -280,7 +280,7 @@ the lesson design is the part worth keeping either way.
    own just above it naming the TikZ sibling:
 
    ```html
-   <!-- tikz-alt: figures/<name>.tex -->
+   <!-- figure: figures/<name> -->
    ```
 
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ

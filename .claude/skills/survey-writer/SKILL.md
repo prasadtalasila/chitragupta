@@ -253,7 +253,7 @@ collapse them for the sake of a cleaner narrative.
    above it naming the TikZ sibling:
 
    ```html
-   <!-- tikz-alt: figures/<name>.tex -->
+   <!-- figure: figures/<name> -->
    ```
 
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
