@@ -214,6 +214,13 @@ box characters, arrows and labels built from `+ - | / \ > < ^ v`, 7-bit
 characters only. Keep it to about 70 columns so it survives the
 rendered PDF's monospace block without wrapping.
 
+A `.tex` draft -- this pipeline's one LaTeX-sourced genre -- has no
+fenced code block to put one in; the same plain-ASCII content goes in a
+`verbatim` environment instead, same 7-bit-only rule, same reasoning.
+Verified through this pipeline's actual render path both ways: a
+`verbatim` diagram in a preamble-less fragment survives pandoc's LaTeX
+reader into both `--format pdf` and `--format md`.
+
 Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged:
 this pipeline renders PDF with `pdflatex`, which does not have those
 glyphs set up and fails the whole render with `Unicode character ┌

@@ -120,9 +120,9 @@ turn a wide pass into the re-run this skill exists to avoid.
   was wide and why.
 - **Figures still follow the draft's own genre.** Same rule as
   `draft-reviser`: `scope.md`'s `genre:` line names the skill whose
-  "Prose standards" section decides how freely
-  `docs/WRITING-STANDARDS.md` §10's figures apply -- and a
-  `deep-research` draft gets none, wide pass or not.
+  drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's
+  figures apply -- and a `deep-research` draft gets none, wide pass or
+  not.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m src.draft gate`.
 - **Run the prose check** -- `python -m src.draft style

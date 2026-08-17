@@ -84,12 +84,6 @@ principles come from -- Diátaxis, Last's *Technical Writing Essentials*, and
 Google's Technical Writing courses, all CC-licensed and all requiring credit.
 The genre-specific additions below layer on top of it.
 
-§10's figures are occasional here, not routine. This chapter's job is an
-argument toward the RQ, carried in prose and citation, and a diagram
-earns its place only when it captures a framework, architecture or study
-design that prose would otherwise take a paragraph to describe. Default
-to no figure; add one only when the argument genuinely needs it.
-
 ### What a thesis chapter owes its reader
 
 Its reader is an examiner: a domain expert reading adversarially, looking for
@@ -207,16 +201,23 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    reviser reads. Drop `--write` to see the table first; a citekey cited
    above the first `\section` is reported on stderr rather than
    attributed to a section that does not contain it.
-9. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
-   (this remains the canonical deliverable -- the one meant to be `\input`-ed),
-   then run:
+9. **Add a figure only if the argument needs one.** Place it beside the
+   framework, architecture or study design it captures, when prose
+   would otherwise take a paragraph to describe it --
+   `docs/WRITING-STANDARDS.md` §10's figures are occasional here, not
+   routine. In this genre's `.tex` fragment, §10's form is a `verbatim`
+   environment rather than a fenced code block. Default to no figure.
 
-   ```bash
-   python -m src.draft gate content/drafts/<slug>.tex
-   ```
+10. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
+    (this remains the canonical deliverable -- the one meant to be `\input`-ed),
+    then run:
 
-   Fix and re-run until `OK`. Never present a draft that hasn't passed.
-10. **Render md and pdf previews.** The `.tex` fragment stays the canonical
+    ```bash
+    python -m src.draft gate content/drafts/<slug>.tex
+    ```
+
+    Fix and re-run until `OK`. Never present a draft that hasn't passed.
+11. **Render md and pdf previews.** The `.tex` fragment stays the canonical
     deliverable exactly as-is -- don't wrap it in a preamble or change its
     `\input`-able shape. In addition, render an `.md` and a `.pdf` preview
     from that same fragment (pandoc's LaTeX reader handles a preamble-less
@@ -254,19 +255,19 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     unchanged, and the real thesis renders it in whatever style its own
     document class and `\bibliographystyle` specify. Don't rewrite
     `\citep`/`\citet` to match the preview.
-11. **Read it once as the examiner** (`docs/WRITING-STANDARDS.md` §6, in its
+12. **Read it once as the examiner** (`docs/WRITING-STANDARDS.md` §6, in its
     adversarial form). Check specifically for: a conclusion stated more
     strongly than its cited evidence supports, a section that summarizes
     rather than argues, notation or terminology that shifts mid-chapter, and
     any claim carrying no citation that isn't genuinely your own contribution.
     Where you find overreach, weaken the claim rather than adding a citation
     that doesn't quite support it.
-12. **Record any steering.** If the user shaped this chapter in chat --
+13. **Record any steering.** If the user shaped this chapter in chat --
     "argue it harder against X", "the RQ is narrower than that", "cut the
     background recap" -- append it to the dossier's `steering.md`, dated.
     It is invisible in the prose and has nowhere else to live; a revision
     that doesn't know about it will undo it.
-13. **Run the prose check.** After the gate passes and before
+14. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -293,7 +294,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     short list is not a clean draft. A review aid, not a gate -- it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-14. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -310,7 +311,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
     the report goes to `content/review/`, mirroring the draft's path, beside
     any provenance and coverage reports for the same draft.
-15. Present the `.tex` fragment (the deliverable to `\input`) plus, if
+16. Present the `.tex` fragment (the deliverable to `\input`) plus, if
     rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
     it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of this

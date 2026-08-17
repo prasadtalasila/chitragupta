@@ -56,11 +56,6 @@ instead. Writing a tutorial when a how-to was wanted wastes everyone's time.
 define terms once, active voice, ban "obviously/simply/just", reread as the
 reader. They all apply here.
 
-§10's figures fit this genre most naturally of any in this pipeline: a
-hands-on lesson benefits from seeing what the reader is about to build,
-or how data moves through a command, more than any explanation could.
-Use one wherever a step's structure is easier seen than read.
-
 Where this genre departs from it: §5's "don't let a document do two jobs" is
 strictest in this skill, and the structural rules below (single path, no
 options, minimal explanation) are *tutorial-only*. Do not carry them into any
@@ -270,12 +265,21 @@ the lesson design is the part worth keeping either way.
    Name the steps you could not verify there too -- that is the durable half
    of the disclosure you make in chat.
 
-9. **Reread as the beginner.** One pass as someone who has never seen the
+9. **Add a figure, if the path needs one.** Go back to wherever it
+   belongs -- what the learner is about to build in the front matter
+   (step 3), or how data moves through a command beside that step
+   (step 4) -- rather than appending a new section here.
+   `docs/WRITING-STANDARDS.md` §10's original ASCII diagrams fit this
+   genre more naturally than any other in this pipeline. Most tutorials
+   still don't need one: if nothing in the path is clearer as a diagram
+   than as text, move on.
+
+10. **Reread as the beginner.** One pass as someone who has never seen the
    topic. Flag: undefined terms, steps that assume a prior action you never
    instructed, any point where the learner must decide something, any step
    with no way to tell whether it worked.
 
-10. **Map the lesson's outline into the dossier.** Save the draft to
+11. **Map the lesson's outline into the dossier.** Save the draft to
     `content/drafts/<slug>.md` first if you haven't already -- `sections`
     reads the file and reports `No such draft` if it isn't on disk yet. Then
     derive `sections.md` rather than writing it by hand:
@@ -295,7 +299,7 @@ the lesson design is the part worth keeping either way.
     what lets `draft-reviser` repair one step of the lesson, at its recorded
     line range, without reading the whole thing.
 
-11. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`. If
+12. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`. If
     it contains any `[@citekey]`, run:
 
     ```bash
@@ -309,7 +313,7 @@ the lesson design is the part worth keeping either way.
     similar tokens in your worked code are not false positives. Don't mangle
     real teaching code to appease it.
 
-12. **Build the References section**, only if the draft cites anything:
+13. **Build the References section**, only if the draft cites anything:
 
     ```bash
     python -m src.draft references content/drafts/<slug>.md --heading "Further reading"
@@ -330,7 +334,7 @@ the lesson design is the part worth keeping either way.
     the tutorial genre cites lightly. Pass the default heading instead if
     a single bibliography matters more for a given tutorial.
 
-13. **Render tex, pdf, and numbered md.**
+14. **Render tex, pdf, and numbered md.**
 
     ```bash
     python -m src.draft render content/drafts/<slug>.md --format tex
@@ -351,14 +355,14 @@ the lesson design is the part worth keeping either way.
     in chat with that message and continue anyway; a rendering failure never
     blocks presenting the `.md` draft.
 
-14. **Record any steering.** If the user shaped this lesson in chat -- "use
+15. **Record any steering.** If the user shaped this lesson in chat -- "use
     FastAPI, not Flask", "no Docker", "keep it under twenty minutes", "assume
     they've never opened a terminal" -- append it to the dossier's
     `steering.md`, dated. In this genre it is usually what fixed the single
     path in the first place, it is invisible in the prose, and it has nowhere
     else to live; a revision that doesn't know about it will undo it.
 
-15. **Run the prose check.** After the gate passes and before
+16. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -384,7 +388,7 @@ the lesson design is the part worth keeping either way.
     short list is not a clean draft. A review aid, not a gate -- it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-16. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+17. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -403,7 +407,7 @@ the lesson design is the part worth keeping either way.
     the report goes to `content/review/`, mirroring the draft's path, beside
     any provenance and coverage reports for the same draft.
 
-17. **Present**, reporting: the draft path, the render outcome (or warning),
+18. **Present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of
