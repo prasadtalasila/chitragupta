@@ -158,6 +158,10 @@ apart in ways a single-author draft doesn't:
 - **Scope is stated in the report, not just held in your head.** The Phase 6
   lead says what this report covers and what it doesn't -- including which
   sub-questions the corpus couldn't answer.
+- **This genre does not use `docs/WRITING-STANDARDS.md` §10's figures.**
+  Every other genre in this pipeline calibrates how freely it uses
+  them; this one uses none, by design. If a section genuinely needs a
+  visual, say so in the report rather than adding one.
 
 ## Depth presets
 

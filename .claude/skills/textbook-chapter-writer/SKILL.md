@@ -97,6 +97,12 @@ both.
 `docs/WRITING-STANDARDS.md` holds the cross-genre rules and all of them apply.
 The genre-specific additions are below.
 
+§10's figures suit this genre almost as well as `tutorial-writer` -- a
+worked example or a newly introduced concept is often clearer with a
+diagram beside it. Less automatic than in a tutorial, since this genre
+also leans on prose explanation to do that work: add one where it earns
+its place, not in every section.
+
 Where this genre departs from `tutorial-writer`: explanation is welcome here
 and belongs here. Digression into *why* is a feature of a textbook chapter and
 a defect in a tutorial.

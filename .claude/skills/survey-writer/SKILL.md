@@ -77,6 +77,12 @@ principles come from -- Diátaxis, Last's *Technical Writing Essentials*, and
 Google's Technical Writing courses, all CC-licensed and all requiring credit.
 The genre-specific additions below layer on top of it.
 
+§10's figures are rare here, the rarest of any genre in this pipeline. A
+survey's own comparison table already carries the structural work a
+diagram would otherwise do; add one only for a relationship the table
+can't express, such as a taxonomy no comparison row captures. Absence is
+the default, not an oversight.
+
 ### What a survey owes its reader
 
 A survey's job is to **organize a field and locate the gaps in it** -- not to

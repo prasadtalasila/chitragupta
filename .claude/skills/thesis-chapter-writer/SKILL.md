@@ -84,6 +84,12 @@ principles come from -- Diátaxis, Last's *Technical Writing Essentials*, and
 Google's Technical Writing courses, all CC-licensed and all requiring credit.
 The genre-specific additions below layer on top of it.
 
+§10's figures are occasional here, not routine. This chapter's job is an
+argument toward the RQ, carried in prose and citation, and a diagram
+earns its place only when it captures a framework, architecture or study
+design that prose would otherwise take a paragraph to describe. Default
+to no figure; add one only when the argument genuinely needs it.
+
 ### What a thesis chapter owes its reader
 
 Its reader is an examiner: a domain expert reading adversarially, looking for

@@ -56,6 +56,11 @@ instead. Writing a tutorial when a how-to was wanted wastes everyone's time.
 define terms once, active voice, ban "obviously/simply/just", reread as the
 reader. They all apply here.
 
+§10's figures fit this genre most naturally of any in this pipeline: a
+hands-on lesson benefits from seeing what the reader is about to build,
+or how data moves through a command, more than any explanation could.
+Use one wherever a step's structure is easier seen than read.
+
 Where this genre departs from it: §5's "don't let a document do two jobs" is
 strictest in this skill, and the structural rules below (single path, no
 options, minimal explanation) are *tutorial-only*. Do not carry them into any
