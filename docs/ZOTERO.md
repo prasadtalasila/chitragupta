@@ -74,6 +74,11 @@ something else -- a `.bib` for a LaTeX document, an auto-export on a timer
 per-export. And if you do not want collections, leave the option off:
 nothing else in this pipeline reads the field.
 
+**If Better BibTeX is not an option at all**, there is a discouraged
+fallback that reads collection membership out of `zotero.sqlite` directly
+-- [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md). It bends two of
+this project's rules and says so at length. Prefer the option above.
+
 Two conventions come with `groups`, and both are JabRef's rather than
 ours. Several collections are comma-separated, and a subcollection
 arrives as its path from the root (`Digital twins > Modelling`). Asking

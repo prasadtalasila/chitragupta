@@ -171,6 +171,9 @@ docs/                     reference docs that ship in the release zip -- everyth
   PERFORMANCE.md            what each config setting costs, measured -- the lookup-oriented companion
                             to PARALLELISM.md's design doc
   ZOTERO.md                 getting a bib file and its PDFs into the shape this pipeline expects
+  EXPORT-ZOTERO-GROUPS.md   discouraged: recovering collection labels by reading zotero.sqlite
+                            directly, when Better BibTeX cannot produce them -- carries the
+                            warning about which project rules that bends
   CLI.md                    every command, and which interpreter each one needs
   CONFIG.md                 every setting, with config.toml.example reproduced in full
   PDF-PARSER.md             parser backend tradeoffs, why grobid/markitdown were removed, and why
