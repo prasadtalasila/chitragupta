@@ -240,17 +240,24 @@ collapse them for the sake of a cleaner narrative.
    above the first heading belongs to no section, and it says so rather
    than dropping it. Fix that in the draft (the claim wants a section) --
    don't hand-edit the table, which is regenerated from the draft.
-9. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
-   (this is the canonical, source-of-truth format), then run:
+9. **Add a figure only for what the table can't express.** Place it
+   beside the relationship it captures, such as a taxonomy no
+   comparison row shows -- `docs/WRITING-STANDARDS.md` §10's figures
+   are rare here, the rarest of any genre in this pipeline, because the
+   comparison table already carries that structural work. Absence is
+   the default, not an oversight.
 
-   ```bash
-   python -m src.draft gate content/drafts/<slug>.md
-   ```
+10. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
+    (this is the canonical, source-of-truth format), then run:
 
-   If it reports `FAIL`, fix the offending line(s) — either correct the citekey
-   or remove the claim — and re-run until it reports `OK`. Never show the user
-   a draft that hasn't passed.
-10. **Build the References section.** Once the gate passes, generate it from
+    ```bash
+    python -m src.draft gate content/drafts/<slug>.md
+    ```
+
+    If it reports `FAIL`, fix the offending line(s) — either correct the citekey
+    or remove the claim — and re-run until it reports `OK`. Never show the user
+    a draft that hasn't passed.
+11. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
 
     ```bash
@@ -268,7 +275,7 @@ collapse them for the sake of a cleaner narrative.
     Leave the body's inline citations as `[@citekey]` — do **not**
     hand-number them to `[1]`. The literal key is what the gate and the
     hook verify; pandoc assigns the numbers at render time.
-11. **Render tex and pdf.** Once the gate passes and the references section
+12. **Render tex and pdf.** Once the gate passes and the references section
     is built, also render the other three formats:
 
     ```bash
@@ -290,17 +297,17 @@ collapse them for the sake of a cleaner narrative.
     `[error]`, print a one-line warning in chat with that message and
     continue anyway — a rendering failure never blocks presenting the
     `.md` draft.
-12. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
+13. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
     specifically for: terms used before they're defined, a theme heading that
     doesn't match what the subsection actually argues, a comparison-table row
     that repeats prose already above it, and any paragraph whose first
     sentence doesn't carry its point.
-13. **Record any steering.** If the user shaped this draft in chat --
+14. **Record any steering.** If the user shaped this draft in chat --
     "don't lead with tooling", "shorter", "drop the adoption angle" --
     append it to the dossier's `steering.md`, dated. It is invisible in
     the prose and has nowhere else to live; a revision that doesn't know
     about it will undo it.
-14. **Run the prose check.** After the gate passes and before
+15. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -325,7 +332,7 @@ collapse them for the sake of a cleaner narrative.
     short list is not a clean draft. A review aid, not a gate — it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-15. **Offer the verbatim scan.** Before presenting, offer this — don't run
+16. **Offer the verbatim scan.** Before presenting, offer this — don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -342,7 +349,7 @@ collapse them for the sake of a cleaner narrative.
     finding kept, add `--write`: the report goes to `content/review/`,
     mirroring the draft's path, beside any provenance and coverage reports for
     the same draft.
-16. Present the draft plus a one-paragraph summary of thin-coverage areas and
+17. Present the draft plus a one-paragraph summary of thin-coverage areas and
     any unresolved cross-source disagreement, and report the render outcome
     (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
     Tell the user where the dossier is, that changes to this draft should go

@@ -226,29 +226,38 @@ candidate for the chapter.
    naming the exercise and why it went -- so a later revision doesn't
    reintroduce a problem you already judged and dropped. The same goes for a
    worked example you drafted and abandoned.
-7. **Close the loop.** End with a short summary of what the chapter
+7. **Add a figure, if a worked example or concept earns one.** Place it
+   beside the worked example (step 5) or concept it clarifies.
+   `docs/WRITING-STANDARDS.md` §10's original ASCII diagrams suit this
+   genre almost as well as they do in a tutorial -- less automatic,
+   since this genre also leans on prose explanation to do that work, so
+   most sections still won't need one. A figure you considered and
+   dropped is a `rejected.md` row, the same as an abandoned worked
+   example.
+
+8. **Close the loop.** End with a short summary of what the chapter
    established, tied back to the objectives it opened with, plus pointers to
    where a student who wants more should go next -- including, where it fits,
    the corpus papers you consulted but didn't need to cite inline.
-8. **Read it once as the student.** Before presenting, reread the draft as
+9. **Read it once as the student.** Before presenting, reread the draft as
    the reader defined in "Audience first" -- not as yourself. Flag anywhere a
    term arrives undefined, a step skips reasoning, or notation changes
    meaning mid-chapter. This pass catches more real problems than any other
    single step here.
-9. **Map the chapter's sections.** Once the draft is saved, derive the
-   dossier's `sections.md` rather than writing it by hand:
+10. **Map the chapter's sections.** Once the draft is saved, derive the
+    dossier's `sections.md` rather than writing it by hand:
 
-   ```bash
-   python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
-   ```
+    ```bash
+    python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
+    ```
 
-   so a later revision can find the section that owns a change without
-   reading the whole chapter. It skips fenced code, so a `# Step 1`
-   comment inside an example listing is neither mistaken for a heading
-   nor read as a citation. A chapter with no citations still gets this
-   map -- every row comes out with an empty citekey cell, and the outline
-   is what a reviser navigates by either way.
-10. **Never write a citekey you didn't get from `search()`.** If you do include
+    so a later revision can find the section that owns a change without
+    reading the whole chapter. It skips fenced code, so a `# Step 1`
+    comment inside an example listing is neither mistaken for a heading
+    nor read as a citation. A chapter with no citations still gets this
+    map -- every row comes out with an empty citekey cell, and the outline
+    is what a reviser navigates by either way.
+11. **Never write a citekey you didn't get from `search()`.** If you do include
     any citations, save the draft as `content/drafts/<slug>.md` and gate it:
 
     ```bash
@@ -258,7 +267,7 @@ candidate for the chapter.
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save to
     `content/drafts/<slug>.md`.
-11. **Build the References section.** Once the gate passes, generate it from
+12. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
 
     ```bash
@@ -278,7 +287,7 @@ candidate for the chapter.
     the new section matches the draft's own numbering instead of the bare
     `## References` default. Skip this step entirely if there are no
     citations at all -- same as the gate step.
-12. **Render tex and pdf.** Once saved (and gated/referenced, if it has
+13. **Render tex and pdf.** Once saved (and gated/referenced, if it has
     citations), also render the other three formats:
 
     ```bash
@@ -300,7 +309,7 @@ candidate for the chapter.
     `[error]`, print a one-line warning in chat with that message and
     continue anyway -- a rendering failure never blocks presenting the
     `.md` draft.
-13. **Record any steering.** If the user shaped this chapter in chat --
+14. **Record any steering.** If the user shaped this chapter in chat --
     "second-years, not first-years", "assume no probability", "more exercises
     and fewer worked examples", "drop the compiler example" -- append it to
     the dossier's `steering.md`, dated. It is invisible in the prose and has
@@ -308,7 +317,7 @@ candidate for the chapter.
     and pedagogical steering is the kind that undoes most quietly, because
     nothing in the finished chapter shows that an easier example was ever on
     the table.
-14. **Run the prose check.** After the gate passes and before
+15. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -335,7 +344,7 @@ candidate for the chapter.
     short list is not a clean draft. A review aid, not a gate -- it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-15. **Offer the verbatim scan.** Before presenting, offer this -- don't run
+16. **Offer the verbatim scan.** Before presenting, offer this -- don't run
     it silently, and never make it a condition of presenting:
 
     ```bash
@@ -352,7 +361,7 @@ candidate for the chapter.
     (`docs/PLAGIARISM.md`). If the user wants the finding kept, add `--write`:
     the report goes to `content/review/`, mirroring the draft's path, beside
     any provenance and coverage reports for the same draft.
-16. **Present the draft** plus a short note on what it assumes as prior
+17. **Present the draft** plus a short note on what it assumes as prior
     knowledge, what it deliberately leaves out, and where a student is meant
     to go next -- and report the render outcome (paths to the `.tex`/`.pdf` if
     they succeeded, or the warning if not). Tell the user where the dossier

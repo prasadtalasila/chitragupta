@@ -200,6 +200,40 @@ exactly one that does.
 **Every verdict in the table is scoped to English**, for the reason §8
 gives.
 
+## 10. Figures
+
+A draft may include a figure only if it is wholly original. A figure
+extracted from a source paper carries that paper's own copyright, and
+citing the paper grants no right to reproduce it -- inserting one into a
+draft, or closely redrawing one from memory, is the same violation in
+different pixels. Reading a source figure for understanding is fine; the
+boundary is what ends up in the draft.
+
+The supported form is a plain-ASCII diagram in a fenced code block --
+box characters, arrows and labels built from `+ - | / \ > < ^ v`, 7-bit
+characters only. Keep it to about 70 columns so it survives the
+rendered PDF's monospace block without wrapping.
+
+A `.tex` draft -- this pipeline's one LaTeX-sourced genre -- has no
+fenced code block to put one in; the same plain-ASCII content goes in a
+`verbatim` environment instead, same 7-bit-only rule, same reasoning.
+Verified through this pipeline's actual render path both ways: a
+`verbatim` diagram in a preamble-less fragment survives pandoc's LaTeX
+reader into both `--format pdf` and `--format md`.
+
+Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged:
+this pipeline renders PDF with `pdflatex`, which does not have those
+glyphs set up and fails the whole render with `Unicode character ┌
+(U+250C) not set up for use with LaTeX` -- verified against this
+project's own `render_output.py` call, not a general pandoc claim. A
+diagram that renders one figure and breaks every other one downstream
+in the same draft is worse than no diagram.
+
+This is not gated mechanically -- there is no equivalent of
+`citation_gate` for a figure's originality. Whether a diagram is
+genuinely original, and whether a source figure's own licence would
+even permit reproducing it, stays a judgement call.
+
 ## Sources and attribution
 
 Three openly licensed works supply the principles above. All three require

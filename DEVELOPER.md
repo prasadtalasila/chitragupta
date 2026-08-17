@@ -369,6 +369,12 @@ Every figure's `cite` string is a real `[@citekey]`, because every
 document the enrichment layer parses comes from the bib file (see
 `src/enrich/corpus.py`).
 
+A wholly original diagram -- not derived from any source paper's figure
+-- is a different case this section doesn't restrict; see
+[docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) §10 for the
+supported form and why it's plain ASCII rather than Unicode
+box-drawing.
+
 ## Citation provenance
 
 `python -m src.review provenance content/drafts/<slug>.md` reports, for

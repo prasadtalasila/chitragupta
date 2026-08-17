@@ -47,6 +47,14 @@ break:
   definition the rest of the draft uses. Introducing a second name for a
   concept in the one section you touched is the exact seam a reader
   notices.
+- **Figures follow the draft's own genre, not a fixed rule of this
+  skill's own.** `scope.md`'s `genre:` line records one of `survey`,
+  `thesis-chapter`, `textbook-chapter`, `tutorial` or `deep-research` --
+  the matching skill's own drafting process (`survey-writer`,
+  `thesis-chapter-writer`, `textbook-chapter-writer`, `tutorial-writer`,
+  or `deep-research`) says how freely that genre calibrates
+  `docs/WRITING-STANDARDS.md` §10's figures, from most (`tutorial`) to
+  least (`survey`) to none at all (`deep-research`).
 
 ## The loop
 
