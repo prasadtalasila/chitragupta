@@ -171,6 +171,7 @@ nav:
       - Auto-improvement, what would be built: docs/AUTO-IMPROVEMENT.md
       - Auto-improvement, why: docs/AUTO-IMPROVEMENT-RATIONALE.md
       - House style: docs/HOUSE-STYLE.md
+      - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
       - Developing: DEVELOPER.md
       - Docker: DOCKER.md
       - Changing this repo: DEVELOPER-AGENTS.md

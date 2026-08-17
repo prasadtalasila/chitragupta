@@ -320,6 +320,7 @@ one-screen router for exactly that.
 | [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
 | [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
 | [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and -- where the licence requires it -- what was deliberately not |
+| [docs/EXPORT-ZOTERO-GROUPS.md](docs/EXPORT-ZOTERO-GROUPS.md) | **Discouraged, and says so.** How the one script that reads `zotero.sqlite` directly recovers collection labels when Better BibTeX cannot, which two project rules it bends to do it, and why you should use Better BibTeX instead |
 
 Every prose document ships in the release archive -- everything under
 `docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
