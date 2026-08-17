@@ -2276,6 +2276,13 @@ def suggest_acronyms(draft: Path) -> dict[str, str]:
 
 
 def _cmd_acronyms_suggest(args) -> int:
+    """Always 0, deliberately -- unlike _cmd_brief's exit code, nothing
+    downstream reads this one: `acronyms-suggest` has no caller but a
+    person at a terminal (docs/CONFIG.md), and what they need is already
+    in stdout. Flagged by SonarCloud (S3516, "always returns the same
+    value"); both branches are tested separately by their printed output
+    (tests/test_dossier.py::TestSuggestAcronyms), not by this return.
+    """
     candidates = suggest_acronyms(Path(args.draft))
     if not candidates:
         print("  No new acronyms to suggest.")
