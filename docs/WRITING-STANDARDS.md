@@ -202,12 +202,12 @@ gives.
 
 ## 10. Figures
 
-A draft may include a figure only if it is wholly original --
-[DEVELOPER.md](../DEVELOPER.md)'s "Figures and copyright" already forbids
-inserting a paper's own extracted figure into a draft, and closely
-redrawing one from memory is the same violation in different pixels.
-Reading a source figure for understanding is fine; the boundary is what
-ends up in the draft.
+A draft may include a figure only if it is wholly original. A figure
+extracted from a source paper carries that paper's own copyright, and
+citing the paper grants no right to reproduce it -- inserting one into a
+draft, or closely redrawing one from memory, is the same violation in
+different pixels. Reading a source figure for understanding is fine; the
+boundary is what ends up in the draft.
 
 The supported form is a plain-ASCII diagram in a fenced code block --
 box characters, arrows and labels built from `+ - | / \ > < ^ v`, 7-bit
@@ -223,9 +223,9 @@ diagram that renders one figure and breaks every other one downstream
 in the same draft is worse than no diagram.
 
 This is not gated mechanically -- there is no equivalent of
-`citation_gate` for a figure's originality, the same gap DEVELOPER.md
-already names for copyright. Whether a diagram is genuinely original
-stays a judgement call, same as the figure's licence.
+`citation_gate` for a figure's originality. Whether a diagram is
+genuinely original, and whether a source figure's own licence would
+even permit reproducing it, stays a judgement call.
 
 ## Sources and attribution
 
