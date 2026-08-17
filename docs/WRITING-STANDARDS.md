@@ -237,27 +237,24 @@ wants. So a figure in this pipeline exists twice -- once as a TikZ
 picture, which sets as vector art at the consuming document's own font
 and line width, and once as the plain-ASCII diagram above.
 
-**Both forms are files, in every genre**, and they live as siblings
-under the draft's own topic directory:
+**The TikZ form is always a sibling file. Where the ASCII form lives
+depends on the genre**, and the rule is that each draft keeps its own
+native form *inline* and only the other form goes to a file. A Markdown
+draft's ASCII is already inline in its fence, which is what the `md`
+render emits, so it needs no `.txt` -- writing one anyway would leave
+two copies of the same diagram with nothing reading the second and
+nothing keeping them in step. The `.tex` genre is the case that needs
+the file, because its native form is the TikZ and a `verbatim` block of
+ASCII sitting in the fragment would print in the user's real thesis.
 
 ```text
-content/drafts/<topic>/<draft>.md          or .tex
+content/drafts/<topic>/<draft>.md          ASCII inline, in a fence
+content/drafts/<topic>/figures/<name>.tex  the TikZ picture   (both genres)
+
+content/drafts/<topic>/<draft>.tex         TikZ inline, via \input
 content/drafts/<topic>/figures/<name>.tex  the TikZ picture
-content/drafts/<topic>/figures/<name>.txt  the same diagram in plain ASCII
+content/drafts/<topic>/figures/<name>.txt  the ASCII form     (.tex genre only)
 ```
-
-A Markdown draft therefore holds its ASCII twice -- inline in the fence,
-which is what the `md` render emits, and again in the `.txt`. That is
-deliberate: a figure has the same shape on disk whichever genre produced
-it, so a reviser never has to work out where this draft keeps its ASCII,
-and the diagram is reusable on its own.
-
-The cost of a second copy is that it can rot, so **the renderer checks
-it**. A `.txt` that is missing, or that has drifted from the fence beside
-its marker, is reported on stderr as a `[figure]` warning. Nothing else
-would catch it: no render reads the `.txt` of a Markdown draft, so an
-unchecked copy would sit there going stale until a reviser found two
-versions of one diagram and could not tell which was current.
 
 **A topic directory is mandatory for a draft that carries a figure.** A
 flat `content/drafts/<slug>.md` puts its figures in

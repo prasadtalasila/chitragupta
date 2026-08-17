@@ -22,18 +22,26 @@ the shape that shipped:
 | `.tex` (thesis) | TikZ, via `\input` | `figures/<name>.txt` | `%ascii-alt: ...` |
 
 Each draft keeps its own native form inline and names the other in a
-marker; the renderer swaps them per output format.
+marker; the renderer swaps them per output format. **Only the other form
+becomes a file.**
 
-**Both forms are files in every genre.** The implementation first
-dropped the `.txt` for Markdown drafts, on the grounds that their ASCII
-is already the fence and a second copy would only rot. The user
-overruled that: a figure has the same shape on disk whichever genre
-produced it, and the ASCII is reusable on its own. The rot objection was
-answered rather than dismissed -- the renderer now *checks* the second
-copy, warning when a Markdown draft's `.txt` is missing or has drifted
-from the fence beside its marker. One marker still names the pair; the
-`.txt` is derived from the `.tex` by suffix, so there is never a second
-reference to keep in step.
+That last point was settled twice, so it is worth recording why it
+landed where it did. A Markdown draft needs no `.txt`: its ASCII is
+already the fence the `md` render emits, so a second copy is one nothing
+reads and nothing keeps in step. An intermediate revision required the
+`.txt` in every genre for uniformity, and added a drift check to stop it
+rotting; that was then reverted, because a check that exists only to
+guard a file nothing uses is cost without benefit.
+
+**The `.tex` genre's `.txt` is not in that category -- it is
+load-bearing**, and the distinction is the whole reason the rule is
+per-genre rather than uniform. `_substitute_ascii_for_tikz` reads it to
+build the `.md` preview. Demonstrated against the real function: with
+the `.txt` present the preview carries the diagram in a `verbatim`
+block; with it removed the `\input` survives untouched, pandoc resolves
+it and drops the `tikzpicture`, and the figure disappears from the
+preview entirely -- which is the exact hole this feature was built to
+close.
 
 One consequence the user should see recorded: #223 calibrated ASCII
 figures as fitting `tutorial-writer` *most* naturally, and a tutorial's

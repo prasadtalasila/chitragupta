@@ -61,12 +61,11 @@ break:
   Markdown draft, `%ascii-alt:` in a `.tex` one), which is greppable
   precisely so this is not a reading exercise. Relabel a box, add an
   arrow, rename a component in one form and you must make the same
-  change in the other. **A Markdown draft holds its ASCII twice** --
-  inline in the fence, which is what the `md` render shows, and in
-  `figures/<name>.txt` -- so a diagram edit there is three files, not
-  two. The renderer warns when the fence and the `.txt` disagree, but
-  it cannot see that a picture and a diagram have stopped meaning the
-  same thing.
+  change in the other. **Where each form lives depends on the genre**:
+  a Markdown draft keeps its ASCII inline in the fence and its TikZ in
+  `figures/<name>.tex`; a `.tex` fragment keeps its TikZ inline via
+  `\input` and its ASCII in `figures/<name>.txt`. Whichever way round,
+  one edit is never enough.
   **Nothing checks any of this.** No gate, no style rule and no render
   error can tell that a picture and a diagram have stopped depicting
   the same thing,
