@@ -415,6 +415,9 @@ reviewer finds it again.
 
 ### 3.9 Figure handling is per-genre, because the draft languages are
 
+Tracked as [#230](https://github.com/prasadtalasila/chitragupta/issues/230),
+which carries the resolution plan and its price.
+
 A figure has two forms -- a TikZ picture and a plain-ASCII diagram
 (`docs/WRITING-STANDARDS.md` §10). The rule the renderer applies is
 uniform: **the draft keeps its native form inline, and the other form
