@@ -68,6 +68,12 @@ Treat a clean `scan` as "no exact or near-exact copying, no word-swapped
 paraphrase, and -- where tier 3 ran -- no close restatement of a source a
 section's dossier records". Never as "no borrowed wording found".
 
+None of this is a license to leave borrowed wording in place because a
+tier didn't catch it. A clean `scan` reports what the tooling could see,
+not what's acceptable to publish -- copying a source's wording into a
+draft without quoting it doesn't stop being that because it slipped past
+three detectors.
+
 Tier 3 below closes the restatement gap, but only within each section's
 own recorded citekeys, and only where the optional stack it needs is
 installed. A lift from a source a section never cited remains tiers 1 and

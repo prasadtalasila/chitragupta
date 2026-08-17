@@ -69,6 +69,13 @@ someone who was not in the conversation that produced it.
   coverage and verbatim checks stay review aids and never become gates:
   "does this source support this sentence" has no single right answer the
   way "is this citekey in the ledger" does.
+- **Launder a source's wording as your own.** Paraphrase in your own
+  words or quote it outright with credit -- copying a sentence's phrasing
+  without either is a theft the citation gate cannot see, since a real
+  citekey does not make borrowed wording yours. `verbatim_check`'s
+  findings stay advisory for the same reason judgment stays advisory
+  elsewhere in this file: they are evidence for that judgment, not a
+  substitute for exercising it in the first place.
 
 ## Continuity
 
