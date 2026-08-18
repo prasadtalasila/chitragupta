@@ -181,7 +181,8 @@ exists:
 - **Chitragupta** (this project) -- an automated pipeline over a
   Zotero-exported PDF library that drafts surveys, thesis chapters,
   textbook chapters, tutorials and multi-perspective deep-research
-  reports (eight skills total, five of which draft; see
+  reports, and assembles accepted units into a book (nine skills
+  total, five of which draft; see
   [GENRE.md](GENRE.md)). Distinctive properties: bibliography file as
   the sole citekey admission point; deterministic, LLM-free
   parse-and-ledger corpus layer; a genuinely **blocking** citation gate
@@ -528,7 +529,7 @@ production, not just designed. As of v5.29.0:
 | Closed-world gate (`src.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built -- and, per #130 below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
 | Bibliography as sole source-admission point | Built |
 | Local-first, auditable, open source | Built, by construction |
-| Genre conventions as data (skills) | Built -- eight skills, five of which draft ([GENRE.md](GENRE.md)) |
+| Genre conventions as data (skills) | Built -- nine skills, five of which draft ([GENRE.md](GENRE.md)) |
 | Content-hash caching / "second run costs nothing" | Built, and load-bearing for the overlap index (#110) specifically |
 | Verbatim overlap checking, exact tier | Built (#110, #127, #128, #131): corpus-wide n-gram index, disk-cached and ledger-keyed; whole-draft scan, not just citing paragraphs; severity buckets; boilerplate allowlist; `--json` output |
 | Overlap remediation loop | Built (#129): the `overlap-reviser` skill -- rewrite, re-scan, re-gate, log |

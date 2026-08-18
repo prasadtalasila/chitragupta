@@ -28,7 +28,10 @@ by `python -m src.corpus sync`.
 All five genre skills (`survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research` in
 `.claude/skills/`) must run `python -m src.draft gate <file>` on its
-own output and only present the draft once it exits 0. This is a gate,
+own output and only present the draft once it exits 0. So must
+`book-assembler`, which writes no prose but does write a document: the
+LaTeX book it composes is a new file, and this layer has one exit
+whatever produced the file. This is a gate,
 not a lint suggestion -- treat a `FAIL` the same way you'd treat a
 failing test. It binds the two teaching genres too, where citations are
 optional: a draft that cites nothing passes trivially, but a draft that

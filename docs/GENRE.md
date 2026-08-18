@@ -24,9 +24,9 @@ and when you want to know why the one that ran refused something.
 
 Related reading:
 
-- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules all eight
-  share, and where in the technical-communication literature they come
-  from.
+- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules the
+  eight prose-writing skills share, and where in the
+  technical-communication literature they come from.
 - [DRAFT-ITERATION.md](DRAFT-ITERATION.md) -- the dossier every skill
   writes, and why `draft-reviser` exists.
 - [TOKENS.md](TOKENS.md) -- what a run costs, and why re-running a genre
@@ -39,10 +39,11 @@ Related reading:
 - [Picking one](#picking-one)
 - [At a glance](#at-a-glance)
 - [The five drafting genres](#the-five-drafting-genres)
+- [Assembling a book](#assembling-a-book)
 - [Revising: draft-reviser](#revising-draft-reviser)
 - [Revising widely: corpus-reviser](#revising-widely-corpus-reviser)
 - [Repairing overlap: overlap-reviser](#repairing-overlap-overlap-reviser)
-- [What all eight have in common](#what-all-eight-have-in-common)
+- [What all nine have in common](#what-all-nine-have-in-common)
 - [The boundaries, and why they are enforced](#the-boundaries-and-why-they-are-enforced)
 - [Genres this project does not have](#genres-this-project-does-not-have)
 
@@ -87,6 +88,7 @@ document that fails at both.
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass -- by request only |
 | `overlap-reviser` | edits an existing draft in place | inherits the draft's | none | one scan, then one edit per finding |
+| `book-assembler` | `content/drafts/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
 
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
@@ -336,10 +338,33 @@ loop proposes and repairs; you accept the diff.
 Everything else about the draft is `draft-reviser`. A finding this skill
 cannot repair is escalated, not worked around.
 
-## What all eight have in common
+## Assembling a book
+
+`book-assembler` is the ninth skill and the only one that writes no
+prose. It composes units that are already accepted and gate-passed into
+one LaTeX book -- front matter, `\part`, `\chapter`, one `\input` per
+unit, back matter -- from the outline `python -m src.draft spec` holds
+and the acceptance records `python -m src.draft unit` wrote.
+
+It is the last step of the book-scale track and stops at that track's
+second human gate: it presents what it composed, with every registry
+finding, and does not say the book is finished. A unit that is missing,
+unaccepted or stale sends it back to the genre skill or to
+`draft-reviser`; it never drafts and never edits.
+
+[BOOKS.md](BOOKS.md) is the track -- the outline, the generation unit,
+the registries, and why the consistency check reports rather than
+blocks.
+
+## What all nine have in common
 
 These are not per-skill choices. They are the same rules restated in
-eight `SKILL.md` files, and a skill that broke one would be the bug.
+nine `SKILL.md` files, and a skill that broke one would be the bug.
+
+One of the nine is not a drafting skill: `book-assembler` composes units
+other skills already wrote, so where a rule below is about *writing* --
+the dossier, the acronym vocabulary -- it says how that skill differs and
+why, rather than being quietly exempt.
 
 **One invariant.** A citekey may only be used if it appears in your `.bib`
 export *and* was picked up into the ledger by a real parse of a real PDF.
@@ -358,7 +383,10 @@ found and stops, rather than drafting around it.
 
 **Every run writes a dossier**, created before the first retrieval call
 and filled in as the run goes -- not at the end, when what was rejected
-has already fallen out of context.
+has already fallen out of context. The exception is `book-assembler`,
+which retrieves nothing and rejects nothing: a book's record is already
+on disk as its signed outline, one acceptance record per unit, and the
+three registries, all under `content/specs/<book>/`.
 
 **Shared prose standards.** Name the reader before drafting, settle the
 dialect with them and record it as `scope.md`'s `language:` line, read
