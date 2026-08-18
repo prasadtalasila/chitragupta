@@ -212,18 +212,17 @@ tikz_available = (
 )
 
 # A figure is two forms -- a TikZ picture and the same diagram in
-# WRITING-STANDARDS.md §10's plain ASCII. Each draft carries whichever is
-# native to its own language inline and names the other in a `figure:`
-# marker; these are the two shapes that produces.
+# WRITING-STANDARDS.md §10's plain ASCII -- and both are always files.
+# A Markdown draft carries only the marker; a `.tex` draft keeps its TikZ
+# inline (the fragment a real thesis `\input`s) and names its ASCII twin
+# in a marker of its own. These are the two shapes that produces.
 ASCII_FIGURE = (
     "  +-------+  read   +--------+\n"
     "  | model | ------> | solver |\n"
     "  +-------+         +--------+\n"
 )
 TIKZ_FIGURE = "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n"
-MARKED_FENCE = (
-    "Before.\n\n<!-- figure: figures/fig1 -->\n\n```\n" + ASCII_FIGURE + "```\n\nAfter.\n"
-)
+MARKED_MD = "Before.\n\n<!-- figure: figures/fig1 -->\n\nAfter.\n"
 MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%figure: figures/fig1\n\nAfter.\n"
 
 

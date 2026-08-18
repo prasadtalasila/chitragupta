@@ -274,22 +274,20 @@ the lesson design is the part worth keeping either way.
    still don't need one: if nothing in the path is clearer as a diagram
    than as text, move on.
 
-   A figure that does earn its place is a **pair of forms**, and §10 is
-   the contract. This genre's native form is the ASCII diagram, so it
-   stays inline in its fence exactly as before, with a marker line of its
-   own just above it naming the TikZ sibling:
+   A figure that does earn its place is a **pair of files**, and §10 is
+   the contract. This genre carries no inline form of either -- the
+   draft names the figure in a marker line of its own, with nothing
+   beside it:
 
    ```html
    <!-- figure: figures/<name> -->
    ```
 
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
-   picture). No `.txt` sibling: this genre's ASCII form is the fence
-   already in the draft, which is what the `md` render emits, and a
-   second copy on disk would only be one more thing to keep in step. The
-   `--format md` render is
-   unchanged -- an HTML comment is invisible in rendered Markdown -- and
-   `--format tex`/`--format pdf` (step 14) replace the marked fence with
+   picture) and `content/drafts/<topic>/figures/<name>.txt` (the ASCII
+   form, in §10's 7-bit alphabet). The renderer swaps the marker for the
+   `.txt` contents in a fence on `--format md` and every other
+   non-LaTeX format, and `--format tex`/`--format pdf` (step 14) get
    `\input{figures/<name>.tex}`, so a learner reading the PDF gets a
    real picture instead of monospace art. Four riders, each of which §10
    explains:
@@ -301,9 +299,9 @@ the lesson design is the part worth keeping either way.
      draft.
    - **Verify the TikZ compiles before keeping it** -- the same
      "actually run it" discipline step 8 applies to the lesson itself.
-     Run `kpsewhich tikz.sty` first: if it is absent, keep the fence,
-     write no marker and no `figures/`, and say so in chat. If it is
-     present, wrap `figures/<name>.tex` in a minimal
+     Run `kpsewhich tikz.sty` first: if it is absent, write the ASCII
+     inline in a fence instead, no pair and no marker, and say so in
+     chat. If it is present, wrap `figures/<name>.tex` in a minimal
      `\documentclass{article}` + `\usepackage{tikz}` document and run
      `pdflatex` on it. A malformed figure fails the *whole* pdf render,
      not just the figure.

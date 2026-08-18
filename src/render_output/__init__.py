@@ -92,10 +92,11 @@ from src.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolv
 from src.render_output._errors import MissingBinary, OutsideContentDir, _require
 from src.render_output._figures import (
     _FIGURE_MARKER_MD_RE, _FIGURE_MARKER_TEX_RE, _INPUT_WITH_MARKER_RE, _LATEX_CITE_RE,
-    _LATEX_INCLUDE_RE, _MARKED_FENCE_RE, _TEX_FORMATS, _ascii_alt_refs, _ascii_path,
+    _LATEX_INCLUDE_RE, _TEX_FORMATS, _ascii_alt_refs, _ascii_path,
     _figure_has_citekey, _tikz_path,
-    _figure_refs, _figure_warnings, _local_tex_include_refs, _require_tikz,
-    _resolve_sibling, _substitute_ascii_for_tikz, _substitute_tikz_for_ascii,
+    _figure_refs, _figure_warnings, _local_tex_include_refs, _markdown_ascii_refs,
+    _require_tikz, _resolve_sibling, _substitute_ascii_for_marker,
+    _substitute_ascii_for_tikz, _substitute_tikz_for_ascii,
     _tikz_alt_refs, _with_figures_for,
 )
 from src.render_output._cli import main
@@ -296,7 +297,9 @@ def render(
         # format conversion, and that fragment deliberately carries no
         # reference list of its own.
         _copy_local_assets(input_path, out_dir)
-        return references.write_numbered(input_path, out_dir)
+        return references.write_numbered(
+            input_path, out_dir, _with_figures_for(draft_text, input_path, output_format),
+        )
 
     _require("pandoc")
     if output_format == "pdf":

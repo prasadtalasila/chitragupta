@@ -12,7 +12,7 @@ import sys
 import pytest
 from src import render_output
 from tests.conftest import content_draft
-from tests.conftest import ASCII_FIGURE, MARKED_FENCE, MARKED_INPUT, TIKZ_FIGURE, figure_pair
+from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
 from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
@@ -57,7 +57,7 @@ class TestFigureRepairHint:
 
     def test_names_the_figure_and_points_at_draft_reviser(self, tmp_path):
         draft = tmp_path / "draft.md"
-        draft.write_text(MARKED_FENCE)
+        draft.write_text(MARKED_MD)
         hint = render_output._cli._figure_repair_hint(str(draft))
         assert "figures/fig1.tex" in hint
         assert "draft-reviser" in hint

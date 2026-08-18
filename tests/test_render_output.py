@@ -15,7 +15,7 @@ from src import ledger
 from src import render_output
 from tests.conftest import content_draft
 from tests.conftest import make_reference
-from tests.conftest import ASCII_FIGURE, MARKED_FENCE, MARKED_INPUT, TIKZ_FIGURE, figure_pair
+from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
 from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
@@ -601,7 +601,7 @@ class TestFigurePairRenderReal:
         draft_dir.mkdir(parents=True)
         figure_pair(draft_dir)
         draft = draft_dir / "tutorial.md"
-        draft.write_text("# Title\n\n" + MARKED_FENCE)
+        draft.write_text("# Title\n\n" + MARKED_MD)
         elsewhere = tmp_path / "elsewhere"
         elsewhere.mkdir()
         monkeypatch.chdir(elsewhere)
@@ -623,7 +623,7 @@ class TestFigurePairRenderReal:
         draft_dir.mkdir(parents=True)
         figure_pair(draft_dir)
         draft = draft_dir / "tutorial.md"
-        draft.write_text("# Title\n\n" + MARKED_FENCE)
+        draft.write_text("# Title\n\n" + MARKED_MD)
         elsewhere = tmp_path / "elsewhere"
         elsewhere.mkdir()
         monkeypatch.chdir(elsewhere)
@@ -664,19 +664,23 @@ class TestFigurePairRenderReal:
         rendered = out_path.read_text()
         assert "| model | ------> | solver |" in rendered
 
-    def test_a_markdown_draft_to_md_keeps_its_ascii_fence(self, isolated_config, tmp_path):
-        # No pandoc on this path at all, so the fence passes straight
-        # through and the marker stays as an invisible HTML comment.
+    def test_a_markdown_draft_to_md_takes_the_ascii_form(self, isolated_config, tmp_path):
+        # No pandoc on this path at all -- render()'s early return never
+        # reaches the substitution `_safe_render_inputs` normally threads
+        # in, so this is the one place that has to inject the figure
+        # itself before writing the numbered copy.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = isolated_config.DRAFTS_DIR / "dt"
         draft_dir.mkdir(parents=True)
         figure_pair(draft_dir)
         draft = draft_dir / "tutorial.md"
-        draft.write_text("# Title\n\n" + MARKED_FENCE)
+        draft.write_text("# Title\n\n" + MARKED_MD)
 
         out_path = render_output.render(str(draft), output_format="md")
 
-        assert "| model | ------> | solver |" in out_path.read_text()
+        rendered = out_path.read_text()
+        assert "| model | ------> | solver |" in rendered
+        assert "<!-- figure:" not in rendered
 
     def test_a_figure_problem_is_warned_about_not_raised(
         self, isolated_config, tmp_path, capsys
@@ -685,7 +689,7 @@ class TestFigurePairRenderReal:
         draft_dir = isolated_config.DRAFTS_DIR / "dt"
         draft_dir.mkdir(parents=True)
         draft = draft_dir / "tutorial.md"
-        draft.write_text("# Title\n\n" + MARKED_FENCE)
+        draft.write_text("# Title\n\n" + MARKED_MD)
 
         out_path = render_output.render(str(draft), output_format="md")
 

@@ -286,6 +286,19 @@ class TestWriteNumbered:
         assert "Body [1]." in out_path.read_text()
         assert draft.read_text() == original, "the gated source must not be rewritten"
 
+    def test_a_text_override_is_numbered_instead_of_the_file_on_disk(self, isolated_config, tmp_path):
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
+        con.close()
+
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("Unsubstituted [@smith2024].\n")
+        out_dir = tmp_path / "rendered"
+
+        out_path = references.write_numbered(draft, out_dir, text="Substituted [@smith2024].\n")
+
+        assert "Substituted [1]." in out_path.read_text()
+
 
 class TestBuildSection:
     def test_builds_formatted_entries_in_given_order(self, ledger_con):

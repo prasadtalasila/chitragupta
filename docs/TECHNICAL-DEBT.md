@@ -470,6 +470,18 @@ reviewer finds it again.
 
 ### 3.9 Figure handling is per-genre, because the draft languages are
 
+**Resolved in #247.** Both forms are now files in every genre, referenced
+by a marker-only line in the draft -- except `thesis-chapter-writer`'s
+TikZ, which stays a real inline `\input`, because that fragment is what
+the user `\input`s directly into their own real thesis and never passes
+through this pipeline's renderer again once it leaves
+`content/drafts/`. That is narrower than the "full uniformity" this
+section priced below: going fully marker-only there would have made the
+fragment lose its figure silently the moment it left this pipeline, so
+the fix keeps that one asymmetry rather than trading it away. Kept below
+as the record of the smell this closed and the price a stricter fix would
+still cost.
+
 Tracked as [#230](https://github.com/prasadtalasila/chitragupta/issues/230),
 which carries the resolution plan and its price.
 

@@ -247,23 +247,21 @@ collapse them for the sake of a cleaner narrative.
    comparison table already carries that structural work. Absence is
    the default, not an oversight.
 
-   On the rare occasion one is warranted, it is a **pair of forms**, and
-   §10 is the contract. This genre's native form is the ASCII diagram,
-   so it stays inline in its fence, with a marker line of its own just
-   above it naming the TikZ sibling:
+   On the rare occasion one is warranted, it is a **pair of files**, and
+   §10 is the contract. This genre carries no inline form of either --
+   the draft names the figure in a marker line of its own, with nothing
+   beside it:
 
    ```html
    <!-- figure: figures/<name> -->
    ```
 
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
-   picture). No `.txt` sibling: this genre's ASCII form is the fence
-   already in the draft, which is what the `md` render emits, and a
-   second copy on disk would only be one more thing to keep in step. The
-   `--format md` render is
-   unchanged -- an HTML comment is invisible in rendered Markdown -- and
-   `--format tex`/`--format pdf` (step 12) replace the marked fence with
-   `\input{figures/<name>.tex}`, which is what makes a survey figure
+   picture) and `content/drafts/<topic>/figures/<name>.txt` (the ASCII
+   form, in §10's 7-bit alphabet). The renderer swaps the marker for the
+   `.txt` contents in a fence on `--format md` (step 12) and every other
+   non-LaTeX format, and for `\input{figures/<name>.tex}` on
+   `--format tex`/`--format pdf`, which is what makes a survey figure
    usable in the paper this draft feeds. Four riders, each of which §10
    explains:
 
@@ -273,11 +271,12 @@ collapse them for the sake of a cleaner narrative.
      it is usually the right answer. Figures under a flat draft land in
      `content/drafts/figures/`, shared with every other flat draft.
    - **Verify the TikZ compiles before keeping it.** Run
-     `kpsewhich tikz.sty` first: if it is absent, keep the fence, write
-     no marker and no `figures/`, and say so in chat. If it is present,
-     wrap `figures/<name>.tex` in a minimal `\documentclass{article}` +
-     `\usepackage{tikz}` document and run `pdflatex` on it. A malformed
-     figure fails the *whole* pdf render, not just the figure.
+     `kpsewhich tikz.sty` first: if it is absent, write the ASCII inline
+     in a fence instead, no pair and no marker, and say so in chat. If
+     it is present, wrap `figures/<name>.tex` in a minimal
+     `\documentclass{article}` + `\usepackage{tikz}` document and run
+     `pdflatex` on it. A malformed figure fails the *whole* pdf render,
+     not just the figure.
    - **No citekey inside either figure file.** Step 10's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. This is the genre

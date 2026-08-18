@@ -237,23 +237,25 @@ wants. So a figure in this pipeline exists twice -- once as a TikZ
 picture, which sets as vector art at the consuming document's own font
 and line width, and once as the plain-ASCII diagram above.
 
-**The TikZ form is always a sibling file. Where the ASCII form lives
-depends on the genre**, and the rule is that each draft keeps its own
-native form *inline* and only the other form goes to a file. A Markdown
-draft's ASCII is already inline in its fence, which is what the `md`
-render emits, so it needs no `.txt` -- writing one anyway would leave
-two copies of the same diagram with nothing reading the second and
-nothing keeping them in step. The `.tex` genre is the case that needs
-the file, because its native form is the TikZ and a `verbatim` block of
-ASCII sitting in the fragment would print in the user's real thesis.
+**Both forms are always sibling files, in every genre, and a draft
+carries only a marker naming them** -- with one exception, and it is not
+about figures. `thesis-chapter-writer`'s `.tex` fragment is what the user
+`\input`s directly into their own real thesis, never touched by this
+pipeline again once it leaves `content/drafts/`; a marker-only TikZ would
+render fine through this pipeline's own renderer and then silently vanish
+the moment the user does the one thing that genre exists for. So that
+genre's TikZ stays inline, via the `\input` a real thesis resolves for
+itself; its ASCII, like every other form in every other genre, is a file
+named by a marker.
 
 ```text
-content/drafts/<topic>/<draft>.md          ASCII inline, in a fence
-content/drafts/<topic>/figures/<name>.tex  the TikZ picture   (both genres)
+content/drafts/<topic>/<draft>.md          marker only
+content/drafts/<topic>/figures/<name>.tex  the TikZ picture   (every genre)
+content/drafts/<topic>/figures/<name>.txt  the ASCII form     (every genre)
 
-content/drafts/<topic>/<draft>.tex         TikZ inline, via \input
+content/drafts/<topic>/<draft>.tex         TikZ inline, via \input   (thesis-chapter-writer only)
 content/drafts/<topic>/figures/<name>.tex  the TikZ picture
-content/drafts/<topic>/figures/<name>.txt  the ASCII form     (.tex genre only)
+content/drafts/<topic>/figures/<name>.txt  the ASCII form
 ```
 
 **A topic directory is mandatory for a draft that carries a figure.** A
@@ -265,10 +267,11 @@ start of its process, before a figure is on anyone's mind; deciding on a
 figure later is a reason to move the draft and its dossier, not a reason
 to `mkdir` beside a flat one.
 
-Each draft carries its **native** form inline and names the other with a
-marker comment. The marker is what lets a reader of the draft see that a
-second form exists, and what lets a reviser find every figure by `grep`
-rather than by parsing the draft.
+Every draft names both forms with a marker comment -- `thesis-chapter-writer`
+additionally keeps its TikZ inline, for the reason above, but still marks
+its ASCII the same way everyone else marks both. The marker is what lets
+a reader of the draft see that a form exists off the page, and what lets
+a reviser find every figure by `grep` rather than by parsing the draft.
 
 **One marker, one vocabulary, in both genres: `figure:`, naming the
 figure's base name without a suffix.** The renderer derives `<base>.tex`
@@ -278,23 +281,22 @@ the thing you write, and the rule you remember, is the same either way,
 and no draft ever names one figure twice.
 
 **Markdown drafts** -- `tutorial-writer`, `textbook-chapter-writer`,
-`survey-writer` -- keep the ASCII inline in its fence, with the marker
-on a line of its own just above it:
+`survey-writer` -- carry the marker alone, with no fence beside it:
 
 ```html
 <!-- figure: figures/<name> -->
 ```
 
-For `--format tex` and `--format pdf` the renderer replaces that marked
-fence with `\input{figures/<name>.tex}`. For `--format md` nothing
-changes, because an HTML comment is invisible in rendered Markdown -- so
-the marker costs the Markdown reader nothing, and pandoc's LaTeX writer
-drops it outright (verified) rather than leaking it into the `.tex`.
+For `--format tex` and `--format pdf` the renderer replaces that marker
+with `\input{figures/<name>.tex}`. For every other format, including the
+Markdown draft's own `--format md`, it replaces the marker with the
+`.txt` contents in a fence -- there is no inline diagram left to fall
+back on, so this substitution runs even when the output format matches
+the draft's own language.
 
 **The `.tex` draft** -- `thesis-chapter-writer`, this pipeline's one
-LaTeX-sourced genre -- is the other way round. The TikZ is inline, via
-the `\input` a real thesis resolves for itself, and the marker follows
-it:
+LaTeX-sourced genre -- keeps its TikZ inline, via the `\input` a real
+thesis resolves for itself, with the ASCII marker following it:
 
 ```latex
 \input{figures/<name>.tex}
@@ -302,10 +304,10 @@ it:
 ```
 
 For `--format md` the renderer substitutes the `.txt` contents for that
-`\input`, in a temp copy. Writing a `verbatim` block by hand is no
-longer the author's job here: the fragment on disk stays exactly what
-the user `\input`s into their own thesis, and the ASCII appears only in
-the preview that needs it.
+`\input`, in a temp copy. Writing a `verbatim` block by hand is not the
+author's job here: the fragment on disk stays exactly what the user
+`\input`s into their own thesis, and the ASCII appears only in the
+preview that needs it.
 
 **The marker must be a comment, never a second `\input`.** A literal
 `\input{figures/<name>.txt}` makes pdflatex read the ASCII art *as LaTeX
@@ -326,10 +328,7 @@ pipeline.
   sibling files exist and the marker is in the draft. A pair with a
   missing half renders in one format and disappears in the other, and a
   draft that refers in prose to a figure the reader cannot see is worse
-  than one with no figure at all. "Both forms" means both *distinct*
-  forms, not both files: a Markdown draft's ASCII is the fence it
-  already carries, so its figure is complete with the `.tex` sibling
-  alone.
+  than one with no figure at all.
 - **Originality binds the TikZ identically.** A TikZ picture redrawn
   from a source paper's figure is the same violation in different
   pixels, and that a vector redraw is easier to produce than a traced
@@ -361,15 +360,16 @@ pipeline.
   the run where one Unicode box character takes the whole document down
   with it.
 
-Where `tikz.sty` is absent and the draft is the `.tex` genre, the
-fallback is what this section required before the pair existed: the
-ASCII goes inline in a `verbatim` environment in the fragment, with no
-`\input` and no marker. That form survives pandoc's LaTeX reader into
-both `--format pdf` and `--format md` -- verified through this
-pipeline's actual render path both ways -- so the figure stays visible
-in every format such a host can produce. A Markdown draft needs no such
-fallback: without a marker its fence is carried into every format
-exactly as it was before.
+Where `tikz.sty` is absent, the fallback is the same in every genre and
+is what this section required before the pair existed: the ASCII goes
+inline, in whatever form the draft's own language carries natively -- a
+fenced code block in a Markdown draft, a `verbatim` environment in a
+`.tex` fragment -- with no marker and no `figures/` files at all. Both
+forms survive every format such a host can produce: a fence renders
+straight through Markdown's own formats and, via pandoc, into `tex`/`pdf`
+too; a `verbatim` block survives pandoc's LaTeX reader into both
+`--format pdf` and `--format md` -- verified through this pipeline's
+actual render path both ways.
 
 This is not gated mechanically -- there is no equivalent of
 `citation_gate` for a figure's originality. Whether a diagram is
