@@ -176,6 +176,100 @@ class TestCountRawEntries:
         assert bib_reader._count_raw_entries("") == 0
 
 
+class TestContentlessStubsAreNotCounted:
+    """A Zotero export writes `@misc{key,\\n}` for an attachment with no
+    metadata. bibtexparser drops it -- correctly: there is no title,
+    author or year to lose -- so counting it here made the dropped-entry
+    warning fire on every sync against a healthy library. The
+    maintainer's own bibliography carries two.
+
+    The distinction drawn is bibtexparser's own: a block with no field
+    between the citekey and the close is not an entry.
+    """
+
+    def test_a_contentless_misc_stub_is_not_counted(self):
+        assert bib_reader._count_raw_entries("@misc{stub_2024,\n}\n") == 0
+
+    def test_a_stub_with_no_comma_at_all_is_not_counted(self):
+        assert bib_reader._count_raw_entries("@misc{stub_2024}\n") == 0
+
+    def test_a_stub_in_the_paren_form_is_not_counted(self):
+        assert bib_reader._count_raw_entries("@misc(stub_2024,\n)\n") == 0
+
+    def test_one_field_is_enough_to_count(self):
+        """The bar is "has a field", not "has the fields sync wants" --
+        anything stricter would start dropping entries bibtexparser
+        keeps, and the two have to agree."""
+        assert bib_reader._count_raw_entries("@misc{thin_2024,\n  title = {T},\n}\n") == 1
+
+    def test_a_real_entry_whose_last_field_ends_in_a_brace_still_counts(self):
+        # The close-delimiter strip takes exactly one character, so a
+        # trailing `title = {T}` is not mistaken for the block's own end.
+        assert bib_reader._count_raw_entries("@article{k_2024,\n  title = {T}\n}\n") == 1
+
+    def test_a_stub_does_not_hide_an_unbalanced_entry_after_it(self):
+        """The case the warning exists for, with the stub first.
+
+        A forward brace-matcher would run to EOF from the unbalanced
+        entry; bounding each block at the *next* `@` is what keeps this
+        counting two rather than one.
+        """
+        text = (
+            "@misc{stub_2024,\n}\n\n"
+            "@article{bad_2024,\n  title = {Unclosed,\n  author = {A, One},\n\n"
+            "@article{good_2024,\n  title = {Good},\n}\n"
+        )
+        assert bib_reader._count_raw_entries(text) == 2
+
+    def test_a_stub_does_not_hide_an_unbalanced_entry_before_it(self):
+        """The same file with the order reversed. Order-dependence is how
+        a bug in the bounding would hide: with the malformed entry last
+        it is bounded by EOF either way."""
+        text = (
+            "@article{bad_2024,\n  title = {Unclosed,\n  author = {A, One},\n\n"
+            "@misc{stub_2024,\n}\n\n"
+            "@article{good_2024,\n  title = {Good},\n}\n"
+        )
+        assert bib_reader._count_raw_entries(text) == 2
+
+
+class TestTheDroppedEntryWarningAndTheStub:
+    """End to end, through `read_library`: the two halves of #235 in one
+    file. The stub is silently dropped by bibtexparser and must not be
+    reported; the unbalanced entry is silently dropped and must be."""
+
+    _STUB = "@misc{stub_2024,\n}\n"
+    _GOOD = "@article{good_2024,\n  title = {Good},\n  author = {A, One},\n  year = {2024},\n}\n"
+    _BAD = "@article{bad_2024,\n  title = {Unclosed,\n  author = {B, Two},\n  year = {2024},\n"
+
+    def test_a_contentless_stub_alone_raises_no_warning(self, isolated_config, capsys):
+        write_bib(isolated_config.BIB_FILE_PATH, self._GOOD + "\n" + self._STUB)
+        refs = bib_reader.read_library()
+        out = capsys.readouterr().out
+        assert [r.citekey for r in refs] == ["good_2024"]
+        assert "WARNING" not in out
+
+    def test_an_unbalanced_entry_still_warns(self, isolated_config, capsys):
+        write_bib(isolated_config.BIB_FILE_PATH, self._BAD + "\n" + self._GOOD)
+        bib_reader.read_library()
+        out = capsys.readouterr().out
+        assert "WARNING" in out
+        assert "silently dropped" in out
+
+    def test_the_stub_does_not_inflate_the_warning_it_appears_beside(
+        self, isolated_config, capsys
+    ):
+        """The number in the message is what a reader acts on. With both
+        in the file it must say 1 -- the unbalanced entry -- not 2."""
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            self._STUB + "\n" + self._BAD + "\n" + self._GOOD,
+        )
+        bib_reader.read_library()
+        out = capsys.readouterr().out
+        assert "1 may have been silently dropped" in out
+
+
 class TestCitekeyProblem:
     """A citekey becomes a filename stem (content/parsed/<citekey>.txt and
     the enrichment layer's own outputs), so one that can't be a filename

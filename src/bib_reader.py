@@ -148,6 +148,35 @@ _NON_ENTRY_TYPES = {"comment", "string", "preamble"}
 _ENTRY_START_RE = re.compile(r"^@(\w+)\s*[{(]", re.MULTILINE)
 
 
+def _block_has_fields(body: str) -> bool:
+    """Whether an `@`-block's body carries anything past its citekey.
+
+    A Zotero export writes `@misc{key,\\n}` for an attachment saved with
+    no metadata, and bibtexparser drops it -- correctly, since there is
+    no title, author or year to lose. Counting it as an entry made the
+    dropped-entry warning below fire on every sync against a perfectly
+    healthy library (this project's own bibliography carries two such
+    stubs), and a guard that cries wolf is worse than none: the run it
+    needs to be believed on is the one where a real entry has unbalanced
+    braces. So the test drawn here is bibtexparser's own -- no field
+    means no entry -- and the two agree about what they are counting.
+
+    `body` runs from just past the opening delimiter to the start of the
+    next `@`-block, not to a matching close brace. That bound is the
+    whole point: a forward brace-matcher would, on the *unbalanced* entry
+    this warning exists to catch, run to end of file and swallow every
+    entry after it -- silencing the warning in exactly the case it is
+    for. One trailing `}`/`)` is stripped rather than matched, so a block
+    whose last field value ends in a brace (`title = {T}\\n}`) is not
+    mistaken for a contentless one.
+    """
+    body = body.rstrip()
+    if body.endswith(("}", ")")):
+        body = body[:-1].rstrip()
+    _, comma, fields = body.partition(",")
+    return bool(comma and fields.strip())
+
+
 def _count_raw_entries(text: str) -> int:
     """How many actual `@entrytype{...}`/`@entrytype(...)` blocks the raw
     file text has, independent of whether bibtexparser managed to parse
@@ -160,10 +189,18 @@ def _count_raw_entries(text: str) -> int:
     Comparing against this raw count is the only way read_library can
     tell "the file has exactly as many entries as it looks like" from
     "some entries silently vanished."
+
+    Contentless stubs are excluded -- see `_block_has_fields`. Every
+    match bounds the previous one, including the @comment/@string/
+    @preamble blocks filtered out afterwards: one of those sitting
+    between two entries still ends the first entry's body.
     """
+    starts = list(_ENTRY_START_RE.finditer(text))
+    ends = [m.start() for m in starts[1:]] + [len(text)]
     return sum(
-        1 for m in _ENTRY_START_RE.finditer(text)
+        1 for m, end in zip(starts, ends)
         if m.group(1).lower() not in _NON_ENTRY_TYPES
+        and _block_has_fields(text[m.end():end])
     )
 
 
