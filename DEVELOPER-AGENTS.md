@@ -485,21 +485,23 @@ governs what may land in your diff.
 
 Title line: imperative mood, concise, describes the change's effect (not
 "updated files" or "misc fixes"). PRs are squash-merged (see "Pull
-requests" below), so write commits and PR titles as if either one could
-become the commit title on `main`. Don't add the PR number by hand in the
-*PR title or a branch commit* -- GitHub appends it when it composes the
-squash title itself (e.g. `Fix reconcile drift detection (#42)`). The one
-exception is merging with an explicit `--subject`, where GitHub takes the
-string verbatim and appends nothing, so the `(#N)` has to be in it; see
-[Merging](#merging).
+requests" below), and **the PR title is what lands** --
+`squash_merge_commit_title` is `PR_TITLE`, so it is the PR title
+unconditionally, whatever the branch's commits are called.
 
-**Which of the two GitHub actually uses is a repository setting, and this
-repository's setting means it depends on your branch.**
-`squash_merge_commit_title` is `COMMIT_OR_PR_TITLE`: with two or more
-commits on the branch GitHub takes the PR title, with exactly one it takes
-that commit's title. So a one-commit branch whose commit title has drifted
-from the PR title lands the commit's, not the PR's. Keep them the same, or
-merge with an explicit subject -- see [Merging](#merging).
+**Never add the PR number by hand**, anywhere: not in the PR title, not
+in a branch commit, not in a merge subject. GitHub appends it when it
+composes the title (e.g. `Fix reconcile drift detection (#42)`), and it
+composes the title every time now. Writing it in as well is how you get
+`(#42) (#42)`.
+
+That rule used to carry an exception -- merging with an explicit
+`--subject`, which GitHub takes verbatim and appends nothing to, so the
+number had to be written in. That exception is **gone**, and so is the
+older hazard beside it, that `COMMIT_OR_PR_TITLE` took a one-commit
+branch's *commit* title rather than the PR's, so a drifted commit title
+landed instead. Both were fixed by the settings in [Merging](#merging),
+applied 2026-08-18.
 
 Body: a blank line, then a bulleted list of the specific, concrete changes,
 each bullet starting with a present-tense verb (Fix, Add, Remove, Migrate,
@@ -519,47 +521,69 @@ Fix reconcile drift detection, secret handling, and stale config warnings
   dead code no longer reachable after the above.
 ```
 
-**This body shape is not what lands on `main` by default, and that is the
-single biggest reason it is not adhered to.** Measured over the last 30
-commits: 14 carry a leading `* <branch commit title>` line, and 8 have a
-prose body rather than bullets. Neither is an authoring mistake. The
-repository's `squash_merge_commit_message` is GitHub's default,
-`COMMIT_MESSAGES`, which builds the squash body by concatenating the
-branch's commit messages with `*` bullets -- so the shape above survives
-only if whoever merges hand-edits the body in the web UI, every time,
-forever. Writing the rule down more emphatically cannot fix a default.
-[Merging](#merging) is where it is fixed.
+**This body shape is still not what lands by default, and you still have
+to state it at merge time.** The title half of that problem is fixed; the
+body half is not, and it is worth being exact about why, because the
+obvious fix does not work and has already been tried.
+
+Historically the repository ran GitHub's default,
+`squash_merge_commit_message = COMMIT_MESSAGES`, which builds the body by
+concatenating the branch's commit messages with `*` bullets. Measured over
+the 30 commits before 2026-08-18: 14 carried a leading `* <branch commit
+title>` line and 8 had a prose body rather than bullets, neither of them
+an authoring mistake.
+
+It is now `PR_BODY`, which lands **the pull request description, verbatim**
+-- and that is not this shape either. `.github/pull_request_template.md`
+is a *review* document: `## Type of Change`, `## Test plan`, `##
+Checklist`, all of it with tick-boxes. Merged unedited it puts those
+tick-boxes in `main`'s history. **No setting turns one into the other.**
+`squash_merge_commit_message` takes exactly three values -- `PR_BODY`,
+`COMMIT_MESSAGES`, `BLANK` -- and none of them transforms the text; there
+is no templating step between a PR description and a commit body for a
+setting to hook into.
+
+So the body is supplied at merge time, by `--body-file` -- see
+[Merging](#merging). Not a workaround for an unapplied setting any more;
+the setting that would replace it does not exist.
 
 ## Merging
 
-Squash, always. Do it with a command that *states* the title and body
-rather than accepting what GitHub composes:
+Squash -- not by convention, by configuration: `allow_merge_commit` and
+`allow_rebase_merge` are both `false`, so it is the only method the
+repository offers. Merge with:
 
 ```bash
-gh pr merge <N> --squash \
-  --subject "$(gh pr view <N> --json title --jq .title) (#<N>)" \
-  --body-file <path to a body in the shape above>
+gh pr merge <N> --squash --body-file <path to a body in the shape above>
 ```
 
-**The `(#N)` is written in here on purpose**, and it is the one place
-that is true: GitHub appends the number only when it composes the title
-itself. Given an explicit `--subject` it takes the string verbatim, so
-omitting it lands a commit on `main` that cannot be traced back to its
-PR -- the opposite of what "don't add it by hand" is protecting.
+**No `--subject`, and no `(#N)`.** `squash_merge_commit_title` is
+`PR_TITLE`, so GitHub composes the title from the PR and appends the
+number itself. Passing `--subject` takes your string verbatim instead,
+which means re-solving a problem that is now solved and getting `(#42)
+(#42)` if you also write the number in.
 
-The point is not the exact incantation -- write the body to a file in the
-bulleted shape above rather than piping raw branch commits through it,
-which just reproduces the `*`-concatenated default by another route. The point
-is that the format becomes
+**`--body-file` is still needed, and is not a leftover.** The body
+setting is `PR_BODY`, which lands the PR description verbatim -- review
+tick-boxes and all -- so without this flag `main`'s history gets
+`.github/pull_request_template.md` rather than a commit message. As
+["Commit messages"](#commit-messages) sets out, no value of
+`squash_merge_commit_message` produces the documented shape, because none
+of them transforms the text. Write the file in the bulleted shape rather
+than piping raw branch commits into it, which just reproduces the old
+`*`-concatenated default by another route.
+
+The point is not the exact incantation. It is that the format becomes
 something a command produces, not something a person has to remember at
 the end of a long session, in a browser, after CI has gone green. That is
 this project's standing answer to guidance that does not stick: the
 ratchet, the citation gate, and this are the same move
 ([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#why-a-ratchet-suits-this-project-specifically)).
 
-**Three repository settings would make it structural instead**, and are
-the actual fix -- they need a maintainer with admin rights, so they are
-recorded here rather than done:
+### What the repository settings fixed, and what they could not
+
+Applied 2026-08-18 (#238), after being recorded here undone for long
+enough to be worth saying which half each one closed:
 
 ```bash
 gh api -X PATCH repos/prasadtalasila/chitragupta \
@@ -568,16 +592,28 @@ gh api -X PATCH repos/prasadtalasila/chitragupta \
   -F allow_merge_commit=false -F allow_rebase_merge=false
 ```
 
-- `PR_TITLE` makes "GitHub uses the PR title" true unconditionally,
-  rather than only on a multi-commit branch.
-- `PR_BODY` makes the squash body the PR description -- which
-  `.github/pull_request_template.md` already shapes -- and retires the
-  `*`-concatenated default that produced 14 of the last 30 bodies.
-- Disabling the other two merge methods makes "Merge method: squash" a
-  fact about the repository rather than a sentence in this file.
+- **`PR_TITLE` closed the title completely.** "GitHub uses the PR title"
+  is now unconditional rather than true only on a multi-commit branch,
+  and the `(#N)`-by-hand exception this file used to carry is gone with
+  it. Nothing about a title has to be remembered at merge time.
+- **`PR_BODY` did not close the body**, and the expectation that it would
+  was a reasoning error worth leaving on the record rather than quietly
+  correcting: #238 argued the squash body could be the PR description
+  because the PR template "already shapes" it. It does shape it -- into a
+  review document, which is a different artefact from a commit message.
+  The improvement is real but narrower than claimed: the fallback when
+  someone forgets `--body-file` is now a verbose template instead of
+  `*`-concatenated commit titles. Both are wrong; the new one is wrong
+  more legibly.
+- **Disabling the other two methods** made "Merge method: squash" a fact
+  about the repository rather than a sentence in this file, which is the
+  one of the three that needed no follow-up.
 
-Until they are set, the `gh pr merge` form above is the workaround, and
-the rule genuinely is harder to follow than it reads.
+The general lesson, since this file is where process claims live: a
+setting closes a gap only where a machine can do the whole job. Titles
+are mechanical, so a setting finished them. A commit body is a piece of
+writing addressed to a different reader than a PR description, and no
+enum value writes it for you.
 
 ## Issues and pull requests
 
@@ -589,14 +625,22 @@ don't restate their section list here:
   `.github/ISSUE_TEMPLATE/feature_request.md`.
 
 A PR title is held to the same bar as a commit's title line: concise,
-describes the effect. The template's **Test plan** section is not a
-formality -- fill it from what you actually ran (see "Before claiming a
-task complete" above), not from what you intended to run.
+describes the effect -- and it is now held to it literally, since
+`squash_merge_commit_title = PR_TITLE` makes the PR title the commit
+title on `main` whatever the branch's commits are called. The template's
+**Test plan** section is not a formality -- fill it from what you
+actually ran (see "Before claiming a task complete" above), not from what
+you intended to run.
 
-Merge method: squash -- see [Merging](#merging) for the command and for
-why the default does not produce the documented shape. Each PR becomes
-exactly one commit on `main`, so keep the PR title accurate even when the
-branch itself carries several intermediate commits.
+The template stays a review document and is not written to double as a
+commit message. That is a deliberate split, not an oversight: a reviewer
+needs the test plan and the checklist, and `main`'s history does not.
+[Merging](#merging)'s `--body-file` is what keeps them apart -- omit it
+and the whole template, tick-boxes included, becomes the commit body.
+
+Merge method: squash, enforced by the repository rather than by this
+sentence -- see [Merging](#merging). Each PR becomes exactly one commit
+on `main`.
 
 ## Versioning and releases
 
