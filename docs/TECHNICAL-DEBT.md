@@ -10,7 +10,7 @@ that *is* enforced -- the C1/C2 ratchet -- lives in
 **Reconciled 2026-08-18** against the tree as it now stands, since a
 register that only shrinks the way it says it should is one this
 document's own prose has to keep up with too: `src/sync.py::run`
-resolved in #178 and [3.1](#31-text-io-on-the-locale-codec-resolved)'s
+resolved in #178 and [3.1](#31-text-io-on-the-locale-codec)'s
 entire encoding item resolved the same day this document was written,
 neither previously marked done; `bench/` and the test suite re-measured,
 both having grown substantially; [4.3](#43-a-git-worktree-under-claude-breaks-two-tree-walking-scans)'s
@@ -94,7 +94,7 @@ different ways, and only one of the two is checked on every run. What
 follows is the thing the register cannot carry: where the two largest
 entries would actually split.
 
-### `src/sync.py::run` -- resolved in #178
+### `src/sync.py::run` -- 117 statements, 4.7x the next worst
 
 **Resolved in #178** (2026-08-14, the day after this section was
 written). Kept below as the historical record of what the split was
@@ -111,10 +111,13 @@ carrying its own rationale comment. The reconcile step after it
 (`stale`/`prune_missing`) shared no state with the parse except
 `seen_citekeys`.
 
-It split along exactly those seams: `run()` is now 62 physical lines and
-no longer appears in `LEGACY_LONG_FUNCTIONS` at all -- which is the
-register's own proof it is at or under C1's 25-statement cap, not a
-number this document needs to re-derive.
+It split along exactly those seams and no longer appears in
+`LEGACY_LONG_FUNCTIONS` at all -- which is the register's own proof it
+is at or under C1's 25-statement cap, not a number this document needs
+to re-derive or pin (a physical-line count would only churn on the next
+comment edit, which is exactly why [Why statements, not
+lines](CODE-STANDARDS.md#why-statements-not-lines) declines to pin
+those either).
 
 ### `src/dossier.py` -- 1605 code lines, and four responsibilities
 
@@ -203,7 +206,7 @@ resolved.
 
 New in this review. Each names a call site.
 
-### 3.1 Text I/O on the locale codec (resolved)
+### 3.1 Text I/O on the locale codec
 
 **Resolved, and this entire subsection is now a historical record.**
 When this document was written (2026-08-13), 32 of `src/`'s 67
@@ -301,12 +304,12 @@ from all four things that hold the rest of the tree:
 - the linter -- `pylint` runs against `src scripts .claude/hooks`
   ([5.2](#52-pylint-a-measured-baseline)), never `bench/`
 
-Measured against the ratchet it does not face, and roughly rather than
-by the ratchet's own exact tool (a fresh pass with the real statement
-counter would be worth having): `bench/` now holds on the order of
-**18 functions over C1** and **8 modules over C2**, `repro_check.py`
-still the largest of either kind at 530 code lines and its own `main()`
-the largest function at roughly 69 statements.
+Measured against the ratchet it does not face, with the ratchet's own
+`long_functions`/`long_files` from `tests/test_code_standards_scan.py`
+run directly against `("bench",)` rather than approximated: `bench/` now
+holds **16 functions over C1** and **8 modules over C2**,
+`repro_check.py` still the largest of either kind at 530 code lines and
+its own `main()` the largest function at 69 statements.
 
 CODE-STANDARDS.md states the C1/C2 exclusion and its reason -- one-shot
 analysis code whose `main()` reads top to bottom on purpose -- and
@@ -375,7 +378,7 @@ self-skip.
 The debt is that 95 is a *floor*, not a *target*: the 5 points are not
 attributed to the skipped tests, so Windows-only code that no test
 reaches is indistinguishable from a render test that self-skipped. This
-mattered precisely for [3.1](#31-text-io-on-the-locale-codec-resolved),
+mattered precisely for [3.1](#31-text-io-on-the-locale-codec),
 whose failure mode was Windows-specific -- now resolved there, but the
 blind spot itself is general and would hide the next one the same way.
 Attributing the gap -- via
@@ -708,7 +711,7 @@ already decided against leaves **44 real findings**:
 | Category | Count | Disposition |
 |---|---|---|
 | `line-too-long` (>100) | 31 | Real. "Keep lines short" is a review standard here with no detector; this is it, measured |
-| `unspecified-encoding` | 7 | Fixed as part of [3.1](#31-text-io-on-the-locale-codec-resolved) -- pylint saw only the `open()` calls, 7 of that item's 32 original sites |
+| `unspecified-encoding` | 7 | Fixed as part of [3.1](#31-text-io-on-the-locale-codec) -- pylint saw only the `open()` calls, 7 of that item's 32 original sites |
 | `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard` -- deliberate lowercase context managers; belongs in `good-names` |
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
@@ -736,7 +739,7 @@ Fixing pylint's 7 `unspecified-encoding` sites while leaving 3.1's other
 25 would close the detector on the register's top item without closing the
 item. And DEVELOPER-AGENTS.md forbids shipping a check that has not been
 made to pass. So the honest sequence was
-[3.1](#31-text-io-on-the-locale-codec-resolved) first, then the 31 long lines, then
+[3.1](#31-text-io-on-the-locale-codec) first, then the 31 long lines, then
 pylint enabled at a **binary** bar -- zero messages, never a `fail-under`
 score, because [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out
 driving a number. That sequence is what 5.8.0 carried out, in that order.
@@ -1023,7 +1026,7 @@ worse.
 | Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
 | `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
-| `src/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, see [3.1](#31-text-io-on-the-locale-codec-resolved)) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
+| `src/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, see [3.1](#31-text-io-on-the-locale-codec)) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
 ## What to take first
 
@@ -1039,7 +1042,7 @@ Ordered by what breaks if it is left, not by size:
    Cyrillic author name, rendered on a cp1252 host.~~ **Done**, the same
    day this document was written, per [5.2](#52-pylint-a-measured-baseline)'s
    own "3.1's encoding sites first -- the whole item, not pylint's
-   visible seven." See [3.1](#31-text-io-on-the-locale-codec-resolved),
+   visible seven." See [3.1](#31-text-io-on-the-locale-codec),
    verified with a fresh AST scan: 0 text-I/O sites in `src/` now missing
    `encoding=`.
 2. ~~**[Tier 1] `src/sync.py::run`.** 117 statements, separable at six
