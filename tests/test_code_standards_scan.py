@@ -88,7 +88,7 @@ LEGACY_LONG_FILES = {
     "src/review/citation_provenance.py",  # 388
     "src/ledger.py",  # 430
     "src/retrieval.py",  # 397
-    "src/references.py",  # 366
+    "src/references.py",  # 368
     "src/overlap_skipgram.py",  # 315
     "src/config.py",  # 301
 }
