@@ -1,10 +1,9 @@
 # Book-scale drafting: the outline, the units, and the registries
 
-Status: **being built.** The spec artefact below exists and is usable
-today; the rest of the track is named here so a reader can see what each
-piece is for, with the issue that builds it. This document grows one
-section per landed piece rather than describing the whole design as if it
-shipped.
+Status: **built.** All four pieces of the track are here -- the outline
+(#136), the generation unit (#137), the three registries (#138) and the
+assembly skill (#139). Each section below describes something that
+exists; nothing here is a plan.
 
 **Written for** someone drafting a document larger than a chapter with
 this pipeline, and for whoever builds the next piece of the track. It
@@ -25,7 +24,7 @@ assumes [AGENTS.md](../AGENTS.md) for the drafting layer and
 - [Why `registry check` exits 0, when the two `status` commands do not](#why-registry-check-exits-0-when-the-two-status-commands-do-not)
 - [What the registries cannot see](#what-the-registries-cannot-see)
 - [Why a registry excerpt is not hashed into a unit's contract](#why-a-registry-excerpt-is-not-hashed-into-a-units-contract)
-- [The rest of the track](#the-rest-of-the-track)
+- [Assembling the book](#assembling-the-book)
 
 ## The constraint everything here answers
 
@@ -46,7 +45,7 @@ sign-offs is mechanical.
 
 ## The spec artefact, and its sign-off
 
-`python -m src.draft spec` (`src/spec.py`) owns one Markdown file per
+`python -m src.draft spec` (`src/spec/`) owns one Markdown file per
 book and a sign-off record beside it:
 
 ```text
@@ -94,7 +93,7 @@ A derived id -- slugified from the heading text, say -- changes the
 moment someone rewords the heading, and every unit already written
 against the old spelling silently becomes an orphan. At chapter scale a
 person notices; across 300 pages nobody does. The same ids are what the
-cross-reference graph (#138) will resolve against, so they have to
+cross-reference graph (#138) resolves against, so they have to
 outlive an edit to the words around them.
 
 `spec show`, `spec sign` and `spec status` all refuse a spec that does
@@ -323,11 +322,50 @@ afterwards by `registry check` over the whole book. `registries` stays in
 the contract's shape, empty and labelled, so a caller that does want to
 pin one has somewhere to put it.
 
-## The rest of the track
+## Assembling the book
 
-Named here so the shape is visible; each lands with its own section in
-this document.
+The last step, and deliberately the smallest: `.claude/skills/book-assembler/`,
+a skill rather than a module. Everything it assembles has already passed
+every gate per unit, so assembly is deterministic composition plus a
+human sign-off -- there is no enforcement machinery here to write.
 
-- **LaTeX book assembly** (#139) -- parts, chapters and front matter
-  composed from accepted, gate-passed units, as a genre skill:
-  conventions as data, not code.
+**Conventions as data, not code.** The whole composition is one table,
+and the ids carry through unchanged:
+
+| Outline | LaTeX | Label |
+|---|---|---|
+| `# Title` | `\title{...}` | -- |
+| `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
+| `### Chapter {#ch-1}` | `\chapter{...}` | `\label{ch-1}` |
+| `#### Section {#sec-1}` | `\input{sec-1.tex}` | the unit's own `\label{sec-1}` |
+
+That the `{#id}` becomes the LaTeX label unchanged is what makes the
+cross-references `registry check` verified actually resolve in the built
+PDF -- the outline, the registry and the document all name the same
+thing.
+
+The bibliography points at the user's own `.bib` file, never a copy: the
+reference manager is upstream, and this pipeline is downstream of it.
+Which stack loads it is **probed, not assumed** -- biblatex/biber where
+both are installed, natbib/bibtex otherwise. That is not a hypothetical
+courtesy: the host this was first exercised on has `pdflatex` and neither
+`biblatex.sty` nor `biber`, and a document that assumed them built
+nothing at all. A unit drafted in Markdown is converted with
+`python -m src.draft render <unit> --format tex` rather than by hand;
+`thesis-chapter-writer`'s output is already the right shape.
+
+**Where #138's "blocking" actually lives.** The skill must run
+`registry check` and print every finding, in full, before composing --
+which is the guaranteed *invocation* ARCHITECTURE.md permits, in place of
+the conformance it does not. `tests/test_skill_book_assembly.py` pins
+that, so a hand edit dropping either half fails the suite.
+
+The skill refuses in one direction only: it stops. A unit that is
+missing, unaccepted or stale sends the user back to a genre skill or to
+`draft-reviser`, and it never drafts or edits prose itself. It presents
+what it composed -- the unit count, what the registries could not read,
+every finding, what the gate and the two review aids said -- and stops
+there. **It does not say the book is finished.** Nothing in this pipeline
+has read the argument: the checks establish that a book is grounded,
+consistent and complete, and never that it is any good. That judgement is
+the second human gate, and it is the user's.

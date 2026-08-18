@@ -104,18 +104,20 @@ def test_every_offer_says_what_the_scan_cannot_see():
 
 
 def test_genre_doc_still_speaks_for_every_skill_that_exists():
-    """docs/GENRE.md says "all eight" in prose. Prose can't count.
+    """docs/GENRE.md says "all nine" in prose. Prose can't count.
 
-    If a ninth skill lands, the shared-conventions section silently
+    If a tenth skill lands, the shared-conventions section silently
     stops covering it -- and that section is where the scan offer, the
     gate and the read-only-corpus rules are stated once for all of them.
     This fails on the day the count changes, which is the day GENRE.md
-    needs editing anyway.
+    needs editing anyway. It has already done its job once: it caught
+    `book-assembler` landing in #139 while that section still said
+    eight.
     """
     count = len(_skill_files())
-    assert count == 8, (
-        f"{count} skills exist but docs/GENRE.md still says \"all eight\". "
+    assert count == 9, (
+        f"{count} skills exist but docs/GENRE.md still says \"all nine\". "
         "Update that section -- and check the new skill carries the gate, "
         "dossier and verbatim-scan conventions it states."
     )
-    assert "What all eight have in common" in GENRE_DOC.read_text(encoding="utf-8")
+    assert "What all nine have in common" in GENRE_DOC.read_text(encoding="utf-8")
