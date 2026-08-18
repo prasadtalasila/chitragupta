@@ -25,6 +25,15 @@ touches `content/`; `bench_overlap.py` reads this host's real
 safe here and not for `bench_drift.py`) but writes its own cache to a
 throwaway directory, never the real `content/overlap/`.
 
+`bench_collection_scope.py` is stdlib-only as well and needs no GPU, but
+it is unlike every other script here in what it consumes: not a corpus
+and a sample, but **two finished drafts and their dossiers** from a
+two-arm run that was pre-registered before either arm was written. It
+measures a drafting session after the fact rather than driving one, and
+it re-runs `src.retrieval.search()` only to reconstruct what those
+sessions already saw -- which is sound only while the ledger has not
+moved since, so `--hashes` checks that and reports `replay_sound`.
+
 `bench_overlap_gate.py` and `bench_overlap_df.py` are stdlib-only too,
 but unlike those two they need a **synced corpus** and a real draft to
 scan: both read `content/ledger.sqlite`, `content/parsed/` and the shared
@@ -77,6 +86,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | What 48 real `(query, citekey)` pairs can retrieval quality be scored against? | `bench_retrieval_ground_truth.py` -- joins `bench_paraphrase_hunt.py`'s committed judgments back onto freshly re-extracted claim text; output is gitignored, regenerate locally |
 | Does the same nine-row comparison hold against what a drafting session actually logged, not a reconstructed pair? | **`bench_retrieval_live_logs.py`** -- 96 real `search`-mode queries from the restored book's own `retrieval.md`, scored against each chapter's real `evidence.md` kept-citekey set; no book-restore-and-rejoin risk, but a coarser, chapter-level ground truth -- its nDCG@5 is not comparable in magnitude to `bench_retrieval_compare.py`'s |
 | Does the same nine-row comparison hold with a ground truth no retrieval method built (the two above both score against citekeys BM25 itself surfaced)? | **`bench_retrieval_keyword_selfretrieval.py`** -- 256 real bib entries' own author-assigned `keywords`, query = the keywords, correct answer = the entry itself; needs no restored book, only `bibliography.bib` and the synced ledger |
+| What does scoping a draft's retrieval to a curated Zotero collection (`--collection`, #195) actually buy? | **`bench_collection_scope.py`** -- two arms of the same chapter, whole corpus vs one shelf, from the same pre-registered queries; replays each dossier's own logged queries to reconstruct what each arm surfaced. Stdlib only, no GPU, but it scores a *drafting run*, so it needs two real drafts and their dossiers to already exist |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -161,6 +171,7 @@ being tested.
 | `bench_retrieval_compare.py` | Scores BM25, each of three dense drop-ins (alone and cross-encoder-reranked), SPECTER2 standalone, and a SPECTER2-shortlist cascade against the ground truth above, by recall@5/nDCG@5 -- each dense model and the cascade run in their own `.venv-full` subprocess since `EMBEDDING_MODEL` is fixed at `src/config.py` import time |
 | `bench_retrieval_live_logs.py` | Same nine rows as `bench_retrieval_compare.py` (imports its scoring functions rather than reimplementing them), against a different ground truth: 96 real `search`-mode queries logged live in the restored book's own `retrieval.md`, each scored against its whole chapter's real kept-citekey set from `evidence.md` -- coarser than a single-citekey pair, so its nDCG@5 has a different (harsher) ideal denominator and is not comparable in magnitude to `bench_retrieval_compare.py`'s |
 | `bench_retrieval_keyword_selfretrieval.py` | Same nine rows again, against a ground truth built by neither of the two scripts above: 256 real bib entries' own `keywords` field as the query, that entry's own citekey as the correct answer -- independent of what any retrieval method surfaced during drafting, since no drafting session is involved at all. Also the one script here whose `specter2_row()` ranks over the whole ledger rather than the ground truth's own citekeys, to keep every row's pool the same size |
+| `bench_collection_scope.py` | What a `--collection` filter costs and buys across a real two-arm drafting run: retrieval payload from each dossier's `retrieval.md`, surfaced/selected/rejected by replaying each arm's own logged queries at its own `--k` (with and without the filter), index cost by md5 across three checkpoints, tokens windowed from the session transcript by those same checkpoints, and both arms' verbatim scans. Parameterised (`--topic`/`--arm-f`/`--arm-c`/`--collection`) so one script serves every run of the design -- the first run's copy hard-coded its paths and was never committed |
 | `embed_models.py` | The SPECTER2 encoder seam: `embed_paper()` (title+abstract, proximity adapter, disk-cached per citekey) and `embed_query()` (adhoc_query adapter) -- SPECTER2 never sees a passage chunk, unlike the three drop-in models |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
