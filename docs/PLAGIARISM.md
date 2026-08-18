@@ -463,7 +463,7 @@ ahead of tuning either flag further.
 - [CLI.md](CLI.md) -- `overlap`/`scan` flags and usage, and the
   review-aid step of [The full first run, step by
   step](CLI.md#the-full-first-run-step-by-step). `scan` is also offered
-  by each of the seven skills' own final-check steps.
+  by each of the eight skills' own final-check steps.
 - [LADDERS.md](LADDERS.md) -- *ladder*, *rung* and *tier* as this project
   uses them, and the other three tier sets these sit beside.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- `content/overlap/`'s place in the

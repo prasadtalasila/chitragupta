@@ -273,7 +273,7 @@ one-screen router for exactly that.
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
 | [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
 | [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
-| [docs/GENRE.md](docs/GENRE.md) | Which of the seven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
+| [docs/GENRE.md](docs/GENRE.md) | Which of the eight skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
@@ -289,6 +289,7 @@ one-screen router for exactly that.
 | [docs/REJECTION.md](docs/REJECTION.md) | Why is turning a source *down* the judgment this pipeline is most careful about? The reasoning behind a retrieval change that was built and then withdrawn, and what was kept from it |
 | [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens actually go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
+| [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model actually contain, layer by layer -- for a single-context genre skill and for the multi-agent `deep-research` skill -- and why don't the two look the same? |
 
 #### Choosing settings
 
