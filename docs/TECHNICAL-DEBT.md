@@ -554,8 +554,17 @@ review.
 
 ### 4.2 `bib_reader`'s dropped-entry warning counts contentless stubs
 
-Found while fixing 4.1, and not fixed here because it is a `src/` change
-and this is a documentation PR.
+**Resolved in #235.** `_count_raw_entries` now counts only blocks
+carrying at least one field, so the warning and bibtexparser agree about
+what an entry is, and the test in 4.1 no longer disagrees with the code
+it was written beside. Measured on the maintainer's real 644-block
+export: the false "2 may have been silently dropped" is gone, the same
+642 references parse, and the warning still fires -- reporting 1, not 3
+-- when a deliberately unbalanced entry is appended to that same file.
+Kept below as the record of the reasoning.
+
+Found while fixing 4.1, and not fixed *there* because it is a `src/`
+change and that was a documentation PR.
 
 `src/bib_reader.py:234` compares `len(bib_database.entries)` against
 `_count_raw_entries(raw_text)`, which counts every `@` block. Zotero
@@ -569,8 +578,8 @@ A guard that cries wolf on a healthy corpus is worse than none: the run
 it needs to be believed on is the one where a real entry has unbalanced
 braces, and by then the message is furniture. The fix is to count only
 blocks carrying at least one field, which is what the repaired test in
-4.1 now does -- so the test and the warning currently disagree, and the
-test is the one that is right.
+4.1 already did -- so the test and the warning disagreed, and the test
+was the one that was right.
 
 ### 4.3 A git worktree under `.claude/` breaks two tree-walking scans
 
@@ -1088,9 +1097,11 @@ Ordered by what breaks if it is left, not by size:
 7. **[3.7] Move the BibTeX author-name grammar into one module.** Five
    duplicated lines, no boundary to relax, and the failure it prevents is
    two disagreeing spellings of the same author.
-8. **[4.2] Count only entries with fields** in `bib_reader`'s
+8. ~~**[4.2] Count only entries with fields** in `bib_reader`'s
    dropped-entry warning, so it stops firing on every healthy Zotero
-   export. Small, and it restores a guard that currently reads as noise.
+   export. Small, and it restores a guard that currently reads as
+   noise.~~ **Done**, in #235. See
+   [4.2](#42-bib_readers-dropped-entry-warning-counts-contentless-stubs).
 
 Everything below that is real but can wait. Each of the five is one PR:
 "several small, reviewable PRs over one large one" applies to this
