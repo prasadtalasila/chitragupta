@@ -470,8 +470,8 @@ goal-driven execution. The third is the one
 ## Build order
 
 What would extend the enforced half, cheapest first, as proposed when
-this document was written. Item 1 has since landed, in a different shape
-than proposed here -- see its own note.
+this document was written. Items 1 and 4 have since landed, each in a
+different shape than proposed here -- see their own notes.
 
 1. ~~**A linter and formatter (`ruff`).**~~ **A linter landed, but as
    `pylint`, not `ruff`, and not a formatter.** `ci.yml`'s `lint` job runs
@@ -498,19 +498,36 @@ than proposed here -- see its own note.
 3. **Type annotations and a checker.** `src/` is partly annotated. A
    checker over a 100%-covered stdlib codebase is worth having and is its
    own project, not a step in this one.
-4. **A doc-drift detector.** The staleness this document's own PR fixed
-   in `docs/DESIGN.md` -- "Three layers", against ARCHITECTURE.md's and
-   AGENTS.md's four -- had no detector and was found by reading. The
-   layer count is the kind of fact a scanner test could pin across the
-   documentation tree, in the shape `test_command_depth_scan.py` already
-   uses.
+4. **A doc-drift detector.** **Half built, in #239** -- and the half
+   that is worth naming is the half that was left, because it is not a
+   matter of effort.
 
-   This document is itself an instance. The physical-line-versus-statement
-   measurement above (128 against 26, 63 against 1) is quoted here and in
+   **Built:** every claim about the *registers* is now binary.
+   `test_the_registers_are_the_size_this_document_says` pins this
+   document's copy of the two sizes;
+   `tests/test_technical_debt_scan.py` pins TECHNICAL-DEBT.md's copy,
+   and additionally fails when that document names a function or module
+   as currently-open C1/C2 debt that the register no longer lists. Both
+   incidents on record are caught by it, checked against the real
+   historical files: the C1/C2 counts that read 26/13 against a real
+   10/11 until #228, and `src/sync.py::run`, delisted in #178 and still
+   named as the second-highest-priority open item four days later.
+
+   **Not built, and not a backlog item:** `docs/DESIGN.md`'s "Three
+   layers", against ARCHITECTURE.md's and AGENTS.md's four -- the
+   staleness this document's own PR fixed, found by reading. That is a
+   free-standing factual claim with no register behind it, so there is
+   nothing binary to check it against, and
+   [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out reaching for a
+   prose-accuracy *score* instead. A claim becomes checkable when
+   something machine-readable becomes its source of truth, not when
+   someone writes a cleverer scanner.
+
+   This document is itself an instance of the unbuilt half. The
+   physical-line-versus-statement measurement above (128 against 26, 63
+   against 1) is quoted here and in
    `tests/test_code_standards_scan.py`'s docstring; a refactor that moves
-   those numbers leaves two copies to update by hand. The register beside
-   them is checked on every run and cannot drift. The prose around it can,
-   which is the asymmetry this item would close.
+   those numbers leaves two copies to update by hand.
 
 ## What this does not change
 
