@@ -33,6 +33,7 @@ BACKING_MODULES = {
     "references": "references",
     "render": "render_output",
     "style": "style_check",
+    "spec": "spec",
 }
 
 # A real top-level entry-point block, anchored at column 0 -- not the

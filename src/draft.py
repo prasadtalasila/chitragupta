@@ -1,6 +1,6 @@
 """The drafting layer's single entry point: `python -m src.draft <verb>`.
 
-Five commands, run by hand or by a genre skill over one draft:
+Seven commands, run by hand or by a genre skill over one draft:
 
     python -m src.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
@@ -21,6 +21,14 @@ Five commands, run by hand or by a genre skill over one draft:
         the drafting layer's publish step: Pandoc/LaTeX rendering to
         tex/pdf/docx.
 
+    python -m src.draft style <file>
+        a draft's prose against docs/WRITING-STANDARDS.md -- a review
+        aid, never a gate.
+
+    python -m src.draft spec init|show|sign|status <book>
+        the outline a book is generated from, and the human sign-off on
+        it -- the book-scale track's first artefact (docs/BOOKS.md).
+
 **One entry point, one level deep**, like `python -m src.corpus sync` for the
 corpus layer and `python -m src.review <aid>` for the review layer. None
 of the five modules beside this one carries a `__main__` block any more,
@@ -29,12 +37,12 @@ and exits 0 without doing anything -- the same trap `src/enrich/`'s and
 `src/review/`'s submodules carry, and the reason this file exists rather
 than five scattered commands. docs/ARCHITECTURE.md states the invariant.
 
-Unlike the review layer, the five verb names are not the keys of some
+Unlike the review layer, the verb names are not the keys of some
 other dict that also owns a file-naming contract -- there was no existing
 vocabulary here to inherit (the modules share little beyond
 `src/config.py`), so `VERBS` is where the vocabulary is decided, once.
 
-Four of the five verbs are their module's own name. `retrieve` is not:
+Most verbs are their module's own name. `retrieve` is not:
 it was chosen over `retrieval` because every other verb here is already
 an imperative (`gate`, `render`) or a noun standing in for one
 (`dossier`, `references`), and a layer whose commands read as a mix of
@@ -60,7 +68,8 @@ before it had a shared front door.
 import argparse
 import sys
 
-from src import citation_gate, dossier, references, render_output, retrieval, style_check
+from src import (citation_gate, dossier, references, render_output, retrieval, spec,
+                 style_check)
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
@@ -71,6 +80,7 @@ VERBS = {
     "render": (render_output, "render a Pandoc-markdown or LaTeX draft to tex/pdf/docx"),
     "style": (style_check, "check a draft's prose against docs/WRITING-STANDARDS.md "
                            "-- a review aid, never a gate"),
+    "spec": (spec, "the outline a book is generated from, and the human sign-off on it"),
 }
 
 

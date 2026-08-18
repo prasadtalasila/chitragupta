@@ -163,6 +163,7 @@ nav:
   - Working on it:
       - Design constraints: docs/DESIGN.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
+      - Book-scale drafting: docs/BOOKS.md
       - Tokens: docs/TOKENS.md
       - Rejection: docs/REJECTION.md
       - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md
