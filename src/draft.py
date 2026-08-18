@@ -1,6 +1,6 @@
 """The drafting layer's single entry point: `python -m src.draft <verb>`.
 
-Seven commands, run by hand or by a genre skill over one draft:
+Eight commands, run by hand or by a genre skill over one draft:
 
     python -m src.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
@@ -29,13 +29,17 @@ Seven commands, run by hand or by a genre skill over one draft:
         the outline a book is generated from, and the human sign-off on
         it -- the book-scale track's first artefact (docs/BOOKS.md).
 
+    python -m src.draft unit contract|accept|status <book> [<unit-id>]
+        one section's generation contract -- what it is generated from,
+        hashed -- and the record of its acceptance (docs/BOOKS.md).
+
 **One entry point, one level deep**, like `python -m src.corpus sync` for the
 corpus layer and `python -m src.review <aid>` for the review layer. None
-of the five modules beside this one carries a `__main__` block any more,
-so `python -m src.dossier` (or any of the other four) imports the module
+of the modules beside this one carries a `__main__` block any more,
+so `python -m src.dossier` (or any of the others) imports the module
 and exits 0 without doing anything -- the same trap `src/enrich/`'s and
 `src/review/`'s submodules carry, and the reason this file exists rather
-than five scattered commands. docs/ARCHITECTURE.md states the invariant.
+than a scattering of separate commands. docs/ARCHITECTURE.md states the invariant.
 
 Unlike the review layer, the verb names are not the keys of some
 other dict that also owns a file-naming contract -- there was no existing
@@ -69,7 +73,7 @@ import argparse
 import sys
 
 from src import (citation_gate, dossier, references, render_output, retrieval, spec,
-                 style_check)
+                 style_check, unit)
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
@@ -81,6 +85,7 @@ VERBS = {
     "style": (style_check, "check a draft's prose against docs/WRITING-STANDARDS.md "
                            "-- a review aid, never a gate"),
     "spec": (spec, "the outline a book is generated from, and the human sign-off on it"),
+    "unit": (unit, "one section's generation contract, and the record of its acceptance"),
 }
 
 

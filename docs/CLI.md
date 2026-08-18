@@ -31,6 +31,7 @@ short path; this is the full set.
   - [`src.review verbatim`](#python--m-srcreview-verbatim)
   - [`src.draft render`](#python--m-srcdraft-render)
   - [`src.draft spec`](#python--m-srcdraft-spec)
+  - [`src.draft unit`](#python--m-srcdraft-unit)
   - [`src.enrich`](#python--m-srcenrich)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
@@ -1121,6 +1122,33 @@ person's decision -- did a human approve this outline? -- rather than
 judging any draft's content, and nothing it says can refuse a write.
 [BOOKS.md](BOOKS.md#what-statuss-exit-code-is-and-is-not) has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
+
+### `python -m src.draft unit`
+
+One section's generation contract, and the record of its acceptance --
+the book-scale track's second artefact ([BOOKS.md](BOOKS.md)). Reads the
+outline `spec` owns; writes only `content/specs/<book>/units/<id>.json`.
+
+```bash
+python -m src.draft unit contract content/drafts/<book> <unit-id> [--source CITEKEY]...
+python -m src.draft unit contract content/drafts/<book> <unit-id> --json
+python -m src.draft unit accept   content/drafts/<book> <unit-id> [--source CITEKEY]...
+python -m src.draft unit status   content/drafts/<book>
+```
+
+| Command | Does | Exit |
+|---|---|---|
+| `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
+| `accept` | record a generated unit, once `src.draft gate` passes on it | 1 if the outline is unsigned, the draft is missing, or the gate refuses it |
+| `status` | where every unit in the book stands | 1 while any unit is not accepted and current |
+
+`--source` is repeatable and is part of the input digest, so grounding a
+unit in a different set of papers is a different unit to generate. The
+digest covers the inputs only -- never the unit's own prose, which is why
+it can answer "does this need regenerating?".
+
+`accept` **invokes the citation gate, it does not replace it**: a unit
+the gate refuses cannot be accepted, and nothing here is a second gate.
 
 ### `python -m src.enrich`
 
