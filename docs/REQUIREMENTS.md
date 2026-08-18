@@ -467,14 +467,22 @@ shipped it; §5 has the full status table.
     gate.
 2. **Multi-language plumbing was scoped and then explicitly
     deprioritized**, not left undiscovered: `render_output` language
-    metadata / non-English CSL (#105), locale-aware reference connectives
-    such as "and" vs. "und" vs. "et" (#106), and non-English retrieval --
-    tokenizer, embeddings, OCR language (#108) -- were each designed in
-    full in their issue before being closed "not a priority." A draft in
-    a language other than English today gets correct hyphenation and
-    heading text (settable per-draft), but its reference list still
-    joins authors with English "and" and its retrieval still assumes an
-    ASCII-ish, English-tuned index.
+    metadata / non-English hyphenation and CSL (#105), locale-aware
+    reference connectives such as "and" vs. "und" vs. "et" (#106), and
+    non-English retrieval -- tokenizer, embeddings, OCR language (#108) --
+    were each designed in full in their issue before being closed "not a
+    priority." None of the three is built: verified directly, there is no
+    babel/polyglossia or other language-metadata plumbing anywhere in
+    `src/render_output/`. A draft in a language other than English today
+    gets nothing automatic -- pandoc renders it with English hyphenation
+    rules and an English-locale CSL regardless of the draft's own content,
+    its reference list joins authors with English "and", and its
+    retrieval assumes an ASCII-ish, English-tuned index. The one
+    exception is manual, not automatic: the References section's own
+    heading text can be overridden per invocation with `--heading` (e.g.
+    `--heading "Bibliographie"`), which #106 itself calls "already
+    soft-solved" -- everything else in that paragraph is what #106
+    would have built and didn't.
 
 ### 4.6 Scaling to books — not yet built
 
@@ -525,7 +533,7 @@ production, not just designed. As of v5.29.0:
 | Verbatim overlap checking, exact tier | Built (#110, #127, #128, #131): corpus-wide n-gram index, disk-cached and ledger-keyed; whole-draft scan, not just citing paragraphs; severity buckets; boilerplate allowlist; `--json` output |
 | Overlap remediation loop | Built (#129): the `overlap-reviser` skill -- rewrite, re-scan, re-gate, log |
 | Paraphrase detection, deterministic tier | Built (#133): stemmed skip-grams, advisory |
-| Paraphrase detection, embedding tier | Built (#134): SBERT-style local alignment over the enrichment index, advisory -- and, per `docs/PLAGIARISM-DESIGN.md`, a weak discriminator specifically *because* this pipeline's retrieval step already selects a draft's grounding by semantic similarity, so "similar because copied" and "similar because correctly grounded" are hard to separate by cosine distance alone in a single-field corpus |
+| Paraphrase detection, embedding tier | Built (#134), but **narrower than §1.3 asks for**: SBERT-style local alignment, advisory, and only where the optional enrichment layer, Docling passage sidecars and the draft's own dossier are all present. Per `docs/PLAGIARISM.md`, it compares a section only against the sources *that section already cites* -- a restatement of a source the draft never cited at all is still tiers 1 and 2's business alone, invisible to this tier by design, not just by the weak-discriminator argument below. And per `docs/PLAGIARISM-DESIGN.md`, even within that scope it is a weak discriminator specifically *because* this pipeline's retrieval step already selects a draft's grounding by semantic similarity, so "similar because copied" and "similar because correctly grounded" are hard to separate by cosine distance alone in a single-field corpus |
 | Blocking `overlap_gate` | **Declined** (#130): measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |
 | Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built (#104, #107, #182-#186): `python -m src.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
 | Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent (#105, #106, #108: each fully designed, then closed "not a priority") |
