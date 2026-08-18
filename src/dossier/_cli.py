@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_suggest = sub.add_parser(
         "acronyms-suggest",
-        help="Acronyms this draft's glossary defines that aren't in your vocabulary yet",
+        help="Acronyms this draft's glossary or prose defines that aren't in your vocabulary yet",
     )
     p_suggest.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_suggest.add_argument(

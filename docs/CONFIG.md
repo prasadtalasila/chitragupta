@@ -229,7 +229,9 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
   provenance.
 
   `python -m src.draft dossier acronyms-suggest <draft>` proposes new
-  entries for it from a draft's glossary without writing anything; add
+  entries for it from a draft's glossary *and* its own prose (a term
+  coined and expanded inline but never glossaried is exactly the lapse
+  this catches) without writing anything; add
   `--apply` to write the proposed entries to your file (creating it if
   it doesn't exist yet), merged without duplicating what is already
   there. `--apply` refuses if this key is unset, rather than writing

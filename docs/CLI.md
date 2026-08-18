@@ -437,7 +437,7 @@ material is gone rather than mislaid.
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
-| `acronyms-suggest <draft>` | Acronyms this draft's glossary defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
+| `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
 | `list` | Every dossier on this machine |
@@ -468,7 +468,7 @@ python -m src.draft dossier sections content/drafts/survey.md --citekeys --write
 # Before a revision session's first retrieval call
 python -m src.draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
 
-# New acronyms this draft's glossary defines; --apply writes them to
+# New acronyms this draft's glossary or prose defines; --apply writes them to
 # your [style].acronyms file (see docs/CONFIG.md)
 python -m src.draft dossier acronyms-suggest content/drafts/survey.md
 python -m src.draft dossier acronyms-suggest content/drafts/survey.md --apply

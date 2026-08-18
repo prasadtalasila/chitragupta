@@ -371,8 +371,11 @@ class TestSuggestAcronyms:
     The acronym-shape and already-in-vocabulary matching itself is
     `acronyms.suggest()`, tested directly in
     tests/test_acronyms.py::TestSuggest -- these tests only cover this
-    module's own part: turning a draft path into the glossary
-    `acronyms.suggest()` needs, and the CLI wrapper around it.
+    module's own part: turning a draft path into the merged
+    glossary-and-body-prose dict `acronyms.suggest()` needs, and the CLI
+    wrapper around it. `acronyms.body_candidates()`'s own extraction
+    rules (references excluded, hard-wraps reflowed) are tested directly
+    in tests/test_acronyms.py::TestBodyCandidates.
     """
 
     def test_returns_empty_without_a_dossier(self, draft):
@@ -390,6 +393,33 @@ class TestSuggestAcronyms:
         assert _acronyms.suggest_acronyms(draft) == {
             "DTaaS": "Digital Twin as a Service."
         }
+
+    def test_finds_a_candidate_only_present_in_the_drafts_own_prose(
+        self, draft, monkeypatch
+    ):
+        # The real gap this closes: DTP/DTI/DTA are defined inline in
+        # the real book's chapter 2 but glossaried nowhere at all.
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        dossier.init(draft, "survey")
+        draft.write_text(
+            draft.read_text(encoding="utf-8")
+            + "\nThe **Digital Twin Prototype (DTP)** is introduced here.\n",
+            encoding="utf-8",
+        )
+        assert _acronyms.suggest_acronyms(draft) == {
+            "DTP": "Digital Twin Prototype"
+        }
+
+    def test_the_glossary_wins_over_conflicting_body_prose(self, draft, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **Digital twin (DT)** -- the deliberate record.")
+        draft.write_text(
+            draft.read_text(encoding="utf-8")
+            + "\nSome prose calls it the Digital Twin System (DT) instead.\n",
+            encoding="utf-8",
+        )
+        assert _acronyms.suggest_acronyms(draft) == {"DT": "Digital twin"}
 
     def test_cli_reports_no_new_acronyms(self, draft, capsys, monkeypatch):
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})

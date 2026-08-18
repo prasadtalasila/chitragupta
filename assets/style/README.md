@@ -35,8 +35,8 @@ footing as `config.toml` itself -- not this directory, which is
 version-controlled and ships with the project), edit your copy to your
 own field's vocabulary, and point `[style].acronyms` at it. `python -m
 src.draft dossier acronyms-suggest <draft> --apply` can write new
-entries there for you, proposed from a draft's own glossary; see
-`docs/CONFIG.md`.
+entries there for you, proposed from a draft's own glossary and its
+prose; see `docs/CONFIG.md`.
 
 ## What this is not
 

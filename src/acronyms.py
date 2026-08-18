@@ -120,3 +120,65 @@ def stale_expansions(glossary: dict[str, str]) -> dict[str, tuple[str, str]]:
         if recorded != seen:
             stale[acronym] = (expansion.strip(), vocabulary[acronym])
     return stale
+
+
+# Where a numbered reference list starts, in every genre this pipeline's
+# skills produce (`## 6.15 References`, `## References`, ...). Excluding
+# everything from here on is load-bearing, not defensive: measured
+# against the real 15-chapter book, a citation line shaped like
+# `[12] Author, "Title," in *Venue (ACRONYM)*, pp. 1-9, year.` matches
+# _BODY_ACRONYM for every conference name in it -- 11 of 15 raw
+# candidates on that book were venue abbreviations (ICCCN, ICSA, ETFA,
+# ...) from exactly this, and zero were real domain acronyms.
+_REFERENCES_HEADING = re.compile(
+    r"^#{1,6}\s*(?:[\d.]+\s*)?References\s*$", re.MULTILINE | re.IGNORECASE
+)
+
+# The same shape _PARENTHETICAL_ACRONYM matches in a glossary bullet,
+# applied to running prose instead of an isolated bolded term -- and the
+# same pattern assets/vale/styles/chitragupta/Acronyms.yml's `second`
+# field already matches for its own, unrelated check (expanded-at-first-
+# use), so this is an established convention, not a new heuristic.
+_BODY_ACRONYM = re.compile(r"(?P<name>(?:\b[A-Z][a-z]+[\s-]){1,5})\((?P<acronym>[A-Z]{2,6})\)")
+
+
+def body_candidates(text: str) -> dict[str, str]:
+    """Acronyms first defined in a draft's own raw prose via the
+    "Name (ACRONYM)" shape -- returned in the same `{bolded-term-shape:
+    definition}` shape `dossier.glossary_terms()` uses, so a caller can
+    merge this with the real glossary before handing the combined dict
+    to `suggest()`, which never needs to know there were two sources.
+
+    Two things measured against the real 15-chapter book before this was
+    written, both load-bearing:
+
+    - **Everything from a `## References` heading onward is excluded**
+      -- see `_REFERENCES_HEADING`'s own comment for the measurement.
+    - **A single newline is a hard line-wrap, not a paragraph break, and
+      is collapsed to a space before matching.** Markdown wraps prose at
+      a fixed column, so `"**Digital Twin\\nAggregate (DTA)**"` is one
+      phrase split across two physical lines on disk; matching the raw
+      text truncated it to `"Aggregate"`. A blank line (a real paragraph
+      break) is left alone, so two adjacent paragraphs are never fused
+      into one candidate.
+
+    First occurrence per acronym wins, approximating "first use" without
+    attempting exact first-use detection (section order, the quoted-span
+    exemption `docs/WRITING-STANDARDS.md` §9 gives every rule here) -- a
+    false or truncated candidate costs nothing, since `suggest()` is
+    advisory-only and never applied without a human running `--apply`.
+    """
+    heading = _REFERENCES_HEADING.search(text)
+    if heading:
+        text = text[: heading.start()]
+    text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+    found: dict[str, str] = {}
+    seen: set[str] = set()
+    for match in _BODY_ACRONYM.finditer(text):
+        acronym = match.group("acronym")
+        if acronym in seen:
+            continue
+        seen.add(acronym)
+        name = match.group("name").strip()
+        found[f"{name} ({acronym})"] = name
+    return found

@@ -156,3 +156,64 @@ class TestStaleExpansions:
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
         glossary = {"Twin state": "the digital object's current estimate."}
         assert acronyms.stale_expansions(glossary) == {}
+
+
+class TestBodyCandidates:
+    """body_candidates() -- acronyms defined inline in a draft's own
+    prose via "Name (ACRONYM)", the same shape a glossary bullet's
+    parenthetical form uses. Both fixes below are measured against the
+    real 15-chapter book at
+    content/dossiers/books/digital-twins-for-software-engineers, not
+    assumed -- see the function's own docstring.
+    """
+
+    def test_extracts_a_simple_inline_definition(self):
+        text = "The **Digital Twin Prototype (DTP)**, describing the artefact."
+        assert acronyms.body_candidates(text) == {
+            "Digital Twin Prototype (DTP)": "Digital Twin Prototype"
+        }
+
+    def test_excludes_everything_from_a_references_heading_onward(self):
+        text = (
+            "The **Digital Twin Prototype (DTP)** is introduced here.\n\n"
+            "## References\n\n"
+            "[1] Author, \"Title,\" in *Some Conference (ICSA)*, 2023.\n"
+        )
+        assert acronyms.body_candidates(text) == {
+            "Digital Twin Prototype (DTP)": "Digital Twin Prototype"
+        }
+
+    def test_a_numbered_references_heading_is_also_excluded(self):
+        text = (
+            "The **Digital Twin Prototype (DTP)** is introduced here.\n\n"
+            "## 6.15 References\n\n"
+            "[1] Author, \"Title,\" in *Some Conference (ICSA)*, 2023.\n"
+        )
+        found = acronyms.body_candidates(text)
+        assert "ICSA" not in "".join(found)
+        assert found == {"Digital Twin Prototype (DTP)": "Digital Twin Prototype"}
+
+    def test_reflows_a_hard_line_wrap_inside_one_phrase(self):
+        # The real shape: markdown wraps prose at a fixed column, so a
+        # bolded phrase can be split across two physical lines on disk.
+        text = "the **Digital Twin\nAggregate (DTA)**, the aggregation of many."
+        assert acronyms.body_candidates(text) == {
+            "Digital Twin Aggregate (DTA)": "Digital Twin Aggregate"
+        }
+
+    def test_a_real_paragraph_break_is_not_reflowed_into_the_match(self):
+        text = "Some unrelated sentence ends here.\n\nHere is the Model Registry (MR), new paragraph."
+        assert acronyms.body_candidates(text) == {"Model Registry (MR)": "Model Registry"}
+
+    def test_first_occurrence_per_acronym_wins(self):
+        text = (
+            "It defines the Digital Twin (DT) here. "
+            "Later, the Digital Twin (DT) is mentioned again."
+        )
+        assert acronyms.body_candidates(text) == {"Digital Twin (DT)": "Digital Twin"}
+
+    def test_no_matches_in_plain_prose(self):
+        assert acronyms.body_candidates("Nothing here looks like an acronym.") == {}
+
+    def test_empty_text(self):
+        assert acronyms.body_candidates("") == {}

@@ -1,5 +1,6 @@
 """The user-facing half of this pipeline's acronym vocabulary: proposing
-new entries from a draft's glossary, and -- on request -- writing them.
+new entries from a draft's glossary and its own prose, and -- on
+request -- writing them.
 
 Split from src/dossier/_citekeys.py, which still owns glossary parsing
 itself (`glossary_terms()`): this half grew past
@@ -17,18 +18,29 @@ from src.dossier._citekeys import glossary_terms
 
 
 def suggest_acronyms(draft: Path) -> dict[str, str]:
-    """Glossary terms that look like an acronym and aren't in the
-    vocabulary yet -- candidates for the user's own acronyms file.
+    """Acronyms that look like a candidate and aren't in the vocabulary
+    yet -- from two sources, merged.
+
+    The glossary is the deliberate record, written by the drafting skill
+    on purpose, and wins on a shared acronym. The draft's own raw prose
+    (`acronyms.body_candidates()`) is the fallback: a term coined and
+    expanded inline but never added to the glossary is exactly the kind
+    of lapse this command exists to catch, and measured against this
+    project's own real 15-chapter book, three of the seven parenthetical
+    acronyms it actually defines (DTP, DTI, DTA) are glossaried nowhere
+    at all -- glossary-only discovery would never have surfaced them.
 
     Never writes anything. `python -m src.draft dossier acronyms-suggest`
     without `--apply` only prints these: #190's own rule is that this
     feature proposes and the human accepts. `--apply` (`apply_suggestions`
     below) is the explicit, second, human-invoked step that writes --
     still never automatic, still never inside an unattended pass. The
-    matching itself is `acronyms.suggest()` -- this is just
-    glossary_terms() handed to it.
+    matching itself is `acronyms.suggest()` -- this just merges the two
+    sources and hands the result to it.
     """
-    return acronyms.suggest(glossary_terms(draft))
+    body = draft.read_text(encoding="utf-8") if draft.is_file() else ""
+    merged = {**acronyms.body_candidates(body), **glossary_terms(draft)}
+    return acronyms.suggest(merged)
 
 
 class NoUserAcronymsFile(RuntimeError):
@@ -129,9 +141,9 @@ def _cmd_acronyms_suggest(args) -> int:
         print("  No new acronyms to suggest.")
         return 0
     print(
-        "  New acronyms in this draft's glossary, not yet in your "
-        "vocabulary. Nothing is written -- re-run with --apply to add "
-        "them to your own [style].acronyms file:\n"
+        "  New acronyms in this draft's glossary or its own prose, not "
+        "yet in your vocabulary. Nothing is written -- re-run with "
+        "--apply to add them to your own [style].acronyms file:\n"
     )
     for term, definition in sorted(candidates.items()):
         print(f'  {term} = "{definition}"')
