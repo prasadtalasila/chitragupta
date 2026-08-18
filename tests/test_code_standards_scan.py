@@ -64,9 +64,6 @@ LEGACY_LONG_FUNCTIONS = {
     "src/dossier/_cli.py::main",  # 49
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
-    # #222 added the TikZ header-includes gate and TEXINPUTS env, moving
-    # this above sync.py::_parse_parallel.
-    "src/render_output.py::render",  # 37
     "src/sync.py::_parse_parallel",  # 33
     "src/enrich/topic_model.py::run_topic_model",  # 32
     "tests/test_release.py::make_repo",  # 31
@@ -87,7 +84,6 @@ LEGACY_LONG_FILES = {
     "src/pdf_text.py",  # 1001
     "src/enrich/docling_parse.py",  # 522
     "src/overlap_index.py",  # 492
-    "src/render_output.py",  # 488
     "src/sync.py",  # 519
     "src/review/citation_provenance.py",  # 388
     "src/ledger.py",  # 430

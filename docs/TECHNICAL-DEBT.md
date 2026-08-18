@@ -66,10 +66,16 @@ code -- exactly what the ratchet exists to avoid.
 
 ## Tier 1: the debt the ratchet already holds
 
-`tests/test_code_standards_scan.py` freezes **26 functions** over C1 (25
-statements) and **13 modules** over C2 (250 code lines), each with its
+`tests/test_code_standards_scan.py` freezes **10 functions** over C1 (25
+statements) and **11 modules** over C2 (250 code lines), each with its
 current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
+
+Those two counts had drifted badly -- this section claimed 26 and 13
+until #228 -- which is [build order](CODE-STANDARDS.md#build-order) item
+4, the doc-drift detector, demonstrating the exact failure it was
+proposed for. CODE-STANDARDS.md's copy of the same pair stayed correct
+throughout, because a test pins it and nothing pins this one.
 
 **That register is the authority. This section does not copy it** -- a
 debt stated in two places is a debt that will eventually be stated two
@@ -412,6 +418,63 @@ impossible to get wrong.
 
 Lowest-value item here, listed because leaving it out would mean the next
 reviewer finds it again.
+
+### 3.9 Figure handling is per-genre, because the draft languages are
+
+Tracked as [#230](https://github.com/prasadtalasila/chitragupta/issues/230),
+which carries the resolution plan and its price.
+
+A figure has two forms -- a TikZ picture and a plain-ASCII diagram
+(`docs/WRITING-STANDARDS.md` §10). The rule the renderer applies is
+uniform: **the draft keeps its native form inline, and the other form
+becomes a file.** What is *not* uniform is what that produces on disk,
+and the asymmetry is worth naming because a reviser meets it directly.
+
+| Genre | Draft language | Inline | File | Marker |
+|---|---|---|---|---|
+| `tutorial-writer`, `textbook-chapter-writer`, `survey-writer` | Markdown | ASCII, in a fence | `figures/<name>.tex` | `<!-- figure: figures/<name> -->` |
+| `thesis-chapter-writer` | LaTeX | TikZ, via `\input` | `figures/<name>.txt` | `%figure: figures/<name>` |
+
+**The cause is one fact:** `thesis-chapter-writer` is the only genre
+whose canonical deliverable is LaTeX. It emits a preamble-less `.tex`
+fragment meant to be `\input` into the user's own thesis, so it never
+passes through Markdown at all; its `.md` and `.pdf` are *previews*
+generated from that fragment, through pandoc's LaTeX reader and, for
+`pdf`, `pdflatex`. The other three are Markdown-native, and their
+`--format md` render does not reach pandoc at all
+(`src/render_output/__init__.py`, the early return for a Markdown input).
+
+Everything else follows mechanically. A `verbatim` ASCII block left
+inline in the fragment would print in the user's real thesis beside the
+TikZ, so the fragment's ASCII must be a file. A Markdown draft's ASCII
+is already the fence its `md` render emits, so a `.txt` there would be a
+copy nothing reads and nothing keeps in step -- it was required for one
+commit and reverted for exactly that reason. Neither half of that is
+avoidable while the genres differ in source language.
+
+**Why it is still debt.** It is the *opacity* smell
+([the review vocabulary](CODE-STANDARDS.md#code-smells-the-review-vocabulary)):
+two file layouts for one concept, so a reviser editing a figure has to
+know which genre produced the draft before knowing which files exist.
+`src/render_output/_figures.py` carries both directions
+(`_substitute_tikz_for_ascii`, `_substitute_ascii_for_tikz`) and each has
+its own marker regex.
+
+**What has already been paid down.** The marker *vocabulary* was
+unified: both spellings are `figure:` and both name a base name without a
+suffix, with the renderer deriving `.tex`/`.txt`. Before that they were
+`tikz-alt`/`ascii-alt` and each carried a full filename, so a draft named
+one figure twice.
+
+**The resolution, and its price.** Full uniformity is reachable: put
+*both* forms in files in every genre and leave only a marker in the
+draft, so every figure is one marker plus `<base>.tex` and `<base>.txt`
+whatever the genre. It costs the three Markdown genres their inline
+diagram -- someone opening `content/drafts/<topic>/tutorial.md` would see
+a marker where the picture is now -- in the genres §10 calls the most
+natural home for an ASCII figure. That trade was judged not worth making
+and the reasoning is recorded rather than the conclusion alone, because
+it is a judgement someone may reasonably re-decide.
 
 ## Tier 4: the test suite
 

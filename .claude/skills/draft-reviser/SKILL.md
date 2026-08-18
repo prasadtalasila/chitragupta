@@ -55,6 +55,27 @@ break:
   or `deep-research`) says how freely that genre calibrates
   `docs/WRITING-STANDARDS.md` §10's figures, from most (`tutorial`) to
   least (`survey`) to none at all (`deep-research`).
+- **Touch a figure, touch both forms.** Every figure exists twice -- as
+  a TikZ picture in `figures/<name>.tex`, and as the plain-ASCII
+  diagram. Find the pair from the marker (`<!-- figure: ... -->` in a
+  Markdown draft, `%figure:` in a `.tex` one), which is greppable
+  precisely so this is not a reading exercise. Relabel a box, add an
+  arrow, rename a component in one form and you must make the same
+  change in the other. **Where each form lives depends on the genre**:
+  a Markdown draft keeps its ASCII inline in the fence and its TikZ in
+  `figures/<name>.tex`; a `.tex` fragment keeps its TikZ inline via
+  `\input` and its ASCII in `figures/<name>.txt`. Whichever way round,
+  one edit is never enough.
+  **Nothing checks any of this.** No gate, no style rule and no render
+  error can tell that a picture and a diagram have stopped depicting
+  the same thing,
+  so a half-done edit leaves the pdf and the Markdown preview
+  disagreeing about the same figure, silently, until a reader notices.
+  If you edit the TikZ, re-verify it compiles before you keep it (§10's
+  standalone `pdflatex` check) -- a figure that no longer compiles
+  fails the whole pdf render, not just the figure. If the two forms
+  have drifted too far to reconcile, say so and drop the figure rather
+  than shipping a pair that disagrees.
 
 ## The loop
 

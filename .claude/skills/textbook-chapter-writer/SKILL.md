@@ -235,6 +235,47 @@ candidate for the chapter.
    dropped is a `rejected.md` row, the same as an abandoned worked
    example.
 
+   A figure that stays is a **pair of forms**, and §10 is the contract.
+   This genre's native form is the ASCII diagram, so it stays inline in
+   its fence, with a marker line of its own just above it naming the TikZ
+   sibling:
+
+   ```html
+   <!-- figure: figures/<name> -->
+   ```
+
+   Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
+   picture). No `.txt` sibling: this genre's ASCII form is the fence
+   already in the draft, which is what the `md` render emits, and a
+   second copy on disk would only be one more thing to keep in step. The
+   `--format md` render is
+   unchanged -- an HTML comment is invisible in rendered Markdown -- and
+   `--format tex`/`--format pdf` (step 13) replace the marked fence with
+   `\input{figures/<name>.tex}`, so the printed chapter a student reads
+   carries a real picture rather than monospace art. Four riders, each
+   of which §10 explains:
+
+   - **A topic directory is required.** If step 0 settled on a flat
+     `content/drafts/<slug>.md`, move the draft and its dossier before
+     adding a figure, or drop the figure. Figures under a flat draft
+     land in `content/drafts/figures/`, shared with every other flat
+     draft.
+   - **Verify the TikZ compiles before keeping it.** Run
+     `kpsewhich tikz.sty` first: if it is absent, keep the fence, write
+     no marker and no `figures/`, and say so in chat. If it is present,
+     wrap `figures/<name>.tex` in a minimal `\documentclass{article}` +
+     `\usepackage{tikz}` document and run `pdflatex` on it. A malformed
+     figure fails the *whole* pdf render, not just the figure -- and in
+     this genre that render is the artifact a class actually reads.
+   - **No citekey inside either figure file.** Step 11's gate reads the
+     draft and does not follow `\input`, so a citekey in a node label
+     evades the one check this pipeline exists for. Cite in the prose
+     around the figure instead.
+   - **The TikZ must be as original as the ASCII.** A picture redrawn
+     from a source paper's figure is the same violation in different
+     pixels -- which bites hardest here, where the temptation is to
+     reproduce the textbook diagram everyone in the field already knows.
+
 8. **Close the loop.** End with a short summary of what the chapter
    established, tied back to the objectives it opened with, plus pointers to
    where a student who wants more should go next -- including, where it fits,

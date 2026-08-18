@@ -1,5 +1,6 @@
 import multiprocessing
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -191,3 +192,44 @@ def system_python():
         if probe.returncode != 0:
             return candidate
     pytest.skip("no system python3 without bibtexparser found on this host")
+
+
+# --- Rendering: binary probes and figure fixtures -------------------------
+# Shared by the eight tests/test_render_output*.py modules. Here rather
+# than in each of them so the kpsewhich subprocess below runs once per
+# session instead of eight times at import.
+pandoc_available = shutil.which("pandoc") is not None
+pdflatex_available = shutil.which("pdflatex") is not None
+# tikz.sty is texlive-pictures (#222), a separate package from the ones
+# scripts/install_full_pipeline.sh already installed for lmodern etc. --
+# pdflatex being on PATH doesn't guarantee it, so this is its own probe
+# rather than folded into pdflatex_available.
+tikz_available = (
+    shutil.which("kpsewhich") is not None
+    and subprocess.run(
+        ["kpsewhich", "tikz.sty"], capture_output=True, check=False
+    ).returncode == 0
+)
+
+# A figure is two forms -- a TikZ picture and the same diagram in
+# WRITING-STANDARDS.md §10's plain ASCII. Each draft carries whichever is
+# native to its own language inline and names the other in a `figure:`
+# marker; these are the two shapes that produces.
+ASCII_FIGURE = (
+    "  +-------+  read   +--------+\n"
+    "  | model | ------> | solver |\n"
+    "  +-------+         +--------+\n"
+)
+TIKZ_FIGURE = "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n"
+MARKED_FENCE = (
+    "Before.\n\n<!-- figure: figures/fig1 -->\n\n```\n" + ASCII_FIGURE + "```\n\nAfter.\n"
+)
+MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%figure: figures/fig1\n\nAfter.\n"
+
+
+def figure_pair(draft_dir, name="fig1"):
+    """Both halves of a figure on disk, returning the draft's directory."""
+    (draft_dir / "figures").mkdir(parents=True, exist_ok=True)
+    (draft_dir / "figures" / f"{name}.tex").write_text(TIKZ_FIGURE)
+    (draft_dir / "figures" / f"{name}.txt").write_text(ASCII_FIGURE)
+    return draft_dir

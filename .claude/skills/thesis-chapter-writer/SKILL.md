@@ -205,8 +205,52 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    framework, architecture or study design it captures, when prose
    would otherwise take a paragraph to describe it --
    `docs/WRITING-STANDARDS.md` §10's figures are occasional here, not
-   routine. In this genre's `.tex` fragment, §10's form is a `verbatim`
-   environment rather than a fenced code block. Default to no figure.
+   routine. Default to no figure.
+
+   When one is earned, it is a **pair of files**, and §10 is the
+   contract. This genre's native form is the TikZ picture -- vector art
+   that sets at the thesis's own font and line width, which is the whole
+   reason this genre gets one -- so the fragment carries the `\input`
+   inline and names the ASCII form in a marker comment:
+
+   ```latex
+   \input{figures/<name>.tex}
+   %figure: figures/<name>
+   ```
+
+   with both `content/drafts/<topic>/figures/<name>.tex` and
+   `content/drafts/<topic>/figures/<name>.txt` written -- the `.txt` in
+   §10's 7-bit alphabet, since a Unicode box character hard-fails
+   `pdflatex`. The renderer
+   swaps that `\input` for the `.txt` contents when it builds the `.md`
+   preview (step 11); `--format tex` and `--format pdf` get the TikZ.
+   Four things to hold onto, each of which §10 explains:
+
+   - **The marker is a comment, never a second `\input`.** The fragment
+     on disk is what the user `\input`s into their own thesis, and
+     `\input{figures/<name>.txt}` makes their `pdflatex` read ASCII art
+     as LaTeX source and fail with `! Missing $ inserted.` -- a break in
+     their build that our own render would never show us.
+   - **A topic directory is required.** If step 0 settled on a flat
+     `content/drafts/<slug>.tex`, move the draft and its dossier before
+     adding a figure, or drop the figure. Figures under a flat draft
+     land in `content/drafts/figures/`, shared with every other flat
+     draft.
+   - **Verify it compiles before keeping it.** Run `kpsewhich tikz.sty`
+     first: if it is absent, write the ASCII inline in a `verbatim`
+     environment, no pair and no marker, and say so in chat. If it is
+     present, wrap `figures/<name>.tex` in a minimal
+     `\documentclass{article}` + `\usepackage{tikz}` document and run
+     `pdflatex` on it. A malformed figure fails the *whole* pdf render
+     in step 11, not just the figure, so a figure that will not compile
+     alone never reaches the fragment.
+   - **No citekey inside either figure file.** Step 10's gate reads the
+     fragment and does not follow `\input`, so a citekey in a node label
+     evades the one check this pipeline exists for. Cite in the prose
+     that introduces the figure.
+
+   The TikZ must be as original as the ASCII -- a picture redrawn from a
+   source paper's figure is the same violation in different pixels.
 
 10. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
     (this remains the canonical deliverable -- the one meant to be `\input`-ed),
@@ -238,7 +282,10 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     on a different host. If either command reports `[missing-binary]` or
     `[error]`, print a one-line warning in chat with that message and
     continue anyway -- a rendering failure never blocks presenting the
-    `.tex` fragment.
+    `.tex` fragment. The one failure worth chasing before you present is
+    a pdf error naming a figure file: that fragment will not build in the
+    user's thesis either, so repair the figure or drop it, rather than
+    handing over a chapter that cannot be typeset.
 
     Unlike the Markdown-native genre skills, don't run `python -m
     src.draft references` on this fragment and don't add a manual References
