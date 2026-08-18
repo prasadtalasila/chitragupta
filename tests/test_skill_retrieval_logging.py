@@ -32,13 +32,33 @@ _INVOCATION = re.compile(r"python -m src\.draft retrieve (search|evidence)\b")
 _LOOKAHEAD_CHARS = 220
 
 
-def _skill_and_agent_files():
+# Claude Code checks a whole second copy of this repository out at
+# `.claude/worktrees/<name>/`, which drags every `.md` file in the tree
+# under the glob below -- `docs/RETRIEVAL.md`, `docs/CONFIG.md` and
+# `docs/ZOTERO.md` among them. Those are user documentation, correctly
+# outside this scan at their real paths, and they are held here to a rule
+# written for drafting-protocol files. The finding is not about the docs
+# and not about old code: a glob scoped to `.claude/` simply cannot tell
+# a skill file from a nested checkout of everything. See
+# docs/TECHNICAL-DEBT.md §4.3; fixed in #236.
+_WORKTREES = "worktrees"
+
+
+def _skill_and_agent_files(claude_dir=CLAUDE_DIR):
     # Every Markdown file under .claude/, not just SKILL.md and agent
     # files: `deep-research/reference.md` is a real, separate protocol
     # doc that a retrieval invocation could land in just as easily, and
     # nothing about this project's layout rules out another one like it
     # appearing alongside a future skill.
-    return sorted(CLAUDE_DIR.glob("**/*.md"))
+    #
+    # `claude_dir` is a parameter so the worktree exclusion can be proved
+    # against a fixture rather than by writing one into the live
+    # `.claude/worktrees/`, which on this host holds 26 real checkouts.
+    excluded = claude_dir / _WORKTREES
+    return sorted(
+        path for path in claude_dir.glob("**/*.md")
+        if excluded not in path.parents
+    )
 
 
 def _invocations_missing_log(text: str):
@@ -79,3 +99,40 @@ def test_at_least_one_invocation_is_actually_found():
         for path in _skill_and_agent_files()
     )
     assert total >= 1
+
+
+def _worktree_fixture(claude_dir):
+    """A skill file that passes, beside a nested checkout of a doc that
+    would fail -- the shape §4.3 actually reported, in miniature."""
+    (claude_dir / "skills" / "writer").mkdir(parents=True)
+    (claude_dir / "skills" / "writer" / "SKILL.md").write_text(
+        'python -m src.draft retrieve search "topic" --log\n', encoding="utf-8"
+    )
+    nested = claude_dir / _WORKTREES / "issue-999" / "docs"
+    nested.mkdir(parents=True)
+    (nested / "RETRIEVAL.md").write_text(
+        'python -m src.draft retrieve evidence "claim"\n', encoding="utf-8"
+    )
+    return nested / "RETRIEVAL.md"
+
+
+def test_a_nested_worktree_is_not_scanned(tmp_path):
+    """Proved against a fixture, because nothing on CI can catch a
+    regression here: `actions/checkout` never creates a worktree, so this
+    exclusion only ever matters on a developer's own machine, where a
+    scan that quietly stopped excluding would read as unrelated doc rot.
+    """
+    nested_doc = _worktree_fixture(tmp_path)
+    scanned = _skill_and_agent_files(tmp_path)
+
+    assert nested_doc.exists(), "fixture should contain the file being excluded"
+    assert nested_doc not in scanned
+    assert [p.name for p in scanned] == ["SKILL.md"]
+
+
+def test_the_fixture_would_otherwise_be_reported(tmp_path):
+    """The other half: without the exclusion the nested doc is a genuine
+    offender, so the test above is not passing because the fixture is
+    harmless."""
+    nested_doc = _worktree_fixture(tmp_path)
+    assert _invocations_missing_log(nested_doc.read_text(encoding="utf-8"))
