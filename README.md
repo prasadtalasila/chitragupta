@@ -311,6 +311,7 @@ one-screen router for exactly that.
 | Document | Answers |
 |---|---|
 | [docs/DESIGN.md](docs/DESIGN.md) | Why does this refuse what it refuses? The hard constraints, the conflict policy when two runs collide, and the failure analysis behind both |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how does the closed- and open-source landscape stack up against that bar, and where does this pipeline stand against its own requirement set -- what's built, what was measured and declined, and what's left? |
 | [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse actually work, what is each component for, and what is planned next? |
 | [docs/GROBID-CITATION-GRAPH.md](docs/GROBID-CITATION-GRAPH.md) | **A proposal, not a plan.** What would it take to build a corpus-internal citation graph, and is it worth a JDK and a long-running service? |
 | [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **Unbuilt.** If the pipeline assembled its own worklist and attempted the mechanical repairs, what exactly would be built, and what would it have to satisfy? Normative, and carries no argument |

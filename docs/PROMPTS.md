@@ -47,83 +47,43 @@ This skill never dispatches a subagent. Everything happens in one
 context, so its prompt is one stack that only ever grows, in this
 order:
 
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│         PROMPT FOR ONE textbook-chapter-writer TURN                 │
-└────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  L1["<b>1 · HARNESS LAYER</b><br/><i>fixed overhead, present on every turn</i><br/><br/>Claude Code's own system prompt<br/><small>tool definitions · platform · environment</small><br/><br/>SessionStart hook output<br/><small>e.g. the corpus-config preflight check</small>"]
 
-1. HARNESS LAYER  -- fixed overhead, present on every turn
-   ┌──────────────────────────────────────────────────────────────┐
-   │ Claude Code's own system prompt (tool definitions, platform,  │
-   │ environment)                                                  │
-   │ SessionStart hook output (e.g. the corpus-config preflight    │
-   │ check)                                                        │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-2. PROJECT ROUTER  -- CLAUDE.md, auto-loaded by the harness every turn
-   ┌──────────────────────────────────────────────────────────────┐
-   │ CLAUDE.md                                                     │
-   │  "drafting content? -> read AGENTS.md, that file and the      │
-   │   skill are the whole contract"                                │
-   │  + the one hard rule, stated once: never fabricate a citekey  │
-   └──────────────────────────────────────────────────────────────┘
-                                │  the agent follows the pointer
-                                ▼
-3. GOVERNING CONTRACT  -- read because CLAUDE.md said to
-   ┌──────────────────────────────────────────────────────────────┐
-   │ AGENTS.md -- citekey invariant in full, the bib file as       │
-   │              source of truth, the four layers, the gate       │
-   │ SOUL.md   -- the one-page why; tie-breaker on disagreement    │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-4. SKILL BODY  -- loaded whole the moment the skill is invoked
-   ┌──────────────────────────────────────────────────────────────┐
-   │ .claude/skills/textbook-chapter-writer/SKILL.md                │
-   │   frontmatter (name/description/triggers) + the full 18-step  │
-   │   process (name the reader -> objectives -> scope -> ...      │
-   │   -> gate -> render -> present)                                │
-   └──────────────────────────────────────────────────────────────┘
-                                │  the skill's own cross-references,
-                                │  pulled in on demand as steps reach them
-                                ▼
-5. CROSS-GENRE STANDARDS
-   ┌──────────────────────────────────────────────────────────────┐
-   │ docs/WRITING-STANDARDS.md -- prose rules shared by every genre │
-   │ docs/DRAFT-ITERATION.md   -- the dossier's design               │
-   │ docs/PLAGIARISM.md        -- what the verbatim scan does and   │
-   │                              does not catch                    │
-   │ assets/style/acronyms.toml (+ the user's own file, if          │
-   │              config.toml's [style].acronyms points at one)     │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-6. RUN-SPECIFIC STATE  -- created and re-read during THIS run
-   ┌──────────────────────────────────────────────────────────────┐
-   │ content/dossiers/<slug>/scope.md      (reader, glossary,      │
-   │                                         covers/does-not-cover) │
-   │ content/dossiers/<slug>/retrieval.md  (every search() call,   │
-   │                                         logged via --log)      │
-   │ content/dossiers/<slug>/rejected.md   (worked examples and     │
-   │                                         exercises dropped)      │
-   │ content/dossiers/<slug>/steering.md   (the user's in-chat asks)│
-   │ content/ledger.sqlite + src.retrieval.search() hits, if the    │
-   │              chapter grounds its motivation section in one     │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-7. THIS TURN
-   ┌──────────────────────────────────────────────────────────────┐
-   │ The user's actual request (topic, reader level, any steering) │
-   │ Relevant entries from the user's own persistent memory, if any │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-              ══════════════════════════════════════
-                ALL SEVEN LAYERS, CONCATENATED,
-                ARE WHAT THE MODEL GENERATES AGAINST
-              ══════════════════════════════════════
+  L2["<b>2 · PROJECT ROUTER</b><br/><i>CLAUDE.md, auto-loaded by the harness every turn</i><br/><br/><b>CLAUDE.md</b><br/>“drafting content? → read AGENTS.md,<br/>that file and the skill are the whole contract”<br/><small>+ the one hard rule, stated once:<br/>never fabricate a citekey</small>"]
+
+  L3["<b>3 · GOVERNING CONTRACT</b><br/><i>read because CLAUDE.md said to</i><br/><br/><b>AGENTS.md</b><br/><small>citekey invariant in full · the bib file as<br/>source of truth · the four layers · the gate</small><br/><br/><b>SOUL.md</b><br/><small>the one-page why · tie-breaker on disagreement</small>"]
+
+  L4["<b>4 · SKILL BODY</b><br/><i>loaded whole the moment the skill is invoked</i><br/><br/><b>.claude/skills/textbook-chapter-writer/SKILL.md</b><br/><small>frontmatter + the full 18-step process<br/>(name the reader → objectives → scope →<br/>… → gate → render → present)</small>"]
+
+  L5["<b>5 · CROSS-GENRE STANDARDS</b><br/><i>pulled in on demand, as steps reach them</i><br/><br/>docs/WRITING-STANDARDS.md — shared prose rules<br/>docs/DRAFT-ITERATION.md — the dossier's design<br/>docs/PLAGIARISM.md — what the verbatim scan<br/>does and does not catch<br/>assets/style/acronyms.toml<br/><small>+ the user's own file, if config.toml points at one</small>"]
+
+  L6["<b>6 · RUN-SPECIFIC STATE</b><br/><i>created and re-read during this run</i><br/><br/>content/dossiers/&lt;slug&gt;/scope.md<br/><small>reader · glossary · covers / does-not-cover</small><br/>content/dossiers/&lt;slug&gt;/retrieval.md<br/><small>every search() call, logged via --log</small><br/>content/dossiers/&lt;slug&gt;/rejected.md<br/><small>worked examples &amp; exercises dropped</small><br/>content/dossiers/&lt;slug&gt;/steering.md<br/><small>the user's in-chat asks</small><br/>content/ledger.sqlite + src.retrieval.search() hits"]
+
+  L7["<b>7 · THIS TURN</b><br/><br/>The user's actual request<br/><small>topic · reader level · any steering</small><br/>Relevant entries from the user's own<br/>persistent memory, if any"]
+
+  OUT{{"<b>ALL SEVEN LAYERS, CONCATENATED</b><br/>are what the model generates against"}}
+
+  L1 ==> L2 ==> L3 ==> L4 ==> L5 ==> L6 ==> L7 ==> OUT
+
+  classDef harness fill:#f3f4f6,stroke:#6b7280,stroke-width:1.5px,color:#111827
+  classDef router fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
+  classDef contract fill:#fef2f2,stroke:#dc2626,stroke-width:1.5px,color:#450a0a
+  classDef skill fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#052e16
+  classDef standards fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
+  classDef state fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+  classDef turn fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
+  classDef out fill:#fefce8,stroke:#a16207,stroke-width:3px,color:#422006
+
+  class L1 harness
+  class L2 router
+  class L3 contract
+  class L4 skill
+  class L5 standards
+  class L6 state
+  class L7 turn
+  class OUT out
 ```
 
 Layers 1-3 are fixed cost on every turn in this repository, regardless
@@ -151,42 +111,31 @@ decides to hand it.
 
 Same first three layers as any skill, then:
 
-```text
-4. SKILL BODY
-   ┌──────────────────────────────────────────────────────────────┐
-   │ .claude/skills/deep-research/SKILL.md   -- the 7 phases        │
-   │ .claude/skills/deep-research/reference.md -- exact protocol,   │
-   │        depth-preset defaults, the report template, the         │
-   │        peer-review reconciliation rule -- pulled in because     │
-   │        SKILL.md cites it by name rather than repeating it       │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-5. CROSS-GENRE STANDARDS  (same as every other skill)
-   docs/WRITING-STANDARDS.md, assets/style/acronyms.toml, ...
-                                │
-                                ▼
-6. RUN STATE  -- grows phase by phase; this is most of what makes a
-   deep-research prompt large by the time Phase 7 runs
-   ┌──────────────────────────────────────────────────────────────┐
-   │ content/dossiers/deep-research-<slug>/scope.md                 │
-   │ content/dossiers/deep-research-<slug>/evidence.md   -- every    │
-   │        interviewer's kept claims (Phase 2) and every writer's   │
-   │        added sources (Phase 5), transcribed by the orchestrator │
-   │        itself -- a subagent never writes here                   │
-   │ content/dossiers/deep-research-<slug>/rejected.md   -- every     │
-   │        discarded citekey, with the query and why                │
-   │ content/dossiers/deep-research-<slug>/sections.md   -- the       │
-   │        outline -> citekey plan (Phase 4), reconciled to what     │
-   │        the report actually cites (Phase 7e)                     │
-   │ subagent packets returned from Phases 2, 5 and 7 -- Markdown     │
-   │        text handed back by each dispatch, read once and          │
-   │        transcribed above, then gone                              │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-7. THIS TURN -- topic, reader, scope, depth preset (quick / standard /
-   deep), any steering
+```mermaid
+flowchart TB
+  PRIOR["<i>layers 1–3: harness, CLAUDE.md, AGENTS.md/SOUL.md —<br/>identical to every other skill, see diagram above</i>"]
+
+  L4["<b>4 · SKILL BODY</b><br/><br/>.claude/skills/deep-research/SKILL.md<br/><small>the 7 phases</small><br/>.claude/skills/deep-research/reference.md<br/><small>exact protocol, depth-preset defaults,<br/>the report template, the peer-review<br/>reconciliation rule — pulled in because<br/>SKILL.md cites it by name rather than<br/>repeating it</small>"]
+
+  L5["<b>5 · CROSS-GENRE STANDARDS</b><br/><i>same as every other skill</i><br/><br/>docs/WRITING-STANDARDS.md<br/>assets/style/acronyms.toml"]
+
+  L6["<b>6 · RUN STATE</b><br/><i>grows phase by phase — most of what makes a<br/>deep-research prompt large by the time Phase 7 runs</i><br/><br/>content/dossiers/deep-research-&lt;slug&gt;/scope.md<br/>content/dossiers/deep-research-&lt;slug&gt;/evidence.md<br/><small>every interviewer's kept claims (Phase 2) and<br/>every writer's added sources (Phase 5),<br/>transcribed by the orchestrator itself —<br/>a subagent never writes here</small><br/>content/dossiers/deep-research-&lt;slug&gt;/rejected.md<br/><small>every discarded citekey, with the query and why</small><br/>content/dossiers/deep-research-&lt;slug&gt;/sections.md<br/><small>the outline → citekey plan (Phase 4), reconciled<br/>to what the report actually cites (Phase 7e)</small><br/>subagent packets returned from Phases 2, 5 and 7<br/><small>read once, transcribed above, then gone</small>"]
+
+  L7["<b>7 · THIS TURN</b><br/><br/>topic · reader · scope · depth preset<br/>(quick / standard / deep) · any steering"]
+
+  PRIOR ==> L4 ==> L5 ==> L6 ==> L7
+
+  classDef prior fill:#f3f4f6,stroke:#9ca3af,stroke-width:1px,color:#374151,stroke-dasharray:4 3
+  classDef skill fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#052e16
+  classDef standards fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
+  classDef state fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+  classDef turn fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
+
+  class PRIOR prior
+  class L4 skill
+  class L5 standards
+  class L6 state
+  class L7 turn
 ```
 
 The orchestrator never pastes a subagent's returned packet, or the
@@ -212,40 +161,35 @@ conversation, `CLAUDE.md`, `AGENTS.md` and `SOUL.md` are not
 automatically forwarded into it. What replaces layers 2-4 is a single
 file the harness loads as that subagent's system prompt:
 
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│           PROMPT FOR ONE DISPATCHED SUBAGENT (generic shape)         │
-└────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  ORCH["<b>ORCHESTRATOR CONTEXT</b><br/><small>layers 1–7 above — grows across all 7 phases</small>"]
 
-1. HARNESS LAYER          -- same fixed overhead as any context
-                                │
-                                ▼
-2. AGENT DEFINITION       -- stands in for CLAUDE.md/AGENTS.md/SOUL.md
-                              /SKILL.md all at once, for this one role
-   ┌──────────────────────────────────────────────────────────────┐
-   │ .claude/agents/<role>.md                                       │
-   │   frontmatter: name, one-line description, allowed tools       │
-   │   body: what this role does, its process, its grounding rule   │
-   │   ("never fabricate a citekey" is restated here, inline --      │
-   │   the subagent does not go read AGENTS.md to learn it)          │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-3. ORCHESTRATOR-SUPPLIED PARAMETERS  -- small, specific, chosen by
-   the phase that dispatched this subagent -- not the whole run
-   ┌──────────────────────────────────────────────────────────────┐
-   │ e.g. TOPIC, PERSPECTIVE, ROUNDS, DRAFT PATH  (interviewer)     │
-   │ e.g. TOPIC, READER, GLOSSARY, section fragment, a `dossier      │
-   │      brief --section` command instead of pasted evidence       │
-   │      (writer)                                                  │
-   │ e.g. the full draft text, DRAFT PATH, one assigned role         │
-   │      (peer-reviewer)                                            │
-   └──────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-4. WHAT IT RETURNS  -- Markdown handed back to the orchestrator;
-   this subagent's own context is discarded once it returns, so
-   anything not in the returned text is gone
+  subgraph SUB["ONE DISPATCHED SUBAGENT — a fresh context, its own system prompt"]
+    direction TB
+    H["<b>1 · HARNESS LAYER</b><br/><small>same fixed overhead as any context</small>"]
+    DEF["<b>2 · AGENT DEFINITION</b><br/>.claude/agents/&lt;role&gt;.md<br/><small>stands in for CLAUDE.md/AGENTS.md/SOUL.md/SKILL.md<br/>all at once, for this one role — the citekey invariant<br/>is restated here, inline, not read from AGENTS.md</small>"]
+    PARAMS["<b>3 · ORCHESTRATOR-SUPPLIED PARAMETERS</b><br/><small>small and specific — e.g. TOPIC/PERSPECTIVE/ROUNDS/DRAFT PATH<br/>(interviewer), or a `dossier brief` pointer instead of pasted<br/>evidence (writer) — see the table below for all three roles</small>"]
+    H --> DEF --> PARAMS
+  end
+
+  RET["<b>4 · WHAT IT RETURNS</b><br/>Markdown handed back to the orchestrator<br/><small>this subagent's context is discarded on return —<br/>anything not in the returned text is gone</small>"]
+
+  ORCH -- "dispatch: one Agent-tool call per<br/>persona / section / role,<br/>~8–10 in flight at once" --> H
+  PARAMS --> RET
+  RET -. "the orchestrator transcribes what's worth<br/>keeping into the dossier, in the same phase" .-> ORCH
+
+  classDef orch fill:#eff6ff,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+  classDef harness fill:#f3f4f6,stroke:#6b7280,stroke-width:1.5px,color:#111827
+  classDef def fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#052e16
+  classDef params fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
+  classDef ret fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
+
+  class ORCH orch
+  class H harness
+  class DEF def
+  class PARAMS params
+  class RET ret
 ```
 
 Three roles fill that shape differently:
