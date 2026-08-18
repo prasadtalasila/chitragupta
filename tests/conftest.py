@@ -95,6 +95,7 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "REVIEW_DIR", content_dir / "review")
     monkeypatch.setattr(config, "DRAFTS_DIR", content_dir / "drafts")
     monkeypatch.setattr(config, "DOSSIERS_DIR", content_dir / "dossiers")
+    monkeypatch.setattr(config, "SPECS_DIR", content_dir / "specs")
     monkeypatch.setattr(config, "RETRIEVAL_INDEX_PATH", content_dir / "retrieval_index.json")
     monkeypatch.setattr(config, "OVERLAP_DIR", content_dir / "overlap")
     monkeypatch.setattr(config, "VERBATIM_ALLOWLIST_PATH", content_dir / "verbatim_allowlist.toml")

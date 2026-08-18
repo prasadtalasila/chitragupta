@@ -30,6 +30,7 @@ short path; this is the full set.
   - [`src.review provenance`](#python--m-srcreview-provenance)
   - [`src.review verbatim`](#python--m-srcreview-verbatim)
   - [`src.draft render`](#python--m-srcdraft-render)
+  - [`src.draft spec`](#python--m-srcdraft-spec)
   - [`src.enrich`](#python--m-srcenrich)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
@@ -1087,6 +1088,39 @@ fetched, and `assets/vale/README.md` documents what they deliberately
 leave out -- `licence`/`license` and `practice`/`practise` are decided by
 part of speech, `program`/`programme` by domain, and no string match
 settles any of them.
+
+### `python -m src.draft spec`
+
+The outline a book is generated from, and the human sign-off on it --
+the book-scale track's first artefact ([BOOKS.md](BOOKS.md)). Stdlib
+only, no venv needed. Writes only under `content/specs/`, mirroring the
+book's own directory under `content/drafts/`.
+
+```bash
+python -m src.draft spec init content/drafts/<book> --title "<title>"
+python -m src.draft spec show content/drafts/<book>
+python -m src.draft spec show content/drafts/<book> --unit sec-1
+python -m src.draft spec sign content/drafts/<book> --by "<name>"
+python -m src.draft spec status content/drafts/<book>
+```
+
+| Command | Does | Exit |
+|---|---|---|
+| `init` | write an outline skeleton (refuses to overwrite one) | 1 if a spec is already there |
+| `show` | the outline as a tree, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
+| `sign` | record that a human approved this outline, by digest | 1 on a spec that does not parse |
+| `status` | what the outline holds, and whether it is signed off | 1 when unsigned or changed since sign-off |
+
+Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
+section -- and the section is the generation unit. Every part, chapter
+and section needs an explicit `{#id}`, because a derived id changes when
+someone rewords a heading and orphans the units written against it.
+
+`status`'s exit code is **not a gate**. It reads back a record of a
+person's decision -- did a human approve this outline? -- rather than
+judging any draft's content, and nothing it says can refuse a write.
+[BOOKS.md](BOOKS.md#what-statuss-exit-code-is-and-is-not) has that
+reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
 ### `python -m src.enrich`
 
