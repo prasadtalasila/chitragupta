@@ -168,7 +168,16 @@ artefact that nothing reconciles across drafts:
 - **The glossary.** Every dossier carries one. An author writing a thesis,
   a survey and a textbook chapter on the same subject should not define
   "digital twin" three different ways, and nothing today notices that they
-  have.
+  have -- for an ordinary term. #190 built the narrower, acronym-shaped
+  slice of this: `[style].acronyms` in `config.toml` gives a user's own
+  expansions a per-host home (`content/acronyms.toml`, the same
+  gitignored footing as the boilerplate allowlist below), every genre
+  skill drafts from it, and `python -m src.draft style` now reports when
+  a draft's own glossary has drifted from it
+  (`src/style_acronym_drift.py`, `draft-reviser`'s acronym-realignment
+  mode fixes what that reports). Reconciliation for a plain term --
+  "digital twin" spelled three ways with no acronym in sight -- is still
+  nothing.
 - **The boilerplate allowlist.** #128 built this one already, and not
   quite as first framed here: `content/verbatim_allowlist.toml` is
   per-host, gitignored data, the same footing as `config.toml`, not
@@ -196,6 +205,13 @@ proposal, one level up.
 What that means concretely: a cross-draft pass may *report* that `en-GB`
 was chosen four times out of four, or that a term is defined three ways,
 and may offer the edit. It may not write the preference file itself.
+
+`python -m src.draft dossier acronyms-suggest --apply` looks like an
+exception and is not one: it writes `content/acronyms.toml` only when a
+person at a terminal types `--apply`, for the draft they named, in that
+one run. Nothing here runs it on a schedule, inside a revision loop, or
+because a threshold was crossed -- the human typing the flag *is* the
+acceptance this rule requires, not a bypass of it.
 
 ## Relationship to #102's roadmap
 

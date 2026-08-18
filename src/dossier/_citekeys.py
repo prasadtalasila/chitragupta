@@ -1,16 +1,15 @@
 """Which citekeys a draft's glossary, evidence and rejections mention --
 the pipeline's other citekey surface besides the ledger itself.
 
-Split out of src/dossier.py (#219). `suggest_acronyms`/
-`_cmd_acronyms_suggest` live here because they read the same glossary
-this module already parses for citekeys; there is no acronym-specific
-state anywhere else worth a module of its own.
+Split out of src/dossier.py (#219). `glossary_terms` also backs
+src/dossier/_acronyms.py's `suggest_acronyms`/`apply_suggestions` and
+src/style_acronym_drift.py -- both read the same `## Glossary` this
+module already parses for citekeys, rather than parsing it again.
 """
 
 import re
 from pathlib import Path
 
-from src import acronyms
 from src.dossier import EVIDENCE_MD, REJECTED_MD, SCOPE_MD, SECTIONS_MD, _ROW_SPLIT, dossier_dir
 from src.dossier._sections import _citekeys
 
@@ -207,37 +206,7 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
     return found
 
 
-def suggest_acronyms(draft: Path) -> dict[str, str]:
-    """Glossary terms that look like an acronym and aren't in the
-    vocabulary yet -- candidates for the user's own acronyms file.
-
-    Never writes anything. `python -m src.draft dossier acronyms-suggest`
-    only prints these: #190's own rule is that this feature proposes and
-    the human accepts, the same as every other vocabulary file this
-    pipeline reads but never edits (papers/bibliography.bib,
-    content/verbatim_allowlist.toml). The matching itself is
-    `acronyms.suggest()` -- this is just glossary_terms() handed to it.
-    """
-    return acronyms.suggest(glossary_terms(draft))
-
-
-def _cmd_acronyms_suggest(args) -> int:
-    """Always 0, deliberately -- unlike _cmd_brief's exit code, nothing
-    downstream reads this one: `acronyms-suggest` has no caller but a
-    person at a terminal (docs/CONFIG.md), and what they need is already
-    in stdout. Flagged by SonarCloud (S3516, "always returns the same
-    value"); both branches are tested separately by their printed output
-    (tests/test_dossier.py::TestSuggestAcronyms), not by this return.
-    """
-    candidates = suggest_acronyms(Path(args.draft))
-    if not candidates:
-        print("  No new acronyms to suggest.")
-        return 0
-    print(
-        "  New acronyms in this draft's glossary, not yet in your "
-        "vocabulary. Nothing is written -- add what you want to your own "
-        "[style].acronyms file:\n"
-    )
-    for term, definition in sorted(candidates.items()):
-        print(f'  {term} = "{definition}"')
-    return 0
+# suggest_acronyms/NoUserAcronymsFile/apply_suggestions/_cmd_acronyms_suggest
+# live in src/dossier/_acronyms.py, not here -- split out once --apply
+# pushed this module past docs/CODE-STANDARDS.md's C2 line limit. That
+# module imports glossary_terms from this one.

@@ -22,7 +22,7 @@ import sys
 
 from src.dossier._archive import _cmd_export, _cmd_restore
 from src.dossier._brief import _cmd_brief
-from src.dossier._citekeys import _cmd_acronyms_suggest
+from src.dossier._acronyms import _cmd_acronyms_suggest
 from src.dossier import DossierError, _cmd_list
 from src.dossier._create import _cmd_init
 from src.dossier._language import _cmd_set_language
@@ -98,9 +98,14 @@ def main(argv: list[str] | None = None) -> int:
 
     p_suggest = sub.add_parser(
         "acronyms-suggest",
-        help="Acronyms this draft's glossary defines that aren't in your vocabulary yet",
+        help="Acronyms this draft's glossary or prose defines that aren't in your vocabulary yet",
     )
     p_suggest.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_suggest.add_argument(
+        "--apply", action="store_true",
+        help="write the suggestions to your [style].acronyms file (fails if "
+             "that key is unset -- see docs/CONFIG.md)",
+    )
     p_suggest.set_defaults(func=_cmd_acronyms_suggest)
 
     p_list = sub.add_parser("list", help="Every dossier on this machine")

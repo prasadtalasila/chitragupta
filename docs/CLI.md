@@ -437,6 +437,8 @@ material is gone rather than mislaid.
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
+| `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
+| `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
@@ -465,6 +467,11 @@ python -m src.draft dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
 python -m src.draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
+
+# New acronyms this draft's glossary or prose defines; --apply writes them to
+# your [style].acronyms file (see docs/CONFIG.md)
+python -m src.draft dossier acronyms-suggest content/drafts/survey.md
+python -m src.draft dossier acronyms-suggest content/drafts/survey.md --apply
 
 # Before dispatching a section writer: do this section's rows resolve?
 python -m src.draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
@@ -1021,9 +1028,12 @@ python -m src.draft render content/drafts/survey.md --format pdf
 ### `python -m src.draft style`
 
 Report where a draft's prose departs from
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers and
-§8's recorded dialect. **A review aid: it exits 0 whatever it finds**, and
-nothing in this pipeline reads its output back or blocks on it.
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers, §8's
+recorded dialect, and a glossary acronym whose recorded expansion has
+drifted from the current `[style].acronyms` vocabulary (§9;
+`src/style_acronym_drift.py`, the one finding here not sourced from
+Vale). **A review aid: it exits 0 whatever it finds**, and nothing in
+this pipeline reads its output back or blocks on it.
 
 ```bash
 python -m src.draft style content/drafts/<path>

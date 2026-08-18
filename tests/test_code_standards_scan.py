@@ -60,8 +60,9 @@ CODE_LINE_ROOTS = ("src", "scripts")
 LEGACY_LONG_FUNCTIONS = {
     # Unchanged by #219's split of src/dossier.py into src/dossier/: every
     # _cmd_* handler moved out, but main()'s own argparse-tree statements
-    # didn't, so its count didn't either.
-    "src/dossier/_cli.py::main",  # 49
+    # didn't, so its count didn't either. +1 for acronyms-suggest's
+    # --apply flag.
+    "src/dossier/_cli.py::main",  # 50
     "src/enrich/embed_index.py::build_index",  # 40
     "src/enrich/docling_parse.py::parse_doc",  # 36
     "src/sync.py::_parse_parallel",  # 33

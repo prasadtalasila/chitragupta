@@ -363,10 +363,10 @@ has already fallen out of context.
 **Shared prose standards.** Name the reader before drafting, settle the
 dialect with them and record it as `scope.md`'s `language:` line, read
 the acronym vocabulary (`assets/style/acronyms.toml`, plus the user's own
-file if `[style].acronyms` points at one) for a term's canonical
-expansion rather than inventing one, define terms once, state scope up
-front, active voice with a named actor, no "obviously/simply/just",
-reread as the reader before presenting.
+`content/acronyms.toml` if `[style].acronyms` points at it) for a term's
+canonical expansion rather than inventing one, define terms once, state
+scope up front, active voice with a named actor, no
+"obviously/simply/just", reread as the reader before presenting.
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) holds them and the
 attribution -- Diátaxis, Last's *Technical Writing Essentials*, Google's
 Technical Writing courses, all CC-licensed and all requiring credit. Its

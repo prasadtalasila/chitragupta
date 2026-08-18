@@ -257,7 +257,8 @@ python -m src.draft style content/drafts/<path>
 ```
 
 **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
-§2's defect markers, an acronym never expanded at first use, and §8's
+§2's defect markers, an acronym never expanded at first use, a glossary
+acronym whose expansion has drifted from the vocabulary, and §8's
 dialect against `scope.md`'s `language:` line. It says nothing about
 whether a paragraph leads with its point, and it cannot tell a quotation
 from the draft's own voice.
@@ -369,6 +370,49 @@ Two things this mode refuses outright:
   inside a quoted abstract or a venue's name stays as the source spelled
   it. Nothing downstream catches this one: the citation gate checks
   citekeys, not the words around them.
+
+## Acronym-realignment mode
+
+The prose check above (§9's newest row -- `src/style_acronym_drift.py`)
+can report a glossary acronym whose recorded expansion has drifted from
+the current vocabulary (`content/acronyms.toml` merged over the vendored
+floor). Recognise a request to fix that finding -- "align this draft's
+acronyms with my vocabulary", "the DT definition is stale", or the
+finding itself pasted in -- and say you are in this mode before you
+start, naming the term(s) involved.
+
+**The check only ever compares `scope.md`'s glossary to the vocabulary.**
+It cannot see whether the draft's own first-use expansion has drifted
+the same way, independently, or not at all -- that is prose, not a file
+diff, and no mechanical check here reads it. Two edits, not one:
+
+1. **Rewrite the glossary bullet** in `scope.md` to the vocabulary's
+   current expansion. This is what the finding named, so it is never
+   optional.
+2. **Find the term's own first-use expansion in the draft body** (the
+   same "Name (ACRONYM)" shape `src/acronyms.py` looks for, or whatever
+   shape this draft actually used) and update it too, if it disagrees.
+   You can see this half because you are reading the section anyway;
+   the check cannot. Say in the `revisions.md` entry that this half was
+   read by eye, not verified by a check -- the same honesty the finding
+   itself practises about what it can and cannot see.
+
+Same guardrails as copy-edit mode: no claim changed, no citation added or
+dropped, no argument reordered. `Edit`, never `Write`, for the same
+PostToolUse-gate reason step 5 above gives. One `revisions.md` entry,
+naming the term(s) and every file touched:
+
+```text
+2026-08-14 -- acronym realignment: DT's recorded expansion changed from
+"Digital twin" to "Digital Twin System" in content/acronyms.toml;
+updated scope.md's glossary bullet and the chapter's own first-use
+expansion (section 2) to match. The glossary half came from the style
+check; the body half was read by eye, not re-verified by a check.
+```
+
+Re-run the prose check at the end: the finding should be gone. If it
+isn't, say so rather than presenting a draft that still fails the check
+you were asked to fix.
 
 ## Re-grounding after the corpus moves
 

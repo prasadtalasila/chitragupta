@@ -121,9 +121,13 @@ vale_config = "assets/vale/vale.ini"
 # similar are vendored (assets/style/acronyms.toml, always loaded);
 # point this at your own file to add your field's vocabulary on top of
 # it, merged rather than replacing it -- your domain acronyms are your
-# data, not this project's. See assets/style/README.md.
+# data, not this project's. Copy assets/style/acronyms.toml.example to
+# content/acronyms.toml (gitignored, per-host, the same footing as this
+# file) and point this key there -- not back at
+# assets/style/acronyms.toml itself, which is the vendored file this
+# merges *over*. See assets/style/README.md.
 #                                          Default: assets/style/acronyms.toml
-# acronyms = "assets/style/acronyms.toml"
+# acronyms = "content/acronyms.toml"
 
 [parser]
 # Which backend `python -m src.corpus sync` uses to turn a PDF into
