@@ -70,10 +70,20 @@ against this file. That is the same discipline
 [the ratchet](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register)
 imposes on C1/C2, applied by hand to the items no detector covers.
 
-This file is **not** a gate and gains no test. `python -m src.draft gate`
+**The debt on this list is not a gate.** `python -m src.draft gate`
 remains the only gate in the project ([SOUL.md](../SOUL.md)), and a debt
 list that could fail a build would be a threshold tuned to today's worst
-code -- exactly what the ratchet exists to avoid.
+code -- exactly what the ratchet exists to avoid. Nothing here goes red
+because an item is unpaid, and #239 did not change that.
+
+What #239 added -- `tests/test_technical_debt_scan.py` -- checks
+something else entirely: whether this document *describes the C1/C2
+register correctly*. A wrong sentence about the register is a factual
+error in prose, not an outstanding cost, and it is the one class of claim
+here with a machine-readable source of truth to check against. The
+distinction is the whole reason the test could be added without making
+the debt itself a gate: leaving an entry open forever is fine, and saying
+it is on a register it left is not.
 
 ## Tier 1: the debt the ratchet already holds
 
@@ -86,7 +96,17 @@ Those two counts had drifted badly -- this section claimed 26 and 13
 until #228 -- which is [build order](CODE-STANDARDS.md#build-order) item
 4, the doc-drift detector, demonstrating the exact failure it was
 proposed for. CODE-STANDARDS.md's copy of the same pair stayed correct
-throughout, because a test pins it and nothing pins this one.
+throughout, because a test pinned it and nothing pinned this one.
+
+**Something pins this one now**, as of #239:
+`tests/test_technical_debt_scan.py` fails if the two numbers above stop
+matching `len(LEGACY_LONG_FUNCTIONS)`/`len(LEGACY_LONG_FILES)`, and also
+if any Tier 1 subsection heading or `[Tier 1]` item in [What to take
+first](#what-to-take-first) names an entry as still open that the
+register no longer holds. That is the narrow, checkable half of build
+order item 4 -- claims *about the register*, which has a machine-readable
+source of truth. Free prose about anything else is still nobody's
+detector, deliberately.
 
 **That register is the authority. This section does not copy it** -- a
 debt stated in two places is a debt that will eventually be stated two
