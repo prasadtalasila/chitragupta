@@ -172,6 +172,7 @@ means they are checked only when someone remembers to.
 | "just", specifically | §2 | no | no -- the adverb ("just add the flag") and the adjective ("a just outcome") are not separable by string match, so it is reported for a human eye |
 | Each term defined once, then used consistently | §2 | yes, given the dossier's glossary | yes |
 | Acronym expanded at first use, then not re-expanded | §2 | yes -- first occurrence is computable | yes |
+| A glossary's acronym expansion still matches the current acronym vocabulary | §2 | yes, given the dossier's glossary and `[style].acronyms` -- but only the glossary is compared, not the draft's own prose | yes |
 | Active voice with a named actor | §4 | detectable | no -- the fix is a judgement |
 | Each paragraph leads with its point | §4 | heuristic only | no -- surfaced, never applied |
 | Hedging that carries no information | §4 | detectable | no -- the fix is a judgement |

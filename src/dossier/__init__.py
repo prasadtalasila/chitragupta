@@ -291,7 +291,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
 # the reason.
 # pylint: disable=wrong-import-position
 from src.dossier._archive import export, restore
-from src.dossier._citekeys import citekeys_by_section
+from src.dossier._citekeys import citekeys_by_section, glossary_terms
 from src.dossier._create import init
 from src.dossier._drift import drift, drift_all
 from src.dossier._language import set_language

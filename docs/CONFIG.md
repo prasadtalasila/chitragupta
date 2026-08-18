@@ -220,10 +220,23 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
   floor (`PDF`, `CPU`, `URL`, `API`, `HTML`) and always loads; point this
   at your own file to merge your field's vocabulary over it -- your
   definition wins if you redefine one of the vendored five, and every
-  vendored entry you don't redefine still applies. `assets/style/README.md`
-  has the file's shape and provenance, and `python -m src.draft dossier
-  acronyms-suggest <draft>` proposes new entries for it from a draft's
-  glossary without ever writing to it.
+  vendored entry you don't redefine still applies. Copy
+  `assets/style/acronyms.toml.example` to `content/acronyms.toml`
+  (gitignored, per-host, the same footing as `config.toml` itself) and
+  point this key there -- not back at `assets/style/acronyms.toml`,
+  which is the vendored file this one merges *over*, not a template to
+  edit in place. `assets/style/README.md` has the file's shape and
+  provenance.
+
+  `python -m src.draft dossier acronyms-suggest <draft>` proposes new
+  entries for it from a draft's glossary without writing anything; add
+  `--apply` to write the proposed entries to your file (creating it if
+  it doesn't exist yet), merged without duplicating what is already
+  there. `--apply` refuses if this key is unset, rather than writing
+  into the vendored floor. `python -m src.draft style` separately
+  reports when a draft's own glossary has drifted from the current
+  vocabulary (`docs/WRITING-STANDARDS.md` §9); `draft-reviser`'s
+  acronym-realignment mode fixes what that reports.
 
 ### `[parser]` -- PDF text extraction
 

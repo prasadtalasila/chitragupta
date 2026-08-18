@@ -517,7 +517,8 @@ python -m src.draft style content/drafts/deep-research-<slug>.md
 ```
 
 **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
-§2's defect markers, an acronym never expanded at first use, and §8's
+§2's defect markers, an acronym never expanded at first use, a glossary
+acronym whose expansion has drifted from the vocabulary, and §8's
 dialect against `scope.md`'s `language:` line. It says nothing about
 whether a paragraph leads with its point, and it cannot tell a quotation
 from the report's own voice. This is the first time anything reads the

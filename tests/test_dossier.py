@@ -14,13 +14,15 @@ save:
 """
 
 import tarfile
+import tomllib
 from pathlib import Path
 
 import pytest
 
 from src import acronyms, config, dossier
 from src.dossier import (
-    _archive, _brief, _citekeys, _create, _drift, _retrieval, _sections, _status,
+    _acronyms, _archive, _brief, _citekeys, _create, _drift, _retrieval, _sections,
+    _status,
 )
 
 
@@ -374,7 +376,7 @@ class TestSuggestAcronyms:
     """
 
     def test_returns_empty_without_a_dossier(self, draft):
-        assert _citekeys.suggest_acronyms(draft) == {}
+        assert _acronyms.suggest_acronyms(draft) == {}
 
     def test_delegates_to_acronyms_suggest_with_this_drafts_glossary(
         self, draft, monkeypatch
@@ -385,7 +387,7 @@ class TestSuggestAcronyms:
         )
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert _citekeys.suggest_acronyms(draft) == {
+        assert _acronyms.suggest_acronyms(draft) == {
             "DTaaS": "Digital Twin as a Service."
         }
 
@@ -408,6 +410,162 @@ class TestSuggestAcronyms:
         assert "DTaaS" in out
         assert "Digital Twin as a Service" in out
         assert vendored.read_text() == vocab_before
+
+
+class TestApplySuggestions:
+    """apply_suggestions()/`--apply` -- the one path in this feature that
+    writes. Guarded against the one way that write can go wrong: with
+    `[style].acronyms` unset, `config.ACRONYMS_PATH` *is*
+    `config.ACRONYMS_DEFAULT_PATH`, the vendored, git-tracked file, and
+    writing there would commit one user's domain vocabulary into what
+    every clone shares (#190)."""
+
+    def test_refuses_to_write_when_the_user_path_is_unset(
+        self, draft, tmp_path, monkeypatch
+    ):
+        # The "unset" condition -- ACRONYMS_PATH is ACRONYMS_DEFAULT_PATH --
+        # is established here, in tmp_path, rather than assumed of the
+        # host's own config.toml: isolated_config does not patch either
+        # constant (they are read once at import time), so a host that
+        # followed docs/CONFIG.md and set [style].acronyms would otherwise
+        # make this test assert something false about its own machine.
+        vendored = tmp_path / "vendored.toml"
+        monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", vendored)
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+
+        with pytest.raises(_acronyms.NoUserAcronymsFile):
+            _acronyms.apply_suggestions(draft)
+
+    def test_cli_apply_refuses_and_writes_nothing_when_unset(
+        self, draft, tmp_path, capsys, monkeypatch
+    ):
+        # Same reason as the test above: without pinning both constants to
+        # the same tmp_path file, a host with [style].acronyms set would
+        # take the *write* branch instead and mutate that host's real
+        # content/acronyms.toml as a side effect of running this suite.
+        vendored = tmp_path / "vendored.toml"
+        vendored.write_text('PDF = "Portable Document Format"\n', encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", vendored)
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+        vocab_before = vendored.read_text(encoding="utf-8")
+
+        assert dossier.main(["acronyms-suggest", str(draft), "--apply"]) == 0
+
+        out = capsys.readouterr().out
+        assert "[style].acronyms is not set" in out
+        assert vendored.read_text(encoding="utf-8") == vocab_before
+
+    def test_creates_the_user_file_and_writes_new_candidates(
+        self, draft, tmp_path, monkeypatch
+    ):
+        user_path = tmp_path / "content" / "acronyms.toml"
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+
+        written = _acronyms.apply_suggestions(draft)
+
+        assert written == {"DTaaS": "Digital Twin as a Service."}
+        assert user_path.is_file()
+        assert 'DTaaS = "Digital Twin as a Service."' in user_path.read_text()
+
+    def test_appends_without_duplicating_an_existing_entry(
+        self, draft, tmp_path, monkeypatch
+    ):
+        user_path = tmp_path / "content" / "acronyms.toml"
+        user_path.parent.mkdir(parents=True, exist_ok=True)
+        user_path.write_text('FMU = "Functional Mock-up Unit"\n', encoding="utf-8")
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary", lambda: {"FMU": "Functional Mock-up Unit"}
+        )
+        monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
+        dossier.init(draft, "survey")
+        _write_glossary(
+            draft,
+            "- **FMU** -- Functional Mock-up Unit.\n"
+            "- **DTaaS** -- Digital Twin as a Service.",
+        )
+
+        written = _acronyms.apply_suggestions(draft)
+
+        assert written == {"DTaaS": "Digital Twin as a Service."}
+        text = user_path.read_text()
+        assert text.count("FMU") == 1
+        assert 'DTaaS = "Digital Twin as a Service."' in text
+
+    def test_a_second_apply_with_nothing_new_writes_nothing(
+        self, draft, tmp_path, monkeypatch
+    ):
+        user_path = tmp_path / "content" / "acronyms.toml"
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+        _acronyms.apply_suggestions(draft)
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary", lambda: {"DTaaS": "Digital Twin as a Service."}
+        )
+        text_after_first_apply = user_path.read_text()
+
+        written = _acronyms.apply_suggestions(draft)
+
+        assert written == {}
+        assert user_path.read_text() == text_after_first_apply
+
+    def test_cli_apply_reports_nothing_new_when_the_user_path_is_set(
+        self, draft, tmp_path, capsys, monkeypatch
+    ):
+        user_path = tmp_path / "content" / "acronyms.toml"
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
+        dossier.init(draft, "survey")
+
+        assert dossier.main(["acronyms-suggest", str(draft), "--apply"]) == 0
+
+        assert "No new acronyms" in capsys.readouterr().out
+        assert not user_path.exists()
+
+    def test_escapes_a_quote_or_backslash_in_the_expansion(
+        self, draft, tmp_path, monkeypatch
+    ):
+        """A written entry must round-trip through tomllib -- apply_suggestions
+        checks this itself, but only a definition containing the two
+        characters a TOML basic string cannot hold unescaped actually
+        exercises the escaping, rather than just its line coverage."""
+        user_path = tmp_path / "content" / "acronyms.toml"
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
+        dossier.init(draft, "survey")
+        _write_glossary(
+            draft, r'- **JIT** -- the "just-in-time" pattern, C:\path style.'
+        )
+
+        written = _acronyms.apply_suggestions(draft)
+
+        expected = 'the "just-in-time" pattern, C:\\path style.'
+        assert written == {"JIT": expected}
+        with user_path.open("rb") as handle:
+            assert tomllib.load(handle) == {"JIT": expected}
+
+    def test_cli_apply_reports_what_it_wrote(self, draft, tmp_path, capsys, monkeypatch):
+        user_path = tmp_path / "content" / "acronyms.toml"
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
+        dossier.init(draft, "survey")
+        _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
+
+        assert dossier.main(["acronyms-suggest", str(draft), "--apply"]) == 0
+
+        out = capsys.readouterr().out
+        assert "Wrote 1 new entry" in out
+        assert "DTaaS" in out
 
 
 class TestKnownCitekeys:

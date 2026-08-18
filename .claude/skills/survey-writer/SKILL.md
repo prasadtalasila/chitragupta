@@ -356,8 +356,9 @@ collapse them for the sake of a cleaner narrative.
     ```
 
     **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
-    — §2's defect markers, an acronym never expanded at first use, and
-    §8's dialect against `scope.md`'s `language:` line. It says nothing
+    — §2's defect markers, an acronym never expanded at first use, a
+    glossary acronym whose expansion has drifted from the vocabulary,
+    and §8's dialect against `scope.md`'s `language:` line. It says nothing
     about whether a paragraph leads with its point or whether a hedge
     carries information, and it cannot tell a quotation from the draft's own
     voice, so a marker inside a quoted passage reports and is correct as

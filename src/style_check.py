@@ -1,11 +1,15 @@
 """Prose conformance for a draft, checked against docs/WRITING-STANDARDS.md.
 
 `python -m src.draft style <draft>` reports where a draft departs from the
-rules that document marks decidable in its §9 -- the defect markers of §2
-and the recorded dialect of §8 -- and says nothing about the rules it marks
-a judgement. Vale does the matching, against the style vendored at
-assets/vale/; this module decides *which* rules apply to *this* draft and
-turns the result into a report.
+rules that document marks decidable in its §9 -- the defect markers of §2,
+the recorded dialect of §8, and an acronym never expanded at first use --
+and says nothing about the rules it marks a judgement. Vale does that
+matching, against the style vendored at assets/vale/; this module decides
+*which* rules apply to *this* draft and turns the result into a report.
+One finding is not Vale's: `src.style_acronym_drift` checks the draft's
+own recorded glossary against the current acronym vocabulary in plain
+Python, because that vocabulary lives in a per-host file Vale cannot
+read.
 
 **Advisory, and it exits 0 whatever it finds.** Not a gate, and not a
 gate under a flag either. The reason is docs/ARCHITECTURE.md's "Layer 4":
@@ -48,6 +52,7 @@ import subprocess
 from pathlib import Path
 
 from src import config, dossier
+from src.style_acronym_drift import findings as acronym_drift_findings
 from src.style_report import report
 from src.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
 
@@ -224,7 +229,7 @@ def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
 def check(draft: Path, override: str | None = None) -> dict:
     """Everything one draft's report is built from, as data."""
     language, source = resolve_language(draft, override)
-    findings = collapse(run_vale(draft, language))
+    findings = collapse(run_vale(draft, language)) + acronym_drift_findings(draft)
     proposal = None
     if language is None:
         proposed = propose_language(draft)

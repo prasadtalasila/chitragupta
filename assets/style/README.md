@@ -30,13 +30,22 @@ that only adds `DTaaS = "Digital Twin as a Service"` still gets `PDF`,
 `CPU`, `URL`, `API` and `HTML` for free.
 
 `acronyms.toml.example` in this same directory is a starting point --
-copy it, edit it to your own field's vocabulary, and point the config
-key at your copy.
+copy it to `content/acronyms.toml` (gitignored, per-host, the same
+footing as `config.toml` itself -- not this directory, which is
+version-controlled and ships with the project), edit your copy to your
+own field's vocabulary, and point `[style].acronyms` at it. `python -m
+src.draft dossier acronyms-suggest <draft> --apply` can write new
+entries there for you, proposed from a draft's own glossary; see
+`docs/CONFIG.md`.
 
 ## What this is not
 
-Not a check. `assets/vale/styles/chitragupta/Acronyms.yml` is the rule
-that *verifies* an acronym was expanded at first use and not
-re-expanded later (#107) -- a Vale rule, unrelated code, untouched by
-this file. This vocabulary is the *input* side: what a genre skill drafts
-from, so the check downstream has less to find.
+Not a check, on its own -- but two checks now read it. Vale's
+`assets/vale/styles/chitragupta/Acronyms.yml` *verifies* an acronym was
+expanded at first use and not re-expanded later (#107), against the
+draft's text and unaware this file exists. `src/style_acronym_drift.py`
+is the other one: it compares a draft's own recorded glossary against
+`load_vocabulary()`'s current merge of this file and the user's, and
+reports when they've drifted apart. Neither check is this file's own
+job -- this vocabulary is the *input* side, what a genre skill drafts
+from, so both checks downstream have less to find.

@@ -4,6 +4,11 @@ content/pipeline.lock.db
 content/pipeline.lock.db.holder
 content/library.bib
 content/verbatim_allowlist.toml
+# Same footing as the line above: a user's own acronym vocabulary
+# ([style].acronyms in config.toml), per-host data rather than a
+# project default. assets/style/acronyms.toml.example is the template
+# to copy here; assets/style/README.md has the shape.
+content/acronyms.toml
 content/review/
 content/docling/
 content/docling_cache.json

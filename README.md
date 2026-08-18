@@ -125,6 +125,13 @@ mkdir -p papers && cp -r /path/to/your/export/. papers/
 
 cp config.toml.example config.toml
 
+# ...and, only if your field has its own acronyms (DT, FMU, ...) beyond
+#    the PDF/CPU/URL/API/HTML every draft already gets: copy the template,
+#    point config.toml's [style].acronyms at your copy, and every genre
+#    skill drafts from it too. See assets/style/README.md.
+# cp assets/style/acronyms.toml.example content/acronyms.toml
+# # then edit [style].acronyms in config.toml to content/acronyms.toml
+
 # 2. Install dependencies. scripts/install_full_pipeline.sh is the only
 #    install path -- one script for a bare host and for the Docker image,
 #    taking stage names as positional arguments:

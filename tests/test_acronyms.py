@@ -93,3 +93,66 @@ class TestSuggest:
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         glossary = {"Twin state": "the digital object's current estimate."}
         assert acronyms.suggest(glossary) == {}
+
+    def test_suggests_a_parenthetical_acronym_by_the_name_before_the_paren(self, monkeypatch):
+        # The real shape content/dossiers/books/digital-twins-for-software-
+        # engineers/02-twin-shadow-model-simulation/scope.md uses -- none of
+        # this project's own 155 real glossary terms are a bare acronym.
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        glossary = {
+            "Digital twin (DT)": (
+                'was, in Chapter 1: "software that keeps a model of one '
+                "specific physical system in step with that system's "
+                'actual state, and uses it to answer questions that '
+                'measurement alone cannot answer."'
+            )
+        }
+        assert acronyms.suggest(glossary) == {"DT": "Digital twin"}
+
+    def test_does_not_suggest_a_parenthetical_acronym_already_in_the_vocabulary(
+        self, monkeypatch
+    ):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
+        glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
+        assert acronyms.suggest(glossary) == {}
+
+
+class TestStaleExpansions:
+    """stale_expansions() -- glossary acronyms whose recorded expansion no
+    longer agrees with the current vocabulary. Same shape-recognition as
+    suggest(), the opposite direction: only terms already in the
+    vocabulary are worth comparing."""
+
+    def test_no_findings_when_a_parenthetical_expansion_still_agrees(self, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
+        glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
+        assert acronyms.stale_expansions(glossary) == {}
+
+    def test_finds_a_parenthetical_expansion_that_has_drifted(self, monkeypatch):
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary", lambda: {"DT": "Digital Twin System"}
+        )
+        glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
+        assert acronyms.stale_expansions(glossary) == {
+            "DT": ("Digital twin", "Digital Twin System")
+        }
+
+    def test_comparison_is_case_insensitive_and_ignores_trailing_punctuation(
+        self, monkeypatch
+    ):
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary",
+            lambda: {"DTaaS": "Digital Twin as a Service"},
+        )
+        glossary = {"DTaaS": "digital twin as a service."}
+        assert acronyms.stale_expansions(glossary) == {}
+
+    def test_ignores_a_term_not_in_the_vocabulary(self, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
+        glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
+        assert acronyms.stale_expansions(glossary) == {}
+
+    def test_ignores_a_non_acronym_shaped_term(self, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
+        glossary = {"Twin state": "the digital object's current estimate."}
+        assert acronyms.stale_expansions(glossary) == {}
