@@ -1,6 +1,6 @@
 """src/draft.py: the drafting layer's single entry point.
 
-What each of the six commands *computes* is covered in their own test
+What each command *computes* is covered in their own test
 files (tests/test_citation_gate.py, tests/test_dossier.py,
 tests/test_retrieval.py, tests/test_references.py,
 tests/test_render_output.py). This file pins only the dispatch, and the
@@ -34,6 +34,7 @@ BACKING_MODULES = {
     "render": "render_output",
     "style": "style_check",
     "spec": "spec",
+    "unit": "unit",
 }
 
 # A real top-level entry-point block, anchored at column 0 -- not the
@@ -87,7 +88,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         module and exits 0 having done nothing -- which is a trap, but a
         silent and harmless one, and the same one `src/enrich/`'s and
         `src/review/`'s submodules carry by design. With one, the layer
-        would have six entry points and no single --help.
+        would have one entry point per module and no single --help.
 
         `dossier` is a package since #219, not a flat file -- the
         equivalent property for a package is no `__main__.py` inside it,
