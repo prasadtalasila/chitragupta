@@ -29,7 +29,7 @@ import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
-from src import bib_collections, config
+from src import bib_collections, bib_names, config
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
 # Previously sync.py only ever saw a bare pdf_path of None and reported
@@ -78,12 +78,7 @@ def _parse_authors(author_field: str) -> list[tuple[str, str]]:
         name = name.strip()
         if not name:
             continue
-        if "," in name:
-            last, first = (p.strip() for p in name.split(",", 1))
-        else:
-            parts = name.rsplit(" ", 1)
-            first, last = (parts[0], parts[1]) if len(parts) == 2 else ("", parts[0])
-        authors.append((first, last))
+        authors.append(bib_names.split_name(name))
     return authors
 
 

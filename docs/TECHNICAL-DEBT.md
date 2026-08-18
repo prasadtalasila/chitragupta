@@ -388,8 +388,15 @@ Attributing the gap -- via
 
 ### 3.7 The BibTeX author-name grammar exists twice
 
+**Resolved in #234.** The five lines now live once, in `src/bib_names.py`
+(`split_name`), which both callers import. That module is import-free
+stdlib string handling, so `references.py` still runs under the bare
+system interpreter -- verified against a system Python with no
+`bibtexparser` installed. Kept below as the record of why a duplication
+that broke no stated rule was worth a PR.
+
 `src/bib_reader.py:79-84` (`_parse_authors`) and `src/references.py:129-134`
-(`_format_name`) carry the same five lines, character for character:
+(`_format_name`) carried the same five lines, character for character:
 
 ```python
 if "," in name:
@@ -419,7 +426,7 @@ author is the wrong kind of quiet.
 
 **Fragility**, in
 [the review vocabulary](CODE-STANDARDS.md#code-smells-the-review-vocabulary).
-The fix is not to relax the boundary: the five lines are plain stdlib
+The fix was not to relax the boundary: the five lines are plain stdlib
 string handling with no bibtexparser in them, so they can live in one
 module both import, and `references.py` keeps running under the bare
 system interpreter. Found by `pylint`'s `duplicate-code` (see
@@ -1094,9 +1101,11 @@ Ordered by what breaks if it is left, not by size:
    and [5.3](#53-markdownlint-a-measured-baseline)'s own "Adopted and
    enforced in 5.8.0" -- this numbered item just never got marked done to
    match.
-7. **[3.7] Move the BibTeX author-name grammar into one module.** Five
+7. ~~**[3.7] Move the BibTeX author-name grammar into one module.** Five
    duplicated lines, no boundary to relax, and the failure it prevents is
-   two disagreeing spellings of the same author.
+   two disagreeing spellings of the same author.~~ **Done**, in #234:
+   `src/bib_names.py`. See
+   [3.7](#37-the-bibtex-author-name-grammar-exists-twice).
 8. ~~**[4.2] Count only entries with fields** in `bib_reader`'s
    dropped-entry warning, so it stops firing on every healthy Zotero
    export. Small, and it restores a guard that currently reads as

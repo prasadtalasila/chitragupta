@@ -45,7 +45,7 @@ import re
 import sys
 from pathlib import Path
 
-from src import citation_gate, config, ledger
+from src import bib_names, citation_gate, config, ledger
 
 # Matches the References heading this module writes, bare ("## References")
 # or numbered to match a draft's own heading convention ("## 6. References"),
@@ -121,17 +121,23 @@ def _initials(first: str) -> str:
 
 
 def _format_name(name: str) -> str:
-    """One BibTeX author name in IEEE order: "Doe, Jane" -> "J. Doe"."""
+    """One BibTeX author name in IEEE order: "Doe, Jane" -> "J. Doe".
+
+    The given/family split itself lives in `bib_names`, shared with
+    `bib_reader` -- this module reads the ledger's `bib_fields` column and
+    never `bibliography.bib`, but the *grammar* for reading a name out of
+    that column is the same grammar, and it used to exist here in a second
+    copy. See that module for what the duplication actually risked.
+    """
     name = name.strip()
     # Braced corporate authors ("{IEEE Standards Association}") are a
-    # single unit, never split into given/family or initialized.
+    # single unit, never split into given/family or initialized. Stays
+    # here rather than moving into the shared helper: `_parse_authors`
+    # does not do it, and hoisting it would change what the ledger
+    # records rather than where the split lives.
     if name.startswith("{") and name.endswith("}"):
         return name[1:-1].strip()
-    if "," in name:
-        last, first = (p.strip() for p in name.split(",", 1))
-    else:
-        parts = name.rsplit(" ", 1)
-        first, last = (parts[0], parts[1]) if len(parts) == 2 else ("", parts[0])
+    first, last = bib_names.split_name(name)
     initials = _initials(first)
     return f"{initials} {last}".strip()
 
