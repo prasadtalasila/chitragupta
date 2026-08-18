@@ -32,6 +32,7 @@ short path; this is the full set.
   - [`src.draft render`](#python--m-srcdraft-render)
   - [`src.draft spec`](#python--m-srcdraft-spec)
   - [`src.draft unit`](#python--m-srcdraft-unit)
+  - [`src.draft registry`](#python--m-srcdraft-registry)
   - [`src.enrich`](#python--m-srcenrich)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
@@ -1149,6 +1150,38 @@ it can answer "does this need regenerating?".
 
 `accept` **invokes the citation gate, it does not replace it**: a unit
 the gate refuses cannot be accepted, and nothing here is a second gate.
+
+### `python -m src.draft registry`
+
+Terminology, claims and cross-references over a book's **accepted** units
+([BOOKS.md](BOOKS.md)). Three registries, built by a deterministic pass
+and written under `content/specs/<book>/registries/`.
+
+```bash
+python -m src.draft registry build   content/drafts/<book>
+python -m src.draft registry check   content/drafts/<book>
+python -m src.draft registry excerpt content/drafts/<book> <unit-id>
+```
+
+| Command | Does | Exit |
+|---|---|---|
+| `build` | rebuild `terms.md`, `claims.md`, `xrefs.md` from accepted units | 1 only if the book has no readable outline |
+| `check` | what the registries disagree on | **always 0** |
+| `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
+
+**`check` is a review aid and exits 0 whatever it finds**, like the three
+`src.review` aids and unlike `spec status`/`unit status`. Those two report
+whether a *human decided* something; this reports a *machine's reading of
+prose*, which is judgement however mechanical the arithmetic. There is no
+flag that makes it block --
+[BOOKS.md](BOOKS.md#why-registry-check-exits-0-when-the-two-status-commands-do-not)
+has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
+rule behind it.
+
+Every report says how many units it could read and names the ones it
+skipped, because a registry over half a book is a different claim from
+one over all of it. Contradiction between claims is **not** detected --
+only duplication, which is what a machine can decide.
 
 ### `python -m src.enrich`
 

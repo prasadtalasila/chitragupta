@@ -35,6 +35,7 @@ BACKING_MODULES = {
     "style": "style_check",
     "spec": "spec",
     "unit": "unit",
+    "registry": "registry",
 }
 
 # A real top-level entry-point block, anchored at column 0 -- not the

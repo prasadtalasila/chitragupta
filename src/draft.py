@@ -1,6 +1,6 @@
 """The drafting layer's single entry point: `python -m src.draft <verb>`.
 
-Eight commands, run by hand or by a genre skill over one draft:
+Nine commands, run by hand or by a genre skill over one draft:
 
     python -m src.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
@@ -32,6 +32,10 @@ Eight commands, run by hand or by a genre skill over one draft:
     python -m src.draft unit contract|accept|status <book> [<unit-id>]
         one section's generation contract -- what it is generated from,
         hashed -- and the record of its acceptance (docs/BOOKS.md).
+
+    python -m src.draft registry build|check|excerpt <book> [<unit-id>]
+        terminology, claims and cross-references over a book's accepted
+        units -- a review aid, never a gate (docs/BOOKS.md).
 
 **One entry point, one level deep**, like `python -m src.corpus sync` for the
 corpus layer and `python -m src.review <aid>` for the review layer. None
@@ -72,8 +76,8 @@ before it had a shared front door.
 import argparse
 import sys
 
-from src import (citation_gate, dossier, references, render_output, retrieval, spec,
-                 style_check, unit)
+from src import (citation_gate, dossier, references, registry, render_output, retrieval,
+                 spec, style_check, unit)
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
@@ -86,6 +90,8 @@ VERBS = {
                            "-- a review aid, never a gate"),
     "spec": (spec, "the outline a book is generated from, and the human sign-off on it"),
     "unit": (unit, "one section's generation contract, and the record of its acceptance"),
+    "registry": (registry, "terminology, claims and cross-references over a book's "
+                           "accepted units -- a review aid, never a gate"),
 }
 
 

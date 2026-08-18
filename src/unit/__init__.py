@@ -9,9 +9,11 @@ with room to spare, which is what makes a unit independently
 regenerable -- and independent regeneration is what makes "regenerate one
 section fifty times while 200 pages sit untouched" cheap.
 
-**The contract is explicit and hashed.** Inputs -- the spec slice, the
-sources retrieved for this unit, and (from #138) the registry excerpts --
-go in; a draft, its citations and its claims come out. `input_digest`
+**The contract is explicit and hashed.** Inputs -- the spec slice and the
+sources retrieved for this unit -- go in; a draft and its citations come
+out. The registry excerpts a unit is also generated with
+(`python -m src.draft registry excerpt`) deliberately stay out of the
+digest; the comment on `registries` below says why. `input_digest`
 covers the inputs *only*: a digest that moved when the prose moved could
 never answer the question it exists for, which is "does this unit need
 regenerating?". That is the same incremental discipline `src/ledger.py`
@@ -108,9 +110,14 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
         # the digest below answers for the *set* of sources a unit was
         # grounded in and not for the order somebody happened to list them.
         "sources": sorted(set(sources)),
-        # Filled by #138's registries. Empty is a real answer -- a book
-        # with no registered terminology yet -- not a placeholder, and it
-        # participates in the digest so adding one invalidates the unit.
+        # Registry excerpts are supplied at generation time by
+        # `python -m src.draft registry excerpt`, and deliberately do not
+        # arrive here: a registry grows with every acceptance, so hashing
+        # it into this digest would mark every later unit stale each time
+        # an earlier one was accepted -- destroying the cheap-regeneration
+        # property this contract exists for. It stays in the digest's
+        # shape (empty, labelled) so a caller that does want to pin an
+        # excerpt has somewhere to put it. docs/BOOKS.md has the argument.
         "registries": [],
         # POSIX spelling, not the host's: this string is hashed into a
         # record that has to read the same on the Windows CI leg as on
@@ -197,10 +204,21 @@ def state(book: Path, unit_id: str) -> str:
     return "accepted"
 
 
+def outline(book: Path) -> list[dict]:
+    """Every entry in a book's outline -- parts and chapters included.
+
+    `sections` is the generation unit and is what most callers want. This
+    is for the one question that is about the whole outline rather than
+    about what is generated: which ids exist at all, which is what a
+    cross-reference to a chapter resolves against (#138).
+    """
+    _, parsed = _parsed_spec(book)
+    return parsed["units"]
+
+
 def sections(book: Path) -> list[dict]:
     """Every generation unit in a book's outline, in outline order."""
-    _, parsed = _parsed_spec(book)
-    return [entry for entry in parsed["units"] if entry["kind"] == "section"]
+    return [entry for entry in outline(book) if entry["kind"] == "section"]
 
 
 # Re-exported so `from src import unit` reaches the entry point
