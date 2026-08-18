@@ -8,10 +8,13 @@
 # of root, though -- see AGENTS.md's "Environment constraints" section for
 # what is and isn't conditional on root access.
 #
-# NOT built or run in this session -- no Docker daemon is available here.
-# Treat this as a starting point to validate, not a tested artifact.
+# Built and verified manually (docker build, both TORCH_VARIANT values,
+# both produced a working /opt/venv) -- see DOCKER.md's build-arg table
+# for the two variants and their measured sizes. Not exercised by CI: no
+# workflow under .github/ builds this image, so a break here still won't
+# be caught automatically.
 #
-# Build:
+# Build (GPU-capable torch, the default -- see TORCH_VARIANT below):
 #   docker build -t chitragupta -f docker/Dockerfile .
 # Run (mount persistent volumes -- see note at the bottom):
 #   docker run -it --rm \
@@ -51,6 +54,43 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 ENV VIRTUAL_ENV=/opt/venv
 COPY pyproject.toml poetry.lock poetry.toml ./
-RUN SKIP_VENV=1 scripts/install_full_pipeline.sh python-deps
+
+# torch itself isn't pinned in pyproject.toml (see its own comment on
+# why) -- poetry.lock resolves whatever plain PyPI's default Linux wheel
+# is, which bundles the full CUDA runtime as separate nvidia-* packages
+# (cublas, cudnn, nccl, triton, ...) regardless of whether the build host
+# or eventual container has a GPU at all. Measured on this image:
+# GPU-capable venv 6.2GB (nvidia/ alone is 2.7GB) vs. CPU-only 2.0GB.
+#
+# TORCH_VARIANT=gpu (default) keeps that wheel as resolved -- for a real
+# `docker run --gpus` deployment, since the bundled CUDA runtime is
+# enough on its own (no host CUDA toolkit needed, just a driver).
+# TORCH_VARIANT=cpu reinstalls torch/torchvision from PyTorch's own
+# cpu-only wheel index, at the *same* version poetry.lock resolved (read
+# back via `pip show` rather than hand-pinned here, so this never drifts
+# from a `poetry lock` re-resolution the way a second pinned copy would),
+# then drops the now-orphaned nvidia-*/triton packages pip's
+# --force-reinstall doesn't remove on its own. Both the swap and the
+# uninstall happen inside this one RUN so the CUDA wheels never appear in
+# a committed layer to begin with -- doing it as a later, separate RUN
+# would only mark them deleted, not shrink the image (this was checked by
+# hand: a later-layer uninstall left the image *larger* than doing
+# nothing, because the deleted files' layer is still stored).
+ARG TORCH_VARIANT=gpu
+RUN SKIP_VENV=1 scripts/install_full_pipeline.sh python-deps && \
+    if [ "$TORCH_VARIANT" = "cpu" ]; then \
+        torch_ver="$(/opt/venv/bin/pip show torch | sed -n 's/^Version: //p' | cut -d+ -f1)" && \
+        tv_ver="$(/opt/venv/bin/pip show torchvision | sed -n 's/^Version: //p' | cut -d+ -f1)" && \
+        /opt/venv/bin/pip install --no-cache-dir --force-reinstall \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==${torch_ver}" "torchvision==${tv_ver}" && \
+        /opt/venv/bin/pip uninstall -y \
+            nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 \
+            nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 \
+            nvidia-cufile-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 \
+            nvidia-cusparse-cu12 nvidia-cusparselt-cu12 nvidia-nccl-cu12 \
+            nvidia-nvjitlink-cu12 nvidia-nvtx-cu12 triton; \
+    fi && \
+    rm -rf /root/.cache/pypoetry /root/.cache/pip
 
 CMD ["/bin/bash"]
