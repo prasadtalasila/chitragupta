@@ -574,6 +574,15 @@ test is the one that is right.
 
 ### 4.3 A git worktree under `.claude/` breaks two tree-walking scans
 
+**Resolved in #236.** Both scans now exclude `.claude/worktrees/`, and
+both prove it against a `tmp_path` fixture rather than asserting it --
+nothing on CI can fail if the exclusion regresses, because
+`actions/checkout` never creates a worktree, so a fixture is the only
+place the regression can be caught. Verified against the 26-worktree
+host this section describes: the two named tests went from red to green
+with no other change. Kept below as the record of what the misfire
+actually was, since the obvious reading of it is wrong.
+
 `.claude/` is a scanned root for the tests that police this repository's
 own tree. Claude Code creates its worktrees at
 `.claude/worktrees/<name>/`, which puts a **second complete copy of the
@@ -615,11 +624,12 @@ Two fixes, and the cheap one is not the repository's:
   they are stale, this is the whole fix and costs nothing.
 - **Exclude `.claude/worktrees/` from both scans' roots.** One line
   each, and the durable fix, since anyone using Claude Code worktrees on
-  this repository will hit it again. Left out of this change because it
+  this repository will hit it again. Left out of *that* change because it
   is a behaviour change to two guard tests and belongs in its own diff
   against this entry, not inside a documentation PR -- the same Boy Scout
   reconciliation [CODE-STANDARDS.md](CODE-STANDARDS.md#the-boy-scout-rule-and-surgical-changes)
-  makes for `src/`.
+  makes for `src/`. That diff is #236, and it is what resolved this
+  entry.
 
 ## Tier 5: continuous integration and the linters
 
