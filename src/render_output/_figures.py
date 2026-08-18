@@ -7,8 +7,8 @@ draw: TikZ through LaTeX, ASCII everywhere else.
 
 **A draft keeps its native form inline, and only the other form becomes
 a file.** A Markdown draft holds the ASCII in its fence and names
-`figures/<name>.tex` in a `tikz-alt` marker; a `.tex` fragment holds the
-`\\input` and names `figures/<name>.txt` in an `ascii-alt` comment. So
+`figures/<name>` in a `figure:` marker; a `.tex` fragment holds the
+`\\input` and names the same base in its own `figure:` comment. So
 there is no `.txt` for a Markdown draft, deliberately: its ASCII is
 already the fence the `md` render emits, and a second copy would be one
 nothing reads and nothing keeps in step. The `.tex` genre is the case
@@ -128,7 +128,7 @@ def _figure_refs(text: str) -> list[str]:
     """Every TikZ figure file a draft references, however it spells it.
 
     A `.tex` fragment says `\\input{...}` outright; a Markdown draft names
-    the same file in a `tikz-alt` marker and only grows the `\\input` in
+    the same file in a `figure:` marker and only grows the `\\input` in
     the temp copy handed to pandoc. Both have to be visible *here*,
     because this is what decides whether the figure file is copied beside
     a `tex` output and whether `\\usepackage{tikz}` is loaded -- and both
@@ -245,10 +245,15 @@ _LATEX_CITE_RE = re.compile(r"\\cite[a-zA-Z]*\s*[\[{]")
 
 
 def _figure_has_citekey(path: Path) -> bool:
-    return bool(
-        _PANDOC_CITE_RE.search(path.read_text(encoding="utf-8", errors="replace"))
-        or _LATEX_CITE_RE.search(path.read_text(encoding="utf-8", errors="replace"))
-    )
+    """Whether a figure file contains a citekey in either spelling.
+
+    `errors="replace"` rather than a raise: this runs to *warn* about a
+    figure, and a figure file that is not valid UTF-8 is its own problem
+    -- failing here would turn an advisory check into the thing that
+    stops a render.
+    """
+    body = path.read_text(encoding="utf-8", errors="replace")
+    return bool(_PANDOC_CITE_RE.search(body) or _LATEX_CITE_RE.search(body))
 
 
 def _figure_warnings(text: str, input_path: Path) -> list[str]:
