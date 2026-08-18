@@ -969,11 +969,17 @@ the last quarter. That correlation is real and worth knowing.
 **But it is not the cause of the symptom that prompted the question, and
 saying so is more useful than agreeing.** The single worst-adhered rule
 -- the commit body shape, missing from 14 of the last 30 -- is not
-forgotten. It is *unreachable*: GitHub composes that body from the
-repository's `squash_merge_commit_message` setting, and no amount of
+forgotten. It is *unreachable* by reading: GitHub composes that body from
+the repository's `squash_merge_commit_message` setting, and no amount of
 reading a document changes what a server-side default produces. See
 [Process debt](#process-debt-the-formats-that-are-not-adhered-to). A
 shorter `DEVELOPER-AGENTS.md` would not have moved that number by one.
+
+There is a sharper version of this, which #238 has since shown: the rule
+is not reachable by *configuration* either, since no value of that
+setting produces a commit body from a PR description. It is reachable
+only by a step at merge time, which is what point 3 below actually asks
+for.
 
 ### What follows from that
 
@@ -1017,32 +1023,56 @@ Measured over the **last 30 commits on `main`**:
 | PR number not added by hand | 1 reads `(#144) (#148)` | Authoring |
 | Title in imperative mood | 1 noun phrase | Authoring |
 
-**The dominant cause is a repository setting, not discipline.**
-`squash_merge_commit_message` is `COMMIT_MESSAGES`, which builds the
-squash body by concatenating the branch's commit messages with `*`
-bullets. The documented shape therefore survives only if whoever merges
-hand-edits the body in the web UI, every time. Restating the rule more
-firmly cannot fix a default; that is why this is debt and not a lapse.
+**Partly resolved in #238** (settings applied 2026-08-18). The table
+above is the measurement as taken on 2026-08-13 and is kept as the
+baseline; what follows is what each cause turned into.
 
-A second, quieter defect: `squash_merge_commit_title` is
-`COMMIT_OR_PR_TITLE`, so GitHub uses the PR title on a multi-commit
+**The dominant cause was a repository setting, not discipline.**
+`squash_merge_commit_message` was `COMMIT_MESSAGES`, which builds the
+squash body by concatenating the branch's commit messages with `*`
+bullets. The documented shape therefore survived only if whoever merged
+hand-edited the body in the web UI, every time. Restating the rule more
+firmly could not fix a default; that is why this was debt and not a
+lapse.
+
+A second, quieter defect: `squash_merge_commit_title` was
+`COMMIT_OR_PR_TITLE`, so GitHub used the PR title on a multi-commit
 branch and the *commit's* title on a single-commit one.
 `DEVELOPER-AGENTS.md` asserted the PR title unconditionally, which was
-wrong for the one-commit case -- corrected in this change.
+wrong for the one-commit case.
 
-**The fix is three settings**, recorded in
+**All three settings are now applied:**
+
+- `squash_merge_commit_title=PR_TITLE` -- **closed the title outright.**
+  The PR title is the commit title unconditionally, GitHub appends the
+  `(#N)` itself, and the "add it by hand when you pass `--subject`"
+  exception is retired. Rows 3 and 4 of the table above cannot recur by
+  this route.
+- `allow_merge_commit=false`, `allow_rebase_merge=false` -- "Merge
+  method: squash" is a property of the repository rather than a sentence.
+- `squash_merge_commit_message=PR_BODY` -- **did not close the body, and
+  the claim that it would was wrong.** This section previously said
+  `.github/pull_request_template.md` "already shapes that body". It
+  shapes it into a *review* document -- `## Test plan`, `## Checklist`,
+  tick-boxes -- which is a different artefact from a commit message, so
+  merging unedited now lands the template on `main` instead of
+  `*`-concatenated commit titles. Both are wrong; the new one is at
+  least conspicuous.
+
+**So rows 1 and 2 stay open, and no setting closes them.**
+`squash_merge_commit_message` takes exactly three values -- `PR_BODY`,
+`COMMIT_MESSAGES`, `BLANK` -- and none transforms the text, because
+there is no templating step between a PR description and a commit body
+for a setting to hook into. The body is therefore supplied at merge time
+via `gh pr merge --body-file`, which
 [DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#merging)
-with the exact command. They need admin rights, so they are the
-maintainer's to apply:
+now documents as the standing mechanism rather than as a stopgap.
 
-- `squash_merge_commit_title=PR_TITLE`
-- `squash_merge_commit_message=PR_BODY` -- and
-  `.github/pull_request_template.md` already shapes that body
-- `allow_merge_commit=false`, `allow_rebase_merge=false`, so "Merge
-  method: squash" is a property of the repository rather than a sentence
-
-That is roughly 15 of the ~20 violations above closed by configuration,
-permanently, for every future contributor and every future session.
+The estimate this section carried -- "roughly 15 of the ~20 violations
+closed by configuration" -- was too optimistic for that reason. The
+title-side rows are closed permanently; the body-side rows moved from
+"the default fights you" to "one flag at merge time", which is an
+improvement in kind but not the automatic fix that was predicted.
 
 **What deliberately is not proposed:** a test over `git log`. It is the
 obvious move in this repository's idiom, and it does not work here --
@@ -1078,11 +1108,14 @@ worse.
 
 Ordered by what breaks if it is left, not by size:
 
-0. **[Process] The three merge settings.** Not first because it is the
+0. ~~**[Process] The three merge settings.** Not first because it is the
    most important, but because it is the only item here that costs one
    command, needs no review, and closes roughly 15 of the ~20 format
    violations permanently. It needs admin rights, which is the only
-   reason it is not already done.
+   reason it is not already done.~~ **Done**, in #238 (2026-08-18) --
+   though for fewer violations than predicted, and
+   [Process debt](#process-debt-the-formats-that-are-not-adhered-to) says
+   which half survived and why no setting reaches it.
 1. ~~**[3.1] `encoding="utf-8"` at 32 call sites.** The only item in this
    document with a *demonstrated* crash on ordinary input -- a CJK or
    Cyrillic author name, rendered on a cp1252 host.~~ **Done**, the same
