@@ -21,6 +21,10 @@ assumes [AGENTS.md](../AGENTS.md) for the drafting layer and
 - [The generation unit, and its contract](#the-generation-unit-and-its-contract)
 - [What the input digest covers, and what it must not](#what-the-input-digest-covers-and-what-it-must-not)
 - [Acceptance is recorded, not asserted](#acceptance-is-recorded-not-asserted)
+- [The three consistency registries](#the-three-consistency-registries)
+- [Why `registry check` exits 0, when the two `status` commands do not](#why-registry-check-exits-0-when-the-two-status-commands-do-not)
+- [What the registries cannot see](#what-the-registries-cannot-see)
+- [Why a registry excerpt is not hashed into a unit's contract](#why-a-registry-excerpt-is-not-hashed-into-a-units-contract)
 - [The rest of the track](#the-rest-of-the-track)
 
 ## The constraint everything here answers
@@ -222,14 +226,108 @@ Records carry **no timestamp**, so accepting an unchanged unit twice
 produces byte-identical files and a diff of `content/specs/` is a diff of
 what was accepted.
 
+## The three consistency registries
+
+`python -m src.draft registry` (`src/registry/`) is the artefact-management
+answer to cross-chapter consistency. At thesis scale one can partly cheat
+with a large context; at book scale it is entirely an artefact problem.
+
+```bash
+python -m src.draft registry build   content/drafts/twins
+python -m src.draft registry check   content/drafts/twins
+python -m src.draft registry excerpt content/drafts/twins sec-data
+```
+
+| Registry | Written from | Flags |
+|---|---|---|
+| terminology and notation | `- **Term** -- definition` bullets | a term defined in more than one unit |
+| claims | every sentence that cites something | the same claim made in more than one unit |
+| cross-references | `[text](#id)` and `\ref{id}`/`\cref{id}` | a reference no unit or outline entry defines |
+
+Three properties hold for all of them:
+
+- **Built from accepted units only**, and the count is printed: `3 of 12
+  unit(s) accepted and read`, naming the ones it could not see. A registry
+  over half a book is not the same claim as one over all of it.
+- **Nothing here is written by an LLM.** They are a deterministic reading
+  of accepted prose, which is the whole reason they can be trusted --
+  the same standing `src/ledger.py` has as a reading of a real bib file.
+- **The conventions are borrowed, not invented.** The definition bullet is
+  the dossier glossary's, the sentence splitter is the provenance aid's,
+  and everything from a `## References` heading onward is cut the way
+  `src/acronyms.py` cuts it -- measured there against the real 15-chapter
+  book, because a rendered reference list is nothing but citation-bearing
+  lines and would otherwise fill the claim register with bibliography.
+
+**A cross-reference is never spelled `@id`.** That is a citekey position:
+a section id reaching it would put something the ledger has never seen
+where only a real bibliography entry may go. `tests/test_registry.py`
+pins that the citation gate reads neither supported reference syntax as a
+citekey.
+
+## Why `registry check` exits 0, when the two `status` commands do not
+
+`spec status` and `unit status` exit non-zero. `registry check` never
+does, however much it finds -- and the difference is not inconsistency.
+
+[ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is explicit that a check
+measured against a recorded preference "reports and never blocks,
+**whichever layer it lives in**", and that what may be enforced is
+*invocation* rather than conformance: "a harness may guarantee that it
+runs and that its findings are seen, never that they were obeyed."
+
+The two `status` commands report whether a **human decided** something --
+approved this outline, accepted this unit. This one reports a **machine's
+reading of prose**: which term it thinks was defined where, which
+sentences it thinks match, which reference it thinks dangles. That is
+judgement however mechanical the arithmetic, so it is evidence and never
+a verdict. There is no flag that changes this, deliberately:
+DEVELOPER-AGENTS.md bars promoting a new check into a gate outright
+rather than leaving it to an argument about how precise the check is.
+
+What #138 calls a "blocking global check" is therefore delivered as
+guaranteed invocation: the assembly step (#139) must run `registry check`
+and surface what it says, and the second human sign-off is what decides.
+That is a stronger reading of the requirement than an exit code would be,
+not a weaker one -- an exit code can be ignored by a caller; a sign-off
+cannot be given by one.
+
+## What the registries cannot see
+
+**Contradiction.** #138 asks for "duplicate and contradicting claims
+across chapters flagged". Duplicates are decidable and are flagged; two
+chapters asserting opposite things are not, and nothing here pretends
+otherwise. Naming what a check cannot see is this project's house style
+([PLAGIARISM.md](PLAGIARISM.md) does the same for the tier that needs an
+optional stack), and the final human sign-off is what covers the rest.
+
+Two smaller limits, for the same reason: a definition that does not use
+the bullet shape is not registered, and "used consistently" is checked
+only in the sense that a term is *defined* once -- no attempt is made to
+decide whether a later paragraph used it the way the definition meant.
+
+## Why a registry excerpt is not hashed into a unit's contract
+
+`registry excerpt <book> <unit-id>` prints what a unit's generation
+should be told about the rest of the book: the terminology the *other*
+accepted units settled, and the ids it may point at. A unit is never told
+to conform to itself.
+
+That excerpt is deliberately **not** part of the unit's input digest, and
+the reason is the cascade. A registry grows with every acceptance, so
+hashing it in would mark every later unit stale each time an earlier one
+was accepted -- which destroys exactly the property #137's contract
+exists for, that an unchanged unit costs nothing to re-run. Instead the
+excerpt is injected at generation time, and inconsistency is caught
+afterwards by `registry check` over the whole book. `registries` stays in
+the contract's shape, empty and labelled, so a caller that does want to
+pin one has somewhere to put it.
+
 ## The rest of the track
 
 Named here so the shape is visible; each lands with its own section in
 this document.
 
-- **Consistency registries** (#138) -- terminology/notation, a claim
-  register, and a cross-reference graph, each written by a deterministic
-  post-pass over accepted units and injected as excerpts into later ones.
 - **LaTeX book assembly** (#139) -- parts, chapters and front matter
   composed from accepted, gate-passed units, as a genre skill:
   conventions as data, not code.
