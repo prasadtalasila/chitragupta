@@ -7,6 +7,17 @@ that *is* enforced -- the C1/C2 ratchet -- lives in
 `tests/test_code_standards_scan.py` and is
 [pointed at](#tier-1-the-debt-the-ratchet-already-holds), never restated.
 
+**Reconciled 2026-08-18** against the tree as it now stands, since a
+register that only shrinks the way it says it should is one this
+document's own prose has to keep up with too: `src/sync.py::run`
+resolved in #178 and [3.1](#31-text-io-on-the-locale-codec)'s
+entire encoding item resolved the same day this document was written,
+neither previously marked done; `bench/` and the test suite re-measured,
+both having grown substantially; [4.3](#43-a-git-worktree-under-claude-breaks-two-tree-walking-scans)'s
+worktree count updated. Nothing tagged **Done** below was re-opened, and
+every remaining open item was independently re-checked against the
+current code before being left as still open.
+
 [CODE-STANDARDS.md](CODE-STANDARDS.md) says what the code must look like.
 This document says where it currently doesn't, and -- just as important --
 where it looks like it doesn't but is right.
@@ -85,20 +96,28 @@ entries would actually split.
 
 ### `src/sync.py::run` -- 117 statements, 4.7x the next worst
 
-The register names it and CODE-STANDARDS.md calls it the first to take.
-Reading it, the seams are visible and are not arbitrary: the function
-runs **probe -> resolve -> dispatch -> drain -> reconcile -> summarise**,
-and only the middle two are about parsing at all. The drain loop
-(`src/sync.py:398-448`) is a self-contained "apply results in bib order"
-with four exclusive branches -- parsed, backend-vanished, timed-out,
-failed -- each already carrying its own rationale comment. The reconcile
-step after it (`stale`/`prune_missing`) shares no state with the parse
-except `seen_citekeys`.
+**Resolved in #178** (2026-08-14, the day after this section was
+written). Kept below as the historical record of what the split was
+measured against, the same treatment `src/dossier.py` gets a few
+paragraphs down.
 
-The reason to say this here rather than in the register: the register's
-trailing `# 117` says how big the debt is, not that it is *separable*. A
-117-statement function that genuinely could not split would be a
-different problem.
+The register named it and CODE-STANDARDS.md called it the first to take.
+Reading it, the seams were visible and were not arbitrary: the function
+ran **probe -> resolve -> dispatch -> drain -> reconcile -> summarise**,
+and only the middle two were about parsing at all. The drain loop was a
+self-contained "apply results in bib order" with four exclusive
+branches -- parsed, backend-vanished, timed-out, failed -- each already
+carrying its own rationale comment. The reconcile step after it
+(`stale`/`prune_missing`) shared no state with the parse except
+`seen_citekeys`.
+
+It split along exactly those seams and no longer appears in
+`LEGACY_LONG_FUNCTIONS` at all -- which is the register's own proof it
+is at or under C1's 25-statement cap, not a number this document needs
+to re-derive or pin (a physical-line count would only churn on the next
+comment edit, which is exactly why [Why statements, not
+lines](CODE-STANDARDS.md#why-statements-not-lines) declines to pin
+those either).
 
 ### `src/dossier.py` -- 1605 code lines, and four responsibilities
 
@@ -189,31 +208,30 @@ New in this review. Each names a call site.
 
 ### 3.1 Text I/O on the locale codec
 
-32 of `src/`'s 67 text-I/O call sites call `read_text()` /
-`write_text()` / `open()` with **no `encoding=`**, so they use the host's
-locale codec:
+**Resolved, and this entire subsection is now a historical record.**
+When this document was written (2026-08-13), 32 of `src/`'s 67
+`read_text()`/`write_text()`/`open()` call sites carried no `encoding=`,
+so they used the host's locale codec. §5.2's own text already said why
+it no longer applies -- "3.1's encoding sites first -- the whole item,
+not pylint's visible seven" -- as the first step of the same 5.8.0
+change that enforced `pylint`, the same day this section was written.
+This subsection's own status line was simply never updated to match, the
+same drift `src/sync.py::run`'s section above suffered independently.
 
-| Module | Sites without `encoding=` |
-|---|---|
-| `src/render_output.py` | 8 / 8 |
-| `src/enrich/docling_parse.py` | 7 / 11 |
-| `src/references.py` | 4 / 4 |
-| `src/enrich/embed_index.py`, `src/enrich/topic_model.py` | 3 / 3 each |
-| `src/runlock.py` | 2 / 2 |
-| `src/citation_gate.py`, `src/review/citation_coverage.py`, `src/pdf_text.py`, `src/retrieval.py` | 1 / 1 each |
-| `src/dossier.py` | 1 / 12 as one file; split into `src/dossier/` by #219, not re-measured per module since |
+Verified directly rather than taken on that sentence's word: a precise
+AST scan of every `read_text`/`write_text`/bare `open` call in `src/`
+finds **0 text-I/O sites missing `encoding=`**. The only 5 calls with no
+`encoding=` keyword at all are legitimate binary-mode opens (`"rb"`/`"wb"`,
+for TOML parsing and PDF hashing) that cannot take one --
+`src/config.py:27`, `src/ledger.py:151`, `src/overlap_index.py:192`,
+`src/review/__init__.py:89`, `src/review/verbatim_check.py:516` -- and
+are outside this item's own stated scope of *text* I/O.
 
-This project already knows the rule. Four test modules --
-`test_code_standards_scan.py:194`, `test_command_depth_scan.py:39`,
-`test_removed_command_scan.py:102`, `test_review_entrypoint.py:45` --
-each carry a comment saying `encoding="utf-8"` is passed because
-"`read_text()` uses the locale codec, which is cp1252 on the Windows CI
-leg, and these files are full of em dashes." CI sets no `PYTHONUTF8`.
-The rule is understood, written down four times, and applied to fewer
-than half of `src/`'s own call sites.
+The rest of this subsection is kept because the reasoning is still worth
+having on record for the next time a call site is added without one.
 
-**The two failure modes are not the same, and the difference decides
-where this matters.** Both were reproduced against cp1252 rather than
+**The two failure modes are not the same, and the difference decided
+where this mattered.** Both were reproduced against cp1252 rather than
 reasoned about, because the intuitive answer is wrong:
 
 - **Writing raises.** `"≥"`, a CJK name and a Cyrillic name each raise
@@ -226,37 +244,33 @@ reasoned about, because the intuitive answer is wrong:
   `"Films at â‰¥ 5 nm ... ä¸\xadæ–‡ ... cafÃ©"`. Silent corruption, not a
   traceback.
 
-So the sites that matter are the **writes**, and the read sites matter
-only where the text is used as text rather than scanned for ASCII:
+So the sites that mattered most were the **writes** -- the rendered
+bibliography and the sanitised markdown/bib handed to pandoc
+(`src/references.py`, `src/render_output/`), where a Cyrillic or CJK
+author name is ordinary in a real reference export and would have
+crashed the render on a cp1252 host -- and the reads whose text is used
+as text rather than scanned for ASCII, such as `src/retrieval.py`'s BM25
+index build, where a mojibake read would have degraded ranking silently.
 
-- **`src/references.py:443,464`** and **`src/render_output.py:148,171,172`**
-  -- write the rendered bibliography and the sanitised markdown/bib
-  handed to pandoc. A Cyrillic or CJK author name is ordinary in a real
-  reference export, and on a cp1252 host it crashes the render.
-- **`src/render_output.py:141,151`** -- read the draft and
-  `bibliography.bib` and pass them straight back out to pandoc, so a
-  mojibake read becomes a mojibake PDF with no error anywhere.
-- **`src/retrieval.py:168`** -- reads parsed text into the BM25 index
-  under `errors="ignore"`. Corrupted tokens degrade ranking silently.
+**What this was never a way to break.** `src/citation_gate.py` reads the
+draft the same way `src/review/citation_coverage.py` does, and it was
+worth checking whether the project's one gate could be taken out this
+way. It cannot: citekeys are ASCII, so `extract_citekeys()` returns
+identical results from correctly-decoded and mojibake text (verified on
+the example above -- both yield `[(1, 'zhang_2021')]`). Recorded here
+because the opposite conclusion is the natural one to jump to.
 
-**What this is *not*.** `src/citation_gate.py:191` reads the draft the
-same way, and it was worth checking whether the project's one gate could
-be taken out this way. It cannot: citekeys are ASCII, so
-`extract_citekeys()` returns identical results from the correctly-decoded
-and the mojibake text (verified on the example above -- both yield
-`[(1, 'zhang_2021')]`). The gate is unaffected, and the same reasoning
-clears `src/review/citation_coverage.py:73`. Recorded here because the
-opposite conclusion is the natural one to jump to.
-
-Why it has not been caught: an encoding-less write followed by an
-encoding-less read round-trips for anything the host codec can
-represent, and cp1252 covers the em dash the four test comments name.
-Linux CI is UTF-8 and cannot see any of it; the Windows leg would, but
-only if a fixture fed it a character outside cp1252.
-
-**Fix shape:** pass `encoding="utf-8"` at all 32 sites -- mechanical, one
-PR, with a test that renders a bibliography containing a CJK author name.
-Writes first if it is split.
+This project already knew the rule before it was applied everywhere.
+Four test modules -- `test_code_standards_scan.py:194`,
+`test_command_depth_scan.py:39`, `test_removed_command_scan.py:102`,
+`test_review_entrypoint.py:45` -- each carry a comment saying
+`encoding="utf-8"` is passed because "`read_text()` uses the locale
+codec, which is cp1252 on the Windows CI leg, and these files are full
+of em dashes." CI sets no `PYTHONUTF8`. That is why an encoding-less
+write followed by an encoding-less read round-tripped for anything the
+host codec could represent, and cp1252 covers the em dash the four test
+comments name: Linux CI is UTF-8 and could not see any of it, and the
+Windows leg only would given a fixture with a character outside cp1252.
 
 ### 3.2 `_executor_for` duplicated across a module boundary
 
@@ -279,17 +293,23 @@ new dependency edge in either direction -- not a change to the layering.
 
 ### 3.3 `bench/` is outside every check in the repository
 
-2021 lines of Python across 8 files, and it is excluded from all four
-things that hold the rest of the tree:
+5,018 lines of Python across 19 files (2026-08-13: 2,021 across 8 --
+grown substantially since, mostly the plagiarism/paraphrase-tier
+benchmark scripts `docs/PLAGIARISM-DESIGN.md` cites), and it is excluded
+from all four things that hold the rest of the tree:
 
 - C1 and C2 (`STATEMENT_ROOTS`/`CODE_LINE_ROOTS` in the scan test)
 - coverage (`source = ["src", "scripts"]` in `pyproject.toml`)
 - the release archive (`scripts/release.py`)
-- any linter, since there is none
+- the linter -- `pylint` runs against `src scripts .claude/hooks`
+  ([5.2](#52-pylint-a-measured-baseline)), never `bench/`
 
-Measured against the ratchet it does not face, `bench/` holds **8
-functions over C1** and **2 modules over C2** (`repro_check.py` at 530
-code lines, `sweep_sync.py` at 282).
+Measured against the ratchet it does not face, with the ratchet's own
+`long_functions`/`long_files` from `tests/test_code_standards_scan.py`
+run directly against `("bench",)` rather than approximated: `bench/` now
+holds **16 functions over C1** and **8 modules over C2**,
+`repro_check.py` still the largest of either kind at 530 code lines and
+its own `main()` the largest function at 69 statements.
 
 CODE-STANDARDS.md states the C1/C2 exclusion and its reason -- one-shot
 analysis code whose `main()` reads top to bottom on purpose -- and
@@ -358,8 +378,10 @@ self-skip.
 The debt is that 95 is a *floor*, not a *target*: the 5 points are not
 attributed to the skipped tests, so Windows-only code that no test
 reaches is indistinguishable from a render test that self-skipped. This
-matters precisely for [3.1](#31-text-io-on-the-locale-codec), whose
-failure mode is Windows-specific. Attributing the gap -- via
+mattered precisely for [3.1](#31-text-io-on-the-locale-codec),
+whose failure mode was Windows-specific -- now resolved there, but the
+blind spot itself is general and would hide the next one the same way.
+Attributing the gap -- via
 `# pragma: no cover` on the toolchain-dependent branches, or a second
 `.coveragerc` for the Windows leg -- would turn a floor into the same
 100 the Linux leg holds.
@@ -478,8 +500,9 @@ it is a judgement someone may reasonably re-decide.
 
 ## Tier 4: the test suite
 
-21,780 lines across 40 modules, against `src/`'s 13,379 -- the suite is
-1.6x the code it tests, holds 100% line and branch coverage, and is in
+27,948 lines across 68 modules (2026-08-13: 21,780 across 40 -- both trees
+have grown substantially since), against `src/`'s 18,135 -- the suite is
+about 1.5x the code it tests, holds 100% line and branch coverage, and is in
 better shape than the code. A full review found no dead helper, no
 order-dependent test, no network access, no `xfail`, no bare
 `pytest.raises(Exception)`, and no test writing outside `tmp_path`. Most
@@ -583,7 +606,8 @@ So neither is a finding about old code. Both are one defect: **a scan
 scoped to `.claude/` cannot tell a skill file from a nested checkout of
 everything.** On this review's host there were seven worktrees, all on
 branches long since merged, and the suite was red for that reason alone
-while CI stayed green -- CI's `actions/checkout` has no worktrees.
+while CI stayed green -- CI's `actions/checkout` has no worktrees. Still
+true and worse on reconciliation: this host now carries 26.
 
 Two fixes, and the cheap one is not the repository's:
 
@@ -687,7 +711,7 @@ already decided against leaves **44 real findings**:
 | Category | Count | Disposition |
 |---|---|---|
 | `line-too-long` (>100) | 31 | Real. "Keep lines short" is a review standard here with no detector; this is it, measured |
-| `unspecified-encoding` | 7 | Real, and already [3.1](#31-text-io-on-the-locale-codec) -- pylint sees only the `open()` calls, 7 of that item's 32 sites |
+| `unspecified-encoding` | 7 | Fixed as part of [3.1](#31-text-io-on-the-locale-codec) -- pylint saw only the `open()` calls, 7 of that item's 32 original sites |
 | `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard` -- deliberate lowercase context managers; belongs in `good-names` |
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
@@ -720,11 +744,21 @@ pylint enabled at a **binary** bar -- zero messages, never a `fail-under`
 score, because [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out
 driving a number. That sequence is what 5.8.0 carried out, in that order.
 
-Two side effects worth having, once it lands: the 11 inert `# noqa:
-BLE001` markers ([Tier 2](#the-11-inert--noqa-ble001-markers)) become
-live `# pylint: disable=broad-exception-caught` suppressions, and
-`duplicate-code` becomes a standing detector for the class 3.7 belongs
-to.
+**Neither of the two side effects this paragraph predicted actually
+happened, and `.pylintrc` says why:** both `broad-exception-caught` and
+`duplicate-code` are in its `disable=` list, category-wide, the same as
+every other row this section's own residue table calls a "decision
+rather than an oversight." So the 11 `# noqa: BLE001` markers
+([Tier 2](#the-11-inert--noqa-ble001-markers)) are still exactly that --
+`pylint` never asks for a `# pylint: disable=broad-exception-caught` at
+any of them, because the category itself never fires. And
+`duplicate-code` found the four instances the baseline measurement used
+to surface [3.7](#37-the-bibtex-author-name-grammar-exists-twice), then
+was turned off rather than kept running, so a fifth duplication
+introduced today would not be caught by it. [Build
+order](CODE-STANDARDS.md#build-order) item 2 still names the actual
+fix -- it needs `ruff`, or an equivalent per-site suppression check,
+neither of which this project has.
 
 ### 5.3 `markdownlint`: a measured baseline
 
@@ -992,7 +1026,7 @@ worse.
 | Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
 | `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
-| `src/citation_gate.py:191` reads the draft with no `encoding=` | Real, and on the list at [3.1](#31-text-io-on-the-locale-codec) -- but *not* a way to break the gate. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
+| `src/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, see [3.1](#31-text-io-on-the-locale-codec)) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
 ## What to take first
 
@@ -1003,13 +1037,18 @@ Ordered by what breaks if it is left, not by size:
    command, needs no review, and closes roughly 15 of the ~20 format
    violations permanently. It needs admin rights, which is the only
    reason it is not already done.
-1. **[3.1] `encoding="utf-8"` at 32 call sites.** The only item in this
+1. ~~**[3.1] `encoding="utf-8"` at 32 call sites.** The only item in this
    document with a *demonstrated* crash on ordinary input -- a CJK or
-   Cyrillic author name, rendered on a cp1252 host. Mechanical, testable,
-   one PR. The reads are worth fixing in the same pass, but they corrupt
-   rather than crash, so take the writes first if it is split.
-2. **[Tier 1] `src/sync.py::run`.** 117 statements, separable at six
-   named seams, and already the register's designated first job.
+   Cyrillic author name, rendered on a cp1252 host.~~ **Done**, the same
+   day this document was written, per [5.2](#52-pylint-a-measured-baseline)'s
+   own "3.1's encoding sites first -- the whole item, not pylint's
+   visible seven." See [3.1](#31-text-io-on-the-locale-codec),
+   verified with a fresh AST scan: 0 text-I/O sites in `src/` now missing
+   `encoding=`.
+2. ~~**[Tier 1] `src/sync.py::run`.** 117 statements, separable at six
+   named seams, and already the register's designated first job.~~
+   **Done**, in #178 (2026-08-14): split along those same seams. See the
+   `src/sync.py::run` subsection above, kept as the historical record.
 3. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
    this list -- one workflow job against 56 lines currently verified by
    nothing.
@@ -1028,11 +1067,14 @@ Ordered by what breaks if it is left, not by size:
    statements where they were. See the `src/dossier.py` subsection
    below, kept as the historical record of what the split was measured
    against.
-6. **[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
-   lines are done — the disable list and the 44-finding residue are
-   already measured, so the remaining PR is small. `markdownlint`
-   ([5.3](#53-markdownlint-a-measured-baseline)) follows it, after
-   someone rules on `MD060`.
+6. ~~**[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
+   lines are done.~~ **Done**, the same day this section was written
+   (`840621c5`, 2026-08-13): `ci.yml`'s `lint` job runs `pylint
+   --rcfile=.pylintrc src scripts .claude/hooks` and `markdownlint-cli2`
+   at a binary zero-message bar, per [5.2](#52-pylint-a-measured-baseline)
+   and [5.3](#53-markdownlint-a-measured-baseline)'s own "Adopted and
+   enforced in 5.8.0" -- this numbered item just never got marked done to
+   match.
 7. **[3.7] Move the BibTeX author-name grammar into one module.** Five
    duplicated lines, no boundary to relax, and the failure it prevents is
    two disagreeing spellings of the same author.
