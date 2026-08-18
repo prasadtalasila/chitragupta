@@ -1,20 +1,24 @@
 """Figures: the ASCII/TikZ pair, and switching between them per format.
 
 A figure has two forms -- a TikZ picture and the same diagram in
-`docs/WRITING-STANDARDS.md` §10's plain ASCII -- and this module swaps
-one for the other so each output format gets the one it can actually
-draw: TikZ through LaTeX, ASCII everywhere else.
+`docs/WRITING-STANDARDS.md` §10's plain ASCII -- and both are always
+files, `figures/<name>.tex` and `figures/<name>.txt`, named by one
+`figure:` marker (spelled per the draft's own language). This module
+injects whichever form an output format can actually draw: TikZ through
+LaTeX, ASCII everywhere else.
 
-**A draft keeps its native form inline, and only the other form becomes
-a file.** A Markdown draft holds the ASCII in its fence and names
-`figures/<name>` in a `figure:` marker; a `.tex` fragment holds the
-`\\input` and names the same base in its own `figure:` comment. So
-there is no `.txt` for a Markdown draft, deliberately: its ASCII is
-already the fence the `md` render emits, and a second copy would be one
-nothing reads and nothing keeps in step. The `.tex` genre is the case
-that needs the file -- `_substitute_ascii_for_tikz` reads it, and
-without it pandoc resolves the `\\input`, drops the `tikzpicture`, and
-the figure disappears from the `.md` preview entirely.
+**One exception, and it is not about figures.** `thesis-chapter-writer`'s
+`.tex` fragment is `\\input`-ed directly into the user's own real thesis,
+never touched by this module again once it leaves `content/drafts/` --
+see `docs/TECHNICAL-DEBT.md` §3.9 and #230. So its TikZ form stays a real
+inline `\\input{figures/<name>.tex}` rather than a marker: a marker-only
+draft would render fine through this pipeline's own `render()` but lose
+the figure the moment the user does the one thing this genre exists for.
+Every other case -- a Markdown draft's TikZ, a Markdown draft's ASCII,
+and a `.tex` fragment's ASCII -- carries only a marker, because the thing
+a reader actually consumes is always something this module has already
+processed (a rendered copy, or the draft opened in an editor with the
+marker standing in for content that lives elsewhere).
 
 Every check here reports and carries on. A figure problem still leaves a
 draft that renders -- with the other form, or without that one figure --
@@ -78,6 +82,12 @@ _FIGURE_MARKER_MD_RE = re.compile(
 )
 _FIGURE_MARKER_TEX_RE = re.compile(r"^[ \t]*%[ \t]*figure:[ \t]*(\S+)[ \t]*$", re.MULTILINE)
 
+# The Markdown marker is matched alone, never with a trailing fence: a
+# Markdown draft carries no inline form of either half, so there is
+# nothing beside the marker to remove when injecting one in. Confirmed
+# against pandoc that a leftover fence would double the figure into the
+# rendered output rather than being harmlessly ignored (#230).
+
 
 def _tikz_path(base: str) -> str:
     """The TikZ half of the figure a marker names."""
@@ -89,21 +99,9 @@ def _ascii_path(base: str) -> str:
     return f"{base}.txt"
 
 
-# A marked ASCII figure in a Markdown draft: the marker, then the fenced
-# block holding the diagram. Both are replaced together by the `\input`,
-# because leaving the fence in place puts the ASCII *and* the TikZ in the
-# same PDF -- verified against pandoc, not assumed.
-_MARKED_FENCE_RE = re.compile(
-    r"^[ \t]*<!--[ \t]*figure:[ \t]*(\S+)[ \t]*-->[ \t]*\n"
-    r"(?:[ \t]*\n)*"
-    r"[ \t]*(`{3,}|~{3,})[^\n]*\n"
-    r"(?:[^\n]*\n)*?"
-    r"[ \t]*\2[ \t]*(?:\n|$)",
-    re.MULTILINE,
-)
-
-# The mirror of the above in a `.tex` fragment: the `\input` and the
-# comment naming its ASCII twin.
+# The mirror of the Markdown marker, in a `.tex` fragment: the `\input`
+# (real, since thesis's TikZ stays inline) and the comment naming its
+# ASCII twin.
 _INPUT_WITH_MARKER_RE = re.compile(
     r"^[ \t]*\\(?:input|include)\{([^}]+)\}[ \t]*\n"
     r"(?:[ \t]*\n)*"
@@ -122,6 +120,17 @@ _TEX_FORMATS = {"tex", "latex", "pdf"}
 def _tikz_alt_refs(text: str) -> list[str]:
     """Every TikZ figure a Markdown draft names in a `figure:` marker."""
     return [_tikz_path(base) for base in _FIGURE_MARKER_MD_RE.findall(text)]
+
+
+def _markdown_ascii_refs(text: str) -> list[str]:
+    """Every ASCII figure a Markdown draft names in a `figure:` marker.
+
+    The same marker that names the TikZ file (`_tikz_alt_refs`) also names
+    the ASCII one -- a Markdown draft has exactly one marker per figure,
+    covering both siblings, unlike a `.tex` fragment where the TikZ ref
+    comes from a real `\\input` instead.
+    """
+    return [_ascii_path(base) for base in _FIGURE_MARKER_MD_RE.findall(text)]
 
 
 def _figure_refs(text: str) -> list[str]:
@@ -189,16 +198,11 @@ def _require_tikz() -> None:
 
 
 def _substitute_tikz_for_ascii(text: str, draft_dir: Path) -> str:
-    """Markdown draft, LaTeX-bound output: marked ASCII fence -> `\\input`.
-
-    The fence goes as well as the marker. Keeping it would put the ASCII
-    diagram *and* the TikZ picture in the same PDF, one under the other
-    -- confirmed by rendering both through pandoc rather than reasoned
-    about.
+    """Markdown draft, LaTeX-bound output: `figure:` marker -> `\\input`.
 
     A marker naming something that isn't a readable file under the
     draft's own directory is left exactly as it was, so the draft still
-    renders with its ASCII figure. `_figure_warnings` is what tells the
+    renders (without that figure). `_figure_warnings` is what tells the
     user, rather than this failing the render over a figure.
     """
     def replace(match: re.Match) -> str:
@@ -207,7 +211,26 @@ def _substitute_tikz_for_ascii(text: str, draft_dir: Path) -> str:
             return match.group(0)
         return f"\\input{{{ref}}}\n"
 
-    return _MARKED_FENCE_RE.sub(replace, text)
+    return _FIGURE_MARKER_MD_RE.sub(replace, text)
+
+
+def _substitute_ascii_for_marker(text: str, draft_dir: Path) -> str:
+    """Markdown draft, non-LaTeX-bound output: `figure:` marker -> a fence.
+
+    Every format but `tex`/`pdf` wants the ASCII form, including the
+    Markdown draft's own `md` render -- a Markdown draft carries no
+    inline diagram of its own any more, so this is not a no-op for its
+    native format the way it once was. A marker naming a missing file is
+    left alone, same reasoning as `_substitute_tikz_for_ascii`.
+    """
+    def replace(match: re.Match) -> str:
+        target = _resolve_sibling(draft_dir, _ascii_path(match.group(1)))
+        if target is None:
+            return match.group(0)
+        body = target.read_text(encoding="utf-8").rstrip("\n")
+        return f"```\n{body}\n```\n"
+
+    return _FIGURE_MARKER_MD_RE.sub(replace, text)
 
 
 def _substitute_ascii_for_tikz(text: str, draft_dir: Path) -> str:
@@ -275,7 +298,7 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
         "will not be substituted"
         for ref in wrong_marker.findall(text)
     ]
-    for ref in _figure_refs(text) + _ascii_alt_refs(text):
+    for ref in _figure_refs(text) + _ascii_alt_refs(text) + _markdown_ascii_refs(text):
         resolved = _resolve_sibling(input_path.parent, ref)
         if resolved is None:
             found.append(f"{ref}: not a readable file under {input_path.parent}")
@@ -297,15 +320,19 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
 def _with_figures_for(text: str, input_path: Path, output_format: str) -> str:
     """`text` with each figure switched to the form `output_format` can draw.
 
-    Two directions, one per draft language, and both are no-ops when the
-    draft's native form is already the right one: a Markdown draft
-    rendered to Markdown keeps its fence, and a `.tex` fragment rendered
-    to `tex`/`pdf` keeps its `\\input`.
+    Three of the four combinations inject a form the draft never carries
+    inline. The one no-op left is a `.tex` fragment rendered to `tex`/
+    `pdf`: its TikZ is real and already inline, because that fragment is
+    the thing `thesis-chapter-writer`'s user `\\input`s into their own
+    thesis outside this pipeline entirely, so it has to stay
+    self-contained (see this module's own docstring, and #230).
     """
     is_markdown = input_path.suffix.lower() in _MARKDOWN_SUFFIXES
     wants_latex = output_format in _TEX_FORMATS
     if is_markdown and wants_latex:
         return _substitute_tikz_for_ascii(text, input_path.parent)
+    if is_markdown and not wants_latex:
+        return _substitute_ascii_for_marker(text, input_path.parent)
     if not is_markdown and not wants_latex:
         return _substitute_ascii_for_tikz(text, input_path.parent)
     return text

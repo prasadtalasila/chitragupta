@@ -8,7 +8,7 @@ import.
 """
 
 from src import render_output
-from tests.conftest import ASCII_FIGURE, MARKED_FENCE, MARKED_INPUT, TIKZ_FIGURE, figure_pair
+from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
 
 
 class TestLocalImageRefs:
@@ -144,7 +144,7 @@ class TestCopyLocalTexIncludesFollowsMarkers:
         # exists to catch, reintroduced through the marker path.
         figure_pair(tmp_path)
         draft = tmp_path / "draft.md"
-        draft.write_text(MARKED_FENCE)
+        draft.write_text(MARKED_MD)
         dest = tmp_path / "rendered"
         dest.mkdir()
 

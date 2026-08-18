@@ -56,16 +56,18 @@ break:
   `docs/WRITING-STANDARDS.md` §10's figures, from most (`tutorial`) to
   least (`survey`) to none at all (`deep-research`).
 - **Touch a figure, touch both forms.** Every figure exists twice -- as
-  a TikZ picture in `figures/<name>.tex`, and as the plain-ASCII
-  diagram. Find the pair from the marker (`<!-- figure: ... -->` in a
-  Markdown draft, `%figure:` in a `.tex` one), which is greppable
-  precisely so this is not a reading exercise. Relabel a box, add an
-  arrow, rename a component in one form and you must make the same
-  change in the other. **Where each form lives depends on the genre**:
-  a Markdown draft keeps its ASCII inline in the fence and its TikZ in
-  `figures/<name>.tex`; a `.tex` fragment keeps its TikZ inline via
-  `\input` and its ASCII in `figures/<name>.txt`. Whichever way round,
-  one edit is never enough.
+  a TikZ picture in `figures/<name>.tex`, and as the plain-ASCII diagram
+  in `figures/<name>.txt`, the same pair of files in every genre. Find
+  them from the marker (`<!-- figure: ... -->` in a Markdown draft,
+  `%figure:` in a `.tex` one), which is greppable precisely so this is
+  not a reading exercise. Relabel a box, add an arrow, rename a
+  component in one form and you must make the same change in the other.
+  **One difference survives by genre, and it is not about where the
+  files are**: `thesis-chapter-writer`'s TikZ additionally stays inline
+  via a real `\input` -- that fragment is what the user `\input`s
+  directly into their own thesis, so editing it means editing the
+  fragment itself, not just `figures/<name>.tex` beside it. Every other
+  form, in every genre, lives only in `figures/`.
   **Nothing checks any of this.** No gate, no style rule and no render
   error can tell that a picture and a diagram have stopped depicting
   the same thing,

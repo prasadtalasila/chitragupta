@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import pytest
 from src import render_output
-from tests.conftest import ASCII_FIGURE, MARKED_FENCE, MARKED_INPUT, TIKZ_FIGURE, figure_pair
+from tests.conftest import ASCII_FIGURE, MARKED_INPUT, MARKED_MD, TIKZ_FIGURE, figure_pair
 
 
 class TestLocalTexIncludeRefs:
@@ -37,7 +37,7 @@ class TestFigureRefs:
         # The marker is what makes the figure file visible to the copy
         # step and the \usepackage{tikz} gate, both of which read the
         # draft on disk rather than the substituted temp copy.
-        assert render_output._figure_refs(MARKED_FENCE) == ["figures/fig1.tex"]
+        assert render_output._figure_refs(MARKED_MD) == ["figures/fig1.tex"]
 
     def test_a_latex_input_is_a_figure_reference(self):
         assert render_output._figure_refs(MARKED_INPUT) == ["figures/fig1.tex"]
@@ -45,9 +45,13 @@ class TestFigureRefs:
     def test_an_ascii_alt_marker_names_the_twin(self):
         assert render_output._ascii_alt_refs(MARKED_INPUT) == ["figures/fig1.txt"]
 
+    def test_a_markdown_marker_names_the_ascii_twin_too(self):
+        assert render_output._markdown_ascii_refs(MARKED_MD) == ["figures/fig1.txt"]
+
     def test_a_draft_with_no_figure_references_nothing(self):
         assert render_output._figure_refs("Just prose.\n") == []
         assert render_output._ascii_alt_refs("Just prose.\n") == []
+        assert render_output._markdown_ascii_refs("Just prose.\n") == []
 
 
 class TestResolveSibling:
@@ -69,25 +73,27 @@ class TestResolveSibling:
 
 
 class TestSubstituteTikzForAscii:
-    def test_a_marked_fence_becomes_an_input(self, tmp_path):
+    def test_a_marker_becomes_an_input(self, tmp_path):
         figure_pair(tmp_path)
-        out = render_output._substitute_tikz_for_ascii(MARKED_FENCE, tmp_path)
+        out = render_output._substitute_tikz_for_ascii(MARKED_MD, tmp_path)
         assert "\\input{figures/fig1.tex}" in out
-        # The fence goes too: leaving it in puts the ASCII diagram and the
-        # TikZ picture in the same PDF, one under the other.
-        assert "+-------+" not in out
-        assert "```" not in out
+        assert "<!-- figure:" not in out
 
     def test_a_marker_naming_a_missing_file_is_left_alone(self, tmp_path):
-        out = render_output._substitute_tikz_for_ascii(MARKED_FENCE, tmp_path)
-        assert out == MARKED_FENCE
+        out = render_output._substitute_tikz_for_ascii(MARKED_MD, tmp_path)
+        assert out == MARKED_MD
 
-    def test_a_tilde_fence_is_matched_too(self, tmp_path):
+
+class TestSubstituteAsciiForMarker:
+    def test_a_marker_with_a_twin_becomes_a_fence(self, tmp_path):
         figure_pair(tmp_path)
-        text = "<!-- figure: figures/fig1 -->\n~~~\n" + ASCII_FIGURE + "~~~\n"
-        assert "\\input{figures/fig1.tex}" in render_output._substitute_tikz_for_ascii(
-            text, tmp_path
-        )
+        out = render_output._substitute_ascii_for_marker(MARKED_MD, tmp_path)
+        assert "```\n" + ASCII_FIGURE + "```" in out
+        assert "<!-- figure:" not in out
+
+    def test_a_twin_that_is_not_there_is_left_alone(self, tmp_path):
+        out = render_output._substitute_ascii_for_marker(MARKED_MD, tmp_path)
+        assert out == MARKED_MD
 
 
 class TestSubstituteAsciiForTikz:
@@ -107,15 +113,16 @@ class TestWithFiguresFor:
     def test_markdown_draft_to_pdf_takes_the_tikz_form(self, tmp_path):
         figure_pair(tmp_path)
         draft = tmp_path / "draft.md"
-        out = render_output._with_figures_for(MARKED_FENCE, draft, "pdf")
+        out = render_output._with_figures_for(MARKED_MD, draft, "pdf")
         assert "\\input{figures/fig1.tex}" in out
 
-    def test_markdown_draft_to_docx_keeps_the_ascii(self, tmp_path):
+    def test_markdown_draft_to_docx_takes_the_ascii_form(self, tmp_path):
         # pandoc cannot turn a tikzpicture into a Word drawing -- it drops
-        # the environment, so substituting there loses the figure entirely.
+        # the environment, so the ASCII fence is what has to go in instead.
         figure_pair(tmp_path)
         draft = tmp_path / "draft.md"
-        assert render_output._with_figures_for(MARKED_FENCE, draft, "docx") == MARKED_FENCE
+        out = render_output._with_figures_for(MARKED_MD, draft, "docx")
+        assert "```\n" + ASCII_FIGURE + "```" in out
 
     def test_latex_draft_to_md_takes_the_ascii_form(self, tmp_path):
         figure_pair(tmp_path)
@@ -150,7 +157,7 @@ class TestFigureWarnings:
     def test_a_clean_markdown_pair_warns_about_nothing(self, tmp_path):
         figure_pair(tmp_path)
         draft = tmp_path / "draft.md"
-        assert render_output._figure_warnings(MARKED_FENCE, draft) == []
+        assert render_output._figure_warnings(MARKED_MD, draft) == []
 
     def test_a_clean_latex_pair_warns_about_nothing(self, tmp_path):
         figure_pair(tmp_path)
@@ -165,14 +172,21 @@ class TestFigureWarnings:
 
     def test_a_missing_figure_file_is_flagged(self, tmp_path):
         draft = tmp_path / "draft.md"
-        warnings = render_output._figure_warnings(MARKED_FENCE, draft)
+        warnings = render_output._figure_warnings(MARKED_MD, draft)
         assert any("not a readable file" in w for w in warnings)
+
+    def test_a_missing_ascii_sibling_is_flagged_for_a_markdown_draft(self, tmp_path):
+        (tmp_path / "figures").mkdir()
+        (tmp_path / "figures" / "fig1.tex").write_text(TIKZ_FIGURE)
+        draft = tmp_path / "draft.md"
+        warnings = render_output._figure_warnings(MARKED_MD, draft)
+        assert any("figures/fig1.txt" in w and "not a readable file" in w for w in warnings)
 
     def test_a_citekey_in_a_figure_file_is_flagged(self, tmp_path):
         figure_pair(tmp_path)
         (tmp_path / "figures" / "fig1.tex").write_text("\\citep{smith_thing_2020}\n")
         draft = tmp_path / "draft.md"
-        warnings = render_output._figure_warnings(MARKED_FENCE, draft)
+        warnings = render_output._figure_warnings(MARKED_MD, draft)
         # The gate does not follow \input, so a citekey here is ungated --
         # forbidden by convention, warned about, deliberately not gated.
         assert any("ungated" in w for w in warnings)

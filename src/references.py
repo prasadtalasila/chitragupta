@@ -460,11 +460,19 @@ def numbered_markdown(text: str, con, heading: str | None = None) -> str:
     return body.rstrip() + "\n\n" + section
 
 
-def write_numbered(path: Path, out_dir: Path) -> Path:
-    """Writes `path`'s numbered copy into `out_dir`, returning its path."""
+def write_numbered(path: Path, out_dir: Path, text: str | None = None) -> Path:
+    """Writes `path`'s numbered copy into `out_dir`, returning its path.
+
+    `text` overrides what's read from `path` -- `render_output.render`'s
+    own `--format md` path passes its figure-substituted copy through here
+    rather than letting this re-read the unsubstituted draft from disk,
+    since that path never reaches the substitution pandoc's callers get.
+    """
+    if text is None:
+        text = path.read_text(encoding="utf-8")
     con = ledger.connect()
     try:
-        rendered = numbered_markdown(path.read_text(encoding="utf-8"), con)
+        rendered = numbered_markdown(text, con)
     finally:
         con.close()
 
