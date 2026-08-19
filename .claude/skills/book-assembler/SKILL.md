@@ -101,11 +101,43 @@ Two rules about that skeleton, both from `AGENTS.md`:
 - **A unit is `\input` as a fragment.** Units drafted by
   `thesis-chapter-writer` are already standalone `.tex` fragments with no
   preamble, which is exactly this shape. A Markdown unit is converted
-  first, with the pipeline's own renderer, rather than by hand:
+  with pandoc directly:
 
   ```bash
-  python -m src.draft render content/drafts/<book>/<unit-id>.md --format tex
+  pandoc <unit-id>.md -t latex --natbib --no-highlight \
+      --top-level-division=chapter -o <unit-id>.tex
   ```
+
+  **Not `python -m src.draft render --format tex`**, which this file used
+  to say and which cannot work: `render` is the publish step for *one
+  draft*, so it emits `--standalone` with its own `\documentclass{article}`
+  and resolves citations through `--citeproc` into a bibliography of its
+  own. `\input` that into a book and LaTeX meets a second
+  `\begin{document}`. Measured on the first real assembly (a 15-chapter
+  book, 2026-08-19): the fragment form is what composes, and `--natbib`
+  is what leaves one bibliography at the end of the book instead of
+  fifteen.
+
+  Two things the conversion has to get right, both learned from that same
+  build:
+
+  - **A citekey containing `--` is truncated by pandoc's citation
+    tokenizer.** `@lim_state---art_2020` reaches LaTeX as `lim_state`,
+    resolves to nothing, and renders as `[?]` -- a citation silently
+    dropped from a 500-page book, which is exactly the failure this
+    project exists to prevent. Before converting, rewrite the affected
+    bracketed groups in a **temp copy** of the Markdown to raw LaTeX --
+    `[@a; @b---c_2024]` becomes `\citep{a,b---c_2024}` -- which pandoc
+    passes through untouched, so the key in the book stays byte-identical
+    to the key in the `.bib`. Never alias the key and never edit the
+    author's file. `src/render_output/_citeproc.py::_alias_for` solves
+    the same problem the other way for the single-draft path; the raw
+    form is preferable here because it invents nothing.
+  - **The outline's ids go in as labels after conversion.** Pandoc emits
+    its own `\label{}` from the heading text; add `\label{<unit-id>}` (and
+    the chapter's `\label{ch-NN}`) immediately after the fragment's own
+    `\chapter{...}\label{...}`, so a label binds to the chapter counter
+    rather than to whatever sectioning command follows it.
 
 ## Process
 
@@ -219,6 +251,30 @@ Two rules about that skeleton, both from `AGENTS.md`:
    renderer for a *single* draft and is the right tool for a unit
    preview; it is not a book build, and it does not run a bibliography
    pass.
+
+   **Read `book.log` for undefined citations before believing the PDF.**
+   A `pdflatex` run that exits 0 can still have dropped a citation --
+   natbib reports it as a warning, not an error, and the book renders
+   with `[?]` where the reference should be:
+
+   ```bash
+   python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='replace'); \
+       print(sorted(set(re.findall(r\"Citation \`([^']+)' on page\", log))))"
+   ```
+
+   Anything but `[]` means a citekey did not reach the bibliography --
+   go back to the conversion step, do not hand over the PDF. Python
+   rather than `grep -c` deliberately: on the host this was first run,
+   `grep -c` over that log printed nothing at all, and a check that
+   silently reports nothing is worse than no check.
+
+   **If the units number their own headings, turn LaTeX's numbering
+   off** -- `\setcounter{secnumdepth}{-2}` in the preamble. A book whose
+   Markdown says `## 1.0 Before you start` otherwise renders "1.1 1.0
+   Before you start", and worse further in ("10.1510.14"). Which
+   numbering a book shows is a composition decision and belongs in
+   `book.tex`; renumbering the author's headings does not, and is
+   `draft-reviser`'s call rather than this skill's.
 
    Without TeX Live, say so plainly and stop there rather than working
    around it -- the `.tex` is the deliverable either way.

@@ -350,9 +350,17 @@ Which stack loads it is **probed, not assumed** -- biblatex/biber where
 both are installed, natbib/bibtex otherwise. That is not a hypothetical
 courtesy: the host this was first exercised on has `pdflatex` and neither
 `biblatex.sty` nor `biber`, and a document that assumed them built
-nothing at all. A unit drafted in Markdown is converted with
-`python -m src.draft render <unit> --format tex` rather than by hand;
-`thesis-chapter-writer`'s output is already the right shape.
+nothing at all.
+
+`thesis-chapter-writer`'s output is already an `\input`-able fragment. A
+unit drafted in Markdown is converted with `pandoc --natbib
+--top-level-division=chapter` -- **not** `python -m src.draft render
+--format tex`, which is the publish step for one draft and emits a
+standalone `article` with a bibliography of its own. The first real
+assembly also found that pandoc truncates a citekey at `--`
+(`@lim_state---art_2020` reaches LaTeX as `lim_state` and renders as
+`[?]`), so those citations are rewritten to raw `\citep{}` in a temp
+copy first, keeping the key byte-identical to the one in the `.bib`.
 
 **Where #138's "blocking" actually lives.** The skill must run
 `registry check` and print every finding, in full, before composing --

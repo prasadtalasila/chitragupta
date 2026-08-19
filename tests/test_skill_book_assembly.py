@@ -69,3 +69,30 @@ def test_the_assembler_writes_no_prose_and_says_where_that_line_is():
     body = _body()
     assert "It writes no prose." in body
     assert "draft-reviser" in body, "a wording change belongs to the reviser, not here"
+
+
+def test_the_assembler_does_not_send_a_unit_through_the_single_draft_renderer():
+    """`render --format tex` emits a standalone `article` with its own
+    `\\begin{document}` and its own citeproc bibliography, so a unit
+    converted that way cannot be `\\input` into a book at all. This file
+    said otherwise until the first real assembly (#252's follow-up), and
+    a reader who followed it got a document LaTeX refused."""
+    body = _body()
+    assert "--top-level-division=chapter" in body, "the fragment conversion is missing"
+    assert "Not `python -m src.draft render --format tex`" in body
+
+
+def test_the_assembler_warns_that_pandoc_truncates_a_citekey_at_two_hyphens():
+    """The one invariant, in the shape this skill can break it: a
+    truncated citekey resolves to nothing and renders as `[?]`, dropping
+    a real citation out of a finished book without any check failing."""
+    body = _body()
+    assert "truncated by pandoc's citation tokenizer" in body
+    assert "byte-identical" in body
+
+
+def test_the_assembler_checks_the_build_log_for_dropped_citations():
+    """pdflatex exits 0 on a book with `[?]` where a reference should be:
+    natbib reports it as a warning. Reading the log is the only thing
+    that catches it."""
+    assert "undefined citations before believing the PDF" in _body()
