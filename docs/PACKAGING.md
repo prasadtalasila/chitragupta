@@ -16,10 +16,10 @@ the naming, not the semantics.
 > **Status of this document.** The distribution is real as of 6.0.0: the
 > import package is `chitragupta`, `pyproject.toml` declares a
 > `[build-system]`, and `poetry build` produces
-> `chitragupta_cli-<version>-py3-none-any.whl`. **The `chitragupta`
-> command itself does not exist yet** -- #262 adds the console script, so
-> today every row below is invoked as its `python -m chitragupta.<layer>`
-> equivalent. #258's remaining children land the rest, and
+> `chitragupta_cli-<version>-py3-none-any.whl`, which installs both the
+> `chitragupta` and `cg` commands. The four layer rows below are live;
+> `init`, `doctor` and `install` are not yet, and their issues are named
+> in the table. #258's remaining children land the rest, and
 > [CLI.md](CLI.md) is rewritten as each one does.
 
 ## Table of contents

@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import corpus, draft
+from chitragupta import __main__ as package_main
 from chitragupta.enrich import __main__ as enrich_main
 from chitragupta.review import __main__ as review_main
 
@@ -32,6 +33,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Every entry point, and the module whose docstring it must not print.
 ENTRY_POINTS = {
+    # The package's own front door, held to the same bar as the layers it
+    # dispatches to: it is the first --help a new user sees.
+    "chitragupta": package_main,
     "chitragupta.corpus": corpus,
     "chitragupta.draft": draft,
     "chitragupta.review": review_main,

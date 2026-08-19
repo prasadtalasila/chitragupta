@@ -69,6 +69,8 @@ import argparse
 import importlib
 import sys
 
+from chitragupta.progname import prog_for
+
 VERBS = {
     "sync": ("chitragupta.sync", "bib file -> ledger -> PDF text: the deterministic corpus run"),
     "ledger": ("chitragupta.ledger", "read-only view of what that run recorded -- takes no lock"),
@@ -86,7 +88,7 @@ DESCRIPTION = "The corpus layer: bring the ledger up to date, or read what it re
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.corpus",
+        prog=prog_for("corpus"),
         description=DESCRIPTION,
     )
     parser.add_argument(

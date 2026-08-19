@@ -40,6 +40,7 @@ import sys
 
 from chitragupta import review
 from chitragupta.review import citation_coverage, citation_provenance, verbatim_check
+from chitragupta.progname import prog_for
 
 # Keyed by review.AIDS, so a fourth aid cannot appear here without also
 # appearing in the dict that owns the report suffixes.
@@ -69,7 +70,7 @@ DESCRIPTION = "The review layer: three read-only aids over a finished draft. No 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.review",
+        prog=prog_for("review"),
         description=DESCRIPTION,
     )
     sub = parser.add_subparsers(dest="aid")

@@ -132,7 +132,7 @@ class TestTheRemovedSyncCommandRefuses:
     def test_it_exits_nonzero_and_names_the_replacement(self):
         result = _run("-m", "chitragupta.sync")
         assert result.returncode != 0
-        assert "python -m chitragupta.corpus sync" in result.stderr
+        assert "chitragupta corpus sync" in result.stderr
 
     def test_it_avoids_every_exit_code_sync_publishes(self):
         """docs/CLI.md publishes `0`, `1` and `2` as `sync`'s API, and
