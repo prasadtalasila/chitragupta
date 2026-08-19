@@ -3105,3 +3105,152 @@ python bench/bench_collection_scope.py \
 
 `--arm-f-session`/`--arm-c-session` are the isolated-arm form: one
 transcript per agent, no windowing, no quarantine, no ordering caveat.
+
+## 2026-08-19b: three conditions — scope narrow, search wide, or narrow then widen
+
+The two runs above ask a binary question: search the whole library, or
+search one curated shelf. Real practice has a third option that neither
+measured — **scope narrow to draft, then widen deliberately once** — and
+it is the option the tooling actually recommends, since `corpus-reviser`
+exists precisely to re-search everything for a draft that already exists.
+
+So the collection-scoped chapter was copied to a third file and put
+through a whole-corpus revision pass with `corpus-reviser`, in its own
+isolated agent, with the two earlier chapters declared off-limits. They
+were verified byte-identical afterwards (11,529 and 13,558 words, 47 and
+16 citekeys — matching the recorded measurements exactly).
+
+Measurements: `bench/results/2026-08-19-collection-scope-lifecycle-isolated/measurements.json`.
+
+### The three conditions
+
+| | drafted against the whole corpus | drafted against the `Lifecycle` shelf | shelf-drafted, then revised against the whole corpus |
+|---|---|---|---|
+| Words | 11,529 | 13,558 | 14,114 |
+| `search` calls | 14 | 9 | 23 (9 inherited + 14 in the pass) |
+| `evidence` calls | 0 | 0 | 10 |
+| Retrieval payload | 103,603 | 66,372 | 185,600 |
+| Distinct citekeys surfaced | 154 | 18 | 152 |
+| Cited | 47 | 16 | 24 |
+| **Selection / rejection** | **0.31 / 0.69** | **0.89 / 0.11** | **0.16 / 0.84** |
+| Turns | 101 | 102 | 65 |
+| Output tokens | 41,573 | 55,985 | **9,689** |
+| Verbatim findings | 21 (all embedding) | 19 (all embedding) | 19 (all embedding) |
+| Tiers not run | none | none | none |
+
+### What the revision pass actually did
+
+It changed **9 citations out of 16**, and the direction is the
+interesting part.
+
+**Added 9.** Six of them — `anwer_developing_2025`,
+`thelen_comprehensive_2022-1`, `niederer_scaling_2021`,
+`zampetti_continuous_2023`, `alcaraz_digital_2022`,
+`beaumont_towards_2025` — are papers the **whole-corpus draft also found
+independently**. The widening pass rediscovered, on its own queries,
+two-thirds of what the shelf had been hiding. Three more
+(`alskaif_evolution_2025`, `perno_implementation_2022`,
+`semeraro_digital_2021`) were found by *neither* of the first two
+chapters.
+
+**Dropped 1**, and it is the right one. `noauthor_digital_2023` is an
+author-less `@misc` whose bibliography entry carries the corpus owner's
+own note: *"potentially low quality non-peer reviewed. Find better
+references."* Both earlier chapters leaned on it for the same
+188-paper phase-distribution claim. The revision cut the claim rather
+than re-homing it, and replaced the underlying point with two
+peer-reviewed sources. Nothing in the pipeline flagged that paper —
+`annote` is not read by the gate — so this was the reviser's judgement,
+not a check firing.
+
+It also corrected two **scope justifications** rather than the scope
+itself: the draft had excluded security and standards on the grounds
+that "the sources barely touch" them, which the wider corpus shows to be
+false. The exclusions stayed — that would have been a scope change the
+task forbade — but they now read as editorial choice rather than as a
+claim about the literature. That distinction is the kind of thing only a
+whole-corpus pass can surface, because the scoped draft had no way to
+know it was wrong.
+
+### Source convergence without prose convergence
+
+Pairwise draft overlap, shared 8-word runs:
+
+| Pair | Jaccard | Longest shared run |
+|---|---|---|
+| whole-corpus vs shelf-scoped | 0.0006 | 17 words |
+| whole-corpus vs shelf-then-revised | 0.0006 | 17 words |
+| shelf-scoped vs shelf-then-revised | 0.934 | 8,615 words |
+
+The third row is high **by construction** — that draft is a copy of the
+second that was then edited, so the figure measures how much the revision
+changed (about 7 % of the text), not independence.
+
+The first two rows are the finding. **The revision moved the draft's
+sources toward the whole-corpus chapter without moving its prose at all**
+— identical 0.0006 before and after. Six shared citations were added and
+the shared wording did not budge. Retrieval scope determines what a
+chapter is grounded in; it does not determine what a chapter says. Two
+agents given the same sources still write different documents, and the
+benchmark can only see the first half of that.
+
+### Cost
+
+The revision pass cost **9,689 output tokens over 65 turns** — 17 % of
+what drafting the scoped chapter cost, and 23 % of the whole-corpus
+chapter — to recover six of the shelf's nine misses and drop the weakest
+source in the draft. As a repair, that is cheap.
+
+As a *strategy* it is not, and the total says so plainly: scoped drafting
+plus revision is 65,674 output tokens against 41,573 for drafting against
+the whole corpus once. **Narrow-then-widen costs about 58 % more output
+than simply searching wide from the start.** It buys a different
+artefact — three sources neither other chapter found, and a
+deliberately-recorded scope justification — not a cheaper one.
+
+The retrieval payload tells the same story from the other side: 185,600
+characters across the scoped draft and its revision, against 103,603 for
+the whole-corpus draft. Scoping saves payload only until you widen; then
+you pay for the shelf and the library both.
+
+### The selection ratio inverts, and it is not a regression
+
+0.89 → 0.16 looks alarming and is an artefact of the denominator.
+
+The scoped draft cited 16 of the 18 papers it saw because a 19-item shelf
+with `--k 15` shows you nearly everything it has. After widening, the
+same draft has seen 152 distinct papers and cites 24 of them. Nothing got
+worse: the numerator went **up** (16 → 24) while the denominator went up
+nine-fold.
+
+This is the clearest evidence in these three runs that **selection ratio
+measures pool size, not judgement**, and should never be read as a
+quality score on its own. It is only interpretable against a fixed pool.
+
+### Method note: the log cannot tell you what it was scoped to
+
+The revised draft's `retrieval.md` holds 23 `search` rows: 9 inherited
+from the scoped draft and 14 from the widening pass. **Nothing in the log
+distinguishes them** — it records the query, the `--k` and the payload
+size, but not the collection (#254). Replaying it correctly needed the
+split supplied from outside, as `--arm-r-inherited-scoped-rows 9`, on the
+strength of knowing how the file was made.
+
+That is provenance standing in for a missing column, and it only worked
+here because this run created the copy itself. For any draft whose
+history someone else made, the scope of its past retrieval is
+unrecoverable. #254 is the fix.
+
+### What this section does not measure
+
+- **Whether the revised chapter is better.** It is better *sourced* — nine
+  citation changes, all defensible on inspection. Nobody has read the
+  three chapters for teaching quality, and the revised one is now 14,114
+  words against a 10,000-word target, which is the worst overshoot of the
+  three.
+- **A second revision pass.** Diminishing returns are untested.
+- **Revision of the whole-corpus draft.** The fourth cell of the design —
+  wide-drafted then re-revised — was not run, so "the revision found six
+  of the misses" is not separable from "a second pass finds more
+  regardless of the first pass's scope".
+- **Run-to-run variance.** One agent per condition, one run each.

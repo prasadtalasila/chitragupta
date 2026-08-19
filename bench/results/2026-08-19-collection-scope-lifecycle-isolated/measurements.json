@@ -130,7 +130,8 @@
     "checked": true,
     "checkpoints": [
       "before-arm-F",
-      "after-both-arms"
+      "after-both-arms",
+      "after-revision-pass"
     ],
     "index_unchanged": true,
     "ledger_unchanged": true,
@@ -172,6 +173,130 @@
       "arm_c_ngrams": 13813,
       "jaccard": 0.0006,
       "longest_shared_run_words": 17
+    }
+  },
+  "revised_arm": {
+    "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations-corpus-revised.md",
+    "words": 14114,
+    "search_calls": 23,
+    "evidence_calls": 10,
+    "inherited_scoped_rows": 9,
+    "chars_total": 185600,
+    "chars_search_only": 170227,
+    "surfaced_distinct_citekeys_all_history": 152,
+    "surfaced_distinct_citekeys_revision_pass_only": 142,
+    "cited": 24,
+    "selection_ratio_vs_all_history": 0.1579,
+    "rejection_ratio_vs_all_history": 0.8421,
+    "verbatim": {
+      "ran": true,
+      "findings": 19,
+      "by_tier": {
+        "embedding": 19
+      },
+      "longest_run_words": 62,
+      "tiers_not_run": []
+    },
+    "note": "Its log mixes scoped and unscoped calls and does not say which is which (#254); the split is provenance, supplied via --arm-r-inherited-scoped-rows, not inferred from the log."
+  },
+  "three_way_papers": {
+    "cited_in_all_three": [
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024"
+    ],
+    "kept_from_scoped": [
+      "dittler_agent-based_2022",
+      "frasheri_addressing_2023",
+      "guo_life_2024",
+      "kamburjan_declarative_2024",
+      "karnoub_how_2025",
+      "liu_novel_2019",
+      "liu_review_2021",
+      "lu_evoclinical_2023",
+      "lugaresi_digital_2025",
+      "michael_model-driven_2025",
+      "picone_harmonizing_2025",
+      "shangguan_triple_2022",
+      "tekinerdogan_systems_2020",
+      "xu_pretrain_2024",
+      "xu_traversing_2023"
+    ],
+    "dropped_by_revision": [
+      "noauthor_digital_2023"
+    ],
+    "added_by_revision": [
+      "alcaraz_digital_2022",
+      "alskaif_evolution_2025",
+      "anwer_developing_2025",
+      "beaumont_towards_2025",
+      "niederer_scaling_2021",
+      "perno_implementation_2022",
+      "semeraro_digital_2021",
+      "thelen_comprehensive_2022-1",
+      "zampetti_continuous_2023"
+    ],
+    "added_by_revision_that_whole_corpus_also_found": [
+      "alcaraz_digital_2022",
+      "anwer_developing_2025",
+      "beaumont_towards_2025",
+      "niederer_scaling_2021",
+      "thelen_comprehensive_2022-1",
+      "zampetti_continuous_2023"
+    ],
+    "added_by_revision_that_whole_corpus_missed": [
+      "alskaif_evolution_2025",
+      "perno_implementation_2022",
+      "semeraro_digital_2021"
+    ],
+    "revised_vs_whole_corpus_overlap": [
+      "alcaraz_digital_2022",
+      "anwer_developing_2025",
+      "beaumont_towards_2025",
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024",
+      "niederer_scaling_2021",
+      "thelen_comprehensive_2022-1",
+      "zampetti_continuous_2023"
+    ]
+  },
+  "draft_overlap_pairwise": {
+    "whole_corpus_vs_scoped": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 16,
+      "arm_f_ngrams": 11640,
+      "arm_c_ngrams": 13813,
+      "jaccard": 0.0006,
+      "longest_shared_run_words": 17
+    },
+    "whole_corpus_vs_revised": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 16,
+      "arm_f_ngrams": 11640,
+      "arm_c_ngrams": 14392,
+      "jaccard": 0.0006,
+      "longest_shared_run_words": 17
+    },
+    "scoped_vs_revised": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 13623,
+      "arm_f_ngrams": 13813,
+      "arm_c_ngrams": 14392,
+      "jaccard": 0.9342,
+      "longest_shared_run_words": 8615
+    },
+    "note": "scoped_vs_revised is high BY CONSTRUCTION -- the revised draft is a copy of the scoped one that was then edited. It measures how much the revision changed, not independence."
+  },
+  "tokens_extra": {
+    "arm R -- whole agent": {
+      "turns": 65,
+      "input_tokens": 9460217,
+      "output_tokens": 9689,
+      "models": {
+        "claude-opus-5": 149
+      }
     }
   },
   "tokens": {

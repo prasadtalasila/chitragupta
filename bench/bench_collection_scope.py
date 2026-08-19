@@ -105,6 +105,32 @@ def _replay_queries(dossier, collection):
     return out
 
 
+def _replay_queries_split(dossier, collection, n_scoped):
+    """Replay a dossier whose log mixes scoped and unscoped calls.
+
+    A draft that was written under a collection and later revised against
+    the whole corpus has both kinds of call in one `retrieval.md`, and
+    **the log cannot tell them apart** -- it records the query, the `--k`
+    and the payload but not the collection (#254). Only provenance can:
+    here, the first `n_scoped` search rows are the ones inherited when
+    the draft was copied, and everything after them belongs to the
+    widening pass.
+
+    Returns (all_surfaced, pass_only_surfaced) so the arm can be read
+    either as "everything this draft has ever seen" or as "what the
+    revision pass added".
+    """
+    rows = [r for r in _retrieval_rows(dossier) if r[1] == "search"]
+    everything, pass_only = {}, {}
+    for i, (_date, _mode, query, k, _results, _chars) in enumerate(rows):
+        scope = collection if i < n_scoped else None
+        found = sorted(r.citekey for r in retrieval.search(query, k=int(k), collection=scope))
+        everything[f"{i}:{query}"] = found
+        if i >= n_scoped:
+            pass_only[f"{i}:{query}"] = found
+    return everything, pass_only
+
+
 def _collection_size(collection):
     """How many ledger items the filter can reach, through
     `bib_collections.matches` rather than a tally of exact path strings:
@@ -364,6 +390,55 @@ def run(args):
         },
     }
 
+    if args.arm_r:
+        arm_r = {"draft": drafts / f"{args.arm_r}.md",
+                 "dossier": dossiers / args.arm_r,
+                 "verbatim": review / f"{args.arm_r}.verbatim.json"}
+        cited_r = _cited_citekeys(arm_r["draft"])
+        replay_all, replay_pass = _replay_queries_split(
+            arm_r["dossier"], args.collection, args.arm_r_inherited_scoped_rows)
+        surfaced_r = set().union(*replay_all.values()) if replay_all else set()
+        surfaced_pass = set().union(*replay_pass.values()) if replay_pass else set()
+        rows_r = _retrieval_rows(arm_r["dossier"])
+        result["revised_arm"] = {
+            "draft": str(arm_r["draft"].relative_to(config.CONTENT_DIR)),
+            "words": _word_count(arm_r["draft"]),
+            "search_calls": sum(1 for r in rows_r if r[1] == "search"),
+            "evidence_calls": sum(1 for r in rows_r if r[1] == "evidence"),
+            "inherited_scoped_rows": args.arm_r_inherited_scoped_rows,
+            "chars_total": sum(int(r[5]) for r in rows_r),
+            "chars_search_only": sum(int(r[5]) for r in rows_r if r[1] == "search"),
+            "surfaced_distinct_citekeys_all_history": len(surfaced_r),
+            "surfaced_distinct_citekeys_revision_pass_only": len(surfaced_pass),
+            "cited": len(cited_r),
+            "selection_ratio_vs_all_history": round(len(cited_r) / len(surfaced_r), 4) if surfaced_r else None,
+            "rejection_ratio_vs_all_history": round(1 - len(cited_r) / len(surfaced_r), 4) if surfaced_r else None,
+            "verbatim": _verbatim_summary(arm_r["verbatim"]),
+            "note": "Its log mixes scoped and unscoped calls and does not say which is "
+                    "which (#254); the split is provenance, supplied via "
+                    "--arm-r-inherited-scoped-rows, not inferred from the log.",
+        }
+        result["three_way_papers"] = {
+            "cited_in_all_three": sorted(cited_f & cited_c & cited_r),
+            "kept_from_scoped": sorted(cited_c & cited_r),
+            "dropped_by_revision": sorted(cited_c - cited_r),
+            "added_by_revision": sorted(cited_r - cited_c),
+            "added_by_revision_that_whole_corpus_also_found": sorted((cited_r - cited_c) & cited_f),
+            "added_by_revision_that_whole_corpus_missed": sorted((cited_r - cited_c) - cited_f),
+            "revised_vs_whole_corpus_overlap": sorted(cited_r & cited_f),
+        }
+        result["draft_overlap_pairwise"] = {
+            "whole_corpus_vs_scoped": _shared_runs(arm_f["draft"], arm_c["draft"]),
+            "whole_corpus_vs_revised": _shared_runs(arm_f["draft"], arm_r["draft"]),
+            "scoped_vs_revised": _shared_runs(arm_c["draft"], arm_r["draft"]),
+            "note": "scoped_vs_revised is high BY CONSTRUCTION -- the revised draft is a "
+                    "copy of the scoped one that was then edited. It measures how much "
+                    "the revision changed, not independence.",
+        }
+        if args.arm_r_session:
+            result.setdefault("tokens_extra", {})["arm R -- whole agent"] = _pool_usage(
+                args.arm_r_session, "", "~")
+
     if args.arm_f_session and args.arm_c_session:
         # Isolated arms: one subagent, one transcript, one context pool
         # each. No timestamp windowing, because there is nothing to
@@ -458,6 +533,16 @@ def _build_parser():
     parser.add_argument("--hashes", type=Path, default=None,
                         help="hashes.jsonl from the three checkpoints. Supplies the arm "
                              "boundaries and checks the replay's precondition.")
+    parser.add_argument("--arm-r", default=None,
+                        help="Optional third draft stem: the collection-scoped draft "
+                             "after a whole-corpus revision pass")
+    parser.add_argument("--arm-r-session", type=Path, default=None,
+                        help="Third arm's subagent transcript JSONL")
+    parser.add_argument("--arm-r-inherited-scoped-rows", type=int, default=0,
+                        help="How many leading search rows in the third arm's log were "
+                             "inherited from the scoped draft. Needed because the log "
+                             "does not record scope (#254); this is provenance, not "
+                             "inference.")
     parser.add_argument("--arm-f-session", type=Path, default=None,
                         help="Arm F's own subagent transcript JSONL. Use with "
                              "--arm-c-session when each arm ran in its own agent; "
