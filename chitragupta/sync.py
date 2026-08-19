@@ -781,7 +781,7 @@ def refuse_direct_invocation() -> int:
     """
     print(
         "python -m chitragupta.sync was removed in 5.2.0 and does nothing. "
-        "Use: python -m chitragupta.corpus sync",
+        "Use: chitragupta corpus sync",
         file=sys.stderr,
     )
     return EXIT_COMMAND_REMOVED

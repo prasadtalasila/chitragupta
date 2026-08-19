@@ -77,7 +77,8 @@ import argparse
 import sys
 
 from chitragupta import (citation_gate, dossier, references, registry, render_output, retrieval,
-                 spec, style_check, unit)
+                         spec, style_check, unit)
+from chitragupta.progname import prog_for
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
@@ -103,7 +104,7 @@ DESCRIPTION = "The drafting layer: work on one draft -- gate it, cite it, render
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft",
+        prog=prog_for("draft"),
         description=DESCRIPTION,
     )
     parser.add_argument(

@@ -19,11 +19,20 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.1.0"
+version = "6.2.0"
 packages = [{ include = "chitragupta" }]
+
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
+
+# Two executables, one entry point, one distribution. `cg` is *not* a
+# second PyPI project -- a console script name is not a PyPI name, and
+# docs/NAME.md floats `cg` as the alias for a command that is accurate
+# but long. docs/PACKAGING.md has the three-namespaces table.
+[tool.poetry.scripts]
+chitragupta = "chitragupta.__main__:main"
+cg = "chitragupta.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.12"

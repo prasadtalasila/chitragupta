@@ -565,15 +565,20 @@ packages, probed at runtime and reported as `missing-binary` when absent.
 That axis -- which binaries a command shells out to -- is independent of
 which directory it lives in, and always was.
 
-**One entry point per layer, one level deep.** Every layer is reached
-through a single `python -m src.<layer>`: `chitragupta.corpus <verb>` for the
-corpus layer, `chitragupta.draft <verb>` for drafting, `chitragupta.enrich
---stages …`
-for enrichment, `chitragupta.review <aid>` for review. A layer's package may
-nest as
-deep as its code wants; its *command surface* does not. The submodules
-inside `chitragupta/enrich/` and `chitragupta/review/` carry no `__main__`
-block, so
+**One entry point per layer, one level deep.** The command surface is
+`chitragupta <layer> <verb>` -- `chitragupta corpus sync`, `chitragupta
+draft gate`, `chitragupta review verbatim`, `chitragupta enrich
+--stages …` -- with the equivalent module form `python -m
+chitragupta.<layer> <verb>` supported alongside it and used by the hooks
+and the genre skills (docs/PACKAGING.md says why both survive). A layer's
+package may nest as deep as its code wants; its *command surface* does
+not. What the rule forbids is reaching *into* a layer's package from the
+command line. A layer's submodules carry no `__main__` block, so
+`python -m chitragupta.a.b` exits 0 with empty output, which for the gate
+is a silent pass on a draft nothing checked. `chitragupta review verbatim
+scan` is not that -- it is one layer, one aid, and one subcommand owned
+by that aid's own parser. The submodules inside `chitragupta/enrich/` and
+`chitragupta/review/` carry no `__main__` block, so
 `python -m chitragupta.enrich.docling_parse` or
 `python -m chitragupta.review.verbatim_check` imports a module and exits 0 having
 done nothing. That is a trap, but a silent and harmless one, and it is

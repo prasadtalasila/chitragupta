@@ -578,7 +578,7 @@ class TestTheRemovedDirectInvocation:
         assert sync.refuse_direct_invocation() == sync.EXIT_COMMAND_REMOVED
         captured = capsys.readouterr()
         assert captured.out == ""
-        assert "python -m chitragupta.corpus sync" in captured.err
+        assert "chitragupta corpus sync" in captured.err
 
     def test_its_exit_code_is_none_of_the_ones_sync_publishes(self):
         """docs/CLI.md's exit-code table is an API an unattended caller

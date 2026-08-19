@@ -53,6 +53,7 @@ from chitragupta.enrich import corpus, docling_parse, embed_index, topic_model
 # drafting layer -- see the module docstring on why nothing else from
 # chitragupta/ outside the corpus path is imported here.
 from chitragupta import citation_gate, config, logging_setup, runlock
+from chitragupta.progname import prog_for
 
 # A fixed name, not __name__: this file is the layer's entry point, so
 # Python sets __name__ to "__main__", which sits outside the logger tree
@@ -145,7 +146,7 @@ DESCRIPTION = ("The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. 
 def parse_args():
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
-    parser = argparse.ArgumentParser(prog="python -m chitragupta.enrich", description=DESCRIPTION)
+    parser = argparse.ArgumentParser(prog=prog_for("enrich"), description=DESCRIPTION)
     parser.add_argument("--target", choices=["host", "docker"], default="host",
                          help="Informational only -- stages self-probe regardless of this flag.")
     # default=None, not the joined list, so main() can tell "the user
