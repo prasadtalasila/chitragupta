@@ -368,6 +368,90 @@ ensure_gpu_torch() {
     (cd "$REPO_ROOT" && poetry install --with enrich)
 }
 
+# The mirror of ensure_gpu_torch, and deliberately not a variant of it.
+# That one asks "does this host have a GPU the default wheel cannot
+# drive?" and *upgrades* to a CUDA-matched index. This one asserts the
+# opposite -- there is no GPU and there never will be, which is true of a
+# CI runner and of a CPU-only container -- and swaps down to PyTorch's
+# cpu-only index, then removes the CUDA runtime the default wheel dragged
+# in behind it.
+#
+# Worth roughly 4GB, measured rather than estimated: docker/Dockerfile
+# records 6.2GB for the GPU-capable venv against 2.0GB for the cpu-only
+# one, and a dev host's .venv-full breaks down as nvidia/ 2.7GB + torch
+# 1.6GB + triton 539MB + cusparselt 227MB out of 6.4GB total. A hosted CI
+# runner has no GPU, so all of that is downloaded, installed and thrown
+# away on every run.
+#
+# The version is read back with `pip show` rather than pinned here, so
+# this never drifts from a `poetry lock` re-resolution the way a second
+# pinned copy would. docker/Dockerfile did it that way inline before this
+# function existed; the logic lives here now so Docker and CI call one
+# implementation, per DEVELOPER-AGENTS.md's rule that dependency facts
+# have a single home.
+ensure_cpu_torch() {
+    local pip="$1"
+    local python_bin="$2"
+    local torch_ver tv_ver orphans
+
+    # `|| true` is load-bearing under this script's `set -euo pipefail`:
+    # `pip show` exits 1 for a package that is not installed, pipefail
+    # propagates that out of the substitution, and `set -e` then kills the
+    # script *before* the refusal below can be printed. Found by running
+    # it -- the stage exited 1 with no message at all, which is precisely
+    # the silent failure the message exists to prevent.
+    torch_ver="$("$pip" show torch 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    if [[ -z "$torch_ver" ]]; then
+        echo "torch is not installed, so there is no variant to swap." >&2
+        echo "Run the python-deps stage first." >&2
+        return 1
+    fi
+    tv_ver="$("$pip" show torchvision 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+
+    echo "Swapping torch ${torch_ver} to the cpu-only wheel index ..."
+    if [[ -n "$tv_ver" ]]; then
+        "$pip" install --no-cache-dir --force-reinstall \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==${torch_ver}" "torchvision==${tv_ver}"
+    else
+        "$pip" install --no-cache-dir --force-reinstall \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==${torch_ver}"
+    fi
+
+    # Asked of pip rather than hardcoded. docker/Dockerfile carried a
+    # literal list of fifteen nvidia-* names, and a literal list silently
+    # stops removing whatever a later torch release adds -- the failure
+    # mode being an image or cache that is quietly bigger than it should
+    # be, which nothing reports.
+    orphans="$("$pip" list --format=freeze \
+               | sed -n 's/^\(nvidia-[a-z0-9-]*\|triton\)==.*/\1/p' || true)"
+    if [[ -n "$orphans" ]]; then
+        echo "Removing the CUDA runtime the default wheel brought in ..."
+        # Deliberate word splitting: one package name per line is
+        # exactly the argument list pip wants here.
+        # shellcheck disable=SC2086
+        "$pip" uninstall -y $orphans
+    fi
+
+    # Reported, never asserted. A cpu-only torch that still claims CUDA is
+    # worth saying out loud, but this script installs things; deciding
+    # that a toolchain is wrong is the caller's business, and
+    # `chitragupta doctor` is where that judgement is going to live.
+    "$python_bin" -c 'import torch; print("torch.cuda.is_available():", torch.cuda.is_available())' \
+        2>/dev/null || echo "Warning: torch could not be imported after the swap." >&2
+}
+
+
+install_cpu_torch() {
+    local venv_dir bin_dir
+    resolve_venv_dir
+    venv_dir="${VENV_DIR:-$REPO_ROOT/.venv-full}"
+    bin_dir="$(venv_bin_dir "$venv_dir")"
+    ensure_cpu_torch "$bin_dir/pip" "$bin_dir/python"
+}
+
+
 install_dev_deps() {
     check_poetry
     local venv_dir="${VENV_DIR:-$REPO_ROOT/.venv-full}"
@@ -403,6 +487,11 @@ for stage in "${STAGES[@]}"; do
         os-deps) install_os_deps ;;
         python-deps) install_python_deps ;;
         dev-deps) install_dev_deps ;;
+        # Opt-in, and never part of `all`: it is only correct where a GPU
+        # is known to be absent for good (a hosted CI runner, a cpu-only
+        # container image), which this script cannot infer -- a laptop
+        # with no GPU today may be a workstation with one tomorrow.
+        cpu-torch) install_cpu_torch ;;
         # Vale alone, without the TeX Live and poppler that os-deps also
         # brings. os-deps installs it too; this target exists because CI's
         # lint job wants the prose linter and nothing else, and because
@@ -413,7 +502,7 @@ for stage in "${STAGES[@]}"; do
         all) install_os_deps; install_python_deps ;;
         *)
             echo "Unknown stage: $stage" >&2
-            echo "Expected one of: os-deps, python-deps, dev-deps, vale, all" >&2
+            echo "Expected one of: os-deps, python-deps, dev-deps, cpu-torch, vale, all" >&2
             exit 1
             ;;
     esac

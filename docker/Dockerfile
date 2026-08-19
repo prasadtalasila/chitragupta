@@ -65,31 +65,25 @@ COPY pyproject.toml poetry.lock poetry.toml ./
 # TORCH_VARIANT=gpu (default) keeps that wheel as resolved -- for a real
 # `docker run --gpus` deployment, since the bundled CUDA runtime is
 # enough on its own (no host CUDA toolkit needed, just a driver).
-# TORCH_VARIANT=cpu reinstalls torch/torchvision from PyTorch's own
-# cpu-only wheel index, at the *same* version poetry.lock resolved (read
-# back via `pip show` rather than hand-pinned here, so this never drifts
-# from a `poetry lock` re-resolution the way a second pinned copy would),
-# then drops the now-orphaned nvidia-*/triton packages pip's
-# --force-reinstall doesn't remove on its own. Both the swap and the
-# uninstall happen inside this one RUN so the CUDA wheels never appear in
-# a committed layer to begin with -- doing it as a later, separate RUN
-# would only mark them deleted, not shrink the image (this was checked by
-# hand: a later-layer uninstall left the image *larger* than doing
-# nothing, because the deleted files' layer is still stored).
+# TORCH_VARIANT=cpu delegates to the install script's `cpu-torch` stage,
+# which reinstalls torch/torchvision from PyTorch's own cpu-only wheel
+# index at the same version poetry.lock resolved, then drops the
+# now-orphaned nvidia-*/triton packages pip's --force-reinstall doesn't
+# remove on its own. That logic used to be written out here; it moved to
+# scripts/install_full_pipeline.sh so this image and CI call one
+# implementation rather than two copies that drift
+# (DEVELOPER-AGENTS.md: dependency facts have a single home).
+#
+# It stays chained inside this one RUN, and that is not cosmetic: the
+# swap and the uninstall must land in the same layer or the CUDA wheels
+# appear in a committed layer first. A later, separate RUN would only
+# mark them deleted, not shrink the image -- checked by hand, and a
+# later-layer uninstall left the image *larger* than doing nothing,
+# because the deleted files' layer is still stored.
 ARG TORCH_VARIANT=gpu
 RUN SKIP_VENV=1 scripts/install_full_pipeline.sh python-deps && \
     if [ "$TORCH_VARIANT" = "cpu" ]; then \
-        torch_ver="$(/opt/venv/bin/pip show torch | sed -n 's/^Version: //p' | cut -d+ -f1)" && \
-        tv_ver="$(/opt/venv/bin/pip show torchvision | sed -n 's/^Version: //p' | cut -d+ -f1)" && \
-        /opt/venv/bin/pip install --no-cache-dir --force-reinstall \
-            --index-url https://download.pytorch.org/whl/cpu \
-            "torch==${torch_ver}" "torchvision==${tv_ver}" && \
-        /opt/venv/bin/pip uninstall -y \
-            nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 \
-            nvidia-cuda-runtime-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 \
-            nvidia-cufile-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 \
-            nvidia-cusparse-cu12 nvidia-cusparselt-cu12 nvidia-nccl-cu12 \
-            nvidia-nvjitlink-cu12 nvidia-nvtx-cu12 triton; \
+        SKIP_VENV=1 scripts/install_full_pipeline.sh cpu-torch; \
     fi && \
     rm -rf /root/.cache/pypoetry /root/.cache/pip
 
