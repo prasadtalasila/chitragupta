@@ -86,7 +86,7 @@ def version() -> str:
     reason the review layer would ever read `pyproject.toml`.
     """
     try:
-        with open(config.REPO_ROOT / "pyproject.toml", "rb") as handle:
+        with open(config.shipped("pyproject.toml"), "rb") as handle:
             return tomllib.load(handle)["tool"]["poetry"]["version"]
     except (OSError, KeyError, tomllib.TOMLDecodeError):
         return "unknown"

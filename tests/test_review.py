@@ -341,12 +341,16 @@ class TestVersion:
     def test_reads_the_single_source_of_truth(self):
         import tomllib
 
-        with open(config.REPO_ROOT / "pyproject.toml", "rb") as handle:
+        with open(config.shipped("pyproject.toml"), "rb") as handle:
             expected = tomllib.load(handle)["tool"]["poetry"]["version"]
         assert review.version() == expected
 
     def test_an_unreadable_pyproject_is_not_fatal(self, monkeypatch, tmp_path):
         """A report that cannot name its version is still a useful
         report."""
-        monkeypatch.setattr(config, "REPO_ROOT", tmp_path)
+        # `shipped` rather than a root constant: the version comes from
+        # distribution metadata that sits beside the *code*, so pointing
+        # the seam at an empty directory is what "no pyproject here" now
+        # means. This is also the shape an installed package really has.
+        monkeypatch.setattr(config, "shipped", lambda *parts: tmp_path.joinpath(*parts))
         assert review.version() == "unknown"

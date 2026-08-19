@@ -29,21 +29,33 @@ def _resolve_csl(csl: str | Path) -> Path:
     `input` argument, so `--csl ./house-style.csl` behaves like every
     other file argument.
 
-    A *relative* path that doesn't exist there falls back to the repo
-    root. Without that, the two ways of naming the same style disagree --
-    `config.toml`'s `[render] csl` is documented as repo-root-relative
-    (and `--help` prints the shipped default in that form), so
-    `--csl assets/csl/ieee.csl` would work from the repo root and fail
-    from anywhere else, for no reason the user could see.
+    A *relative* path that doesn't exist there falls back to two roots in
+    turn, and it needs both because a CSL style can come from either
+    side of the packaging split (docs/PACKAGING.md):
 
-    When neither candidate exists, returns the CWD-relative one, so the
-    error names the path that was actually typed.
+    1. the **project** root, where a user's own `house-style.csl` lives.
+       `config.toml`'s `[render] csl` is documented as relative to it
+       (and `--help` prints the shipped default in that form), so
+       `--csl my-styles/acm.csl` has to work from anywhere in the
+       project, not only from its top directory;
+    2. the **shipped** assets, where `assets/csl/ieee.csl` lives. That
+       one arrives by installing rather than by authoring, so it does not
+       exist under the project root at all once this is pip-installed.
+
+    In a git checkout the two are the same directory, which is why this
+    order is not observable there. Order matters once they diverge: a
+    user who vendors their own `assets/csl/ieee.csl` should get theirs.
+
+    When no candidate exists, returns the CWD-relative one, so the error
+    names the path that was actually typed.
     """
     path = Path(csl)
     if path.is_absolute() or path.exists():
         return path
-    from_repo_root = config.REPO_ROOT / path
-    return from_repo_root if from_repo_root.is_file() else path
+    for root in (config.PROJECT_ROOT / path, config.shipped(str(path))):
+        if root.is_file():
+            return root
+    return path
 
 
 def _collapsed_csl(csl_path: Path, tmp_dir: Path) -> Path:

@@ -1282,7 +1282,7 @@ class TestReparse:
         import subprocess
         out = subprocess.run(
             [sys.executable, "-m", "src.corpus", "sync", "--help"],
-            capture_output=True, text=True, cwd=str(config.REPO_ROOT),
+            capture_output=True, text=True, cwd=str(config.PROJECT_ROOT),
         ).stdout
         assert "--reparse" in out
 

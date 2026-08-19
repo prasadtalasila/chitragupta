@@ -99,10 +99,10 @@ class TestRealConfigToml:
     config.toml + ambient environment at real import time."""
 
     def test_bib_file_path_under_repo_root(self):
-        assert config.BIB_FILE_PATH == config.REPO_ROOT / "papers" / "bibliography.bib"
+        assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "papers" / "bibliography.bib"
 
     def test_content_dir_layout(self):
-        assert config.CONTENT_DIR == config.REPO_ROOT / "content"
+        assert config.CONTENT_DIR == config.PROJECT_ROOT / "content"
         assert config.PARSED_DIR == config.CONTENT_DIR / "parsed"
         assert config.LEDGER_PATH == config.CONTENT_DIR / "ledger.sqlite"
         assert config.RETRIEVAL_INDEX_PATH == config.CONTENT_DIR / "retrieval_index.json"
@@ -111,7 +111,7 @@ class TestRealConfigToml:
         assert config.EMBEDDING_MODEL == "sentence-transformers/all-mpnet-base-v2"
 
     def test_csl_style_defaults_to_the_vendored_ieee_style(self):
-        assert config.CSL_STYLE_PATH == config.REPO_ROOT / "assets" / "csl" / "ieee.csl"
+        assert config.CSL_STYLE_PATH == config.shipped("assets", "csl", "ieee.csl")
         # Vendored, not fetched: rendering has to work with no network.
         assert config.CSL_STYLE_PATH.is_file()
 
@@ -121,7 +121,7 @@ class TestRealConfigToml:
     def test_acronyms_defaults_to_the_vendored_toml(self):
         assert config.ACRONYMS_PATH == config.ACRONYMS_DEFAULT_PATH
         assert config.ACRONYMS_DEFAULT_PATH == (
-            config.REPO_ROOT / "assets" / "style" / "acronyms.toml"
+            config.shipped("assets", "style", "acronyms.toml")
         )
         # Vendored, not fetched: the loader has to work with no network.
         assert config.ACRONYMS_DEFAULT_PATH.is_file()
@@ -274,7 +274,7 @@ class TestModuleReloadWithEnvOverrides:
     def test_bib_file_env_override(self, monkeypatch):
         monkeypatch.setenv("BIB_FILE", "/tmp/other.bib")
         importlib.reload(config)
-        assert config.BIB_FILE_PATH == config.REPO_ROOT / "/tmp/other.bib"
+        assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "/tmp/other.bib"
 
     def test_parser_ocr_defaults_off(self, monkeypatch, tmp_path):
         """The code's default, not this developer's setting.
@@ -334,7 +334,7 @@ class TestModuleReloadWithEnvOverrides:
         monkeypatch.setenv("CONFIG_PATH", str(custom_toml))
         importlib.reload(config)
         assert config.CONFIG_PATH == custom_toml
-        assert config.BIB_FILE_PATH == config.REPO_ROOT / "elsewhere.bib"
+        assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "elsewhere.bib"
         assert config.EMBEDDING_MODEL == "custom/model"
 
 
@@ -407,3 +407,81 @@ class TestGetOptionalFloat:
         monkeypatch.setenv("T", raw)
         with pytest.raises(ValueError, match="positive number"):
             config._get_optional_float("T", "parser", "t")
+
+
+class TestDiscoverProjectRoot:
+    """Where the user's corpus, drafts and config live.
+
+    Separate from PACKAGE_ROOT (where the code lives) because the two
+    stop being the same directory the moment this is installed rather
+    than cloned -- docs/PACKAGING.md. Every case below passes `cwd` and
+    `environ` explicitly rather than chdir-ing or setting real
+    variables: this function is consulted at import time, so a test that
+    mutated the real ones would decide what a later reload sees.
+    """
+
+    def test_explicit_env_var_wins(self, tmp_path):
+        """An answer the user gave beats one this code inferred."""
+        marked = tmp_path / "marked"
+        (marked / "nested").mkdir(parents=True)
+        (marked / config.PROJECT_MARKER).write_text("", encoding="utf-8")
+        chosen = tmp_path / "elsewhere"
+        found = config.discover_project_root(
+            cwd=marked / "nested", environ={"CHITRAGUPTA_PROJECT": str(chosen)}
+        )
+        assert found == chosen
+
+    def test_walks_up_from_a_nested_cwd(self, tmp_path):
+        """Running from deep inside a project still finds the project."""
+        (tmp_path / config.PROJECT_MARKER).write_text("", encoding="utf-8")
+        deep = tmp_path / "content" / "drafts" / "a"
+        deep.mkdir(parents=True)
+        assert config.discover_project_root(cwd=deep, environ={}) == tmp_path.resolve()
+
+    def test_the_nearest_marker_wins(self, tmp_path):
+        """A project inside a project is the inner one, not the outer."""
+        (tmp_path / config.PROJECT_MARKER).write_text("", encoding="utf-8")
+        inner = tmp_path / "inner"
+        inner.mkdir()
+        (inner / config.PROJECT_MARKER).write_text("", encoding="utf-8")
+        assert config.discover_project_root(cwd=inner, environ={}) == inner.resolve()
+
+    def test_falls_back_to_the_directory_above_the_package(self, tmp_path, monkeypatch):
+        """The git checkout: invoked from anywhere, still finds its own root.
+
+        This is the branch that keeps every existing invocation working
+        -- it is what deriving the root from `__file__` used to do.
+        """
+        checkout = tmp_path / "checkout"
+        (checkout / "src").mkdir(parents=True)
+        (checkout / config.PROJECT_MARKER).write_text("", encoding="utf-8")
+        monkeypatch.setattr(config, "PACKAGE_ROOT", checkout / "src")
+        unrelated = tmp_path / "unrelated"
+        unrelated.mkdir()
+        assert config.discover_project_root(cwd=unrelated, environ={}) == checkout
+
+    def test_no_project_anywhere_is_none_rather_than_a_guess(self, tmp_path, monkeypatch):
+        """Refusing beats silently adopting some unrelated directory.
+
+        The caller turns this into the same FileNotFoundError a fresh
+        clone already gets, naming `cp config.toml.example config.toml`.
+        """
+        monkeypatch.setattr(config, "PACKAGE_ROOT", tmp_path / "pkg" / "src")
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        assert config.discover_project_root(cwd=bare, environ={}) is None
+
+
+class TestShipped:
+    """Files that arrive by installing, not by authoring."""
+
+    def test_resolves_beside_the_package(self):
+        assert config.shipped("assets", "csl", "ieee.csl") == (
+            config.PACKAGE_ROOT.parent / "assets" / "csl" / "ieee.csl"
+        )
+
+    def test_the_vendored_assets_it_names_actually_exist(self):
+        """A seam that resolves to nothing is worse than no seam."""
+        for path in (config.CSL_STYLE_PATH, config.VALE_CONFIG_PATH,
+                     config.ACRONYMS_DEFAULT_PATH):
+            assert path.is_file(), path

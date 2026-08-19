@@ -115,3 +115,37 @@ class TestOneLauncher:
 
     def test_an_entry_with_no_command_is_skipped(self):
         assert hook_launchers._launcher_fault({"type": "command"}) == []
+
+
+class TestProjectRoot:
+    """Where this module looks for `.claude/settings.json`.
+
+    It cannot ask `src.config`, and the module docstring says why: that
+    import raises without a `config.toml`, which would break both
+    docs/CLI.md's tier-1 promise and the preflight's ability to run in a
+    fresh clone. So the marker walk is deliberately duplicated here, and
+    these tests pin the copy rather than trusting the original's.
+    """
+
+    def test_walks_up_to_the_marker(self, tmp_path, monkeypatch):
+        (tmp_path / "config.toml").write_text("", encoding="utf-8")
+        deep = tmp_path / "content" / "drafts"
+        deep.mkdir(parents=True)
+        monkeypatch.chdir(deep)
+        assert hook_launchers._project_root() == tmp_path.resolve()
+
+    def test_falls_back_beside_the_package_when_there_is_no_marker(
+            self, tmp_path, monkeypatch):
+        """Not a guess at some unrelated directory: the checkout it is in.
+
+        `.claude/` belongs to the user's project, so once this code is
+        installed the `__file__`-derived answer is wrong -- it would look
+        inside site-packages. It stays the fallback because a checkout
+        with no config.toml yet is exactly when the preflight most needs
+        to run.
+        """
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        monkeypatch.chdir(bare)
+        expected = Path(hook_launchers.__file__).resolve().parent.parent
+        assert hook_launchers._project_root() == expected

@@ -24,7 +24,7 @@ from tests.conftest import make_reference
 def _run(args=(), cwd=None):
     return subprocess.run(
         [sys.executable, "-m", "src.corpus", "ledger", *args],
-        capture_output=True, text=True, cwd=str(cwd or config.REPO_ROOT),
+        capture_output=True, text=True, cwd=str(cwd or config.PROJECT_ROOT),
     )
 
 

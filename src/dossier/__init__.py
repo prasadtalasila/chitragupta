@@ -236,7 +236,7 @@ _SECTIONS_TEMPLATE = """# Sections and their citekeys
 def draft_relpath(draft: Path) -> str:
     """`draft` relative to the repo root where possible, for display."""
     try:
-        return Path(draft).resolve().relative_to(config.REPO_ROOT).as_posix()
+        return Path(draft).resolve().relative_to(config.PROJECT_ROOT).as_posix()
     except ValueError:
         return str(draft)
 

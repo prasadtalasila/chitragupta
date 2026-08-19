@@ -35,7 +35,29 @@ import json
 import shutil
 from pathlib import Path
 
-SETTINGS = Path(__file__).resolve().parent.parent / ".claude" / "settings.json"
+def _project_root() -> Path:
+    """Where `.claude/settings.json` lives, found without importing config.
+
+    A deliberate second copy of `src/config.py`'s marker walk, and the
+    module docstring above says why it cannot be the first one: this
+    module "imports no other `src` module on purpose", because
+    `src.config` raises without a `config.toml` and that would break both
+    docs/CLI.md's tier-1 promise and the preflight's ability to run in a
+    fresh clone. Importing config to find the project would reintroduce
+    exactly the failure this module exists to report on.
+
+    Deriving it from `__file__` -- which is what this did while the code
+    and the project were always the same directory -- stops working the
+    moment the code is installed: it would look for `.claude/` inside
+    `site-packages`. `.claude/` belongs to the user's project.
+    """
+    for candidate in (Path.cwd().resolve(), *Path.cwd().resolve().parents):
+        if (candidate / "config.toml").is_file():
+            return candidate
+    return Path(__file__).resolve().parent.parent
+
+
+SETTINGS = _project_root() / ".claude" / "settings.json"
 
 
 def faults(settings_path: Path = SETTINGS) -> list[str]:

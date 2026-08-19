@@ -199,7 +199,7 @@ class TestSections:
         example tutorial is mostly shell and Python whose comments start
         with `#`."""
         example = (
-            config.REPO_ROOT
+            config.PROJECT_ROOT
             / "content/drafts/digital-twins-for-software-engineers/tutorial.md"
         )
         if not example.is_file():  # pragma: no cover - example content is optional
@@ -431,7 +431,7 @@ class TestSuggestAcronyms:
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        vendored = config.REPO_ROOT / "assets" / "style" / "acronyms.toml"
+        vendored = config.shipped("assets", "style", "acronyms.toml")
         vocab_before = vendored.read_text()
 
         assert dossier.main(["acronyms-suggest", str(draft)]) == 0
