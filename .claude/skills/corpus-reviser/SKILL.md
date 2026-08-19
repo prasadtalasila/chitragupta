@@ -47,6 +47,29 @@ take the
 pipeline's write lock and can run for tens of minutes, and they are the
 user's to run.
 
+## Collection scoping (#195): inherit it, do not re-ask
+
+`scope.md` may carry a `collection:` line, written by the genre skill
+that produced this draft. If it does, **every retrieval call in this pass
+carries the same `--collection`**, and the user is not asked again.
+
+This matters more here than it does at drafting time. A draft grounded
+in one curated shelf that is then revised against the whole library has
+silently changed what it is made of, and the change is invisible in the
+diff: the citekeys are all real, the gate still passes, and nothing in
+`retrieval.md` records that the scope moved (#254).
+
+A missing line, or `- collection: (whole corpus)`, means search
+everything -- exactly as this skill behaved before this section existed.
+
+**This skill is the one exception.** A whole-corpus pass *is* a
+widening, and that is what the user asked for. So it may search outside
+the recorded collection -- but it says so first, in the cost statement,
+naming the collection it is about to search past, and it records the
+widening in `revisions.md` so the next reader knows the draft is no
+longer scoped to what `scope.md` says it is. It does not rewrite the
+`collection:` line: the user chose that, and only the user unchooses it.
+
 ## Say what it costs, before you start
 
 One sentence, before the first search, and let them stop you. A wide pass
@@ -82,6 +105,7 @@ passed. One search each:
 
 ```bash
 python -m src.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<path>
+# no --collection: a whole-corpus pass is a widening -- see "Collection scoping" above
 python -m src.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
 ```
 

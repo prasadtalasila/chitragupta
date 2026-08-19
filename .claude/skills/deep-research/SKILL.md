@@ -29,6 +29,37 @@ It reads the same shared corpus layer as the other genre skills.
 - `src/enrich/corpus.py` -- builds the enrichment corpus from the ledger and
   nothing else, so every document it yields is citable, keyed by its citekey
 
+## Collection scoping (#195): deliberately not used here
+
+Every other genre skill offers to scope retrieval to one curated Zotero
+collection and threads `--collection` through its searches. **This skill
+does not, and neither do its agents.** That is a decision, not an
+oversight -- do not "fix" it by copying the section in from
+`survey-writer`.
+
+The reason is what this skill is for. Its whole method is to attack a
+question from several perspectives at once, each interviewer chasing a
+different framing, and then to map where those framings *disagree*. A
+curated shelf is one person's answer to "what is this topic about",
+already filtered by the judgement being interrogated. Scoping to it
+would narrow every perspective to the same pre-agreed subset and quietly
+delete the contradictions this skill exists to surface -- the report would
+look consistent because it had been prevented from seeing anything that
+would make it otherwise.
+
+There is measured reason to expect that, not just principle. A 19-item
+shelf surfaced ten papers a whole-corpus search never returned, and the
+whole-corpus search surfaced far more that the shelf did not hold
+(`bench/RESULTS.md`, 2026-08-19): the two are different rankings, not
+subsets. For a single-thesis genre, picking one is a reasonable trade.
+For a genre whose output is a contradiction map, taking the narrower one
+by default is the wrong half.
+
+So: **search the whole corpus, always.** If a user asks for a
+collection-scoped deep-research report, say what it costs -- that the
+contradiction mapping in Phase 3 will only see disagreements that survive
+inside the shelf -- and let them decide with that in hand.
+
 ## The dossier: write down what produced the draft
 
 The report is only half of what this run produces. The other half is the

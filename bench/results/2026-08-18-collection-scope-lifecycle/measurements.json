@@ -1,0 +1,254 @@
+{
+  "preregistration": "bench/results/2026-08-18-collection-scope-lifecycle/preregistration.md",
+  "collection": "Lifecycle",
+  "retrieval_payload": {
+    "arm_f_chars": 103603,
+    "arm_c_chars": 66372,
+    "arm_f_queries": 14,
+    "arm_c_queries": 9,
+    "chars_delta_pct": -35.94,
+    "note": "near-parity is the expected result, not a null one: at a fixed --k the filter still returns k results, drawn from a smaller pool. The filter changes WHICH papers arrive, not how many characters do."
+  },
+  "words": {
+    "arm_f_words": 11529,
+    "arm_c_words": 13558,
+    "note": "body only; the generated References section is excluded from both."
+  },
+  "surfaced_selected_rejected": {
+    "arm_f": {
+      "surfaced_distinct_citekeys": 154,
+      "cited": 47,
+      "rejected": 107,
+      "selection_ratio": 0.3052,
+      "rejection_ratio": 0.6948
+    },
+    "arm_c": {
+      "surfaced_distinct_citekeys": 18,
+      "cited": 16,
+      "rejected": 2,
+      "selection_ratio": 0.8889,
+      "rejection_ratio": 0.1111,
+      "collection_size": 19,
+      "collection_coverage": 0.9474,
+      "caveat": "surfaced is capped at collection_size by construction, so arm_c's selection_ratio has a denominator that cannot grow. Compare ratios, never raw surfaced counts."
+    }
+  },
+  "common_papers": {
+    "cited_in_both": [
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024"
+    ],
+    "cited_only_in_f": [
+      "aissat_devops_2025",
+      "alcaraz_digital_2022",
+      "altamiranda_system_2024",
+      "anwer_developing_2025",
+      "beaumont_towards_2024",
+      "beaumont_towards_2025",
+      "beetz_gitops_2022",
+      "branlard_digital_2024",
+      "budiardjo_digital_2021",
+      "burattini_towards_2024",
+      "caesar_digital_2023",
+      "combemale_model-based_2023",
+      "committee_on_foundational_research_gaps_and_future_directions_for_digital_twins_foundational_2024",
+      "esterle_autonomous_2024-1",
+      "ferko_standardisation_2023",
+      "fitzgerald_digital_2024-1",
+      "fitzgerald_potential_2024",
+      "frasheri_advanced_2024",
+      "gil_survey_2024",
+      "gomes_digital_2025",
+      "gomes_foundational_2024",
+      "grieves_digital_2017",
+      "hartmann_executable_2022",
+      "honcak_mbse_2024",
+      "hugues_twinops_2022",
+      "kamburjan_greenhousedt_2024",
+      "kapteyn_probabilistic_2021",
+      "kulik_security_2024",
+      "li_coupling_2025",
+      "liu_shipboard_2024",
+      "niederer_scaling_2021",
+      "oakes_case_2024",
+      "pinon_fischer_fundamentals_2024",
+      "schweiger_empirical_2019",
+      "thelen_augmented_2022",
+      "thelen_comprehensive_2022-1",
+      "thelen_probabilistic_2024",
+      "tygesen_state---art_2019",
+      "van_dinter_predictive_2022",
+      "wanasinghe_digital_2020",
+      "wermann_ktwin_2024",
+      "zampetti_continuous_2023",
+      "zech_proposal_2024",
+      "zhang_digital_2024",
+      "zhang_knowledge_2024"
+    ],
+    "cited_only_in_c": [
+      "dittler_agent-based_2022",
+      "guo_life_2024",
+      "karnoub_how_2025",
+      "liu_novel_2019",
+      "liu_review_2021",
+      "lu_evoclinical_2023",
+      "lugaresi_digital_2025",
+      "michael_model-driven_2025",
+      "noauthor_digital_2023",
+      "picone_harmonizing_2025",
+      "shangguan_triple_2022",
+      "tekinerdogan_systems_2020",
+      "xu_pretrain_2024",
+      "xu_traversing_2023"
+    ],
+    "surfaced_in_both": [
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024",
+      "kamburjan_declarative_2024-1",
+      "liu_review_2021",
+      "michael_model-driven_2025",
+      "michael_model-driven_nodate",
+      "noauthor_digital_2023",
+      "tekinerdogan_systems_2020"
+    ],
+    "surfaced_in_both_count": 8,
+    "surfaced_only_in_c_count": 10,
+    "surfaced_only_in_c": [
+      "dittler_agent-based_2022",
+      "guo_life_2024",
+      "karnoub_how_2025",
+      "liu_novel_2019",
+      "lu_evoclinical_2023",
+      "lugaresi_digital_2025",
+      "picone_harmonizing_2025",
+      "shangguan_triple_2022",
+      "xu_pretrain_2024",
+      "xu_traversing_2023"
+    ]
+  },
+  "index_cost": {
+    "checked": true,
+    "checkpoints": [
+      "before-arm-F",
+      "between-arms",
+      "after-arm-C"
+    ],
+    "index_unchanged": true,
+    "ledger_unchanged": true,
+    "index_md5": [
+      "1f83e47131d782600f8335ae73686130"
+    ],
+    "ledger_md5": [
+      "d8b244c7c2e7783d530d6f1476e736be"
+    ],
+    "index_bytes": [
+      14134003
+    ],
+    "replay_sound": true
+  },
+  "verbatim_overlap": {
+    "arm_f": {
+      "ran": true,
+      "findings": 21,
+      "by_tier": {
+        "embedding": 21
+      },
+      "longest_run_words": 50,
+      "tiers_not_run": []
+    },
+    "arm_c": {
+      "ran": true,
+      "findings": 19,
+      "by_tier": {
+        "embedding": 19
+      },
+      "longest_run_words": 62,
+      "tiers_not_run": []
+    },
+    "draft_vs_draft": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 16,
+      "arm_f_ngrams": 11640,
+      "arm_c_ngrams": 13813,
+      "jaccard": 0.0006,
+      "longest_shared_run_words": 17
+    }
+  },
+  "boundaries": {
+    "session_start": "2026-08-18T20:38:07.332Z",
+    "arm_f_start": "2026-08-18T20:45:43.874759+00:00",
+    "arm_f_end": "2026-08-18T21:02:14.225799+00:00",
+    "arm_c_end": "2026-08-18T21:08:47.165517+00:00"
+  },
+  "tokens": {
+    "setup (orientation + preregistration, shared)": {
+      "turns": 36,
+      "input_tokens": 2407689,
+      "output_tokens": 22738,
+      "models": {
+        "claude-opus-5": 103
+      },
+      "usage_entries_seen": 103,
+      "output_tokens_first_per_request": 22738,
+      "streaming_partials_present": false,
+      "self_check": "ok -- one usage entry per request, both readings agree"
+    },
+    "arm F -- total (retrieval + first draft + rewrite + pipeline)": {
+      "turns": 36,
+      "input_tokens": 6499160,
+      "output_tokens": 71820,
+      "models": {
+        "claude-opus-5": 91
+      },
+      "usage_entries_seen": 91,
+      "output_tokens_first_per_request": 71820,
+      "streaming_partials_present": false,
+      "self_check": "ok -- one usage entry per request, both readings agree"
+    },
+    "arm C -- total (retrieval + draft + pipeline)": {
+      "turns": 12,
+      "input_tokens": 3374722,
+      "output_tokens": 30205,
+      "models": {
+        "claude-opus-5": 27
+      },
+      "usage_entries_seen": 27,
+      "output_tokens_first_per_request": 30205,
+      "streaming_partials_present": false,
+      "self_check": "ok -- one usage entry per request, both readings agree"
+    },
+    "arm F -- before the steering (retrieval + first draft)": {
+      "turns": 18,
+      "input_tokens": 2593402,
+      "output_tokens": 31257,
+      "models": {
+        "claude-opus-5": 44
+      },
+      "usage_entries_seen": 44,
+      "output_tokens_first_per_request": 31257,
+      "streaming_partials_present": false,
+      "self_check": "ok -- one usage entry per request, both readings agree"
+    },
+    "arm F -- after the steering (rewrite + pipeline, QUARANTINED)": {
+      "turns": 19,
+      "input_tokens": 4085555,
+      "output_tokens": 40816,
+      "models": {
+        "claude-opus-5": 47
+      },
+      "usage_entries_seen": 47,
+      "output_tokens_first_per_request": 40816,
+      "streaming_partials_present": false,
+      "self_check": "ok -- one usage entry per request, both readings agree"
+    }
+  },
+  "tokens_per_1k_words": {
+    "arm_f_output_tokens_per_1k_words": 3194.3,
+    "arm_c_output_tokens_per_1k_words": 2227.8,
+    "arm_f_words_drafted_total": 22484,
+    "arm_c_words_drafted_total": 13558,
+    "note": "Count each word an arm actually emitted, once. Where an arm redrafted, the overwritten passes are not on disk and are passed in via --arm-f-discarded-words; a pass that was written once and then patched in place is counted once, not once per assembly it appears in. Both windows also contain non-drafting output -- gate, references, renders, style, verbatim -- so this is an upper bound on the cost of drafting 1,000 words, not a clean measure of it."
+  },
+  "tokens_note": "Windowed by the hash checkpoints, which were written at the arm boundaries themselves. Input tokens are dominated by cache reads of the other arm's context and are NOT a fair arm-to-arm comparison; output tokens and turns are. Arm C ran second and therefore carried Arm F's whole context, so any Arm C saving is a lower bound. The 'models' map in each window is there so a mid-arm /model switch is visible rather than averaged away."
+}

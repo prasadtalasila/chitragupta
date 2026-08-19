@@ -45,6 +45,25 @@ python -m src.corpus ledger --collection "Digital twins"
 python -m src.draft retrieve search "surrogate models" --collection "Digital twins"
 ```
 
+The genre skills use this too, and ask about it once. Each of them
+offers the list above at scope time, records the answer as a
+`collection:` line in the draft's `scope.md`, and passes
+`--collection` on every retrieval call for the rest of the run;
+`draft-reviser` and `corpus-reviser` then read that line back rather than
+asking again. Decline the offer and everything searches the whole
+library, exactly as it did before.
+
+It is worth knowing what the narrowing buys and what it costs, because
+neither is obvious. Measured over a 642-item corpus (`bench/RESULTS.md`,
+2026-08-19): scoping to a 19-item shelf raised the share of surfaced
+papers that were actually cited from 0.31 to 0.89, and it cost nothing
+in index terms -- the retrieval cache is shared, and scoring is
+corpus-wide with only the ranking filtered. It did **not** reduce the
+size of the retrieval payload, because a fixed `--k` still returns `k`
+results. And a shelf is not a subset of the library's ranking: that same
+19-item shelf surfaced ten papers the whole-corpus search never returned,
+because a small pool promotes what a large pool's competition buries.
+
 **Zotero's own BibTeX exporter drops collection membership entirely**, so
 none of that works on a plain export -- the commands run, and nothing is
 in any collection. Keeping it needs

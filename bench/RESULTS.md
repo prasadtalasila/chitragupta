@@ -2602,3 +2602,655 @@ repository), the synced ledger, and the same `enrich` group and warm
 Chroma/SPECTER2 caches as the two sections above. No book restore
 needed -- this section's ground truth comes entirely from the
 bibliography and the ledger, not from any drafted content.
+
+## 2026-08-18b: what `--collection` (#195) buys a real drafting run -- the `Lifecycle` replication
+
+A second run of the design in
+`bench/results/2026-08-18-collection-scope/`, against a different shelf
+and a different chapter. The first run used `DT Platforms` (28 items)
+and a platforms chapter; this one uses **`Lifecycle` (19 items)** and a
+chapter on digital twin life cycle considerations. Same genre skill
+(`textbook-chapter-writer`), same reader, same eleven-section skeleton,
+same ten pre-registered queries at `--k 15 --chars 500`, same corpus
+snapshot of 642 items.
+
+Pre-registration, hashes and measurements:
+`bench/results/2026-08-18-collection-scope-lifecycle/`. Everything that
+follows was fixed before either arm ran, except where the addendum in
+that pre-registration says otherwise.
+
+**Provenance note.** The first run's `bench_collection_scope.py` and its
+`measurements.json` exist only as uncommitted files in the main working
+tree, and its `preregistration.md` only in a third worktree; none of it
+is in any commit. The script here is a **parameterised rewrite** of that
+one (`--topic`, `--arm-f`, `--arm-c`, `--collection`, `--hashes`,
+`--session`), not a second copy. If you are landing the first run's
+files, reconcile against this rather than adding a duplicate.
+
+### The two arms
+
+| | Arm F | Arm C |
+|---|---|---|
+| Retrieval | whole corpus, 642 items | `--collection "Lifecycle"`, 19 items |
+| Runs | **first** | second |
+| Draft | `…-full-corpus.md` | `…-life-cycle-considerations.md` |
+
+Arm F runs first deliberately. Both arms ran inline in one session with
+no subagents, so the second arm re-sends the first arm's context on
+every turn and is structurally more expensive whatever it does. Any Arm
+C saving measured here is therefore a **lower bound**.
+
+The `Lifecycle` shelf's size was taken through
+`bib_collections.matches()`, not by tallying exact path strings:
+matching is prefix-by-segment, so a subcollection would fold into the
+denominator. There are none; 19 is both counts.
+
+### What the filter does not change: the payload
+
+| | Arm F | Arm C |
+|---|---|---|
+| Queries logged | 10 | 10 |
+| Retrieval payload | 73,837 chars | 73,765 chars |
+
+**A 0.1 % difference, and that is the expected result rather than a null
+one.** At a fixed `--k` the filter still returns `k` results; they are
+just drawn from a smaller pool. `--collection` changes *which* papers
+arrive in the drafting context, not how many characters do. Anyone
+hoping the flag will cut retrieval cost at fixed `k` should stop here.
+The first run measured the same thing (73,657 vs 73,848), so this is now
+replicated.
+
+### What the filter does change: selection
+
+| | Arm F | Arm C |
+|---|---|---|
+| Distinct citekeys surfaced | 102 | 17 |
+| Cited | 21 | 13 |
+| **Selection ratio** | **0.206** | **0.765** |
+| **Rejection ratio** | **0.794** | **0.235** |
+| Shelf coverage | -- | 17/19 = 0.895 |
+
+Arm F read and discarded 81 papers to keep 21. Arm C discarded 4 to keep
+13. That is the feature working: the human's curation did the first
+filtering pass, and the drafting run did not have to pay for it again in
+judgement.
+
+**Two cautions, both pre-registered.** Arm C's surfaced count is capped
+at 19 by construction, so the ratios are comparable and the raw counts
+are not. And at 19 items with `--k 15`, two queries very nearly exhaust
+the shelf -- 89.5 % of it was surfaced -- so Arm C's denominator is close
+to fixed while Arm F's kept growing per query. The gap is real; its
+*size* is partly an artefact of a small shelf, and it was larger in this
+run (0.206 → 0.765) than in the 28-item one (0.114 → 0.650) in the
+direction that shelf size predicts.
+
+### Index cost: none, and now demonstrated rather than asserted
+
+`content/retrieval_index.json` and `content/ledger.sqlite` were md5'd at
+three checkpoints -- before Arm F, between the arms, after Arm C:
+
+| | before Arm F | between arms | after Arm C |
+|---|---|---|---|
+| index md5 | `1f83e471…` | `1f83e471…` | `1f83e471…` |
+| ledger md5 | `d8b244c7…` | `d8b244c7…` | `d8b244c7…` |
+
+Byte-identical throughout, at 14,134,003 bytes. `search()` scores
+corpus-wide and filters the ranking, so the cache is shared by
+construction and the collection-filtered arm never rebuilds it. **The
+filter's index cost is zero.** The same three hashes also establish the
+precondition for the replay below -- an unmoved ledger -- which the first
+run could only assert.
+
+### The papers, both ways
+
+**Cited by both arms (4):** `kamburjan_declarative_2024`,
+`noauthor_digital_2023`, `picone_harmonizing_2025`,
+`tekinerdogan_systems_2020`.
+
+**Surfaced by both (9):** the four above plus their duplicate keys, and
+`liu_review_2021`, `michael_model-driven_2025`, `shangguan_triple_2022`.
+
+Only 4 of the 30 distinct papers cited across the two arms are common to
+both. The two chapters are grounded in substantially different
+literature despite an identical brief and identical queries.
+
+**What the shelf cost Arm C.** Eleven of Arm F's citations are papers
+the shelf does not contain, and their absence is visible in the draft:
+`anwer_developing_2025` (BOL/MOL/EOL -- Arm C has no product-life-cycle
+vocabulary at all), `fitzgerald_digital_2024-1` (ISO 15288 retirement),
+`honcak_mbse_2024` (a DT V-model spanning conception to
+decommissioning), `grieves_digital_2017`, `milligan_infrastructure_nodate`
+and `shao_use_2021` (commissioning), `pfeiffer_modeling_2024`,
+`human_design_2023`, `mertens_continuous_2024` and `lehner_towards_2021`
+(evolution), `thelen_comprehensive_2022-1` (retirement as an
+optimisation).
+
+**What the shelf bought Arm C.** Eight papers Arm F's whole-corpus
+queries never surfaced at all: `michael_model-driven_2025`'s two-track
+life-cycle figure and its bounded-purpose twin -- the single best source
+either arm found for this chapter's central claim --
+`frasheri_addressing_2023`, `lugaresi_digital_2025`,
+`dittler_agent-based_2022`, `lu_evoclinical_2023`, `xu_pretrain_2024`,
+plus two off-topic ones (`liu_novel_2019`, `xu_traversing_2023`).
+
+That is the finding worth carrying forward. **The curated shelf is not a
+subset of what the whole-corpus search finds.** BM25 over 642 items
+buried papers that BM25 over 19 items ranked first, because a small pool
+promotes documents that a large pool's competition suppresses. The two
+arms are not "thorough" versus "cheap"; they surface genuinely different
+material, and each misses something the other finds.
+
+### Tokens
+
+Opus 5 throughout -- **no mid-arm `/model` switch**, checked per window
+against the transcript rather than assumed. This is the confound that
+made the first run's arm-level totals uninterpretable, and it is absent
+here.
+
+| Window | Turns | Output tokens | Input tokens |
+|---|---|---|---|
+| Setup (orientation + pre-registration, shared) | 36 | 22,738 | 2,407,689 |
+| Arm F -- retrieval + first draft | 18 | 31,257 | 2,593,402 |
+| Arm F -- rewrite + pipeline (**quarantined**) | 19 | 40,816 | 4,085,555 |
+| Arm F -- total | 36 | 71,820 | 6,499,160 |
+| Arm C -- retrieval + draft + pipeline | 12 | 30,205 | 3,374,722 |
+
+**Arm F's total is not comparable to Arm C's, and is not offered as
+such.** A steering change arrived mid-run (the book supplied as a
+reference could no longer be used as a content source), and Arm F paid
+for a complete rewrite that Arm C never paid, because Arm C was drafted
+once against the corrected brief. That window is quarantined, exactly as
+extra queries are reported separately rather than folded into the
+pre-registered ten.
+
+The closest honest comparison is the first Arm F window against Arm C's:
+**18 turns and 31,257 output tokens for retrieval plus one draft, versus
+12 turns and 30,205 output tokens for retrieval plus one draft plus the
+whole closing pipeline** -- gate, references, three renders, style check
+and verbatim scan. Arm C did more, wrote more (9,742 words against
+9,055), and did it in a third fewer turns, while carrying Arm F's entire
+context.
+
+Normalised by words actually drafted, **Arm F spent 3,569 output tokens
+per 1,000 words against Arm C's 3,101.**
+
+Arm F's denominator is 20,123 words, and it is worth showing because it
+is easy to get wrong. Arm F emitted sections 1--6 **three** times -- the
+original, a version rewritten under the first and stricter reading of
+the steering, and the final one -- and sections 7--11 once, patched in
+place afterwards rather than re-emitted. So the count is 5,421 (first
+sections 1--6) + 3,634 (sections 7--11) + 5,534 (the discarded rewrite,
+**estimated** from the final pass, which is parallel in structure and
+the only recoverable proxy -- that text was overwritten in place) +
+5,534 (final sections 1--6). Summing the two *assemblies* instead would
+double-count sections 7--11.
+
+One caveat on the figure itself: neither window is pure drafting output.
+Both include gate, references, three renders, style and verbatim work.
+This is therefore an upper bound on what drafting 1,000 words costs, not
+a clean measure of it -- the turn-and-output comparison above carries the
+finding with less to qualify.
+
+Input tokens are dominated by cache reads of the other arm's context and
+are not a fair arm-to-arm comparison in either direction.
+
+### Verbatim overlap
+
+`python -m src.review verbatim scan --json`, same tiers both times.
+**All three tiers ran, including the embedding tier** -- the first run
+could not run it, so this is strictly better evidence.
+
+| | Arm F | Arm C |
+|---|---|---|
+| Findings | 37 | 31 |
+| exact / skip-gram / embedding | 19 / 8 / 10 | 15 / 3 / 13 |
+| Longest run | 40 words | 69 words |
+| Tiers not run | none | none |
+
+Neither arm is clean, and neither result is alarming on inspection: most
+are close paraphrase of a source the sentence cites by name in the same
+clause. Not all -- `barbie_toward_2024` matches in both arms and is cited
+by neither, which is a stock-phrase collision rather than reuse, and is
+the kind of finding that shows why a scan is a review aid and not a
+verdict. They are nonetheless real findings and both
+drafts would benefit from an `overlap-reviser` pass; a clean scan would
+not have been a clean bill of health either.
+
+The tier mix differs in a way worth noting. Arm C's findings skew to the
+embedding tier and include a 69-word run, against Arm F's 40 -- Arm C
+tracked its smaller source set more closely, which is what a narrow
+shelf and repeated exposure to the same fifteen documents would predict.
+
+### Draft-vs-draft overlap -- the confound, measured
+
+Reported as a clearly-labelled extra, because the plain reading of
+"overlap in both cases" is each arm against the corpus, above.
+
+Between the two drafts: **6,176 shared 8-word runs, Jaccard 0.483, and a
+longest shared run of 487 words.**
+
+The 487-word run is not boilerplate and it is not concealed reuse: it is
+**section 7's whole-of-life cost arithmetic together with the exercise
+solutions that complete it** -- engineer-day tables, a break-even
+derivation and its worked answer. None of that content depends on the
+corpus, so neither arm had any reason to invent a second version of it,
+and both were written by one session to one pre-registered skeleton.
+
+Read the other way, a high Jaccard is the experiment's control working
+rather than leaking. The skeleton, reader, word budget and queries were
+pre-registered as identical, so the *only* thing that should differ
+between the two chapters is the citation-grounded material -- and heavy
+overlap in the arithmetic, tables and exercises is exactly what that
+design predicts. The material that does differ is precisely the material
+the retrieval arm touched.
+
+**This number says nothing about the collection filter.** It says that
+two chapters written to one skeleton in one session are not independent
+documents, and it is the reason the corpus-facing scans above, not this,
+are the headline. Two independent sessions would be needed to measure
+draft-to-draft similarity attributable to the retrieval arm, and that
+experiment was not run.
+
+### What replicated, and what is new
+
+Replicated from the 28-item run:
+
+- Retrieval payload is unchanged by the filter (0.1 % here, 0.3 % there).
+- Index cost is zero -- now shown by three hashes rather than one.
+- Selection ratio rises sharply under the filter (0.11 → 0.65 there,
+  0.21 → 0.76 here).
+- Shelf saturation: coverage 71 % there, 89 % here, with the smaller
+  shelf saturating harder as predicted.
+
+New here:
+
+- **A word budget and a per-1k-words normalisation**, which the first run
+  lacked -- without it "fewer output tokens" cannot be told apart from
+  "shorter chapter".
+- **A clean token comparison with the model held fixed**, which the
+  first run could not offer.
+- **The embedding tier ran**, so the overlap numbers cover restatement
+  and not only verbatim reuse.
+- **The asymmetry finding**: the curated shelf surfaced 8 papers the
+  whole-corpus arm never saw. Curation is not only a filter; it is a
+  re-ranking that promotes material a larger pool suppresses.
+
+### What this section does not measure
+
+- **A large collection.** 19 items saturates hard. A shelf in the
+  hundreds would show a smaller selection-ratio gap.
+- **Whether either chapter is *better*.** This measures retrieval and
+  citation behaviour, not prose quality or teaching effectiveness. The
+  shelf demonstrably cost Arm C the end-of-life literature and
+  demonstrably bought it the two-clock figure; which trade a reader
+  prefers is not a number here.
+- **Independent arms.** One session, one skeleton -- see the
+  draft-vs-draft figure above.
+- **An Arm F that was drafted once.** The rewrite is quarantined rather
+  than absent, and a clean single-draft Arm F would be a better control.
+- **Generalisation.** Two collections, two chapters, one corpus
+  snapshot, one host.
+- **Per-section adherence to the word budget.** The budget was
+  pre-registered per section and only the *totals* were checked against
+  it. Both chapters came in short of the 10,000-word target -- Arm F at
+  9,168 and Arm C at 9,742 -- and no section-by-section comparison was
+  made.
+- **Independent figures.** Both drafts `\input` the same two figure
+  files from the shared topic directory, so revising a figure for one
+  arm silently changes the other arm's render.
+
+### Reproducing
+
+```bash
+python bench/bench_collection_scope.py \
+    --topic book-chapters/digital-twin-life-cycle-considerations \
+    --arm-f digital-twin-life-cycle-considerations-full-corpus \
+    --arm-c digital-twin-life-cycle-considerations \
+    --collection Lifecycle \
+    --preregistration bench/results/2026-08-18-collection-scope-lifecycle/preregistration.md \
+    --hashes bench/results/2026-08-18-collection-scope-lifecycle/hashes.jsonl \
+    --session ~/.claude/projects/<slug>/<session-id>.jsonl \
+    --steering-at 2026-08-18T20:53:33.949Z \
+    --arm-f-discarded-words 9055 \
+    --out bench/results/2026-08-18-collection-scope-lifecycle/measurements.json
+```
+
+Stdlib only, no venv, no lock -- reads `content/ledger.sqlite` and
+`content/retrieval_index.json` read-only and replays each dossier's own
+logged queries through `src.retrieval.search()`. `--session` and
+`--steering-at` are optional; omit them and every non-token figure still
+reproduces. The replay reproduces identically only while the ledger is
+unmoved, which `--hashes` now checks and reports as `replay_sound`
+rather than leaving to the reader.
+
+## 2026-08-19: the same `--collection` question, with the arms actually isolated
+
+The run above (`2026-08-18b`) wrote both arms **inline in one agent
+session**, and its own draft-vs-draft figure convicted it: Jaccard
+**0.483**, longest shared run **487 words**. I reported that as "the
+control working". That was too generous. A 487-word contiguous shared
+passage is contamination whatever the skeleton says, and two of the six
+measurements — tokens and draft-vs-draft overlap — were measuring the
+session rather than the retrieval scope.
+
+This run fixes the process. Each arm is written by a **separate subagent
+with an empty context window**, given the task specification and its own
+retrieval scope and *nothing else*: no scope statement, no section
+skeleton, no query list, no prose, and no knowledge that the other arm
+exists. The two were dispatched **in parallel**.
+
+Pre-registration, predictions, hashes, run notes and measurements:
+`bench/results/2026-08-19-collection-scope-lifecycle-isolated/`.
+
+### What had to be given up to get isolation
+
+The previous run pre-registered a shared section skeleton and a shared
+ten-query list, so the arms differed in exactly one variable. **That is
+impossible here**, because handing both agents a skeleton and a query
+list is precisely the context being eliminated. Each agent therefore
+formulated its own queries — Arm F issued 14, Arm C 9 — and derived its
+own structure.
+
+So the two runs measure different things, and both are worth having:
+
+- **2026-08-18b** — what the filter does to retrieval, holding the
+  drafting plan constant. One variable, polluted process.
+- **2026-08-19** — what the filter does to a *real drafting run*, plan
+  included. Honest process, more than one variable.
+
+**Retrieval payload totals are consequently not comparable in this run**
+and must be read per query.
+
+### The five pre-registered predictions, scored
+
+| # | Prediction | Outcome |
+|---|---|---|
+| 1 | Draft-vs-draft Jaccard falls well below 0.483 | **Confirmed.** 0.483 → **0.0006**; longest shared run 487 → **17 words** |
+| 2 | Payload stays near-parity *per query* | **Confirmed.** 7,400 chars/query (F) vs 7,375 (C) |
+| 3 | Index cost stays zero | **Confirmed.** Three identical hashes, `replay_sound: true` |
+| 4 | Arm C's selection ratio stays far above Arm F's | **Confirmed.** 0.305 vs 0.889 |
+| 5 | Arm C surfaces papers Arm F does not | **Confirmed, and strengthened.** 10 papers, found with *different* queries than the run that first showed 8 |
+
+Prediction 1 is the one that mattered: **the pollution was real, and it
+was the session, not the design.** Two agents writing to no shared
+skeleton produced essentially disjoint prose — 16 shared 8-grams out of
+~11,600 and ~13,800.
+
+### The numbers
+
+| | Arm F (whole corpus) | Arm C (`Lifecycle`) |
+|---|---|---|
+| Queries issued | 14 | 9 |
+| Retrieval payload | 103,603 chars | 66,372 chars |
+| Payload per query | 7,400 | 7,375 |
+| Words drafted | 11,529 | 13,558 |
+| Distinct citekeys surfaced | 154 | 18 |
+| Cited | 47 | 16 |
+| **Selection / rejection** | **0.305 / 0.695** | **0.889 / 0.111** |
+| Shelf coverage | — | 18/19 = 0.947 |
+| Turns | 101 | 102 |
+| Output tokens | 41,573 | 55,985 |
+| Output tokens / 1k words | 3,606 | **4,129** |
+| Verbatim findings | 21 (all embedding) | 19 (all embedding) |
+| Longest verbatim run | 50 words | 62 words |
+| Tiers not run | none | none |
+
+**The token result reverses.** In the inline run Arm C looked cheaper
+per 1,000 words (3,101 vs 3,569). With isolated pools it is **dearer**
+(4,129 vs 3,606). The inline figure was an artefact: the collection arm
+ran second and had the whole-corpus arm's finished chapter in context to
+adapt from. Removing that removes the saving. **On this evidence
+`--collection` does not reduce drafting cost — it changes what the
+draft is made of.**
+
+**Only 2 papers are cited by both arms** (`frasheri_addressing_2023`,
+`kamburjan_declarative_2024`), out of 61 distinct papers cited across
+the two. With independent queries the two chapters are grounded in
+almost entirely disjoint literature.
+
+**The asymmetry finding replicates under harder conditions.** Ten papers
+Arm C surfaced were never surfaced by Arm F — and this time the two arms
+did not even share a query list, so the effect is not an artefact of one
+set of query strings. BM25 over 642 items buries what BM25 over 19 items
+ranks first.
+
+**Arm C exhausted its shelf.** 18 of 19 items surfaced, 16 of them
+cited — the agent's own report says it cited "every distinct work in the
+collection". At that point the selection ratio is measuring shelf size,
+not judgement, and the honest reading is that a 19-item shelf is too
+small for `--k 15` to discriminate at all.
+
+### Two measurement bugs found by running this
+
+**1. `docs/TOKENS.md`'s dedup recipe undercounts subagent transcripts by
+5x.** The documented recipe dedups on `requestId` and keeps the first
+entry. Streaming writes several entries per request and their `usage`
+objects are *partial* — only the last is final. Measured on Arm F's
+transcript: 219 usage entries over 101 request ids, 70 with more than
+one entry, of which **26 genuinely differ**; first-per-id summed to
+8,259 output tokens against a true **41,573**.
+
+The fix is to take the **maximum** per request id, which is safe because
+every usage field is monotonic within a request. `_pool_usage` now does
+this.
+
+Scope of the damage, checked rather than assumed: the **main session**
+transcript has 132 duplicated request ids but **zero** where the entries
+differ, so first-per-id and max-per-id agree exactly and every figure in
+the `2026-08-18b` section above is unaffected. The bug bites subagent
+transcripts only — which no previous benchmark here had reason to read.
+
+**2. A subagent's self-reported metrics drift from its own artefact.**
+Arm F reported "54 distinct citekeys cited" and listed them. The draft
+contains **47**. Seven listed keys (`fitzgerald_engineering_2024-1`,
+`larsen_engineering_2024`, `lim_state---art_2020`,
+`semeraro_digital_2021`, `shao_analysis_2023`, `shao_use_2021`,
+`thelen_comprehensive_2022`) appear nowhere in it — all real ledger keys,
+presumably dropped during the agent's four trimming passes without the
+tally being updated.
+
+Nothing unsound reached the draft: the gate reads the file, not the
+summary, and passed on the real 47 keys and 76 instances. But **no
+figure in this section is taken from an agent's report**; every one is
+recomputed from disk. Any benchmark that trusts a drafting agent's own
+count is measuring the agent's bookkeeping.
+
+### A third finding, about the environment rather than the feature
+
+`/workspace` sits at `b4b5cb0e`; this worktree at `12e6f367`, which
+carries #247 and rewrites the figure contract. The two implement
+**different** contracts, and the documented marker-only form silently
+drops every figure under the older one — exit 0, no warning:
+
+| Draft form | b4b5cb0e | 12e6f367 (#247) |
+|---|---|---|
+| Marker only + `.tex`/`.txt` (**documented**) | `\input`=0, ASCII=0 — **dropped** | `\input`=1, ASCII=1 |
+| Marker + inline fence (pre-#247) | `\input`=1, ASCII=1 | `\input`=1, ASCII=**2** — duplicated |
+
+Both arms ran under `b4b5cb0e` and both hit it; both worked around it by
+inlining fences, which is why their drafts now satisfy the *old*
+contract and would double-render under #247. The `2026-08-18b` drafts,
+and the `digital-twin-platforms` drafts before them, were marker-only and
+therefore **rendered without their figures entirely.** Not filed as an
+issue: the newer contract is correct, the stale checkout is the fault.
+The live hazard worth filing separately is that #247 does not warn about
+the form it replaced.
+
+### What this section does not measure
+
+- **One variable.** Queries and structure both vary. See above.
+- **Run-to-run variance.** One agent per arm, one run each. Nothing here
+  separates the arm effect from ordinary variation in agent behaviour; a
+  repeated arm would be needed and was not run.
+- **A shelf large enough to discriminate.** 19 items, 94.7 % surfaced.
+- **Chapter quality.** Both are long (11.5k and 13.6k words against a
+  10k target) and neither has been read for teaching merit.
+- **Equal pipeline conditions.** Both arms ran under the stale checkout,
+  so the figure mechanics above apply to both — but that was luck, not
+  control.
+
+### Reproducing
+
+```bash
+python bench/bench_collection_scope.py \
+    --topic book-chapters/digital-twin-life-cycle-considerations \
+    --arm-f digital-twin-life-cycle-considerations-full-corpus \
+    --arm-c digital-twin-life-cycle-considerations \
+    --collection Lifecycle \
+    --hashes bench/results/2026-08-19-collection-scope-lifecycle-isolated/hashes.jsonl \
+    --arm-f-session <session>/subagents/agent-<f-id>.jsonl \
+    --arm-c-session <session>/subagents/agent-<c-id>.jsonl \
+    --out bench/results/2026-08-19-collection-scope-lifecycle-isolated/measurements.json
+```
+
+`--arm-f-session`/`--arm-c-session` are the isolated-arm form: one
+transcript per agent, no windowing, no quarantine, no ordering caveat.
+
+## 2026-08-19b: three conditions — scope narrow, search wide, or narrow then widen
+
+The two runs above ask a binary question: search the whole library, or
+search one curated shelf. Real practice has a third option that neither
+measured — **scope narrow to draft, then widen deliberately once** — and
+it is the option the tooling actually recommends, since `corpus-reviser`
+exists precisely to re-search everything for a draft that already exists.
+
+So the collection-scoped chapter was copied to a third file and put
+through a whole-corpus revision pass with `corpus-reviser`, in its own
+isolated agent, with the two earlier chapters declared off-limits. They
+were verified byte-identical afterwards (11,529 and 13,558 words, 47 and
+16 citekeys — matching the recorded measurements exactly).
+
+Measurements: `bench/results/2026-08-19-collection-scope-lifecycle-isolated/measurements.json`.
+
+### The three conditions
+
+| | drafted against the whole corpus | drafted against the `Lifecycle` shelf | shelf-drafted, then revised against the whole corpus |
+|---|---|---|---|
+| Words | 11,529 | 13,558 | 14,114 |
+| `search` calls | 14 | 9 | 23 (9 inherited + 14 in the pass) |
+| `evidence` calls | 0 | 0 | 10 |
+| Retrieval payload | 103,603 | 66,372 | 185,600 |
+| Distinct citekeys surfaced | 154 | 18 | 152 |
+| Cited | 47 | 16 | 24 |
+| **Selection / rejection** | **0.31 / 0.69** | **0.89 / 0.11** | **0.16 / 0.84** |
+| Turns | 101 | 102 | 65 |
+| Output tokens | 41,573 | 55,985 | **9,689** |
+| Verbatim findings | 21 (all embedding) | 19 (all embedding) | 19 (all embedding) |
+| Tiers not run | none | none | none |
+
+### What the revision pass actually did
+
+It changed **9 citations out of 16**, and the direction is the
+interesting part.
+
+**Added 9.** Six of them — `anwer_developing_2025`,
+`thelen_comprehensive_2022-1`, `niederer_scaling_2021`,
+`zampetti_continuous_2023`, `alcaraz_digital_2022`,
+`beaumont_towards_2025` — are papers the **whole-corpus draft also found
+independently**. The widening pass rediscovered, on its own queries,
+two-thirds of what the shelf had been hiding. Three more
+(`alskaif_evolution_2025`, `perno_implementation_2022`,
+`semeraro_digital_2021`) were found by *neither* of the first two
+chapters.
+
+**Dropped 1**, and it is the right one. `noauthor_digital_2023` is an
+author-less `@misc` whose bibliography entry carries the corpus owner's
+own note: *"potentially low quality non-peer reviewed. Find better
+references."* Both earlier chapters leaned on it for the same
+188-paper phase-distribution claim. The revision cut the claim rather
+than re-homing it, and replaced the underlying point with two
+peer-reviewed sources. Nothing in the pipeline flagged that paper —
+`annote` is not read by the gate — so this was the reviser's judgement,
+not a check firing.
+
+It also corrected two **scope justifications** rather than the scope
+itself: the draft had excluded security and standards on the grounds
+that "the sources barely touch" them, which the wider corpus shows to be
+false. The exclusions stayed — that would have been a scope change the
+task forbade — but they now read as editorial choice rather than as a
+claim about the literature. That distinction is the kind of thing only a
+whole-corpus pass can surface, because the scoped draft had no way to
+know it was wrong.
+
+### Source convergence without prose convergence
+
+Pairwise draft overlap, shared 8-word runs:
+
+| Pair | Jaccard | Longest shared run |
+|---|---|---|
+| whole-corpus vs shelf-scoped | 0.0006 | 17 words |
+| whole-corpus vs shelf-then-revised | 0.0006 | 17 words |
+| shelf-scoped vs shelf-then-revised | 0.934 | 8,615 words |
+
+The third row is high **by construction** — that draft is a copy of the
+second that was then edited, so the figure measures how much the revision
+changed (about 7 % of the text), not independence.
+
+The first two rows are the finding. **The revision moved the draft's
+sources toward the whole-corpus chapter without moving its prose at all**
+— identical 0.0006 before and after. Six shared citations were added and
+the shared wording did not budge. Retrieval scope determines what a
+chapter is grounded in; it does not determine what a chapter says. Two
+agents given the same sources still write different documents, and the
+benchmark can only see the first half of that.
+
+### Cost
+
+The revision pass cost **9,689 output tokens over 65 turns** — 17 % of
+what drafting the scoped chapter cost, and 23 % of the whole-corpus
+chapter — to recover six of the shelf's nine misses and drop the weakest
+source in the draft. As a repair, that is cheap.
+
+As a *strategy* it is not, and the total says so plainly: scoped drafting
+plus revision is 65,674 output tokens against 41,573 for drafting against
+the whole corpus once. **Narrow-then-widen costs about 58 % more output
+than simply searching wide from the start.** It buys a different
+artefact — three sources neither other chapter found, and a
+deliberately-recorded scope justification — not a cheaper one.
+
+The retrieval payload tells the same story from the other side: 185,600
+characters across the scoped draft and its revision, against 103,603 for
+the whole-corpus draft. Scoping saves payload only until you widen; then
+you pay for the shelf and the library both.
+
+### The selection ratio inverts, and it is not a regression
+
+0.89 → 0.16 looks alarming and is an artefact of the denominator.
+
+The scoped draft cited 16 of the 18 papers it saw because a 19-item shelf
+with `--k 15` shows you nearly everything it has. After widening, the
+same draft has seen 152 distinct papers and cites 24 of them. Nothing got
+worse: the numerator went **up** (16 → 24) while the denominator went up
+nine-fold.
+
+This is the clearest evidence in these three runs that **selection ratio
+measures pool size, not judgement**, and should never be read as a
+quality score on its own. It is only interpretable against a fixed pool.
+
+### Method note: the log cannot tell you what it was scoped to
+
+The revised draft's `retrieval.md` holds 23 `search` rows: 9 inherited
+from the scoped draft and 14 from the widening pass. **Nothing in the log
+distinguishes them** — it records the query, the `--k` and the payload
+size, but not the collection (#254). Replaying it correctly needed the
+split supplied from outside, as `--arm-r-inherited-scoped-rows 9`, on the
+strength of knowing how the file was made.
+
+That is provenance standing in for a missing column, and it only worked
+here because this run created the copy itself. For any draft whose
+history someone else made, the scope of its past retrieval is
+unrecoverable. #254 is the fix.
+
+### What this section does not measure
+
+- **Whether the revised chapter is better.** It is better *sourced* — nine
+  citation changes, all defensible on inspection. Nobody has read the
+  three chapters for teaching quality, and the revised one is now 14,114
+  words against a 10,000-word target, which is the worst overshoot of the
+  three.
+- **A second revision pass.** Diminishing returns are untested.
+- **Revision of the whole-corpus draft.** The fourth cell of the design —
+  wide-drafted then re-revised — was not run, so "the revision found six
+  of the misses" is not separable from "a second pass finds more
+  regardless of the first pass's scope".
+- **Run-to-run variance.** One agent per condition, one run each.

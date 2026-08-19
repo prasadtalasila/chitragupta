@@ -1,0 +1,340 @@
+{
+  "preregistration": "bench/results/2026-08-19-collection-scope-lifecycle-isolated/preregistration.md",
+  "collection": "Lifecycle",
+  "retrieval_payload": {
+    "arm_f_chars": 103603,
+    "arm_c_chars": 66372,
+    "arm_f_queries": 14,
+    "arm_c_queries": 9,
+    "chars_delta_pct": -35.94,
+    "note": "near-parity is the expected result, not a null one: at a fixed --k the filter still returns k results, drawn from a smaller pool. The filter changes WHICH papers arrive, not how many characters do."
+  },
+  "words": {
+    "arm_f_words": 11529,
+    "arm_c_words": 13558,
+    "note": "body only; the generated References section is excluded from both."
+  },
+  "surfaced_selected_rejected": {
+    "arm_f": {
+      "surfaced_distinct_citekeys": 154,
+      "cited": 47,
+      "rejected": 107,
+      "selection_ratio": 0.3052,
+      "rejection_ratio": 0.6948
+    },
+    "arm_c": {
+      "surfaced_distinct_citekeys": 18,
+      "cited": 16,
+      "rejected": 2,
+      "selection_ratio": 0.8889,
+      "rejection_ratio": 0.1111,
+      "collection_size": 19,
+      "collection_coverage": 0.9474,
+      "caveat": "surfaced is capped at collection_size by construction, so arm_c's selection_ratio has a denominator that cannot grow. Compare ratios, never raw surfaced counts."
+    }
+  },
+  "common_papers": {
+    "cited_in_both": [
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024"
+    ],
+    "cited_only_in_f": [
+      "aissat_devops_2025",
+      "alcaraz_digital_2022",
+      "altamiranda_system_2024",
+      "anwer_developing_2025",
+      "beaumont_towards_2024",
+      "beaumont_towards_2025",
+      "beetz_gitops_2022",
+      "branlard_digital_2024",
+      "budiardjo_digital_2021",
+      "burattini_towards_2024",
+      "caesar_digital_2023",
+      "combemale_model-based_2023",
+      "committee_on_foundational_research_gaps_and_future_directions_for_digital_twins_foundational_2024",
+      "esterle_autonomous_2024-1",
+      "ferko_standardisation_2023",
+      "fitzgerald_digital_2024-1",
+      "fitzgerald_potential_2024",
+      "frasheri_advanced_2024",
+      "gil_survey_2024",
+      "gomes_digital_2025",
+      "gomes_foundational_2024",
+      "grieves_digital_2017",
+      "hartmann_executable_2022",
+      "honcak_mbse_2024",
+      "hugues_twinops_2022",
+      "kamburjan_greenhousedt_2024",
+      "kapteyn_probabilistic_2021",
+      "kulik_security_2024",
+      "li_coupling_2025",
+      "liu_shipboard_2024",
+      "niederer_scaling_2021",
+      "oakes_case_2024",
+      "pinon_fischer_fundamentals_2024",
+      "schweiger_empirical_2019",
+      "thelen_augmented_2022",
+      "thelen_comprehensive_2022-1",
+      "thelen_probabilistic_2024",
+      "tygesen_state---art_2019",
+      "van_dinter_predictive_2022",
+      "wanasinghe_digital_2020",
+      "wermann_ktwin_2024",
+      "zampetti_continuous_2023",
+      "zech_proposal_2024",
+      "zhang_digital_2024",
+      "zhang_knowledge_2024"
+    ],
+    "cited_only_in_c": [
+      "dittler_agent-based_2022",
+      "guo_life_2024",
+      "karnoub_how_2025",
+      "liu_novel_2019",
+      "liu_review_2021",
+      "lu_evoclinical_2023",
+      "lugaresi_digital_2025",
+      "michael_model-driven_2025",
+      "noauthor_digital_2023",
+      "picone_harmonizing_2025",
+      "shangguan_triple_2022",
+      "tekinerdogan_systems_2020",
+      "xu_pretrain_2024",
+      "xu_traversing_2023"
+    ],
+    "surfaced_in_both": [
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024",
+      "kamburjan_declarative_2024-1",
+      "liu_review_2021",
+      "michael_model-driven_2025",
+      "michael_model-driven_nodate",
+      "noauthor_digital_2023",
+      "tekinerdogan_systems_2020"
+    ],
+    "surfaced_in_both_count": 8,
+    "surfaced_only_in_c_count": 10,
+    "surfaced_only_in_c": [
+      "dittler_agent-based_2022",
+      "guo_life_2024",
+      "karnoub_how_2025",
+      "liu_novel_2019",
+      "lu_evoclinical_2023",
+      "lugaresi_digital_2025",
+      "picone_harmonizing_2025",
+      "shangguan_triple_2022",
+      "xu_pretrain_2024",
+      "xu_traversing_2023"
+    ]
+  },
+  "index_cost": {
+    "checked": true,
+    "checkpoints": [
+      "before-arm-F",
+      "after-both-arms",
+      "after-revision-pass"
+    ],
+    "index_unchanged": true,
+    "ledger_unchanged": true,
+    "index_md5": [
+      "1f83e47131d782600f8335ae73686130"
+    ],
+    "ledger_md5": [
+      "d8b244c7c2e7783d530d6f1476e736be"
+    ],
+    "index_bytes": [
+      14134003
+    ],
+    "replay_sound": true
+  },
+  "verbatim_overlap": {
+    "arm_f": {
+      "ran": true,
+      "findings": 21,
+      "by_tier": {
+        "embedding": 21
+      },
+      "longest_run_words": 50,
+      "tiers_not_run": []
+    },
+    "arm_c": {
+      "ran": true,
+      "findings": 19,
+      "by_tier": {
+        "embedding": 19
+      },
+      "longest_run_words": 62,
+      "tiers_not_run": []
+    },
+    "draft_vs_draft": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 16,
+      "arm_f_ngrams": 11640,
+      "arm_c_ngrams": 13813,
+      "jaccard": 0.0006,
+      "longest_shared_run_words": 17
+    }
+  },
+  "revised_arm": {
+    "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations-corpus-revised.md",
+    "words": 14114,
+    "search_calls": 23,
+    "evidence_calls": 10,
+    "inherited_scoped_rows": 9,
+    "chars_total": 185600,
+    "chars_search_only": 170227,
+    "surfaced_distinct_citekeys_all_history": 152,
+    "surfaced_distinct_citekeys_revision_pass_only": 142,
+    "cited": 24,
+    "selection_ratio_vs_all_history": 0.1579,
+    "rejection_ratio_vs_all_history": 0.8421,
+    "verbatim": {
+      "ran": true,
+      "findings": 19,
+      "by_tier": {
+        "embedding": 19
+      },
+      "longest_run_words": 62,
+      "tiers_not_run": []
+    },
+    "note": "Its log mixes scoped and unscoped calls and does not say which is which (#254); the split is provenance, supplied via --arm-r-inherited-scoped-rows, not inferred from the log."
+  },
+  "three_way_papers": {
+    "cited_in_all_three": [
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024"
+    ],
+    "kept_from_scoped": [
+      "dittler_agent-based_2022",
+      "frasheri_addressing_2023",
+      "guo_life_2024",
+      "kamburjan_declarative_2024",
+      "karnoub_how_2025",
+      "liu_novel_2019",
+      "liu_review_2021",
+      "lu_evoclinical_2023",
+      "lugaresi_digital_2025",
+      "michael_model-driven_2025",
+      "picone_harmonizing_2025",
+      "shangguan_triple_2022",
+      "tekinerdogan_systems_2020",
+      "xu_pretrain_2024",
+      "xu_traversing_2023"
+    ],
+    "dropped_by_revision": [
+      "noauthor_digital_2023"
+    ],
+    "added_by_revision": [
+      "alcaraz_digital_2022",
+      "alskaif_evolution_2025",
+      "anwer_developing_2025",
+      "beaumont_towards_2025",
+      "niederer_scaling_2021",
+      "perno_implementation_2022",
+      "semeraro_digital_2021",
+      "thelen_comprehensive_2022-1",
+      "zampetti_continuous_2023"
+    ],
+    "added_by_revision_that_whole_corpus_also_found": [
+      "alcaraz_digital_2022",
+      "anwer_developing_2025",
+      "beaumont_towards_2025",
+      "niederer_scaling_2021",
+      "thelen_comprehensive_2022-1",
+      "zampetti_continuous_2023"
+    ],
+    "added_by_revision_that_whole_corpus_missed": [
+      "alskaif_evolution_2025",
+      "perno_implementation_2022",
+      "semeraro_digital_2021"
+    ],
+    "revised_vs_whole_corpus_overlap": [
+      "alcaraz_digital_2022",
+      "anwer_developing_2025",
+      "beaumont_towards_2025",
+      "frasheri_addressing_2023",
+      "kamburjan_declarative_2024",
+      "niederer_scaling_2021",
+      "thelen_comprehensive_2022-1",
+      "zampetti_continuous_2023"
+    ]
+  },
+  "draft_overlap_pairwise": {
+    "whole_corpus_vs_scoped": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 16,
+      "arm_f_ngrams": 11640,
+      "arm_c_ngrams": 13813,
+      "jaccard": 0.0006,
+      "longest_shared_run_words": 17
+    },
+    "whole_corpus_vs_revised": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 16,
+      "arm_f_ngrams": 11640,
+      "arm_c_ngrams": 14392,
+      "jaccard": 0.0006,
+      "longest_shared_run_words": 17
+    },
+    "scoped_vs_revised": {
+      "measure": "shared word runs of >= 8 words, lowercased, punctuation stripped",
+      "caveat": "crude by design -- over-reports shared table headers and the pre-registered section titles, which are identical by construction. Not a substitute for the per-arm corpus scan.",
+      "shared_ngrams": 13623,
+      "arm_f_ngrams": 13813,
+      "arm_c_ngrams": 14392,
+      "jaccard": 0.9342,
+      "longest_shared_run_words": 8615
+    },
+    "note": "scoped_vs_revised is high BY CONSTRUCTION -- the revised draft is a copy of the scoped one that was then edited. It measures how much the revision changed, not independence."
+  },
+  "tokens_extra": {
+    "arm R -- whole agent": {
+      "turns": 65,
+      "input_tokens": 9460217,
+      "output_tokens": 9689,
+      "models": {
+        "claude-opus-5": 149
+      },
+      "usage_entries_seen": 149,
+      "output_tokens_first_per_request": 2347,
+      "streaming_partials_present": true,
+      "self_check": "streaming partials present: first-per-request would report 2,347 against 9,689. The max reading is the correct one; see bench/RESULTS.md 2026-08-19."
+    }
+  },
+  "tokens": {
+    "arm F -- whole agent": {
+      "turns": 101,
+      "input_tokens": 21598678,
+      "output_tokens": 41573,
+      "models": {
+        "claude-opus-5": 219
+      },
+      "usage_entries_seen": 219,
+      "output_tokens_first_per_request": 8259,
+      "streaming_partials_present": true,
+      "self_check": "streaming partials present: first-per-request would report 8,259 against 41,573. The max reading is the correct one; see bench/RESULTS.md 2026-08-19."
+    },
+    "arm C -- whole agent": {
+      "turns": 102,
+      "input_tokens": 19037939,
+      "output_tokens": 55985,
+      "models": {
+        "claude-opus-5": 193
+      },
+      "usage_entries_seen": 193,
+      "output_tokens_first_per_request": 25511,
+      "streaming_partials_present": true,
+      "self_check": "streaming partials present: first-per-request would report 25,511 against 55,985. The max reading is the correct one; see bench/RESULTS.md 2026-08-19."
+    }
+  },
+  "tokens_per_1k_words": {
+    "arm_f_output_tokens_per_1k_words": 3606.0,
+    "arm_c_output_tokens_per_1k_words": 4129.3,
+    "arm_f_words_drafted_total": 11529,
+    "arm_c_words_drafted_total": 13558,
+    "note": "Each arm drafted once, in its own agent, so words drafted equals the finished body and needs no discarded-draft correction. Both pools still contain non-drafting output (dossier, gate, renders, style, verbatim), so this remains an upper bound on the cost of drafting 1,000 words."
+  },
+  "tokens_note": "One context pool per arm, measured over each subagent's own transcript. Unlike the inline run this needs no windowing, no quarantine and no ordering caveat: neither agent could see the other's context, and they ran in parallel. Input is overwhelmingly cache reads of each agent's own growing context; output tokens and turns are the comparison."
+}
