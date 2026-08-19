@@ -29,64 +29,36 @@ It reads the same shared corpus layer as the other genre skills.
 - `src/enrich/corpus.py` -- builds the enrichment corpus from the ledger and
   nothing else, so every document it yields is citable, keyed by its citekey
 
-## Collection scoping (#195): draft from the shelf, not the library
+## Collection scoping (#195): deliberately not used here
 
-A Zotero library usually spans several topics, and its owner has already
-sorted it -- "these are the modelling papers". `src/bib_collections.py`
-carries that judgement into the ledger and `search()` can honour it.
+Every other genre skill offers to scope retrieval to one curated Zotero
+collection and threads `--collection` through its searches. **This skill
+does not, and neither do its agents.** That is a decision, not an
+oversight -- do not "fix" it by copying the section in from
+`survey-writer`.
 
-Use it. BM25 over a whole library and BM25 over one shelf do not return
-the same papers, and the shelf is **not** a subset of the library's
-ranking: measured over a 642-item corpus, a 19-item shelf surfaced ten
-papers the whole-corpus search never returned at all, because a small
-pool promotes what a large pool's competition buries
-(`bench/RESULTS.md`, 2026-08-19).
+The reason is what this skill is for. Its whole method is to attack a
+question from several perspectives at once, each interviewer chasing a
+different framing, and then to map where those framings *disagree*. A
+curated shelf is one person's answer to "what is this topic about",
+already filtered by the judgement being interrogated. Scoping to it
+would narrow every perspective to the same pre-agreed subset and quietly
+delete the contradictions this skill exists to surface -- the report would
+look consistent because it had been prevented from seeing anything that
+would make it otherwise.
 
-**At step 0, before any retrieval, offer the choice once:**
+There is measured reason to expect that, not just principle. A 19-item
+shelf surfaced ten papers a whole-corpus search never returned, and the
+whole-corpus search surfaced far more that the shelf did not hold
+(`bench/RESULTS.md`, 2026-08-19): the two are different rankings, not
+subsets. For a single-thesis genre, picking one is a reasonable trade.
+For a genre whose output is a contradiction map, taking the narrower one
+by default is the wrong half.
 
-```bash
-python -m src.corpus ledger --collections     # what exists, with counts
-```
-
-Show what exists, ask which one this draft belongs to, and accept "none,
-search everything" as an answer. Record the result in `scope.md`'s
-header, beside `language:`:
-
-```text
-- collection: Digital twins > Modelling
-- collection: (whole corpus)      # user declined, or the library has none
-```
-
-**Then pass it on every retrieval call in the run:**
-
-```bash
-python -m src.draft retrieve search "<query>" --k 15 \
-    --collection "<the recorded name>" --log <draft>
-```
-
-Three rules, none of them negotiable:
-
-- **Every call, or none.** One unflagged call silently widens the scope
-  for that search, and nothing downstream detects it: `retrieval.md`
-  records the query, the `--k` and the payload size but **not** the
-  collection (#254), so the log cannot tell anyone afterwards which calls
-  were scoped. The discipline has to hold while the run is happening.
-- **`retrieve evidence` takes no `--collection`.** The flag is on
-  `search` only, and rightly: `evidence` zooms into one citekey you have
-  already chosen, so there is nothing left for a collection to filter.
-  Use it as normal.
-- **Degrade silently.** Most exports carry no collections at all --
-  plain Zotero's BibTeX exporter drops them, and only Better BibTeX's
-  JabRef-fields option keeps them (`docs/ZOTERO.md`). If
-  `ledger --collections` reports none, say nothing, ask nothing, record
-  `- collection: (whole corpus)`, and behave exactly as this skill did
-  before this section existed.
-
-Scoping is a **narrowing**, and a narrowing cannot surface a paper the
-shelf does not hold. If retrieval inside the shelf comes back thin for a
-sub-theme, say so -- in the draft and in `rejected.md` -- rather than
-quietly widening mid-run. The honest fix to offer is a whole-corpus pass
-with `corpus-reviser`, which is the one skill allowed to widen.
+So: **search the whole corpus, always.** If a user asks for a
+collection-scoped deep-research report, say what it costs -- that the
+contradiction mapping in Phase 3 will only see disagreements that survive
+inside the shelf -- and let them decide with that in hand.
 
 ## The dossier: write down what produced the draft
 

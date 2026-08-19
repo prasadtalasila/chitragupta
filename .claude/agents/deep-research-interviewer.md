@@ -32,7 +32,7 @@ synced corpus, simulating one editorial angle on the topic.
 3. Run each against this project's corpus:
 
    ```bash
-   python -m src.draft retrieve search "<query>" --k 15 --collection "<from scope.md>" --log <the draft path you were given>
+   python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
    ```
 
    Pass `--log` on every call. The dispatching skill hands you the draft
