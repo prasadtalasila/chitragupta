@@ -52,12 +52,19 @@ The document skeleton, in order:
 
 ```latex
 \documentclass[11pt,a4paper]{book}
-% packages the units actually need, and no others
+\usepackage[T1]{fontenc}\usepackage{lmodern}\usepackage{textcomp}
+\usepackage[a4paper,margin=40pt]{geometry}   % see "Margins" below
+\usepackage{longtable,booktabs,array,calc}   % what the converted units use
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
-% the bibliography stack -- probed, not assumed; see below
-
+\setcounter{secnumdepth}{-2}                 % if the units number themselves
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+% pandoc's citeproc definitions -- see below
 \title{<the outline's own title>}
 \author{<ask the user; never invent one>}
+\date{}
 
 \begin{document}
 \frontmatter
@@ -65,79 +72,60 @@ The document skeleton, in order:
 \tableofcontents
 
 \mainmatter
-% \part / \chapter / \input, in outline order
+% \part / \input, in outline order
 
 \backmatter
-% \printbibliography (biblatex) or \bibliography{...} (natbib)
 \end{document}
 ```
 
-**Probe for the bibliography stack; never assume one.** This is
-`DEVELOPER-AGENTS.md`'s standing rule, and it is not hypothetical here:
-the host this skill was first exercised on has `pdflatex` but no
-`biblatex.sty` and no `biber`, so a document that assumed them failed at
-`\usepackage` with nothing built.
+**There is no bibliography at the end, and no `natbib`, `bibtex` or
+`biber` pass.** Citations are resolved per unit, by pandoc's citeproc
+against this project's vendored IEEE style (`assets/csl/ieee.csl`), when
+the unit is converted -- so each chapter carries its **own numbered IEEE
+reference list**, under the chapter's own `References` heading, exactly
+as every other genre skill produces one. That is the house citation style
+and the reason natbib is not used: its author-year markers are not what
+the rest of this pipeline emits. `bibtex` and `IEEEtran.bst` are
+installed (`scripts/install_full_pipeline.sh`) for a document that
+genuinely wants a LaTeX-side bibliography; a book assembled this way does
+not.
+
+**The book must supply pandoc's citeproc macros, in their own file.** A
+converted unit uses the `CSLReferences` environment, which `--standalone`
+would have defined in a preamble the fragment does not have. Write the
+block to `citeproc-defs.def` beside `book.tex` and `\input` it --
+**not inline**, because it contains `\cite{#1}`, `\citeproc{mm}` and
+`\@`-internals that the citation gate reads as citekeys, and a false
+`FAIL` on the one gate in this project is worse than one more file.
+`.def` is LaTeX's own extension for a definitions file.
+
+Take the block from the installed pandoc rather than hand-copying it, so
+it matches the pandoc that did the conversion:
 
 ```bash
-kpsewhich biblatex.sty && command -v biber      # the biblatex path
-kpsewhich natbib.sty                            # the fallback, near-universal
+pandoc --print-default-template=latex | \
+  python3 -c "import sys; t=sys.stdin.read(); s=t.index('\$if(csl-refs)\$'); \
+    b=t[s:t.index('\$endif\$', s)+7]; \
+    print('\n'.join(l for l in b.splitlines() if not l.strip().startswith('\$')))"
 ```
 
-| Present | Preamble | Back matter | Build |
-|---|---|---|---|
-| `biblatex` **and** `biber` | `\usepackage[backend=biber]{biblatex}` + `\addbibresource{<bib>}` | `\printbibliography` | `pdflatex`, `biber`, `pdflatex` ×2 |
-| otherwise | `\usepackage{natbib}` | `\bibliographystyle{plainnat}` + `\bibliography{<bib without .bib>}` | `pdflatex`, `bibtex`, `pdflatex` ×2 |
+**Margins.** The `book` class at a4/11pt leaves 94pt inner and 143pt
+outer (measured with `\the\oddsidemargin`), a 119pt mean. `margin=40pt`
+is a third of that, which is this project's setting for an assembled
+book -- a 15-chapter book came out 326 pages rather than 546.
 
-Say which one you used and why. `\citep`/`\citet` -- what
-`thesis-chapter-writer` emits -- work under both, so the units need no
-change either way.
+**The bibliography points at the user's own `.bib` file**, the same one
+`python -m src.corpus sync` read -- not a copy, and never a file this
+skill writes. `render` reads it for you when it converts a unit, so
+nothing here names it: the reference manager is upstream, and this
+pipeline is downstream of it.
 
-Two rules about that skeleton, both from `AGENTS.md`:
-
-- **The bibliography points at the user's own `.bib` file**, the same one
-  `python -m src.corpus sync` read -- not a copy, and never a file this
-  skill writes. The bib file is the source of truth; this pipeline is
-  downstream of it.
-- **A unit is `\input` as a fragment.** Units drafted by
-  `thesis-chapter-writer` are already standalone `.tex` fragments with no
-  preamble, which is exactly this shape. A Markdown unit is converted
-  with pandoc directly:
-
-  ```bash
-  pandoc <unit-id>.md -t latex --natbib --no-highlight \
-      --top-level-division=chapter -o <unit-id>.tex
-  ```
-
-  **Not `python -m src.draft render --format tex`**, which this file used
-  to say and which cannot work: `render` is the publish step for *one
-  draft*, so it emits `--standalone` with its own `\documentclass{article}`
-  and resolves citations through `--citeproc` into a bibliography of its
-  own. `\input` that into a book and LaTeX meets a second
-  `\begin{document}`. Measured on the first real assembly (a 15-chapter
-  book, 2026-08-19): the fragment form is what composes, and `--natbib`
-  is what leaves one bibliography at the end of the book instead of
-  fifteen.
-
-  Two things the conversion has to get right, both learned from that same
-  build:
-
-  - **A citekey containing `--` is truncated by pandoc's citation
-    tokenizer.** `@lim_state---art_2020` reaches LaTeX as `lim_state`,
-    resolves to nothing, and renders as `[?]` -- a citation silently
-    dropped from a 500-page book, which is exactly the failure this
-    project exists to prevent. Before converting, rewrite the affected
-    bracketed groups in a **temp copy** of the Markdown to raw LaTeX --
-    `[@a; @b---c_2024]` becomes `\citep{a,b---c_2024}` -- which pandoc
-    passes through untouched, so the key in the book stays byte-identical
-    to the key in the `.bib`. Never alias the key and never edit the
-    author's file. `src/render_output/_citeproc.py::_alias_for` solves
-    the same problem the other way for the single-draft path; the raw
-    form is preferable here because it invents nothing.
-  - **The outline's ids go in as labels after conversion.** Pandoc emits
-    its own `\label{}` from the heading text; add `\label{<unit-id>}` (and
-    the chapter's `\label{ch-NN}`) immediately after the fragment's own
-    `\chapter{...}\label{...}`, so a label binds to the chapter counter
-    rather than to whatever sectioning command follows it.
+**Two files, not one.** Beside `book.tex`, write `book.md`: the same
+structure in Markdown, hyperlinking the chapter files that sit alongside
+it. Parts become `##`; a chapter that is a single unit of the same name
+becomes one link rather than a heading repeating its own link text
+underneath; a chapter with several sections becomes `###` and a list.
+It is the reading copy for anyone who is not building LaTeX.
 
 ## Process
 
@@ -183,13 +171,35 @@ Two rules about that skeleton, both from `AGENTS.md`:
    a registry built over units it could not read is a narrower claim
    than it looks.
 
-4. **Compose the book.** Write `content/drafts/<book>/book.tex` from the
-   conventions table above, in outline order, `\input`-ing only units
-   step 2 reported as `accepted`. Ask the user for the author line and
-   the document class options rather than choosing for them; everything
-   else is mechanical.
+4. **Convert each accepted unit to a fragment**, into the book's own
+   directory so `\input` resolves without copying anything:
 
-5. **Run the gate on what you composed.** Every unit passed it already;
+   ```bash
+   python -m src.draft render content/drafts/<book>/<unit-id>.md \
+       --format tex --fragment --output-dir content/drafts/<book>
+   ```
+
+   `--fragment` is what makes it assemblable: no preamble, the unit's own
+   `#` heading becomes the book's `\chapter`, and code blocks are left
+   unhighlighted because `Shaded`/`Highlighting` are defined only by the
+   standalone template. Everything else is the ordinary render -- citeproc,
+   the IEEE style, and the citekey aliasing that stops a key containing
+   `--` being truncated -- which is why this is one command and not a
+   pandoc invocation restated here. A unit already drafted as `.tex` by
+   `thesis-chapter-writer` needs no conversion.
+
+   Then add the outline's ids as labels: pandoc emits its own `\label{}`
+   from the heading text, and `\label{<unit-id>}` (plus the chapter's
+   `\label{ch-NN}`) goes immediately after that, so a label binds to the
+   chapter counter rather than to whatever sectioning command follows.
+
+5. **Compose the book.** Write `content/drafts/<book>/book.tex` and
+   `content/drafts/<book>/book.md` from the conventions above, in outline
+   order, covering only units step 2 reported as `accepted`. Ask the user
+   for the author line rather than choosing for them; everything else is
+   mechanical.
+
+6. **Run the gate on what you composed.** Every unit passed it already;
    the assembled document is a new file, and the gate is this layer's
    only exit:
 
@@ -201,7 +211,7 @@ Two rules about that skeleton, both from `AGENTS.md`:
    inventing or altering a citekey -- correct the reference or take the
    claim out, in the unit it came from, via `draft-reviser`.
 
-6. **Run the prose check over the units, not the skeleton.** `book.tex`
+7. **Run the prose check over the units, not the skeleton.** `book.tex`
    is structure and holds no prose, so scanning it would report nothing
    and mean nothing. Run it per accepted unit:
 
@@ -219,7 +229,7 @@ Two rules about that skeleton, both from `AGENTS.md`:
    unit that owns the prose. A review aid, not a gate: it exits 0
    whatever it finds.
 
-7. **Offer the verbatim scan, per unit.** Assembly is the last moment
+8. **Offer the verbatim scan, per unit.** Assembly is the last moment
    before a whole book is read by somebody else, which makes it the
    right moment to offer this -- don't run it silently, and never make
    it a condition of presenting:
@@ -236,26 +246,23 @@ Two rules about that skeleton, both from `AGENTS.md`:
    exits 0 either way. Repairing a finding is `overlap-reviser`'s job,
    one finding at a time, in the unit that owns the wording.
 
-8. **Build the PDF, if the toolchain is there.** A full book is a LaTeX
-   document with its own bibliography pass, so build it directly, from
-   the book's own directory -- the `\input` paths are relative to it:
+9. **Build the PDF, if the toolchain is there.** From the book's own
+   directory, because the `\input` paths are relative to it:
 
    ```bash
-   cd content/drafts/<book> && pdflatex -interaction=nonstopmode book.tex
-   biber book        # or: bibtex book, per the probe above
-   pdflatex -interaction=nonstopmode book.tex && pdflatex -interaction=nonstopmode book.tex
+   cd content/drafts/<book>
+   pdflatex -interaction=nonstopmode book.tex
+   pdflatex -interaction=nonstopmode book.tex
    ```
 
-   Two passes after the bibliography, because that is what resolves
-   `\cref` and the table of contents. `python -m src.draft render` is the
-   renderer for a *single* draft and is the right tool for a unit
-   preview; it is not a book build, and it does not run a bibliography
-   pass.
+   **Two passes, and no bibliography pass at all.** Citeproc resolved
+   every citation when the units were converted, so the document contains
+   no `\cite` for `bibtex` or `biber` to answer. The second pass is what
+   resolves `\cref` and the table of contents.
 
-   **Read `book.log` for undefined citations before believing the PDF.**
-   A `pdflatex` run that exits 0 can still have dropped a citation --
-   natbib reports it as a warning, not an error, and the book renders
-   with `[?]` where the reference should be:
+   **Read `book.log` before believing the PDF.** A `pdflatex` run that
+   exits 0 can still be missing something -- a dropped citation is
+   reported as a warning, not an error:
 
    ```bash
    python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='replace'); \
@@ -279,7 +286,7 @@ Two rules about that skeleton, both from `AGENTS.md`:
    Without TeX Live, say so plainly and stop there rather than working
    around it -- the `.tex` is the deliverable either way.
 
-9. **Stop at the sign-off.** This is the second of the two human gates,
+10. **Stop at the sign-off.** This is the second of the two human gates,
    and there is no command for it. Present what you composed: how many
    units, which the registries could not read, every finding from step 3,
    and what the gate and the two review aids said. Then stop.

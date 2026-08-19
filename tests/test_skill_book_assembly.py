@@ -71,28 +71,49 @@ def test_the_assembler_writes_no_prose_and_says_where_that_line_is():
     assert "draft-reviser" in body, "a wording change belongs to the reviser, not here"
 
 
-def test_the_assembler_does_not_send_a_unit_through_the_single_draft_renderer():
-    """`render --format tex` emits a standalone `article` with its own
-    `\\begin{document}` and its own citeproc bibliography, so a unit
-    converted that way cannot be `\\input` into a book at all. This file
-    said otherwise until the first real assembly (#252's follow-up), and
-    a reader who followed it got a document LaTeX refused."""
+def test_a_unit_is_converted_by_render_with_the_fragment_flag():
+    """A plain `render --format tex` emits a standalone `article` with its
+    own `\\begin{document}`, which cannot be `\\input` into a book -- this
+    file said to use one until the first real assembly. `--fragment` is
+    the flag that exists for it, and going through `render` rather than a
+    restated pandoc invocation is what keeps the citeproc, IEEE-style and
+    citekey-aliasing behaviour identical to every other rendered draft."""
     body = _body()
-    assert "--top-level-division=chapter" in body, "the fragment conversion is missing"
-    assert "Not `python -m src.draft render --format tex`" in body
+    assert "--format tex --fragment --output-dir" in body
 
 
-def test_the_assembler_warns_that_pandoc_truncates_a_citekey_at_two_hyphens():
-    """The one invariant, in the shape this skill can break it: a
-    truncated citekey resolves to nothing and renders as `[?]`, dropping
-    a real citation out of a finished book without any check failing."""
+def test_the_book_carries_no_bibliography_of_its_own():
+    """Each chapter's citations were resolved per unit into its own IEEE
+    list, so a book-level bibliography would be a second, differently
+    numbered answer to the same question."""
     body = _body()
-    assert "truncated by pandoc's citation tokenizer" in body
-    assert "byte-identical" in body
+    assert "There is no bibliography at the end" in body
+    assert "no bibliography pass at all" in body
 
 
-def test_the_assembler_checks_the_build_log_for_dropped_citations():
-    """pdflatex exits 0 on a book with `[?]` where a reference should be:
-    natbib reports it as a warning. Reading the log is the only thing
-    that catches it."""
-    assert "undefined citations before believing the PDF" in _body()
+def test_the_book_supplies_pandocs_citeproc_macros():
+    """The one thing a fragment legitimately emits that only the
+    standalone preamble defines. Without this block the book fails on
+    `Environment CSLReferences undefined`."""
+    assert "print-default-template=latex" in _body()
+
+
+def test_the_assembler_writes_a_markdown_twin_of_the_book():
+    body = _body()
+    assert "write `book.md`" in body
+    assert "hyperlinking the chapter files" in body
+
+
+def test_the_assembler_checks_the_build_log_before_believing_the_pdf():
+    """pdflatex exits 0 on a book that is missing something: a dropped
+    citation is a warning, not an error."""
+    assert "Read `book.log` before believing the PDF" in _body()
+
+
+def test_the_citeproc_macros_go_in_their_own_file():
+    """Inline, that block fails the gate on the assembled book: it holds
+    `\\cite{#1}` and `\\citeproc{mm}`, which read as citekeys. Found by
+    gating a real 15-chapter book, which FAILed on `@mm`, `@#1`, `@#2`."""
+    body = _body()
+    assert "citeproc-defs.def" in body
+    assert "**not inline**" in body

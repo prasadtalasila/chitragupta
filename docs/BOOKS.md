@@ -65,7 +65,7 @@ sign-offs is mechanical.
 | 4 | `unit accept` | you, per unit |
 | 5 | `registry build`, `registry check` | you or the assembler |
 | 6 | the `book-assembler` skill composes `book.tex` | skill |
-| 7 | `pdflatex` / `bibtex` / `pdflatex` x2 | you or the assembler |
+| 7 | `pdflatex` x2 -- no bibliography pass | you or the assembler |
 | 8 | read it | **you, and only you** |
 
 Steps 3 and 4 repeat per section. Steps 5 to 7 are what
@@ -342,23 +342,38 @@ cross-references `registry check` verified actually resolve in the built
 PDF -- the outline, the registry and the document all name the same
 thing.
 
-The bibliography points at your own `.bib` file, never a copy: the
-reference manager is upstream, and this pipeline is downstream of it.
-Which stack loads it is **probed, not assumed** -- biblatex/biber where
-both are installed, natbib/bibtex otherwise. That is not a hypothetical
-courtesy: the host this was first exercised on has `pdflatex` and neither
-`biblatex.sty` nor `biber`, and a document that assumed them built
-nothing at all.
+**There is no bibliography at the end of the book.** Each unit is
+converted with
 
-`thesis-chapter-writer`'s output is already an `\input`-able fragment. A
-unit drafted in Markdown is converted with `pandoc --natbib
---top-level-division=chapter` -- **not** `python -m src.draft render
---format tex`, which is the publish step for one draft and emits a
-standalone `article` with a bibliography of its own. The first real
-assembly also found that pandoc truncates a citekey at `--`
-(`@lim_state---art_2020` reaches LaTeX as `lim_state` and renders as
-`[?]`), so those citations are rewritten to raw `\citep{}` in a temp
-copy first, keeping the key byte-identical to the one in the `.bib`.
+```bash
+python -m src.draft render <unit>.md --format tex --fragment \
+    --output-dir content/drafts/<book>
+```
+
+and `--fragment` is the whole difference: no preamble, the unit's own `#`
+heading becomes a `\chapter`, and code blocks are left unhighlighted
+because `Shaded`/`Highlighting` exist only in the standalone template.
+Everything else is the ordinary render -- pandoc's citeproc against the
+vendored IEEE style, and the citekey aliasing that stops a key containing
+`--` being truncated (`@lim_state---art_2020` would otherwise reach LaTeX
+as `lim_state` and render as `[?]`). So every chapter carries **its own
+numbered IEEE reference list**, under its own heading, exactly as every
+other genre skill produces one -- and a bibliography at the end would be
+a second, differently numbered answer to the same question. No `natbib`,
+no `bibtex`, no `biber`, and nothing for either to resolve.
+
+Two consequences for the book itself. It must supply pandoc's `csl-refs`
+macro block, taken from `pandoc --print-default-template=latex` so it
+matches the pandoc that did the conversion -- written to
+`citeproc-defs.def` and `\input`, not inline, because that block contains
+`\cite{#1}` and `\@`-internals which the citation gate reads as citekeys
+and would fail the assembled book on. And `margin=40pt`, a third of the
+`book` class's own margins (94pt inner, 143pt outer, 119pt mean), which
+took one real 15-chapter book from 546 pages to 326.
+
+**`book.md` is written beside `book.tex`**: the same structure in
+Markdown, hyperlinking the chapter files alongside it, for anyone who is
+not building LaTeX.
 
 **Where #138's "blocking" actually lives.** The skill must run
 `registry check` and print every finding, in full, before composing --
@@ -368,21 +383,19 @@ that, so a hand edit dropping either half fails the suite.
 
 ## Step 7: build the PDF
 
-A book is a LaTeX document with its own bibliography pass, so it is built
-directly, from the book's own directory -- the `\input` paths are
-relative to it:
+A book is built directly, from its own directory -- the `\input` paths
+are relative to it:
 
 ```bash
 cd content/drafts/twins
 pdflatex -interaction=nonstopmode book.tex
-bibtex book            # or biber book, per the probe in step 6
-pdflatex -interaction=nonstopmode book.tex
 pdflatex -interaction=nonstopmode book.tex
 ```
 
-Two passes after the bibliography, because that is what resolves `\cref`
-and the table of contents. `python -m src.draft render` is the renderer
-for a single draft; it is not a book build and runs no bibliography pass.
+**Two passes, and no bibliography pass at all**: citeproc resolved every
+citation when the units were converted, so the document holds no `\cite`
+for `bibtex` or `biber` to answer. The second pass is what resolves
+`\cref` and the table of contents.
 
 **Then read the log before believing the PDF.** `pdflatex` exits 0 on a
 book that renders `[?]` where a reference should be -- natbib reports a
@@ -444,7 +457,7 @@ Markdown, on 2026-08-19:
 | cross-reference graph | 0 edges -- the chapters refer to each other in English, not as links |
 | `registry check` | 1 finding: one claim made in two chapters |
 | prose check | 106 findings across 15 units, none acted on |
-| the book | 546 pages, 1.8 MB, 0 undefined citations |
+| the book | 326 pages, 1.6 MB, 0 undefined citations |
 
 Two things that build found, both now fixed in the skill: the Markdown
 conversion step named the wrong command, and three citekeys containing

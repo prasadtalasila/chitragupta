@@ -9,6 +9,7 @@ import.
 
 import shutil
 import sys
+from pathlib import Path
 import pytest
 from src import render_output
 from tests.conftest import content_draft
@@ -71,3 +72,59 @@ class TestFigureRepairHint:
 
     def test_an_unreadable_input_gets_no_hint(self, tmp_path):
         assert render_output._cli._figure_repair_hint(str(tmp_path / "absent.md")) == ""
+
+
+class TestFragmentOutput:
+    """`--fragment` is what makes a unit assemblable into a book: no
+    preamble to collide with the book's own, and its top heading becomes
+    the book's chapter. Everything else -- citeproc, the IEEE style, the
+    citekey aliasing -- is unchanged, which is the whole reason this
+    lives here rather than being restated in the assembly skill."""
+
+    def test_fragment_drops_standalone_and_makes_the_top_heading_a_chapter(self):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"), Path("bib.bib"), Path("ieee.csl"), Path("out.tex"),
+            Path("in.md"), "tex", "article", "12pt", "a4", "1in", [], True,
+        )
+        assert "--standalone" not in cmd
+        assert "--top-level-division=chapter" in cmd
+        # Highlighted code would need `Shaded`/`Highlighting`, which only
+        # the standalone template defines -- a fragment that emitted them
+        # would fail to compile in the book that \input-s it.
+        assert "--no-highlight" in cmd
+
+    def test_a_normal_render_is_still_standalone(self):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"), Path("bib.bib"), Path("ieee.csl"), Path("out.tex"),
+            Path("in.md"), "tex", "article", "12pt", "a4", "1in", [],
+        )
+        assert "--standalone" in cmd
+        assert "--top-level-division=chapter" not in cmd
+
+    def test_the_flag_reaches_render(self, monkeypatch, tmp_path):
+        seen = {}
+        monkeypatch.setattr(
+            render_output, "render",
+            lambda *args, **kwargs: seen.update(kwargs) or tmp_path / "out.tex")
+        assert render_output._cli.main(["--fragment", "--format", "tex", str(tmp_path / "x.md")]) == 0
+        assert seen["fragment"] is True
+
+
+class TestOutputDirFlag:
+    """`--output-dir` exposes the parameter `src/review/__init__.py`
+    already passes programmatically. A book's units need it: `\\input`
+    paths are relative to book.tex, so a fragment has to land in the
+    book's own directory rather than in the mirrored render tree."""
+
+    def test_the_flag_reaches_render(self, monkeypatch, tmp_path):
+        seen = {}
+
+        def fake_render(*args, **kwargs):
+            seen["positional"] = args
+            seen.update(kwargs)
+            return tmp_path / "out.tex"
+
+        monkeypatch.setattr(render_output, "render", fake_render)
+        assert render_output._cli.main(
+            ["--format", "tex", "--output-dir", str(tmp_path), str(tmp_path / "x.md")]) == 0
+        assert str(tmp_path) in seen["positional"]
