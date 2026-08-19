@@ -79,6 +79,21 @@ break:
   have drifted too far to reconcile, say so and drop the figure rather
   than shipping a pair that disagrees.
 
+## Collection scoping (#195): inherit it, do not re-ask
+
+`scope.md` may carry a `collection:` line, written by the genre skill
+that produced this draft. If it does, **every retrieval call in this pass
+carries the same `--collection`**, and the user is not asked again.
+
+This matters more here than it does at drafting time. A draft grounded
+in one curated shelf that is then revised against the whole library has
+silently changed what it is made of, and the change is invisible in the
+diff: the citekeys are all real, the gate still passes, and nothing in
+`retrieval.md` records that the scope moved (#254).
+
+A missing line, or `- collection: (whole corpus)`, means search
+everything -- exactly as this skill behaved before this section existed.
+
 ## The loop
 
 ### 1. Locate the draft and read its state
@@ -156,7 +171,7 @@ Before any retrieval call:
 Search only when the change opens genuinely new ground. If it does:
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 --log content/drafts/<path>
+python -m src.draft retrieve search "<query>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
 python -m src.draft retrieve evidence "<query>" --citekey <key> --log content/drafts/<path>
 ```
 
@@ -468,7 +483,7 @@ the first that supports the claim:
    because a claim left unsupported is genuinely new ground:
 
    ```bash
-   python -m src.draft retrieve search "<the claim>" --k 15 --log content/drafts/<path>
+   python -m src.draft retrieve search "<the claim>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
    ```
 
 If none of the three supports it, **remove the claim** and say so. Not a

@@ -88,7 +88,7 @@ You may re-search this project's corpus for a subpoint that needs more than
 what you were given:
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
+python -m src.draft retrieve search "<query>" --k 15 --collection "<from scope.md>" --log <the draft path you were given>
 ```
 
 (or `src.enrich.embed_index.search()` if `content/chroma/` exists). Filter
