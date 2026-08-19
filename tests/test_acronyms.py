@@ -193,6 +193,17 @@ class TestBodyCandidates:
         assert "ICSA" not in "".join(found)
         assert found == {"Digital Twin Prototype (DTP)": "Digital Twin Prototype"}
 
+    def test_a_hyphenated_word_stays_in_the_expansion(self):
+        """Measured against the real book: chapter 6 defines "**Functional
+        Mock-up Interface (FMI)**", and a name pattern that could not carry
+        the hyphenated "Mock-up" captured only "Interface" -- which is what
+        `acronyms-suggest --apply` would then have written into the author's
+        own vocabulary, as a wrong expansion nobody typed."""
+        text = "The **Functional\nMock-up Interface (FMI)** is the standard."
+        assert acronyms.body_candidates(text) == {
+            "Functional Mock-up Interface (FMI)": "Functional Mock-up Interface"
+        }
+
     def test_reflows_a_hard_line_wrap_inside_one_phrase(self):
         # The real shape: markdown wraps prose at a fixed column, so a
         # bolded phrase can be split across two physical lines on disk.

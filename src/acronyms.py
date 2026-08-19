@@ -139,7 +139,14 @@ _REFERENCES_HEADING = re.compile(
 # same pattern assets/vale/styles/chitragupta/Acronyms.yml's `second`
 # field already matches for its own, unrelated check (expanded-at-first-
 # use), so this is an established convention, not a new heuristic.
-_BODY_ACRONYM = re.compile(r"(?P<name>(?:\b[A-Z][a-z]+[\s-]){1,5})\((?P<acronym>[A-Z]{2,6})\)")
+# `(?:-[a-z]+)*` carries a hyphenated word: chapter 6 of the real book
+# defines "**Functional Mock-up Interface (FMI)**", and without it the
+# name capture restarts at the hyphen and yields "Interface" -- a wrong
+# expansion `acronyms-suggest --apply` would then write into the author's
+# own vocabulary as if they had typed it. Lowercase after the hyphen
+# only, so "Digital Twin-Based" keeps its existing reading as two words.
+_BODY_ACRONYM = re.compile(
+    r"(?P<name>(?:\b[A-Z][a-z]+(?:-[a-z]+)*[\s-]){1,5})\((?P<acronym>[A-Z]{2,6})\)")
 
 
 def body_candidates(text: str) -> dict[str, str]:
