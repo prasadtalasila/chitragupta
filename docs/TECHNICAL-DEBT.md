@@ -371,6 +371,13 @@ tricks and no registry push to be worth having.
 
 ### 3.5 `scripts/install_full_pipeline.sh` -- 333 lines, no static check
 
+**Resolved in 6.1.0**: `shellcheck scripts/*.sh` now runs in `ci.yml`'s
+`lint` job at the same binary zero-message bar as `pylint` and
+`markdownlint-cli2`. It found a real defect on its first run -- a
+`# shellcheck disable=` directive with trailing prose on the same line,
+which shellcheck cannot parse and therefore silently would not have
+honoured. The line count below is the historical record.
+
 The single install path for host, Docker and CI, called by
 `docker/Dockerfile` (three times) and `.github/workflows/ci.yml`
 directly. CI does exercise it on both legs, which is real verification of

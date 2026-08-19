@@ -82,6 +82,21 @@ jobs:
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh all
 
+      # A hosted runner has no GPU, and never will -- so the CUDA runtime
+      # plain PyPI's torch wheel drags in (nvidia-*, triton: ~4GB of the
+      # 6.2GB venv, per docker/Dockerfile's own measurement) is downloaded,
+      # installed and thrown away on every run. ensure_gpu_torch cannot
+      # catch this: it probes for nvidia-smi and returns when there is
+      # none, leaving whatever poetry.lock resolved in place.
+      #
+      # Linux only. The Windows leg skips os-deps entirely and installs no
+      # CUDA wheels to remove, and `cpu-torch` is deliberately not part of
+      # `all` -- it asserts a GPU is absent for good, which is true of this
+      # runner and is not something the script can infer about a laptop.
+      - name: Swap torch for the cpu-only build (no GPU on a hosted runner)
+        if: runner.os == 'Linux'
+        run: bash scripts/install_full_pipeline.sh cpu-torch
+
       # os-deps' apt-get also installs Poetry itself (python3-poetry) on
       # Linux -- python-deps' check_poetry() has no other way to find it
       # on a host that skipped os-deps, confirmed by this leg's first
@@ -321,6 +336,13 @@ jobs:
 
       - name: pylint
         run: pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
+
+      # scripts/install_full_pipeline.sh is 333 lines with no static check
+      # (docs/TECHNICAL-DEBT.md 3.5), and CI now depends on a stage inside
+      # it. A shell script CI calls deserves the bar the Python and the
+      # Markdown already hold.
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
 
       - uses: actions/setup-node@v4
         with:

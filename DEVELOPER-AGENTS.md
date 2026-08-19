@@ -131,6 +131,7 @@ bash scripts/install_full_pipeline.sh              # Python deps only (default) 
 bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry, zip/unzip -- needs root, opt-in
 bash scripts/install_full_pipeline.sh dev-deps     # pytest/pytest-cov, to run the test suite -- opt-in
 bash scripts/install_full_pipeline.sh all          # os-deps + python-deps
+bash scripts/install_full_pipeline.sh cpu-torch    # swap torch to the cpu-only wheel index -- opt-in
 ```
 
 This is **the single install script for both the host and Docker and CI**
@@ -153,6 +154,16 @@ doors -- `install_full_pipeline.sh` for a checkout, Docker and CI, and
 `chitragupta install` for someone who pip-installed -- onto that same
 script and that same `pyproject.toml`. Two front doors, one source of
 truth, still no second place to write a version down.
+
+`cpu-torch` is deliberately **not** part of `all`, and is not something
+the script infers. It asserts that a GPU is absent *for good* -- true of
+a hosted CI runner and of a cpu-only container image, not true of a
+laptop that might be a workstation next month. `ensure_gpu_torch` is the
+probe; this is the assertion, and only a caller knows which it is
+entitled to make. It is worth about 4GB: `docker/Dockerfile` measures a
+6.2GB GPU-capable venv against 2.0GB cpu-only. `docker/Dockerfile`'s
+`TORCH_VARIANT=cpu` and CI's Linux leg both call this one stage rather
+than carrying their own copy of the swap.
 
 `docker/` (Dockerfile) builds the same TeX Live/Pandoc stack inside a
 container instead, for hosts where the
