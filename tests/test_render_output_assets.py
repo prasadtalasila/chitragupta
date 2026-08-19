@@ -151,3 +151,35 @@ class TestCopyLocalTexIncludesFollowsMarkers:
         render_output._copy_local_tex_includes(draft, dest)
 
         assert (dest / "figures" / "fig1.tex").read_text() == TIKZ_FIGURE
+
+
+class TestRenderingIntoTheDraftsOwnDirectory:
+    """`--output-dir <the draft's own directory>` is what a book assembly
+    does: the fragments have to sit beside the `book.tex` that \\input-s
+    them, which is the same directory the chapters live in. The asset copy
+    then has the same file as source and destination, and `shutil.copy2`
+    raises `SameFileError` -- so a 15-chapter book with figures failed
+    every fragment conversion at once (2026-08-19)."""
+
+    def test_a_figure_beside_the_draft_is_not_copied_onto_itself(self, tmp_path):
+        draft_dir = tmp_path / "book"
+        (draft_dir / "figures").mkdir(parents=True)
+        (draft_dir / "figures" / "fig1.tex").write_text(TIKZ_FIGURE, encoding="utf-8")
+        (draft_dir / "figures" / "fig1.txt").write_text(ASCII_FIGURE, encoding="utf-8")
+        draft = draft_dir / "ch01.md"
+        draft.write_text(MARKED_MD, encoding="utf-8")
+
+        render_output._copy_local_assets(draft, draft_dir)
+
+        assert (draft_dir / "figures" / "fig1.tex").read_text(encoding="utf-8") == TIKZ_FIGURE
+
+    def test_an_image_beside_the_draft_is_not_copied_onto_itself(self, tmp_path):
+        draft_dir = tmp_path / "book"
+        (draft_dir / "img").mkdir(parents=True)
+        (draft_dir / "img" / "cover.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        draft = draft_dir / "ch01.md"
+        draft.write_text("![cover](img/cover.png)\n", encoding="utf-8")
+
+        render_output._copy_local_assets(draft, draft_dir)
+
+        assert (draft_dir / "img" / "cover.png").read_bytes() == b"\x89PNG\r\n\x1a\n"
