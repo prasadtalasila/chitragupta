@@ -1,20 +1,20 @@
-"""src/review/__main__.py: the review layer's single entry point.
+"""chitragupta/review/__main__.py: the review layer's single entry point.
 
 What the three aids *compute* is covered in tests/test_citation_provenance.py,
 tests/test_citation_coverage.py and tests/test_verbatim_check.py. This
 file pins only the dispatch, and the invariant the dispatch exists to
 serve: **one entry point per layer, one level deep**, the same shape
-`python -m src.corpus sync` gives the corpus layer.
+`python -m chitragupta.corpus sync` gives the corpus layer.
 
 That invariant went untested for a long time, and the review layer was
-one design review away from shipping `python -m src.review.verbatim_check`
+one design review away from shipping `python -m chitragupta.review.verbatim_check`
 as this repo's first working nested command. The two-level form had been
-tried once already, as `src.heavy.render_output`, and was reverted with
+tried once already, as `chitragupta.heavy.render_output`, and was reverted with
 the directory that held it. Nothing noticed either time except a reader
 comparing files by eye.
 
 The docs half is tests/test_command_depth_scan.py, which fails when a
-doc or a skill introduces a `python -m src.a.b` invocation in prose.
+doc or a skill introduces a `python -m chitragupta.a.b` invocation in prose.
 """
 
 import importlib
@@ -25,17 +25,17 @@ from pathlib import Path
 
 import pytest
 
-from src import review
-from src.review import __main__ as entrypoint
+from chitragupta import review
+from chitragupta.review import __main__ as entrypoint
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Every module under src/review/ that is an aid rather than the entry
+# Every module under chitragupta/review/ that is an aid rather than the entry
 # point or the shared helper.
 AID_MODULES = ["citation_provenance", "citation_coverage", "verbatim_check"]
 
 # A real top-level entry-point block, anchored at column 0 -- not the
-# string wherever it appears. src/enrich/docling_parse.py discusses
+# string wherever it appears. chitragupta/enrich/docling_parse.py discusses
 # `if __name__ == "__main__":` at length in a comment about forkserver
 # workers, and a substring check would read that prose as a second entry
 # point.
@@ -87,21 +87,21 @@ class TestTheSubcommandsAreTheAids:
     def test_every_aid_is_reachable_and_declares_its_own_flags(self, aid):
         """--help rather than a run: this pins that the aid's parser was
         wired in, without needing a corpus."""
-        result = _run("-m", "src.review", aid, "--help")
+        result = _run("-m", "chitragupta.review", aid, "--help")
         assert result.returncode == 0
-        assert f"usage: python -m src.review {aid}" in result.stdout
+        assert f"usage: python -m chitragupta.review {aid}" in result.stdout
 
     def test_no_aid_prints_the_layers_usage_and_exits_zero(self):
         """"Tell me how to use this" is not an error -- the same rule
         each aid already applies to a missing mode."""
-        result = _run("-m", "src.review")
+        result = _run("-m", "chitragupta.review")
         assert result.returncode == 0
         assert "provenance" in result.stdout
         assert "verbatim" in result.stdout
         assert "coverage" in result.stdout
 
     def test_an_unknown_aid_is_a_usage_error(self):
-        result = _run("-m", "src.review", "bogus")
+        result = _run("-m", "chitragupta.review", "bogus")
         assert result.returncode == 2
         assert "invalid choice: 'bogus'" in result.stderr
 
@@ -111,19 +111,19 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
 
     @pytest.mark.parametrize("module", AID_MODULES)
     def test_an_aid_module_has_no_main_block(self, module):
-        """`python -m src.review.<aid>` must not become a second,
+        """`python -m chitragupta.review.<aid>` must not become a second,
         undocumented way in. Without a __main__ block it imports the
         module and exits 0 having done nothing -- which is a trap, but a
-        silent and harmless one, and the same one `src/enrich/`'s stage
+        silent and harmless one, and the same one `chitragupta/enrich/`'s stage
         modules carry by design (docs/ARCHITECTURE.md). With one, the
         layer would have four entry points and no single --help."""
-        source = (REPO_ROOT / "src" / "review" / f"{module}.py").read_text(encoding="utf-8")
+        source = (REPO_ROOT / "chitragupta" / "review" / f"{module}.py").read_text(encoding="utf-8")
         assert not _MAIN_BLOCK.search(source)
 
     @pytest.mark.parametrize("module", AID_MODULES)
     def test_running_an_aid_module_directly_does_nothing(self, module):
         """The observable half of the assertion above."""
-        result = _run("-m", f"src.review.{module}")
+        result = _run("-m", f"chitragupta.review.{module}")
         assert result.returncode == 0
         assert result.stdout == ""
 
@@ -132,7 +132,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         layer's design was taken from: `--stages` is the only way to run
         an enrichment stage."""
         for module in ["docling_parse", "embed_index", "topic_model"]:
-            source = (REPO_ROOT / "src" / "enrich" / f"{module}.py").read_text(encoding="utf-8")
+            source = (REPO_ROOT / "chitragupta" / "enrich" / f"{module}.py").read_text(encoding="utf-8")
             assert not _MAIN_BLOCK.search(source), module
 
 
@@ -145,22 +145,22 @@ class TestTheExitCodeContractSurvivesTheDispatch:
     def test_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
-        result = _run("-m", "src.review", "provenance", str(outside))
+        result = _run("-m", "chitragupta.review", "provenance", str(outside))
         assert result.returncode == 1
 
     def test_a_missing_draft_exits_one(self):
-        result = _run("-m", "src.review", "provenance", "content/drafts/nope.md")
+        result = _run("-m", "chitragupta.review", "provenance", "content/drafts/nope.md")
         assert result.returncode == 1
 
     def test_a_missing_required_flag_exits_two(self):
         """`coverage` without --query: argparse's own error, reached
         through the subparser rather than a top-level parser."""
-        result = _run("-m", "src.review", "coverage", "content/drafts/x.md")
+        result = _run("-m", "chitragupta.review", "coverage", "content/drafts/x.md")
         assert result.returncode == 2
         assert "--query" in result.stderr
 
     def test_an_out_of_range_flag_value_exits_two(self):
-        result = _run("-m", "src.review", "verbatim", "scan",
+        result = _run("-m", "chitragupta.review", "verbatim", "scan",
                       "content/drafts/x.md", "--gap", "-1")
         assert result.returncode == 2
 
@@ -168,17 +168,17 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         """`--baseline` is required: there is nothing to compare against
         without one, and defaulting to the report's usual path would
         silently compare against whatever happened to be lying there."""
-        result = _run("-m", "src.review", "verbatim", "recheck",
+        result = _run("-m", "chitragupta.review", "verbatim", "recheck",
                       "content/drafts/x.md")
         assert result.returncode == 2
         assert "--baseline" in result.stderr
 
     def test_recheck_on_a_draft_outside_content_exits_one(self):
-        result = _run("-m", "src.review", "verbatim", "recheck",
+        result = _run("-m", "chitragupta.review", "verbatim", "recheck",
                       "README.md", "--baseline", "whatever.json")
         assert result.returncode == 1
 
     def test_recheck_is_listed_as_a_verbatim_mode(self):
-        result = _run("-m", "src.review", "verbatim", "--help")
+        result = _run("-m", "chitragupta.review", "verbatim", "--help")
         assert result.returncode == 0
         assert "recheck" in result.stdout

@@ -4,7 +4,7 @@ This file is where #138's "blocking global check" actually lives, and it
 is worth saying why a text scan is the right enforcement rather than a
 weak substitute for one.
 
-`python -m src.draft registry check` exits 0 whatever it finds, because
+`python -m chitragupta.draft registry check` exits 0 whatever it finds, because
 docs/ARCHITECTURE.md's "Layer 4" says a check measured against a
 machine's reading of prose "reports and never blocks, whichever layer it
 lives in", and that what may be enforced is *invocation* rather than
@@ -36,7 +36,7 @@ def _body() -> str:
 
 
 def test_the_assembler_runs_the_consistency_check():
-    assert "-m src.draft registry check" in _body()
+    assert "-m chitragupta.draft registry check" in _body()
 
 
 def test_the_assembler_reports_every_finding_rather_than_summarising():
@@ -54,15 +54,15 @@ def test_the_assembler_says_the_check_cannot_block():
 
 def test_the_assembler_confirms_both_human_gates():
     body = _body()
-    assert "-m src.draft spec status" in body, "the outline sign-off is the first gate"
-    assert "-m src.draft unit status" in body, "assembling unaccepted prose is the failure"
+    assert "-m chitragupta.draft spec status" in body, "the outline sign-off is the first gate"
+    assert "-m chitragupta.draft unit status" in body, "assembling unaccepted prose is the failure"
     assert "Do not say the book is finished" in body, "the second gate is a person's"
 
 
 def test_the_assembler_runs_the_gate_on_what_it_composed():
     """Every unit passed the gate already; the assembled document is a
     new file, and this layer has one exit whatever produced the file."""
-    assert "-m src.draft gate content/drafts/<book>/book.tex" in _body()
+    assert "-m chitragupta.draft gate content/drafts/<book>/book.tex" in _body()
 
 
 def test_the_assembler_writes_no_prose_and_says_where_that_line_is():

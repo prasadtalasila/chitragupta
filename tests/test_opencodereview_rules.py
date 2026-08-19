@@ -67,7 +67,7 @@ def _matches(pattern):
     """Repo-relative POSIX paths in the working tree matching one OCR glob.
 
     `as_posix()` rather than what `glob` returns: on the Windows CI leg it
-    yields `src\\sync.py`, which never equals the `src/sync.py` the
+    yields `src\\sync.py`, which never equals the `chitragupta/sync.py` the
     assertions below name -- and OCR's own globs are POSIX-spelled
     regardless of host. Caught by that leg after passing on Linux, which
     is the same asymmetry `tests/test_code_standards_scan.py` pins
@@ -125,7 +125,7 @@ def test_the_globs_reach_every_tree_a_rule_claims():
     would be the wrong thing to assert: see `REVIEWABLE_EXTENSIONS`.
     """
     covered = {path for entry in _rules()["rules"] for path in _matches(entry["path"])}
-    for wanted in ("src/sync.py", "tests/conftest.py", "scripts/release.py",
+    for wanted in ("chitragupta/sync.py", "tests/conftest.py", "scripts/release.py",
                    "scripts/install_full_pipeline.sh", "bench/repro_check.py",
                    ".github/workflows/ci.yml"):
         assert wanted in covered, f"no rule covers {wanted}"
@@ -163,7 +163,7 @@ def test_the_source_rule_states_the_citekey_invariant():
     project exists to prevent. A reviewer that does not know to look for
     one is worse than no reviewer, because it reports clean.
     """
-    src_rule = next(e for e in _rules()["rules"] if e["path"] == "src/**/*.py")
+    src_rule = next(e for e in _rules()["rules"] if e["path"] == "chitragupta/**/*.py")
     assert "citekey" in src_rule["rule"]
     assert "bib_reader" in src_rule["rule"]
 

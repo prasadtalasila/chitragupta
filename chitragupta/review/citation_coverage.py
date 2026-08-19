@@ -1,8 +1,8 @@
 """Citation-coverage report: how much of what retrieval surfaced actually
 made it into a draft's citations.
 
-`src.retrieval.search()` (and its embedding-based upgrade,
-`src.enrich.embed_index.search()`) return candidate sources for a query --
+`chitragupta.retrieval.search()` (and its embedding-based upgrade,
+`chitragupta.enrich.embed_index.search()`) return candidate sources for a query --
 but nothing today reports whether a genre skill actually used them.
 A citekey that scored well but never got cited is either a sign the
 draft skipped a relevant source, or a sign the query was too broad; a
@@ -11,10 +11,10 @@ problem (it's likely explained by a different query the skill also ran)
 but worth showing so the report isn't misread as a gap-finder.
 
 One of the three commands in the **review layer**, with
-src/review/citation_provenance.py and src/review/verbatim_check.py -- run by hand
+chitragupta/review/citation_provenance.py and chitragupta/review/verbatim_check.py -- run by hand
 on a finished draft, never automatically, never a gate, and never
 holding the write lock. Purely informational, unlike citation_gate.py.
-src/review/__init__.py owns where a written report goes
+chitragupta/review/__init__.py owns where a written report goes
 (`content/review/<topic>/<stem>.coverage.md`, mirroring the draft's
 path) and what its header looks like.
 
@@ -23,13 +23,13 @@ asked and answered in one sitting; `--write` is for when the answer
 should still be there next month, and diffable against the next
 revision's.
 
-Stdlib-only (reuses src.retrieval and src.citation_gate.extract_citekeys_from_line,
+Stdlib-only (reuses chitragupta.retrieval and chitragupta.citation_gate.extract_citekeys_from_line,
 both already stdlib-only) -- runs with bare `python`, no venv, same as
 citation_gate.py/references.py.
 
 Usage:
-    python -m src.review coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
-    python -m src.review coverage <draft.md> --query "topic one" --write
+    python -m chitragupta.review coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
+    python -m chitragupta.review coverage <draft.md> --query "topic one" --write
 """
 
 import argparse
@@ -38,8 +38,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import config, retrieval, review
-from src.citation_gate import extract_citekeys_from_line
+from chitragupta import config, retrieval, review
+from chitragupta.citation_gate import extract_citekeys_from_line
 
 
 @dataclass
@@ -120,7 +120,7 @@ def _command(draft_path: Path, queries: list[str], k: int) -> str:
     it selects renders *of* the report and changes nothing in the
     Markdown this header sits in.
     """
-    parts = ["python", "-m", "src.review", "coverage", str(draft_path)]
+    parts = ["python", "-m", "chitragupta.review", "coverage", str(draft_path)]
     for query in queries:
         parts += ["--query", query]
     parts += ["--k", str(k), "--write"]
@@ -186,14 +186,14 @@ def render_markdown(draft_path: Path, queries: list[str], k: int, result: Covera
 def build_parser(parser=None):
     """This aid's flags.
 
-    `parser` is passed by src/review/__main__.py, which has already
+    `parser` is passed by chitragupta/review/__main__.py, which has already
     created the `coverage` subparser and needs the flags hung off *that*
     -- so they are declared once, here, and the entry point never
     restates them.
     """
     if parser is None:
         # A one-line description rather than this module's docstring, for
-        # the reason src/corpus.py's DESCRIPTION gives (#152).
+        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
         parser = argparse.ArgumentParser(
             description="Report whether a draft cites the sources retrieval surfaces for a query.",
         )
@@ -219,7 +219,7 @@ def main(argv: list[str]) -> int:
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
-    Split from main() so src/review/__main__.py can hand over the args it
+    Split from main() so chitragupta/review/__main__.py can hand over the args it
     parsed with this module's own build_parser(), rather than re-slicing
     argv and parsing it twice.
     """

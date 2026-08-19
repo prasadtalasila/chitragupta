@@ -1,7 +1,7 @@
 """Logging a retrieval call against a dossier, and the revision/cost
 accounting built from that log.
 
-Split out of src/dossier.py (#219). `_RETRIEVAL_TEMPLATE` is imported
+Split out of chitragupta/dossier.py (#219). `_RETRIEVAL_TEMPLATE` is imported
 from `_create` rather than duplicated or promoted to `_core`, because
 unlike `_SECTIONS_TEMPLATE` it has exactly one reader outside `_create`
 itself (`log_retrieval`, for the same "write the header if the file
@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from src.dossier import RETRIEVAL_MD, _ROW_SPLIT, dossier_dir, draft_relpath
-from src.dossier._create import _RETRIEVAL_TEMPLATE
+from chitragupta.dossier import RETRIEVAL_MD, _ROW_SPLIT, dossier_dir, draft_relpath
+from chitragupta.dossier._create import _RETRIEVAL_TEMPLATE
 
 def log_retrieval(
     draft: Path, mode: str, query: str, k: int, results: int, chars: int
@@ -92,7 +92,7 @@ def log_retrieval(
 
 
 # `log_retrieval`'s `mode` is always "search" or "evidence" -- the two
-# `python -m src.draft retrieve` subcommands. "revision" can't collide with a
+# `python -m chitragupta.draft retrieve` subcommands. "revision" can't collide with a
 # real logged call; it exists only so `retrieval_cost_by_revision` has
 # something to split on.
 _REVISION_MARKER_MODE = "revision"

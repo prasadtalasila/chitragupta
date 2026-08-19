@@ -13,20 +13,20 @@ land ungated.
 cannot do it alone: **it is launched by the same interpreter name it
 vets.** If `python` is missing, the preflight is missing too, and the
 report that was supposed to arrive never does. So the check lives here
-instead, where `python -m src.draft gate` -- which every genre skill runs,
+instead, where `python -m chitragupta.draft gate` -- which every genre skill runs,
 on an interpreter that has demonstrably started -- can also make it. The
 preflight still calls it, and the two share this one implementation
 rather than a copy.
 
-**On the layer boundary.** docs/HOOKS.md keeps `src/` clear of the harness
+**On the layer boundary.** docs/HOOKS.md keeps `chitragupta/` clear of the harness
 and `.claude/hooks/` clear of logic. This module is the one exception the
 rule now names: layer 1 may read the *launcher config*, never a payload or
 an envelope. An adapter is defined by handling the harness's stdin/stdout
 contract; this handles neither, and its whole output is a list of English
 sentences.
 
-Standard library only, and it imports no other `src` module on purpose:
-`src.config` raises without a `config.toml`, which would break both
+Standard library only, and it imports no other `chitragupta` module on purpose:
+`chitragupta.config` raises without a `config.toml`, which would break both
 docs/CLI.md's tier-1 promise and the preflight's ability to run in a fresh
 clone.
 """
@@ -38,10 +38,10 @@ from pathlib import Path
 def _project_root() -> Path:
     """Where `.claude/settings.json` lives, found without importing config.
 
-    A deliberate second copy of `src/config.py`'s marker walk, and the
+    A deliberate second copy of `chitragupta/config.py`'s marker walk, and the
     module docstring above says why it cannot be the first one: this
-    module "imports no other `src` module on purpose", because
-    `src.config` raises without a `config.toml` and that would break both
+    module "imports no other `chitragupta` module on purpose", because
+    `chitragupta.config` raises without a `config.toml` and that would break both
     docs/CLI.md's tier-1 promise and the preflight's ability to run in a
     fresh clone. Importing config to find the project would reintroduce
     exactly the failure this module exists to report on.

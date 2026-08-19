@@ -1,12 +1,12 @@
-"""src/review/verbatim_check.py: the review layer's verbatim-overlap,
+"""chitragupta/review/verbatim_check.py: the review layer's verbatim-overlap,
 whole-corpus scan and page-locator aid -- advisory over a finished
-draft, never a gate. Reached as `python -m src.review verbatim <mode>`;
+draft, never a gate. Reached as `python -m chitragupta.review verbatim <mode>`;
 the module has no __main__ block of its own.
 
-BIB/PARSED_DIR are module-level constants resolved from src.config at
+BIB/PARSED_DIR are module-level constants resolved from chitragupta.config at
 import time; tests monkeypatch them directly to point at a throwaway
 fixture tree. There was a REPO constant beside them until 5.0.0, when
-the file moved into src/review/ and no longer needed a
+the file moved into chitragupta/review/ and no longer needed a
 Path(__file__)-derived repo root to put on sys.path."""
 
 import argparse
@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from src.review import verbatim_check as vc
-from src import config, ledger, overlap_embed, overlap_index
+from chitragupta.review import verbatim_check as vc
+from chitragupta import config, ledger, overlap_embed, overlap_index
 from tests.conftest import make_reference
 
 
@@ -169,7 +169,7 @@ class TestPdfPath:
         # Regression: a relative attachment path must be anchored to
         # wherever BIB (== config.BIB_FILE_PATH, honoring a BIB_FILE
         # override) actually lives -- matching
-        # src.bib_reader._resolve_pdf_path -- not the checked-out repo
+        # chitragupta.bib_reader._resolve_pdf_path -- not the checked-out repo
         # root. A BIB_FILE pointing outside the repo used to silently fail
         # to find PDFs sitting right next to it.
         bib_dir = tmp_path / "elsewhere"
@@ -257,7 +257,7 @@ class TestSentencesCiting:
 def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
     """A ledger row with status='parsed', a real pdf_hash, and parsed_path
     pointing at real text on disk -- what `cmd_overlap` now reads through
-    src/overlap_index.py instead of pdftotext/PARSED_DIR fallback."""
+    chitragupta/overlap_index.py instead of pdftotext/PARSED_DIR fallback."""
     pdf = tmp_path / f"{citekey}.pdf"
     pdf.write_bytes(pdf_bytes)
     parsed = tmp_path / f"{citekey}.txt"
@@ -312,7 +312,7 @@ class TestCmdOverlap:
 
     def test_matches_output_captured_from_the_pre_index_implementation(self, ledger_con, tmp_path, capsys):
         """Pinned literal output, captured from `cmd_overlap` *before* it
-        was ported onto src/overlap_index.py (same fixture: a 4-gram
+        was ported onto chitragupta/overlap_index.py (same fixture: a 4-gram
         shared between page 1 and page 3 of the source, to also confirm
         the ported page attribution keeps the pre-port "lowest page wins"
         behavior rather than an arbitrary posting)."""
@@ -650,7 +650,7 @@ class TestDraftWordOffsets:
 
     def test_the_word_stream_is_unchanged_by_carrying_offsets(self):
         """The corpus index fingerprints with `WORD.findall(text.lower())`
-        (src/overlap_index.py), so the draft side must tokenize the same
+        (chitragupta/overlap_index.py), so the draft side must tokenize the same
         way -- matching case-insensitively instead would read
         "İstanbul" as one word where the corpus reads two."""
         text = "The İstanbul Result.\n"
@@ -1350,7 +1350,7 @@ class TestScanCommand:
 
     def test_records_the_reporting_floor(self):
         assert vc.scan_command("d.md", 8, 1, None, False, False) == (
-            "python -m src.review verbatim scan d.md --min-run 8 --gap 1"
+            "python -m chitragupta.review verbatim scan d.md --min-run 8 --gap 1"
         )
 
     def test_records_a_limit_only_when_one_was_given(self):
@@ -2278,7 +2278,7 @@ class TestMainInProcess:
     """`main(argv)` -- the in-process entry the other two aids' tests use
     throughout (see tests/test_citation_coverage.py).
 
-    src/review/__main__.py does not go through it: it parses with this
+    chitragupta/review/__main__.py does not go through it: it parses with this
     module's build_parser() and calls run() with the result, so argv is
     parsed once rather than sliced and re-parsed. main() is what a caller
     holding an argv list uses instead, and it is the only path that
@@ -2342,7 +2342,7 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Some claim citing nonexistent_key_2024.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "overlap", str(draft), "nonexistent_key_2024"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", str(draft), "nonexistent_key_2024"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -2359,7 +2359,7 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), "--min-run", "8", "--gap", "1"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(draft), "--min-run", "8", "--gap", "1"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -2375,7 +2375,7 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), "--json"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(draft), "--json"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -2387,7 +2387,7 @@ class TestCliDispatch:
         returns before `require_reviewable`, which has nothing to check."""
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "locate",
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "locate",
              "nonexistent_key_2024", "a phrase"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
@@ -2404,7 +2404,7 @@ class TestCliDispatch:
         outside.write_text("Anything.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", str(outside)],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(outside)],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -2414,7 +2414,7 @@ class TestCliDispatch:
     def test_unknown_mode_is_a_usage_error(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "bogus-mode"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "bogus-mode"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -2431,29 +2431,29 @@ class TestCliDispatch:
         # that. The claim under test is unchanged, only its spelling.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 0
-        assert "usage: python -m src.review verbatim" in result.stdout
+        assert "usage: python -m chitragupta.review verbatim" in result.stdout
 
     def test_overlap_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "overlap", "only-one-arg"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", "only-one-arg"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: python -m src.review verbatim overlap" in result.stderr
+        assert "usage: python -m chitragupta.review verbatim overlap" in result.stderr
 
     def test_scan_mode_missing_draft_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: python -m src.review verbatim scan" in result.stderr
+        assert "usage: python -m chitragupta.review verbatim scan" in result.stderr
 
     def test_overlap_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
         # Regression: a third positional argument used to be silently
@@ -2461,7 +2461,7 @@ class TestCliDispatch:
         # reported as the typo it almost certainly is.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "overlap", "draft.md", "citekey", "extra"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", "draft.md", "citekey", "extra"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -2475,7 +2475,7 @@ class TestCliDispatch:
         # in front of that).
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "overlap", "draft.md", "citekey", "--n", "0"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", "draft.md", "citekey", "--n", "0"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -2484,7 +2484,7 @@ class TestCliDispatch:
     def test_scan_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", "draft.md", "extra"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", "draft.md", "extra"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -2496,7 +2496,7 @@ class TestCliDispatch:
         # rather than raising) instead of being reported as nonsensical.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", "draft.md", "--gap", "-1"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", "draft.md", "--gap", "-1"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -2509,7 +2509,7 @@ class TestCliDispatch:
         # usage error it is.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", "draft.md", "--limit", "0"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", "draft.md", "--limit", "0"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
@@ -2526,7 +2526,7 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Anything.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "scan", str(draft), "--min-run", "4"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(draft), "--min-run", "4"],
             cwd=str(repo_root), capture_output=True, text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
@@ -2536,11 +2536,11 @@ class TestCliDispatch:
     def test_locate_mode_missing_arguments_exits_cleanly(self, tmp_path):
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "src.review", "verbatim", "locate", "only-one-arg"],
+            [sys.executable, "-m", "chitragupta.review", "verbatim", "locate", "only-one-arg"],
             cwd=str(repo_root), capture_output=True, text=True,
         )
         assert result.returncode == 2
-        assert "usage: python -m src.review verbatim locate" in result.stderr
+        assert "usage: python -m chitragupta.review verbatim locate" in result.stderr
 
 
 # ---------------------------------------------------------------------

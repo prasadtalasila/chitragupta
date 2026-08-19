@@ -7,7 +7,7 @@ dense reference blocks grouped into elements slightly differently -- 6 of
 is: retrieval tokenises on whitespace, so regrouping the same words
 changes no ranking.
 
-It is not obviously cosmetic one layer down. `src/passages.py`'s
+It is not obviously cosmetic one layer down. `chitragupta/passages.py`'s
 `passage_records()` writes **one record per `dl_doc.texts` item**, and
 `PASSAGE_LABELS` includes `list_item` -- the very element type that
 finding names. If Docling splits a reference block across list elements
@@ -300,7 +300,7 @@ def _as_int(value: str) -> "int | None":
 
 def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
              content_dir: Path, python: str) -> dict:
-    """One `python -m src.corpus sync` over `bib`, into `content_dir`, kept.
+    """One `python -m chitragupta.corpus sync` over `bib`, into `content_dir`, kept.
 
     The environment is set per run rather than via config.toml so that a
     single checkout can produce every arm without being edited between
@@ -326,7 +326,7 @@ def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
     before = gpu_state()
     started = time.perf_counter()
     proc = subprocess.run(
-        [*prefix, python, "-m", "src.corpus", "sync"],
+        [*prefix, python, "-m", "chitragupta.corpus", "sync"],
         cwd=str(REPO_ROOT), env=env, capture_output=True, text=True,
     )
     wall = time.perf_counter() - started
@@ -367,7 +367,7 @@ def _spans(sidecar: Path) -> "list | None":
     """The (text, label, page) of every record, in order -- the sidecar
     with its bboxes dropped.
 
-    This is what a consumer of `src/passages.py` actually quotes. Two
+    This is what a consumer of `chitragupta/passages.py` actually quotes. Two
     sidecars agreeing here differ only in coordinates nothing reads yet.
     """
     try:
@@ -450,7 +450,7 @@ def self_check() -> None:
     what a perfectly stable run reports. Publishing that as stability
     would be publishing an absence of data as a result.
 
-    `bench/` sits outside CI's coverage targets (--cov=src --cov=scripts),
+    `bench/` sits outside CI's coverage targets (--cov=chitragupta --cov=scripts),
     so nothing in the test suite will ever catch a regression here. This
     runs on every invocation instead: it costs microseconds, and it means
     a printed zero has been earned rather than assumed.

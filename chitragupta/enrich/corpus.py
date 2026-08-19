@@ -1,9 +1,9 @@
 """The enrichment layer's view of the corpus: the bibliography, nothing else.
 
-Every document here comes from the ledger that `python -m src.corpus sync`
+Every document here comes from the ledger that `python -m chitragupta.corpus sync`
 populates from the bib file, so every document is citable, and its
 citekey is its whole identity -- whatever citekey the exported bib file
-assigned (src/bib_reader.py; the bib file is the source of truth, this
+assigned (chitragupta/bib_reader.py; the bib file is the source of truth, this
 project doesn't generate its own).
 
 That is the whole contract, and it is deliberately narrower than it once
@@ -18,12 +18,12 @@ two id namespaces apart -- all to index evidence that no draft was ever
 allowed to cite. Sourcing the corpus from the bibliography alone deletes
 that case at its origin rather than handling it five times over: if a
 paper is worth indexing, catalogue it in your reference manager,
-re-export, and re-run `python -m src.corpus sync`.
+re-export, and re-run `python -m chitragupta.corpus sync`.
 """
 
 from dataclasses import dataclass
 
-from src import ledger
+from chitragupta import ledger
 
 
 @dataclass
@@ -35,7 +35,7 @@ class CorpusDoc:
     # differ; with one source they never can, and carrying both invited
     # code that treated them as if they might (issue #57).
     #
-    # src/bib_reader.py guarantees this is usable as a filename -- see
+    # chitragupta/bib_reader.py guarantees this is usable as a filename -- see
     # citekey_problem() there, which rejects an entry whose citekey is not.
     citekey: str
     title: str

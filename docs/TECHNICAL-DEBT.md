@@ -1,7 +1,7 @@
 # Technical debt: what is owed, and what only looks like it
 
 Status: **register, not a standard.** Written 2026-08-13, from a
-full-tree review of `src/`, `scripts/`, `bench/`, `docker/` and
+full-tree review of `chitragupta/`, `scripts/`, `bench/`, `docker/` and
 `.github/`. Nothing here is enforced. The one part of this project's debt
 that *is* enforced -- the C1/C2 ratchet -- lives in
 `tests/test_code_standards_scan.py` and is
@@ -9,7 +9,7 @@ that *is* enforced -- the C1/C2 ratchet -- lives in
 
 **Reconciled 2026-08-18** against the tree as it now stands, since a
 register that only shrinks the way it says it should is one this
-document's own prose has to keep up with too: `src/sync.py::run`
+document's own prose has to keep up with too: `chitragupta/sync.py::run`
 resolved in #178 and [3.1](#31-text-io-on-the-locale-codec)'s
 entire encoding item resolved the same day this document was written,
 neither previously marked done; `bench/` and the test suite re-measured,
@@ -53,7 +53,7 @@ document owns the arrears. A thing that was never built is not a debt.
 Three conditions, all of them:
 
 1. **It is a cost already incurred**, not a feature not yet written.
-   "`src/dossier.py` is 1605 code lines" qualifies. "There is no citation
+   "`chitragupta/dossier.py` is 1605 code lines" qualifies. "There is no citation
    graph" does not -- that is [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
    agenda, and confusing the two turns a debt register into a wish list,
    which is how registers stop being read.
@@ -70,7 +70,7 @@ against this file. That is the same discipline
 [the ratchet](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register)
 imposes on C1/C2, applied by hand to the items no detector covers.
 
-**The debt on this list is not a gate.** `python -m src.draft gate`
+**The debt on this list is not a gate.** `python -m chitragupta.draft gate`
 remains the only gate in the project ([SOUL.md](../SOUL.md)), and a debt
 list that could fail a build would be a threshold tuned to today's worst
 code -- exactly what the ratchet exists to avoid. Nothing here goes red
@@ -114,11 +114,11 @@ different ways, and only one of the two is checked on every run. What
 follows is the thing the register cannot carry: where the two largest
 entries would actually split.
 
-### `src/sync.py::run` -- 117 statements, 4.7x the next worst
+### `chitragupta/sync.py::run` -- 117 statements, 4.7x the next worst
 
 **Resolved in #178** (2026-08-14, the day after this section was
 written). Kept below as the historical record of what the split was
-measured against, the same treatment `src/dossier.py` gets a few
+measured against, the same treatment `chitragupta/dossier.py` gets a few
 paragraphs down.
 
 The register named it and CODE-STANDARDS.md called it the first to take.
@@ -139,10 +139,10 @@ comment edit, which is exactly why [Why statements, not
 lines](CODE-STANDARDS.md#why-statements-not-lines) declines to pin
 those either).
 
-### `src/dossier.py` -- 1605 code lines, and four responsibilities
+### `chitragupta/dossier.py` -- 1605 code lines, and four responsibilities
 
 **Resolved in #219.** Kept below as the historical record of what the
-split was measured against -- the actual result was `src/dossier/`, 12
+split was measured against -- the actual result was `chitragupta/dossier/`, 12
 modules along finer seams than the four below (the CLI block alone
 needed splitting again once its formatting helpers moved with their
 `_cmd_*` handlers into the modules whose state they print, or it would
@@ -180,7 +180,7 @@ numbers it was written without.
 
 ### The 11 inert `# noqa: BLE001` markers
 
-`src/` and `scripts/` carry 11 `# noqa: BLE001` suppressions
+`chitragupta/` and `scripts/` carry 11 `# noqa: BLE001` suppressions
 (`runlock.py`, `pdf_text.py` x5, `enrich/__main__.py`,
 `enrich/docling_parse.py` x3) and **no linter is configured** --
 `pyproject.toml` has no `ruff`, `flake8`, `pylint` or `mypy` section, and
@@ -196,19 +196,19 @@ should be one") -- it assumes ruff arrives first. It has not.
 
 ### Type annotations: 394 of 433
 
-Build-order item 3 says "`src/` is partly annotated." It is 91%
+Build-order item 3 says "`chitragupta/` is partly annotated." It is 91%
 (394 of 433 `def`s carry a return annotation), and the distribution is
 the finding rather than the total:
 
 | Module | Annotated |
 |---|---|
-| `src/review/verbatim_check.py` | **60 / 60** -- resolved #133 |
-| `src/review/citation_provenance.py` | 16 / 17 |
-| `src/review/citation_coverage.py` | 11 / 12 |
-| `src/review/__init__.py` | 10 / 10 |
-| `src/runlock.py` | 3 / 7 |
-| `src/sync.py` | 4 / 8 |
-| `src/dossier.py` | 64 / 65 as one file; split into `src/dossier/` by #219, not re-measured per module since |
+| `chitragupta/review/verbatim_check.py` | **60 / 60** -- resolved #133 |
+| `chitragupta/review/citation_provenance.py` | 16 / 17 |
+| `chitragupta/review/citation_coverage.py` | 11 / 12 |
+| `chitragupta/review/__init__.py` | 10 / 10 |
+| `chitragupta/runlock.py` | 3 / 7 |
+| `chitragupta/sync.py` | 4 / 8 |
+| `chitragupta/dossier.py` | 64 / 65 as one file; split into `chitragupta/dossier/` by #219, not re-measured per module since |
 
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
 the second-largest module in the repository with no annotations at all,
@@ -229,22 +229,23 @@ New in this review. Each names a call site.
 ### 3.1 Text I/O on the locale codec
 
 **Resolved, and this entire subsection is now a historical record.**
-When this document was written (2026-08-13), 32 of `src/`'s 67
+When this document was written (2026-08-13), 32 of `chitragupta/`'s 67
 `read_text()`/`write_text()`/`open()` call sites carried no `encoding=`,
 so they used the host's locale codec. §5.2's own text already said why
 it no longer applies -- "3.1's encoding sites first -- the whole item,
 not pylint's visible seven" -- as the first step of the same 5.8.0
 change that enforced `pylint`, the same day this section was written.
 This subsection's own status line was simply never updated to match, the
-same drift `src/sync.py::run`'s section above suffered independently.
+same drift `chitragupta/sync.py::run`'s section above suffered independently.
 
 Verified directly rather than taken on that sentence's word: a precise
-AST scan of every `read_text`/`write_text`/bare `open` call in `src/`
+AST scan of every `read_text`/`write_text`/bare `open` call in `chitragupta/`
 finds **0 text-I/O sites missing `encoding=`**. The only 5 calls with no
 `encoding=` keyword at all are legitimate binary-mode opens (`"rb"`/`"wb"`,
 for TOML parsing and PDF hashing) that cannot take one --
-`src/config.py:27`, `src/ledger.py:151`, `src/overlap_index.py:192`,
-`src/review/__init__.py:89`, `src/review/verbatim_check.py:516` -- and
+`chitragupta/config.py:27`, `chitragupta/ledger.py:151`, `chitragupta/overlap_index.py:192`,
+`chitragupta/review/__init__.py:89`, `chitragupta/review/verbatim_check.py:516`
+-- and
 are outside this item's own stated scope of *text* I/O.
 
 The rest of this subsection is kept because the reasoning is still worth
@@ -266,14 +267,15 @@ reasoned about, because the intuitive answer is wrong:
 
 So the sites that mattered most were the **writes** -- the rendered
 bibliography and the sanitised markdown/bib handed to pandoc
-(`src/references.py`, `src/render_output/`), where a Cyrillic or CJK
+(`chitragupta/references.py`, `chitragupta/render_output/`), where a Cyrillic or
+CJK
 author name is ordinary in a real reference export and would have
 crashed the render on a cp1252 host -- and the reads whose text is used
-as text rather than scanned for ASCII, such as `src/retrieval.py`'s BM25
+as text rather than scanned for ASCII, such as `chitragupta/retrieval.py`'s BM25
 index build, where a mojibake read would have degraded ranking silently.
 
-**What this was never a way to break.** `src/citation_gate.py` reads the
-draft the same way `src/review/citation_coverage.py` does, and it was
+**What this was never a way to break.** `chitragupta/citation_gate.py` reads the
+draft the same way `chitragupta/review/citation_coverage.py` does, and it was
 worth checking whether the project's one gate could be taken out this
 way. It cannot: citekeys are ASCII, so `extract_citekeys()` returns
 identical results from correctly-decoded and mojibake text (verified on
@@ -294,11 +296,12 @@ Windows leg only would given a fixture with a character outside cp1252.
 
 ### 3.2 `_executor_for` duplicated across a module boundary
 
-`src/sync.py:66` and `src/enrich/docling_parse.py:430` both build the
+`chitragupta/sync.py:66` and `chitragupta/enrich/docling_parse.py:430` both
+build the
 docling process pool -- same `process_pool_context()`, same
 `usable_devices()`, same `initargs` shape. The duplication is
 **deliberate and documented**: `docling_parse`'s docstring says it is
-kept local "so that `src/enrich/` doesn't depend on the core entrypoint
+kept local "so that `chitragupta/enrich/` doesn't depend on the core entrypoint
 -- the dependency runs the other way everywhere else in this repo," and
 that reasoning is sound.
 
@@ -308,7 +311,7 @@ the two builders must agree about what `init_worker` is handed, the
 docstring says so explicitly, and nothing checks it. A third argument
 added to `init_worker` has to be added twice or the enrichment pool
 starts workers the core pipeline would not. The resolution is a shared
-helper in `src/pdf_text.py` -- which both already import, so it costs no
+helper in `chitragupta/pdf_text.py` -- which both already import, so it costs no
 new dependency edge in either direction -- not a change to the layering.
 
 ### 3.3 `bench/` is outside every check in the repository
@@ -408,14 +411,14 @@ Attributing the gap -- via
 
 ### 3.7 The BibTeX author-name grammar exists twice
 
-**Resolved in #234.** The five lines now live once, in `src/bib_names.py`
+**Resolved in #234.** The five lines now live once, in `chitragupta/bib_names.py`
 (`split_name`), which both callers import. That module is import-free
 stdlib string handling, so `references.py` still runs under the bare
 system interpreter -- verified against a system Python with no
 `bibtexparser` installed. Kept below as the record of why a duplication
 that broke no stated rule was worth a PR.
 
-`src/bib_reader.py:79-84` (`_parse_authors`) and `src/references.py:129-134`
+`chitragupta/bib_reader.py:79-84` (`_parse_authors`) and `chitragupta/references.py:129-134`
 (`_format_name`) carried the same five lines, character for character:
 
 ```python
@@ -455,9 +458,10 @@ argument for the linter in one finding.
 
 ### 3.8 `connect()` / `try` / `finally: close()` repeated at eight sites
 
-`src/citation_gate.py:199`, `src/references.py:422,441`,
-`src/retrieval.py:292,369`, `src/sync.py:339`,
-`src/review/citation_provenance.py:313`, `src/enrich/corpus.py:48` all
+`chitragupta/citation_gate.py:199`, `chitragupta/references.py:422,441`,
+`chitragupta/retrieval.py:292,369`, `chitragupta/sync.py:339`,
+`chitragupta/review/citation_provenance.py:313`,
+`chitragupta/enrich/corpus.py:48` all
 open a ledger connection and close it in a `finally`. Every one is
 correct -- this is not a leak -- but CODE-STANDARDS.md's threshold for
 extraction ("two similar blocks are a coincidence; three are a pattern")
@@ -503,7 +507,7 @@ passes through Markdown at all; its `.md` and `.pdf` are *previews*
 generated from that fragment, through pandoc's LaTeX reader and, for
 `pdf`, `pdflatex`. The other three are Markdown-native, and their
 `--format md` render does not reach pandoc at all
-(`src/render_output/__init__.py`, the early return for a Markdown input).
+(`chitragupta/render_output/__init__.py`, the early return for a Markdown input).
 
 Everything else follows mechanically. A `verbatim` ASCII block left
 inline in the fragment would print in the user's real thesis beside the
@@ -517,7 +521,7 @@ avoidable while the genres differ in source language.
 ([the review vocabulary](CODE-STANDARDS.md#code-smells-the-review-vocabulary)):
 two file layouts for one concept, so a reviser editing a figure has to
 know which genre produced the draft before knowing which files exist.
-`src/render_output/_figures.py` carries both directions
+`chitragupta/render_output/_figures.py` carries both directions
 (`_substitute_tikz_for_ascii`, `_substitute_ascii_for_tikz`) and each has
 its own marker regex.
 
@@ -540,7 +544,7 @@ it is a judgement someone may reasonably re-decide.
 ## Tier 4: the test suite
 
 27,948 lines across 68 modules (2026-08-13: 21,780 across 40 -- both trees
-have grown substantially since), against `src/`'s 18,135 -- the suite is
+have grown substantially since), against `chitragupta/`'s 18,135 -- the suite is
 about 1.5x the code it tests, holds 100% line and branch coverage, and is in
 better shape than the code. A full review found no dead helper, no
 order-dependent test, no network access, no `xfail`, no bare
@@ -580,7 +584,7 @@ different on every machine. Two tests depended on them:
   at 642 when this review ran.
 
 The second was worse than brittle: it *competed with a real detector*.
-`src/bib_reader.py` already warns when bibtexparser silently drops an
+`chitragupta/bib_reader.py` already warns when bibtexparser silently drops an
 entry it cannot parse, and that gap -- not the total -- is the thing
 worth failing on, because a dropped entry is a paper the user believes
 is citable and is not. The fix derives the expectation from the file
@@ -602,10 +606,10 @@ export: the false "2 may have been silently dropped" is gone, the same
 -- when a deliberately unbalanced entry is appended to that same file.
 Kept below as the record of the reasoning.
 
-Found while fixing 4.1, and not fixed *there* because it is a `src/`
+Found while fixing 4.1, and not fixed *there* because it is a `chitragupta/`
 change and that was a documentation PR.
 
-`src/bib_reader.py:234` compares `len(bib_database.entries)` against
+`chitragupta/bib_reader.py:234` compares `len(bib_database.entries)` against
 `_count_raw_entries(raw_text)`, which counts every `@` block. Zotero
 exports a contentless `@misc{key,\n}` stub for an attachment with no
 metadata, and bibtexparser correctly drops it -- there is no title,
@@ -641,9 +645,10 @@ cases.
 
 - **`test_removed_command_scan.py`** allowlists the three files that may
   legitimately name the command removed in 5.2.0 -- the direct
-  `src.sync` entry point, since replaced by `python -m src.corpus sync`.
+  `chitragupta.sync` entry point, since replaced by `python -m
+  chitragupta.corpus sync`.
   It is spelled indirectly here, because that scan reads this file too
-  and is right to. The three are `src/sync.py` (the refusal),
+  and is right to. The three are `chitragupta/sync.py` (the refusal),
   `tests/test_corpus_entrypoint.py` (which runs it), and the scan itself.
 
   `_ALLOWED` holds **exact relative paths**, so the same file at
@@ -651,7 +656,7 @@ cases.
   allowlist, and is reported. The copy is not stale; it is the same
   refusal machinery, at a path the allowlist cannot name.
 - **`test_skill_retrieval_logging.py`** globs `.claude/**/*.md` and
-  requires every `src.draft retrieve` invocation to carry `--log`. That
+  requires every `chitragupta.draft retrieve` invocation to carry `--log`. That
   rule is for *skill and agent protocol files*, where a missing flag
   means a drafting run's cost goes unmeasured. A worktree drags the whole
   repository under that glob, so `docs/RETRIEVAL.md` -- user
@@ -676,7 +681,7 @@ Two fixes, and the cheap one is not the repository's:
   is a behaviour change to two guard tests and belongs in its own diff
   against this entry, not inside a documentation PR -- the same Boy Scout
   reconciliation [CODE-STANDARDS.md](CODE-STANDARDS.md#the-boy-scout-rule-and-surgical-changes)
-  makes for `src/`. That diff is #236, and it is what resolved this
+  makes for `chitragupta/`. That diff is #236, and it is what resolved this
   entry.
 
 ## Tier 5: continuous integration and the linters
@@ -761,7 +766,7 @@ linter first and declines to adopt one without "a measured baseline and a
 measurement, taken with the `.pylintrc` this project inherits from DTaaS
 (the same source its own standards come from).
 
-**Baseline: 9.50/10, 235 messages across `src/` and `scripts/`.**
+**Baseline: 9.50/10, 235 messages across `chitragupta/` and `scripts/`.**
 
 Most of it is not debt. Disabling the categories this repository has
 already decided against leaves **44 real findings**:
@@ -868,7 +873,7 @@ them. Each is a
 with no detector, checked by hand against the tree:
 
 - **Over-configurability** ("a `config.toml` key with one caller and no
-  user asking for it"). 41 public constants in `src/config.py`; the four
+  user asking for it"). 41 public constants in `chitragupta/config.py`; the four
   with no external caller (`LOG_LEVELS`, `PARSER_START_METHODS`,
   `BIB_FILE`, `CONFIG_PATH`) are all internal validation tuples or
   intermediate values used within `config.py` itself. No speculative key.
@@ -881,7 +886,7 @@ with no detector, checked by hand against the tree:
   `assert` used for runtime validation, no SQL built by concatenation.
   The one f-string in a SQL position is the `PRAGMA` documented under
   [What is not debt](#what-is-not-debt).
-- **Resource lifecycle.** Every `sqlite3` connection in `src/` is closed
+- **Resource lifecycle.** Every `sqlite3` connection in `chitragupta/` is closed
   in a `finally`; no leak. The repetition of that pattern is
   [3.8](#38-connect--try--finally-close-repeated-at-eight-sites), which
   is a tidiness item, not a correctness one.
@@ -1103,7 +1108,7 @@ worse.
 | Looks like | Actually |
 |---|---|
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
-| `con.execute(f"PRAGMA user_version = {target}")` (`src/ledger.py:128`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
+| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:128`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval.py` and `enrich/docling_parse.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |
 | 11 broad `except Exception` handlers | Each has a stated cause and a `# noqa` marker. See [Tier 2](#the-11-inert--noqa-ble001-markers) -- the debt is the absent linter, not the handlers |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
@@ -1114,7 +1119,7 @@ worse.
 | Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
 | `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
-| `src/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, see [3.1](#31-text-io-on-the-locale-codec)) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
+| `chitragupta/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, see [3.1](#31-text-io-on-the-locale-codec)) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
 ## What to take first
 
@@ -1134,28 +1139,28 @@ Ordered by what breaks if it is left, not by size:
    day this document was written, per [5.2](#52-pylint-a-measured-baseline)'s
    own "3.1's encoding sites first -- the whole item, not pylint's
    visible seven." See [3.1](#31-text-io-on-the-locale-codec),
-   verified with a fresh AST scan: 0 text-I/O sites in `src/` now missing
+   verified with a fresh AST scan: 0 text-I/O sites in `chitragupta/` now missing
    `encoding=`.
-2. ~~**[Tier 1] `src/sync.py::run`.** 117 statements, separable at six
+2. ~~**[Tier 1] `chitragupta/sync.py::run`.** 117 statements, separable at six
    named seams, and already the register's designated first job.~~
    **Done**, in #178 (2026-08-14): split along those same seams. See the
-   `src/sync.py::run` subsection above, kept as the historical record.
+   `chitragupta/sync.py::run` subsection above, kept as the historical record.
 3. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
    this list -- one workflow job against 56 lines currently verified by
    nothing.
-4. **[Tier 2] Annotate `src/review/verbatim_check.py`.** ~~47 functions,
+4. **[Tier 2] Annotate `chitragupta/review/verbatim_check.py`.** ~~47 functions,
    no behaviour change, and it removes the tree's only zero.~~ **Done**,
    in #133: 58/58 functions now annotated (the count grew from 47 to 53
    while that PR was adding tier 2's finders, then to 58 when three of
    them were split to bring cognitive complexity under SonarQube's
    threshold). See [Type
    annotations](#type-annotations-394-of-433).
-5. ~~**[Tier 1] Split `src/dossier.py`** along the four ranges above, and
+5. ~~**[Tier 1] Split `chitragupta/dossier.py`** along the four ranges above, and
    delist whatever comes back under C1 in the same PR.~~ **Done**, in
-   #219: `src/dossier/`, 12 modules each under the 250-code-line cap.
+   #219: `chitragupta/dossier/`, 12 modules each under the 250-code-line cap.
    `main()` stayed on the register -- still 49 statements, since the
    split moved every `_cmd_*` handler out but left its own argparse-tree
-   statements where they were. See the `src/dossier.py` subsection
+   statements where they were. See the `chitragupta/dossier.py` subsection
    below, kept as the historical record of what the split was measured
    against.
 6. ~~**[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
@@ -1169,7 +1174,7 @@ Ordered by what breaks if it is left, not by size:
 7. ~~**[3.7] Move the BibTeX author-name grammar into one module.** Five
    duplicated lines, no boundary to relax, and the failure it prevents is
    two disagreeing spellings of the same author.~~ **Done**, in #234:
-   `src/bib_names.py`. See
+   `chitragupta/bib_names.py`. See
    [3.7](#37-the-bibtex-author-name-grammar-exists-twice).
 8. ~~**[4.2] Count only entries with fields** in `bib_reader`'s
    dropped-entry warning, so it stops firing on every healthy Zotero

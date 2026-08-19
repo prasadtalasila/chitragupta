@@ -1,6 +1,6 @@
 """What a prose-conformance report looks like: the lines, not the findings.
 
-Split from `src/style_check.py` for the reason `src/review/__init__.py` is
+Split from `chitragupta/style_check.py` for the reason `chitragupta/review/__init__.py` is
 split from the three aids it serves -- what a report *says* is a separate
 concern from what produced it, and keeping them together pushed one module
 past the 250-line limit docs/CODE-STANDARDS.md sets.
@@ -14,7 +14,7 @@ a single finding.
 
 from pathlib import Path
 
-from src.style_rules import DIALECT_RULES
+from chitragupta.style_rules import DIALECT_RULES
 
 
 def _dialect_lines(payload: dict) -> list[str]:
@@ -33,7 +33,7 @@ def _dialect_lines(payload: dict) -> list[str]:
         measured = sorted(proposal["findings_by_language"].items())
         counts = ", ".join(f"{tag}: {n}" for tag, n in measured)
         lines.append(f"  it reads as {proposal['language']} ({counts}). To record that:")
-        lines.append(f"    python -m src.draft dossier set-language "
+        lines.append(f"    python -m chitragupta.draft dossier set-language "
                      f"{proposal['language']} {payload['draft']}")
     return lines
 

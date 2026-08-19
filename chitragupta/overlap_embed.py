@@ -2,8 +2,8 @@
 local alignment over sentence embeddings.
 
 The third and last of the detection tiers `docs/PLAGIARISM-DESIGN.md` names
-(#134, #164, closing #132). Tiers 1 and 2 -- `src/overlap_index.py`'s
-exact word-8-grams and `src/overlap_skipgram.py`'s stemmed odd/even
+(#134, #164, closing #132). Tiers 1 and 2 -- `chitragupta/overlap_index.py`'s
+exact word-8-grams and `chitragupta/overlap_skipgram.py`'s stemmed odd/even
 skip-grams -- both match on *token position*, so both break the moment a
 paraphrase moves a qualifier or splices two sentences. That is the
 family-split design working as specified, and it is why a hand read of
@@ -16,7 +16,7 @@ not care about token position, which is why this tier exists.
 setting does, so a finding here is not reproducible across a config edit
 and can never satisfy `docs/PLAGIARISM-DESIGN.md`'s "only deterministic checks
 may block" line. There is no gate-eligibility check *here* to enforce
-that, because nothing in `src/` decides gate-eligibility for any tier
+that, because nothing in `chitragupta/` decides gate-eligibility for any tier
 today (#130, undecided) and inventing a gate path to exclude this tier
 from would be the speculative abstraction DEVELOPER-AGENTS.md forbids.
 The structural guarantee lives where the only gate-shaped predicate in
@@ -37,7 +37,7 @@ against those sources' segments (`overlap_segments`,
 
 Scoping to the dossier is not only cheaper, it is the only shape that
 works here. This pipeline aims at a deep single-field corpus and the
-drafts are written *from* it via `src.retrieval`, so a draft segment's
+drafts are written *from* it via `chitragupta.retrieval`, so a draft segment's
 nearest corpus neighbours are, by construction, the passages it was
 legitimately grounded in: a corpus-wide cosine threshold would re-detect
 the pipeline's own retrieval step. `docs/PLAGIARISM-DESIGN.md` carries the
@@ -63,7 +63,7 @@ checked.
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import (
+from chitragupta import (
     config, dossier, ledger, overlap_align, overlap_chroma, overlap_segments,
 )
 
@@ -71,7 +71,7 @@ from src import (
 # chroma shortlist ranks them. A section citing more than this is
 # ordinarily citing a couple of sources for its argument and the rest in
 # passing; the shortlist is what decides which is which. A named module
-# constant rather than config, for the reason `src/overlap_align.py`
+# constant rather than config, for the reason `chitragupta/overlap_align.py`
 # gives about the alignment's own constants.
 SHORTLIST_SOURCES = 5
 
@@ -141,7 +141,7 @@ def open_scope(draft: Path) -> tuple[Scope | None, str | None]:
     if collection is None:
         return None, (
             f"{config.CHROMA_DIR} holds no embedded corpus for "
-            f"{config.EMBEDDING_MODEL} -- run `python -m src.enrich` to build it"
+            f"{config.EMBEDDING_MODEL} -- run `python -m chitragupta.enrich` to build it"
         )
     return Scope(scoped, collection, ledger.connect()), None
 
@@ -207,7 +207,7 @@ def align_draft(
 
     Everything is returned, unranked and undeduplicated -- `report`
     below is what turns this into what a reader sees. The two are
-    separate because `src/review/verbatim_check.py` needs the full list
+    separate because `chitragupta/review/verbatim_check.py` needs the full list
     to work out which citekeys matched where before it narrows
     (`_cites_source`: a passage several corpus papers each state can be
     cited to any one of them, and a narrowed list has already thrown

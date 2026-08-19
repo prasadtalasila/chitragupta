@@ -1,10 +1,10 @@
-"""The one `python -m src.draft style` finding this repository doesn't
+"""The one `python -m chitragupta.draft style` finding this repository doesn't
 hand to Vale.
 
 Vale's `Acronyms.yml` can verify an acronym was expanded somewhere near
 its first use; it cannot know what a user's own vocabulary currently
 says an acronym expands to, because that vocabulary lives in a per-host
-TOML file (`src.acronyms.load_vocabulary()`) Vale never reads. This is
+TOML file (`chitragupta.acronyms.load_vocabulary()`) Vale never reads. This is
 that other half: a draft's own recorded glossary (`scope.md`'s
 `## Glossary`), checked against the vocabulary right now, in plain
 Python -- the first `style_check.py` finding not delegated to Vale.
@@ -20,7 +20,7 @@ GitHub issue #190.
 
 from pathlib import Path
 
-from src import acronyms, dossier
+from chitragupta import acronyms, dossier
 
 RULE = "chitragupta.AcronymDrift"
 

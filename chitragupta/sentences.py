@@ -2,9 +2,9 @@
 sentences rather than paragraphs.
 
 There was exactly one before this module existed --
-`src/review/citation_provenance.py`'s, which found "the sentence around
+`chitragupta/review/citation_provenance.py`'s, which found "the sentence around
 this citation marker" so a claim could be scored against a source
-passage. `src/overlap_embed.py` (tier 3) needs the same split on both
+passage. `chitragupta/overlap_embed.py` (tier 3) needs the same split on both
 sides of an alignment, and a second regex tuned separately would mean
 the two aids disagree about where a sentence ends: the provenance report
 would quote one span back to a reviewer and the overlap scan would

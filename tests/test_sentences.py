@@ -1,4 +1,4 @@
-"""src/sentences.py: the one sentence splitter, shared by the provenance
+"""chitragupta/sentences.py: the one sentence splitter, shared by the provenance
 report and tier 3 of the overlap scan.
 
 Stdlib-only and pure, so these are all direct calls -- no fixtures, no
@@ -6,7 +6,7 @@ config. The behaviour worth pinning is the pair invariant between
 `split` and `spans`: two functions over one regex, and a caller that
 slices `spans` back out of the text has to get what `split` returns."""
 
-from src import sentences
+from chitragupta import sentences
 
 
 class TestSplit:

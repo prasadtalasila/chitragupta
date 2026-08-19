@@ -5,7 +5,7 @@
 # and they measure different amounts of the suite on purpose: the Linux leg
 # installs os-deps and runs all of it, the Windows leg gets python-deps only
 # (os-deps is apt-only: pandoc, TeX Live, poppler), so ~30 render/pdf tests
-# self-skip there and src/render_output.py lands near 76%. Merged, the two
+# self-skip there and chitragupta/render_output.py lands near 76%. Merged, the two
 # come to 100%. The Windows one alone comes to ~99%.
 #
 # Codecov scores a commit against whatever sessions it has finished

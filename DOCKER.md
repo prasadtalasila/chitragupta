@@ -80,7 +80,7 @@ docker run -it --rm \
 
 The image deliberately doesn't bake the repo in -- it mounts it -- so the
 `config.toml` the container reads is the one in *your* working copy. That
-file is gitignored, so create it before the first run or `src.config`
+file is gitignored, so create it before the first run or `chitragupta.config`
 will refuse to import:
 
 ```bash
@@ -105,14 +105,14 @@ venv prefix, since `/opt/venv` is already on `PATH` (and exported as
 inside the container:
 
 ```bash
-python -m src.corpus sync
-python -m src.enrich --stages embed,bertopic
-python -m src.draft gate content/drafts/<slug>.md
+python -m chitragupta.corpus sync
+python -m chitragupta.enrich --stages embed,bertopic
+python -m chitragupta.draft gate content/drafts/<slug>.md
 ```
 
 To run the test suite inside the container, add the `dev` group:
 
 ```bash
 SKIP_VENV=1 bash scripts/install_full_pipeline.sh dev-deps
-python -m pytest --cov=src --cov=scripts --cov-report=term-missing
+python -m pytest --cov=chitragupta --cov=scripts --cov-report=term-missing
 ```

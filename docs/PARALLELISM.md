@@ -36,8 +36,8 @@ different mechanisms, and keeps them apart on purpose.
 
 | Term | What it means here | Where it lives |
 |---|---|---|
-| **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `src/sync.py`'s worker pool, `src/pdf_text.py` |
-| **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `src/runlock.py` |
+| **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync.py`'s worker pool, `chitragupta/pdf_text.py` |
+| **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `chitragupta/runlock.py` |
 
 Unrelated problems, unrelated solutions. Parallelism is an opt-in speed
 feature, off by default; concurrency control is always on and exists
@@ -62,21 +62,21 @@ serial, and is.
 Two entry points reach it, sharing the same machinery:
 
 ```text
-  python -m src.corpus sync                     python -m src.enrich
+  python -m chitragupta.corpus sync                     python -m chitragupta.enrich
   (corpus layer: bib ──► text)           (enrichment layer, opt-in)
           │                                        │
-          │ src/sync.py                            │ src/enrich/docling_parse.py
+          │ chitragupta/sync.py                            │ chitragupta/enrich/docling_parse.py
           │ _parse_parallel()                      │ parse_corpus()
           │ _executor_for()                        │ _executor_for()
           └────────────────┬───────────────────────┘
                            ▼
-                   src/pdf_text.py
+                   chitragupta/pdf_text.py
         resolve_workers · worker_ceiling · docling_threads
    process_pool_context · prestart_pool · init_worker · usable_devices
 ```
 
-`src/enrich/docling_parse.py` keeps its own `_executor_for` rather than
-importing `sync`'s, so `src/enrich/` never depends on the core entry
+`chitragupta/enrich/docling_parse.py` keeps its own `_executor_for` rather than
+importing `sync`'s, so `chitragupta/enrich/` never depends on the core entry
 point — the dependency runs the other way everywhere else. Both delegate
 every *policy* decision to `pdf_text`, so "how many workers, which start
 method, which GPU" is answered in exactly one place.
@@ -128,7 +128,7 @@ runs print identically.
 
 ## Components
 
-All in `src/pdf_text.py` unless noted.
+All in `chitragupta/pdf_text.py` unless noted.
 
 ### `resolve_workers(n_docs) -> (workers, complaint)`
 
@@ -271,7 +271,7 @@ since nvidia-smi ignores it and torch does not. Falls back to torch only
 where the driver's CLI is absent — the point is to answer the question
 without importing torch into the parent.
 
-### `_as_they_land()` — `src/sync.py`
+### `_as_they_land()` — `chitragupta/sync.py`
 
 Yields futures as they complete, abandoning the run if the **whole pool**
 goes silent for `[parser].stall_timeout`.

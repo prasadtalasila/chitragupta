@@ -4,7 +4,7 @@
 suspected**, and it matters because a figure from this tool was quoted as
 fact across the documentation for two releases.
 
-On 2026-08-04 a real serial `python -m src.corpus sync` over the 501-PDF corpus
+On 2026-08-04 a real serial `python -m chitragupta.corpus sync` over the 501-PDF corpus
 (OCR off) took **3330s / 55m 30s**. From the same 16-PDF sample this tool
 predicted:
 

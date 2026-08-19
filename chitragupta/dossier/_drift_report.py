@@ -9,9 +9,9 @@ the former and never the latter.
 
 import json
 
-from src import config
-from src.dossier import draft_relpath
-from src.dossier._drift import Drift
+from chitragupta import config
+from chitragupta.dossier import draft_relpath
+from chitragupta.dossier._drift import Drift
 
 # How many findings of one kind to print before summarising the rest.
 # A drift report is read to decide what to do next, not as a manifest;
@@ -107,7 +107,8 @@ def _print_drift_summary(reports: list[Drift]) -> None:
     if unknown:
         print(f"  {len(unknown)} of {len(reports)} dossier(s) could not be checked: "
               f"no readable ledger at {config.LEDGER_PATH}.")
-        print("  Run `python -m src.corpus sync` to build one; until then drift is unknown,")
+        print("  Run `python -m chitragupta.corpus sync` to build one; "
+              "until then drift is unknown,")
         print("  not absent.")
     if not stale:
         if not unknown:

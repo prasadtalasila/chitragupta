@@ -69,10 +69,10 @@ point.
 
 | Signal | What it finds | What it emits | Who acts on it |
 |---|---|---|---|
-| `python -m src.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
-| `python -m src.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
-| `python -m src.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
-| `python -m src.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
+| `python -m chitragupta.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
+| `python -m chitragupta.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
+| `python -m chitragupta.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
+| `python -m chitragupta.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
 | *nothing* | a badly written sentence | -- | human, by hand |
 
 Two things stand out. **Most of the surface is still text only.** When
@@ -86,7 +86,7 @@ that a copy-edit touching no evidence has no sanctioned path through it.
 
 ## Where the loop sits, and the cycle that decides it
 
-The obvious placement is a new drafting-layer verb -- `python -m src.draft
+The obvious placement is a new drafting-layer verb -- `python -m chitragupta.draft
 agenda <draft>` -- reading the review reports and emitting a worklist.
 **That placement is wrong, and the reason is the one cycle this repository
 already removed.**
@@ -117,7 +117,7 @@ layer-4 artefact, and a layer-2 command consuming it is a new edge in that
 graph, which nothing else in the repository has.
 
 The alternative has no such problem. `review.AIDS` is an explicit, guarded
-extension point -- `src/review/__main__.py` raises a `RuntimeError` (not
+extension point -- `chitragupta/review/__main__.py` raises a `RuntimeError` (not
 an assert, deliberately) if its subcommands drift from that dict, which
 exists so a fourth aid can be added safely. An agenda is "evidence for a
 human judgement, never a verdict", which is the review layer's charter
@@ -186,7 +186,7 @@ and different enough to be dangerous.
 | autoresearch | Here | Note |
 |---|---|---|
 | `train.py` -- the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
-| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the three review aids, `src.draft gate`, #128's allowlist | The loop may run them and may not edit them |
+| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the three review aids, `chitragupta.draft gate`, #128's allowlist | The loop may run them and may not edit them |
 | `program.md` -- edited by the human, not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
 | `val_bpb` -- one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule |
 | the fixed five-minute budget | *nothing, deliberately* | Its runs compete; agenda items do not |
@@ -310,12 +310,12 @@ the rule:
 
 | Site | Wording |
 |---|---|
-| `src/review/__init__.py`, `BANNER` | "Nothing in this pipeline reads it back" |
-| `src/review/__init__.py`, docstring | "None gates, none runs automatically" |
-| `src/review/__main__.py`, docstring | "nothing invokes them automatically" |
-| `src/review/citation_provenance.py`, docstring | "never automatically, never a gate" |
-| `src/review/citation_coverage.py`, docstring | "never automatically, never a gate" |
-| `src/review/verbatim_check.py`, docstring | "never automatically, never a gate" |
+| `chitragupta/review/__init__.py`, `BANNER` | "Nothing in this pipeline reads it back" |
+| `chitragupta/review/__init__.py`, docstring | "None gates, none runs automatically" |
+| `chitragupta/review/__main__.py`, docstring | "nothing invokes them automatically" |
+| `chitragupta/review/citation_provenance.py`, docstring | "never automatically, never a gate" |
+| `chitragupta/review/citation_coverage.py`, docstring | "never automatically, never a gate" |
+| `chitragupta/review/verbatim_check.py`, docstring | "never automatically, never a gate" |
 | [AGENTS.md](../AGENTS.md), Layer 4 | "run by hand on a finished draft, never invoked automatically" |
 | [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer), §Layer 4 | "Nothing invokes them automatically" |
 | [ARCHITECTURE.md](ARCHITECTURE.md), inline mermaid label | "advisory, never automatic, never a gate" |
@@ -338,7 +338,7 @@ stays true and untouched.
 The surviving invariant is the one that was always doing the work, and it
 is narrower than the current wording: **a review finding may be read, may
 be invoked by a driver, and may never block a draft.** Advisory versus
-blocking, not manual versus automatic. `src.draft gate` remains the only
+blocking, not manual versus automatic. `chitragupta.draft gate` remains the only
 gate.
 
 **[SOUL.md](../SOUL.md) does not need amending, and that is the point.**

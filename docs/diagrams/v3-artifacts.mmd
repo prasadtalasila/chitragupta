@@ -13,7 +13,7 @@ flowchart TB
   subgraph GEN["<b>GENERATED</b> — <code>content/</code>, all of it disposable: delete it and re-run"]
     direction TB
 
-    subgraph L1["written by <code>src.corpus sync</code> — the corpus layer"]
+    subgraph L1["written by <code>chitragupta.corpus sync</code> — the corpus layer"]
       direction LR
       LED[("content/ledger.sqlite")]
       TXT[/"content/parsed/&lt;citekey&gt;.txt<br/><small>form feeds between pages, either backend</small>"/]
@@ -46,27 +46,27 @@ flowchart TB
 
   CFG -. "read once at import,<br/>env vars override" .-> GEN
 
-  BIB -- "src/bib_reader.py" --> LED
-  PDF -- "src/pdf_text.py" --> TXT
-  PDF -- "src/pdf_text.py<br/><small>docling backend only</small>" --> CPS
+  BIB -- "chitragupta/bib_reader.py" --> LED
+  PDF -- "chitragupta/pdf_text.py" --> TXT
+  PDF -- "chitragupta/pdf_text.py<br/><small>docling backend only</small>" --> CPS
   LED -- "which PDFs need a parse" --> TXT
-  LED -- "src/enrich/corpus.py<br/><small>every row, keyed by <code>citekey</code></small>" --> DOC
-  TXT -- "src/enrich/embed_index.py" --> CHR
-  PDF -- "src/enrich/docling_parse.py" --> DOC
-  CPS -. "<b>src/enrich/docling_parse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
+  LED -- "chitragupta/enrich/corpus.py<br/><small>every row, keyed by <code>citekey</code></small>" --> DOC
+  TXT -- "chitragupta/enrich/embed_index.py" --> CHR
+  PDF -- "chitragupta/enrich/docling_parse.py" --> DOC
+  CPS -. "<b>chitragupta/enrich/docling_parse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
   DOC --> CHR
-  TXT -- "src/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
+  TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
 
-  TXT -- "src/retrieval.py" --> RIX
+  TXT -- "chitragupta/retrieval.py" --> RIX
 
-  RIX -- "<b>src/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
-  CHR -. "<b>src/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Only<br/>survey-writer and deep-research name it.</small>" .-> DRF
-  DOC -- "src/passages.py<br/>quotable passages — rung 1" --> DRF
-  CPS -- "src/passages.py<br/>quotable passages — rung 2" --> DRF
-  LED -- "src/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>src.draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
-  DRF -- "src.draft render<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>src.review provenance · verbatim scan --write<br/>src.review coverage --write</small>" --> RVW
+  RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
+  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Only<br/>survey-writer and deep-research name it.</small>" .-> DRF
+  DOC -- "chitragupta/passages.py<br/>quotable passages — rung 1" --> DRF
+  CPS -- "chitragupta/passages.py<br/>quotable passages — rung 2" --> DRF
+  LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
+  DRF == "<b>chitragupta.draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
+  DRF -- "chitragupta.draft render<br/><small>only after the gate passes</small>" --> REN
+  DRF -- "the review layer<br/><small>chitragupta.review provenance · verbatim scan --write<br/>chitragupta.review coverage --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef corpus fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b

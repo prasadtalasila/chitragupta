@@ -2,7 +2,7 @@
 
 The half of tier 3 that has no dependencies and no I/O: given a matrix of
 already-computed, already-shifted similarity scores, find the contiguous
-passage pairs inside it. `src/overlap_embed.py` is the half that decides
+passage pairs inside it. `chitragupta/overlap_embed.py` is the half that decides
 which sentences to compare and where the numbers come from, and it is the
 only caller.
 
@@ -64,7 +64,7 @@ GAP_PENALTY = 0.25
 # The floor a completed alignment must clear to be traced at all.
 # Structural rather than editorial: it is what stops the traceback loop
 # once the table holds nothing positive left, and it is *not* a
-# report/don't-report decision. `src/overlap_embed.py` ranks and caps
+# report/don't-report decision. `chitragupta/overlap_embed.py` ranks and caps
 # instead of thresholding, because a threshold provably cannot work in
 # this corpus -- see `overlap_embed.report`. Anything above zero would
 # make this a policy knob by the back door, so it is exactly zero.

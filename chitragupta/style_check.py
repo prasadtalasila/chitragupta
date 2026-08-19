@@ -1,27 +1,27 @@
 """Prose conformance for a draft, checked against docs/WRITING-STANDARDS.md.
 
-`python -m src.draft style <draft>` reports where a draft departs from the
+`python -m chitragupta.draft style <draft>` reports where a draft departs from the
 rules that document marks decidable in its §9 -- the defect markers of §2,
 the recorded dialect of §8, and an acronym never expanded at first use --
 and says nothing about the rules it marks a judgement. Vale does that
 matching, against the style vendored at assets/vale/; this module decides
 *which* rules apply to *this* draft and turns the result into a report.
-One finding is not Vale's: `src.style_acronym_drift` checks the draft's
+One finding is not Vale's: `chitragupta.style_acronym_drift` checks the draft's
 own recorded glossary against the current acronym vocabulary in plain
 Python, because that vocabulary lives in a per-host file Vale cannot
 read.
 
 **Advisory, and it exits 0 whatever it finds.** Not a gate, and not a
 gate under a flag either. The reason is docs/ARCHITECTURE.md's "Layer 4":
-`src.draft gate` is measured against the ledger, which is ground truth, so
+`chitragupta.draft gate` is measured against the ledger, which is ground truth, so
 an absolute verdict is available; this is measured against a `language:`
 line someone typed into scope.md, which can be wrong, stale, or
 deliberately overridden -- so blocking on it would refuse a correct draft
 on a bad target. DEVELOPER-AGENTS.md bars promoting any new check into a
-gate beside src/citation_gate.py, and this is the check that rule was
+gate beside chitragupta/citation_gate.py, and this is the check that rule was
 written for.
 
-**Tier 1 with an optional binary**, exactly like `src.draft render`: the
+**Tier 1 with an optional binary**, exactly like `chitragupta.draft render`: the
 Python here imports nothing outside the standard library and runs on the
 bare system interpreter, and the `vale` binary is probed for and reported
 missing rather than assumed. A host without it loses this report and keeps
@@ -51,10 +51,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from src import config, dossier
-from src.style_acronym_drift import findings as acronym_drift_findings
-from src.style_report import report
-from src.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
+from chitragupta import config, dossier
+from chitragupta.style_acronym_drift import findings as acronym_drift_findings
+from chitragupta.style_report import report
+from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
 
 
 
@@ -243,7 +243,7 @@ def build_parser():
     import argparse  # local, so importing this module stays cheap for the hook
 
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft style",
+        prog="python -m chitragupta.draft style",
         description="Check a draft's prose against docs/WRITING-STANDARDS.md. "
                     "A review aid: it exits 0 whatever it finds.",
     )

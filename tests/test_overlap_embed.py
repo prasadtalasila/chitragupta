@@ -1,4 +1,4 @@
-"""src/overlap_embed.py and src/overlap_chroma.py: tier 3's policy, and
+"""chitragupta/overlap_embed.py and chitragupta/overlap_chroma.py: tier 3's policy, and
 the one seam that reaches the optional embedding stack.
 
 chromadb/sentence_transformers are mocked via sys.modules, the same way
@@ -14,7 +14,7 @@ import types
 
 import pytest
 
-from src import config, ledger, overlap_chroma, overlap_embed, overlap_segments
+from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_segments
 from tests.conftest import make_reference
 
 
@@ -132,7 +132,7 @@ class TestBuiltCollection:
     def test_an_empty_collection_is_none_rather_than_a_tier_that_finds_nothing(
         self, isolated_config, fake_chromadb
     ):
-        from src.enrich import embed_index
+        from chitragupta.enrich import embed_index
 
         config.CHROMA_DIR.mkdir(parents=True)
         client = fake_chromadb({embed_index.collection_name(): FakeCollection(count=0)})
@@ -140,7 +140,7 @@ class TestBuiltCollection:
         assert overlap_chroma.built_collection(chromadb) is None
 
     def test_a_built_collection_comes_back(self, isolated_config, fake_chromadb):
-        from src.enrich import embed_index
+        from chitragupta.enrich import embed_index
 
         config.CHROMA_DIR.mkdir(parents=True)
         collection = FakeCollection(count=17)
@@ -152,7 +152,7 @@ class TestBuiltCollection:
         self, isolated_config, fake_chromadb
     ):
         # chromadb 0.5 lists collection objects and 1.0 lists names.
-        from src.enrich import embed_index
+        from chitragupta.enrich import embed_index
 
         config.CHROMA_DIR.mkdir(parents=True)
         collection = FakeCollection(count=3)
@@ -222,7 +222,7 @@ class TestEmbedder:
             loads.append(True)
             return None, TestEmbedder.FakeModel()
 
-        from src.enrich import embed_index
+        from chitragupta.enrich import embed_index
         monkeypatch.setattr(embed_index, "get_client_and_model",
                             fake_get_client_and_model)
         embedder = overlap_chroma.Embedder()
@@ -335,7 +335,7 @@ class TestOpenScope:
         monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: None)
         scope, reason = overlap_embed.open_scope(draft)
         assert scope is None
-        assert "python -m src.enrich" in reason
+        assert "python -m chitragupta.enrich" in reason
 
     def test_everything_present_opens_a_scope(self, isolated_config, monkeypatch):
         draft = write_draft(config, "# T\n\nprose\n",

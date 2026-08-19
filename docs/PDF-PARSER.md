@@ -74,7 +74,7 @@ in some places; it estimated the serial case only.)
 dense reference blocks are grouped into elements slightly differently
 between runs: ~1.4% of documents come back with different text and ~1.0%
 with a different *quotable passage*, and two runs of the same
-configuration are not exempt. Ranking is unaffected -- `src/retrieval.py`
+configuration are not exempt. Ranking is unaffected -- `chitragupta/retrieval.py`
 tokenises on runs of `[a-z0-9]`, so where an element boundary falls
 between two words changes nothing about the terms extracted -- but the
 exact span quoted from a source can change, which is the part that
@@ -186,7 +186,7 @@ docling behaviours, and a replacement has to supply all of them:
 
 | What the repo uses | Where |
 |---|---|
-| Per-item `label`, `text`, `prov[0].page_no`, `prov[0].bbox` | passage provenance, `src/passages.py` |
+| Per-item `label`, `text`, `prov[0].page_no`, `prov[0].bbox` | passage provenance, `chitragupta/passages.py` |
 | `pic.caption_text(dl_doc)` -- figure caption matched to "Figure N" in prose | `_figure_records`, see [DEVELOPER.md](../DEVELOPER.md#figures-and-copyright) |
 | `export_to_markdown()` | `content/docling/<citekey>.md`, the artefact downstream stages read |
 | `AcceleratorOptions(device="cuda:N", num_threads=...)` set **per worker process** | `init_worker`, one GPU claimed round-robin |
@@ -269,7 +269,7 @@ extraction, and it only ever called one endpoint
 metadata `papers/bibliography.bib` already provides for every document
 the project cares about: the goal is to parse the PDFs the bib file
 names, and those arrive with real metadata already attached via
-`src/bib_reader.py`.
+`chitragupta/bib_reader.py`.
 
 What GROBID uniquely offered -- parsing a paper's own reference list into
 structured author/title/year/DOI records, via the
@@ -277,10 +277,10 @@ structured author/title/year/DOI records, via the
 *corpus discovery* ("which papers do my papers cite that I don't have
 yet"), not grounding. Extracted references are not in the bib file, so
 per AGENTS.md's citekey invariant no draft may cite them -- and since
-`src/enrich/corpus.py` sources the enrichment corpus from the ledger and
+`chitragupta/enrich/corpus.py` sources the enrichment corpus from the ledger and
 nothing else, there is nowhere to index them either. A discovered paper
 enters this project the way every other one does: catalogue it in your
-reference manager, re-export, and re-run `python -m src.corpus sync`.
+reference manager, re-export, and re-run `python -m chitragupta.corpus sync`.
 
 Against that, the operational cost was a JDK 21 pinned exactly (its
 bundled Kotlin compiler cannot parse a JDK 25 version string), a
@@ -308,7 +308,7 @@ AnnualReviewsinControl51(2021)357-373
 theapplicationofthevery same principles
 ```
 
-**Why that matters.** `src/retrieval.py` is BM25 over tokens split on
+**Why that matters.** `chitragupta/retrieval.py` is BM25 over tokens split on
 runs of `[a-z0-9]`, so a fused run is one token: a query for "cyber
 physical" cannot match text fused into `cyberphysicalsystems`. A silent
 ranking failure, not a cosmetic one.
@@ -338,7 +338,7 @@ deferred -- it would no longer be "markitdown", and no current use case
 needs a tier between the two remaining backends.
 
 **What was added instead.** A parse-quality guard
-(`src/pdf_text.quality_warning`, wired into `sync`) that warns when more
+(`chitragupta/pdf_text.quality_warning`, wired into `sync`) that warns when more
 than 1% of a document's words exceed 20 characters. The two backends sit
 three orders of magnitude apart on that measure, so the threshold does
 not need precise tuning. Had it existed earlier, this would have been
@@ -351,7 +351,8 @@ Diagnosed 2026-08-09. Fixed in the `os-deps` stage; recorded here because
 the error message points at nothing useful, and because a host provisioned
 some other way will hit it again.
 
-**The symptom.** With `[parser].backend = "docling"`, `python -m src.corpus sync`
+**The symptom.** With `[parser].backend = "docling"`, `python -m
+chitragupta.corpus sync`
 prints a bare `sys.path` listing before the bibliography progress and then
 fails every document it had to parse:
 
@@ -376,13 +377,13 @@ $ python -c "import sys; sys.OpenCV_LOADER = True; import cv2"
 ImportError: ERROR: recursion is detected during loading of "cv2" binary extensions.
 ```
 
-**Why sync turns that into a whole-run failure.** `src/pdf_text.py`'s
+**Why sync turns that into a whole-run failure.** `chitragupta/pdf_text.py`'s
 `prestart_pool()` starts a forkserver whose preload imports `docling` while
 the parent reads the bibliography -- which is why the print lands *before*
 the progress lines. `forkserver.main()` catches `ImportError` and discards
 it, so the genuine failure is swallowed and the poisoned flag survives in
 the server process. Every worker forked from it then re-imports cv2 and
-reports the mask. `src/pdf_text.preload_modules`' docstring already named
+reports the mask. `chitragupta/pdf_text.preload_modules`' docstring already named
 this as a known gap; this is that gap costing a run's diagnosability.
 
 **The real cause.** OpenCV is a transitive dependency nothing here asks
@@ -412,7 +413,7 @@ the import then happens in-process, with no preload to swallow it and no
 second attempt to trigger the flag:
 
 ```console
-PARSER_WORKERS=1 python -m src.corpus sync
+PARSER_WORKERS=1 python -m chitragupta.corpus sync
 ```
 
 **Why `opencv-python-headless` is not the fix.** It is the right wheel for

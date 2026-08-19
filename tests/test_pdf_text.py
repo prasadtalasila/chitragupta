@@ -1,4 +1,4 @@
-"""src/pdf_text.py: dispatches PDF text extraction to whichever backend
+"""chitragupta/pdf_text.py: dispatches PDF text extraction to whichever backend
 config.PARSER names (pdftotext/docling).
 
 docling is mocked via sys.modules (it is imported
@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from src import config, passages, pdf_text
+from chitragupta import config, passages, pdf_text
 
 
 class TestExtractTextPdftotext:
@@ -388,7 +388,7 @@ class TestCorpusLayerPassageSidecar:
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
         """Written even when empty, so the file's presence answers "did a
-        reading-order backend parse this?" -- which is what src/ledger.py
+        reading-order backend parse this?" -- which is what chitragupta/ledger.py
         checks before skipping a document it believes is parsed. Were it
         omitted here, that check would re-parse this document on every
         single run, forever."""
@@ -537,9 +537,9 @@ class TestDropStdlibShadowingPathEntries:
 class TestExtractTextMissingBinary:
     """Regression coverage: a host without poppler-utils installed used to
     surface this as an uncaught FileNotFoundError traceback out of
-    subprocess.run (src/sync.py caught only CalledProcessError) instead of
+    subprocess.run (chitragupta/sync.py caught only CalledProcessError) instead of
     a reported, honest result -- the same probe-and-report shape every
-    src/enrich/* stage already follows (e.g. src/render_output.py's
+    chitragupta/enrich/* stage already follows (e.g. chitragupta/render_output.py's
     MissingBinary)."""
 
     def test_raises_missing_binary_instead_of_file_not_found(
@@ -836,7 +836,7 @@ class TestDoclingThreadBudget:
 class TestExtractOne:
     """The pool's entry point. Returns its error instead of raising so
     that both the value and the exception survive pickling back to the
-    parent -- and returns the exception *object*, since src/sync.py
+    parent -- and returns the exception *object*, since chitragupta/sync.py
     reports ExtractionError and BackendUnavailable differently."""
 
     def test_success_returns_the_output_path(self, isolated_config, fake_docling, tmp_path):
@@ -1272,7 +1272,7 @@ class TestCudaIsInitialised:
         assert pdf_text.cuda_is_initialised() is False
 
     def test_true_once_something_has_used_a_gpu(self, monkeypatch):
-        """src/enrich/embed_index runs sentence-transformers, and a
+        """chitragupta/enrich/embed_index runs sentence-transformers, and a
         library caller may have done anything before calling in."""
         monkeypatch.setitem(
             sys.modules, "torch",

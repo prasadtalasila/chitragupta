@@ -2,7 +2,7 @@
 
 Defaults live in config.toml (repo root); any value can be overridden
 with an environment variable of the same name (e.g.
-BIB_FILE=/path/to/other.bib python -m src.corpus sync) without editing the file.
+BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync) without editing the file.
 tomllib is stdlib since Python 3.11, so this adds no dependency.
 """
 
@@ -219,7 +219,7 @@ BIB_FILE_PATH = PROJECT_ROOT / _get("BIB_FILE", "bib", "path", default="papers/b
 
 # Which BibTeX field carries Zotero collection membership. `groups` is
 # JabRef's, and what Better BibTeX writes under "Export JabRef-specific
-# fields" -- see src/bib_collections.py for why that option is the only
+# fields" -- see chitragupta/bib_collections.py for why that option is the only
 # way collections reach a .bib at all. Configurable rather than hardcoded
 # because a user whose exporter puts them somewhere else (a `keywords`
 # convention, say) should not have to patch the parser to be read.
@@ -233,7 +233,7 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # mirroring the draft's own path under DRAFTS_DIR: a draft at
 # content/drafts/<topic>/survey.md has its provenance, verbatim and
 # coverage reports at content/review/<topic>/survey.<aid>.md, alongside
-# the .tex/.pdf renders of each. See src/review/__init__.py and
+# the .tex/.pdf renders of each. See chitragupta/review/__init__.py and
 # docs/ARCHITECTURE.md's "Layer 4: the review layer".
 #
 # Named for the layer, not for one of its three aids: all three write
@@ -241,7 +241,7 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # artefact and does not -- it is drafting state, and lives in the
 # dossier directory.
 REVIEW_DIR = CONTENT_DIR / "review"
-# Where a genre skill saves its draft, and where src/dossier/ keeps the
+# Where a genre skill saves its draft, and where chitragupta/dossier/ keeps the
 # working state that produced it -- one dossier directory per draft,
 # mirroring the draft's own path under DRAFTS_DIR (docs/DRAFT-ITERATION.md).
 # Separate from REVIEW_DIR, which holds reports generated *from* a
@@ -251,24 +251,24 @@ DOSSIERS_DIR = CONTENT_DIR / "dossiers"
 # The outline a book is generated from, one directory per book, mirroring
 # the book's own directory under DRAFTS_DIR -- content/drafts/twins/ has
 # its outline and its sign-off record at content/specs/twins/. See
-# src/spec.py and docs/BOOKS.md.
+# chitragupta/spec.py and docs/BOOKS.md.
 #
 # Mirrored one level differently from the three above, and deliberately:
 # those mirror a *draft*, so they carry the draft's parent directory; a
 # book is a directory of drafts, so its own path is what carries over.
 SPECS_DIR = CONTENT_DIR / "specs"
-# Cached BM25 term-frequency index for src/retrieval.py -- keyed by a
+# Cached BM25 term-frequency index for chitragupta/retrieval.py -- keyed by a
 # cheap per-item fingerprint (parsed-file stat, not content), so a
 # search() call only re-tokenizes docs whose text actually changed since
-# the last run, mirroring src/ledger.py's own stat-before-hash skip logic.
+# the last run, mirroring chitragupta/ledger.py's own stat-before-hash skip logic.
 RETRIEVAL_INDEX_PATH = CONTENT_DIR / "retrieval_index.json"
-# Cached n-gram fingerprints for src/overlap_index.py -- content/overlap/docs/
+# Cached n-gram fingerprints for chitragupta/overlap_index.py -- content/overlap/docs/
 # holds one file per citekey, content/overlap/index.bin the merged corpus
 # index. Both are keyed by (pdf_hash, parsed-file size/mtime_ns), the same
 # stat-before-hash shape as RETRIEVAL_INDEX_PATH above.
 OVERLAP_DIR = CONTENT_DIR / "overlap"
 # Boilerplate phrases (acronyms, fixed phrasing, defined terms, whole
-# paragraphs) src/review/verbatim_check.py's `scan` should never flag --
+# paragraphs) chitragupta/review/verbatim_check.py's `scan` should never flag --
 # see docs/PLAGIARISM.md. Per-host, hand-edited data, like content/library.bib:
 # gitignored, absent on a fresh clone (scan treats that as "no
 # suppressions configured", not an error), and never what one host waved
@@ -276,12 +276,12 @@ OVERLAP_DIR = CONTENT_DIR / "overlap"
 # rather than independently relocatable like BIB_FILE_PATH -- there's no
 # case for pointing this at a second location.
 VERBATIM_ALLOWLIST_PATH = CONTENT_DIR / "verbatim_allowlist.toml"
-# Mutex for anything that writes content/ -- see src/runlock.py. A
+# Mutex for anything that writes content/ -- see chitragupta/runlock.py. A
 # dedicated sqlite file rather than the ledger, so that locking a run
 # doesn't force the ledger's five commit points into one transaction.
 PIPELINE_LOCK_PATH = CONTENT_DIR / "pipeline.lock.db"
 
-# Which backend src/pdf_text.py dispatches to -- see config.toml's
+# Which backend chitragupta/pdf_text.py dispatches to -- see config.toml's
 # [parser] comment for the tradeoffs (speed, page-boundary loss) before
 # switching off the default.
 PARSER_BACKENDS = ("pdftotext", "docling")
@@ -351,7 +351,7 @@ def _get_workers(env_var: str, *toml_path: str, default: int) -> "int | str":
 # serial behaviour -- no pool, no subprocesses -- so raising this is an
 # opt-in. See config.toml.example's [parser].workers comment for how the
 # requested value is clamped against what the host can actually sustain,
-# and src/pdf_text.resolve_workers for the arithmetic.
+# and chitragupta/pdf_text.resolve_workers for the arithmetic.
 PARSER_WORKERS = _get_workers("PARSER_WORKERS", "parser", "workers", default=1)
 
 
@@ -383,7 +383,7 @@ def _get_start_method(env_var: str, *toml_path: str, default: str) -> str:
 # load that dominates the rest is per process either way. End to end this
 # is a fixed 1.3-2.2s, which is ~10% of an eight-document run and under
 # 1% of a full-corpus one. Plain "fork" is deliberately not offered -- see
-# src/pdf_text.start_method.
+# chitragupta/pdf_text.start_method.
 PARSER_START_METHODS = ("auto", "forkserver", "spawn")
 PARSER_START_METHOD = _get_start_method(
     "PARSER_START_METHOD", "parser", "start_method", default="auto")
@@ -414,9 +414,9 @@ PARSER_DOCUMENT_TIMEOUT = _get_optional_float(
 PARSER_STALL_TIMEOUT = _get_optional_float(
     "PARSER_STALL_TIMEOUT", "parser", "stall_timeout", default=1800.0)
 
-# Parse-quality guard (src/pdf_text.quality_warning): a PDF extractor
+# Parse-quality guard (chitragupta/pdf_text.quality_warning): a PDF extractor
 # that sets its glyph-spacing tolerance too coarse fuses adjacent words
-# together, which src/retrieval.py's whitespace tokenizer then cannot
+# together, which chitragupta/retrieval.py's whitespace tokenizer then cannot
 # match against. Measured over the same 10 PDFs, pdftotext produced
 # 0.01% such tokens and a since-removed backend produced 4.19% -- three
 # orders of magnitude apart -- so 1% sits well clear of both.
@@ -460,10 +460,10 @@ LOGGING_LEVEL = _get_log_level("LOGGING_LEVEL", "logging", "level", default="INF
 # no [logging].dir to also check) -- every other path constant in this
 # file gets one, and a real subprocess CLI test needs to point this
 # somewhere other than this checkout's own logs/. Gitignored; see
-# src/logging_setup.py for what lands here and why it is one file.
+# chitragupta/logging_setup.py for what lands here and why it is one file.
 LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(PROJECT_ROOT / "logs")))
 
-# src/review/citation_provenance.py band thresholds: the fraction of a citing
+# chitragupta/review/citation_provenance.py band thresholds: the fraction of a citing
 # sentence's distinctive words that must appear in the best-matching
 # source passage. Round numbers on purpose -- they set reading order for
 # a human, not a pass/fail line, so precision here would be false
@@ -474,12 +474,12 @@ PROVENANCE_WEAK_SCORE = _get_float("PROVENANCE_WEAK_SCORE", "provenance",
 PROVENANCE_GOOD_SCORE = _get_float("PROVENANCE_GOOD_SCORE", "provenance",
                                    "good_score", default=0.50)
 
-# Heavier optional pipeline (pyproject.toml's "enrich" Poetry group), per src/enrich/.
+# Heavier optional pipeline (pyproject.toml's "enrich" Poetry group), per chitragupta/enrich/.
 DOCLING_DIR = CONTENT_DIR / "docling"
 # Per-doc (size, mtime_ns) PDF fingerprint, so docling_parse.parse_doc()
 # only re-runs Docling's layout/OCR models -- the slowest stage in this
 # pipeline -- for a PDF that's new or has actually changed since the last
-# call, mirroring src/ledger.py's own stat-before-hash skip logic.
+# call, mirroring chitragupta/ledger.py's own stat-before-hash skip logic.
 DOCLING_CACHE_PATH = CONTENT_DIR / "docling_cache.json"
 # Whether docling_parse.py also extracts figure bitmaps (into
 # content/docling/<doc>_artifacts/) plus a <doc>.figures.json index of
@@ -508,7 +508,7 @@ _CSL_STYLE = _get("CSL_STYLE", "render", "csl", default="")
 CSL_STYLE_PATH = ((PROJECT_ROOT / _CSL_STYLE) if _CSL_STYLE
                   else shipped("assets", "csl", "ieee.csl"))
 
-# The Vale configuration `python -m src.draft style` checks a draft
+# The Vale configuration `python -m chitragupta.draft style` checks a draft
 # against, vendored at assets/vale/ for the reason assets/csl/ieee.csl is:
 # a style fetched at run time is not the style that was reviewed, and a
 # check whose rules differ per clone is not a check. Overridable so a user
@@ -525,7 +525,7 @@ VALE_CONFIG_PATH = ((PROJECT_ROOT / _VALE_CONFIG) if _VALE_CONFIG
 # It is a fallback, never an override: scope.md wins, because a thesis at
 # an Indian university and an IEEE submission legitimately differ and the
 # per-draft record is the one that knows which this is. Empty by default,
-# and `src.draft style` names which source a dialect came from, so a draft
+# and `chitragupta.draft style` names which source a dialect came from, so a draft
 # checked against this is never checked against it silently.
 STYLE_LANGUAGE = _get("STYLE_LANGUAGE", "style", "language", default="")
 # Whether a run of consecutive citation numbers collapses ([3]-[6] rather
@@ -543,7 +543,7 @@ RENDER_COLLAPSE_CITATIONS = _get_bool(
 # "What persists across drafts". Same declaration shape as
 # CSL_STYLE_PATH/VALE_CONFIG_PATH: a vendored default in assets/, one
 # config.toml key. Unlike those two, resolving this is never a full
-# replacement -- src/acronyms.py always loads ACRONYMS_DEFAULT_PATH and
+# replacement -- chitragupta/acronyms.py always loads ACRONYMS_DEFAULT_PATH and
 # merges ACRONYMS_PATH's file over it when the two differ, because a
 # user's own vocabulary and this project's PDF/CPU/URL floor are
 # additive, not alternatives. See assets/style/README.md.
@@ -563,9 +563,9 @@ EMBEDDING_MODEL = _get(
 #
 # Lives here rather than in any one tool because all three of the tier-1,
 # stdlib-only tools need it and none of them can import each other:
-# src/render_output.py already imports src/citation_gate.py, so a shared
+# chitragupta/render_output.py already imports chitragupta/citation_gate.py, so a shared
 # helper in either of those two would close a cycle. This module imports
-# nothing from src/ and owns CONTENT_DIR, which makes "is this path inside
+# nothing from chitragupta/ and owns CONTENT_DIR, which makes "is this path inside
 # the content directory" its question to answer.
 
 
@@ -623,10 +623,10 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
     `source_root` and `target_root` are configuration, and a symlinked
     one can land outside without any argument being at fault.
 
-    Lives here rather than in either caller because `src/render_output.py`
+    Lives here rather than in either caller because `chitragupta/render_output.py`
     is committed to stdlib plus `config`/`citation_gate`/`references` so a
     genre skill can render under bare `python` -- it cannot import
-    `src/dossier/`, and before this the rule was written out three times
+    `chitragupta/dossier/`, and before this the rule was written out three times
     and missed in a fourth place (`citation_provenance`), which is how
     two drafts named `survey.md` came to share one report.
     """

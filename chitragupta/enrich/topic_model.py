@@ -39,9 +39,9 @@ different granularity, not reusable as-is between the two.
 
 import json
 
-from src import config
-from src.enrich import embed_index
-from src.enrich.corpus import CorpusDoc
+from chitragupta import config
+from chitragupta.enrich import embed_index
+from chitragupta.enrich.corpus import CorpusDoc
 
 
 def _load_embed_cache() -> dict:

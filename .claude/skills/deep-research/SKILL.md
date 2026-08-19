@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m src.draft gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m src.corpus sync` if the ledger is empty, rather than syncing itself.
+description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m chitragupta.draft gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m chitragupta.corpus sync` if the ledger is empty, rather than syncing itself.
 tags: [deep-research, multi-perspective, storm, citation]
 ---
 
@@ -8,8 +8,8 @@ tags: [deep-research, multi-perspective, storm, citation]
 
 Every claim must resolve to one of:
 
-- a real **citekey** from `content/ledger.sqlite` (via `src.retrieval.search()`
-  or `src.enrich.embed_index.search()` if that stack has been built), cited
+- a real **citekey** from `content/ledger.sqlite` (via `chitragupta.retrieval.search()`
+  or `chitragupta.enrich.embed_index.search()` if that stack has been built), cited
   `[@citekey]`; or
 - stated plainly as "not found in the corpus" -- never invented, never
   smoothed over.
@@ -23,10 +23,11 @@ It reads the same shared corpus layer as the other genre skills.
 
 - `content/ledger.sqlite` -- per-citekey status, populated by `sync`
 - `papers/bibliography.bib` (gitignored, per-host) -- source of truth for citekeys/metadata
-- `src/retrieval.py` -- `search(query, k, snippet_chars)`, keyword overlap
-- `src/enrich/embed_index.py` -- `search(query, k, snippet_chars)`, semantic
+- `chitragupta/retrieval.py` -- `search(query, k, snippet_chars)`, keyword overlap
+- `chitragupta/enrich/embed_index.py` -- `search(query, k, snippet_chars)`, semantic
   (if built for this corpus -- check `content/chroma/` first)
-- `src/enrich/corpus.py` -- builds the enrichment corpus from the ledger and
+- `chitragupta/enrich/corpus.py` -- builds the enrichment corpus from the ledger
+  and
   nothing else, so every document it yields is citable, keyed by its citekey
 
 ## Collection scoping (#195): deliberately not used here
@@ -69,7 +70,7 @@ perspectives found the corpus disagreeing with itself -- and it belongs
 on disk, not in this conversation. Without it, changing one paragraph
 next month means running seven phases and a dozen subagents again.
 
-`src/dossier/` owns that state, in Markdown, one directory per draft at
+`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before
 Phase 1's first retrieval call and fill it in as you go -- not at the end,
 when what you rejected has already fallen out of your context.
@@ -116,7 +117,7 @@ transcribed it, it is gone when the phase closes.
 hands each section writer a command that reads its rows back:
 
 ```bash
-python -m src.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
+python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
 Pasting the same claims into four dispatch prompts spends them as
@@ -139,24 +140,26 @@ dossier is the human-readable working state: reader, scope, glossary,
 kept evidence, rejected candidates and why, contradictions, and the
 user's steering.
 
-**Read-only means read-only: never run `python -m src.corpus sync`, and never
-run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
+**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
+never
+run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
+Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `src.retrieval.search()`; do not
+help and none exists, say so and use `chitragupta.retrieval.search()`; do not
 build one.
 
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python -m src.corpus ledger
+python -m chitragupta.corpus ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
 name what you checked and what you found -- and stop there. Do not draft
 around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m src.corpus sync` and come back.
+`.venv-full/bin/python -m chitragupta.corpus sync` and come back.
 
 ## When to invoke
 
@@ -168,7 +171,7 @@ around it, do not sync, do not cite. Tell the user to run
 | User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer` instead |
 | User asks for a hands-on tutorial | Use `tutorial-writer` instead |
 | User asks to change a report that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m src.corpus sync` yourself |
+| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
 
 Tell the user up front that this is a heavy, multi-phase run before
 starting -- it dispatches several subagents and does many retrieval calls.
@@ -212,7 +215,7 @@ the user has to make? a chapter's background?) and what it will and won't
 cover, then create the dossier:
 
 ```bash
-python -m src.draft dossier init content/drafts/deep-research-<slug>.md --genre deep-research
+python -m chitragupta.draft dossier init content/drafts/deep-research-<slug>.md --genre deep-research
 ```
 
 Give it the same path Phase 7(d) will save to -- the dossier mirrors its
@@ -358,7 +361,7 @@ Phase 4 already chose each section's citekeys and wrote them into
 resolve to transcribed evidence:
 
 ```bash
-python -m src.draft dossier brief content/drafts/deep-research-<slug>.md \
+python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md \
   --section "<section heading>" --check
 ```
 
@@ -374,7 +377,7 @@ its section outline fragment, and the one line that stands in for the
 evidence:
 
 ```bash
-Your evidence: python -m src.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
+Your evidence: python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
 **Do not paste the kept claims into the prompt.** That is the whole of
@@ -475,7 +478,7 @@ dossier holds the working state a human or a later revision reads. Write
 both. Then:
 
 ```bash
-python -m src.draft gate content/drafts/deep-research-<slug>.md
+python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md
 ```
 
 Fix and re-run until `OK`. Never present a draft that hasn't passed.
@@ -486,7 +489,7 @@ section (reference.md §5's template) from exactly the gated citekeys,
 rather than hand-assembling it:
 
 ```bash
-python -m src.draft references content/drafts/deep-research-<slug>.md
+python -m chitragupta.draft references content/drafts/deep-research-<slug>.md
 ```
 
 Stdlib-only, like the citation gate -- bare `python`, no venv. It writes
@@ -495,9 +498,9 @@ numbered IEEE-style entries; leave the body's inline citations as
 assigns the numbers at render time. Then render the other three formats:
 
 ```bash
-python -m src.draft render content/drafts/deep-research-<slug>.md --format tex
-python -m src.draft render content/drafts/deep-research-<slug>.md --format pdf
-python -m src.draft render content/drafts/deep-research-<slug>.md --format md
+python -m chitragupta.draft render content/drafts/deep-research-<slug>.md --format tex
+python -m chitragupta.draft render content/drafts/deep-research-<slug>.md --format pdf
+python -m chitragupta.draft render content/drafts/deep-research-<slug>.md --format md
 ```
 
 All three land beside the draft: a draft at
@@ -522,7 +525,7 @@ a rendering failure never blocks presenting the `.md` report.
   cites, derived rather than corrected by hand:
 
   ```bash
-  python -m src.draft dossier sections content/drafts/deep-research-<slug>.md \
+  python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>.md \
       --citekeys --write
   ```
 
@@ -544,7 +547,7 @@ a rendering failure never blocks presenting the `.md` report.
 **(f) Run the prose check.** After the gate passes and before presenting:
 
 ```bash
-python -m src.draft style content/drafts/deep-research-<slug>.md
+python -m chitragupta.draft style content/drafts/deep-research-<slug>.md
 ```
 
 **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
@@ -571,7 +574,7 @@ blocks nothing.
 run it silently, and never make it a condition of presenting:
 
 ```bash
-python -m src.review verbatim scan content/drafts/deep-research-<slug>.md
+python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.md
 ```
 
 It reports wording the report shares with **any** parsed source, cited or not.
@@ -596,7 +599,8 @@ that changes to this report should go through `draft-reviser` rather than
 another run of this skill -- seven phases and a dozen subagents is the
 wrong price for an edit -- and that `content/drafts/` and
 `content/dossiers/` are gitignored, so
-`python -m src.draft dossier export deep-research-<slug>` is how the report and
+`python -m chitragupta.draft dossier export deep-research-<slug>` is how the
+report and
 its working state get backed up.
 
 ## Guardrails

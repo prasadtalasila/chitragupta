@@ -3,7 +3,7 @@ sourced only from `content/ledger.sqlite` (populated by `sync` from
 `bibliography.bib`, the source of truth). Stdlib-only (`sqlite3`, `json`),
 like `citation_gate.py`, so it runs with bare `python` -- no
 `bibtexparser`/venv needed. Deliberately doesn't read `bibliography.bib`
-itself; `src/bib_reader.py` is the only module that does (AGENTS.md), which
+itself; `chitragupta/bib_reader.py` is the only module that does (AGENTS.md), which
 is why the fields an entry needs beyond title/year (authors, venue, volume,
 pages, publisher) travel through the ledger's `bib_fields` column rather
 than being re-read from the bib file here.
@@ -11,7 +11,7 @@ than being re-read from the bib file here.
 Only ever lists citekeys the draft already cites (found with
 `citation_gate`'s own extraction regexes), so it can never introduce a
 citekey that hasn't already passed the gate. Run this *after*
-`python -m src.draft gate` has reported `OK`. A cited key with no
+`python -m chitragupta.draft gate` has reported `OK`. A cited key with no
 matching ledger row is a hard error (AGENTS.md's citekey invariant), not
 something to silently drop.
 
@@ -33,7 +33,7 @@ pandoc resolves, and a numbered body would leave the gate reporting
 "0 citations ... OK" on a draft it can no longer check at all.
 
 Usage:
-    python -m src.draft references <file.md> [--heading TEXT]
+    python -m chitragupta.draft references <file.md> [--heading TEXT]
 Appends a References section, or replaces one if this was already run on
 the file (idempotent) -- built from exactly the citekeys `<file.md>`
 cites.
@@ -45,7 +45,7 @@ import re
 import sys
 from pathlib import Path
 
-from src import bib_names, citation_gate, config, ledger
+from chitragupta import bib_names, citation_gate, config, ledger
 
 # Matches the References heading this module writes, bare ("## References")
 # or numbered to match a draft's own heading convention ("## 6. References"),
@@ -310,7 +310,8 @@ def build_section(citekeys: list[str], con, heading: str = "References",
     if missing:
         raise KeyError(
             "citekey(s) cited in the draft but missing from the ledger -- "
-            "run `python -m src.corpus sync`, or re-check `python -m src.draft gate` "
+            "run `python -m chitragupta.corpus sync`, or re-check "
+            "`python -m chitragupta.draft gate` "
             f"was run and passed first: {', '.join(missing)}"
         )
 
@@ -320,7 +321,7 @@ def build_section(citekeys: list[str], con, heading: str = "References",
         # A row written before the bib_fields column existed stores NULL;
         # a value that isn't valid JSON would mean a hand-edited ledger.
         # Both fall back to the title/year columns rather than failing --
-        # the next `python -m src.corpus sync` repopulates either one.
+        # the next `python -m chitragupta.corpus sync` repopulates either one.
         try:
             fields = json.loads(bib_fields) if bib_fields else {}
         except (TypeError, ValueError):
@@ -505,7 +506,7 @@ def apply(path: Path, heading: str = "References") -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft references",
+        prog="python -m chitragupta.draft references",
         description="Append/replace a References section built from a "
                     "Markdown draft's own cited citekeys.",
     )

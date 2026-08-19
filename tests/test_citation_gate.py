@@ -1,4 +1,4 @@
-"""src/citation_gate.py: the hard invariant (AGENTS.md) -- a citekey may
+"""chitragupta/citation_gate.py: the hard invariant (AGENTS.md) -- a citekey may
 only be used if it's actually in the ledger. This is the single most
 important module in the repo to test thoroughly."""
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src import citation_gate, ledger
+from chitragupta import citation_gate, ledger
 
 from tests.conftest import content_draft, make_reference
 
@@ -327,7 +327,7 @@ class TestDeadLauncherWarning:
 class TestCliEntrypoint:
     def test_no_args_prints_usage_and_exits_2(self, isolated_config):
         result = subprocess.run(
-            [sys.executable, "-m", "src.draft", "gate"],
+            [sys.executable, "-m", "chitragupta.draft", "gate"],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -342,7 +342,7 @@ class TestCliEntrypoint:
         Help goes to stdout and exits 0; the no-args *error* keeps
         stderr and exit 2."""
         result = subprocess.run(
-            [sys.executable, "-m", "src.draft", "gate", flag],
+            [sys.executable, "-m", "chitragupta.draft", "gate", flag],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -362,7 +362,7 @@ class TestCliEntrypoint:
 
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [system_python, "-m", "src.draft", "gate", str(draft)],
+            [system_python, "-m", "chitragupta.draft", "gate", str(draft)],
             cwd=str(repo_root),
             capture_output=True, text=True,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},
@@ -374,7 +374,7 @@ class TestCliEntrypoint:
 
 class TestInputsAreConfinedToContent:
     """Every tier-1 tool reads only under content/, so that one directory
-    is the whole record of the work -- see src/config.py's
+    is the whole record of the work -- see chitragupta/config.py's
     require_inside_content."""
 
     def test_a_draft_outside_the_content_directory_is_refused(

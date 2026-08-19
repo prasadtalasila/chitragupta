@@ -1,6 +1,6 @@
 """Corpus-wide n-gram fingerprint index, cached on disk under content/overlap/.
 
-`src/review/verbatim_check.py`'s `overlap` mode used to fingerprint one source
+`chitragupta/review/verbatim_check.py`'s `overlap` mode used to fingerprint one source
 per invocation, from scratch, in memory, and throw the work away: a `gram ->
 page` dict rebuilt on every run, from text re-extracted by re-invoking
 `pdftotext` as a subprocess. Fine for "compare this draft against this one
@@ -11,7 +11,7 @@ once, cache the fingerprint keyed by that item's own change-detection
 state, and merge the per-document fingerprints into one corpus-wide index a
 future scan can binary-search.
 
-`src/overlap_skipgram.py` (tier 2, #133) mirrors this shape for its own,
+`chitragupta/overlap_skipgram.py` (tier 2, #133) mirrors this shape for its own,
 fully independent cache -- own files, own `_TOKENIZER_VERSION`/
 `_HEADER_VERSION` -- and imports `_parse_cached_postings` and
 `_parse_corpus_index_binary` from here rather than duplicating them,
@@ -29,10 +29,10 @@ regenerable, like every other content/ artifact):
   parsed-file mtime_ns)` -- not `pdf_hash` alone. `pdf_hash` unchanged does
   not imply the parsed text is unchanged: `sync --reparse` and a
   `[parser].backend` switch both rewrite `content/parsed/<citekey>.txt`
-  without touching the PDF (src/ledger.py's `upsert_reference`), so a
+  without touching the PDF (chitragupta/ledger.py's `upsert_reference`), so a
   cache keyed on `pdf_hash` alone would keep serving fingerprints of text
   that no longer exists. Same stat-first shape as
-  `src/retrieval.py::_fingerprint`.
+  `chitragupta/retrieval.py::_fingerprint`.
 - `index.bin` + `index.json` -- every fingerprintable document's postings
   merged into one corpus-wide index: a sorted `array('Q')` of gram hashes
   with three parallel `array('I')` postings arrays (citekey id, page,
@@ -43,17 +43,17 @@ regenerable, like every other content/ artifact):
   per-document fingerprints (seconds), not re-fingerprinting the corpus:
   only documents whose own key changed pay `_build_fingerprint` again.
 
-Both caches are read/written with no writer lock (`src/runlock.py`): like
-`src/ledger.py`'s own read-only CLI, this must keep working while a `sync`
+Both caches are read/written with no writer lock (`chitragupta/runlock.py`): like
+`chitragupta/ledger.py`'s own read-only CLI, this must keep working while a `sync`
 run is in progress, and staleness is handled by the key comparison above,
 not by locking.
 
-Tokenization mirrors `src/review/verbatim_check.py`'s `WORD`/`norm` --
+Tokenization mirrors `chitragupta/review/verbatim_check.py`'s `WORD`/`norm` --
 lowercase `[a-z0-9]+` tokens -- so `grams_for_citekey` agrees with what
 that script's `overlap` mode reported before this module existed.
-Duplicated rather than imported: `src/` is the corpus layer `scripts/`
+Duplicated rather than imported: `chitragupta/` is the corpus layer `scripts/`
 consumes, not the reverse, and this is two lines that must not drift out
-of sync with the ones in `src/review/verbatim_check.py`.
+of sync with the ones in `chitragupta/review/verbatim_check.py`.
 
 A gram's hash is a 64-bit rolling polynomial hash over each word's
 `blake2b` digest, deterministic across processes and runs (unlike
@@ -79,11 +79,11 @@ from dataclasses import dataclass
 from itertools import accumulate
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 
 DEFAULT_N = 8
 
-# Mirrors src/review/verbatim_check.py's WORD/norm -- see module docstring.
+# Mirrors chitragupta/review/verbatim_check.py's WORD/norm -- see module docstring.
 WORD = re.compile(r"[a-z0-9]+")
 
 
@@ -145,7 +145,7 @@ def gram_hashes(words: list[str], n: int) -> list[int]:
 
 
 def _pages_from_parsed_text(parsed_path: str) -> list[str]:
-    """Same convention as `src/review/verbatim_check.py::pages`'s fallback:
+    """Same convention as `chitragupta/review/verbatim_check.py::pages`'s fallback:
     strip stray control bytes, split on the form-feed page boundary."""
     raw = Path(parsed_path).read_text(encoding="utf-8", errors="replace")
     return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")
@@ -179,7 +179,7 @@ def _doc_cache_path(citekey: str) -> Path:
 def _atomic_write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     # Per-process/per-call-unique temp name, then os.replace (atomic on
-    # POSIX) -- mirrors src/retrieval.py::_save_cache.
+    # POSIX) -- mirrors chitragupta/retrieval.py::_save_cache.
     tmp_path = path.with_name(f"{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}")
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(payload, f)
@@ -315,10 +315,10 @@ def grams_for_citekey(
 
 
 # ---------------------------------------------------------------------
-# Read-only ledger access. Deliberately not src/ledger.py::connect(): that
+# Read-only ledger access. Deliberately not chitragupta/ledger.py::connect(): that
 # runs the schema, migrations and a commit -- a writer, which contradicts
 # this module's "no writer lock" contract (module docstring). Opened the
-# same way src/ledger.py's own read-only CLI (`ledger.main`) does.
+# same way chitragupta/ledger.py's own read-only CLI (`ledger.main`) does.
 # ---------------------------------------------------------------------
 
 
@@ -614,7 +614,7 @@ def postings_for_gram(index: CorpusIndex, gram_hash: int) -> list[tuple[str, int
     then page/position order).
 
     Unlike `pages_for_gram`, this keeps every occurrence rather than
-    collapsing to distinct pages: `src/review/verbatim_check.py`'s `scan`
+    collapsing to distinct pages: `chitragupta/review/verbatim_check.py`'s `scan`
     mode needs `token_position` to align a run across consecutive draft
     positions, which a deduplicated page list would throw away.
     """

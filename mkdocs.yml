@@ -10,7 +10,7 @@
 # rewrite links, and a rewrite rule is a thing that can be wrong.
 # Serving the repository as it actually is means no path changes, so
 # there is nothing to rewrite: every link that works on GitHub works
-# here. The seven exceptions were links into `src/` and `bench/`, which
+# here. The seven exceptions were links into `chitragupta/` and `bench/`, which
 # are code and this repo's own machinery rather than documentation --
 # those now point at GitHub by absolute URL, which is where they
 # belonged from either renderer.
@@ -80,7 +80,7 @@ markdown_extensions:
   # GitHub's own slug algorithm, not Python-Markdown's. Every in-page
   # link in these documents was written against a heading as GitHub
   # renders it -- `docs/CLI.md` alone has nine links to headings like
-  # "`python -m src.corpus sync`", which GitHub slugs `#python--m-srccorpus-sync` and
+  # "`python -m chitragupta.corpus sync`", which GitHub slugs `#python--m-srccorpus-sync` and
   # Python-Markdown slugs differently. Without this the anchors silently
   # land nowhere on the site while still working in the repository.
   - toc:
@@ -129,7 +129,7 @@ exclude_docs: |
   papers/
   scripts/
   site/
-  src/
+  chitragupta/
   tests/
   CITATION.cff
   config.toml

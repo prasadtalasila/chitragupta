@@ -64,7 +64,7 @@ Two properties of that picture do all the work:
 - **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export. The pipeline never fetches a paper, never
   invents a citekey, and never renames one.
-- **Phase 4 is the only exit.** `src.draft gate` sits on the single
+- **Phase 4 is the only exit.** `chitragupta.draft gate` sits on the single
   path between a draft and a rendered document. There is no arrow around
   it, and a `FAIL` is treated like a failing test rather than a lint
   warning.
@@ -157,14 +157,14 @@ bash scripts/install_full_pipeline.sh all
 #    list -- not needed on a first run. docs/ZOTERO.md has the full
 #    semantics and why the default is to report rather than delete.
 source .venv-full/bin/activate
-python -m src.corpus sync
+python -m chitragupta.corpus sync
 
 # ...and only once you've read the stale list it prints, and agree with it:
-# python -m src.corpus sync --remove-stale
+# python -m chitragupta.corpus sync --remove-stale
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python -m src.corpus ledger
+python -m chitragupta.corpus ledger
 
 # 5. Optional, and only when you want it: the enrichment layer -- layout-aware
 #    parsing, semantic search and topic clustering over the whole corpus.
@@ -178,7 +178,7 @@ python -m src.corpus ledger
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own gate -> references -> render chain (python -m src.draft <verb>)
+# including its own gate -> references -> render chain (python -m chitragupta.draft <verb>)
 ```
 
 Every command that chain runs, every way to re-run one by hand, and all
@@ -197,7 +197,7 @@ arguing your point in different words, and topic clustering over the whole
 corpus.
 
 ```bash
-.venv-full/bin/python -m src.enrich --stages docling,embed
+.venv-full/bin/python -m chitragupta.enrich --stages docling,embed
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in

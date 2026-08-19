@@ -3,9 +3,9 @@
     Docling -> sentence-transformers/Chroma -> BERTopic
 
 The enrichment layer's single entry point, one level deep like every
-other layer's: `python -m src.enrich`, as the corpus layer has
-`python -m src.corpus sync`. The stage modules beside this one have no
-`__main__` block, so `python -m src.enrich.docling_parse` imports a
+other layer's: `python -m chitragupta.enrich`, as the corpus layer has
+`python -m chitragupta.corpus sync`. The stage modules beside this one have no
+`__main__` block, so `python -m chitragupta.enrich.docling_parse` imports a
 module and exits 0 without doing anything -- `--stages` is the only way
 to run them, and docs/ARCHITECTURE.md states the invariant.
 
@@ -19,15 +19,15 @@ bug in this script.
 
 Needs the venv populated by `poetry install --with enrich` (see
 pyproject.toml, and .venv-full/ on the host this was developed on). The
-corpus and drafting layers (python -m src.corpus sync, python -m src.draft gate) do
+corpus and drafting layers (python -m chitragupta.corpus sync, python -m chitragupta.draft gate) do
 not depend on any of this and are unaffected either way.
 
 Every stage here writes a **corpus** artefact, which is why this layer
-takes the same write lock as `python -m src.corpus sync`. A per-draft
+takes the same write lock as `python -m chitragupta.corpus sync`. A per-draft
 stage would not, and there deliberately isn't one: a `provenance`
 (review-layer report) or `render` (drafting-layer publish) stage would be
-a three-line wrapper around `python -m src.review provenance <draft>` or
-`python -m src.draft render <draft> --format pdf`, both of which need no
+a three-line wrapper around `python -m chitragupta.review provenance <draft>` or
+`python -m chitragupta.draft render <draft> --format pdf`, both of which need no
 venv at all and neither of which should be made to wait on a running
 sync.
 
@@ -36,9 +36,9 @@ reads corpus artefacts and writes corpus artefacts, and does not import
 the drafting or review layers.
 
 Usage:
-    python -m src.enrich --target host
-    python -m src.enrich --stages embed,bertopic
-    python -m src.enrich --for-draft content/drafts/chapter.md
+    python -m chitragupta.enrich --target host
+    python -m chitragupta.enrich --stages embed,bertopic
+    python -m chitragupta.enrich --for-draft content/drafts/chapter.md
 """
 
 import argparse
@@ -46,20 +46,20 @@ import json
 import logging
 from pathlib import Path
 
-from src.enrich import corpus, docling_parse, embed_index, topic_model
+from chitragupta.enrich import corpus, docling_parse, embed_index, topic_model
 # citation_gate is read, not called into: draft_citekeys() below uses its
 # citekey reader so a scoped run covers exactly the papers the gate will
 # check against. That is this layer reading a draft, not invoking the
 # drafting layer -- see the module docstring on why nothing else from
-# src/ outside the corpus path is imported here.
-from src import citation_gate, config, logging_setup, runlock
+# chitragupta/ outside the corpus path is imported here.
+from chitragupta import citation_gate, config, logging_setup, runlock
 
 # A fixed name, not __name__: this file is the layer's entry point, so
 # Python sets __name__ to "__main__", which sits outside the logger tree
-# logging_setup.configure() pins -- exactly the trap src/sync.py
+# logging_setup.configure() pins -- exactly the trap chitragupta/sync.py
 # documents at its own getLogger call. Without the fixed name every line
 # here would reach the log file and be silently dropped from the console.
-logger = logging.getLogger("src.enrich")
+logger = logging.getLogger("chitragupta.enrich")
 
 STAGE_ORDER = ["docling", "embed", "bertopic"]
 
@@ -136,7 +136,7 @@ STAGE_FUNCS = {
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)
-# -- see src/corpus.py's DESCRIPTION for the reasoning, which is the same
+# -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
 DESCRIPTION = ("The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. "
                "Each stage probes its own prerequisites and reports honestly.")
@@ -145,7 +145,7 @@ DESCRIPTION = ("The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. 
 def parse_args():
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
-    parser = argparse.ArgumentParser(prog="python -m src.enrich", description=DESCRIPTION)
+    parser = argparse.ArgumentParser(prog="python -m chitragupta.enrich", description=DESCRIPTION)
     parser.add_argument("--target", choices=["host", "docker"], default="host",
                          help="Informational only -- stages self-probe regardless of this flag.")
     # default=None, not the joined list, so main() can tell "the user
@@ -179,7 +179,7 @@ def main(configure_logging: bool = False) -> int:
 
     `configure_logging` is off by default and set only by the
     `__main__` block below, which keeps logging_setup.configure()
-    entrypoint-only in the same way src/sync.py does. The flag exists
+    entrypoint-only in the same way chitragupta/sync.py does. The flag exists
     at all because this script takes its lock *inside* main() rather
     than at the entrypoint, and configure() must happen inside the lock
     (see its docstring) -- so it cannot simply sit beside the
@@ -199,7 +199,7 @@ def main(configure_logging: bool = False) -> int:
         scope, error = _resolve_scope(args, selected)
         if error is not None:
             return error
-    # Same lock as `python -m src.corpus sync`: every stage here writes a corpus
+    # Same lock as `python -m chitragupta.corpus sync`: every stage here writes a corpus
     # artefact, and
     # sync's parsed-text writes are not atomic, so an enrichment run
     # overlapping a sync can read a half-written .txt. One lock rather
@@ -207,11 +207,11 @@ def main(configure_logging: bool = False) -> int:
     # not just sync-vs-sync.
     try:
         with runlock.pipeline_lock():
-            # Inside the lock for the same reason src/sync.py configures
+            # Inside the lock for the same reason chitragupta/sync.py configures
             # inside its own: RotatingFileHandler is not safe for two
             # processes on one file, and this script shares
             # logs/pipeline.log with sync. The lock is what makes the
-            # shared file sound -- see src/logging_setup.py's docstring.
+            # shared file sound -- see chitragupta/logging_setup.py's docstring.
             if configure_logging:
                 logging_setup.configure()
             return _run_stages(args, selected, scope)
@@ -219,7 +219,7 @@ def main(configure_logging: bool = False) -> int:
         # Deliberately still a bare print, not _say: this is the losing
         # side of the race above and must not touch logs/pipeline.log,
         # which the winner may already be writing to. Same reasoning as
-        # the matching branch in src/sync.py.
+        # the matching branch in chitragupta/sync.py.
         print(f"  {exc}")
         return runlock.EXIT_ALREADY_RUNNING
 
@@ -275,8 +275,8 @@ def _resolve_scope(args, selected) -> "tuple[set[str] | None, int | None]":
               f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
               "artefact, and a partial one is indistinguishable from a complete one. Run "
               "them as separate commands:\n"
-              f"      python -m src.enrich --for-draft {args.for_draft} --stages docling\n"
-              f"      python -m src.enrich --stages {','.join(refused)}")
+              f"      python -m chitragupta.enrich --for-draft {args.for_draft} --stages docling\n"
+              f"      python -m chitragupta.enrich --stages {','.join(refused)}")
         return None, EXIT_BAD_SCOPE
 
     draft_path = Path(args.for_draft)
@@ -363,7 +363,7 @@ def _scope_corpus(docs, scope, args, selected):
              f"enriched: {', '.join(unknown)}", level=logging.WARNING)
     if not docs and selected & set(CORPUS_STAGES):
         _say("  nothing to enrich -- re-export your bibliography and run "
-             "`python -m src.corpus sync` first.", level=logging.WARNING)
+             "`python -m chitragupta.corpus sync` first.", level=logging.WARNING)
         return docs, EXIT_BAD_SCOPE
     return docs, None
 

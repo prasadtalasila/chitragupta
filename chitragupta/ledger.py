@@ -20,13 +20,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src import bib_collections, config, passages
+from chitragupta import bib_collections, config, passages
 
 if TYPE_CHECKING:
     # Only for the upsert_reference type hint -- citation_gate.py imports
-    # this module and must not require bibtexparser (src/bib_reader.py's
+    # this module and must not require bibtexparser (chitragupta/bib_reader.py's
     # only dependency) just to check citekeys against the ledger.
-    from src.bib_reader import Reference
+    from chitragupta.bib_reader import Reference
 
 # _SCHEMA only ever describes the *original* table shape (schema version
 # 0) -- every column added since is a migration in _MIGRATIONS below, not
@@ -95,9 +95,9 @@ _MIGRATIONS: list[tuple[tuple[str, str], ...]] = [
         # object -- authors, journal/booktitle, volume, pages, publisher,
         # everything the title/year/doi columns above don't keep.
         #
-        # src/references.py needs them to write a real bibliography entry
+        # chitragupta/references.py needs them to write a real bibliography entry
         # rather than just "citekey -- Title (Year)", and it may not read
-        # bibliography.bib to get them: src/bib_reader.py is the only
+        # bibliography.bib to get them: chitragupta/bib_reader.py is the only
         # module allowed to (AGENTS.md), and it needs bibtexparser, while
         # references.py runs under bare python3. One opaque JSON column
         # rather than a column per field because nothing here queries or
@@ -107,12 +107,12 @@ _MIGRATIONS: list[tuple[tuple[str, str], ...]] = [
         # NULL means "synced before this column existed". references.py
         # falls back to the title/year columns for those rather than
         # failing, so an existing ledger keeps working until the next
-        # `python -m src.corpus sync` backfills it.
+        # `python -m chitragupta.corpus sync` backfills it.
         ("bib_fields", "ALTER TABLE items ADD COLUMN bib_fields TEXT"),
     ),
     (
         # version 4: Zotero collection membership, as a JSON array of normalised
-        # paths (src/bib_collections.py). NULL for a row synced before
+        # paths (chitragupta/bib_collections.py). NULL for a row synced before
         # this column existed and for the majority of libraries, whose
         # export carries no such field at all -- both read as "no
         # collections recorded", which is what every caller already does
@@ -160,7 +160,7 @@ def _stat_pdf(path: str) -> tuple[int, int]:
 
 
 # Fields carried over verbatim from the BibTeX entry into the bib_fields
-# column (_MIGRATIONS version 3), for src/references.py to format a full
+# column (_MIGRATIONS version 3), for chitragupta/references.py to format a full
 # bibliography entry from. Deliberately a fixed allowlist rather than the
 # whole entry dict: a reference manager's export carries per-host noise
 # (`file` paths, `abstract`, `keywords`, timestamps, arbitrary `note`
@@ -225,7 +225,7 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     quietly leaving them without quotable passages. It costs one re-parse
     per affected document, once.
 
-    Directly mirrors `src/enrich/docling_parse.py`'s `_outputs_present`,
+    Directly mirrors `chitragupta/enrich/docling_parse.py`'s `_outputs_present`,
     which exists for the same reason on the other layer's artefacts.
     """
     if not parsed_path or not Path(parsed_path).exists():
@@ -465,13 +465,13 @@ def all_items(con: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 # ---------------------------------------------------------------------
-# Read-only CLI: `python -m src.corpus ledger`
+# Read-only CLI: `python -m chitragupta.corpus ledger`
 #
 # Its own entrypoint rather than a `sync --inspect` flag, for two reasons
 # that are both about what a *reader* needs. `sync` takes the pipeline
 # write lock, so an inspect flag on it would exit 2 exactly when you most
 # want to look -- during a run; this takes no lock at all, which is the
-# property src/runlock.py's separate lock file exists to preserve. And
+# property chitragupta/runlock.py's separate lock file exists to preserve. And
 # `sync` needs bibtexparser, while reading the ledger needs only sqlite3,
 # so this runs under the bare system interpreter like citation_gate and
 # references do.
@@ -504,7 +504,7 @@ def main(argv: "list[str] | None" = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python -m src.corpus ledger",
+        prog="python -m chitragupta.corpus ledger",
         description="Show what the corpus layer holds. Read-only, takes no lock, "
                     "and runs with the bare system python3.",
     )
@@ -521,7 +521,7 @@ def main(argv: "list[str] | None" = None) -> int:
 
     if not config.LEDGER_PATH.exists():
         print(f"No ledger at {config.LEDGER_PATH}.")
-        print("Run `python -m src.corpus sync` to build it from your bib file.")
+        print("Run `python -m chitragupta.corpus sync` to build it from your bib file.")
         return 0
 
     # Opened read-only, NOT via connect(): connect() runs the schema and
@@ -597,7 +597,7 @@ def _show_summary(con) -> int:
     total = sum(counts.values())
     if not total:
         print(f"Ledger at {config.LEDGER_PATH} is empty.")
-        print("Run `python -m src.corpus sync` to populate it from your bib file.")
+        print("Run `python -m chitragupta.corpus sync` to populate it from your bib file.")
     else:
         _print_summary_counts(con, counts, total)
     return 0
@@ -614,13 +614,13 @@ def _print_summary_counts(con, counts, total) -> None:
         kinds = failure_counts(con)
     except sqlite3.OperationalError:
         # A ledger written before failure_kind existed. Read-only, so
-        # it cannot be migrated here -- `python -m src.corpus sync` does that.
+        # it cannot be migrated here -- `python -m chitragupta.corpus sync` does that.
         kinds = {"deterministic": 0, "transient": 0}
     if kinds["deterministic"]:
         print(f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
               "automatically.\n  Fix or remove the PDF, or re-run "
-              "`python -m src.corpus sync --reparse`.")
-        print("  See which: python -m src.corpus ledger --status parse_failed")
+              "`python -m chitragupta.corpus sync --reparse`.")
+        print("  See which: python -m chitragupta.corpus ledger --status parse_failed")
     elif kinds["transient"]:
         print(f"\n  {kinds['transient']} item(s) failed for a transient reason "
               "and will be retried on the next sync.")

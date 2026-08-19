@@ -1,8 +1,8 @@
-"""Wall-clock cost of `src/review/verbatim_check.py`'s `overlap` and `scan`
-modes (src/overlap_index.py, #110/#111), against a real draft and a
+"""Wall-clock cost of `chitragupta/review/verbatim_check.py`'s `overlap` and `scan`
+modes (chitragupta/overlap_index.py, #110/#111), against a real draft and a
 real corpus.
 
-Unlike `bench_drift.py`, this never copies the ledger: `src/overlap_index.py`
+Unlike `bench_drift.py`, this never copies the ledger: `chitragupta/overlap_index.py`
 opens it through a read-only URI (`sqlite3.connect(f"file:...?mode=ro")`),
 never `ledger.connect()` (a write connection that runs migrations), so
 timing a scan against this host's own `content/ledger.sqlite` in place is
@@ -16,7 +16,7 @@ hand does today) versus one `scan` call, cold and warm corpus index. It
 does not reproduce the historical pdftotext-subprocess baseline `overlap`
 had before #110 -- that code no longer exists on `main`; reproduce it by
 checking out the commit before #110 merged (18f9f4b2) and timing
-`cmd_overlap` from `src/review/verbatim_check.py` there instead.
+`cmd_overlap` from `chitragupta/review/verbatim_check.py` there instead.
 
     python3 bench/bench_overlap.py --draft path/to/draft.md
     python3 bench/bench_overlap.py --draft path/to/draft.md --out bench/results/<date>-overlap/overlap.json
@@ -37,7 +37,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from src import citation_gate, config  # noqa: E402
+from chitragupta import citation_gate, config  # noqa: E402
 
 
 def _timed(fn, *a, **kw):
@@ -49,7 +49,7 @@ def _timed(fn, *a, **kw):
 
 
 def run(draft: Path) -> dict:
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     citekeys = sorted({key for _, key in citation_gate.extract_citekeys(draft.read_text())})
     if not citekeys:
@@ -92,7 +92,7 @@ def main(argv: "list[str] | None" = None) -> int:
         print(f"No draft at {draft}", file=sys.stderr)
         return 1
     if not config.LEDGER_PATH.exists():
-        print(f"No ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync` first.", file=sys.stderr)
+        print(f"No ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first.", file=sys.stderr)
         return 1
 
     root = Path(tempfile.mkdtemp(prefix="bench-overlap-"))

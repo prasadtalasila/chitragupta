@@ -1,7 +1,7 @@
 """The three consistency registries a book is checked against.
 
-`python -m src.draft registry build|check|excerpt` over a book whose
-outline `src/spec/` holds and whose units `src/unit/` has accepted.
+`python -m chitragupta.draft registry build|check|excerpt` over a book whose
+outline `chitragupta/spec/` holds and whose units `chitragupta/unit/` has accepted.
 Three registries, all derived by a deterministic post-pass over
 **accepted units only** (#138):
 
@@ -14,11 +14,11 @@ Three registries, all derived by a deterministic post-pass over
 
 **Nothing here is written by an LLM**, which is the constraint that makes
 them trustworthy at all: they are a reading of accepted prose, the way
-`src/ledger.py` is a reading of a real bib file. Extraction reuses the
+`chitragupta/ledger.py` is a reading of a real bib file. Extraction reuses the
 conventions the repository already has rather than inventing a second
 set -- the `- **Term** -- definition` bullet the dossier glossary uses,
 the sentence splitter the provenance aid uses, and the `## References`
-cut-off `src/acronyms.py` measured against the real 15-chapter book.
+cut-off `chitragupta/acronyms.py` measured against the real 15-chapter book.
 
 **A cross-reference is never spelled `@id`.** That is a citekey position,
 and a section id reaching it would put something the ledger has never
@@ -36,17 +36,17 @@ whatever it finds.
 
 import re
 
-from src import spec, unit
+from chitragupta import spec, unit
 # Three conventions borrowed rather than re-derived. Each is private to
 # the module that owns it; a second regex for the same shape is the
 # "second way of doing something the codebase already does" that
 # docs/CODE-STANDARDS.md calls the highest-value review finding here, and
 # is worse than reaching across for the name. Promoting any of them to a
 # public name belongs in its own PR, not this one.
-from src.acronyms import _REFERENCES_HEADING
-from src.dossier._citekeys import _GLOSSARY_TERM
-from src.citation_gate import extract_citekeys
-from src.sentences import split as split_sentences
+from chitragupta.acronyms import _REFERENCES_HEADING
+from chitragupta.dossier._citekeys import _GLOSSARY_TERM
+from chitragupta.citation_gate import extract_citekeys
+from chitragupta.sentences import split as split_sentences
 
 # `[text](#some-id)` -- the Markdown cross-reference. Anchored on the
 # closing bracket so a bare `(#id)` in prose is not read as one.
@@ -97,7 +97,7 @@ def _prose(text: str) -> str:
 
     Two exclusions. A reference list is nothing but citation-bearing
     lines, so reading it as claims would fill the register with
-    bibliography -- the same cut `src/acronyms.py` makes, measured
+    bibliography -- the same cut `chitragupta/acronyms.py` makes, measured
     there against the real book. And a definition bullet is a
     definition, already registered as one.
     """
@@ -237,8 +237,8 @@ def excerpt(book, unit_id: str) -> dict:
     }
 
 
-# Re-exported so `from src import registry` reaches the entry point
-# `src/draft.py` dispatches to, as `src/spec/` and `src/unit/` do. The
+# Re-exported so `from chitragupta import registry` reaches the entry point
+# `chitragupta/draft.py` dispatches to, as `chitragupta/spec/` and `chitragupta/unit/` do. The
 # position is load-bearing: `_cli` imports the names above from here.
 # pylint: disable=wrong-import-position
-from src.registry._cli import main
+from chitragupta.registry._cli import main

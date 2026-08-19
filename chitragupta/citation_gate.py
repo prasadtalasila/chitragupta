@@ -13,7 +13,7 @@ must never be allowed to invent a citekey; it may only cite what is in
 the ledger.
 
 Usage:
-    python -m src.draft gate <file> [<file> ...]
+    python -m chitragupta.draft gate <file> [<file> ...]
 
 Recognizes any LaTeX/biblatex/natbib command whose name contains "cite"
 (\\cite, \\citep, \\citealp, \\footcite, \\nocite, capitalized biblatex
@@ -28,7 +28,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import config, hook_launchers, ledger
+from chitragupta import config, hook_launchers, ledger
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -121,8 +121,8 @@ class GateResult:
 def extract_citekeys_from_line(line: str) -> list[str]:
     """Back-compat, single-line-scoped wrapper around extract_citekeys().
 
-    Kept for src/review/citation_coverage.py (the remaining caller that only ever
-    hands this one line at a time -- src/references.py was switched to
+    Kept for chitragupta/review/citation_coverage.py (the remaining caller that only ever
+    hands this one line at a time -- chitragupta/references.py was switched to
     call extract_citekeys() directly in this same change) and for the
     existing test suite, which exercises this shape extensively.
 
@@ -218,7 +218,7 @@ def run(paths: list[str]) -> int:
 
     if not known:
         print(
-            "WARNING: ledger is empty -- run `python -m src.corpus sync` first. "
+            "WARNING: ledger is empty -- run `python -m chitragupta.corpus sync` first. "
             "Every citekey will be reported as unknown.",
             file=sys.stderr,
         )
@@ -251,7 +251,7 @@ def run(paths: list[str]) -> int:
     return 0 if all_ok else 1
 
 
-USAGE = """usage: python -m src.draft gate <file> [<file> ...]
+USAGE = """usage: python -m chitragupta.draft gate <file> [<file> ...]
 
 Fail if a draft cites a citekey the ledger doesn't hold. Exit 0 = every
 citation verified, 1 = at least one unresolved citekey, 2 = bad usage.

@@ -2,7 +2,7 @@
 
 This is the default retrieval implementation genre skills call against
 (AGENTS.md's "Retrieval" section) -- stdlib-only, no venv or model
-download needed. `src/enrich/embed_index.py` (sentence-transformers +
+download needed. `chitragupta/enrich/embed_index.py` (sentence-transformers +
 Chroma/Qdrant) is a verified, working embedding-based upgrade path with
 a matching `search(query, k)` shape, ready to swap in without changing
 callers once BM25 stops being enough for this corpus -- that's a
@@ -15,7 +15,7 @@ Two boundaries worth knowing, because they're easy to assume otherwise.
 This module reads the ledger's `parsed_path` -- `content/parsed/*.txt` --
 and never `content/docling/`, so running the enrichment layer's Docling
 stage does not change what BM25 ranks or what its snippets say; only `[parser].backend`
-does. And nothing in `src/enrich/__main__.py` imports this module, so
+does. And nothing in `chitragupta/enrich/__main__.py` imports this module, so
 the enrichment layer neither uses nor updates this index.
 
 Ranking is Okapi BM25 (stdlib-only: no rank_bm25 dependency), not raw
@@ -30,8 +30,8 @@ with corpus size and with each document's length. Term-frequency stats
 per document are cached to disk (config.RETRIEVAL_INDEX_PATH), keyed by
 a cheap per-item fingerprint (parsed-file stat -- exists/size/mtime, not
 content), so a call only re-tokenizes documents whose text actually
-changed since the last run -- mirroring src/ledger.py's own
-stat-before-hash skip logic and src/enrich/embed_index.py's embedding
+changed since the last run -- mirroring chitragupta/ledger.py's own
+stat-before-hash skip logic and chitragupta/enrich/embed_index.py's embedding
 cache. Building a snippet for the returned top-k still reads those
 (bounded, small) documents' text fresh, since a snippet needs the real
 surrounding text, not just term counts.
@@ -48,7 +48,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import bib_collections, config, ledger
+from chitragupta import bib_collections, config, ledger
 
 _STOPWORDS = {
     "a", "an", "the", "of", "on", "in", "for", "and", "to", "with",
@@ -283,7 +283,7 @@ def search(query: str, k: int = 5, snippet_chars: int = 500,
     """Rank ledger items by BM25 relevance to `query`. Returns top-k.
 
     `collection` restricts the result to items in that Zotero collection
-    or one beneath it (src/bib_collections.py), which is #195's curated
+    or one beneath it (chitragupta/bib_collections.py), which is #195's curated
     subset: a chapter on modelling searching only the modelling shelf.
     Scoring is deliberately left corpus-wide and the filter applied to the
     ranking -- narrowing the index instead would change every IDF, so the
@@ -374,7 +374,7 @@ def evidence(
     is a real answer, not an error.
 
     Deliberately reads `parsed_path` rather than going through
-    `src/passages.py`: this ranks the same text BM25 ranked, so what
+    `chitragupta/passages.py`: this ranks the same text BM25 ranked, so what
     comes back is what the score was about. `passages.py` owns the
     quotable-paragraph/page ladder that `citation_provenance` needs to
     *attribute* a claim -- a different question, asked after drafting.
@@ -403,9 +403,9 @@ def evidence(
 
 
 # ---------------------------------------------------------------------
-# CLI: `python -m src.draft retrieve`
+# CLI: `python -m chitragupta.draft retrieve`
 #
-# Its own entrypoint rather than the `python -c "from src import
+# Its own entrypoint rather than the `python -c "from chitragupta import
 # retrieval; [print(r.citekey, r.snippet) for r in ...]"` one-liner the
 # skills used to carry. Three reasons, all about the caller's context
 # rather than convenience: the one-liner's output shape was whatever the
@@ -431,7 +431,7 @@ def _build_parser():
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft retrieve",
+        prog="python -m chitragupta.draft retrieve",
         description="BM25 retrieval over the synced corpus. Read-only, takes no "
                     "lock, and runs with the bare system python3.",
         epilog="`search` ranks the corpus and hands back a snippet to judge each "
@@ -503,7 +503,7 @@ def _run_search(args) -> tuple[int, int]:
 
 def _log_call(args, results: int, chars: int) -> None:
     """--log's dossier bookkeeping, reported but never fatal."""
-    from src import dossier
+    from chitragupta import dossier
 
     try:
         # The logged `k` is "how much was asked for", which is `--k`
@@ -533,7 +533,8 @@ def main(argv: "list[str] | None" = None) -> int:
 
     if not config.LEDGER_PATH.exists():
         print(f"No ledger at {config.LEDGER_PATH}.", file=sys.stderr)
-        print("Run `python -m src.corpus sync` to build it from your bib file.", file=sys.stderr)
+        print("Run `python -m chitragupta.corpus sync` to build it from your bib file.",
+              file=sys.stderr)
         return 1
 
     if args.command == "evidence":

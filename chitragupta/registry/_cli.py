@@ -1,18 +1,18 @@
-"""`python -m src.draft registry`'s three commands, and the Markdown the
+"""`python -m chitragupta.draft registry`'s three commands, and the Markdown the
 registries are written as.
 
-Split from `src/registry/__init__.py` the way `src/spec/_cli.py` and
-`src/unit/_cli.py` are, and named `_cli.py` for the same reason: this
-package has no `__main__.py`, because `python -m src.draft registry` is
+Split from `chitragupta/registry/__init__.py` the way `chitragupta/spec/_cli.py` and
+`chitragupta/unit/_cli.py` are, and named `_cli.py` for the same reason: this
+package has no `__main__.py`, because `python -m chitragupta.draft registry` is
 the one front door.
 """
 
 import argparse
 import sys
 
-from src import spec
-from src.unit import UnitError
-from src.registry import (build, excerpt, findings, registry_dir)
+from chitragupta import spec
+from chitragupta.unit import UnitError
+from chitragupta.registry import (build, excerpt, findings, registry_dir)
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
@@ -126,7 +126,7 @@ def _cmd_excerpt(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft registry",
+        prog="python -m chitragupta.draft registry",
         description="Terminology, claims and cross-references over a book's "
                     "accepted units. A review aid: it never blocks.",
     )

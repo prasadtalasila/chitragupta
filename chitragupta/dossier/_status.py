@@ -1,7 +1,7 @@
 """`dossier status`: what a dossier holds, and whether the corpus has
 moved since -- the report a person runs to find out what they have.
 
-Split out of src/dossier.py (#219). Depends on `_drift` (for the
+Split out of chitragupta/dossier.py (#219). Depends on `_drift` (for the
 `--json` single-draft path) but never the reverse -- `status()` itself
 never calls `drift()` (confirmed by reading it: they read overlapping
 dossier state independently, joined only at the CLI layer).
@@ -13,16 +13,16 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import config
-from src.dossier._citekeys import cited_citekeys
-from src.dossier import (
+from chitragupta import config
+from chitragupta.dossier._citekeys import cited_citekeys
+from chitragupta.dossier import (
     EVIDENCE_MD, FILES, REJECTED_MD, _resolve_dossier, digest, dossier_dir,
     draft_relpath, find_draft, known_citekeys, recorded_corpus,
 )
-from src.dossier._drift import drift, drift_all
-from src.dossier._drift_report import _cmd_status_all
-from src.dossier._retrieval import RevisionCost, retrieval_cost_by_revision
-from src.dossier._sections import Section, sections
+from chitragupta.dossier._drift import drift, drift_all
+from chitragupta.dossier._drift_report import _cmd_status_all
+from chitragupta.dossier._retrieval import RevisionCost, retrieval_cost_by_revision
+from chitragupta.dossier._sections import Section, sections
 
 @dataclass
 class FileStatus:
@@ -134,7 +134,8 @@ def _cmd_status(args: argparse.Namespace) -> int:
     report = status(Path(args.draft))
     if not report.dossier.is_dir():
         print(f"No dossier at {draft_relpath(report.dossier)}.")
-        print(f"Create one with `python -m src.draft dossier init {args.draft} --genre <genre>`.")
+        print("Create one with `python -m chitragupta.draft dossier init "
+              f"{args.draft} --genre <genre>`.")
         return 1
 
     print(f"Dossier: {draft_relpath(report.dossier)}")

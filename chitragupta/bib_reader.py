@@ -3,7 +3,7 @@ citekeys and bibliographic metadata (project decision, 2026-07-28).
 
 No auto-sync plugin is installed, so this file is a manual, point-in-time
 export from your reference manager, not continuously auto-synced --
-re-export it after adding papers, then re-run `python -m src.corpus sync`.
+re-export it after adding papers, then re-run `python -m chitragupta.corpus sync`.
 Whatever citekey BibTeX assigns in this file IS the citekey everywhere
 downstream (the ledger, citation_gate, generated drafts); this module
 never invents its own.
@@ -29,7 +29,7 @@ import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
-from src import bib_collections, bib_names, config
+from chitragupta import bib_collections, bib_names, config
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
 # Previously sync.py only ever saw a bare pdf_path of None and reported

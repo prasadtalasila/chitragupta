@@ -1,6 +1,6 @@
 """The outline a book is generated from, and the human sign-off on it.
 
-`python -m src.draft spec init|show|sign|status` over a book directory
+`python -m chitragupta.draft spec init|show|sign|status` over a book directory
 under `content/drafts/`. The artefact is one Markdown file --
 `content/specs/<the book's path under content/drafts/>/spec.md` -- plus
 a `signoff.md` beside it recording that a human approved it.
@@ -29,14 +29,14 @@ resolve against.
 **`status`'s exit code is not a gate.** It answers "has a human approved
 this outline yet?" -- a record of a person's decision, not a machine's
 judgement of a draft's content. No draft is blocked by it; the one gate
-in this project stays `python -m src.draft gate`. docs/BOOKS.md carries
+in this project stays `python -m chitragupta.draft gate`. docs/BOOKS.md carries
 that reconciliation in full.
 
 Stdlib only, like `citation_gate` and `render_output`, so a genre skill
 can read a slice under bare `python` with no venv.
 
 This module is the parse and the paths; `_cli.py` beside it is the four
-commands. That split is the one `src/dossier/` already makes, and for
+commands. That split is the one `chitragupta/dossier/` already makes, and for
 the same reason: together they crossed the 250-code-line limit.
 """
 
@@ -44,7 +44,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 # Fence tracking is not re-derived here. `_prose_lines` says in its own
 # docstring that it is "shared so no caller re-derives it", and a brief
 # in a book about software will contain a fenced block sooner or later --
@@ -52,7 +52,7 @@ from src import config
 # outline for a unit that does not exist. Reaching for a private name
 # across the two packages is the lesser evil against a second copy of
 # the same three-state loop.
-from src.dossier._sections import _prose_lines
+from chitragupta.dossier._sections import _prose_lines
 
 SPEC_MD = "spec.md"
 
@@ -241,10 +241,10 @@ def recorded_digest(book: Path) -> str | None:
 
 
 
-# Re-exported so `from src import spec` reaches the entry point by the
-# name `src/draft.py` dispatches to, exactly as `src/dossier/` does. The
+# Re-exported so `from chitragupta import spec` reaches the entry point by the
+# name `chitragupta/draft.py` dispatches to, exactly as `chitragupta/dossier/` does. The
 # position matters for the same reason it does there: `_cli` imports the
 # names above from this module, so importing it any earlier would fail on
 # a name this file has not defined yet.
 # pylint: disable=wrong-import-position
-from src.spec._cli import main
+from chitragupta.spec._cli import main

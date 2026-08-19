@@ -1,7 +1,7 @@
-"""src/render_output/_paths.py: where a rendered draft lands.
+"""chitragupta/render_output/_paths.py: where a rendered draft lands.
 
-Split from one test module to mirror `src/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `src/enrich/`. Shared setup --
+Split from one test module to mirror `chitragupta/render_output/`'s own split,
+the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
 the binary probes and the figure fixtures -- lives in `tests/conftest.py`
 so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
@@ -9,7 +9,7 @@ import.
 
 import sys
 import pytest
-from src import render_output
+from chitragupta import render_output
 
 
 class TestOutputDir:
@@ -39,7 +39,7 @@ class TestOutputDir:
 
         3.19.2 made `PROVENANCE_DIR` a second source root so a report's
         renders would follow the report. 4.0.0 replaced that with
-        `render(output_dir=...)`: `src/review/__init__.py` says where its renders
+        `render(output_dir=...)`: `chitragupta/review/__init__.py` says where its renders
         go, and this function is left answering only "where does a
         *draft* render to". Reaching here with a report at all means the
         caller forgot to pass `output_dir`, and the flat fallback is the

@@ -1,8 +1,8 @@
 """How a BibTeX author name divides into given and family name.
 
 One function, and it exists because the five lines below used to exist
-twice -- character for character -- in `src/bib_reader.py`'s
-`_parse_authors` and `src/references.py`'s `_format_name`. `pylint`'s
+twice -- character for character -- in `chitragupta/bib_reader.py`'s
+`_parse_authors` and `chitragupta/references.py`'s `_format_name`. `pylint`'s
 `duplicate-code` found that during the 5.8.0 baseline measurement; nobody
 found it by reading.
 
@@ -22,13 +22,13 @@ spellings of an author is the wrong kind of quiet.
 
 **Stdlib-only, and deliberately import-free.** `references.py` is tier-1
 code that has to run under the bare system interpreter with no venv (see
-its own module docstring, and AGENTS.md on `python -m src.draft gate`),
+its own module docstring, and AGENTS.md on `python -m chitragupta.draft gate`),
 while `bib_reader.py` needs `bibtexparser`. A shared helper that reached
 for anything at all would either drag a dependency into tier 1 or invert
 the layering; this is plain string handling, so it needs neither. That is
 enforced rather than asserted, and by a test that already existed:
 `tests/test_references.py::test_runs_with_bare_system_python3` runs
-`python -m src.draft references` on the system interpreter, which now
+`python -m chitragupta.draft references` on the system interpreter, which now
 imports this module, so an import added here that a venv-less host cannot
 satisfy fails there. No second check was added for it.
 """

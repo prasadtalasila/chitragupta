@@ -24,18 +24,18 @@ from pathlib import Path
 
 import pytest
 
-from src import corpus, draft
-from src.enrich import __main__ as enrich_main
-from src.review import __main__ as review_main
+from chitragupta import corpus, draft
+from chitragupta.enrich import __main__ as enrich_main
+from chitragupta.review import __main__ as review_main
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Every entry point, and the module whose docstring it must not print.
 ENTRY_POINTS = {
-    "src.corpus": corpus,
-    "src.draft": draft,
-    "src.review": review_main,
-    "src.enrich": enrich_main,
+    "chitragupta.corpus": corpus,
+    "chitragupta.draft": draft,
+    "chitragupta.review": review_main,
+    "chitragupta.enrich": enrich_main,
 }
 
 # One sentence, hand-measured against the four that exist: the longest is

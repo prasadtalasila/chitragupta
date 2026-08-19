@@ -1,15 +1,15 @@
 """Deterministic pipeline entrypoint: bib file -> ledger -> parsed text.
 
 Safe to run unattended / on a schedule (idempotent, incremental):
-    python -m src.corpus sync
+    python -m chitragupta.corpus sync
 
 A citekey that drops out of the bib file is only *reported* by default --
 pass --remove-stale to actually delete its content/ledger.sqlite row (see
-"Removing a paper" in README.md and src/ledger.py's find_stale/prune_missing).
+"Removing a paper" in README.md and chitragupta/ledger.py's find_stale/prune_missing).
 
 This is the corpus layer: no generation, no LLM calls, just
 bringing the shared corpus layer up to date with the bibliography (see
-src/bib_reader.py -- the BibTeX-exported .bib file is the source of
+chitragupta/bib_reader.py -- the BibTeX-exported .bib file is the source of
 truth for citekeys, not something this pipeline generates). Genre-specific
 drafting (the drafting layer) is invoked separately, on demand, via the
 Claude Code
@@ -17,7 +17,7 @@ skills in .claude/skills/.
 
 Needs `bibtexparser` installed -- run scripts/install_full_pipeline.sh
 first (creates .venv-full/ on a bare host), then run this via that
-venv's python. python -m src.draft gate does not need it and still
+venv's python. python -m chitragupta.draft gate does not need it and still
 runs with the bare system interpreter.
 """
 
@@ -33,23 +33,23 @@ from concurrent.futures import (FIRST_COMPLETED, ProcessPoolExecutor,
 from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
-from src import (bib_reader, config, dedup, ledger, logging_setup, pdf_text,
+from chitragupta import (bib_reader, config, dedup, ledger, logging_setup, pdf_text,
                  runlock)
 
 # A fixed name, not __name__. Until 5.2.0 this module was itself the CLI
-# entrypoint (python -m src.sync), and Python sets __name__ to
-# "__main__" for whichever module is run that way -- not "src.sync". A
+# entrypoint (python -m chitragupta.sync), and Python sets __name__ to
+# "__main__" for whichever module is run that way -- not "chitragupta.sync". A
 # logger named "__main__" would sit outside the "src" tree entirely, so
 # logging_setup.configure()'s logging.getLogger("src").setLevel(...)
 # would silently never apply to it. Confirmed against a real run, not
 # assumed: every test in this suite imports sync as a plain submodule,
-# where __name__ is already "src.sync" and the distinction is invisible.
-# src/corpus.py is the entrypoint now, so __name__ here is always
-# "src.sync" -- but the name stays pinned rather than tracking whatever
+# where __name__ is already "chitragupta.sync" and the distinction is invisible.
+# chitragupta/corpus.py is the entrypoint now, so __name__ here is always
+# "chitragupta.sync" -- but the name stays pinned rather than tracking whatever
 # imports it, because it is also the string that appears in every
 # logs/pipeline.log line and in the grep docs/CLI.md tells a scheduler
 # to use.
-logger = logging.getLogger("src.sync")
+logger = logging.getLogger("chitragupta.sync")
 
 # How many timed-out citekeys the summary names before falling back to
 # "(+N more)". Enough that the case worth naming -- a handful of long
@@ -350,7 +350,7 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
 
     Whether there is a pool at all is [parser].workers, which
     defaults to 1: a routine sync parses zero-to-few documents
-    (src/ledger.py's (size, mtime)-before-hash skip), so paying pool
+    (chitragupta/ledger.py's (size, mtime)-before-hash skip), so paying pool
     setup by default would cost more than it saves. It is a bulk or
     first-time sync that needs this -- 501 PDFs at one audit, ~39
     minutes serial with docling -- and that case is opt-in.
@@ -665,7 +665,7 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     #
     # extra={"file_only": True} keeps this out of logging_setup.configure()'s
     # console handler specifically -- without it, a real `python -m
-    # src.sync` run prints this line twice (once from the print() above,
+    # chitragupta.sync` run prints this line twice (once from the print() above,
     # once from the console handler catching this same record), which is
     # exactly the double-printing "stdout stays untouched" was meant to
     # avoid. Confirmed against a real run, not assumed.
@@ -691,10 +691,10 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
 
 
 def main(argv: "list[str] | None" = None) -> int:
-    """`python -m src.corpus sync`. Reached only through src/corpus.py,
+    """`python -m chitragupta.corpus sync`. Reached only through chitragupta/corpus.py,
     which is why this file has no `__main__` block of its own."""
     parser = argparse.ArgumentParser(
-        prog="python -m src.corpus sync",
+        prog="python -m chitragupta.corpus sync",
         description="Sync content/ledger.sqlite from the bib file "
                     "(the corpus layer -- deterministic)."
     )
@@ -723,9 +723,9 @@ def main(argv: "list[str] | None" = None) -> int:
             # other). The lock already serializes actual sync work; this
             # makes it serialize handler creation too, so at most one
             # process ever has a live handler on the file. The same
-            # constraint is why src/enrich/__main__.py -- which shares both
+            # constraint is why chitragupta/enrich/__main__.py -- which shares both
             # this lock and this log file -- configures in the same
-            # place; see src/logging_setup.py's own docstring.
+            # place; see chitragupta/logging_setup.py's own docstring.
             logging_setup.configure()
             return run(remove_stale=args.remove_stale, reparse=args.reparse)
     except runlock.AlreadyRunning as exc:
@@ -740,11 +740,11 @@ def main(argv: "list[str] | None" = None) -> int:
 
 
 def refuse_direct_invocation() -> int:
-    """`python -m src.sync` is not a command any more -- say so.
+    """`python -m chitragupta.sync` is not a command any more -- say so.
 
-    It was one until 5.2.0, which moved it behind `python -m src.corpus
+    It was one until 5.2.0, which moved it behind `python -m chitragupta.corpus
     sync` and dropped this module's `__main__` block. Dropping it did not
-    make the old spelling an error: `python -m src.sync` still imported
+    make the old spelling an error: `python -m chitragupta.sync` still imported
     the module and exited 0, having done nothing. Everywhere else in this
     project that trap is silent and harmless (docs/ARCHITECTURE.md
     accepts it as the price of one `--help` per layer), and here it was
@@ -780,8 +780,8 @@ def refuse_direct_invocation() -> int:
     it empty rather than find a line that reads like a result.
     """
     print(
-        "python -m src.sync was removed in 5.2.0 and does nothing. "
-        "Use: python -m src.corpus sync",
+        "python -m chitragupta.sync was removed in 5.2.0 and does nothing. "
+        "Use: python -m chitragupta.corpus sync",
         file=sys.stderr,
     )
     return EXIT_COMMAND_REMOVED

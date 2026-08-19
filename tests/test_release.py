@@ -23,8 +23,8 @@ def make_repo(tmp_path):
         '[tool.poetry]\nname = "x"\nversion = "9.9.9"\n'
     )
     (repo / "README.md").write_text("hello")
-    (repo / "src").mkdir()
-    (repo / "src" / "foo.py").write_text("x = 1")
+    (repo / "chitragupta").mkdir()
+    (repo / "chitragupta" / "foo.py").write_text("x = 1")
     (repo / "tests").mkdir()
     (repo / "tests" / "test_foo.py").write_text("def test_x(): pass")
     (repo / "DEVELOPER.md").write_text("dev notes")
@@ -66,7 +66,7 @@ class TestTrackedFiles:
     def test_excludes_tests_but_ships_developer_md(self, repo):
         paths = release.tracked_files()
         assert "README.md" in paths
-        assert "src/foo.py" in paths
+        assert "chitragupta/foo.py" in paths
         assert "pyproject.toml" in paths
         assert not any(p.startswith("tests/") for p in paths)
         # Every prose doc ships. What stays behind is this repo's own
@@ -131,13 +131,13 @@ class TestBuildRelease:
         assert zip_path == repo / "release" / "chitragupta-9.9.9.zip"
         assert zip_path.exists()
         assert n_files == 8  # README.md, SOUL.md, AGENTS.md, DEVELOPER-AGENTS.md,
-        #                      DEVELOPER.md, pyproject.toml, src/foo.py,
+        #                      DEVELOPER.md, pyproject.toml, chitragupta/foo.py,
         #                      .claude/skills/survey-writer/SKILL.md
 
         with zipfile.ZipFile(zip_path) as zf:
             names = set(zf.namelist())
         assert "chitragupta-9.9.9/README.md" in names
-        assert "chitragupta-9.9.9/src/foo.py" in names
+        assert "chitragupta-9.9.9/chitragupta/foo.py" in names
         assert not any("tests/" in n for n in names)
         assert any(n.endswith("/DEVELOPER.md") for n in names)
 

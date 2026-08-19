@@ -50,7 +50,7 @@ Per round (repeat for ROUNDS):
 1. **Ask one persona-guided question** -- never repeat a prior question in
    this interview; go deeper each round.
 2. **Question -> up to 3 search-query reformulations** against this
-   project's corpus (`src.retrieval.search()`, or `src.enrich.embed_index.search()`
+   project's corpus (`chitragupta.retrieval.search()`, or `chitragupta.enrich.embed_index.search()`
    if that stack has been built for this corpus).
 3. **Retrieve and filter**: run the queries, read the actual snippets
    (500 chars by default from both `search()` functions), keep only what
@@ -142,7 +142,7 @@ confidence scores, weakest link, bias check, missing perspective, overall
 grade, no panel verdicts row.>
 
 ## References
-<Leave this heading bare -- `python -m src.draft references` (SKILL.md Phase 7d)
+<Leave this heading bare -- `python -m chitragupta.draft references` (SKILL.md Phase 7d)
 fills it in automatically from exactly the citekeys cited above, as
 numbered IEEE entries ("[1] J. Doe and R. Roe, "A Paper," *IEEE Trans.
 Testing*, vol. 3, pp. 1-9, 2024. `doe_paper_2024`"), pulled from

@@ -8,8 +8,8 @@ write outside `content/`. The mechanism it defers to is
 
 from pathlib import Path
 
-from src import config
-from src.render_output._errors import OutsideContentDir
+from chitragupta import config
+from chitragupta.render_output._errors import OutsideContentDir
 
 
 # Input suffixes treated as Markdown by the `md` output format (see
@@ -57,14 +57,14 @@ def _output_dir(input_path: Path) -> Path:
     written out again here. It lives in `config` because this module's
     docstring commits it to stdlib plus
     `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python`, which rules out importing `src/dossier/`.
+    under bare `python`, which rules out importing `chitragupta/dossier/`.
     What stays here is the *policy* -- fall back flat, and refuse to
     write outside `content/` -- which is this module's to decide.
 
     **One mirror source, and a caller that can say otherwise.** This
     function answers "where does a *draft* render to", so `DRAFTS_DIR` is
     the only source root it knows. A caller rendering something that is
-    not a draft -- `src/review/__init__.py`, turning a review report into
+    not a draft -- `chitragupta/review/__init__.py`, turning a review report into
     `.tex`/`.pdf` beside the report -- passes `render(output_dir=...)`
     and never reaches here.
 

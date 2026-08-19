@@ -1,7 +1,7 @@
 """Markdown/LaTeX heading parsing and the `Section` shape everything
 else in this package attributes citekeys against.
 
-Split out of src/dossier.py (#219). `_cmd_sections` and
+Split out of chitragupta/dossier.py (#219). `_cmd_sections` and
 `_sections_citekeys` live here rather than in a shared CLI module
 because they are this module's whole reason to have a CLI surface at
 all -- `sections()`/`attribute_citekeys()` computed for a human to read
@@ -14,8 +14,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import citation_gate
-from src.dossier import SECTIONS_MD, _SECTIONS_TEMPLATE, dossier_dir, draft_relpath
+from chitragupta import citation_gate
+from chitragupta.dossier import SECTIONS_MD, _SECTIONS_TEMPLATE, dossier_dir, draft_relpath
 
 # A citekey as the dossier templates write one: inside backticks, starting
 # with a letter, and carrying at least one run of `_`/`:`/`-` separators
@@ -76,7 +76,7 @@ class Section:
 
 # Headings for *outline extraction*: where does each section start and
 # stop, so a revision can Read and Edit one section instead of the whole
-# file. src/review/citation_provenance.py has a similar-looking pair of regexes
+# file. chitragupta/review/citation_provenance.py has a similar-looking pair of regexes
 # doing a different job -- segmenting claim-bearing blocks for scoring --
 # and the two are deliberately not shared: that module needs list items
 # and table rows to be blocks, which would be noise in an outline.

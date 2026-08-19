@@ -57,20 +57,21 @@ and is the main cost weighed in [What it would cost](#what-it-would-cost).
 
 Two layers touch PDFs, and neither produces bibliographic structure:
 
-- **The corpus layer** (`src/pdf_text.py`, via `python -m src.corpus sync`)
+- **The corpus layer** (`chitragupta/pdf_text.py`, via `python -m
+  chitragupta.corpus sync`)
   extracts plain text per citekey to `content/parsed/<citekey>.txt`,
-  feeding BM25 retrieval in `src/retrieval.py`. It dispatches through
+  feeding BM25 retrieval in `chitragupta/retrieval.py`. It dispatches through
   `_EXTRACTORS` to `pdftotext` (default) or `docling`. One file in, one
   text file out.
-- **The enrichment layer** (`src/enrich/docling_parse.py`, via
-  `python -m src.enrich --stages docling`) always uses docling regardless
+- **The enrichment layer** (`chitragupta/enrich/docling_parse.py`, via
+  `python -m chitragupta.enrich --stages docling`) always uses docling regardless
   of `[parser].backend`, producing `content/docling/<citekey>.md` plus a
   `.passages.json` sidecar of reading-ordered, quotable passages. This
   feeds embeddings and BERTopic.
 
 What neither produces is **structured bibliographic metadata and a
 citation graph**. The only metadata source is `papers/bibliography.bib`
-itself, parsed by `src/bib_reader.py` -- whatever your reference manager
+itself, parsed by `chitragupta/bib_reader.py` -- whatever your reference manager
 exported. There are no in-text citation contexts, no resolved reference
 list per paper, and no way to ask "does paper A cite paper B" *within
 this corpus*.
@@ -82,7 +83,8 @@ one PDF in, one `.txt` out. GROBID's TEI is structurally different data
 through that table would mean either discarding everything but body text
 (defeating the point) or making `pdf_text.py` non-uniform in its return
 type. The right precedent is `docling_parse.py`: a corpus-wide stage
-under `src/enrich/`, run from `src/enrich/__main__.py`, independent of
+under `chitragupta/enrich/`, run from `chitragupta/enrich/__main__.py`,
+independent of
 `[parser].backend`.
 
 ## Why GROBID and docling, not GROBID instead of docling
@@ -115,13 +117,13 @@ separate artefact, so it does not compete for the same CPU-bound budget.
 flowchart TB
 
   BIB[/"<b>papers/bibliography.bib</b>"/]
-  READER["<code>src/bib_reader.py</code>"]
+  READER["<code>chitragupta/bib_reader.py</code>"]
   LEDGER[("<b>content/ledger.sqlite</b><br/><small>one row per citekey</small>")]
-  CORPUS["<code>src/enrich/corpus.py</code><br/><small>one CorpusDoc per bib item</small>"]
+  CORPUS["<code>chitragupta/enrich/corpus.py</code><br/><small>one CorpusDoc per bib item</small>"]
 
   BIB --> READER --> LEDGER --> CORPUS
 
-  subgraph EX["<b>ENRICHMENT LAYER</b> — <code>python -m src.enrich --stages …</code> · one write lock"]
+  subgraph EX["<b>ENRICHMENT LAYER</b> — <code>python -m chitragupta.enrich --stages …</code> · one write lock"]
     direction LR
     DOC["<code>docling_parse.py</code><br/><small>body text, reading order</small>"]
     GRO["<code>grobid_parse.py</code> <b>(NEW)</b><br/><small>header + reference lists</small>"]
@@ -151,12 +153,12 @@ flowchart TB
 ```
 
 The two new modules are shaded. Note that both read
-`src/enrich/corpus.py`, which sources the corpus from the ledger and
+`chitragupta/enrich/corpus.py`, which sources the corpus from the ledger and
 nothing else -- so every document GROBID sees is one a draft is allowed
 to cite. That is a constraint, not an accident; see
 [AGENTS.md](../AGENTS.md).
 
-### `src/enrich/grobid_parse.py`
+### `chitragupta/enrich/grobid_parse.py`
 
 Modelled on `docling_parse.py`: corpus-wide, incremental, self-probing.
 It calls GROBID's `/api/processFulltextDocument` per PDF and writes the
@@ -174,7 +176,7 @@ It must follow the same three conventions every stage here follows:
   observably making progress -- `[done/total] <citekey>`, per
   [DESIGN.md](DESIGN.md)'s concurrency policy.
 
-Status vocabulary, matching `src/enrich/__main__.py`:
+Status vocabulary, matching `chitragupta/enrich/__main__.py`:
 
 | Condition | Report |
 |---|---|
@@ -183,7 +185,7 @@ Status vocabulary, matching `src/enrich/__main__.py`:
 | TEI written | `ok` |
 | GROBID returns malformed or empty TEI for one PDF | `partial`, with a warning naming the citekey -- one bad document does not fail the corpus |
 
-### `src/enrich/citation_graph.py`
+### `chitragupta/enrich/citation_graph.py`
 
 Parses each TEI's `<listBibl>`, extracts each referenced work's
 title/DOI, and resolves it against the ledger's existing citekeys.
@@ -209,8 +211,8 @@ flowchart LR
 Output is an edge list of `citekey -> [citekeys it cites, restricted to
 this corpus]`.
 
-**This is the gap nothing else can fill.** BM25 in `src/retrieval.py` and
-the embedding index in `src/enrich/embed_index.py` both rank on body-text
+**This is the gap nothing else can fill.** BM25 in `chitragupta/retrieval.py` and
+the embedding index in `chitragupta/enrich/embed_index.py` both rank on body-text
 similarity. Neither can answer "what does this corpus treat as
 foundational" or "cluster these papers by citation structure rather than
 by topic model" -- there is no citation-structure data to answer from.
@@ -249,7 +251,7 @@ That fits the existing container story ([DOCKER.md](../DOCKER.md)) as a
 sidecar. Invocation would extend `--stages`:
 
 ```bash
-.venv-full/bin/python -m src.enrich --stages grobid,citation_graph
+.venv-full/bin/python -m chitragupta.enrich --stages grobid,citation_graph
 ```
 
 ## Respecting the citekey invariant

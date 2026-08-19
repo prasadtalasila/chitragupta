@@ -1,4 +1,4 @@
-"""What `--collection` (#195, src/bib_collections.py) buys a drafting run:
+"""What `--collection` (#195, chitragupta/bib_collections.py) buys a drafting run:
 the same chapter written once against the whole corpus (Arm F) and once
 against a curated shelf (Arm C), from the same pre-registered queries at
 the same `--k`/`--chars`.
@@ -39,7 +39,7 @@ trustworthy for a different reason:
 - **Draft-vs-draft overlap** -- shared word runs between the two arms'
   drafts. A clearly-labelled extra, not the headline: the headline
   overlap figure is each arm's scan against the *corpus*, which is what
-  `src.review verbatim` measures.
+  `chitragupta.review verbatim` measures.
 
     python bench/bench_collection_scope.py \\
         --topic book-chapters/digital-twin-life-cycle-considerations \\
@@ -60,8 +60,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from src import bib_collections, config, ledger, retrieval  # noqa: E402
-from src.dossier._retrieval import _retrieval_rows  # noqa: E402
+from chitragupta import bib_collections, config, ledger, retrieval  # noqa: E402
+from chitragupta.dossier._retrieval import _retrieval_rows  # noqa: E402
 
 CITEKEY_RE = re.compile(r"\[@([a-zA-Z0-9_:-]+)\]")
 REFERENCES_RE = re.compile(r"^#{1,3} (?:\d+\.\s*)?References\s*$", re.MULTILINE)
@@ -71,7 +71,7 @@ WORD_RUN = 8
 def _body(draft_path):
     """The draft minus its generated References section.
 
-    References are produced by `src.draft references` from the gated
+    References are produced by `chitragupta.draft references` from the gated
     citekeys, so counting them as drafted words would credit each arm for
     its own bibliography -- and the whole-corpus arm has a longer one
     precisely because it cited more, which would flatter it twice.

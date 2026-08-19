@@ -1,11 +1,11 @@
-"""src/bib_reader.py: the only module that reads bibliography.bib, and
+"""chitragupta/bib_reader.py: the only module that reads bibliography.bib, and
 the only place a citekey should ever originate from (AGENTS.md)."""
 
 from pathlib import Path
 
 import pytest
 
-from src import bib_reader
+from chitragupta import bib_reader
 
 
 def write_bib(path, body):

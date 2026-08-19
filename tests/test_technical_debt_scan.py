@@ -7,7 +7,7 @@ claiming "Three layers" against four, found by reading. TECHNICAL-DEBT.md's
 own intro names a second and more specific shape -- its C1/C2 register
 *counts* drifted to 26/13 against a real 10/11 until #228 caught it while
 doing unrelated work. A reconciliation pass on 2026-08-18 found that same
-shape twice more in one sitting: `src/sync.py::run` was split and delisted
+shape twice more in one sitting: `chitragupta/sync.py::run` was split and delisted
 in #178 on 2026-08-14, the day *after* this document was written, and its
 "What to take first" list still named it as the second-highest-priority
 open item four days later.
@@ -20,7 +20,7 @@ makes it binary and nothing else.
 
 ## What this deliberately does not check, and why
 
-**Not "every `src/*.py` token in the document."** That reading is
+**Not "every `chitragupta/*.py` token in the document."** That reading is
 unimplementable and would be wrong if it were not: 3.2 names
 `_executor_for` and 3.8 names `connect()`, both real open debts that are
 legitimately *not* on C1/C2 and never claimed to be. The issue's own
@@ -53,15 +53,15 @@ from test_code_standards_scan import LEGACY_LONG_FILES, LEGACY_LONG_FUNCTIONS
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEBT_DOC = REPO_ROOT / "docs" / "TECHNICAL-DEBT.md"
 
-# A register entry as the document writes one: `src/sync.py::run` for a
-# C1 function, `src/dossier.py` for a C2 module, always in a code span.
-_ENTRY_RE = re.compile(r"`(src/[\w./-]+\.py(?:::\w+)?)`")
+# A register entry as the document writes one: `chitragupta/sync.py::run` for a
+# C1 function, `chitragupta/dossier.py` for a C2 module, always in a code span.
+_ENTRY_RE = re.compile(r"`(chitragupta/[\w./-]+\.py(?:::\w+)?)`")
 
 # The two resolved-marker shapes, normalised by the 2026-08-18 pass so
 # this has two to parse rather than free prose.
 #
 # A subsection's *heading* may keep describing the historical,
-# pre-fix state -- `src/dossier.py`'s does, and `src/sync.py::run`'s does
+# pre-fix state -- `chitragupta/dossier.py`'s does, and `chitragupta/sync.py::run`'s does
 # too -- because both are kept as the record of what a split was measured
 # against. So the marker to read is the body's first non-blank line, never
 # the heading text.
@@ -82,9 +82,9 @@ def _subject(text: str) -> str | None:
     First rather than all, because what is being read is one claim about
     one entry, and everything after it is prose about that claim. Both
     resolved items in "What to take first" close with "See the
-    `src/sync.py::run` subsection above" -- a cross-reference, not a
+    `chitragupta/sync.py::run` subsection above" -- a cross-reference, not a
     second claim -- and an open item could as easily say "unlike
-    `src/config.py`, which is fine". Scoring those against the register
+    `chitragupta/config.py`, which is fine". Scoring those against the register
     would report a module as drifted debt for being mentioned.
     """
     match = _ENTRY_RE.search(text)
@@ -241,7 +241,7 @@ _OPEN_HEADING_DOC = """\
 Freezes **2 functions** over C1 (25 statements) and **1 modules** over C2
 (250 code lines).
 
-### `src/gone.py::vanished` -- 99 statements
+### `chitragupta/gone.py::vanished` -- 99 statements
 
 Still the worst thing in the tree.
 
@@ -263,16 +263,16 @@ Freezes **2 functions** over C1 (25 statements) and **1 modules** over C2
 
 ## What to take first
 
-1. **[Tier 1] `src/gone.py`.** The largest module in the tree.
+1. **[Tier 1] `chitragupta/gone.py`.** The largest module in the tree.
 """
 
 _RESOLVED_ITEM_DOC = _OPEN_ITEM_DOC.replace(
-    "1. **[Tier 1] `src/gone.py`.** The largest module in the tree.",
-    "1. ~~**[Tier 1] `src/gone.py`.** The largest module in the tree.~~ "
+    "1. **[Tier 1] `chitragupta/gone.py`.** The largest module in the tree.",
+    "1. ~~**[Tier 1] `chitragupta/gone.py`.** The largest module in the tree.~~ "
     "**Done**, in #1.",
 )
 
-_REGISTERS = ({"src/kept.py::held"}, {"src/kept.py"})
+_REGISTERS = ({"chitragupta/kept.py::held"}, {"chitragupta/kept.py"})
 
 
 class TestTheChecksActuallyFire:
@@ -282,14 +282,14 @@ class TestTheChecksActuallyFire:
 
     def test_an_open_heading_naming_a_delisted_function_is_reported(self):
         assert _missing_from_register(_OPEN_HEADING_DOC, *_REGISTERS) == [
-            "src/gone.py::vanished"
+            "chitragupta/gone.py::vanished"
         ]
 
     def test_the_same_heading_marked_resolved_is_not(self):
         assert _missing_from_register(_RESOLVED_HEADING_DOC, *_REGISTERS) == []
 
     def test_an_open_take_first_item_naming_a_delisted_module_is_reported(self):
-        assert _missing_from_register(_OPEN_ITEM_DOC, *_REGISTERS) == ["src/gone.py"]
+        assert _missing_from_register(_OPEN_ITEM_DOC, *_REGISTERS) == ["chitragupta/gone.py"]
 
     def test_the_same_item_struck_through_and_done_is_not(self):
         assert _missing_from_register(_RESOLVED_ITEM_DOC, *_REGISTERS) == []
@@ -303,7 +303,7 @@ class TestTheChecksActuallyFire:
             "The largest module in the tree.",
             "~~1605 code lines.~~ **Done**, measured -- but not yet split.",
         )
-        assert _missing_from_register(doc, *_REGISTERS) == ["src/gone.py"]
+        assert _missing_from_register(doc, *_REGISTERS) == ["chitragupta/gone.py"]
 
     def test_a_cross_reference_later_in_an_item_is_not_a_second_claim(self):
         """Both resolved items in the real list close with "See the
@@ -312,13 +312,13 @@ class TestTheChecksActuallyFire:
         the first entry it names -- is held to the register."""
         doc = _OPEN_ITEM_DOC.replace(
             "The largest module in the tree.",
-            "The largest module in the tree, unlike `src/absent.py`.",
+            "The largest module in the tree, unlike `chitragupta/absent.py`.",
         )
-        assert _missing_from_register(doc, *_REGISTERS) == ["src/gone.py"]
+        assert _missing_from_register(doc, *_REGISTERS) == ["chitragupta/gone.py"]
 
     def test_a_take_first_item_not_tagged_tier_one_is_ignored(self):
         """3.2's `_executor_for` and 3.8's `connect()` are real open debts
-        that were never register entries. An item naming a `src/` path
+        that were never register entries. An item naming a `chitragupta/` path
         without claiming C1/C2 membership must not be held to the
         register."""
         doc = _OPEN_ITEM_DOC.replace("[Tier 1]", "[3.2]")

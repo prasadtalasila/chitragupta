@@ -1,22 +1,22 @@
-"""The review layer's single entry point: `python -m src.review <aid>`.
+"""The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
 Three aids, run by hand over a finished draft. None of them is a gate,
 none takes the write lock, and nothing invokes them automatically:
 
-    python -m src.review provenance <draft>
+    python -m chitragupta.review provenance <draft>
         what in each cited source supports the claim citing it.
 
-    python -m src.review coverage <draft> --query "..."
+    python -m chitragupta.review coverage <draft> --query "..."
         retrieval surfaced these sources -- did the draft cite them?
 
-    python -m src.review verbatim overlap|scan|locate ...
+    python -m chitragupta.review verbatim overlap|scan|locate ...
         how much wording the draft shares with a cited source, with any
         parsed source, and which page a phrase is on.
 
-**One entry point, one level deep**, like `python -m src.corpus sync` for the
+**One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
-so `python -m src.review.verbatim_check` imports a module and exits 0
-without doing anything -- the same trap `src/enrich/`'s submodules carry,
+so `python -m chitragupta.review.verbatim_check` imports a module and exits 0
+without doing anything -- the same trap `chitragupta/enrich/`'s submodules carry,
 and the reason this file exists rather than three scattered commands.
 docs/ARCHITECTURE.md states the invariant.
 
@@ -38,8 +38,8 @@ successful run, findings or not; `1` for a draft the layer will not read
 import argparse
 import sys
 
-from src import review
-from src.review import citation_coverage, citation_provenance, verbatim_check
+from chitragupta import review
+from chitragupta.review import citation_coverage, citation_provenance, verbatim_check
 
 # Keyed by review.AIDS, so a fourth aid cannot appear here without also
 # appearing in the dict that owns the report suffixes.
@@ -62,14 +62,14 @@ if set(AIDS) != set(review.AIDS):
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)
-# -- see src/corpus.py's DESCRIPTION for the reasoning, which is the same
+# -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
 DESCRIPTION = "The review layer: three read-only aids over a finished draft. No gate."
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="python -m src.review",
+        prog="python -m chitragupta.review",
         description=DESCRIPTION,
     )
     sub = parser.add_subparsers(dest="aid")

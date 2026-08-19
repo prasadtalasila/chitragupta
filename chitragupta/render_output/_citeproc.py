@@ -7,8 +7,8 @@ Both fixups here are applied only to temp copies: the draft and the real
 import re
 from pathlib import Path
 
-from src import references
-from src.citation_gate import _PANDOC_CITE_RE
+from chitragupta import references
+from chitragupta.citation_gate import _PANDOC_CITE_RE
 
 
 def _alias_for(citekey: str) -> str:
@@ -42,7 +42,7 @@ def _safe_render_inputs(
 
     Two independent fixups, both applied only to temp copies -- the draft
     and the real bibliography.bib are never modified:
-      - a `python -m src.draft references` References section has its entries
+      - a `python -m chitragupta.draft references` References section has its entries
         replaced by citeproc's own placement anchor, keeping the draft's
         heading (see _swap_manual_refs_for_citeproc);
       - a citekey containing "--" is aliased in both files, in the input
@@ -100,7 +100,7 @@ _REFS_ANCHOR = "::: {#refs}\n:::\n"
 
 
 def _swap_manual_refs_for_citeproc(text: str) -> str:
-    """Replaces a `python -m src.draft references` section's *entries* with an
+    """Replaces a `python -m chitragupta.draft references` section's *entries* with an
     anchor citeproc fills in, keeping the draft's own heading.
 
     Only ever applied to the temp copy handed to pandoc, never to the
@@ -116,7 +116,7 @@ def _swap_manual_refs_for_citeproc(text: str) -> str:
 
     The heading stays because it is the draft's own: a genre skill may
     have numbered it to match its other headings (`## 6. References`, via
-    `src.draft references --heading`), and citeproc emits no heading of its own,
+    `chitragupta.draft references --heading`), and citeproc emits no heading of its own,
     so dropping the whole section left the rendered bibliography
     untitled.
     """

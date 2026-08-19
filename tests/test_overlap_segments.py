@@ -1,4 +1,4 @@
-"""src/overlap_segments.py: what a segment is on each side of tier 3's
+"""chitragupta/overlap_segments.py: what a segment is on each side of tier 3's
 alignment, and where in the original it sits.
 
 Stdlib-only like the module, so the draft side is exercised through
@@ -11,8 +11,8 @@ import json
 
 import pytest
 
-from src import config, overlap_segments
-from src.review import verbatim_check as vc
+from chitragupta import config, overlap_segments
+from chitragupta.review import verbatim_check as vc
 from tests.conftest import make_reference
 
 
@@ -143,7 +143,7 @@ class TestSourceSentences:
     @pytest.fixture
     def sidecar(self, ledger_con, tmp_path):
         def write(citekey, records):
-            from src import ledger
+            from chitragupta import ledger
 
             ledger.upsert_reference(ledger_con, make_reference(citekey=citekey))
             path = config.DOCLING_DIR / f"{citekey}.passages.json"
@@ -172,11 +172,11 @@ class TestSourceSentences:
     def test_a_source_with_no_sidecar_yields_nothing_rather_than_page_text(
         self, ledger_con, tmp_path
     ):
-        # Rungs 3 and 4 of src/passages.py's ladder hand back whole pages
+        # Rungs 3 and 4 of chitragupta/passages.py's ladder hand back whole pages
         # of `pdftotext -layout` output with `text=None`: on a two-column
         # paper every line of that splices two columns together, so a
         # sentence cut from one is a collage of two arguments.
-        from src import ledger
+        from chitragupta import ledger
 
         parsed = config.PARSED_DIR / "smith_2024.txt"
         parsed.parent.mkdir(parents=True, exist_ok=True)

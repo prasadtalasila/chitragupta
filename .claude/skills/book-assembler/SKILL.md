@@ -1,6 +1,6 @@
 ---
 name: book-assembler
-description: Assembles accepted, gate-passed units into one LaTeX book -- front matter, parts, chapters, back matter -- from the outline `python -m src.draft spec` holds and the acceptance records `python -m src.draft unit` wrote. Triggers when the user asks to assemble, build, compose or "put together" a book from units already drafted, or asks for the whole book as one LaTeX document. Writes no prose of its own and drafts no unit: a missing or unaccepted unit is the relevant genre skill's job, and this skill stops and says which. Runs `python -m src.draft registry check` and reports every finding before composing, runs `python -m src.draft gate` on what it composed, and stops at the second of the book track's two human sign-offs rather than declaring a book finished. Never fabricates a citekey and never edits a unit's prose.
+description: Assembles accepted, gate-passed units into one LaTeX book -- front matter, parts, chapters, back matter -- from the outline `python -m chitragupta.draft spec` holds and the acceptance records `python -m chitragupta.draft unit` wrote. Triggers when the user asks to assemble, build, compose or "put together" a book from units already drafted, or asks for the whole book as one LaTeX document. Writes no prose of its own and drafts no unit: a missing or unaccepted unit is the relevant genre skill's job, and this skill stops and says which. Runs `python -m chitragupta.draft registry check` and reports every finding before composing, runs `python -m chitragupta.draft gate` on what it composed, and stops at the second of the book track's two human sign-offs rather than declaring a book finished. Never fabricates a citekey and never edits a unit's prose.
 tags: [book, latex, assembly, composition]
 ---
 
@@ -19,9 +19,9 @@ that one is why the procedure is shaped this way.
 | Situation | Action |
 |---|---|
 | A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer`'s job (or another genre's), not this skill's |
-| A unit exists but nobody accepted it | Stop. `python -m src.draft unit accept` is a human's call, made per unit |
+| A unit exists but nobody accepted it | Stop. `python -m chitragupta.draft unit accept` is a human's call, made per unit |
 | The user wants a unit's wording changed | `draft-reviser`. Never edit a unit while assembling it |
-| The outline itself is wrong | `python -m src.draft spec` and a fresh sign-off. Never rewrite an outline here |
+| The outline itself is wrong | `python -m chitragupta.draft spec` and a fresh sign-off. Never rewrite an outline here |
 | The user wants one chapter, not a book | The relevant genre skill. This skill composes what exists; it does not write |
 
 **It writes no prose.** The only file it authors is the book document
@@ -45,7 +45,7 @@ bottom-up from what has been accepted.
 **The `{#id}` becomes the LaTeX label, unchanged.** That is what makes
 the cross-references the registry checked actually resolve in the built
 PDF: a unit's `\cref{ch-1}` points at the same id the outline declared
-and `python -m src.draft registry check` verified. Never rename one on
+and `python -m chitragupta.draft registry check` verified. Never rename one on
 the way through.
 
 The document skeleton, in order:
@@ -118,7 +118,7 @@ read too tight for a book meant to be printed -- 80pt is that doubled,
 and is the number to keep unless someone measures a better one.
 
 **The bibliography points at the user's own `.bib` file**, the same one
-`python -m src.corpus sync` read -- not a copy, and never a file this
+`python -m chitragupta.corpus sync` read -- not a copy, and never a file this
 skill writes. `render` reads it for you when it converts a unit, so
 nothing here names it: the reference manager is upstream, and this
 pipeline is downstream of it.
@@ -136,18 +136,18 @@ It is the reading copy for anyone who is not building LaTeX.
    human gates. Do not compose anything until this exits 0:
 
    ```bash
-   python -m src.draft spec status content/drafts/<book>
+   python -m chitragupta.draft spec status content/drafts/<book>
    ```
 
    Non-zero means nobody approved this outline, or it changed after
    somebody did. Either way, stop and say which -- approving it is the
-   user's act, not yours, and `python -m src.draft spec sign` is theirs
+   user's act, not yours, and `python -m chitragupta.draft spec sign` is theirs
    to run.
 
 2. **Confirm every unit is accepted and current.**
 
    ```bash
-   python -m src.draft unit status content/drafts/<book>
+   python -m chitragupta.draft unit status content/drafts/<book>
    ```
 
    Report the table as it stands. A unit reading `unwritten`, `drafted`
@@ -160,8 +160,8 @@ It is the reading copy for anyone who is not building LaTeX.
    optional and is not summarised away:
 
    ```bash
-   python -m src.draft registry build content/drafts/<book>
-   python -m src.draft registry check content/drafts/<book>
+   python -m chitragupta.draft registry build content/drafts/<book>
+   python -m chitragupta.draft registry check content/drafts/<book>
    ```
 
    `check` exits 0 whatever it finds -- it is a machine's reading of
@@ -178,7 +178,7 @@ It is the reading copy for anyone who is not building LaTeX.
    directory so `\input` resolves without copying anything:
 
    ```bash
-   python -m src.draft render content/drafts/<book>/<unit-id>.md \
+   python -m chitragupta.draft render content/drafts/<book>/<unit-id>.md \
        --format tex --fragment --output-dir content/drafts/<book>
    ```
 
@@ -207,7 +207,7 @@ It is the reading copy for anyone who is not building LaTeX.
    only exit:
 
    ```bash
-   python -m src.draft gate content/drafts/<book>/book.tex
+   python -m chitragupta.draft gate content/drafts/<book>/book.tex
    ```
 
    A `FAIL` here is a failing test, not a warning. Never "fix" one by
@@ -219,7 +219,7 @@ It is the reading copy for anyone who is not building LaTeX.
    and mean nothing. Run it per accepted unit:
 
    ```bash
-   python -m src.draft style content/drafts/<book>/<unit-id>.md
+   python -m chitragupta.draft style content/drafts/<book>/<unit-id>.md
    ```
 
    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
@@ -238,7 +238,7 @@ It is the reading copy for anyone who is not building LaTeX.
    it a condition of presenting:
 
    ```bash
-   python -m src.review verbatim scan content/drafts/<book>/<unit-id>.md
+   python -m chitragupta.review verbatim scan content/drafts/<book>/<unit-id>.md
    ```
 
    It reports wording a unit shares with **any** parsed source, cited or

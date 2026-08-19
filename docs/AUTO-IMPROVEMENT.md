@@ -4,7 +4,7 @@ Status: **specification of mostly unbuilt work.** Written 2026-08-11;
 step 1 partly built in 5.4.0, step 3 in 5.5.0, and step 5 built narrow
 (verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
 
-`python -m src.review agenda` is not a command and no skill consumes
+`python -m chitragupta.review agenda` is not a command and no skill consumes
 anything below. Of the review aids, `verbatim scan` emits JSON as of
 5.4.0 (#127) and the other two do not yet. This document states *what*
 would be built and *what it must satisfy*, in the order it would be
@@ -59,7 +59,7 @@ Three sentences.
 
 ## 1. `--json` on all three review aids
 
-**Partly built (5.4.0).** `src/review/__init__.py` owns one output
+**Partly built (5.4.0).** `chitragupta/review/__init__.py` owns one output
 contract for the layer. Extend it with a JSON sibling beside the
 Markdown, at `content/review/<topic>/<stem>.<aid>.json`.
 
@@ -81,7 +81,7 @@ other two, which is the case step 2 already accounts for.
 
 ## 2. The `agenda` aid
 
-`python -m src.review agenda <draft>` -- a fourth key in `review.AIDS`.
+`python -m chitragupta.review agenda <draft>` -- a fourth key in `review.AIDS`.
 Deterministic, stdlib-only, no LLM, tier 1, takes no lock, exits 0 whatever
 it finds.
 
@@ -89,7 +89,7 @@ it finds.
 
 - the three aids' `.json` for this draft -- each optional, and skipped
   with a note when absent;
-- `src.dossier.status(draft)`, for missing citekeys and candidates;
+- `chitragupta.dossier.status(draft)`, for missing citekeys and candidates;
 - `rejected.md` -- a candidate already turned down with a reason is never
   re-proposed;
 - `sections.md`, so every item carries a section anchor.
@@ -123,7 +123,7 @@ is an empty list.
 
 ## 3. The `agenda-reviser` skill
 
-A skill, not a `src/` module. Named for its input, like the two revisers
+A skill, not a `chitragupta/` module. Named for its input, like the two revisers
 it joins: `draft-reviser` works from the dossier, `corpus-reviser` from a
 whole-corpus re-search, this one from the agenda.
 
@@ -132,7 +132,7 @@ Per item:
 1. Dispatch the existing `draft-reviser` discipline -- read `scope.md` and
    `steering.md` first, edit inside the named section with `Edit`, never a
    whole-file `Write`.
-2. Re-run `python -m src.draft gate` **and** the aid that raised the
+2. Re-run `python -m chitragupta.draft gate` **and** the aid that raised the
    finding. Accept only if both come back clean.
 3. Re-run every other aid. If the total count of objective-class findings
    rose, revert the edit and escalate the item.
@@ -148,7 +148,7 @@ existing ones.
 
 Two levels.
 
-- **Before the pass:** one `python -m src.draft dossier export <slug>`.
+- **Before the pass:** one `python -m chitragupta.draft dossier export <slug>`.
 - **Within the pass:** the skill holds each section's pre-edit text and
   re-applies it when an item fails. Reverting one item leaves every
   earlier accepted item intact.
@@ -184,7 +184,8 @@ says where each comes from.
 The two halves have different answers, and conflating them is how this
 design would go wrong.
 
-**The aid: anyone, at any time.** `python -m src.review agenda <draft>` is
+**The aid: anyone, at any time.** `python -m chitragupta.review agenda <draft>`
+is
 free, deterministic, read-only and exits 0. It has exactly the standing of
 the other three aids -- you run it because you want to know. No occasion is
 privileged and none is required.
@@ -218,7 +219,7 @@ registered is dead code.
 
 | Piece | How it is found | Consequence of omitting it |
 |---|---|---|
-| The `agenda` aid | a fourth key in `review.AIDS` (`src/review/__init__.py`) **and** in `__main__.AIDS` | `src/review/__main__.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import rather than writing a report nothing can find |
+| The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `__main__.AIDS` | `chitragupta/review/__main__.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import rather than writing a report nothing can find |
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
 | Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
 | Both, for a human | [CLI.md](CLI.md) for the command and its flags; [GENRE.md](GENRE.md) for which reviser handles what; README's review-aid block | Undiscoverable outside the source |
@@ -310,13 +311,13 @@ Steps 4 and 5 are the only new work; the rest are open issues.
 
 ## What this does not change
 
-- **No new gate.** `src.draft gate` remains the only one. #130 remains
+- **No new gate.** `chitragupta.draft gate` remains the only one. #130 remains
   the only place that decision is taken.
 - **No corpus growth.** The loop never fetches, never writes the ledger,
   and never proposes a paper that is not already in it.
 - **No new layer.** Four layers, one new aid in the fourth, one new skill
   in the second.
-- **No new entry point.** `python -m src.review agenda <draft>` is one
+- **No new entry point.** `python -m chitragupta.review agenda <draft>` is one
   verb under an existing front door, at depth 1.
 - **The review layer still never blocks.** `agenda` exits 0 with a full
   worklist, exactly as the other three aids do with findings.

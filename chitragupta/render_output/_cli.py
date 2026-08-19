@@ -1,13 +1,13 @@
-"""The `python -m src.draft render` entry point."""
+"""The `python -m chitragupta.draft render` entry point."""
 
 import argparse
 import subprocess
 
 from pathlib import Path
 
-from src import config
-from src.render_output._errors import MissingBinary, OutsideContentDir
-from src.render_output._figures import _figure_refs
+from chitragupta import config
+from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
+from chitragupta.render_output._figures import _figure_refs
 
 
 def _figure_repair_hint(input_arg: str) -> str:
@@ -43,14 +43,14 @@ def _build_parser() -> argparse.ArgumentParser:
     """This command's flags, and nothing else.
 
     Split from `main` when `--fragment` and `--output-dir` took it over
-    the 25-statement limit -- the same seam `src/draft.py` already draws
+    the 25-statement limit -- the same seam `chitragupta/draft.py` already draws
     between `build_parser` and `main`, and the same one docs/CODE-
     STANDARDS.md names as the usual shape of a C1 offender: a `main` that
     parses arguments, does the work, and formats the output.
     """
 
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft render",
+        prog="python -m chitragupta.draft render",
         description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
@@ -90,12 +90,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point -- deliberately independent of src/enrich/__main__.py.
+    """CLI entry point -- deliberately independent of chitragupta/enrich/__main__.py.
 
     That script imports docling/embed/topic_model at module load and
     builds the whole corpus before any stage runs, which drags in the
     multi-GB `.venv-full` for a stage that itself only needs stdlib +
-    `src.config` + `src.citation_gate`. Genre skills that just want a
+    `chitragupta.config` + `chitragupta.citation_gate`. Genre skills that just want a
     tex/pdf rendering of a draft should be able to run this with bare
     `python`, no enrich group required.
     """
@@ -105,8 +105,8 @@ def main(argv: list[str] | None = None) -> int:
     # its top, before `render` is defined, so a module-scope import here
     # would be a genuine circular-import failure rather than a style
     # choice. `.pylintrc` disables import-outside-toplevel for this
-    # pattern, and src/review/__init__.py reaches this package the same way.
-    from src.render_output import render
+    # pattern, and chitragupta/review/__init__.py reaches this package the same way.
+    from chitragupta.render_output import render
 
     try:
         out_path = render(

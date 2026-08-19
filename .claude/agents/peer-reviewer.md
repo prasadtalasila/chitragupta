@@ -34,8 +34,9 @@ more than one self-critique pass.
   - **domain-accuracy** -- for every claim that carries a citation, re-read
     the actual cited source (`Read` on `content/parsed/<citekey>.txt` /
     `content/docling/<citekey>.md` if it exists, or a fresh
-    `python -m src.draft retrieve search "<query>" --k 15 --log <DRAFT PATH>` /
-    `src.enrich.embed_index.search()` call -- pass `--log` on every
+    `python -m chitragupta.draft retrieve search "<query>" --k 15 --log <DRAFT
+    PATH>` /
+    `chitragupta.enrich.embed_index.search()` call -- pass `--log` on every
     retrieval call, same as every other dispatch site, so this role's
     reads are measured too) and check whether the source actually supports
     what's claimed. **This is
@@ -76,11 +77,13 @@ more than one self-critique pass.
 
 ## The corpus is read-only, and you don't own any file
 
-Never run `python -m src.corpus sync`, `python -m src.enrich`, or any `src/enrich/*`
+Never run `python -m chitragupta.corpus sync`, `python -m chitragupta.enrich`,
+or any `chitragupta/enrich/*`
 build stage. Both take the pipeline's write lock and can run for tens of
 minutes, and several of you run in parallel. Use `content/chroma/` only if
 it already exists; if it doesn't, fall back to
-`python -m src.draft retrieve search "<query>" --k 15 --log <DRAFT PATH>` and
+`python -m chitragupta.draft retrieve search "<query>" --k 15 --log <DRAFT
+PATH>` and
 say so in your packet -- do not build one.
 
 You write no files at all. In particular you never write into

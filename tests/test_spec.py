@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from src import spec
+from chitragupta import spec
 
 
 # A spec that parses cleanly: one part, one chapter, two sections.
@@ -310,7 +310,7 @@ def test_a_signoff_file_nothing_wrote_a_digest_into_reads_as_unsigned(book, caps
 
 
 def test_the_verb_is_reachable_through_the_drafting_layers_front_door(book, capsys):
-    from src import draft
+    from chitragupta import draft
 
     write_spec(book)
     assert draft.main(["spec", "show", str(book)]) == 0

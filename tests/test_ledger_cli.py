@@ -1,4 +1,4 @@
-"""`python -m src.corpus ledger`: read-only status for the corpus layer.
+"""`python -m chitragupta.corpus ledger`: read-only status for the corpus layer.
 
 Deliberately its own entrypoint rather than a `sync --inspect` flag, for
 two reasons that are both about what a *reader* needs:
@@ -17,13 +17,13 @@ import sys
 
 import pytest
 
-from src import config, ledger
+from chitragupta import config, ledger
 from tests.conftest import make_reference
 
 
 def _run(args=(), cwd=None):
     return subprocess.run(
-        [sys.executable, "-m", "src.corpus", "ledger", *args],
+        [sys.executable, "-m", "chitragupta.corpus", "ledger", *args],
         capture_output=True, text=True, cwd=str(cwd or config.PROJECT_ROOT),
     )
 
@@ -74,7 +74,7 @@ class TestSummary:
 
     def test_an_empty_ledger_says_to_run_sync(self, isolated_config, capsys):
         assert ledger.main([]) == 0
-        assert "src.corpus sync" in capsys.readouterr().out
+        assert "chitragupta.corpus sync" in capsys.readouterr().out
 
 
 class TestFilters:
@@ -111,7 +111,7 @@ class TestStdlibOnly:
     def test_it_takes_no_lock_so_it_works_during_a_sync(self, isolated_config, tmp_path):
         """The reason this is not `sync --inspect`: an inspect flag on
         sync would exit 2 exactly when you most want to look."""
-        from src import runlock
+        from chitragupta import runlock
 
         with runlock.pipeline_lock(isolated_config.PIPELINE_LOCK_PATH):
             assert ledger.main([]) == 0
@@ -130,7 +130,7 @@ class TestEdges:
         assert ledger.main([]) == 0
         out = capsys.readouterr().out
         assert "empty" in out.lower()
-        assert "src.corpus sync" in out
+        assert "chitragupta.corpus sync" in out
 
     def test_transient_failures_are_reported_as_self_healing(
         self, isolated_config, ledger_con, tmp_path, capsys

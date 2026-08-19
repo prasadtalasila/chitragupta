@@ -186,7 +186,7 @@ exists:
   [GENRE.md](GENRE.md)). Distinctive properties: bibliography file as
   the sole citekey admission point; deterministic, LLM-free
   parse-and-ledger corpus layer; a genuinely **blocking** citation gate
-  (`src.draft gate`) on the only draft->render path, with failed drafts
+  (`chitragupta.draft gate`) on the only draft->render path, with failed drafts
   regenerated automatically; local-first (corpus never leaves the
   machine); auditable, readable enforcement code. Since the original
   discussion, closed-corpus verbatim-overlap detection (exact and
@@ -391,13 +391,13 @@ shipped it; §5 has the full status table.
 ### 4.1 Corpus substrate first — built
 
 1. **Ingestion**: parse the reference manager's export (BibTeX).
-   `src/bib_reader.py` handles the real format quirks -- Zotero's `file`
+   `chitragupta/bib_reader.py` handles the real format quirks -- Zotero's `file`
    field is `Description:path:mimetype`, `;`-separated per attachment,
    with relative paths anchored to the `.bib` file's own directory
    (`docs/ZOTERO.md` documents the trap this avoids); brace-matches
    entries to their true end rather than naive `\n}` matching, which
    truncates entries with multi-line fields.
-2. **Parsing**: `src/pdf_text.py` extracts text per PDF (`pdftotext
+2. **Parsing**: `chitragupta/pdf_text.py` extracts text per PDF (`pdftotext
    -layout` or `docling`), preserving page boundaries (form-feed splits)
    so every downstream check can report page numbers.
 3. **Ledger**: `content/ledger.sqlite` content-hashes every artifact
@@ -406,7 +406,7 @@ shipped it; §5 has the full status table.
 
 ### 4.2 The gate — built
 
-1. `python -m src.draft gate` validates every citekey a draft uses
+1. `python -m chitragupta.draft gate` validates every citekey a draft uses
    against the bib parse **and** the ledger (entry exists *and* has a
    parsed source behind it), on the only draft->render path. On
    failure: the drafting skill discards the bad claim, drafts again, and
@@ -417,7 +417,7 @@ shipped it; §5 has the full status table.
 
 ### 4.3 Overlap detection (the plagiarism layer) — built
 
-1. **Whole-draft x whole-corpus verbatim scan** (`python -m src.review
+1. **Whole-draft x whole-corpus verbatim scan** (`python -m chitragupta.review
    verbatim scan`, #110/#127/#128/#131): every parsed source is
    fingerprinted once into a disk-cached, ledger-keyed index; the whole
    draft -- not just citing paragraphs -- is scanned against it; findings
@@ -435,7 +435,7 @@ shipped it; §5 has the full status table.
    own 178,000-word book, no span-length threshold separated the one
    genuine planted violation from the false positives (correctly quoted,
    correctly attributed passages that several corpus papers also quote).
-   **Declined.** `src.draft gate` remains the only blocking check in the
+   **Declined.** `chitragupta.draft gate` remains the only blocking check in the
    pipeline.
 
 ### 4.4 The remediation loop — built
@@ -445,14 +445,14 @@ shipped it; §5 has the full status table.
    constrained rewrite per finding, restating the draft's own register
    while preserving citation and meaning -- or, for long runs, stopping
    to ask the human paraphrase-or-quote rather than deciding silently.
-2. Every rewrite is re-scanned and re-passed through `src.draft gate`
+2. Every rewrite is re-scanned and re-passed through `chitragupta.draft gate`
    before acceptance, and logged in the draft's dossier
    (`revisions.md`), so edit provenance is as auditable as citation
    provenance.
 
 ### 4.5 Language quality layer — built for English, explicitly parked for others
 
-1. Deterministic-first: `python -m src.draft style` wraps a vendored
+1. Deterministic-first: `python -m chitragupta.draft style` wraps a vendored
     Vale configuration (`assets/vale/`) checking §2's defect markers, an
     unexpanded acronym, and dialect conformance against the draft's own
     recorded `language:` line (`content/dossiers/<slug>/scope.md`). A
@@ -474,7 +474,7 @@ shipped it; §5 has the full status table.
     were each designed in full in their issue before being closed "not a
     priority." None of the three is built: verified directly, there is no
     babel/polyglossia or other language-metadata plumbing anywhere in
-    `src/render_output/`. A draft in a language other than English today
+    `chitragupta/render_output/`. A draft in a language other than English today
     gets nothing automatic -- pandoc renders it with English hyphenation
     rules and an English-locale CSL regardless of the draft's own content,
     its reference list joins authors with English "and", and its
@@ -526,7 +526,7 @@ production, not just designed. As of v5.29.0:
 | Principle | Status |
 |---|---|
 | Two-plane separation (deterministic parse-and-ledger corpus layer, LLM-free) | Built |
-| Closed-world gate (`src.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built -- and, per #130 below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
+| Closed-world gate (`chitragupta.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built -- and, per #130 below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
 | Bibliography as sole source-admission point | Built |
 | Local-first, auditable, open source | Built, by construction |
 | Genre conventions as data (skills) | Built -- nine skills, five of which draft ([GENRE.md](GENRE.md)) |
@@ -536,7 +536,7 @@ production, not just designed. As of v5.29.0:
 | Paraphrase detection, deterministic tier | Built (#133): stemmed skip-grams, advisory |
 | Paraphrase detection, embedding tier | Built (#134), but **narrower than §1.3 asks for**: SBERT-style local alignment, advisory, and only where the optional enrichment layer, Docling passage sidecars and the draft's own dossier are all present. Per `docs/PLAGIARISM.md`, it compares a section only against the sources *that section already cites* -- a restatement of a source the draft never cited at all is still tiers 1 and 2's business alone, invisible to this tier by design, not just by the weak-discriminator argument below. And per `docs/PLAGIARISM-DESIGN.md`, even within that scope it is a weak discriminator specifically *because* this pipeline's retrieval step already selects a draft's grounding by semantic similarity, so "similar because copied" and "similar because correctly grounded" are hard to separate by cosine distance alone in a single-field corpus |
 | Blocking `overlap_gate` | **Declined** (#130): measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |
-| Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built (#104, #107, #182-#186): `python -m src.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
+| Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built (#104, #107, #182-#186): `python -m chitragupta.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
 | Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent (#105, #106, #108: each fully designed, then closed "not a priority") |
 | Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Not built (#135-#139, tracked and labelled `parked`) -- current ceiling is chapter/paper/report scale, same as every commercial tool in §2.1 |
 

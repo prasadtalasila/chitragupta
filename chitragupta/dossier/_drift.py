@@ -2,7 +2,7 @@
 currently in the corpus -- the data model and the computation, not its
 CLI report.
 
-Split out of src/dossier.py (#219), and split again from
+Split out of chitragupta/dossier.py (#219), and split again from
 `_drift_report` (the print/render formatting that used to sit beside
 this in one CLI handler) once it was clear the combined module would
 not fit under this project's 250-code-line cap on its own. `Corpus`,
@@ -22,14 +22,14 @@ import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.dossier._citekeys import (
+from chitragupta.dossier._citekeys import (
     CITED_FILES, _citekeys_in, cited_citekeys, rejected_reasons, section_citekeys,
 )
-from src.dossier import (
+from chitragupta.dossier import (
     _corpus_rows, all_dossiers, digest, dossier_name, draft_relpath, find_draft,
     recorded_corpus,
 )
-from src.dossier._retrieval import recorded_queries
+from chitragupta.dossier._retrieval import recorded_queries
 
 # How deep to look down each recorded query's ranking. 15 matches
 # `survey-writer`'s own `search(sub_theme, k=15)`: the report should
@@ -42,7 +42,7 @@ CANDIDATE_K = 15
 def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
     """A BM25 term-frequency index built in memory and thrown away.
 
-    `src.retrieval.search()` cannot be used here, for two reasons that
+    `chitragupta.retrieval.search()` cannot be used here, for two reasons that
     are both about this being a *report*. It connects through
     `ledger.connect()`, which mkdirs `content/`, executes the schema and
     runs migrations -- a write connection, which is exactly what
@@ -61,11 +61,11 @@ def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
     makes this nearly free; a cold or absent one costs one tokenization
     of the corpus, paid once per scan and dropped when it returns.
 
-    Imported lazily so that `import src.dossier` stays as cheap as the
+    Imported lazily so that `import chitragupta.dossier` stays as cheap as the
     rest of the module -- and it stays stdlib-only either way, since
-    `src.retrieval` is too.
+    `chitragupta.retrieval` is too.
     """
-    from src import retrieval
+    from chitragupta import retrieval
 
     cached = retrieval._load_cache()
     index = {}
@@ -101,7 +101,7 @@ class Corpus:
 
     def matches(self, queries: list[str], k: int = CANDIDATE_K) -> dict[str, list[str]]:
         """citekey -> the recorded queries whose top-k it would land in."""
-        from src import retrieval
+        from chitragupta import retrieval
 
         hits: dict[str, list[str]] = {}
         for query in queries:

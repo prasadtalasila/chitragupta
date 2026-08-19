@@ -1,6 +1,6 @@
 """The classic Porter stemming algorithm (Porter, 1980), vendored.
 
-`src/overlap_skipgram.py` (tier 2, #133) needs a stemmer to fold
+`chitragupta/overlap_skipgram.py` (tier 2, #133) needs a stemmer to fold
 inflection/synonym-adjacent word forms together before skip-gram hashing --
 the same reduction PAN 2013's winning CoReMo design (Torrejon & Ramos)
 built on, cited in discussion #115 and docs/PLAGIARISM-DESIGN.md. No dependency
@@ -17,7 +17,7 @@ particular implementation almost word-for-word would be exactly that.
 `stem(word)` is the only entry point a caller needs; everything else is
 the five suffix-stripping steps the original paper defines, applied in
 order. Input is assumed already lowercased `[a-z]+` (see
-`src/overlap_skipgram.py`'s tokenizer) -- this module does no case
+`chitragupta/overlap_skipgram.py`'s tokenizer) -- this module does no case
 folding or character-class filtering of its own.
 
 Coupled to `overlap_skipgram._TOKENIZER_VERSION` by contract, not by

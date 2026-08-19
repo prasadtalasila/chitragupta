@@ -1,4 +1,4 @@
-"""`python -m src.draft style`: which rules apply, and what it reports.
+"""`python -m chitragupta.draft style`: which rules apply, and what it reports.
 
 What Vale itself matches is Vale's business and is not re-tested here --
 that is what `assets/vale/` and the bench entry are for. What *is* tested
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from src import config, dossier, style_check
+from chitragupta import config, dossier, style_check
 from tests.conftest import content_draft
 
 
@@ -441,9 +441,9 @@ class TestCheckWiring:
         assert style_check.check(draft)["proposed_language"] is None
 
     def test_findings_include_acronym_drift_alongside_vales_own(self, draft, monkeypatch):
-        """The one src.style_check finding not sourced from Vale still
+        """The one chitragupta.style_check finding not sourced from Vale still
         ends up in the same `findings` list run_vale's own populate --
-        see src/style_acronym_drift.py."""
+        see chitragupta/style_acronym_drift.py."""
         write_scope(draft, "- language: en-GB")
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [finding()])
         monkeypatch.setattr(

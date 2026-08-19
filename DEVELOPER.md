@@ -22,21 +22,21 @@ Architecture docs and [DOCKER.md](DOCKER.md) for the container build.
 bash scripts/install_full_pipeline.sh dev-deps
 
 # Run the full suite with coverage
-.venv-full/bin/python -m pytest --cov=src --cov=scripts --cov-report=term-missing
+.venv-full/bin/python -m pytest --cov=chitragupta --cov=scripts --cov-report=term-missing
 
 # Same, on a host without pandoc/TeX Live/poppler: the render tests skip,
 # so opt out of the 100% bar (pyproject's fail_under) rather than lower it
-.venv-full/bin/python -m pytest --cov=src --cov=scripts --cov-report=term-missing \
+.venv-full/bin/python -m pytest --cov=chitragupta --cov=scripts --cov-report=term-missing \
     --cov-fail-under=0
 ```
 
-`tests/` covers both the corpus layer and `src/enrich/*` -- the enrich group's
+`tests/` covers both the corpus layer and `chitragupta/enrich/*` -- the enrich group's
 dependencies (docling, chromadb, bertopic,
 sentence-transformers) are mocked via `sys.modules` for fast,
 deterministic unit tests, so the
 `dev-deps` group alone is *not* enough on its own: the `enrich` group
 (`python-deps`, step 1 of Quickstart) must already be installed too, since
-`tests/test_bib_reader.py` needs `bibtexparser` and the `src/enrich/` test
+`tests/test_bib_reader.py` needs `bibtexparser` and the `chitragupta/enrich/` test
 modules need docling/chromadb/bertopic/sentence-transformers. A handful of tests
 (`tests/test_feature_workflows.py`, the `TestRenderReal`/`TestExtractTextReal`
 classes elsewhere) run the real `pdftotext`/`pandoc`/`pdflatex` binaries
@@ -113,7 +113,8 @@ the next one is checked too.
 
 ## Writing a script that drives the enrichment layer
 
-`src.enrich.docling_parse.parse_corpus` and `python -m src.corpus sync` both use
+`chitragupta.enrich.docling_parse.parse_corpus` and `python -m
+chitragupta.corpus sync` both use
 a worker pool when `[parser].workers` is above 1, and every start method
 they can pick (`forkserver` or `spawn` -- see `[parser].start_method`)
 re-imports the calling program's `__main__` in each worker. Any script of
@@ -125,7 +126,7 @@ if __name__ == "__main__":
 ```
 
 Without it, every worker re-runs the script on startup and the pool dies
-with `BrokenProcessPool`. `src/enrich/__main__.py` and `src/sync.py`
+with `BrokenProcessPool`. `chitragupta/enrich/__main__.py` and `chitragupta/sync.py`
 are both guarded already; this only bites ad-hoc scripts, and it bites
 immediately rather than subtly.
 
@@ -137,7 +138,7 @@ bench/                    parser measurement (dev-only, not shipped) -- see "Ben
                           above; corpus.json/sample*.json are generated and gitignored, results/ is
                           committed evidence
   bench_docling.py          backend extraction timings, one process
-  sweep_sync.py             the real `python -m src.corpus sync` swept over worker/GPU counts -- the harness
+  sweep_sync.py             the real `python -m chitragupta.corpus sync` swept over worker/GPU counts -- the harness
                             every pool-level figure must come from
   run_parallel.py           independent-process baseline; answers a different question to sweep_sync.py
   make_corpus.py            builds the gitignored work lists from your own bib file
@@ -189,8 +190,8 @@ docs/                     reference docs that ship in the release zip -- everyth
     *.mmd                     mermaid sources with a title line
     svg/*.svg                 rendered exports (mmdc -b white -w 1900). Exports only -- edit the
                               fenced block in DIAGRAMS.md, then re-render
-  CITATION-PROVENANCE.md    what src/review/citation_provenance.py reports and how to read it
-  PLAGIARISM.md             what src/review/verbatim_check.py's overlap/scan modes catch and don't
+  CITATION-PROVENANCE.md    what chitragupta/review/citation_provenance.py reports and how to read it
+  PLAGIARISM.md             what chitragupta/review/verbatim_check.py's overlap/scan modes catch and don't
                             (verbatim reuse only, paraphrase is a later tier), the n-gram
                             fingerprinting technique and its literature sources, and a measured
                             docling-vs-pdftotext backend comparison
@@ -219,7 +220,7 @@ assets/                   data files the pipeline reads at runtime, tracked and 
                           scripts/release.py's zip, publishes it to a GitHub Release)
 config.toml.example       tracked template for the central config -- paths, parser backend, worker
                           count, embedding model. Copy to config.toml (gitignored, per-host) before
-                          anything imports src.config; see docs/CONFIG.md
+                          anything imports chitragupta.config; see docs/CONFIG.md
 papers/                   gitignored, per-host data -- not shipped in the repo
   bibliography.bib          BibTeX export -- source of truth for citekeys/metadata (config.toml's [bib].path default)
   bibliography/             the export's companion attachment folder, referenced by each entry's file field
@@ -234,11 +235,11 @@ mkdocs.yml                the documentation site published at prasad.talasila.in
                           link works unchanged and there is no staging step to keep in sync. Built by
                           .github/workflows/docs.yml from pyproject.toml's optional `docs` group
                           (`poetry install --only docs`). Read its header before editing
-src/                      the corpus and drafting layers (sync needs bibtexparser;
+chitragupta/                      the corpus and drafting layers (sync needs bibtexparser;
                           citation_gate/references need nothing)
   config.py                 loads config.toml, env var overrides
-  runlock.py                one-writer-at-a-time lock over content/, held by `src.corpus sync` and
-                          `src.enrich` -- the only two commands that write to it;
+  runlock.py                one-writer-at-a-time lock over content/, held by `chitragupta.corpus sync` and
+                          `chitragupta.enrich` -- the only two commands that write to it;
                           a dedicated sqlite file, so a killed holder releases it with no
                           staleness check and readers are never blocked
   bib_reader.py             parses bibliography.bib -- the only citekey source
@@ -249,12 +250,12 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
   pdf_text.py               PDF text extraction, dispatched to pdftotext/docling by config.PARSER; also the parse-quality guard
   sync.py                   orchestrates the above -- the corpus layer's `sync` verb; --remove-stale opts into
                           deleting stale ledger rows (default: report only, see README's "Removing a paper")
-  corpus.py                 the corpus layer's single entry point, `python -m src.corpus sync|ledger`.
+  corpus.py                 the corpus layer's single entry point, `python -m chitragupta.corpus sync|ledger`.
                           sync.py and ledger.py carry no __main__ block of their own. Imports the verb
                           it was given rather than both, so asking for `ledger` never pays for sync's
                           bibtexparser -- see docs/ARCHITECTURE.md on why that one is not like the
                           other dispatchers
-  draft.py                  the drafting layer's single entry point, `python -m src.draft
+  draft.py                  the drafting layer's single entry point, `python -m chitragupta.draft
                           gate|dossier|retrieve|references|render`; same rule, same reasons
   dedup.py                  advisory near-duplicate citekey detection (shared DOI/title), called from sync
   retrieval.py              BM25 search over the corpus layer, backed by a cached term-frequency index.
@@ -267,7 +268,7 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           pages -> pdftotext) and whether it may be quoted -- shared by the consumers
                           that need to point at part of a source rather than all of it
   overlap_index.py          disk-cached word n-gram fingerprint index (content/overlap/) for
-                          src/review/verbatim_check.py's overlap and scan modes -- one .fpr file per citekey plus
+                          chitragupta/review/verbatim_check.py's overlap and scan modes -- one .fpr file per citekey plus
                           a merged, binary-searchable corpus-wide index.bin, both keyed by
                           (pdf_hash, parsed-file stat) so a re-run over an unchanged corpus costs no
                           re-fingerprinting. Read-only over the corpus layer, no writer lock
@@ -280,10 +281,10 @@ src/                      the corpus and drafting layers (sync needs bibtexparse
                           as numbered IEEE entries ordered by first appearance -- the same order (and
                           so the same numbers) pandoc's citeproc assigns when the draft is rendered
   render_output.py          Pandoc/TeX Live rendering + standalone CLI -- stdlib-only, no enrich group
-                          needed, which is why it sits here and not in src/enrich/. `--format md` on a
+                          needed, which is why it sits here and not in chitragupta/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
-src/review/                the review layer -- one command, `python -m src.review <aid>`, three aids
+chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, three aids
   __init__.py               the layer's shared output contract -- report path (content/review/,
                           mirroring the draft), the "not a gate" banner, the header, and the
                           write-md-then-render routine all three aids use. No timestamp, so a
@@ -298,8 +299,8 @@ src/review/                the review layer -- one command, `python -m src.revie
                           docs/CITATION-PROVENANCE.md)
   verbatim_check.py         `verbatim` -- per-citekey overlap, whole-draft x whole-corpus scan, and
                           page-locating checks against sources
-src/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetry group), optional
-  __main__.py               the layer's entry point, `python -m src.enrich --stages …`; orchestrates
+chitragupta/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetry group), optional
+  __main__.py               the layer's entry point, `python -m chitragupta.enrich --stages …`; orchestrates
                           the stages below, which carry no __main__ block of their own
   corpus.py                 the enrichment layer's view of the ledger -- one CorpusDoc per bib item,
                           so every enriched document is citable, keyed by its citekey
@@ -311,7 +312,7 @@ tests/                    pytest suite -- unit tests per module + end-to-end fea
 content/                  generated, gitignored (regenerate with sync)
   ledger.sqlite, parsed/<citekey>.txt, drafts/, dossiers/, rendered/, review/,
   retrieval_index.json, overlap/,
-  docling/, chroma/, topics.json, topic_embed_cache.json  (src/enrich/ outputs)
+  docling/, chroma/, topics.json, topic_embed_cache.json  (chitragupta/enrich/ outputs)
 logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups. Level from
                           config.toml's [logging]; relocate with the LOGS_DIR env var
 .claude/skills/           drafting layer: survey-writer, thesis-chapter-writer,
@@ -371,7 +372,7 @@ Two details worth knowing about that `cite` string:
 
 Every figure's `cite` string is a real `[@citekey]`, because every
 document the enrichment layer parses comes from the bib file (see
-`src/enrich/corpus.py`).
+`chitragupta/enrich/corpus.py`).
 
 A wholly original diagram -- not derived from any source paper's figure
 -- is a different case this section doesn't restrict; see
@@ -381,13 +382,14 @@ box-drawing.
 
 ## Citation provenance
 
-`python -m src.review provenance content/drafts/<slug>.md` reports, for
+`python -m chitragupta.review provenance content/drafts/<slug>.md` reports, for
 every citation in a draft, what in the cited source supports it and where
 -- ordered worst match first. It writes
 `content/review/<the draft's path minus its suffix>.provenance.md` plus
 `.tex`/`.pdf` renders beside it. The report mirrors the draft's own place
 under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
-(`config.mirrored_dir`), and `src/review/__init__.py` owns that contract for all
+(`config.mirrored_dir`), and `chitragupta/review/__init__.py` owns that contract
+for all
 three review-layer commands.
 
 Run it directly rather than wrapping it in an enrichment stage: that
@@ -413,7 +415,7 @@ Full design rationale, including the measurements behind those choices:
 
 Running this pipeline on a schedule was the long-standing goal here.
 **Most of it now exists**: a rotating `logs/pipeline.log`, shared by the
-corpus and enrichment layers (see `src/logging_setup.py`), a pages/s
+corpus and enrichment layers (see `chitragupta/logging_setup.py`), a pages/s
 throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
 [docs/CLI.md](docs/CLI.md#running-sync-on-a-schedule) -- including the
@@ -431,7 +433,8 @@ the export stays a deliberate human step.
 
 ### `content/topics.json` has no consumer
 
-`src/enrich/topic_model.py` writes it and nothing reads it -- no module, no
+`chitragupta/enrich/topic_model.py` writes it and nothing reads it -- no module,
+no
 genre skill. `survey-writer` groups themes by judgement and says so
 explicitly ("With a small corpus there's no BERTopic step"). That is
 defensible today: clustering is whole-corpus, so assignments are not

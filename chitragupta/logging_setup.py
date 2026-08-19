@@ -1,7 +1,7 @@
 """One log file for everything that holds the pipeline write lock.
 
-`logs/pipeline.log`, shared by `python -m src.corpus sync` and
-`python -m src.enrich`. One file rather than one per entrypoint, for a
+`logs/pipeline.log`, shared by `python -m chitragupta.corpus sync` and
+`python -m chitragupta.enrich`. One file rather than one per entrypoint, for a
 reason that is structural rather than a matter of taste:
 `RotatingFileHandler` is not safe for two processes to hold open on the
 same file at once (a rotation from one can land mid-write from the
@@ -12,19 +12,19 @@ the same set as the lock's scope**. Anything that does not hold the
 lock does not write here; see `configure()` on why that boundary is
 load-bearing rather than incidental.
 
-That is also the answer to "why isn't `src.retrieval` logged?" -- it,
-`src.citation_gate`, `src.references`, `src.dossier` and the rest of the
+That is also the answer to "why isn't `chitragupta.retrieval` logged?" -- it,
+`chitragupta.citation_gate`, `chitragupta.references`, `chitragupta.dossier` and the rest of the
 drafting-layer CLIs are read-only, are invoked ad hoc by the genre
 skills, and deliberately do *not* take the lock, so several can run at
 once. Giving them a rotating handler would put concurrent processes on
 one file, and giving each its own file would not help (two
-`src.retrieval` calls still collide on `retrieval.log`). Their stdout is
+`chitragupta.retrieval` calls still collide on `retrieval.log`). Their stdout is
 a documented contract those skills parse, so it stays stdout. Logging
 them would mean adding a channel alongside it, under a scheme that does
 not depend on the lock -- not reusing this one.
 
 The alternative, `sync.log`/`enrich.log`/..., would split what is one
-causal story: `src/enrich/docling_parse.py` reuses the corpus layer's
+causal story: `chitragupta/enrich/docling_parse.py` reuses the corpus layer's
 parse, so "sync parsed X" and "docling reused X's parse" belong on
 adjacent lines. The file formatter already carries `%(name)s`, so
 `grep 'src\\.sync'` recovers the split view at any time -- no filter
@@ -38,14 +38,14 @@ import logging.handlers
 import os
 import sys
 
-from src import config
+from chitragupta import config
 
 
 # The root of this project's own logger tree. One tree, because every
-# entrypoint lives inside the `src` package -- the enrichment layer's is
-# src/enrich/__main__.py, and logs as `src.enrich`. Kept as a tuple: see
+# entrypoint lives inside the `chitragupta` package -- the enrichment layer's is
+# chitragupta/enrich/__main__.py, and logs as `chitragupta.enrich`. Kept as a tuple: see
 # _from_our_trees below for why a second root stays cheap to add.
-_TREES = ("src",)
+_TREES = ("chitragupta",)
 
 # Silence the stdlib's `logging.lastResort` fallback for these trees.
 #
@@ -56,7 +56,7 @@ _TREES = ("src",)
 # to stdout *and* have the logging machinery repeat it on stderr, which
 # is both a duplicate and a direct contradiction of say()'s documented
 # "no-op beyond the bare print when configure() has not run". The same
-# applies to `src/sync.py`'s own logger.warning calls when `run()` is
+# applies to `chitragupta/sync.py`'s own logger.warning calls when `run()` is
 # driven in-process, which this project explicitly supports.
 #
 # A NullHandler is the idiom the stdlib's own logging documentation
@@ -135,19 +135,19 @@ def _not_file_only(record: logging.LogRecord) -> bool:
 def _this_project_only(record: logging.LogRecord) -> bool:
     """False for a record from outside this project's own logger trees --
     a third party already using stdlib logging (docling, torch; see the
-    [n/N] progress comment in src/sync.py about their own chatter).
+    [n/N] progress comment in chitragupta/sync.py about their own chatter).
     Their WARNING+ still reaches logs/pipeline.log via file_handler
     below, "for free" -- this filter only keeps their chatter off the
     console, which is the one thing this project's own output was never
     supposed to include.
 
-    One tree, because every entrypoint lives in the `src` package. That
+    One tree, because every entrypoint lives in the `chitragupta` package. That
     has not always been true: an entry point under `scripts/` logged as
-    `scripts.<name>`, and matching only `src*` would have sent its every
+    `scripts.<name>`, and matching only `chitragupta*` would have sent its every
     line to the file while silently dropping it from the console -- a
     half-failure much harder to notice than no logging at all. `_TREES`
     is therefore still a tuple and this still loops, so a second root
-    outside `src` costs one entry rather than a rewrite.
+    outside `chitragupta` costs one entry rather than a rewrite.
     """
     return any(
         record.name == root or record.name.startswith(root + ".")
@@ -166,7 +166,7 @@ def say(
 
     Printed *and* logged, rather than logged alone, for callers whose
     stdout is a human-facing report or a documented CLI contract --
-    `src/enrich/__main__.py`'s stage table, the enrichment stages' summary
+    `chitragupta/enrich/__main__.py`'s stage table, the enrichment stages' summary
     lines. The console handler writes to stderr, so a plain
     `logger.info` would move those lines to a different stream and
     break both the tests that assert on them and anything piping the
@@ -175,7 +175,7 @@ def say(
     `extra={"file_only": True}` is what makes the pairing safe: it is
     the flag `_not_file_only` above drops, so the console handler does
     not print a second copy of a line stdout already carried. Same
-    mechanism `src/sync.py` uses for its own summary block.
+    mechanism `chitragupta/sync.py` uses for its own summary block.
 
     A no-op beyond the bare print when `configure()` has not run --
     there is simply no handler attached -- so a library caller in a
@@ -184,7 +184,7 @@ def say(
     Flushed, because it replaces calls that already were: stdout is
     block-buffered when it isn't a terminal (a cron job's redirect, a
     Docker log), and the tail of an interrupted run is exactly the part
-    worth keeping. See src/enrich/embed_index.py's build_index
+    worth keeping. See chitragupta/enrich/embed_index.py's build_index
     docstring, which measured this.
 
     Only for whole lines. A caller building one line from several
@@ -196,7 +196,7 @@ def say(
 
     `log_as` is for when the terminal and the file genuinely want
     different renderings of the same thing. The motivating case is
-    `src/enrich/__main__.py`'s stage detail: a human reading the terminal
+    `chitragupta/enrich/__main__.py`'s stage detail: a human reading the terminal
     wants `json.dumps(..., indent=2)`, and a person grepping the log
     wants that same object on one line. Pass the compact form here and
     the pretty one as `message`; the alternative -- picking one -- makes

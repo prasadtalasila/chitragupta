@@ -177,7 +177,7 @@ class TestLauncherFaults:
     """`session_start_hook.launcher_faults()`, which is now a delegation.
 
     The cases live in `tests/test_hook_launchers.py`, beside the code that
-    moved to `src/hook_launchers.py` (#197). What is left to check here is
+    moved to `chitragupta/hook_launchers.py` (#197). What is left to check here is
     the seam: that the preflight passes *its own* repo root -- the one it
     derived from the hook file's on-disk location, not the one baked into
     the module default -- and reports what comes back as a fault.
@@ -212,8 +212,8 @@ class TestCorpusStage:
         assert "corpus layer will not start" in preflight.corpus_stage()
 
     @pytest.mark.parametrize("stdout", [
-        "No ledger at /x/ledger.sqlite.\nRun `python -m src.corpus sync` to build it.",
-        "Ledger at /x/ledger.sqlite is empty.\nRun `python -m src.corpus sync`.",
+        "No ledger at /x/ledger.sqlite.\nRun `python -m chitragupta.corpus sync` to build it.",
+        "Ledger at /x/ledger.sqlite is empty.\nRun `python -m chitragupta.corpus sync`.",
     ])
     def test_both_pre_sync_states_are_reported_as_a_stage(
             self, preflight, monkeypatch, stdout):
@@ -269,7 +269,7 @@ class TestRunAndMain:
     def test_run_really_starts_a_child(self, preflight):
         """`_run` is the only place a subprocess is actually spawned, so one
         real call keeps the mocking above honest."""
-        result = preflight._run("src.corpus", "ledger")
+        result = preflight._run("chitragupta.corpus", "ledger")
         assert result.returncode == 0
 
     def test_main_says_nothing_when_all_three_checks_pass(
@@ -446,7 +446,7 @@ class TestStyleCheckHookModule:
 
     def test_a_draft_that_vanished_is_not_reported_as_clean(
             self, rooted, monkeypatch, capsys):
-        """The measured trap: `src.draft style` returns zero findings for a
+        """The measured trap: `chitragupta.draft style` returns zero findings for a
         path that does not exist, because it never inspects vale's return
         code. Reporting that as a clean draft is the one thing an advisory
         check must never fake, so the hook stats the file itself."""

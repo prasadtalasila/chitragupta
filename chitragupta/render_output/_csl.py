@@ -8,7 +8,7 @@ a temp copy here (see `_collapsed_csl`).
 import re
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 
 
 # The `<citation>` element opening tag, with or without attributes

@@ -1,6 +1,6 @@
 ---
 name: tutorial-writer
-description: Drafts a Diataxis-style tutorial -- a hands-on lesson that a learner follows at a keyboard, start to finish, to a working result they can see. Concrete, single-path, minimally explained, and verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they already know what they want and just need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via src.retrieval.search()) but only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m src.draft gate` before the draft is presented -- never a fabricated citekey.
+description: Drafts a Diataxis-style tutorial -- a hands-on lesson that a learner follows at a keyboard, start to finish, to a working result they can see. Concrete, single-path, minimally explained, and verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they already know what they want and just need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) but only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
 tags: [tutorial, diataxis, hands-on, lesson, teaching]
 ---
 
@@ -65,17 +65,20 @@ other genre -- in a survey they'd delete the deliverable.
 
 - `content/ledger.sqlite` -- per-citekey status, populated by `sync`
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` -- `search(query, k, snippet_chars)`
+- `chitragupta/retrieval.py` -- `search(query, k, snippet_chars)`
 
-**Read-only means read-only: never run `python -m src.corpus sync`, and never
-run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
+**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
+never
+run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
+Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `src.retrieval.search()`; do not
+help and none exists, say so and use `chitragupta.retrieval.search()`; do not
 build one.
 
-If `python -m src.corpus ledger` reports an empty ledger, say so before you
+If `python -m chitragupta.corpus ledger` reports an empty ledger, say so before
+you
 start. Citations are optional in this genre, so the draft is still
 possible -- but it will carry none, and that is the user's call to make,
 not something to discover at the end. Ask whether to proceed uncited or to
@@ -90,7 +93,7 @@ it inform your choices silently and point at it at the end.
 ## Collection scoping (#195): draft from the shelf, not the library
 
 A Zotero library usually spans several topics, and its owner has already
-sorted it -- "these are the modelling papers". `src/bib_collections.py`
+sorted it -- "these are the modelling papers". `chitragupta/bib_collections.py`
 carries that judgement into the ledger and `search()` can honour it.
 
 Use it. BM25 over a whole library and BM25 over one shelf do not return
@@ -103,7 +106,7 @@ pool promotes what a large pool's competition buries
 **At step 0, before any retrieval, offer the choice once:**
 
 ```bash
-python -m src.corpus ledger --collections     # what exists, with counts
+python -m chitragupta.corpus ledger --collections     # what exists, with counts
 ```
 
 Show what exists, ask which one this draft belongs to, and accept "none,
@@ -118,7 +121,7 @@ header, beside `language:`:
 **Then pass it on every retrieval call in the run:**
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 \
+python -m chitragupta.draft retrieve search "<query>" --k 15 \
     --collection "<the recorded name>" --log <draft>
 ```
 
@@ -157,7 +160,7 @@ refused are precisely the judgment the finished prose cannot show.
 Without them on disk, the next revision has to re-derive the whole lesson
 design in order to change one step.
 
-`src/dossier/` owns that state, in Markdown, one directory per draft at
+`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it in
 step 1, before you write anything, and fill it in as you go -- not at the
 end, when the alternatives you rejected have already fallen out of your
@@ -179,7 +182,7 @@ the lesson design is the part worth keeping either way.
    retrieval or drafting, create the dossier:
 
    ```bash
-   python -m src.draft dossier init content/drafts/<slug>.md --genre tutorial
+   python -m chitragupta.draft dossier init content/drafts/<slug>.md --genre tutorial
    ```
 
    **Settle `<slug>` with the user before running that.** It is a path
@@ -281,7 +284,7 @@ the lesson design is the part worth keeping either way.
    over-fetch
 
    ```bash
-   python -m src.draft retrieve search "<topic>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
+   python -m chitragupta.draft retrieve search "<topic>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
    ```
 
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
@@ -383,7 +386,7 @@ the lesson design is the part worth keeping either way.
     derive `sections.md` rather than writing it by hand:
 
     ```bash
-    python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
+    python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
     ```
 
     It writes one row per heading, and it skips fenced code -- which matters
@@ -401,7 +404,7 @@ the lesson design is the part worth keeping either way.
     it contains any `[@citekey]`, run:
 
     ```bash
-    python -m src.draft gate content/drafts/<slug>.md
+    python -m chitragupta.draft gate content/drafts/<slug>.md
     ```
 
     Fix and re-run until `OK` before presenting. If there are no citations at
@@ -414,7 +417,7 @@ the lesson design is the part worth keeping either way.
 13. **Build the References section**, only if the draft cites anything:
 
     ```bash
-    python -m src.draft references content/drafts/<slug>.md --heading "Further reading"
+    python -m chitragupta.draft references content/drafts/<slug>.md --heading "Further reading"
     ```
 
     Stdlib-only, bare `python`, no venv. Entries are numbered IEEE-style;
@@ -435,9 +438,9 @@ the lesson design is the part worth keeping either way.
 14. **Render tex, pdf, and numbered md.**
 
     ```bash
-    python -m src.draft render content/drafts/<slug>.md --format tex
-    python -m src.draft render content/drafts/<slug>.md --format pdf
-    python -m src.draft render content/drafts/<slug>.md --format md
+    python -m chitragupta.draft render content/drafts/<slug>.md --format tex
+    python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
+    python -m chitragupta.draft render content/drafts/<slug>.md --format md
     ```
 
     All three land beside the draft: a draft at
@@ -464,7 +467,7 @@ the lesson design is the part worth keeping either way.
     presenting:
 
     ```bash
-    python -m src.draft style content/drafts/<slug>.md
+    python -m chitragupta.draft style content/drafts/<slug>.md
     ```
 
     **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
@@ -491,7 +494,7 @@ the lesson design is the part worth keeping either way.
     it silently, and never make it a condition of presenting:
 
     ```bash
-    python -m src.review verbatim scan content/drafts/<slug>.md
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.md
     ```
 
     It reports wording the tutorial shares with **any** parsed source, cited or
@@ -511,7 +514,8 @@ the lesson design is the part worth keeping either way.
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of
     this skill, and that `content/drafts/` and `content/dossiers/` are
-    gitignored -- so `python -m src.draft dossier export <slug>` is how a lesson
+    gitignored -- so `python -m chitragupta.draft dossier export <slug>` is how
+    a lesson
     and its working state get backed up.
 
 ## Self-check before presenting

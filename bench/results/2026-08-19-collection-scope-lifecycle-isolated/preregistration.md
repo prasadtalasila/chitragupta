@@ -91,7 +91,7 @@ read per query, not as a total.
 | Index cost | md5 of index + ledger at three checkpoints | no |
 | Surfaced / selected / rejected | replay of each arm's own logged queries at its own `--k` | no |
 | Common papers | intersection of cited and of surfaced sets | no |
-| Per-arm corpus overlap | `src.review verbatim scan --json` | no |
+| Per-arm corpus overlap | `chitragupta.review verbatim scan --json` | no |
 | **Draft-vs-draft overlap** | shared word runs | **Yes -- now a real test.** With independent contexts this should fall sharply from 0.483. If it does not, the pollution was not the cause and the previous run's interpretation was wrong |
 
 ## Predictions, recorded before the arms finished

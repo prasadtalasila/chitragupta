@@ -1,11 +1,11 @@
-"""src/review/__init__.py: the review layer's shared output contract -- where a
+"""chitragupta/review/__init__.py: the review layer's shared output contract -- where a
 report goes, what it opens with, and what it must never contain."""
 
 from pathlib import Path
 
 import pytest
 
-from src import config, review
+from chitragupta import config, review
 
 
 class TestReportPath:
@@ -104,11 +104,11 @@ class TestRequireReviewable:
 class TestHeader:
     def test_carries_the_banner_the_draft_and_the_command(self, isolated_config):
         draft = config.DRAFTS_DIR / "dt" / "survey.md"
-        text = "\n".join(review.header(draft, "provenance", "python -m src.x --flag v"))
+        text = "\n".join(review.header(draft, "provenance", "python -m chitragupta.x --flag v"))
 
         assert "Review aid, not a gate" in text
         assert str(draft) in text
-        assert "python -m src.x --flag v" in text
+        assert "python -m chitragupta.x --flag v" in text
         assert "chitragupta " in text
 
     def test_a_draft_path_with_a_space_stays_re_runnable(self, isolated_config):
@@ -118,7 +118,7 @@ class TestHeader:
         all -- so two drafts called `survey.md` in different topics wrote
         headers that read identically, the confusion the mirrored path
         exists to prevent, reintroduced inside the file."""
-        from src.review import citation_provenance
+        from chitragupta.review import citation_provenance
 
         draft = config.DRAFTS_DIR / "my topic" / "survey.md"
         draft.parent.mkdir(parents=True)
@@ -160,7 +160,7 @@ class TestWrite:
         """The whole point of the output contract: a report's .tex/.pdf
         belong with the report, not in the drafting layer's publish
         output. Before 4.0.0 they landed in content/rendered/."""
-        from src import render_output
+        from chitragupta import render_output
 
         seen = {}
 
@@ -177,7 +177,7 @@ class TestWrite:
         assert written["tex"].parent == written["md"].parent
 
     def test_a_missing_binary_degrades_to_the_md(self, isolated_config, monkeypatch, capsys):
-        from src import render_output
+        from chitragupta import render_output
 
         def raise_missing(*a, **k):
             raise render_output.MissingBinary("pandoc not found")
@@ -195,7 +195,7 @@ class TestWrite:
         accepts `json` as a real output format -- so passing it on would
         spend a subprocess writing pandoc's document AST over the payload
         (or under it, depending on which ran last)."""
-        from src import render_output
+        from chitragupta import render_output
 
         def fail(*a, **k):  # pragma: no cover - the point is it is never called
             raise AssertionError("json reached render_output.render")
@@ -225,11 +225,11 @@ class TestEnvelope:
     def test_carries_the_notice_the_aid_the_draft_and_the_command(self, isolated_config):
         draft = config.DRAFTS_DIR / "dt" / "survey.md"
 
-        envelope = review.envelope(draft, "verbatim", "python -m src.review verbatim scan x")
+        envelope = review.envelope(draft, "verbatim", "python -m chitragupta.review verbatim scan x")
 
         assert envelope["aid"] == "verbatim"
         assert envelope["draft"] == str(draft)
-        assert envelope["command"] == "python -m src.review verbatim scan x"
+        assert envelope["command"] == "python -m chitragupta.review verbatim scan x"
         assert envelope["version"] == review.version()
         assert "Review aid, not a gate" in envelope["notice"]
 

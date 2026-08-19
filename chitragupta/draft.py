@@ -1,54 +1,54 @@
-"""The drafting layer's single entry point: `python -m src.draft <verb>`.
+"""The drafting layer's single entry point: `python -m chitragupta.draft <verb>`.
 
 Nine commands, run by hand or by a genre skill over one draft:
 
-    python -m src.draft gate <file> [<file> ...]
+    python -m chitragupta.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
         layer's only exit, the hard gate every genre skill loops on.
 
-    python -m src.draft dossier <command> ...
+    python -m chitragupta.draft dossier <command> ...
         the working state behind a draft: create it, inspect it,
         back it up, restore it.
 
-    python -m src.draft retrieve search|evidence ...
+    python -m chitragupta.draft retrieve search|evidence ...
         BM25 retrieval over the synced corpus.
 
-    python -m src.draft references <file.md> [--heading TEXT]
+    python -m chitragupta.draft references <file.md> [--heading TEXT]
         an IEEE reference list built from exactly the citekeys a
         Markdown draft cites.
 
-    python -m src.draft render <file> --format tex|pdf|...
+    python -m chitragupta.draft render <file> --format tex|pdf|...
         the drafting layer's publish step: Pandoc/LaTeX rendering to
         tex/pdf/docx.
 
-    python -m src.draft style <file>
+    python -m chitragupta.draft style <file>
         a draft's prose against docs/WRITING-STANDARDS.md -- a review
         aid, never a gate.
 
-    python -m src.draft spec init|show|sign|status <book>
+    python -m chitragupta.draft spec init|show|sign|status <book>
         the outline a book is generated from, and the human sign-off on
         it -- the book-scale track's first artefact (docs/BOOKS.md).
 
-    python -m src.draft unit contract|accept|status <book> [<unit-id>]
+    python -m chitragupta.draft unit contract|accept|status <book> [<unit-id>]
         one section's generation contract -- what it is generated from,
         hashed -- and the record of its acceptance (docs/BOOKS.md).
 
-    python -m src.draft registry build|check|excerpt <book> [<unit-id>]
+    python -m chitragupta.draft registry build|check|excerpt <book> [<unit-id>]
         terminology, claims and cross-references over a book's accepted
         units -- a review aid, never a gate (docs/BOOKS.md).
 
-**One entry point, one level deep**, like `python -m src.corpus sync` for the
-corpus layer and `python -m src.review <aid>` for the review layer. None
+**One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
+corpus layer and `python -m chitragupta.review <aid>` for the review layer. None
 of the modules beside this one carries a `__main__` block any more,
-so `python -m src.dossier` (or any of the others) imports the module
-and exits 0 without doing anything -- the same trap `src/enrich/`'s and
-`src/review/`'s submodules carry, and the reason this file exists rather
+so `python -m chitragupta.dossier` (or any of the others) imports the module
+and exits 0 without doing anything -- the same trap `chitragupta/enrich/`'s and
+`chitragupta/review/`'s submodules carry, and the reason this file exists rather
 than a scattering of separate commands. docs/ARCHITECTURE.md states the invariant.
 
 Unlike the review layer, the verb names are not the keys of some
 other dict that also owns a file-naming contract -- there was no existing
 vocabulary here to inherit (the modules share little beyond
-`src/config.py`), so `VERBS` is where the vocabulary is decided, once.
+`chitragupta/config.py`), so `VERBS` is where the vocabulary is decided, once.
 
 Most verbs are their module's own name. `retrieve` is not:
 it was chosen over `retrieval` because every other verb here is already
@@ -76,7 +76,7 @@ before it had a shared front door.
 import argparse
 import sys
 
-from src import (citation_gate, dossier, references, registry, render_output, retrieval,
+from chitragupta import (citation_gate, dossier, references, registry, render_output, retrieval,
                  spec, style_check, unit)
 
 VERBS = {
@@ -96,14 +96,14 @@ VERBS = {
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)
-# -- see src/corpus.py's DESCRIPTION for the reasoning, which is the same
+# -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
 DESCRIPTION = "The drafting layer: work on one draft -- gate it, cite it, render it."
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft",
+        prog="python -m chitragupta.draft",
         description=DESCRIPTION,
     )
     parser.add_argument(
@@ -120,7 +120,7 @@ def build_parser():
 def main(argv=None):
     """No verb at all prints the usage and exits 0 -- the same "tell me
     how to use this" request as `--help`, not an error. The same rule
-    `src/review/__main__.py` already applies to a missing aid."""
+    `chitragupta/review/__main__.py` already applies to a missing aid."""
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     if args.verb is None:

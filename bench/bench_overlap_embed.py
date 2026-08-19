@@ -54,7 +54,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, dossier, overlap_embed  # noqa: E402
+from chitragupta import config, dossier, overlap_embed  # noqa: E402
 
 # Same recorded-field discipline as bench_overlap_gate.py and
 # bench_overlap_skipgram.py, plus `score`, which is this tier's own
@@ -121,7 +121,7 @@ def _unstage(directories):
 
 def capability_run(out_dir):
     """Which grades each tier caught, and which it did not."""
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     staged, staged_dirs = _staged(FIXTURE)
     try:
@@ -170,7 +170,7 @@ def eligible(finding):
 
 
 def scan_all(drafts):
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     out = []
     total_suppressed = 0
@@ -217,7 +217,7 @@ def integrity_complaints(drafts, findings, labels, unavailable):
 
 def precision_run(drafts_dir, labels_path, out_dir):
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync` first",
+        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
               file=sys.stderr)
         return 1
     drafts = sorted(p for p in Path(drafts_dir).glob("*.md") if p.name[0].isdigit())

@@ -1,4 +1,4 @@
-"""src/ledger.py: the sqlite state that makes `sync` incremental."""
+"""chitragupta/ledger.py: the sqlite state that makes `sync` incremental."""
 
 import json
 import os
@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from src import config, ledger, passages
+from chitragupta import config, ledger, passages
 
 from tests.conftest import make_reference
 
@@ -137,7 +137,7 @@ class TestSchemaMigration:
 
 
 class TestBibFields:
-    """The bib_fields column (_MIGRATIONS version 3) -- what src/references.py
+    """The bib_fields column (_MIGRATIONS version 3) -- what chitragupta/references.py
     formats a full bibliography entry from, since it may not read the bib
     file itself."""
 

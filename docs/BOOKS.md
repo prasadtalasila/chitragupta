@@ -76,7 +76,7 @@ Steps 3 and 4 repeat per section. Steps 5 to 7 are what
 You need a synced corpus, because every unit is grounded in it:
 
 ```bash
-.venv-full/bin/python -m src.corpus ledger        # non-empty, items `parsed`
+.venv-full/bin/python -m chitragupta.corpus ledger        # non-empty, items `parsed`
 ```
 
 A book lives in one directory under `content/drafts/`, one file per
@@ -101,7 +101,7 @@ content/specs/twins/registries/*.md   terminology, claims, xrefs -- step 5
 ## Step 1: write the outline
 
 ```bash
-python -m src.draft spec init content/drafts/twins --title "Composable Twins"
+python -m chitragupta.draft spec init content/drafts/twins --title "Composable Twins"
 ```
 
 That writes a skeleton. Edit it into the book you mean to write --
@@ -126,7 +126,7 @@ without one is refused rather than guessed at --
 [why](#why-an-id-is-required-on-every-heading). Check what you wrote:
 
 ```bash
-python -m src.draft spec show content/drafts/twins
+python -m chitragupta.draft spec show content/drafts/twins
 ```
 
 ```text
@@ -147,8 +147,8 @@ The first of the two human gates. Nothing generates prose from an
 unsigned outline, and no command can do this for you:
 
 ```bash
-python -m src.draft spec sign content/drafts/twins --by "Your Name"
-python -m src.draft spec status content/drafts/twins
+python -m chitragupta.draft spec sign content/drafts/twins --by "Your Name"
+python -m chitragupta.draft spec status content/drafts/twins
 ```
 
 ```text
@@ -175,8 +175,8 @@ That non-zero exit is not a new gate --
 Ask for the contract, which is what the unit is generated *from*:
 
 ```bash
-python -m src.draft unit contract content/drafts/twins sec-1 --source smith_2024
-python -m src.draft unit contract content/drafts/twins sec-1 --json   # for a skill
+python -m chitragupta.draft unit contract content/drafts/twins sec-1 --source smith_2024
+python -m chitragupta.draft unit contract content/drafts/twins sec-1 --json   # for a skill
 ```
 
 ```text
@@ -213,7 +213,7 @@ another genre for Markdown), grounded in the sources, and saves it as
 what the rest of the book already settled:
 
 ```bash
-python -m src.draft registry excerpt content/drafts/twins sec-1
+python -m chitragupta.draft registry excerpt content/drafts/twins sec-1
 ```
 
 A part or a chapter has no contract, and asking for one is refused rather
@@ -223,7 +223,7 @@ own.
 ## Step 4: accept the unit
 
 ```bash
-python -m src.draft unit accept content/drafts/twins sec-1 --source smith_2024
+python -m chitragupta.draft unit accept content/drafts/twins sec-1 --source smith_2024
 ```
 
 ```text
@@ -239,7 +239,7 @@ the draft. It refuses three ways, each for a stated reason:
    against until a human has approved the structure.
 2. **There is no draft** -- generate the unit from its contract first.
 3. **The citation gate refuses the draft.** `accept` *invokes*
-   `python -m src.draft gate` rather than re-implementing or replacing
+   `python -m chitragupta.draft gate` rather than re-implementing or replacing
    it. A unit nobody may cite from is not a unit a book may assemble
    from, and this is the existing gate doing its existing job -- not a
    second one.
@@ -253,7 +253,7 @@ accepted.
 Repeat steps 3 and 4 per section. `unit status` is the board:
 
 ```bash
-python -m src.draft unit status content/drafts/twins
+python -m chitragupta.draft unit status content/drafts/twins
 ```
 
 | State | Means |
@@ -271,8 +271,8 @@ only when every unit is accepted and current -- the same standing as
 ## Step 5: build and read the registries
 
 ```bash
-python -m src.draft registry build content/drafts/twins
-python -m src.draft registry check content/drafts/twins
+python -m chitragupta.draft registry build content/drafts/twins
+python -m chitragupta.draft registry check content/drafts/twins
 ```
 
 ```text
@@ -300,11 +300,11 @@ Three properties hold for all of them:
   claim as one over all of it.
 - **Nothing here is written by an LLM.** They are a deterministic reading
   of accepted prose, which is the whole reason they can be trusted --
-  the same standing `src/ledger.py` has as a reading of a real bib file.
+  the same standing `chitragupta/ledger.py` has as a reading of a real bib file.
 - **The conventions are borrowed, not invented.** The definition bullet is
   the dossier glossary's, the sentence splitter is the provenance aid's,
   and everything from a `## References` heading onward is cut the way
-  `src/acronyms.py` cuts it -- measured there against the real 15-chapter
+  `chitragupta/acronyms.py` cuts it -- measured there against the real 15-chapter
   book, because a rendered reference list is nothing but citation-bearing
   lines and would otherwise fill the claim register with bibliography.
 
@@ -346,7 +346,7 @@ thing.
 converted with
 
 ```bash
-python -m src.draft render <unit>.md --format tex --fragment \
+python -m chitragupta.draft render <unit>.md --format tex --fragment \
     --output-dir content/drafts/<book>
 ```
 
@@ -434,8 +434,8 @@ Worth running before you circulate it, per unit rather than over
 `book.tex` (which holds no prose):
 
 ```bash
-python -m src.draft style content/drafts/twins/<unit-id>.md
-python -m src.review verbatim scan content/drafts/twins/<unit-id>.md
+python -m chitragupta.draft style content/drafts/twins/<unit-id>.md
+python -m chitragupta.review verbatim scan content/drafts/twins/<unit-id>.md
 ```
 
 Both are review aids: they exit 0 whatever they find, and neither may
@@ -527,7 +527,7 @@ preference reports and never blocks, however mechanical its answer. These
 two are measured against neither. They read back a record of a *person's
 decision* -- did a human approve this outline, accept this unit? -- and
 report it. They judge no draft's content, refuse no write, and block no
-draft: `python -m src.draft gate` remains the only gate in this project,
+draft: `python -m chitragupta.draft gate` remains the only gate in this project,
 and `.claude/hooks/citation_gate_hook.py` remains the only automatic
 refusal.
 

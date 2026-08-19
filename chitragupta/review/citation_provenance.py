@@ -8,9 +8,9 @@ away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
 One of the three commands in the **review layer**, with
-src/review/citation_coverage.py and src/review/verbatim_check.py -- run by hand on
+chitragupta/review/citation_coverage.py and chitragupta/review/verbatim_check.py -- run by hand on
 a finished draft, never automatically, never a gate, and never holding
-the write lock. src/review/__init__.py owns what the three have in common: where
+the write lock. chitragupta/review/__init__.py owns what the three have in common: where
 the report goes (`content/review/`, mirroring the draft's path) and what
 its header looks like.
 
@@ -20,7 +20,7 @@ A check that blocked on that distinction would train people to work
 around it, which is exactly the corrosion citation_gate avoids by only
 ever asserting something it can verify exactly.
 
-Passages come from `src/passages.py`, which owns the sidecar -> pages ->
+Passages come from `chitragupta/passages.py`, which owns the sidecar -> pages ->
 `pdftotext` ladder and the rule that a source with no reading order
 reports a page rather than a quotation. This module scores claims
 against whatever that ladder hands back; it no longer decides where the
@@ -30,8 +30,8 @@ Stdlib only (sqlite3/re), like citation_gate.py and references.py --
 runs with bare `python`, no venv.
 
 Usage:
-    python -m src.review provenance content/drafts/<slug>.md
-    python -m src.review provenance <draft.md> --formats md,tex,pdf
+    python -m chitragupta.review provenance content/drafts/<slug>.md
+    python -m chitragupta.review provenance <draft.md> --formats md,tex,pdf
 """
 
 import argparse
@@ -41,8 +41,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src import citation_gate, config, ledger, review, sentences
-from src.passages import Passage, distinctive, source_passages
+from chitragupta import citation_gate, config, ledger, review, sentences
+from chitragupta.passages import Passage, distinctive, source_passages
 
 
 @dataclass
@@ -243,8 +243,8 @@ def _sentence_around(text: str, citekey: str) -> str:
     """The sentence within `text` containing `citekey`, citation markup
     stripped so the markers themselves don't score as content.
 
-    The split itself is `src/sentences.py`'s, shared with tier 3 of the
-    overlap scan (`src/overlap_embed.py`) -- see that module on why the
+    The split itself is `chitragupta/sentences.py`'s, shared with tier 3 of the
+    overlap scan (`chitragupta/overlap_embed.py`) -- see that module on why the
     two aids must not each keep their own idea of where a sentence ends.
     """
     for part in sentences.split(text):
@@ -280,7 +280,7 @@ def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | N
     Overlap rather than verbatim n-grams: a correct paraphrase keeps most
     of its content words while changing order and function words, so it
     scores well here and scores *zero* under the >=8-word exact runs that
-    src/review/verbatim_check.py's `overlap` mode uses. That mode is looking
+    chitragupta/review/verbatim_check.py's `overlap` mode uses. That mode is looking
     for borrowed wording; this one is looking for support, and paraphrase
     is the normal case rather than the exception.
     """
@@ -346,7 +346,7 @@ def render_markdown(report: Report) -> str:
         # would otherwise be recorded as two arguments, so the header
         # would name an invocation that doesn't reproduce the report.
         # The other two review aids already quote theirs.
-        shlex.join(["python", "-m", "src.review", "provenance", str(report.draft)]),
+        shlex.join(["python", "-m", "chitragupta.review", "provenance", str(report.draft)]),
     ) + [
         "## How to read this",
         "",
@@ -437,7 +437,7 @@ def _finding_lines(finding: Finding) -> list[str]:
         page = finding.passage.page
         lines += [
             f"Best match is on **page {page}** of the source. The text for "
-            "this citekey has no reading order (see src/passages.py), "
+            "this citekey has no reading order (see chitragupta/passages.py), "
             "so the page is reported without quoting from it.",
             "",
         ]
@@ -449,7 +449,7 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
 
     The report lands in `content/review/`, mirroring the draft's own
     place under `content/drafts/`, with its `.tex`/`.pdf` renders beside
-    it -- `src/review/__init__.py` owns both the path and the degrade-on-missing-
+    it -- `chitragupta/review/__init__.py` owns both the path and the degrade-on-missing-
     binary behaviour, shared with the other two review aids.
     """
     return review.write(
@@ -460,7 +460,7 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
 def build_parser(parser=None):
     """This aid's flags.
 
-    `parser` is passed by src/review/__main__.py, which has already
+    `parser` is passed by chitragupta/review/__main__.py, which has already
     created the `provenance` subparser and needs the flags hung off
     *that* -- so they are declared once, here, and the entry point never
     restates them.
@@ -487,7 +487,7 @@ def main(argv: list[str] | None = None) -> int:
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
-    Split from main() so src/review/__main__.py can hand over the args it
+    Split from main() so chitragupta/review/__main__.py can hand over the args it
     parsed with this module's own build_parser(), rather than re-slicing
     argv and parsing it twice.
     """

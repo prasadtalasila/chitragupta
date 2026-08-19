@@ -12,7 +12,7 @@ import re
 import tomllib
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 
 
 def _load(path: Path) -> dict[str, str]:
@@ -72,7 +72,7 @@ def suggest(glossary: dict[str, str]) -> dict[str, str]:
 
     Takes a draft's already-parsed glossary (`dossier.glossary_terms()`)
     rather than a draft path, so this module never needs to import
-    `src.dossier` -- that module already imports this one for
+    `chitragupta.dossier` -- that module already imports this one for
     `load_vocabulary()`, and a two-way import would be a cycle.
     """
     vocabulary = load_vocabulary()

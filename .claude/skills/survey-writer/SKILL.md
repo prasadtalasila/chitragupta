@@ -1,6 +1,6 @@
 ---
 name: survey-writer
-description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via src.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m src.corpus sync` first) if the ledger is empty.
+description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via chitragupta.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m chitragupta.corpus sync` first) if the ledger is empty.
 tags: [survey, literature-review, citation]
 ---
 
@@ -8,7 +8,8 @@ tags: [survey, literature-review, citation]
 
 Genre-specific drafting agent for survey-style output. This is the "generative
 drafting" half of the pipeline (the drafting layer) -- it runs on demand and its
-output is reviewed by the user, unlike `python -m src.corpus sync` (the corpus
+output is reviewed by the user, unlike `python -m chitragupta.corpus sync` (the
+corpus
 layer: deterministic, safe to run unattended).
 
 ## Shared corpus layer (read, don't regenerate)
@@ -17,8 +18,8 @@ layer: deterministic, safe to run unattended).
 - `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
   `sync` reads it, it is never regenerated
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` --
-  `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
+- `chitragupta/retrieval.py` --
+  `python -m chitragupta.draft retrieve search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -26,7 +27,7 @@ layer: deterministic, safe to run unattended).
 ## Collection scoping (#195): draft from the shelf, not the library
 
 A Zotero library usually spans several topics, and its owner has already
-sorted it -- "these are the modelling papers". `src/bib_collections.py`
+sorted it -- "these are the modelling papers". `chitragupta/bib_collections.py`
 carries that judgement into the ledger and `search()` can honour it.
 
 Use it. BM25 over a whole library and BM25 over one shelf do not return
@@ -39,7 +40,7 @@ pool promotes what a large pool's competition buries
 **At step 0, before any retrieval, offer the choice once:**
 
 ```bash
-python -m src.corpus ledger --collections     # what exists, with counts
+python -m chitragupta.corpus ledger --collections     # what exists, with counts
 ```
 
 Show what exists, ask which one this draft belongs to, and accept "none,
@@ -54,7 +55,7 @@ header, beside `language:`:
 **Then pass it on every retrieval call in the run:**
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 \
+python -m chitragupta.draft retrieve search "<query>" --k 15 \
     --collection "<the recorded name>" --log <draft>
 ```
 
@@ -90,30 +91,32 @@ candidates were kept and **which were turned down and why** -- and it
 belongs on disk, not in this conversation. Without it the next revision
 has to re-retrieve and re-score the whole topic to change one paragraph.
 
-`src/dossier/` owns that state, in Markdown, one directory per draft at
+`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before
 you search (step 0) and fill it in as you go -- not at the end, when what
 you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
 is the full design.
 
-**Read-only means read-only: never run `python -m src.corpus sync`, and never
-run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
+**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
+never
+run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
+Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `src.retrieval.search()`; do not
+help and none exists, say so and use `chitragupta.retrieval.search()`; do not
 build one.
 
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python -m src.corpus ledger
+python -m chitragupta.corpus ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
 name what you checked and what you found -- and stop there. Do not draft
 around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m src.corpus sync` and come back.
+`.venv-full/bin/python -m chitragupta.corpus sync` and come back.
 
 ## When to invoke
 
@@ -124,7 +127,7 @@ around it, do not sync, do not cite. Tell the user to run
 | User asks for a textbook chapter / lecture notes / worked examples | Use `textbook-chapter-writer` instead |
 | User asks for a hands-on tutorial the reader follows at a keyboard | Use `tutorial-writer` instead |
 | User asks to change a survey that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m src.corpus sync` yourself |
+| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
 
 ## Prose standards
 
@@ -164,7 +167,7 @@ collapse them for the sake of a cleaner narrative.
    decisions there:
 
    ```bash
-   python -m src.draft dossier init content/drafts/<slug>.md --genre survey
+   python -m chitragupta.draft dossier init content/drafts/<slug>.md --genre survey
    ```
 
    **Settle `<slug>` with the user before running that.** It is a path
@@ -194,11 +197,11 @@ collapse them for the sake of a cleaner narrative.
    into 2-4 sub-themes if it's broad. For each:
 
    ```bash
-   python -m src.draft retrieve search "<sub-theme>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
+   python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
    ```
 
    Pull more candidates than you expect to use. This is a keyword-overlap
-   ranker, not embeddings (unless `src/enrich/embed_index.py` has been built
+   ranker, not embeddings (unless `chitragupta/enrich/embed_index.py` has been built
    for this corpus) -- a high score means the query's words are in the
    document, not that it supports your claim.
 
@@ -217,7 +220,7 @@ collapse them for the sake of a cleaner narrative.
    keep, read more of that one document:
 
    ```bash
-   python -m src.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
+   python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
    ```
 
    Use it to be **more careful about something you are about to cite** -- not
@@ -289,7 +292,7 @@ collapse them for the sake of a cleaner narrative.
    the map rather than writing it by hand:
 
    ```bash
-   python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
+   python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
    ```
 
    It joins each heading's line range to the citekeys cited inside it and
@@ -351,7 +354,7 @@ collapse them for the sake of a cleaner narrative.
     (this is the canonical, source-of-truth format), then run:
 
     ```bash
-    python -m src.draft gate content/drafts/<slug>.md
+    python -m chitragupta.draft gate content/drafts/<slug>.md
     ```
 
     If it reports `FAIL`, fix the offending line(s) — either correct the citekey
@@ -361,7 +364,7 @@ collapse them for the sake of a cleaner narrative.
     exactly the gated citekeys rather than writing it by hand:
 
     ```bash
-    python -m src.draft references content/drafts/<slug>.md
+    python -m chitragupta.draft references content/drafts/<slug>.md
     ```
 
     Stdlib-only, like the citation gate — bare `python`, no venv. Writes
@@ -379,9 +382,9 @@ collapse them for the sake of a cleaner narrative.
     is built, also render the other three formats:
 
     ```bash
-    python -m src.draft render content/drafts/<slug>.md --format tex
-    python -m src.draft render content/drafts/<slug>.md --format pdf
-    python -m src.draft render content/drafts/<slug>.md --format md
+    python -m chitragupta.draft render content/drafts/<slug>.md --format tex
+    python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
+    python -m chitragupta.draft render content/drafts/<slug>.md --format md
     ```
 
     All three land beside the draft: a draft at
@@ -411,7 +414,7 @@ collapse them for the sake of a cleaner narrative.
     presenting:
 
     ```bash
-    python -m src.draft style content/drafts/<slug>.md
+    python -m chitragupta.draft style content/drafts/<slug>.md
     ```
 
     **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
@@ -437,7 +440,7 @@ collapse them for the sake of a cleaner narrative.
     it silently, and never make it a condition of presenting:
 
     ```bash
-    python -m src.review verbatim scan content/drafts/<slug>.md
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.md
     ```
 
     It reports wording the draft shares with **any** parsed source, cited or
@@ -456,7 +459,8 @@ collapse them for the sake of a cleaner narrative.
     Tell the user where the dossier is, that changes to this draft should go
     through `draft-reviser` rather than another run of this skill, and that
     `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
-    src.draft dossier export <slug>` is how a draft and its working state get
+    chitragupta.draft dossier export <slug>` is how a draft and its working
+    state get
     backed up.
 
 ## Sources

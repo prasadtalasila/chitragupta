@@ -10,7 +10,7 @@ judgement however mechanical the arithmetic.
 
 import pytest
 
-from src import citation_gate, registry, spec, unit
+from chitragupta import citation_gate, registry, spec, unit
 
 
 GOOD_SPEC = """# Composable Digital Twins
@@ -39,7 +39,7 @@ See [the data half](#sec-data) for the other half.
 
 @pytest.fixture
 def book(isolated_config, ledger_con, make_ref):
-    from src import ledger
+    from chitragupta import ledger
 
     ledger.upsert_reference(ledger_con, make_ref(citekey="smith_example_2024"))
     ledger_con.commit()
@@ -81,7 +81,7 @@ def test_a_claim_is_a_sentence_that_cites_something():
 def test_a_rendered_reference_list_is_not_a_register_of_claims():
     """Every line of a reference list cites something. Reading them as
     claims would fill the register with bibliography -- the same
-    exclusion src/acronyms.py measured against the real book."""
+    exclusion chitragupta/acronyms.py measured against the real book."""
     text = ("A real claim [@smith_2024].\n\n"
             "## References\n\n[1] Smith, J. Something [@smith_2024].\n")
     assert [claim for claim, _ in registry.claims(text)] == [
@@ -243,7 +243,7 @@ def test_a_book_with_no_outline_is_refused_by_name(isolated_config, capsys):
 
 
 def test_the_verb_is_reachable_through_the_drafting_layers_front_door(book, capsys):
-    from src import draft
+    from chitragupta import draft
 
     accept(book, "sec-model", MODEL_UNIT)
     capsys.readouterr()

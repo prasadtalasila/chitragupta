@@ -260,7 +260,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # Listing them here rather than installing the group in CI is the cheaper
 # and more honest of the two: the group pulls torch and docling, minutes
 # of download for a check that reads source, and installing it would let a
-# genuine typo'd import inside src/enrich/ pass unnoticed only if the
+# genuine typo'd import inside chitragupta/enrich/ pass unnoticed only if the
 # typo'd name happened to exist. Naming the modules keeps import-error
 # live for everything else, including a misspelling of one of these.
 ignored-modules=bertopic,

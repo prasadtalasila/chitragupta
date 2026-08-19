@@ -29,7 +29,7 @@ self-contained section of the final report from pre-vetted source material.
   itself:
 
   ```bash
-  python -m src.draft dossier brief <draft path> --section "<your heading>"
+  python -m chitragupta.draft dossier brief <draft path> --section "<your heading>"
   ```
 
   Run it first, before writing anything. It prints one block per citekey
@@ -88,17 +88,17 @@ You may re-search this project's corpus for a subpoint that needs more than
 what you were given:
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
+python -m chitragupta.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
 ```
 
-(or `src.enrich.embed_index.search()` if `content/chroma/` exists). Filter
+(or `chitragupta.enrich.embed_index.search()` if `content/chroma/` exists). Filter
 what comes back the same way the interviewers do -- read the snippet and
 judge relevance yourself, don't just take the top hit. Where a snippet is
 not enough to decide on a source you mean to cite, read more of that one
 document with:
 
 ```bash
-python -m src.draft retrieve evidence "<query>" --citekey <key> \
+python -m chitragupta.draft retrieve evidence "<query>" --citekey <key> \
   --log <draft path>
 ```
 
@@ -114,10 +114,12 @@ so. If you didn't re-search, omit both blocks.
 
 ## The corpus is read-only, and you don't own any file
 
-Never run `python -m src.corpus sync`, `python -m src.enrich`, or any `src/enrich/*`
+Never run `python -m chitragupta.corpus sync`, `python -m chitragupta.enrich`,
+or any `chitragupta/enrich/*`
 build stage. Both take the pipeline's write lock and can run for tens of
 minutes, and several of you run in parallel. Use `content/chroma/` only if
-it already exists; if it doesn't, fall back to `src.retrieval.search()` and
+it already exists; if it doesn't, fall back to `chitragupta.retrieval.search()`
+and
 say so in your packet -- do not build one.
 
 You write no files at all. In particular you never write into

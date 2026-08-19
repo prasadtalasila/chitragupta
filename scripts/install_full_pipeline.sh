@@ -27,8 +27,8 @@
 # Host usage:
 #   bash scripts/install_full_pipeline.sh all
 #   bash scripts/install_full_pipeline.sh dev-deps   # optional, to run tests
-#   then: .venv-full/bin/python -m src.corpus sync
-#         .venv-full/bin/python -m src.enrich
+#   then: .venv-full/bin/python -m chitragupta.corpus sync
+#         .venv-full/bin/python -m chitragupta.enrich
 #         .venv-full/bin/python -m pytest
 #
 # Docker usage: docker/Dockerfile calls this once per stage as separate
@@ -114,7 +114,7 @@ install_os_deps() {
     # by hand rendering a real draft after the rest of the toolchain
     # reported fine.
     # texlive-pictures ships tikz.sty (Debian/Ubuntu, confirmed via
-    # `dpkg -S`) -- src/render_output.py loads it conditionally for a
+    # `dpkg -S`) -- chitragupta/render_output.py loads it conditionally for a
     # draft with a \input/\include'd TikZ figure (#222), and none of the
     # packages above pull it in.
     # texlive-binaries owns /usr/bin/bibtex (confirmed via `dpkg -S` on
@@ -141,12 +141,12 @@ install_os_deps() {
     # a base image installed with --no-install-recommends
     # (docker/Dockerfile's ubuntu:24.04, and any host provisioned only by
     # this stage) has none of them, so `import cv2` fails.
-    # That error is never the one you see. src/pdf_text.py's forkserver
+    # That error is never the one you see. chitragupta/pdf_text.py's forkserver
     # preloads docling, `forkserver.main()` catches ImportError and
     # discards it, and cv2's own loader leaves `sys.OpenCV_LOADER` set
     # when its bootstrap dies partway -- so every worker forked afterwards
     # reports 'recursion is detected during loading of "cv2" binary
-    # extensions' instead, and `python -m src.corpus sync` fails every document
+    # extensions' instead, and `python -m chitragupta.corpus sync` fails every document
     # with a message naming neither PDFs nor the missing library. See
     # docs/PDF-PARSER.md's troubleshooting entry.
     # Pinning opencv-python-headless instead does not work: rapidocr
@@ -156,7 +156,7 @@ install_os_deps() {
     install_vale
 }
 
-# Vale, the prose linter `python -m src.draft style` shells out to. Not in
+# Vale, the prose linter `python -m chitragupta.draft style` shells out to. Not in
 # the Debian/Ubuntu archives, so this is a release tarball rather than an
 # apt package -- the one binary this script fetches by hand, and the
 # reason it verifies a checksum before unpacking anything.
@@ -166,7 +166,7 @@ install_os_deps() {
 # quoted-span exemptions the checks depend on. Moving this pin means
 # re-running bench/ against the shipped drafts, not just bumping a number.
 #
-# Absent Vale is not an error here or anywhere else: `src.draft style`
+# Absent Vale is not an error here or anywhere else: `chitragupta.draft style`
 # probes for it and reports missing-binary, exactly as render does for
 # pandoc, so a host that skips this keeps every other capability.
 VALE_VERSION="3.9.1"
@@ -181,7 +181,7 @@ install_vale() {
         x86_64|amd64) vale_arch="64-bit" ;;
         *)
             echo "WARNING: no pinned Vale build for $(uname -m); skipping." >&2
-            echo "         python -m src.draft style will report it as missing." >&2
+            echo "         python -m chitragupta.draft style will report it as missing." >&2
             return 0
             ;;
     esac
@@ -272,8 +272,8 @@ install_python_deps() {
 
     echo
     echo "Installed. Run pipeline scripts via:"
-    echo "  $bin_dir/python -m src.corpus sync"
-    echo "  $bin_dir/python -m src.enrich"
+    echo "  $bin_dir/python -m chitragupta.corpus sync"
+    echo "  $bin_dir/python -m chitragupta.enrich"
 }
 
 # pip's default torch wheel is built against whatever CUDA major version

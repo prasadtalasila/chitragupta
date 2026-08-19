@@ -1,4 +1,4 @@
-"""Wall-clock cost of `python -m src.draft dossier status --all`.
+"""Wall-clock cost of `python -m chitragupta.draft dossier status --all`.
 
 The sweep's design turns on one claim -- that throwing the BM25 index
 away after each scan is affordable, because a warm cache makes the scan
@@ -42,11 +42,11 @@ from pathlib import Path
 
 BENCH_DIR = Path(__file__).resolve().parent
 # Same shape as bench/make_corpus.py: running this as a file puts bench/
-# on sys.path, not the repo root, so `from src import ...` needs the root
+# on sys.path, not the repo root, so `from chitragupta import ...` needs the root
 # put back first.
 sys.path.insert(0, str(BENCH_DIR.parent))
 
-from src import config  # noqa: E402
+from chitragupta import config  # noqa: E402
 
 # The corpus this project actually has, from docs/PERFORMANCE.md.
 DEFAULT_DOCS = 501
@@ -91,7 +91,7 @@ def build_corpus(docs: int, seed: int = 0) -> int:
     generated vocabulary stays ASCII, which is not a property this file
     should silently depend on.
     """
-    from src import ledger
+    from chitragupta import ledger
 
     rng = random.Random(seed)
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -118,7 +118,7 @@ def build_corpus(docs: int, seed: int = 0) -> int:
 
 def build_dossiers(count: int, queries_each: int) -> None:
     """`count` dossiers, each having logged `queries_each` retrieval calls."""
-    from src import dossier
+    from chitragupta import dossier
 
     for n in range(count):
         draft = config.DRAFTS_DIR / f"topic{n}" / "survey.md"
@@ -190,7 +190,7 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
     copied, and is reported back in the result rather than taken on
     trust.
     """
-    from src import dossier, retrieval
+    from chitragupta import dossier, retrieval
 
     if real_ledger is not None:
         docs, parsed_bytes = adopt_real_corpus(real_ledger, config.LEDGER_PATH)
@@ -231,7 +231,7 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
             config.RETRIEVAL_INDEX_PATH.unlink(missing_ok=True)
             result["cold"][str(count)] = _time(lambda subset=subset: sweep(subset), repeats)
 
-            # Warm: the cache `python -m src.draft retrieve` leaves behind.
+            # Warm: the cache `python -m chitragupta.draft retrieve` leaves behind.
             # Built once here through the real indexer, then reused
             # read-only.
             retrieval.search("digital twin", k=1)
@@ -274,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.real:
         real_ledger = Path(args.real_ledger) if args.real_ledger else REAL_LEDGER
         if not real_ledger.is_file():
-            print(f"No ledger at {real_ledger} -- run `python -m src.corpus sync` first, "
+            print(f"No ledger at {real_ledger} -- run `python -m chitragupta.corpus sync` first, "
                   "or drop --real to generate a corpus.", file=sys.stderr)
             return 1
 
@@ -282,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     # throwaway tree, exactly as tests/conftest.py's isolated_config does.
     #
     # Saved and restored for the same reason `run()` restores
-    # `all_dossiers`: these are module-level constants that every `src`
+    # `all_dossiers`: these are module-level constants that every `chitragupta`
     # module reads at call time, so leaving them pointed at a directory
     # this function is about to delete would break any caller that
     # imports this one rather than running it as a script.

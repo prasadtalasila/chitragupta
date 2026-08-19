@@ -7,7 +7,7 @@ import pytest
 
 
 
-from src import config, ledger
+from chitragupta import config, ledger
 
 def pytest_sessionstart(session):
     """Keep spawned children importable for the whole session.
@@ -19,7 +19,7 @@ def pytest_sessionstart(session):
     tests in tests/test_runlock.py spawn directly, so the session does it
     once here as well.
     """
-    from src import pdf_text
+    from chitragupta import pdf_text
 
     pdf_text.drop_stdlib_shadowing_path_entries()
 
@@ -30,7 +30,7 @@ def _pin_parser_settings(monkeypatch):
     whatever this developer happens to have in config.toml.
 
     Since v1.0.0 config.toml is gitignored per-host data, so every
-    developer's differs -- and `src.config` reads it at import time.
+    developer's differs -- and `chitragupta.config` reads it at import time.
     Without this, a checkout with `backend = "docling"` fails nine tests
     that assert on pdftotext's messages, for no reason connected to the
     code under test. That is a confusing failure to hand someone, and it
@@ -75,10 +75,10 @@ def _no_real_forkserver(monkeypatch):
 
 @pytest.fixture
 def isolated_config(tmp_path, monkeypatch):
-    """Point every src.config path constant at a throwaway tmp_path tree.
+    """Point every chitragupta.config path constant at a throwaway tmp_path tree.
 
-    src.config computes these once at import time as plain Path objects,
-    not functions, and every consumer module does `from src import
+    chitragupta.config computes these once at import time as plain Path objects,
+    not functions, and every consumer module does `from chitragupta import
     config` then reads `config.SOME_PATH` at call time -- so patching
     attributes on this one shared module object is visible everywhere,
     no importlib.reload needed. Each derived path (e.g. PARSED_DIR from
@@ -137,9 +137,9 @@ def content_draft(cfg, name: str) -> Path:
 
 
 def make_reference(citekey="smith_example_2024", **overrides):
-    """A minimal src.bib_reader.Reference, for tests that don't need a
+    """A minimal chitragupta.bib_reader.Reference, for tests that don't need a
     real .bib file on disk."""
-    from src.bib_reader import Reference
+    from chitragupta.bib_reader import Reference
 
     fields = dict(
         citekey=citekey,

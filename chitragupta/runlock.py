@@ -1,6 +1,6 @@
 """One writer at a time across content/.
 
-`sync` and `src/enrich/__main__.py` both write there, and the planned
+`sync` and `chitragupta/enrich/__main__.py` both write there, and the planned
 cron job makes overlap a matter of time rather than bad luck. Two runs
 overlapping is not merely wasteful: sync's parsed-text writes are not
 atomic, so a concurrent enrichment run can read a half-written
@@ -30,7 +30,7 @@ Two alternatives, and why not:
     which means `os.kill(pid, 0)` on POSIX and something else on Windows
     -- exactly the kind of branch that rots on the untested platform.
   - Locking `content/ledger.sqlite` itself would force the whole run into
-    one transaction. `src/ledger.py` commits at five separate points, so
+    one transaction. `chitragupta/ledger.py` commits at five separate points, so
     that would trade incremental durability for the mutex: a crash at 90%
     would discard every parse recorded up to then.
 
@@ -50,7 +50,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 
 
 # A run holding the lock for longer than this is *probably* wedged

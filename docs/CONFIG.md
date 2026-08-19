@@ -37,7 +37,7 @@ this document can stay a reference rather than an argument.
 cp config.toml.example config.toml
 ```
 
-`src/config.py` reads it at import time and **fails with that exact
+`chitragupta/config.py` reads it at import time and **fails with that exact
 command** if it is missing, rather than silently falling back to the
 example: a machine quietly running settings its owner never chose is a
 worse failure than one that refuses to start.
@@ -47,10 +47,10 @@ worse failure than one that refuses to start.
   `config.toml` mid-run changes nothing until the next run.
 - Every setting can be overridden per-run by an **environment variable**
   of the same name, without editing the file:
-  `BIB_FILE=/path/to/other.bib python -m src.corpus sync`. The environment
+  `BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync`. The environment
   always wins.
 - Set **`CONFIG_PATH`** to keep the file elsewhere:
-  `CONFIG_PATH=/etc/research/config.toml python -m src.corpus sync`. This
+  `CONFIG_PATH=/etc/research/config.toml python -m chitragupta.corpus sync`. This
   names *which file to read* and nothing else -- a relative `[bib] path`
   still resolves against the project directory, not against wherever the
   config file happens to sit.
@@ -110,13 +110,13 @@ used as given.
 | `[bib] collections_field` | `BIB_COLLECTIONS_FIELD` | field name | `groups` |
 | `[content] dir` | `CONTENT_DIR` | path | `content` |
 
-- **`[bib] path`** -- the BibTeX export `src/bib_reader.py` parses. The
+- **`[bib] path`** -- the BibTeX export `chitragupta/bib_reader.py` parses. The
   only source of citekeys; nothing in the pipeline invents or renames
   one. Gitignored per-host data.
 - **`[bib] collections_field`** -- which BibTeX field carries Zotero
-  collection membership, read by `src/bib_collections.py` and used by
-  `python -m src.corpus ledger --collection` and
-  `python -m src.draft retrieve search --collection` to scope a draft to
+  collection membership, read by `chitragupta/bib_collections.py` and used by
+  `python -m chitragupta.corpus ledger --collection` and
+  `python -m chitragupta.draft retrieve search --collection` to scope a draft to
   a curated subset of the library. `groups` is JabRef's field and what
   Better BibTeX writes under *Export JabRef-specific fields*. **Zotero's
   own BibTeX exporter drops collections**, so on a plain export the field
@@ -130,13 +130,13 @@ used as given.
   `docling/`, `chroma/` and `topics.json` from the enrichment stages.
   One exception lives here too, hand-edited rather than pipeline-written:
   `verbatim_allowlist.toml`, the per-host boilerplate allowlist
-  `src.review verbatim scan` consults -- see
+  `chitragupta.review verbatim scan` consults -- see
   [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist). Fixed at
   `<dir>/verbatim_allowlist.toml`, not independently configurable, same
   as the enrichment caches below it. It is also what every tier-1 command
   that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
-  that resolves outside it, and so do all three of `src.review`'s aids.
+  that resolves outside it, and so do all three of `chitragupta.review`'s aids.
   `ledger` is the one that takes no path argument at all -- its CLI only
   ever addresses rows by citekey or status -- so the rule applies to it
   vacuously rather than needing a check. This one
@@ -157,7 +157,7 @@ reference manager, re-export, and re-run `sync` -- see
 
 ### `[render]` -- citation style
 
-Used only by `src/render_output.py`, never by `sync` or the
+Used only by `chitragupta/render_output.py`, never by `sync` or the
 citation gate.
 
 | Key | Env var | Accepts | Default |
@@ -189,12 +189,12 @@ citation gate.
 
 ### `[style]` -- prose conformance and the acronym vocabulary
 
-`vale_config` and `language` are used only by `python -m src.draft
+`vale_config` and `language` are used only by `python -m chitragupta.draft
 style`, which is a **review aid**: it exits 0 whatever it finds, and
 nothing in this pipeline blocks on it. `acronyms`, below, is the one key
 in this section that command does not read -- it is read directly by the
 five genre-writing skills at drafting time (`docs/GENRE.md`), not by
-`src.draft style`.
+`chitragupta.draft style`.
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
@@ -241,14 +241,14 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
   edit in place. `assets/style/README.md` has the file's shape and
   provenance.
 
-  `python -m src.draft dossier acronyms-suggest <draft>` proposes new
+  `python -m chitragupta.draft dossier acronyms-suggest <draft>` proposes new
   entries for it from a draft's glossary *and* its own prose (a term
   coined and expanded inline but never glossaried is exactly the lapse
   this catches) without writing anything; add
   `--apply` to write the proposed entries to your file (creating it if
   it doesn't exist yet), merged without duplicating what is already
   there. `--apply` refuses if this key is unset, rather than writing
-  into the vendored floor. `python -m src.draft style` separately
+  into the vendored floor. `python -m chitragupta.draft style` separately
   reports when a draft's own glossary has drifted from the current
   vocabulary (`docs/WRITING-STANDARDS.md` §9); `draft-reviser`'s
   acronym-realignment mode fixes what that reports.
@@ -315,14 +315,15 @@ The values in full:
   count haven't needed to vary per host. See
   [CLI.md's "Running sync on a schedule"](CLI.md#running-sync-on-a-schedule).
 
-  **One file, shared.** Both `python -m src.corpus sync` and
-  `src/enrich/__main__.py` write here, and each line names its source
-  (`src.sync`, `src.enrich`, `src.enrich.docling_parse`), so
+  **One file, shared.** Both `python -m chitragupta.corpus sync` and
+  `chitragupta/enrich/__main__.py` write here, and each line names its source
+  (`chitragupta.sync`, `chitragupta.enrich`,
+  `chitragupta.enrich.docling_parse`), so
   `grep 'src\.sync' logs/pipeline.log` recovers a per-command view. The
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
-  write lock. Commands that don't take that lock -- `src.draft` (all six
+  write lock. Commands that don't take that lock -- `chitragupta.draft` (all six
   drafting-layer CLIs: gate, dossier, retrieve, references, render) --
   write to stdout only and are not logged.
 
@@ -338,7 +339,8 @@ script (or a test) that needs it somewhere else.
 | `weak_score` | `PROVENANCE_WEAK_SCORE` | number, a fraction 0.0-1.0 | `0.20` |
 | `good_score` | `PROVENANCE_GOOD_SCORE` | number, a fraction 0.0-1.0 | `0.50` |
 
-`src/review/citation_provenance.py` (the review layer) bands the fraction of a
+`chitragupta/review/citation_provenance.py` (the review layer) bands the
+fraction of a
 citing sentence's
 distinctive words found in the best-matching source passage. Below
 `weak_score` a finding reads "no support found", which means *go look at
@@ -352,7 +354,7 @@ Neither is range-checked, and nothing enforces
 
 ### `[enrich]` -- the optional enrichment layer
 
-Used only by `src/enrich/*` (the `enrich` dependency group), never by
+Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 `sync` or the citation gate.
 
 | Key | Env var | Accepts | Default in code | In `config.toml.example` |
@@ -395,7 +397,7 @@ strange timeout.
 
 ### `backend`: pdftotext or docling
 
-`src/pdf_text.py` dispatches through a table, so adding a backend is one
+`chitragupta/pdf_text.py` dispatches through a table, so adding a backend is one
 function plus one entry -- and two candidates were added and later
 removed through that same seam.
 
@@ -405,7 +407,7 @@ removed through that same seam.
 | `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#parserbackend----pdftotext-or-docling) |
 
 **Page boundaries are not cosmetic, which is why both backends now keep
-them.** `src/review/verbatim_check.py` reports which PDF page a verbatim
+them.** `chitragupta/review/verbatim_check.py` reports which PDF page a verbatim
 run came from by splitting on those form feeds. Before `docling` asked
 for them, a citekey parsed that way reported `pdf p.1` for every hit,
 regardless of where the text sat.
@@ -429,14 +431,15 @@ and the ladder it feeds is in
 [PDF-PARSER.md](PDF-PARSER.md) has the full fidelity comparison.
 
 **Setting `backend = "docling"` does not fold docling into the
-enrichment layer, and does not make `src/enrich/docling_parse.py` redundant.**
+enrichment layer, and does not make `chitragupta/enrich/docling_parse.py` redundant.**
 They are two consumers of the same library, with different scopes:
 
-- **`src/pdf_text.py`** (the corpus layer, on `sync`) extracts plain text per
+- **`chitragupta/pdf_text.py`** (the corpus layer, on `sync`) extracts plain
+  text per
   citekey into `content/parsed/<citekey>.txt` for BM25 retrieval, plus the
   passage sidecar beside it. docling here is a higher-fidelity substitute
   for `pdftotext`'s job.
-- **`src/enrich/docling_parse.py`** (the enrichment layer, opt-in) produces
+- **`chitragupta/enrich/docling_parse.py`** (the enrichment layer, opt-in) produces
   structured
   Markdown for the whole corpus into `content/docling/`, feeding the
   embedding and topic stages that need real reading order and section
@@ -591,7 +594,7 @@ Choosing a safe value means knowing your slowest legitimate document; see
 `sync` warns when an implausible share of a freshly extracted document's
 words are unusually long -- the signature of a backend that has lost the
 spaces between words. That is easy to miss by eye and expensive
-downstream: `src/retrieval.py` tokenises on runs of `[a-z0-9]`, so two
+downstream: `chitragupta/retrieval.py` tokenises on runs of `[a-z0-9]`, so two
 words that lost the space between them become a single token and neither
 one matches a query for it any more.
 
@@ -618,7 +621,7 @@ re-parses the corpus from scratch. Costs in
 
 ## Choosing an embedding model
 
-`src/enrich/embed_index.py` calls
+`chitragupta/enrich/embed_index.py` calls
 `SentenceTransformer(config.EMBEDDING_MODEL).encode(...)`
 **symmetrically** -- the same call embeds a 200-word document chunk
 (40-word overlap) and a search query, with no prefix or instruction text
@@ -678,7 +681,7 @@ Edit `[enrich].embedding_model`, or set `EMBEDDING_MODEL=...` for a single
 run, then rebuild the index:
 
 ```bash
-python -m src.enrich --stages embed
+python -m chitragupta.enrich --stages embed
 ```
 
 The model downloads on first use (needs network), and Chroma's existing

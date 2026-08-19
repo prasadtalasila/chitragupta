@@ -1,7 +1,7 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Three commands make up the review layer -- `src/review/citation_provenance.py`,
-`src/review/citation_coverage.py` and `src/review/verbatim_check.py`. Each reads a
+Three commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
+`chitragupta/review/citation_coverage.py` and `chitragupta/review/verbatim_check.py`. Each reads a
 draft plus the corpus and produces evidence for a human judgement. None
 gates, none runs automatically, none takes the write lock, and all three
 are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4: the review
@@ -29,7 +29,7 @@ serialisation of the findings the report already prints -- never a second
 computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
-Markdown through `src/render_output.py`, and this is not a render of
+Markdown through `chitragupta/render_output.py`, and this is not a render of
 anything. `verbatim` is so far the only aid that emits one; the other two
 follow in their own issues, which is why docs/AUTO-IMPROVEMENT.md's
 `agenda` reads each aid's JSON as optional.
@@ -55,7 +55,7 @@ import tomllib
 from pathlib import Path
 from typing import TextIO
 
-from src import config
+from chitragupta import config
 
 # One place per aid, so a caller cannot invent a fourth report kind by
 # typo. The value is the suffix that goes between the draft's stem and
@@ -231,7 +231,7 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     beside it. Returns `{format: path}` for what succeeded.
 
     `md` is produced directly. `tex`/`pdf` go through
-    `src/render_output.py`, the same path every genre draft uses -- it
+    `chitragupta/render_output.py`, the same path every genre draft uses -- it
     needs pandoc/pdflatex on PATH, so a missing binary is reported and
     skipped rather than failing the whole run, matching how every other
     stage in this project treats an absent optional tool.
@@ -257,7 +257,7 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     # there is no optional dependency to guard against.
     import subprocess
 
-    from src import render_output
+    from chitragupta import render_output
 
     for fmt in remaining:
         try:

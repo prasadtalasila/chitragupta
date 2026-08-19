@@ -2,7 +2,7 @@
 submodule in this package needs -- the shared plumbing, not a layer of
 its own.
 
-Split out of what was one 1770-line src/dossier.py (#219): every other
+Split out of what was one 1770-line chitragupta/dossier.py (#219): every other
 submodule in this package imports from here, and this one imports
 nothing from any of them, which is what keeps the package a DAG rather
 than a tangle. `_ROW_SPLIT` and `_SECTIONS_TEMPLATE` live here rather
@@ -19,7 +19,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 
 # One constant per dossier filename, because each recurs across this
 # module -- as FILES keys, template keys, path joins and report lookups
@@ -153,16 +153,16 @@ def all_dossiers() -> list[Path]:
 def _corpus_rows() -> list[sqlite3.Row] | None:
     """Every ledger item, or None if there is no readable ledger.
 
-    Opened read-only and with `timeout=0`, exactly as `src.ledger`'s own
+    Opened read-only and with `timeout=0`, exactly as `chitragupta.ledger`'s own
     CLI does and for the same reason: this is an inspection, and it must
     not take a write lock, run a migration, or block behind a sync that
-    happens to be mid-run. `src.ledger.connect()` would do all three --
+    happens to be mid-run. `chitragupta.ledger.connect()` would do all three --
     it mkdirs `content/`, executes the schema and runs migrations -- so
-    nothing here goes through it, and `src.retrieval.search()`, which
+    nothing here goes through it, and `chitragupta.retrieval.search()`, which
     does, is off limits for the same reason (see `_ephemeral_index`).
 
     Three columns rather than one because the drift scan needs the same
-    fields `src.retrieval` indexes on: `title` and `parsed_path` are what
+    fields `chitragupta.retrieval` indexes on: `title` and `parsed_path` are what
     a BM25 entry is built from, and `title` is also what makes a reported
     candidate legible without a second lookup.
     """
@@ -272,29 +272,29 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
-# Re-exported so `from src import dossier` keeps reaching these by the
+# Re-exported so `from chitragupta import dossier` keeps reaching these by the
 # same name it always has, from every file outside this package that
-# used to reach a flat src/dossier.py this way. Found by an AST scan for
-# every `dossier.<attr>` across src/, scripts/, tests/ and bench/ (a text
-# grep missed multi-line `from src import (...)` blocks, e.g.
-# src/overlap_embed.py's) -- this list is exactly that scan's result, not
+# used to reach a flat chitragupta/dossier.py this way. Found by an AST scan for
+# every `dossier.<attr>` across chitragupta/, scripts/, tests/ and bench/ (a text
+# grep missed multi-line `from chitragupta import (...)` blocks, e.g.
+# chitragupta/overlap_embed.py's) -- this list is exactly that scan's result, not
 # everything this package could plausibly export. Every other name is
-# reached by importing the submodule that owns it, same as src/review/'s
+# reached by importing the submodule that owns it, same as chitragupta/review/'s
 # submodules already do.
 #
 # Position is load-bearing, not style: each of these submodules itself
-# does `from src.dossier import <core name>` to reach what's above this
+# does `from chitragupta.dossier import <core name>` to reach what's above this
 # line, so importing any of them before this module has finished
 # defining its own core names would fail with an ImportError on a name
 # that doesn't exist yet. pylint's wrong-import-position (C0413) is
 # right that this is unusual and wrong to do without a reason -- here is
 # the reason.
 # pylint: disable=wrong-import-position
-from src.dossier._archive import export, restore
-from src.dossier._citekeys import citekeys_by_section, glossary_terms
-from src.dossier._create import init
-from src.dossier._drift import drift, drift_all
-from src.dossier._language import set_language
-from src.dossier._retrieval import log_retrieval, retrieval_cost
-from src.dossier._sections import sections, sections_markdown
-from src.dossier._cli import main
+from chitragupta.dossier._archive import export, restore
+from chitragupta.dossier._citekeys import citekeys_by_section, glossary_terms
+from chitragupta.dossier._create import init
+from chitragupta.dossier._drift import drift, drift_all
+from chitragupta.dossier._language import set_language
+from chitragupta.dossier._retrieval import log_retrieval, retrieval_cost
+from chitragupta.dossier._sections import sections, sections_markdown
+from chitragupta.dossier._cli import main

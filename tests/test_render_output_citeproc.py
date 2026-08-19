@@ -1,14 +1,14 @@
-"""src/render_output/_citeproc.py: preparing a draft and the bib for --citeproc.
+"""chitragupta/render_output/_citeproc.py: preparing a draft and the bib for --citeproc.
 
-Split from one test module to mirror `src/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `src/enrich/`. Shared setup --
+Split from one test module to mirror `chitragupta/render_output/`'s own split,
+the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
 the binary probes and the figure fixtures -- lives in `tests/conftest.py`
 so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
 """
 
 import pytest
-from src import render_output
+from chitragupta import render_output
 
 
 class TestSwapManualRefsForCiteproc:

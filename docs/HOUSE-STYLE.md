@@ -107,7 +107,7 @@ The apparatus around it, and none of it needs a model:
 - **#103, shipped.** `draft-reviser` has a copy-edit branch -- the
   sanctioned path for a whole-document edit that touches no evidence,
   which the skill had no shape for.
-- **#107, open.** `python -m src.draft style` -- dialect consistency
+- **#107, open.** `python -m chitragupta.draft style` -- dialect consistency
   against that line, plus §2's banned words -- stdlib-only, exit 0 always,
   a review aid and explicitly never a gate. That is the *detector* and the
   *re-check*. (Re-homed from the `scripts/style_check.py` this document
@@ -141,8 +141,8 @@ rows below restate its verdicts only so the inventory reads as one list.
 | Acronym expanded at first use; term defined once | yes, given the dossier glossary | yes |
 | Terminology and notation used consistently | yes, given a registry | yes (#138's detectors) |
 | Cross-references resolve | yes | yes (#138) |
-| Duplicate or near-duplicate sentences across sections | yes, at a threshold | yes -- `src/overlap_index.py` already indexes n-grams |
-| Reference-list consistency | yes | already deterministic (`src/references.py`) |
+| Duplicate or near-duplicate sentences across sections | yes, at a threshold | yes -- `chitragupta/overlap_index.py` already indexes n-grams |
+| Reference-list consistency | yes | already deterministic (`chitragupta/references.py`) |
 | A section citing nothing at all | yes | surfaced -- the fix is evidence, not wording |
 | Sentence length, hedging density, passive-voice ratio | **no -- these are scores** | surfaced only |
 | Readability index | **no** | reported, never optimised |
@@ -172,9 +172,9 @@ artefact that nothing reconciles across drafts:
   slice of this: `[style].acronyms` in `config.toml` gives a user's own
   expansions a per-host home (`content/acronyms.toml`, the same
   gitignored footing as the boilerplate allowlist below), every genre
-  skill drafts from it, and `python -m src.draft style` now reports when
+  skill drafts from it, and `python -m chitragupta.draft style` now reports when
   a draft's own glossary has drifted from it
-  (`src/style_acronym_drift.py`, `draft-reviser`'s acronym-realignment
+  (`chitragupta/style_acronym_drift.py`, `draft-reviser`'s acronym-realignment
   mode fixes what that reports). Reconciliation for a plain term --
   "digital twin" spelled three ways with no acronym in sight -- is still
   nothing.
@@ -206,7 +206,7 @@ What that means concretely: a cross-draft pass may *report* that `en-GB`
 was chosen four times out of four, or that a term is defined three ways,
 and may offer the edit. It may not write the preference file itself.
 
-`python -m src.draft dossier acronyms-suggest --apply` looks like an
+`python -m chitragupta.draft dossier acronyms-suggest --apply` looks like an
 exception and is not one: it writes `content/acronyms.toml` only when a
 person at a terminal types `--apply`, for the draft they named, in that
 one run. Nothing here runs it on a schedule, inside a revision loop, or
@@ -224,7 +224,7 @@ the first three matter more than their size suggests.
 | #103, shipped | copy-edit mode in `draft-reviser` | the sanctioned edit path -- without it there is nowhere for a prose fix to go |
 | #104, shipped | dialect as a first-class draft property | the recorded target |
 | #105, #106 | render-language plumbing, localisable references | unrelated to this loop; the non-English track |
-| #107 | `python -m src.draft style` | the detector and the re-check |
+| #107 | `python -m chitragupta.draft style` | the detector and the re-check |
 | #108 | multilingual corpus support | out of scope, and see the caution above |
 | #183 | automatic invocation of the detector | what makes the loop a loop rather than a command someone remembers |
 

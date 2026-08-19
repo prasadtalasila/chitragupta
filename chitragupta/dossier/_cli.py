@@ -1,41 +1,41 @@
-"""`python -m src.draft dossier`'s argparse tree: wiring every
+"""`python -m chitragupta.draft dossier`'s argparse tree: wiring every
 subcommand to the `_cmd_*` handler that now lives beside the data it
 handles, and nothing else.
 
-Split out of src/dossier.py (#219), mirroring the one rule
-`src/review/__main__.py` already follows for the same reason: "This
+Split out of chitragupta/dossier.py (#219), mirroring the one rule
+`chitragupta/review/__main__.py` already follows for the same reason: "This
 file only wires them together: it never restates a flag, so there is
 no second place for one to drift out of sync." Every `_cmd_*` handler
 moved to the submodule that owns the state it prints or writes; this
 file only imports each by name and hands it to `set_defaults(func=...)`.
 
 Deliberately named `_cli.py`, not `__main__.py`: this package has no
-`__main__` block on purpose, the same way `src/dossier.py` had none
-before this split. `python -m src.dossier` stays the same silent no-op
+`__main__` block on purpose, the same way `chitragupta/dossier.py` had none
+before this split. `python -m chitragupta.dossier` stays the same silent no-op
 `docs/ARCHITECTURE.md` documents for the other four drafting-layer
-modules -- `python -m src.draft dossier` is this layer's one front
+modules -- `python -m chitragupta.draft dossier` is this layer's one front
 door, and a package `__main__.py` would quietly open a second one.
 """
 
 import argparse
 import sys
 
-from src.dossier._archive import _cmd_export, _cmd_restore
-from src.dossier._brief import _cmd_brief
-from src.dossier._acronyms import _cmd_acronyms_suggest
-from src.dossier import DossierError, _cmd_list
-from src.dossier._create import _cmd_init
-from src.dossier._language import _cmd_set_language
-from src.dossier._retrieval import _cmd_mark_revision
-from src.dossier._sections import _cmd_sections
-from src.dossier._status import _cmd_status
+from chitragupta.dossier._archive import _cmd_export, _cmd_restore
+from chitragupta.dossier._brief import _cmd_brief
+from chitragupta.dossier._acronyms import _cmd_acronyms_suggest
+from chitragupta.dossier import DossierError, _cmd_list
+from chitragupta.dossier._create import _cmd_init
+from chitragupta.dossier._language import _cmd_set_language
+from chitragupta.dossier._retrieval import _cmd_mark_revision
+from chitragupta.dossier._sections import _cmd_sections
+from chitragupta.dossier._status import _cmd_status
 
 _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft dossier",
+        prog="python -m chitragupta.draft dossier",
         description="The working state behind a draft: create it, inspect it, "
                     "back it up, restore it. Stdlib only; never writes to the "
                     "corpus layer.",
@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_set_language = sub.add_parser(
         "set-language",
-        help="Record the draft's dialect, so `src.draft style` can check it",
+        help="Record the draft's dialect, so `chitragupta.draft style` can check it",
     )
     p_set_language.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_set_language.add_argument("language", help="a BCP-47 tag: en-GB, en-US, en-IN")

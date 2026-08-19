@@ -1,8 +1,8 @@
-"""src/dedup.py: near-duplicate citekey detection by shared DOI or
+"""chitragupta/dedup.py: near-duplicate citekey detection by shared DOI or
 near-identical title. Advisory only -- see module docstring for why a
 shared title isn't treated as certain proof of duplication."""
 
-from src import dedup
+from chitragupta import dedup
 
 from tests.conftest import make_reference
 

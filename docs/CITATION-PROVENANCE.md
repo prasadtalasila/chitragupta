@@ -16,7 +16,8 @@ as two layers that never mix.
 
 **The corpus layer is deterministic and has no AI in it.** You export a
 `.bib` file
-from your reference manager. `python -m src.corpus sync` reads it, records every
+from your reference manager. `python -m chitragupta.corpus sync` reads it,
+records every
 entry in a small SQLite "ledger" (`content/ledger.sqlite`), and extracts
 each attached PDF's text into `content/parsed/<citekey>.txt`. Nothing is
 generated; the bib file is the source of truth.
@@ -28,7 +29,7 @@ A **citekey** is the identifier BibTeX assigns an entry -- for example
 `larsen_engineering_2024`. In a draft it appears as `[@larsen_engineering_2024]`.
 The project's one hard rule is that **a citekey may only be used if it
 came from the bib file**, because fabricated references have made it into
-real published papers before. `python -m src.draft gate` enforces this
+real published papers before. `python -m chitragupta.draft gate` enforces this
 mechanically: it extracts every citekey from a draft and fails if any is
 absent from the ledger. That is a *gate* -- drafting is blocked until it
 passes.
@@ -42,8 +43,8 @@ Two other terms used here:
 
 - **Parser backend** -- how a PDF becomes text. `pdftotext` (fast, the
   default) or `docling` (slow, layout-aware). Set in `config.toml`.
-- **The enrichment layer** -- optional, opt-in stages under `src/enrich/`
-  run by `python -m src.enrich`: layout-aware Docling parsing,
+- **The enrichment layer** -- optional, opt-in stages under `chitragupta/enrich/`
+  run by `python -m chitragupta.enrich`: layout-aware Docling parsing,
   embeddings, topic modelling, and rendering to PDF/LaTeX.
 
 ## The problem
@@ -70,7 +71,7 @@ would catch -- a claim that drifted away from its source during drafting
 The repository already had two of these commands, and neither answers
 this question.
 
-`src/review/citation_coverage.py` asks the inverse: *of the sources retrieval
+`chitragupta/review/citation_coverage.py` asks the inverse: *of the sources retrieval
 surfaced for a query, which ones did the draft actually cite?* That
 finds sources you missed. It says nothing about whether the ones you did
 cite support what you wrote.
@@ -110,7 +111,7 @@ part of any automatic chain.
 ## The solution, as built
 
 ```bash
-python -m src.review provenance content/drafts/<slug>.md
+python -m chitragupta.review provenance content/drafts/<slug>.md
 ```
 
 Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
@@ -124,7 +125,7 @@ same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 `survey.verbatim.md` and `survey.coverage.md`. A draft directly in
 `content/drafts/`, or outside it altogether, has no path to mirror and
 keeps the flat directory; a draft resolving outside `content/` is
-refused. `src/review/__init__.py` owns that contract for all three review-layer
+refused. `chitragupta/review/__init__.py` owns that contract for all three review-layer
 commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer).
 
 For each citing passage in the draft, emit:
@@ -159,7 +160,7 @@ against the words in each candidate source passage -- not `cmd_overlap`'s
 verbatim runs. A paraphrase keeps most of its content words while
 changing their order and function words, so overlap scoring degrades
 gracefully where n-gram matching falls off a cliff. Stopwords should be
-dropped, as `src/retrieval.py` already does.
+dropped, as `chitragupta/retrieval.py` already does.
 
 **Page numbers come from the PDF, not the parsed text.** `verbatim_check.pages()`
 already re-runs `pdftotext -layout` on the original PDF and splits on
@@ -305,8 +306,8 @@ against what was later measured, because three of the four moved:
   beside it, and cleared before the same re-parse -- there is no window in
   which one is fresh and the other stale.
 - **A second consumer for an opt-in stage.** Already the case:
-  `content/docling/` is read by `src/enrich/embed_index.py` and by
-  `src/passages.py`'s rung 1.
+  `content/docling/` is read by `chitragupta/enrich/embed_index.py` and by
+  `chitragupta/passages.py`'s rung 1.
 - **The Phase 1 path is needed regardless.** Unchanged, and the reason is
   unchanged: the default backend is `pdftotext`, which resolves no
   reading order, so page-level reporting stays the answer for anyone who
@@ -339,7 +340,7 @@ Both halves of that are now kept:
   pages in the model, 51 form-feed-separated segments in the file.
 - The structure Markdown cannot carry leaves by a second door, as
   `content/parsed/<citekey>.passages.json` -- the same records
-  `src/passages.py`'s `passage_records()` produces for the enrichment
+  `chitragupta/passages.py`'s `passage_records()` produces for the enrichment
   layer. On that same paper: 592 records spanning pages 1 to 51, every
   one carrying both a page number and a bounding box.
 
@@ -401,7 +402,7 @@ which reports a real page and refuses to quote. The combination that once
 helped least -- Docling in the corpus layer with no enrichment stage --
 is now the one that gives you the most for a single parse.
 
-`python -m src.review verbatim locate` benefits from the same change: it
+`python -m chitragupta.review verbatim locate` benefits from the same change: it
 splits `content/parsed/<citekey>.txt` on form feeds, so it reports the
 page a phrase actually sits on rather than `pdf p.1` for every hit.
 
@@ -535,9 +536,9 @@ document syntax the code did not actually model.
 
 | Piece | Actual |
 |---|---|
-| `src/review/citation_provenance.py` | ~250 lines |
-| `src/passages.py` | ~150 lines |
-| `_passage_records` in `src/enrich/docling_parse.py` | ~35 lines |
+| `chitragupta/review/citation_provenance.py` | ~250 lines |
+| `chitragupta/passages.py` | ~150 lines |
+| `_passage_records` in `chitragupta/enrich/docling_parse.py` | ~35 lines |
 | Tests | ~55 cases |
 
 No new dependencies. No changes to `sync`, `citation_gate`, or the
@@ -545,7 +546,7 @@ render chain beyond calling it.
 
 The sidecar -> form-feed pages -> `pdftotext` ladder, and the rule that a
 source with no reading order reports a page rather than a quotation, live
-in `src/passages.py` rather than here. That split happened when retrieval
+in `chitragupta/passages.py` rather than here. That split happened when retrieval
 became the second consumer: a snippet shown to a drafting agent *as
 evidence* is under exactly the same constraint as a passage shown to a
 reviewer, and the two must not answer "what does this source say here?"

@@ -1,13 +1,13 @@
-"""`python -m src.draft spec`'s four commands and their argparse tree.
+"""`python -m chitragupta.draft spec`'s four commands and their argparse tree.
 
-Split from `src/spec/__init__.py` for the reason `src/dossier/_cli.py`
+Split from `chitragupta/spec/__init__.py` for the reason `chitragupta/dossier/_cli.py`
 was split from its own package: parsing an outline and printing one are
 different jobs, and together they crossed the 250-code-line limit
 docs/CODE-STANDARDS.md sets. Everything here reads the parse; nothing
 here parses.
 
 Deliberately named `_cli.py`, not `__main__.py`, exactly as
-`src/dossier/_cli.py` is: `python -m src.draft spec` is this layer's one
+`chitragupta/dossier/_cli.py` is: `python -m chitragupta.draft spec` is this layer's one
 front door, and a package `__main__.py` would quietly open a second --
 see docs/ARCHITECTURE.md's one-entry-point-per-layer invariant.
 """
@@ -17,7 +17,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from src.spec import (_KINDS, SpecError, digest, parse, recorded_digest,
+from chitragupta.spec import (_KINDS, SpecError, digest, parse, recorded_digest,
                       signoff_path, spec_path)
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
@@ -32,7 +32,7 @@ _TEMPLATE = """# {title}
      needs an explicit `{#id}` -- ids are what units, cross-references and
      registries resolve against, so they must survive a reworded heading.
 
-     Approve it with `python -m src.draft spec sign <book>` once it says
+     Approve it with `python -m chitragupta.draft spec sign <book>` once it says
      what you want written. Nothing generates prose from an unsigned
      outline. -->
 
@@ -54,7 +54,7 @@ def _read(book: Path) -> tuple[str, dict]:
     path = spec_path(book)
     if not path.is_file():
         raise SpecError(f"No spec at {path}. Write one with "
-                        f"`python -m src.draft spec init {book}`.")
+                        f"`python -m chitragupta.draft spec init {book}`.")
     text = path.read_text(encoding="utf-8")
     return text, parse(text)
 
@@ -79,7 +79,7 @@ def _cmd_init(args) -> int:
     title = args.title or Path(args.book).name
     path.write_text(_TEMPLATE.replace("{title}", title), encoding="utf-8")
     print(f"Wrote {path}. Edit it, then approve it with "
-          f"`python -m src.draft spec sign {args.book}`.")
+          f"`python -m chitragupta.draft spec sign {args.book}`.")
     return 0
 
 
@@ -128,7 +128,7 @@ def _signoff_text(text: str, parsed: dict, by: str) -> str:
     lines = [
         "# Sign-off",
         "",
-        "<!-- Written by `python -m src.draft spec sign`. The digest covers",
+        "<!-- Written by `python -m chitragupta.draft spec sign`. The digest covers",
         "     spec.md alone, so this file can record it without invalidating it. -->",
         "",
         f"- spec digest: `{digest(text)}`",
@@ -174,7 +174,7 @@ def _cmd_status(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft spec",
+        prog="python -m chitragupta.draft spec",
         description="The outline a book is generated from, and the human "
                     "sign-off on it. Stdlib only; writes only under content/specs/.",
     )

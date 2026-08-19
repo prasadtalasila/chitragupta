@@ -20,7 +20,7 @@ bib file.
 import re
 from collections import defaultdict
 
-from src.bib_reader import Reference
+from chitragupta.bib_reader import Reference
 
 
 def _normalize_title(title: str) -> str:

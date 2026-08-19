@@ -8,7 +8,7 @@ rather than hanging or stack-tracing -- see docker/Dockerfile for a
 target that installs them when the host doesn't have root.
 
 Every genre-skill draft cites sources with Pandoc-style `[@citekey]`
-markers (see src/citation_gate.py), so rendering always resolves them via
+markers (see chitragupta/citation_gate.py), so rendering always resolves them via
 pandoc's built-in `--citeproc` against `config.BIB_FILE_PATH` -- without
 it, citations would come out as literal, unresolved `[@key]` text with no
 bibliography. Pandoc's own citation-key tokenizer has a real limitation
@@ -26,7 +26,7 @@ style vendored at `assets/csl/ieee.csl` (`config.CSL_STYLE_PATH`,
 where they're implemented: the collapsing needs one attribute upstream
 IEEE omits, injected into a temp copy by `_collapsed_csl` so the vendored
 file stays byte-identical to upstream; and a draft's own citekey-labeled
-References section (added by `python -m src.draft references`) has its entries
+References section (added by `python -m chitragupta.draft references`) has its entries
 swapped out in the temp copy by `_swap_manual_refs_for_citeproc` --
 heading kept, entries replaced by the anchor citeproc fills in -- so
 citeproc's bibliography is the only one in the output, and it appears
@@ -65,10 +65,10 @@ variables so a tex/pdf output always opens with a 12pt, a4paper article
 class and 1-inch margins via the geometry package -- overridable per
 call, but those are the project's fixed defaults.
 
-`python -m src.draft render <file> --format tex|pdf|...` runs standalone
+`python -m chitragupta.draft render <file> --format tex|pdf|...` runs standalone
 with bare `python` (no enrich group) -- it depends only on stdlib plus
-`src.config`/`src.citation_gate`/`src.references` (all three stdlib-only,
-same as this module), deliberately independent of `src/enrich/__main__.py`,
+`chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references` (all three stdlib-only,
+same as this module), deliberately independent of `chitragupta/enrich/__main__.py`,
 which drags in the full corpus build and the docling/embed/topic_model
 imports for stages this one doesn't need. The genre-writing skills under
 `.claude/skills/` call this CLI directly.
@@ -80,17 +80,17 @@ import sys
 import tempfile
 from pathlib import Path
 
-from src import config, references
-from src.render_output._assets import (
+from chitragupta import config, references
+from chitragupta.render_output._assets import (
     _MD_IMAGE_RE, _URI_SCHEME_RE, _copy_local_images, _copy_local_tex_includes,
     _local_image_refs,
 )
-from src.render_output._citeproc import (
+from chitragupta.render_output._citeproc import (
     _REFS_ANCHOR, _alias_for, _safe_render_inputs, _swap_manual_refs_for_citeproc,
 )
-from src.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
-from src.render_output._errors import MissingBinary, OutsideContentDir, _require
-from src.render_output._figures import (
+from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
+from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
+from chitragupta.render_output._figures import (
     _FIGURE_MARKER_MD_RE, _FIGURE_MARKER_TEX_RE, _INPUT_WITH_MARKER_RE, _LATEX_CITE_RE,
     _LATEX_INCLUDE_RE, _TEX_FORMATS, _ascii_alt_refs, _ascii_path,
     _figure_has_citekey, _tikz_path,
@@ -99,12 +99,12 @@ from src.render_output._figures import (
     _substitute_ascii_for_tikz, _substitute_tikz_for_ascii,
     _tikz_alt_refs, _with_figures_for,
 )
-from src.render_output._cli import main
-from src.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
+from chitragupta.render_output._cli import main
+from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
 
 # Everything above is re-exported deliberately, not incidentally. Every
 # caller in this repository reaches these off the module
-# (`from src import render_output`, then `render_output._output_dir`), and
+# (`from chitragupta import render_output`, then `render_output._output_dir`), and
 # the tests reach eleven of the private helpers that way too. Keeping the
 # package's name and its attribute surface identical to the single module
 # it replaced is what makes the split invisible to all 104 of those
@@ -260,7 +260,7 @@ def render(
 
     `output_dir` overrides that, for a caller rendering something that is
     not a draft and so has no business in `content/rendered/`:
-    `src/review/__init__.py` passes the review report's own directory so a
+    `chitragupta/review/__init__.py` passes the review report's own directory so a
     report's `.tex`/`.pdf` land beside its `.md` rather than in the
     drafting layer's publish output. It is confined to `content/` like
     every other path this module writes, and it is the caller's whole

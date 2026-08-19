@@ -43,7 +43,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 GENRE_DOC = REPO_ROOT / "docs" / "GENRE.md"
 
-_OFFER = re.compile(r"-m src\.review verbatim scan\b")
+_OFFER = re.compile(r"-m chitragupta\.review verbatim scan\b")
 
 # The caveat has to travel with the offer, not merely exist somewhere in
 # the file -- a skill that mentions paraphrase in an unrelated paragraph
@@ -77,7 +77,7 @@ def test_every_drafting_skill_offers_the_verbatim_scan():
 
     missing = [p.parent.name for p in files if not _OFFER.search(_normalised(p))]
     assert not missing, (
-        "these skills never mention `-m src.review verbatim scan`, so a draft they "
+        "these skills never mention `-m chitragupta.review verbatim scan`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
         "docs/GENRE.md's \"What all seven have in common\" claims otherwise."
     )
@@ -95,7 +95,7 @@ def test_every_offer_says_what_the_scan_cannot_see():
                 offenders.setdefault(path.parent.name, []).append(match.start())
 
     assert not offenders, (
-        f"`-m src.review verbatim scan` is offered without {_CAVEAT!r} nearby in "
+        f"`-m chitragupta.review verbatim scan` is offered without {_CAVEAT!r} nearby in "
         f"{sorted(offenders)}. The embedding tier is the only one that sees "
         "genuine restatement and it does not run on every host, while these "
         "drafts are LLM-written -- so a clean run must never be presented as a "

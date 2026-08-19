@@ -25,7 +25,7 @@ content/rendered/*
 !content/rendered/digital-twins-for-software-engineers/
 
 # The pipeline's rotated log file (see config.toml's [logging]
-# section) -- written by python -m src.corpus sync and scripts/enrich.py alike,
+# section) -- written by python -m chitragupta.corpus sync and scripts/enrich.py alike,
 # per-host, and the whole directory rather than *.log below,
 # since a rotated backup (pipeline.log.1, pipeline.log.2, ...) doesn't end in
 # .log.
@@ -97,7 +97,7 @@ bench/results/specter2_paper_cache.json
 
 # config.toml is per-host: every user edits it (parser backend, paths,
 # worker count) and those edits are nobody else's defaults. The tracked
-# file is config.toml.example; src/config.py fails with a copy-this
+# file is config.toml.example; chitragupta/config.py fails with a copy-this
 # message when config.toml is absent, rather than silently falling back,
 # so a host is never running settings its owner didn't choose.
 config.toml

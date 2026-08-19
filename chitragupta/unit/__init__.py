@@ -1,8 +1,8 @@
 """The generation unit: one section's contract, and the record of its
 acceptance.
 
-`python -m src.draft unit contract|accept|status` over a book whose
-outline `src/spec/` already holds. The unit of generation is fixed at the
+`python -m chitragupta.draft unit contract|accept|status` over a book whose
+outline `chitragupta/spec/` already holds. The unit of generation is fixed at the
 **section**, not the chapter (#137): small enough that the spec slice,
 the grounding sources and the genre instructions fit in a context budget
 with room to spare, which is what makes a unit independently
@@ -12,11 +12,11 @@ section fifty times while 200 pages sit untouched" cheap.
 **The contract is explicit and hashed.** Inputs -- the spec slice and the
 sources retrieved for this unit -- go in; a draft and its citations come
 out. The registry excerpts a unit is also generated with
-(`python -m src.draft registry excerpt`) deliberately stay out of the
+(`python -m chitragupta.draft registry excerpt`) deliberately stay out of the
 digest; the comment on `registries` below says why. `input_digest`
 covers the inputs *only*: a digest that moved when the prose moved could
 never answer the question it exists for, which is "does this unit need
-regenerating?". That is the same incremental discipline `src/ledger.py`
+regenerating?". That is the same incremental discipline `chitragupta/ledger.py`
 and the enrichment caches already follow, one level up.
 
 **Acceptance is recorded, not asserted.** `accept` writes
@@ -27,7 +27,7 @@ from "written but nobody accepted it" from "accepted, and one of them has
 changed since".
 
 **`accept` invokes the one gate rather than adding a second.** A unit is
-acceptable only if `python -m src.draft gate` already passes on it; this
+acceptable only if `python -m chitragupta.draft gate` already passes on it; this
 module runs `citation_gate.run` and refuses to write a record when it
 does not. Nothing here judges a draft on its own authority, and nothing
 here blocks a write -- see docs/BOOKS.md.
@@ -36,7 +36,7 @@ here blocks a write -- see docs/BOOKS.md.
 import json
 from pathlib import Path
 
-from src import spec
+from chitragupta import spec
 
 # Where a book's acceptance records live, beside the outline they are
 # accepted against rather than in a fifth top-level directory under
@@ -58,13 +58,13 @@ def _parsed_spec(book: Path) -> tuple[str, dict]:
     path = spec.spec_path(book)
     if not path.is_file():
         raise UnitError(f"No spec at {path}. Write one with "
-                        f"`python -m src.draft spec init {book}`.")
+                        f"`python -m chitragupta.draft spec init {book}`.")
     text = path.read_text(encoding="utf-8")
     parsed = spec.parse(text)
     if parsed["problems"]:
         raise UnitError(
             f"{path} does not parse: {len(parsed['problems'])} problem(s). "
-            f"`python -m src.draft spec show {book}` lists them.")
+            f"`python -m chitragupta.draft spec show {book}` lists them.")
     return text, parsed
 
 
@@ -111,7 +111,7 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
         # grounded in and not for the order somebody happened to list them.
         "sources": sorted(set(sources)),
         # Registry excerpts are supplied at generation time by
-        # `python -m src.draft registry excerpt`, and deliberately do not
+        # `python -m chitragupta.draft registry excerpt`, and deliberately do not
         # arrive here: a registry grows with every acceptance, so hashing
         # it into this digest would mark every later unit stale each time
         # an earlier one was accepted -- destroying the cheap-regeneration
@@ -221,9 +221,9 @@ def sections(book: Path) -> list[dict]:
     return [entry for entry in outline(book) if entry["kind"] == "section"]
 
 
-# Re-exported so `from src import unit` reaches the entry point
-# `src/draft.py` dispatches to, exactly as `src/spec/` and `src/dossier/`
+# Re-exported so `from chitragupta import unit` reaches the entry point
+# `chitragupta/draft.py` dispatches to, exactly as `chitragupta/spec/` and `chitragupta/dossier/`
 # do. Position is load-bearing for the same reason: `_cli` imports the
 # names above from this module.
 # pylint: disable=wrong-import-position
-from src.unit._cli import main
+from chitragupta.unit._cli import main

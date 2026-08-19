@@ -1,7 +1,7 @@
 """`dossier export`/`restore`: bundling a set of dossiers (and
 optionally their renders) into one tar.gz, and unpacking one back.
 
-Split out of src/dossier.py (#219).
+Split out of chitragupta/dossier.py (#219).
 """
 
 import argparse
@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path, PurePosixPath
 
-from src import config, review
-from src.dossier import DossierError, draft_relpath
+from chitragupta import config, review
+from chitragupta.dossier import DossierError, draft_relpath
 
 # Top-level directories a bundle may contain, and the only ones `restore`
 # will unpack. A whitelist rather than a blocklist: an archive member
@@ -213,7 +213,7 @@ def _cmd_export(args: argparse.Namespace) -> int:
     size = written.stat().st_size
     print(f"  {written}  ({count} file(s), {size / 1024:.1f} KiB)")
     print("\n  Restore with:")
-    print(f"    python -m src.draft dossier restore {written} --force")
+    print(f"    python -m chitragupta.draft dossier restore {written} --force")
     return 0
 
 
@@ -239,5 +239,5 @@ def _cmd_restore(args: argparse.Namespace) -> int:
         print(f"    ... and {len(plan.overwrite) - 10} more")
     if not plan.performed:
         print("\n  Dry run. Re-run with --force to write:")
-        print(f"    python -m src.draft dossier restore {archive} --force")
+        print(f"    python -m chitragupta.draft dossier restore {archive} --force")
     return 0

@@ -2,15 +2,15 @@
 
 `chromadb` and `sentence-transformers` come from pyproject.toml's
 `enrich` Poetry group, which a checkout need not have installed --
-`src/enrich/embed_index.py` builds `content/chroma/` with them and is
+`chitragupta/enrich/embed_index.py` builds `content/chroma/` with them and is
 the enrichment layer's own business. Tier 3 of the overlap scan
-(`src/overlap_embed.py`) reads what that layer built, and this module is
+(`chitragupta/overlap_embed.py`) reads what that layer built, and this module is
 the seam between them.
 
 One module for it, deliberately, and this is the property worth keeping:
 **every other part of tier 3 is stdlib-only.** The alignment
-(`src/overlap_align.py`), the segmentation (`src/overlap_segments.py`)
-and the tier's own policy (`src/overlap_embed.py`) all import under a
+(`chitragupta/overlap_align.py`), the segmentation (`chitragupta/overlap_segments.py`)
+and the tier's own policy (`chitragupta/overlap_embed.py`) all import under a
 bare `python`, so all three are testable without the optional stack
 present and without a fake standing in for a model. Only what is here
 has to be probed for, and probing is most of what it does.
@@ -31,7 +31,7 @@ Three things live here:
   aligning against.
 """
 
-from src import config
+from chitragupta import config
 
 
 def optional_stack():
@@ -42,7 +42,7 @@ def optional_stack():
     `ModuleNotFoundError` uncaught, and it `mkdir`s `content/chroma/` on
     the way past -- so neither "the import worked" nor "the directory
     exists" can be read off it as an availability signal. This is the
-    probe that one is missing, in the shape `src/pdf_text.py` already
+    probe that one is missing, in the shape `chitragupta/pdf_text.py` already
     uses for its own optional backend.
     """
     try:
@@ -70,7 +70,7 @@ def built_collection(chromadb_module):
     """
     if not config.CHROMA_DIR.is_dir():
         return None
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     client = chromadb_module.PersistentClient(path=str(config.CHROMA_DIR))
     wanted = embed_index.collection_name()
@@ -115,7 +115,7 @@ class Embedder:
     @property
     def model(self):
         if self._model is None:
-            from src.enrich import embed_index
+            from chitragupta.enrich import embed_index
 
             _client, self._model = embed_index.get_client_and_model()
         return self._model
@@ -152,7 +152,7 @@ def shortlist(collection, embedder, citekeys: list[str], text: str, limit: int) 
     aligning against is all this collection can honestly answer, and it
     is exactly what a shortlist needs.
     """
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     if len(citekeys) <= 1:
         # Nothing to rank, and a query would cost an encode to reorder a

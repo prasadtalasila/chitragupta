@@ -55,9 +55,9 @@ them and what they are allowed to do*.
 
 | Layer | What it is | Runs when |
 |---|---|---|
-| **1. Corpus** | `python -m src.corpus sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
+| **1. Corpus** | `python -m chitragupta.corpus sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
-| **3. Enrichment** | `python -m src.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
+| **3. Enrichment** | `python -m chitragupta.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
 | **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`. Advisory over a finished draft -- never automatic, never a gate. | When you ask, after a draft exists |
 
 The numbers are introduction order, not a dependency rank.
@@ -160,26 +160,26 @@ flowchart TB
   BIB(["papers/bibliography.bib<br/><small>exported from your reference manager</small>"])
 
   subgraph CORPUS["corpus layer -- deterministic, holds the lock"]
-    SYNC["python -m src.corpus sync"]
+    SYNC["python -m chitragupta.corpus sync"]
     LEDGER[("content/ledger.sqlite")]
     PARSED[("content/parsed/&lt;citekey&gt;.txt<br/>+ .passages.json")]
   end
 
   subgraph DRAFTING["drafting layer -- generative, reviewed by you"]
     SKILL["a genre skill<br/><small>survey · thesis · textbook · tutorial · deep-research</small>"]
-    GATE{"python -m src.draft gate<br/><b>hard gate</b>"}
-    REFS["python -m src.draft references"]
-    RENDER["python -m src.draft render"]
+    GATE{"python -m chitragupta.draft gate<br/><b>hard gate</b>"}
+    REFS["python -m chitragupta.draft references"]
+    RENDER["python -m chitragupta.draft render"]
     DRAFT[("content/drafts/ · content/rendered/")]
   end
 
   subgraph ENRICH["enrichment layer -- optional, same lock as sync"]
-    ENR["python -m src.enrich --stages ..."]
+    ENR["python -m chitragupta.enrich --stages ..."]
     ART[("content/docling/ · content/chroma/ · content/topics.json")]
   end
 
   BIB --> SYNC --> LEDGER --> PARSED
-  PARSED -.->|"src.retrieval.search()"| SKILL
+  PARSED -.->|"chitragupta.retrieval.search()"| SKILL
   SKILL --> GATE
   GATE -->|"exit 1 -- rewrite the claim"| SKILL
   GATE -->|"exit 0"| REFS --> RENDER --> DRAFT
@@ -206,7 +206,7 @@ one and it is wrong. **By default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
 for one of the three stages. The rest of this section is its reach.
 
-`src/enrich/__main__.py` calls `corpus.build_corpus()`, which returns
+`chitragupta/enrich/__main__.py` calls `corpus.build_corpus()`, which returns
 **every row in the ledger, and nothing else.** `ledger.all_items()` is a
 bare `SELECT * FROM items`. So this is every citekey your BibTeX export
 produced, including entries whose reference-manager record has no PDF
@@ -224,7 +224,7 @@ every stage downstream a permanently non-citable case, in exchange for
 indexing evidence no draft was ever allowed to use.
 
 If a paper is worth indexing it is worth cataloguing: put it in your
-reference manager, re-export, and re-run `python -m src.corpus sync`.
+reference manager, re-export, and re-run `python -m chitragupta.corpus sync`.
 
 Every stage then receives that whole list, and unless you say otherwise
 nothing filters it by draft, by reference list, or by citation: a draft
@@ -305,9 +305,9 @@ Reuse is refused in three cases:
 supports it, and may it be quoted?
 
 **Where:**
-[`src/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py),
+[`chitragupta/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py),
 read by
-`src.review provenance` and (not yet) `src.draft retrieve`.
+`chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`.
 
 | # | Rung | Written by | Quotable? |
 |---|---|---|---|
@@ -354,9 +354,9 @@ to quote. See [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 this document?
 
 **Where:** `embed_index.get_text()` in
-[`src/enrich/embed_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/embed_index.py),
+[`chitragupta/enrich/embed_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/embed_index.py),
 also used by
-`src/enrich/topic_model.py`.
+`chitragupta/enrich/topic_model.py`.
 
 | # | Rung | Note |
 |---|---|---|
@@ -385,7 +385,7 @@ that, once.
 **The question:** which device parses this PDF?
 
 **Where:**
-[`src/pdf_text.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/pdf_text.py),
+[`chitragupta/pdf_text.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/pdf_text.py),
 for both the corpus
 layer's docling backend and the enrichment layer's docling stage.
 
@@ -421,7 +421,7 @@ here.
 Three here, four in
 [ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)'s tier-set table,
 and both are right. The fourth is the **detection tiers** behind
-`src/review/verbatim_check.py`'s `scan`.
+`chitragupta/review/verbatim_check.py`'s `scan`.
 
 It has no section here because this page's question -- *where does the
 pipeline choose, and what does it choose between?* -- has no answer for
@@ -458,20 +458,20 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `src.draft` (all six commands), `src.corpus ledger`, `src.review` (all three aids), `src.passages` |
-| 2 | a venv with `bibtexparser` | `python -m src.corpus sync` |
-| 3 | a venv with the `enrich` group | `python -m src.enrich` |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids), `chitragupta.passages` |
+| 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
+| 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
 
 Tier 1 is a design constraint, not an accident: the citation gate is the
 one thing that must run everywhere, including as a hook on a machine that
-has never installed this project's dependencies. `src/passages.py` belongs
+has never installed this project's dependencies. `chitragupta/passages.py` belongs
 to that tier too, which is why it describes a Docling document purely
 through `getattr` and never imports the library. See
 [docs/ARCHITECTURE.md](ARCHITECTURE.md#which-interpreter-and-why).
 
 ### Tier 3: Render format
 
-**Set by:** `--format` on `python -m src.draft render`.
+**Set by:** `--format` on `python -m chitragupta.draft render`.
 
 | Format | Needs | Note |
 |---|---|---|
@@ -490,7 +490,7 @@ Naming three ladders implies the rest of the pipeline doesn't fall back,
 and mostly that is true by design. Two near-misses are worth stating so
 they aren't mistaken for rungs:
 
-- **The ledger's change detection** (`src/ledger.py`) checks size and
+- **The ledger's change detection** (`chitragupta/ledger.py`) checks size and
   mtime before hashing a PDF. That is an *optimisation* with one answer --
   hashing is the fallback that stat merely defers, and both agree. A
   ladder's rungs disagree; these don't.
@@ -527,11 +527,11 @@ flowchart LR
 
   subgraph HOW["<b>…implemented in…</b>"]
     direction TB
-    M1["<code>src/pdf_text.py</code>"]
+    M1["<code>chitragupta/pdf_text.py</code>"]
     M2["<code>pyproject.toml</code> groups"]
-    M3["<code>src/render_output.py</code>"]
-    M4["<code>src/passages.py</code>"]
-    M5["<code>src/enrich/embed_index.py</code>"]
+    M3["<code>chitragupta/render_output.py</code>"]
+    M4["<code>chitragupta/passages.py</code>"]
+    M5["<code>chitragupta/enrich/embed_index.py</code>"]
   end
 
   subgraph OUT["<b>…leaving this on disk</b>"]
@@ -574,7 +574,7 @@ Two things that diagram makes visible and the table below does not.
 
 The parser backend is the only decision that reaches into two others. It
 decides whether the evidence ladder has a rung 2 to land on, and it
-shares `src/pdf_text.py` with the accelerator ladder.
+shares `chitragupta/pdf_text.py` with the accelerator ladder.
 
 And two decisions leave nothing on disk at all. They change what you are
 *allowed to do* with the files, or how long it takes to get them. That is
@@ -586,20 +586,20 @@ thing, is made here, is implemented there, and shows up on disk as that.*
 
 | Decision | Kind | Selects | Decided | Implemented in | Artefact |
 |---|---|---|---|---|---|
-| Evidence passages | ladder, 4 rungs | what may be quoted | at read time, per citekey | `src/passages.py` | `*.passages.json`, else nothing |
-| Enrichment text source | ladder, 3 rungs | what gets embedded | at index time, per doc | `src/enrich/embed_index.py` | `content/chroma/` |
-| Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `src/pdf_text.py` | none -- affects time only |
-| Parser backend | tier | how PDFs become text | `[parser].backend` | `src/pdf_text.py` | `content/parsed/*.txt` |
+| Evidence passages | ladder, 4 rungs | what may be quoted | at read time, per citekey | `chitragupta/passages.py` | `*.passages.json`, else nothing |
+| Enrichment text source | ladder, 3 rungs | what gets embedded | at index time, per doc | `chitragupta/enrich/embed_index.py` | `content/chroma/` |
+| Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `chitragupta/pdf_text.py` | none -- affects time only |
+| Parser backend | tier | how PDFs become text | `[parser].backend` | `chitragupta/pdf_text.py` | `content/parsed/*.txt` |
 | Interpreter | tier | what can run at all | the command you type | `pyproject.toml` groups | none |
-| Render format | tier | what the draft becomes | `--format` | `src/render_output.py` | `content/rendered/` |
+| Render format | tier | what the draft becomes | `--format` | `chitragupta/render_output.py` | `content/rendered/` |
 
 And the same decisions against the layer that makes them:
 
 | Layer | Ladders it walks | Tiers it obeys | Lock |
 |---|---|---|---|
-| 1. Corpus (`src.corpus sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
+| 1. Corpus (`chitragupta.corpus sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
 | 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
-| 3. Enrichment (`python -m src.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
+| 3. Enrichment (`python -m chitragupta.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
 | 4. Review (the three aids) | evidence passages, detection tiers | interpreter 1, render format | none |
 
 The two lock-holders never run at once: the second to start exits `2`

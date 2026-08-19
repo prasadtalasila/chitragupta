@@ -1,5 +1,5 @@
-"""src/enrich/embed_index.py: sentence-transformers + Chroma, the
-embeddings-based retrieval upgrade path for src/retrieval.py.
+"""chitragupta/enrich/embed_index.py: sentence-transformers + Chroma, the
+embeddings-based retrieval upgrade path for chitragupta/retrieval.py.
 
 chromadb/sentence_transformers are mocked via sys.modules for fast,
 deterministic unit tests -- they're imported lazily inside functions
@@ -16,9 +16,9 @@ import types
 
 import pytest
 
-from src import config
-from src.enrich import embed_index
-from src.enrich.corpus import CorpusDoc
+from chitragupta import config
+from chitragupta.enrich import embed_index
+from chitragupta.enrich.corpus import CorpusDoc
 
 
 class FakeArray(list):

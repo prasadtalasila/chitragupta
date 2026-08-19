@@ -12,13 +12,13 @@ and only the first two are faults:
    this hook exists (#197). It is not, on its own, enough: **this hook is
    launched by the same interpreter name it vets**, so the one host where
    the gate's launcher is missing is a host where this report never
-   arrives either. `src/hook_launchers.py` holds the check for that
-   reason, and `python -m src.draft gate` makes it too.
-2. **Does `python -m src.draft gate` still refuse a fabricated citekey?**
+   arrives either. `chitragupta/hook_launchers.py` holds the check for that
+   reason, and `python -m chitragupta.draft gate` makes it too.
+2. **Does `python -m chitragupta.draft gate` still refuse a fabricated citekey?**
 3. **Has the corpus been synced?** -- reported as a *stage*, not a fault.
 
 That third distinction is the design. The normal sequence is clone ->
-config.toml -> `python -m src.corpus sync` -> drafting, and a user who has
+config.toml -> `python -m chitragupta.corpus sync` -> drafting, and a user who has
 not reached step three has done nothing wrong. A preflight that called an
 empty ledger a failure would fire on every first session, and would teach
 people to ignore the one channel meant for real faults. So an empty ledger
@@ -46,22 +46,22 @@ REPO = Path(__file__).resolve().parent.parent.parent
 
 # Not at the top, because the path this import needs is the line above it:
 # the hook is run as a script by the harness, from a directory that is not
-# the repository, so `src` is only importable once the root it derived from
+# the repository, so `chitragupta` is only importable once the root it derived from
 # its own location is on the path. Module level rather than inside the
 # function on purpose -- a local `try: ... except ImportError: return []`
 # would turn a genuine breakage into the exact silence this hook exists to
 # notice, and a crashed advisory hook (which can never block) is the safer
 # half of that trade. `scripts/release.py` ships every git-tracked path bar
-# tests/, .github/ and bench/, so `src/` and `.claude/hooks/` always travel
+# tests/, .github/ and bench/, so `chitragupta/` and `.claude/hooks/` always travel
 # together in a release bundle.
 #
-# Appended rather than prepended: nothing else supplies a `src` package in
+# Appended rather than prepended: nothing else supplies a `chitragupta` package in
 # a real run, so the position costs nothing there, while prepending would
 # let a repo root shadow anything already importable -- including, in this
-# repository's own tests, the stub `src/` a test plants to simulate a dead
+# repository's own tests, the stub `chitragupta/` a test plants to simulate a dead
 # gate for the hook's *children*.
 sys.path.append(str(REPO))
-from src import hook_launchers  # noqa: E402  pylint: disable=wrong-import-position
+from chitragupta import hook_launchers  # noqa: E402  pylint: disable=wrong-import-position
 
 FABRICATED = "preflight_probe_not_a_real_citekey"
 
@@ -69,8 +69,8 @@ FABRICATED = "preflight_probe_not_a_real_citekey"
 def launcher_faults() -> list[str]:
     """Registered hook commands that cannot start, read from settings.json.
 
-    The check itself is `src/hook_launchers.py`, shared with
-    `python -m src.draft gate` -- see this module's docstring for why one
+    The check itself is `chitragupta/hook_launchers.py`, shared with
+    `python -m chitragupta.draft gate` -- see this module's docstring for why one
     reporter is not enough. The settings path is passed rather than looked
     up there so that this hook keeps deriving the repository root from its
     own on-disk location, which is what lets a test point it at a
@@ -80,7 +80,7 @@ def launcher_faults() -> list[str]:
 
 
 def gate_is_live() -> bool:
-    """Does `python -m src.draft gate` still refuse a fabricated citekey?
+    """Does `python -m chitragupta.draft gate` still refuse a fabricated citekey?
 
     Probed in a throwaway tree, so nothing is written under the user's
     content/ and no draft of theirs is read. The probe insists on the
@@ -96,14 +96,14 @@ def gate_is_live() -> bool:
         draft.write_text(f"A claim [@{FABRICATED}].\n")
         config = Path(tmp) / "config.toml"
         config.write_text(f'[content]\ndir = "{content.as_posix()}"\n')
-        result = _run("src.draft", "gate", str(draft),
+        result = _run("chitragupta.draft", "gate", str(draft),
                       CONFIG_PATH=str(config), CONTENT_DIR=str(content))
     return result.returncode != 0 and FABRICATED in result.stdout + result.stderr
 
 
 def corpus_stage() -> str | None:
     """Where the user is in clone -> config -> sync -> draft, or None if ready."""
-    result = _run("src.corpus", "ledger")
+    result = _run("chitragupta.corpus", "ledger")
     if result.returncode != 0:
         return ("The corpus layer will not start, so no draft can be grounded. The\n"
                 "usual cause is a fresh clone with no config file:\n"
@@ -115,11 +115,11 @@ def corpus_stage() -> str | None:
     # sentence, is what stops this reporting one of them and missing the
     # other; it also means the corpus layer stays the one deciding when a
     # sync is needed.
-    if "src.corpus sync" in result.stdout:
+    if "chitragupta.corpus sync" in result.stdout:
         return ("No synced corpus yet: the ledger is absent or holds nothing. That is\n"
                 "the expected state before a first sync, not a fault -- but every\n"
                 "genre skill needs it, so run this before asking for a draft:\n"
-                "    python -m src.corpus sync")
+                "    python -m chitragupta.corpus sync")
     return None
 
 
@@ -133,7 +133,7 @@ def _run(module: str, *args: str, **overrides: str):
 def main() -> int:
     notes = [f"BROKEN: {fault}" for fault in launcher_faults()]
     if not gate_is_live():
-        notes.append("BROKEN: `python -m src.draft gate` did not refuse a fabricated "
+        notes.append("BROKEN: `python -m chitragupta.draft gate` did not refuse a fabricated "
                      "citekey. CLAUDE.md's one invariant is unenforced until that is "
                      "fixed -- do not trust a draft written in this state.")
     stage = corpus_stage()

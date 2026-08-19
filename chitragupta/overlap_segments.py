@@ -1,20 +1,20 @@
 """What a *sentence* is on each side of tier 3's alignment.
 
-The draft side and the source side of `src/overlap_embed.py`, split out
+The draft side and the source side of `chitragupta/overlap_embed.py`, split out
 because they are the two halves of the same question -- what unit gets
 embedded, and where in the original does it sit -- and because the
 answers come from completely different places. The draft side reads a
 Markdown or LaTeX file this pipeline wrote, with sections, citation
-markers and a word stream `src/review/verbatim_check.py` has already
+markers and a word stream `chitragupta/review/verbatim_check.py` has already
 tokenized. The source side reads a Docling passage sidecar through
-`src/passages.py`'s ladder.
+`chitragupta/passages.py`'s ladder.
 
 Both sides answer to one rule: a sentence is only usable if it can say
 where it came from. A draft sentence carries the half-open word-index
 range it covers in the scan's own word stream, because that is the
 coordinate system a finding is reported in (#131, shared with tiers 1
 and 2). A source sentence carries a page number, because that is what a
-reviewer turns to. A passage with neither -- `src/passages.py`'s rungs 3
+reviewer turns to. A passage with neither -- `chitragupta/passages.py`'s rungs 3
 and 4, whole pages of `pdftotext -layout` output with `text=None` -- is
 dropped rather than aligned: on a two-column paper every line of that
 text splices two unrelated columns together, so a sentence cut from one
@@ -28,7 +28,7 @@ import bisect
 import re
 from dataclasses import dataclass
 
-from src import dossier, passages, sentences
+from chitragupta import dossier, passages, sentences
 
 # --------------------------------------------------------------------------
 # Draft side: sections, their sentences, and the word spans they cover
@@ -137,7 +137,7 @@ def draft_sections(
     """The draft's sections, each with the citekeys its dossier records
     and the sentences it is made of.
 
-    Sections come from `src.dossier.sections`, which is the repo's one
+    Sections come from `chitragupta.dossier.sections`, which is the repo's one
     outline parser and already skips fenced code and LaTeX verbatim --
     a `# Step 1` comment inside a code block is indistinguishable from a
     heading to anything that does not track fences.
@@ -180,9 +180,9 @@ def _line_starts(text: str) -> list[int]:
 # A line that opens a block of its own: a bullet or numbered item, a
 # table row, a heading, a blockquote, a LaTeX item or sectioning command.
 #
-# `src/review/citation_provenance.py` has a similar-looking `_OPENS_BLOCK`
+# `chitragupta/review/citation_provenance.py` has a similar-looking `_OPENS_BLOCK`
 # doing a different job, and the two are deliberately not shared -- the
-# same call `src/dossier/` makes about its own heading regexes, for the
+# same call `chitragupta/dossier/` makes about its own heading regexes, for the
 # same kind of reason. That one segments *claim-bearing* blocks for
 # lexical scoring against a source, and a blockquote is claim-bearing
 # prose it must keep whole; this one cuts *embedding units*, where a
@@ -344,7 +344,7 @@ def source_sentences(con, citekey: str) -> list[SourceSentence]:
     """A source's prose as sentences, each carrying the page it sits on.
 
     Only *quotable* passages with a page number qualify -- rungs 1 and 2
-    of `src/passages.py`'s ladder, the Docling sidecars. Rungs 3 and 4
+    of `chitragupta/passages.py`'s ladder, the Docling sidecars. Rungs 3 and 4
     hand back whole pages with `text=None` for a reason this tier cannot
     work around: they are `pdftotext -layout` output, where a two-column
     paper's every line splices two unrelated columns together, so a

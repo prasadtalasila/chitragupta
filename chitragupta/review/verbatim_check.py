@@ -1,27 +1,27 @@
 """Plagiarism / page-locator helper for reviewing a draft.
 
 One of the three aids in the **review layer**, with
-src/review/citation_provenance.py and src/review/citation_coverage.py --
+chitragupta/review/citation_provenance.py and chitragupta/review/citation_coverage.py --
 run by hand on a finished draft, never automatically, never a gate, and
-never holding the write lock. src/review/__init__.py owns where a written
+never holding the write lock. chitragupta/review/__init__.py owns where a written
 report goes (`content/review/<topic>/<stem>.verbatim.md`, mirroring the
 draft's path) and what its header looks like.
 
-Reached through the layer's single entry point, src/review/__main__.py,
-never as `python -m src.review.verbatim_check`: this module has no
+Reached through the layer's single entry point, chitragupta/review/__main__.py,
+never as `python -m chitragupta.review.verbatim_check`: this module has no
 __main__ block of its own, so that invocation would import it and exit 0
 without doing anything. See docs/ARCHITECTURE.md on why every layer's
 command surface stays one level deep.
 
 Four modes:
-    python -m src.review verbatim overlap <draft.md> <citekey> [--n 8]
+    python -m chitragupta.review verbatim overlap <draft.md> <citekey> [--n 8]
         report the longest verbatim word-n-gram runs shared between the
         draft's sentences citing <citekey> and that source's parsed text.
 
-    python -m src.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
+    python -m chitragupta.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
                                        [--limit N] [--json]
                                        [--write] [--formats md,tex,pdf]
-        slide the WHOLE draft across the WHOLE corpus index (src/overlap_index.py),
+        slide the WHOLE draft across the WHOLE corpus index (chitragupta/overlap_index.py),
         not just the sources a paragraph happens to cite -- catches verbatim
         reuse from an uncited source, and reuse in connective prose that
         cites nothing at all. Prints by default; --write also files the
@@ -30,7 +30,7 @@ Four modes:
         instead of as text, and --write files that too, as the report's
         `.json` sibling -- see `scan_payload`.
 
-    python -m src.review verbatim recheck <draft.md> --baseline <scan.json>
+    python -m chitragupta.review verbatim recheck <draft.md> --baseline <scan.json>
                                           [--json]
         re-scan the draft at the baseline's own floor and report which of
         its findings are gone, which remain, and which the edits
@@ -38,10 +38,10 @@ Four modes:
         "did this rewrite fix the finding without breaking anything else"
         is an acceptance test, and one a model should not be deciding by
         reading two reports side by side. Still not a gate -- it exits 0
-        whatever it finds, and `python -m src.draft gate` remains the only
+        whatever it finds, and `python -m chitragupta.draft gate` remains the only
         thing in this pipeline that blocks.
 
-    python -m src.review verbatim locate <citekey> "<phrase>" [more phrases...]
+    python -m chitragupta.review verbatim locate <citekey> "<phrase>" [more phrases...]
         report which PDF page each phrase (or its distinctive words)
         appears on, for fact-checking page numbers.
 
@@ -64,7 +64,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import (
+from chitragupta import (
     citation_gate, config, overlap_embed, overlap_index, overlap_segments,
     overlap_skipgram, references, review,
 )
@@ -102,7 +102,7 @@ def bib_entry(citekey: str) -> str:
 
 def pdf_path(citekey: str) -> Path | None:
     """The `file` field's attachment format is `Desc:path:mimetype`,
-    `;`-separated per attachment -- the same shape src.bib_reader
+    `;`-separated per attachment -- the same shape chitragupta.bib_reader
     parses, and it must be split the same way here.
 
     Splitting on ':' and taking the first segment that merely *ends in*
@@ -119,7 +119,7 @@ def pdf_path(citekey: str) -> Path | None:
     if not m:
         return None
     # Anchor a relative attachment path to the bib file's own directory,
-    # matching src.bib_reader._resolve_pdf_path -- not REPO, which is
+    # matching chitragupta.bib_reader._resolve_pdf_path -- not REPO, which is
     # wrong the moment BIB_FILE points somewhere outside the checked-out
     # repo (a relative path in the file field is only ever relative to
     # wherever the .bib itself lives).
@@ -202,8 +202,8 @@ def _gram_hit_runs(
 
 def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
     """Verbatim word-n-gram overlap between `draft`'s paragraphs citing
-    `citekey` and that source's corpus-layer parsed text (src/ledger.py's
-    `parsed_path`) -- fingerprinted and cached by src/overlap_index.py, so
+    `citekey` and that source's corpus-layer parsed text (chitragupta/ledger.py's
+    `parsed_path`) -- fingerprinted and cached by chitragupta/overlap_index.py, so
     a re-run over an unchanged source costs no re-fingerprinting.
 
     This reads the ledger's already-parsed text rather than re-invoking
@@ -341,7 +341,7 @@ def _lower_offsets(text: str) -> tuple[str, list[int] | None]:
     this is the one step that cannot, so it reports the shift instead of
     hiding it.
 
-    The lowercasing itself has to stay. `src/overlap_index.py`
+    The lowercasing itself has to stay. `chitragupta/overlap_index.py`
     fingerprints the corpus with `WORD.findall(text.lower())`; matching
     the draft case-insensitively instead would read `"İstanbul"` as one
     word where the corpus reads two, and the two sides would stop
@@ -747,7 +747,7 @@ def _exact_tier_findings(
     shape (`tier` naming which one produced it), same `(findings,
     suppressed)` return.
 
-    A run can span a page break in the source: `src/overlap_index.py`'s
+    A run can span a page break in the source: `chitragupta/overlap_index.py`'s
     `token_position` is a global offset into the document (#131), not
     reset per page, so `diagonal` (`src_pos - draft_pos`) stays constant
     across the boundary and the two halves merge into one run the same
@@ -760,7 +760,7 @@ def _exact_tier_findings(
     if min_run < index.n:
         raise ValueError(
             f"--min-run must be >= {index.n} (the corpus index's own n-gram "
-            "size, src.overlap_index.DEFAULT_N) -- a shorter run cannot be "
+            "size, chitragupta.overlap_index.DEFAULT_N) -- a shorter run cannot be "
             "detected without rebuilding the whole corpus index at a "
             "different n. Change the index's n, not this flag, if that is "
             "really what's needed."
@@ -907,7 +907,7 @@ def _skipgram_tier_findings(
     allowlist: list[tuple[str, ...]],
 ) -> tuple[list[dict], int]:
     """Tier 2: deterministic light-paraphrase detection via stemmed
-    skip-grams (`src/overlap_skipgram.py`, #133, the CoReMo design --
+    skip-grams (`chitragupta/overlap_skipgram.py`, #133, the CoReMo design --
     discussion #115, docs/PLAGIARISM-DESIGN.md). Same shared contract as
     `_exact_tier_findings` -- `(citekey, diagonal)` grouping, allowlist,
     `_cites_source` -- against `overlap_skipgram`'s own corpus-wide
@@ -1105,7 +1105,7 @@ def _embed_tier_findings(
     allowlist: list[tuple[str, ...]],
 ) -> tuple[list[dict], int, str | None]:
     """Tier 3: embedding-based paraphrase detection by local alignment
-    over sentence embeddings (`src/overlap_embed.py`, #134/#164). Same
+    over sentence embeddings (`chitragupta/overlap_embed.py`, #134/#164). Same
     shared contract as the other two tier finders, plus a third return
     value the other two have no use for: **why the tier did not run**.
 
@@ -1143,7 +1143,7 @@ def _embed_tier_findings(
         # a draft it never compared against anything.
         return [], 0, (
             "the draft's headings and its dossier's sections.md do not agree on a "
-            "single section -- regenerate it with `python -m src.dossier sections "
+            "single section -- regenerate it with `python -m chitragupta.dossier sections "
             "<draft> --citekeys --write`"
         )
 
@@ -1556,7 +1556,7 @@ def scan_command(
     path and effect are recorded separately (see `render_scan_markdown`'s
     header bullet and `scan_payload`'s `suppressed` field).
     """
-    command = ["python", "-m", "src.review", "verbatim", "scan", str(draft),
+    command = ["python", "-m", "chitragupta.review", "verbatim", "scan", str(draft),
                "--min-run", str(min_run), "--gap", str(gap)]
     if limit is not None:
         command += ["--limit", str(limit)]
@@ -2108,7 +2108,7 @@ def recheck_command(draft: str | Path, baseline: str | Path) -> str:
     is shared with the Markdown report, which the text form of a
     comparison has no counterpart to.
     """
-    return shlex.join(["python", "-m", "src.review", "verbatim", "recheck",
+    return shlex.join(["python", "-m", "chitragupta.review", "verbatim", "recheck",
                        str(draft), "--baseline", str(baseline), "--json"])
 
 
@@ -2239,14 +2239,14 @@ def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
     """The `verbatim` aid's four modes.
 
-    `parser` is passed by src/review/__main__.py, which has already
+    `parser` is passed by chitragupta/review/__main__.py, which has already
     created this aid's subparser and needs the modes hung off *that*
     rather than off a fresh top-level parser -- so the flags are declared
     once, here, and the entry point never restates them.
     """
     if parser is None:
         # A one-line description rather than this module's docstring, for
-        # the reason src/corpus.py's DESCRIPTION gives (#152).
+        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
         parser = argparse.ArgumentParser(
             description="Report how much wording a draft shares with the sources it cites.",
         )
@@ -2316,7 +2316,7 @@ def main(argv: list[str] | None = None) -> int:
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
-    Split from main() so src/review/__main__.py can hand over the args it
+    Split from main() so chitragupta/review/__main__.py can hand over the args it
     parsed with this module's own build_parser(), rather than re-slicing
     argv and parsing it twice.
     """

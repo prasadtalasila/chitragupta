@@ -2,14 +2,14 @@
 (the CoReMo 2.1 design, Torrejon & Ramos, PAN 2013 winner on quality and
 runtime -- discussion #115, docs/PLAGIARISM-DESIGN.md). Catches the every-few-
 words synonym swap or inflection change an LLM's paraphrase leaves --
-exactly what tier 1's exact 8-gram index (src/overlap_index.py) is blind
+exactly what tier 1's exact 8-gram index (chitragupta/overlap_index.py) is blind
 to by construction, since a single substituted word breaks every
 contiguous n-gram that contains it.
 
 **The idea.** Split the word stream into two fixed interleaved families
 by *original* position -- even indices, odd indices -- before anything
 else touches it, then stem and drop stopwords independently *within*
-each family (`src/porter_stemmer.py`), and take ordinary contiguous
+each family (`chitragupta/porter_stemmer.py`), and take ordinary contiguous
 n-grams over each family's own reduced stream
 (`overlap_index.gram_hashes`, reused unchanged). A single substituted
 word at original position p can only ever affect the family whose parity
@@ -54,7 +54,7 @@ under the same `config.OVERLAP_DIR`.
 
 Advisory only for now (discussion #115: "start advisory, promote with
 evidence") -- nothing in this module or in
-`src/review/verbatim_check.py`'s tier-2 finder decides gate-eligibility;
+`chitragupta/review/verbatim_check.py`'s tier-2 finder decides gate-eligibility;
 that is a later, separate decision (issue #130), unlike tier 3
 (embedding), which docs/PLAGIARISM-DESIGN.md rules out from ever gating, by
 construction.
@@ -70,8 +70,8 @@ from dataclasses import dataclass
 from itertools import accumulate
 from pathlib import Path
 
-from src import config
-from src.overlap_index import (
+from chitragupta import config
+from chitragupta.overlap_index import (
     _atomic_write_bytes,
     _atomic_write_json,
     _fingerprint_key,
@@ -82,7 +82,7 @@ from src.overlap_index import (
     _parse_corpus_index_binary,
     gram_hashes,
 )
-from src.porter_stemmer import stem
+from chitragupta.porter_stemmer import stem
 
 # A content-word gram width, not a raw-word one: after stopword
 # filtering, roughly two out of every five running words in English
@@ -167,7 +167,7 @@ def stem_filter(words: list[str]) -> tuple[list[str], list[int]]:
     Whole-stream, not family-split -- used where robustness to a
     substitution elsewhere in the text does not matter, e.g. normalizing
     a short allowlisted phrase for masking (see
-    `src/review/verbatim_check.py`'s tier-2 allowlist handling), not for
+    `chitragupta/review/verbatim_check.py`'s tier-2 allowlist handling), not for
     generating skip-grams themselves (`skipgram_postings`, below, which
     needs the family split for the reason the module docstring gives).
     """
@@ -216,7 +216,7 @@ def skipgram_postings(words: list[str], n: int) -> list[tuple[int, int, int]]:
     -- a document fingerprint's postings only ever need a position to
     align a diagonal against, never their own span, since a run's extent
     is always measured on the draft side. A draft-side caller
-    (`src/review/verbatim_check.py`'s tier-2 finder) needs both, to
+    (`chitragupta/review/verbatim_check.py`'s tier-2 finder) needs both, to
     report where a match starts and ends in the draft actually scanned.
 
     A window at least `MAX_NUMERIC_SHARE` of whose stems are bare

@@ -8,7 +8,7 @@ on a small/CPU-only host. Output is Markdown, written per-doc so a
 failure on one document doesn't lose progress on the others.
 
 Not the same thing as `[parser].backend = "docling"`, and not made
-redundant by it. That setting points src/pdf_text.py at the same library
+redundant by it. That setting points chitragupta/pdf_text.py at the same library
 to produce one .txt per citekey for BM25; this stage produces structured
 Markdown plus the `<doc>.passages.json` sidecar for the whole corpus,
 always, whatever that setting says.
@@ -34,7 +34,7 @@ parse_corpus() is incremental: a per-citekey (size, mtime_ns) fingerprint
 is cached to config.DOCLING_CACHE_PATH, so a PDF that's unchanged since
 the last call skips straight past DocumentConverter -- the slowest stage
 in this whole pipeline (373s for 5 PDFs, per DEVELOPER.md's own known-gaps
-note this closes). Unlike src/ledger.py's stat-before-hash, there's no
+note this closes). Unlike chitragupta/ledger.py's stat-before-hash, there's no
 sha256 fallback here: a same-size edit that also preserves mtime (e.g.
 `cp --preserve=timestamps`) slips past this check and the .md stays
 stale until something else invalidates the cache entry (deleting it, or
@@ -63,20 +63,20 @@ import re
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from src import config, logging_setup, passages, pdf_text
-from src.enrich.corpus import CorpusDoc
+from chitragupta import config, logging_setup, passages, pdf_text
+from chitragupta.enrich.corpus import CorpusDoc
 
 # Fixed name, not __name__: this module has no __main__ block of its
-# own, but naming the logger explicitly keeps it inside the "src"
+# own, but naming the logger explicitly keeps it inside the "chitragupta"
 # tree logging_setup.configure() pins permissive -- the same trap
-# src/sync.py documents at its own getLogger call.
-logger = logging.getLogger("src.enrich.docling_parse")
+# chitragupta/sync.py documents at its own getLogger call.
+logger = logging.getLogger("chitragupta.enrich.docling_parse")
 
 # Bump when a change to what parse_doc() *writes* makes an existing .md
 # stale even though its PDF hasn't changed -- the (size, mtime_ns)
 # fingerprint below only sees the input, never the output shape, so
 # without this an option change silently serves last run's files
-# forever. Mirrors src/retrieval.py's _INDEX_SCHEMA_VERSION.
+# forever. Mirrors chitragupta/retrieval.py's _INDEX_SCHEMA_VERSION.
 # config.DOCLING_IMAGES is stored alongside it for the same reason:
 # it's a *runtime* toggle, so it can't be folded into this constant.
 # 2: added <stem>.passages.json, so a cache written by version 1 has
@@ -87,7 +87,7 @@ _CACHE_VERSION = 2
 
 def _load_cache() -> dict:
     """Corrupt or unexpected-shape cache data is treated as empty rather
-    than raised -- see src/retrieval.py's _load_cache for the same
+    than raised -- see chitragupta/retrieval.py's _load_cache for the same
     defensive shape, applied here so a truncated write (e.g. a killed
     mid-run process) doesn't take down every doc in the next parse_corpus
     call, just cost it one avoidable re-parse per doc.
@@ -117,7 +117,7 @@ def _load_cache() -> dict:
 def _save_cache(cache: dict) -> None:
     """Atomic write-then-replace so a process killed mid-save leaves the
     previous, still-valid cache in place instead of a torn file --
-    doesn't need src/retrieval.py's per-writer-unique temp name (its
+    doesn't need chitragupta/retrieval.py's per-writer-unique temp name (its
     concurrent-subagent scenario doesn't apply: enrich.py runs
     this stage from a single process).
 
@@ -342,7 +342,7 @@ def _corpus_parse_available(doc: CorpusDoc) -> bool:
     `[parser].ocr` setting produced the corpus text. But that staleness
     already exists in `content/parsed/` the moment the setting changes --
     adopting it here propagates it rather than creating it, and the fix is
-    the same either way (`python -m src.corpus sync --reparse`).
+    the same either way (`python -m chitragupta.corpus sync --reparse`).
     """
     if config.DOCLING_IMAGES or not doc.text_path:
         return False
@@ -362,7 +362,7 @@ def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
 
     The dependency runs the way this repository allows it to: the
     enrichment layer reads the corpus layer's artefacts, never the
-    reverse. Nothing in `src/` outside this package changes shape to make
+    reverse. Nothing in `chitragupta/` outside this package changes shape to make
     it possible, and a corpus layer that has never run docling simply
     leaves this returning False.
 
@@ -386,7 +386,7 @@ def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
     # Both reads before either write, and a damaged one declines the reuse
     # instead of raising. A sidecar truncated mid-write by a killed
     # process can split a multi-byte character, which fails to decode --
-    # src/passages.py's reader already tolerates exactly that, for the
+    # chitragupta/passages.py's reader already tolerates exactly that, for the
     # same reason. Here the cost of not tolerating it would be worse than
     # a fallback: parse_doc would report a hard error for a document whose
     # PDF is sitting right there, perfectly parseable.
@@ -438,11 +438,11 @@ def _pdf_size(path: str | None) -> int:
 
 
 def _executor_for(workers: int):
-    """Mirrors src/sync.py's: one GPU per worker, and whichever start
+    """Mirrors chitragupta/sync.py's: one GPU per worker, and whichever start
     method pdf_text.process_pool_context picks.
 
     Kept as its own function here rather than imported from sync so that
-    src/enrich/ doesn't depend on the core entrypoint -- the dependency
+    chitragupta/enrich/ doesn't depend on the core entrypoint -- the dependency
     runs the other way everywhere else in this repo.
 
     That duplication is the reason this takes `usable_devices()` rather
@@ -506,7 +506,7 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     if converter is None:
         converter = _build_converter()
     result = converter.convert(doc.pdf_path)
-    # Same hole src/pdf_text.py closed in v1.2.0, on the other call site:
+    # Same hole chitragupta/pdf_text.py closed in v1.2.0, on the other call site:
     # convert(raises_on_error=True) raises only on FAILURE, so a
     # PARTIAL_SUCCESS would otherwise be written to
     # content/docling/<doc>.md as though complete -- and that .md feeds
@@ -533,10 +533,10 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     else:
         out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
 
-    # Written for every doc, images on or off: src/review/citation_provenance.py
+    # Written for every doc, images on or off: chitragupta/review/citation_provenance.py
     # reads it to quote a real passage rather than a window sliced out of
     # column-spliced flat text. Cheap next to the parse that produced it.
-    # Same records the corpus layer writes, from src/passages.py's one
+    # Same records the corpus layer writes, from chitragupta/passages.py's one
     # definition of what a passage is -- but under this layer's own
     # directory, because this parse runs under its own OCR and figure
     # settings and must not overwrite the corpus layer's copy.
@@ -607,7 +607,7 @@ def parse_one(job: tuple) -> tuple:
     Module-level and exception-free by design -- both the argument and
     the result have to survive pickling to and from a worker process, and
     an arbitrary Docling exception may not. The fingerprint travels back
-    so the *parent* owns every cache write, the same way src/sync.py
+    so the *parent* owns every cache write, the same way chitragupta/sync.py
     keeps every ledger write on the main process.
     """
     doc, threads = job
@@ -621,7 +621,7 @@ def parse_one(job: tuple) -> tuple:
 def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     """Returns {citekey: 'ok' | 'error: ...'} -- never raises for a single doc failure.
 
-    Parallelised by [parser].workers exactly like src/sync.py, and for
+    Parallelised by [parser].workers exactly like chitragupta/sync.py, and for
     the same reason: this is the slowest stage in the repository, and a
     first run over a real corpus is measured in tens of minutes. The
     default of 1 keeps the historical serial path, converter reuse and
@@ -634,7 +634,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     step. A script that calls this must therefore guard its top level
     with `if __name__ == "__main__":`, or every worker re-runs it on
     startup and the pool dies with BrokenProcessPool.
-    src/enrich/__main__.py and src/sync.py both do; an ad-hoc script
+    chitragupta/enrich/__main__.py and chitragupta/sync.py both do; an ad-hoc script
     that doesn't will fail immediately rather than subtly.
     """
     cache = _load_cache()
@@ -686,7 +686,7 @@ def _parse_with_pool(docs: list[CorpusDoc], pending: list[CorpusDoc],
     this saves before re-raising so finished work survives the Ctrl+C.
     """
     threads = pdf_text.docling_threads(workers)
-    # Biggest-file-first, same LPT reasoning as src/sync.py: one
+    # Biggest-file-first, same LPT reasoning as chitragupta/sync.py: one
     # 675-page document in this corpus would otherwise define the
     # wall clock all by itself if it were picked up last.
     jobs = [(d, threads) for d in sorted(pending, key=lambda d: -_pdf_size(d.pdf_path))]
@@ -696,7 +696,7 @@ def _parse_with_pool(docs: list[CorpusDoc], pending: list[CorpusDoc],
             status[doc.citekey] = f"ok: {parse_doc(doc, cache=cache)}"
         except Exception as exc:  # noqa: BLE001 -- as below
             status[doc.citekey] = f"error: {exc}"
-    # Explicit shutdown rather than `with`, for the reason src/sync.py
+    # Explicit shutdown rather than `with`, for the reason chitragupta/sync.py
     # gives: the context manager waits for every queued job, so
     # Ctrl+C would drain the whole corpus before exiting.
     executor = _executor_for(workers)

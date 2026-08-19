@@ -39,7 +39,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config  # noqa: E402
+from chitragupta import config  # noqa: E402
 import bench_paraphrase_hunt as hunt  # noqa: E402
 
 LABELS_PATH = BENCH_DIR / "results" / "2026-08-15-organic-paraphrase-hunt" / "labels.json"
@@ -99,7 +99,7 @@ def main(argv=None):
 
     self_check()
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync`",
+        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync`",
               file=sys.stderr)
         return 1
 

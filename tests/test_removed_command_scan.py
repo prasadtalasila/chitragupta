@@ -1,7 +1,7 @@
-"""Nothing in this tree may invoke `python -m src.sync`.
+"""Nothing in this tree may invoke `python -m chitragupta.sync`.
 
 That command was the corpus layer's entry point until 5.2.0. It is gone:
-`python -m src.corpus sync` replaced it, and `src/sync.py`'s `__main__`
+`python -m chitragupta.corpus sync` replaced it, and `chitragupta/sync.py`'s `__main__`
 block now refuses the old spelling out loud.
 
 This file exists because of *how* the two survivors survived. #150
@@ -9,7 +9,7 @@ repointed 181 command strings by hand and missed `bench/repro_check.py`
 and `bench/sweep_sync.py`, where the command is not written as prose at
 all but assembled as list elements:
 
-    subprocess.run([python, "-m", "src.sync"], ...)
+    subprocess.run([python, "-m", "chitragupta.sync"], ...)
 
 A search for the prose spelling does not match that, so both harnesses
 kept "succeeding" -- against a no-op, on a run that parsed nothing --
@@ -18,9 +18,9 @@ data rather than no data, which is why #151 asked for the class to be
 closed rather than the two instances fixed.
 
 So the pattern here matches the *invocation*, in either shape, rather
-than the module path. `src.sync` on its own is legitimate and common:
-it is the logger name pinned in `src/sync.py`, `docs/CONFIG.md` and
-`docs/CLI.md`, and `src/sync.py` is a file path named throughout the
+than the module path. `chitragupta.sync` on its own is legitimate and common:
+it is the logger name pinned in `chitragupta/sync.py`, `docs/CONFIG.md` and
+`docs/CLI.md`, and `chitragupta/sync.py` is a file path named throughout the
 docs and the suite. Only `-m` in front of it makes it a command. Same
 reasoning as tests/test_command_depth_scan.py, which draws the line in
 the same place for nested commands.
@@ -33,15 +33,15 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# `-m src.sync` and `"-m", "src.sync"` are one pattern, not two: between
+# `-m chitragupta.sync` and `"-m", "chitragupta.sync"` are one pattern, not two: between
 # the flag and the module there may be a closing quote, whitespace, a
 # list comma and an opening quote, in that order and any of them absent.
 # Written this way rather than as two alternatives so a third spelling
-# (`'-m','src.sync'`, no space) cannot slip between them.
+# (`'-m','chitragupta.sync'`, no space) cannot slip between them.
 _INVOCATION = re.compile(r"""-m["']?      # the flag, and the quote closing it in a list
                              [\s,]*       # whitespace and/or the comma between elements
                              ["']?        # the quote opening the module string
-                             src\.sync\b""", re.VERBOSE)
+                             chitragupta\.sync\b""", re.VERBOSE)
 
 # The sites that own the removal, and must name the old spelling to do
 # their job. An allowlist by path rather than by surrounding prose (the
@@ -50,7 +50,7 @@ _INVOCATION = re.compile(r"""-m["']?      # the flag, and the quote closing it i
 # command, and assert that it refuses.
 _ALLOWED = {
     # The refusal itself.
-    Path("src/sync.py"),
+    Path("chitragupta/sync.py"),
     # Pins that the refusal happens, by running it.
     Path("tests/test_corpus_entrypoint.py"),
     # This file.
@@ -96,7 +96,7 @@ def _scanned_files(root=REPO_ROOT):
     cleaning it up again.
     """
     patterns = ("*.py", "*.md", "*.sh", "*.toml", "*.yml", "*.yaml", "*.cfg")
-    roots = ("src", "tests", "bench", "scripts", "docs", ".claude", ".github", "docker")
+    roots = ("chitragupta", "tests", "bench", "scripts", "docs", ".claude", ".github", "docker")
     found = set()
     for sub in roots:
         for pattern in patterns:
@@ -142,8 +142,8 @@ class TestNothingInvokesTheRemovedCommand:
     def test_the_tree_is_clean(self):
         offenders = _offenders()
         assert not offenders, (
-            "`python -m src.sync` was removed in 5.2.0 and now refuses. Use "
-            "`python -m src.corpus sync`:\n"
+            "`python -m chitragupta.sync` was removed in 5.2.0 and now refuses. Use "
+            "`python -m chitragupta.corpus sync`:\n"
             + "\n".join(f"  {path}: {text!r}" for path, text in offenders)
         )
 
@@ -182,16 +182,16 @@ class TestANestedWorktreeIsNotScanned:
 
     @staticmethod
     def _tree(root):
-        for name in ("src", "tests", "bench", "scripts", "docs", ".github", "docker"):
+        for name in ("chitragupta", "tests", "bench", "scripts", "docs", ".github", "docker"):
             (root / name).mkdir(parents=True)
         (root / "docker" / "Dockerfile").write_text("FROM python\n", encoding="utf-8")
         (root / "config.toml.example").write_text("# example\n", encoding="utf-8")
         # A real offender, at a path the allowlist does not cover.
         (root / "docs" / "OLD.md").write_text(
-            "run python -m src.sync nightly\n", encoding="utf-8"
+            "run python -m chitragupta.sync nightly\n", encoding="utf-8"
         )
         # The same offence inside a worktree-shaped checkout, plus a copy
-        # of the refusal machinery at a path `_ALLOWED`'s `src/sync.py`
+        # of the refusal machinery at a path `_ALLOWED`'s `chitragupta/sync.py`
         # cannot match -- the shape §4.3 actually reported.
         # A skill file at a real `.claude/` path, which must stay in
         # scope: dropping `.claude` from `roots` altogether would also
@@ -199,16 +199,16 @@ class TestANestedWorktreeIsNotScanned:
         # stop scanning the drafting layer.
         (root / ".claude" / "skills").mkdir(parents=True)
         (root / ".claude" / "skills" / "SKILL.md").write_text(
-            "use python -m src.corpus sync\n", encoding="utf-8"
+            "use python -m chitragupta.corpus sync\n", encoding="utf-8"
         )
         nested = root / ".claude" / "worktrees" / "issue-999"
         (nested / "docs").mkdir(parents=True)
-        (nested / "src").mkdir(parents=True)
+        (nested / "chitragupta").mkdir(parents=True)
         (nested / "docs" / "OLD.md").write_text(
-            "run python -m src.sync nightly\n", encoding="utf-8"
+            "run python -m chitragupta.sync nightly\n", encoding="utf-8"
         )
-        (nested / "src" / "sync.py").write_text(
-            'subprocess.run([python, "-m", "src.sync"])\n', encoding="utf-8"
+        (nested / "chitragupta" / "sync.py").write_text(
+            'subprocess.run([python, "-m", "chitragupta.sync"])\n', encoding="utf-8"
         )
 
     def test_the_nested_checkout_is_not_reported(self, tmp_path):
@@ -244,21 +244,21 @@ class TestThePatternCatchesBothSpellings:
     tightening of the regex."""
 
     def test_it_catches_the_prose_form(self):
-        assert _INVOCATION.search("run python -m src.sync nightly")
+        assert _INVOCATION.search("run python -m chitragupta.sync nightly")
 
     def test_it_catches_the_list_form(self):
-        assert _INVOCATION.search('subprocess.run([python, "-m", "src.sync"])')
+        assert _INVOCATION.search('subprocess.run([python, "-m", "chitragupta.sync"])')
 
     def test_it_catches_the_unspaced_list_form(self):
-        assert _INVOCATION.search("[python,'-m','src.sync']")
+        assert _INVOCATION.search("[python,'-m','chitragupta.sync']")
 
     def test_it_ignores_the_logger_name(self):
-        """`src.sync` is the pinned logger name in every logs/pipeline.log
+        """`chitragupta.sync` is the pinned logger name in every logs/pipeline.log
         line, and docs/CLI.md tells a scheduler to grep for it."""
-        assert not _INVOCATION.search("sync logs as src.sync whatever the")
+        assert not _INVOCATION.search("sync logs as chitragupta.sync whatever the")
 
     def test_it_ignores_the_file_path(self):
-        assert not _INVOCATION.search("src/sync.py's parse loop is serial")
+        assert not _INVOCATION.search("chitragupta/sync.py's parse loop is serial")
 
     def test_it_ignores_the_replacement(self):
-        assert not _INVOCATION.search("python -m src.corpus sync --reparse")
+        assert not _INVOCATION.search("python -m chitragupta.corpus sync --reparse")

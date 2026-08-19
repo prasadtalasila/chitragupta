@@ -2,7 +2,7 @@
 names (config.toml's [parser].backend, or the PARSER env var) --
 "pdftotext" (default) or "docling". Both write into
 the same place, content/parsed/<citekey>.txt, so every downstream
-consumer (src/ledger.py, src/retrieval.py, src/review/verbatim_check.py)
+consumer (chitragupta/ledger.py, chitragupta/retrieval.py, chitragupta/review/verbatim_check.py)
 stays backend-agnostic; only this module needs to know which one is
 configured.
 
@@ -31,7 +31,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from src import config, passages
+from chitragupta import config, passages
 
 # Logical CPUs one docling worker is *charged*. Used both as the divisor
 # for `workers = "auto"` and as the ceiling an explicit request is
@@ -238,7 +238,7 @@ class interrupt_guard:
         return False
 
     def _on_sigint(self, _signum, _frame):
-        # Deliberately still a bare print, not src.sync's logger: this
+        # Deliberately still a bare print, not chitragupta.sync's logger: this
         # runs inside a signal handler a couple of lines before
         # os._exit(130), and print(..., flush=True) is a call this
         # project has already measured exiting in 0.0s (see the class
@@ -454,7 +454,7 @@ def cuda_is_initialised() -> bool:
     the question can never be what makes the answer true.
 
     Deliberately about the observed state rather than about who caused
-    it: gpu_count is no longer the only candidate (src/enrich/embed_index
+    it: gpu_count is no longer the only candidate (chitragupta/enrich/embed_index
     runs sentence-transformers, and a library caller may have done
     anything at all before calling in), and a start method chosen from
     "did anyone touch CUDA" is right in all of those cases while one
@@ -548,7 +548,7 @@ def start_method() -> tuple[str, str | None]:
     trade off.
 
     The CUDA check survives anyway, because a caller can initialise CUDA
-    in this process by other means (src/enrich/embed_index does), and
+    in this process by other means (chitragupta/enrich/embed_index does), and
     forkserver's own server process is started by the first pool -- which
     is well after that could have happened.
     """
@@ -723,7 +723,7 @@ def worker_device() -> str | None:
     """The CUDA device this worker claimed, or None if it claimed none.
 
     The public read of the process-global set by init_worker, so other
-    modules (src/enrich/docling_parse.py) don't reach into this one's
+    modules (chitragupta/enrich/docling_parse.py) don't reach into this one's
     internals to build their own converters.
     """
     return _WORKER_DEVICE
@@ -793,7 +793,7 @@ class BackendUnavailable(RuntimeError):
 class MissingBinary(BackendUnavailable):
     """pdftotext specifically isn't on PATH -- kept as its own subclass
     (predates the multi-backend dispatch) rather than folded into
-    MissingDependency, since src/sync.py's early history and tests
+    MissingDependency, since chitragupta/sync.py's early history and tests
     already reference it by this name."""
 
 
@@ -856,7 +856,7 @@ def _extract_pdftotext(pdf_path: str, out_path: Path, threads: int | None = None
     # external binary. The parameter exists so _EXTRACTORS stays a plain
     # uniform table rather than growing a per-backend call signature.
     #
-    # Returns None -- not an empty list -- for the reason src/passages.py
+    # Returns None -- not an empty list -- for the reason chitragupta/passages.py
     # exists: `-layout` output preserves a page's visual arrangement, so a
     # span cut from it can splice two columns together and must not be
     # quoted. The distinction matters to extract_text: None means "this
@@ -1073,7 +1073,7 @@ def _demote_to_cpu() -> None:
     """
     global _WORKER_DEVICE
     _WORKER_DEVICE = "cpu"
-    # Deliberately still a bare print, not src.sync's logger: this runs
+    # Deliberately still a bare print, not chitragupta.sync's logger: this runs
     # inside a docling worker *process* (forkserver/spawn, never plain
     # fork -- see _executor_for's docstring), which has no handler of its
     # own and no route back to the parent's without a QueueHandler this
@@ -1095,7 +1095,7 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
     right shape for what the corpus layer owes its callers -- BM25 ranks
     text, not boxes -- so the structure leaves by a second door instead:
     the returned records become `content/parsed/<citekey>.passages.json`,
-    rung 2 of `src/passages.py`'s ladder, and the caller (`extract_text`)
+    rung 2 of `chitragupta/passages.py`'s ladder, and the caller (`extract_text`)
     writes them.
 
     Two things make that work, and both are one keyword each:
@@ -1103,7 +1103,7 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
     `page_break_placeholder="\\f"` puts form feeds where the pages were, so
     this backend's output has the same shape as `pdftotext`'s and every
     consumer that splits on them -- the passage ladder's page-level rung,
-    `src/review/verbatim_check.py` -- reports a real page instead of p.1.
+    `chitragupta/review/verbatim_check.py` -- reports a real page instead of p.1.
     Docling emits a break *between* consecutive pages that carry items and
     none before the first, so splitting yields 1-based page numbers
     directly. A page carrying no items at all contributes no break and so
@@ -1112,7 +1112,7 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
     `\\f` is whitespace, so BM25 tokenisation and `run_together_ratio` see
     exactly what they saw before.
 
-    src/enrich/docling_parse.py is the other consumer of this library, and
+    chitragupta/enrich/docling_parse.py is the other consumer of this library, and
     is still not made redundant by this one: it parses the PDF a second
     time under its own OCR and figure settings, and writes structured
     Markdown plus figure records that this one does not.
@@ -1125,7 +1125,7 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
         raise
     except Exception as exc:  # noqa: BLE001 -- docling has no narrower
         # common exception type to catch (same reporting shape as
-        # src/enrich/docling_parse.py's own parse_corpus loop).
+        # chitragupta/enrich/docling_parse.py's own parse_corpus loop).
         #
         # The converter is deliberately NOT discarded here: the failure
         # is in this one PDF, not in the models, and throwing it away
@@ -1301,7 +1301,7 @@ def run_together_ratio(text: str) -> tuple[float, int]:
     positions against a tolerance. Set that tolerance too coarse and
     adjacent words fuse -- "isaninputtooranoutputfromafunction" -- which
     is invisible in a spot check but silently wrecks retrieval, because
-    src/retrieval.py tokenizes on whitespace and can no longer match a
+    chitragupta/retrieval.py tokenizes on whitespace and can no longer match a
     query term buried inside a fused run.
 
     Measured on this project's own corpus: pdftotext produced 9 such
@@ -1365,14 +1365,14 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
     config.PARSER's backend.
 
     Raises MissingBinary/MissingDependency if that backend isn't usable
-    on this host (probe-and-report, like every src/enrich/* stage -- see
+    on this host (probe-and-report, like every chitragupta/enrich/* stage -- see
     render_output.MissingBinary -- rather than letting the backend's own
     not-found error surface as an uncaught traceback), or ExtractionError
     if the backend runs but fails on this particular PDF.
 
     A backend that resolves reading order also returns passage records,
     which are written beside the text as `<citekey>.passages.json` for
-    src/passages.py to quote from. The old sidecar is dropped *before*
+    chitragupta/passages.py to quote from. The old sidecar is dropped *before*
     the parse, not replaced after it, so the three ways one can outlive
     its truth all end at "no sidecar" rather than at stale sentences
     attributed to the current PDF: the backend changed to one that
@@ -1394,7 +1394,7 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
     # `is not None`, so a backend that resolved reading order and found no
     # prose still writes an (empty) sidecar. That keeps the file's
     # presence a reliable answer to "did a reading-order backend parse
-    # this?" -- which is what src/ledger.py checks before skipping a
+    # this?" -- which is what chitragupta/ledger.py checks before skipping a
     # document it believes is already parsed. The ladder is unaffected: it
     # declines an empty sidecar and falls to the page-level rung.
     if records is not None:
@@ -1408,7 +1408,7 @@ def extract_one(job: tuple[str, str, int | None]) -> tuple[str, str | None, Exce
 
     Defined at module level, and returning the exception rather than
     raising it, because both have to survive pickling across a process
-    boundary. Returning it keeps the *type* -- src/sync.py distinguishes
+    boundary. Returning it keeps the *type* -- chitragupta/sync.py distinguishes
     ExtractionError from BackendUnavailable and reports them differently,
     which a stringified error would lose.
     """

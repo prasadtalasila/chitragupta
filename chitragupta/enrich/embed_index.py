@@ -1,12 +1,12 @@
 """Stage 3: sentence-transformers embeddings persisted in a Chroma collection.
 
 This is the real embedding-based retrieval the corpus layer's
-src/retrieval.py deliberately deferred (keyword overlap only, pending a
+chitragupta/retrieval.py deliberately deferred (keyword overlap only, pending a
 larger corpus). Needs `sentence-transformers` and `chromadb` from
 pyproject.toml's "enrich" Poetry group, in a venv.
 
 build_index() is incremental, mirroring the corpus layer's
-src/ledger.py: skip reprocessing whatever hasn't detectably changed
+chitragupta/ledger.py: skip reprocessing whatever hasn't detectably changed
 since the last run. Here that means each chunk's stored
 metadata carries a hash of the *text that produced it* (not the PDF
 bytes -- Docling reprocessing the same PDF, or a manually edited parsed
@@ -28,14 +28,14 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from src import config, logging_setup
-from src.enrich.corpus import CorpusDoc
+from chitragupta import config, logging_setup
+from chitragupta.enrich.corpus import CorpusDoc
 
-# Fixed name for the same reason src/sync.py pins its own: this
+# Fixed name for the same reason chitragupta/sync.py pins its own: this
 # module is imported, never run as __main__, but naming it here
 # rather than via __name__ keeps it obvious that it must stay inside
-# the "src" tree logging_setup.configure() pins to DEBUG.
-logger = logging.getLogger("src.enrich.embed_index")
+# the "chitragupta" tree logging_setup.configure() pins to DEBUG.
+logger = logging.getLogger("chitragupta.enrich.embed_index")
 
 _COLLECTION_PREFIX = "corpus"
 
@@ -43,7 +43,7 @@ _COLLECTION_PREFIX = "corpus"
 def collection_name() -> str:
     """Chroma collection name for the currently configured embedding model.
 
-    Public rather than private because `src/overlap_embed.py` (tier 3 of
+    Public rather than private because `chitragupta/overlap_embed.py` (tier 3 of
     the overlap scan) has to ask whether *this* model's collection has
     been built before it can say the tier is available -- and asking that
     by recomputing the name would put the namespacing rule below in two
@@ -153,7 +153,7 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     until it returned is how issue #50 came to be filed against a run
     that was working fine, then Ctrl-C'd at 399 of 501 documents.
 
-    Same `  [done/total] <citekey>` shape src/sync.py and
+    Same `  [done/total] <citekey>` shape chitragupta/sync.py and
     docling_parse.py already use for their own per-document progress, and
     flushed for the reason pdf_text.py flushes its interrupt notice:
     stdout is block-buffered when it isn't a terminal, and the tail of an
@@ -251,7 +251,7 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     """`snippet_chars` defaults to enough context for a caller to judge
     relevance itself before citing, rather than trusting distance alone.
 
-    Deliberately the same shape as `src.retrieval.search()`, so this is a
+    Deliberately the same shape as `chitragupta.retrieval.search()`, so this is a
     drop-in for it, and every hit is citable either way: both draw on the
     ledger, so a returned `citekey` always resolves against it. That is
     what restricting the corpus to the bibliography buys (see corpus.py)

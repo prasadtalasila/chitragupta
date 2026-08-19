@@ -39,15 +39,15 @@ that is sitting there anyway.
 
 `passage_records()` lives here rather than beside either writer for the
 same reason the ladder does: this module is stdlib-only and is already
-the sidecar's reader, so both producers -- `src/pdf_text.py` in the
-corpus layer and `src/enrich/docling_parse.py` in the enrichment layer --
+the sidecar's reader, so both producers -- `chitragupta/pdf_text.py` in the
+corpus layer and `chitragupta/enrich/docling_parse.py` in the enrichment layer --
 share one definition of what a passage is. It takes a Docling document by
 duck-typing (`getattr` only, no import), which is what lets a module with
 no venv dependency describe a document only a venv can build.
 
-Extracted from src/review/citation_provenance.py, which owned this ladder when
+Extracted from chitragupta/review/citation_provenance.py, which owned this ladder when
 it was the only consumer, and kept as its own seam for a second one that
-has not been built yet: `src/retrieval.py` still cuts its snippets as a
+has not been built yet: `chitragupta/retrieval.py` still cuts its snippets as a
 character window straight out of `content/parsed/`. A snippet shown to a
 drafting agent as evidence is under exactly the same constraint as a
 passage shown to a reviewer, and the two should not answer "what does
@@ -63,7 +63,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from src import config
+from chitragupta import config
 
 # Lowercase alphanumeric runs, stopwords and very short words dropped, so
 # matching keys off the words that actually distinguish one claim from
@@ -144,7 +144,7 @@ def sidecar_path(citekey: str) -> Path:
     """The corpus layer's passage sidecar for `citekey` (rung 2).
 
     Built from the citekey in one place, so the writer in
-    `src/pdf_text.py` and the reader below cannot drift apart. The
+    `chitragupta/pdf_text.py` and the reader below cannot drift apart. The
     enrichment layer's own sidecar (rung 1) is *not* this path -- it lives
     under `config.DOCLING_DIR`, written by that layer's own parse under
     its own OCR and figure settings, so the two must not share a file
@@ -257,7 +257,7 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
 
     row = _ledger_row(con, citekey)
     if row is None:
-        return [], "not in the ledger -- run `python -m src.corpus sync`"
+        return [], "not in the ledger -- run `python -m chitragupta.corpus sync`"
 
     parsed_path, pdf_path, _title = row
     if parsed_path and Path(parsed_path).exists():

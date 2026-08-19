@@ -1,15 +1,15 @@
 """Everything `dossier init` writes: the seven per-dossier template
 files and the logic that decides which of them are still missing.
 
-Split out of src/dossier.py (#219).
+Split out of chitragupta/dossier.py (#219).
 """
 
 import argparse
 from datetime import date
 from pathlib import Path
 
-from src import config
-from src.dossier import (
+from chitragupta import config
+from chitragupta.dossier import (
     EVIDENCE_MD, REJECTED_MD, RETRIEVAL_MD, REVISIONS_MD, SCOPE_MD, SECTIONS_MD,
     STEERING_MD, _SECTIONS_TEMPLATE, digest, dossier_dir, draft_name, draft_relpath,
     known_citekeys,
@@ -35,11 +35,11 @@ pipeline. Genre: {genre}.
 This directory is gitignored, like the draft it describes. Back it up and
 restore it with:
 
-    python -m src.draft dossier export {name}
-    python -m src.draft dossier restore <archive.tar.gz> --force
+    python -m chitragupta.draft dossier export {name}
+    python -m chitragupta.draft dossier restore <archive.tar.gz> --force
 
 A bundle carries drafts and dossiers, not the corpus: `content/ledger.sqlite`
-is regenerable with `python -m src.corpus sync`, and `papers/bibliography.bib` is
+is regenerable with `python -m chitragupta.corpus sync`, and `papers/bibliography.bib` is
 your reference manager's export, which belongs in that tool's backup rather
 than in a copy this pipeline keeps.
 
@@ -127,7 +127,7 @@ _REVISIONS_TEMPLATE = """# Revisions
 
 _RETRIEVAL_TEMPLATE = """# Retrieval calls
 
-<!-- Appended by `python -m src.draft retrieve ... --log <draft>`, never by
+<!-- Appended by `python -m chitragupta.draft retrieve ... --log <draft>`, never by
      hand.
 
      `asked` is how much that call requested -- `--k` for search,
@@ -137,7 +137,7 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      counts, this is what turns "retrieval is where the tokens go" from
      an estimate into a measurement for a particular draft.
 
-     A row with mode `revision` is not a call: `python -m src.draft dossier
+     A row with mode `revision` is not a call: `python -m chitragupta.draft dossier
      mark-revision` writes one, at the start of each draft-reviser pass,
      so `dossier status` can total retrieval cost per revision instead of
      only as one lifetime figure -- the date column alone can't tell two

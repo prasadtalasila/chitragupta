@@ -7,7 +7,7 @@ imports `render()`, which imports everything else.
 
 import shutil
 
-from src import config
+from chitragupta import config
 
 
 class MissingBinary(RuntimeError):
@@ -15,9 +15,9 @@ class MissingBinary(RuntimeError):
 
 
 # Re-exported: this name shipped here first, and
-# src/review/citation_provenance.py catches it as `render_output.OutsideContentDir`.
-# It now lives in src/config.py, because src/citation_gate.py and
-# src/references.py started raising it too and needed a home neither of
+# chitragupta/review/citation_provenance.py catches it as `render_output.OutsideContentDir`.
+# It now lives in chitragupta/config.py, because chitragupta/citation_gate.py and
+# chitragupta/references.py started raising it too and needed a home neither of
 # them could import from -- render_output already imports citation_gate
 # (`_PANDOC_CITE_RE` above), so a shared helper in either would close a
 # cycle.

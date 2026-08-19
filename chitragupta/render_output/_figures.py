@@ -32,9 +32,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from src.citation_gate import _PANDOC_CITE_RE
-from src.render_output._errors import MissingBinary
-from src.render_output._paths import _MARKDOWN_SUFFIXES
+from chitragupta.citation_gate import _PANDOC_CITE_RE
+from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
 
 
 # Matches raw-LaTeX \input{...}/\include{...}, however the draft spells
@@ -305,7 +305,7 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
         elif _figure_has_citekey(resolved):
             found.append(
                 f"{ref}: contains a citekey. Figure files are not read by "
-                "`python -m src.draft gate`, so a citekey here is ungated -- "
+                "`python -m chitragupta.draft gate`, so a citekey here is ungated -- "
                 "move the claim into the prose"
             )
     if not is_markdown:

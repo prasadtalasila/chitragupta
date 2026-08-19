@@ -1,6 +1,6 @@
 """`dossier brief`: the kept evidence for one section.
 
-Split out of src/dossier.py (#219). `status` and `drift` read a
+Split out of chitragupta/dossier.py (#219). `status` and `drift` read a
 dossier on behalf of a human. This reads it on behalf of a *subagent*,
 and the difference is what the shape is for: a skill that fans out
 (`deep-research` Phase 5 dispatches one writer per section) has to give
@@ -21,8 +21,9 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.dossier._citekeys import citekeys_by_section, evidence_blocks
-from src.dossier import EVIDENCE_MD, SECTIONS_MD, _resolve_dossier, dossier_name, draft_relpath
+from chitragupta.dossier._citekeys import citekeys_by_section, evidence_blocks
+from chitragupta.dossier import (EVIDENCE_MD, SECTIONS_MD, _resolve_dossier,
+                                 dossier_name, draft_relpath)
 
 @dataclass
 class Brief:
@@ -123,7 +124,7 @@ def _cmd_brief(args: argparse.Namespace) -> int:
     target = _resolve_dossier(Path(args.draft))
     if not target.is_dir():
         print(f"No dossier at {draft_relpath(target)}. Create one with "
-              f"`python -m src.draft dossier init {args.draft} --genre <genre>`.",
+              f"`python -m chitragupta.draft dossier init {args.draft} --genre <genre>`.",
               file=sys.stderr)
         return 1
 

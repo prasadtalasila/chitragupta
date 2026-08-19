@@ -1,17 +1,18 @@
 """Which citekeys a draft's glossary, evidence and rejections mention --
 the pipeline's other citekey surface besides the ledger itself.
 
-Split out of src/dossier.py (#219). `glossary_terms` also backs
-src/dossier/_acronyms.py's `suggest_acronyms`/`apply_suggestions` and
-src/style_acronym_drift.py -- both read the same `## Glossary` this
+Split out of chitragupta/dossier.py (#219). `glossary_terms` also backs
+chitragupta/dossier/_acronyms.py's `suggest_acronyms`/`apply_suggestions` and
+chitragupta/style_acronym_drift.py -- both read the same `## Glossary` this
 module already parses for citekeys, rather than parsing it again.
 """
 
 import re
 from pathlib import Path
 
-from src.dossier import EVIDENCE_MD, REJECTED_MD, SCOPE_MD, SECTIONS_MD, _ROW_SPLIT, dossier_dir
-from src.dossier._sections import _citekeys
+from chitragupta.dossier import (EVIDENCE_MD, REJECTED_MD, SCOPE_MD, SECTIONS_MD,
+                                 _ROW_SPLIT, dossier_dir)
+from chitragupta.dossier._sections import _citekeys
 
 # `- **Term** -- definition` bullets under a `## Glossary` heading in
 # scope.md. A forgiving parser, not a schema: #190's resolving comment
@@ -207,6 +208,6 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
 
 
 # suggest_acronyms/NoUserAcronymsFile/apply_suggestions/_cmd_acronyms_suggest
-# live in src/dossier/_acronyms.py, not here -- split out once --apply
+# live in chitragupta/dossier/_acronyms.py, not here -- split out once --apply
 # pushed this module past docs/CODE-STANDARDS.md's C2 line limit. That
 # module imports glossary_terms from this one.

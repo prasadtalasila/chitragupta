@@ -2,19 +2,19 @@
 new entries from a draft's glossary and its own prose, and -- on
 request -- writing them.
 
-Split from src/dossier/_citekeys.py, which still owns glossary parsing
+Split from chitragupta/dossier/_citekeys.py, which still owns glossary parsing
 itself (`glossary_terms()`): this half grew past
 docs/CODE-STANDARDS.md's C2 module-line limit once `--apply` and its
 guard rail were added. The boundary follows the shape
-src/style_report.py already uses for the same reason -- what a command
+chitragupta/style_report.py already uses for the same reason -- what a command
 *does* is a separate concern from what it *reads*.
 """
 
 import tomllib
 from pathlib import Path
 
-from src import acronyms, config
-from src.dossier._citekeys import glossary_terms
+from chitragupta import acronyms, config
+from chitragupta.dossier._citekeys import glossary_terms
 
 
 def suggest_acronyms(draft: Path) -> dict[str, str]:
@@ -30,7 +30,7 @@ def suggest_acronyms(draft: Path) -> dict[str, str]:
     acronyms it actually defines (DTP, DTI, DTA) are glossaried nowhere
     at all -- glossary-only discovery would never have surfaced them.
 
-    Never writes anything. `python -m src.draft dossier acronyms-suggest`
+    Never writes anything. `python -m chitragupta.draft dossier acronyms-suggest`
     without `--apply` only prints these: #190's own rule is that this
     feature proposes and the human accepts. `--apply` (`apply_suggestions`
     below) is the explicit, second, human-invoked step that writes --

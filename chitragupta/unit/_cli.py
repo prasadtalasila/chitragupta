@@ -1,9 +1,9 @@
-"""`python -m src.draft unit`'s three commands and their argparse tree.
+"""`python -m chitragupta.draft unit`'s three commands and their argparse tree.
 
-Split from `src/unit/__init__.py` the way `src/spec/_cli.py` and
-`src/dossier/_cli.py` are split from theirs, and named `_cli.py` for the
+Split from `chitragupta/unit/__init__.py` the way `chitragupta/spec/_cli.py` and
+`chitragupta/dossier/_cli.py` are split from theirs, and named `_cli.py` for the
 same reason: this package has no `__main__.py`, because
-`python -m src.draft unit` is the one front door
+`python -m chitragupta.draft unit` is the one front door
 (docs/ARCHITECTURE.md's one-entry-point-per-layer invariant).
 """
 
@@ -12,8 +12,8 @@ import json
 import sys
 from pathlib import Path
 
-from src import citation_gate, spec
-from src.unit import (UnitError, contract, input_digest, record_path, record_text,
+from chitragupta import citation_gate, spec
+from chitragupta.unit import (UnitError, contract, input_digest, record_path, record_text,
                       sections, state)
 
 _BOOK_HELP = "The book's directory under content/drafts/"
@@ -55,7 +55,7 @@ def _cmd_accept(args) -> int:
     if not built["signed_off"]:
         return _refuse(
             f"{args.book}'s outline is not signed off, so there is nothing to "
-            f"accept a unit against. `python -m src.draft spec sign {args.book}`.")
+            f"accept a unit against. `python -m chitragupta.draft spec sign {args.book}`.")
     draft = Path(built["draft"])
     if not draft.is_file():
         return _refuse(f"no draft at {draft}. Generate the unit from its contract "
@@ -90,7 +90,7 @@ def _cmd_status(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="python -m src.draft unit",
+        prog="python -m chitragupta.draft unit",
         description="One section's generation contract, and the record of its "
                     "acceptance. Writes only under content/specs/.",
     )

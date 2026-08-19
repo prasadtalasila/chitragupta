@@ -9,7 +9,7 @@ import re
 import shutil
 from pathlib import Path
 
-from src.render_output._figures import _figure_refs, _resolve_sibling
+from chitragupta.render_output._figures import _figure_refs, _resolve_sibling
 
 
 # Matches Markdown image syntax: ![alt](path) or ![alt](path "title").

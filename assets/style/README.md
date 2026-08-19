@@ -3,7 +3,7 @@
 `acronyms.toml` is the floor every draft starts from -- acronyms common
 enough across this project's readership that expanding them would insult
 the reader (`PDF`, `CPU`, `URL`, `API`, `HTML`). Read by
-`src/acronyms.py::load_vocabulary()` at a genre skill's step 0, the same
+`chitragupta/acronyms.py::load_vocabulary()` at a genre skill's step 0, the same
 place the dialect is settled (`docs/WRITING-STANDARDS.md` §8).
 
 ## Provenance
@@ -34,7 +34,7 @@ copy it to `content/acronyms.toml` (gitignored, per-host, the same
 footing as `config.toml` itself -- not this directory, which is
 version-controlled and ships with the project), edit your copy to your
 own field's vocabulary, and point `[style].acronyms` at it. `python -m
-src.draft dossier acronyms-suggest <draft> --apply` can write new
+chitragupta.draft dossier acronyms-suggest <draft> --apply` can write new
 entries there for you, proposed from a draft's own glossary and its
 prose; see `docs/CONFIG.md`.
 
@@ -43,7 +43,7 @@ prose; see `docs/CONFIG.md`.
 Not a check, on its own -- but two checks now read it. Vale's
 `assets/vale/styles/chitragupta/Acronyms.yml` *verifies* an acronym was
 expanded at first use and not re-expanded later (#107), against the
-draft's text and unaware this file exists. `src/style_acronym_drift.py`
+draft's text and unaware this file exists. `chitragupta/style_acronym_drift.py`
 is the other one: it compares a draft's own recorded glossary against
 `load_vocabulary()`'s current merge of this file and the user's, and
 reports when they've drifted apart. Neither check is this file's own

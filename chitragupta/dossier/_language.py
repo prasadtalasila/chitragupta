@@ -1,7 +1,7 @@
 """`dossier set-language`: recording a draft's dialect tag so
-`src.draft style` can check prose against it.
+`chitragupta.draft style` can check prose against it.
 
-Split out of src/dossier.py (#219). The smallest submodule in the
+Split out of chitragupta/dossier.py (#219). The smallest submodule in the
 package -- kept separate from `_cli` anyway, rather than folded in,
 because every other command already gets its own module and a single
 exception would just be a different inconsistency to explain later.
@@ -11,11 +11,11 @@ import re
 import sys
 from pathlib import Path
 
-from src import config
-from src.dossier import SCOPE_MD, dossier_dir
+from chitragupta import config
+from chitragupta.dossier import SCOPE_MD, dossier_dir
 
 # A BCP-47 tag's shape, not a list of the ones this repo can check. The
-# dossier records what a human declared; `src.draft style` decides
+# dossier records what a human declared; `chitragupta.draft style` decides
 # separately which declarations it has rules for, and says so when it has
 # none. Validating against the checker's list here would stop someone
 # recording a true fact about their draft merely because no rule exists
@@ -43,7 +43,7 @@ def set_language(draft: Path, tag: str) -> Path:
     scope = dossier_dir(draft) / SCOPE_MD
     if not scope.is_file():
         raise FileNotFoundError(
-            f"No scope.md for {draft}. Run `python -m src.draft dossier init "
+            f"No scope.md for {draft}. Run `python -m chitragupta.draft dossier init "
             f"{draft} --genre <genre>` first."
         )
     text = scope.read_text(encoding="utf-8")
