@@ -2922,3 +2922,186 @@ logged queries through `src.retrieval.search()`. `--session` and
 reproduces. The replay reproduces identically only while the ledger is
 unmoved, which `--hashes` now checks and reports as `replay_sound`
 rather than leaving to the reader.
+
+## 2026-08-19: the same `--collection` question, with the arms actually isolated
+
+The run above (`2026-08-18b`) wrote both arms **inline in one agent
+session**, and its own draft-vs-draft figure convicted it: Jaccard
+**0.483**, longest shared run **487 words**. I reported that as "the
+control working". That was too generous. A 487-word contiguous shared
+passage is contamination whatever the skeleton says, and two of the six
+measurements — tokens and draft-vs-draft overlap — were measuring the
+session rather than the retrieval scope.
+
+This run fixes the process. Each arm is written by a **separate subagent
+with an empty context window**, given the task specification and its own
+retrieval scope and *nothing else*: no scope statement, no section
+skeleton, no query list, no prose, and no knowledge that the other arm
+exists. The two were dispatched **in parallel**.
+
+Pre-registration, predictions, hashes, run notes and measurements:
+`bench/results/2026-08-19-collection-scope-lifecycle-isolated/`.
+
+### What had to be given up to get isolation
+
+The previous run pre-registered a shared section skeleton and a shared
+ten-query list, so the arms differed in exactly one variable. **That is
+impossible here**, because handing both agents a skeleton and a query
+list is precisely the context being eliminated. Each agent therefore
+formulated its own queries — Arm F issued 14, Arm C 9 — and derived its
+own structure.
+
+So the two runs measure different things, and both are worth having:
+
+- **2026-08-18b** — what the filter does to retrieval, holding the
+  drafting plan constant. One variable, polluted process.
+- **2026-08-19** — what the filter does to a *real drafting run*, plan
+  included. Honest process, more than one variable.
+
+**Retrieval payload totals are consequently not comparable in this run**
+and must be read per query.
+
+### The five pre-registered predictions, scored
+
+| # | Prediction | Outcome |
+|---|---|---|
+| 1 | Draft-vs-draft Jaccard falls well below 0.483 | **Confirmed.** 0.483 → **0.0006**; longest shared run 487 → **17 words** |
+| 2 | Payload stays near-parity *per query* | **Confirmed.** 7,400 chars/query (F) vs 7,375 (C) |
+| 3 | Index cost stays zero | **Confirmed.** Three identical hashes, `replay_sound: true` |
+| 4 | Arm C's selection ratio stays far above Arm F's | **Confirmed.** 0.305 vs 0.889 |
+| 5 | Arm C surfaces papers Arm F does not | **Confirmed, and strengthened.** 10 papers, found with *different* queries than the run that first showed 8 |
+
+Prediction 1 is the one that mattered: **the pollution was real, and it
+was the session, not the design.** Two agents writing to no shared
+skeleton produced essentially disjoint prose — 16 shared 8-grams out of
+~11,600 and ~13,800.
+
+### The numbers
+
+| | Arm F (whole corpus) | Arm C (`Lifecycle`) |
+|---|---|---|
+| Queries issued | 14 | 9 |
+| Retrieval payload | 103,603 chars | 66,372 chars |
+| Payload per query | 7,400 | 7,375 |
+| Words drafted | 11,529 | 13,558 |
+| Distinct citekeys surfaced | 154 | 18 |
+| Cited | 47 | 16 |
+| **Selection / rejection** | **0.305 / 0.695** | **0.889 / 0.111** |
+| Shelf coverage | — | 18/19 = 0.947 |
+| Turns | 101 | 102 |
+| Output tokens | 41,573 | 55,985 |
+| Output tokens / 1k words | 3,606 | **4,129** |
+| Verbatim findings | 21 (all embedding) | 19 (all embedding) |
+| Longest verbatim run | 50 words | 62 words |
+| Tiers not run | none | none |
+
+**The token result reverses.** In the inline run Arm C looked cheaper
+per 1,000 words (3,101 vs 3,569). With isolated pools it is **dearer**
+(4,129 vs 3,606). The inline figure was an artefact: the collection arm
+ran second and had the whole-corpus arm's finished chapter in context to
+adapt from. Removing that removes the saving. **On this evidence
+`--collection` does not reduce drafting cost — it changes what the
+draft is made of.**
+
+**Only 2 papers are cited by both arms** (`frasheri_addressing_2023`,
+`kamburjan_declarative_2024`), out of 61 distinct papers cited across
+the two. With independent queries the two chapters are grounded in
+almost entirely disjoint literature.
+
+**The asymmetry finding replicates under harder conditions.** Ten papers
+Arm C surfaced were never surfaced by Arm F — and this time the two arms
+did not even share a query list, so the effect is not an artefact of one
+set of query strings. BM25 over 642 items buries what BM25 over 19 items
+ranks first.
+
+**Arm C exhausted its shelf.** 18 of 19 items surfaced, 16 of them
+cited — the agent's own report says it cited "every distinct work in the
+collection". At that point the selection ratio is measuring shelf size,
+not judgement, and the honest reading is that a 19-item shelf is too
+small for `--k 15` to discriminate at all.
+
+### Two measurement bugs found by running this
+
+**1. `docs/TOKENS.md`'s dedup recipe undercounts subagent transcripts by
+5x.** The documented recipe dedups on `requestId` and keeps the first
+entry. Streaming writes several entries per request and their `usage`
+objects are *partial* — only the last is final. Measured on Arm F's
+transcript: 219 usage entries over 101 request ids, 70 with more than
+one entry, of which **26 genuinely differ**; first-per-id summed to
+8,259 output tokens against a true **41,573**.
+
+The fix is to take the **maximum** per request id, which is safe because
+every usage field is monotonic within a request. `_pool_usage` now does
+this.
+
+Scope of the damage, checked rather than assumed: the **main session**
+transcript has 132 duplicated request ids but **zero** where the entries
+differ, so first-per-id and max-per-id agree exactly and every figure in
+the `2026-08-18b` section above is unaffected. The bug bites subagent
+transcripts only — which no previous benchmark here had reason to read.
+
+**2. A subagent's self-reported metrics drift from its own artefact.**
+Arm F reported "54 distinct citekeys cited" and listed them. The draft
+contains **47**. Seven listed keys (`fitzgerald_engineering_2024-1`,
+`larsen_engineering_2024`, `lim_state---art_2020`,
+`semeraro_digital_2021`, `shao_analysis_2023`, `shao_use_2021`,
+`thelen_comprehensive_2022`) appear nowhere in it — all real ledger keys,
+presumably dropped during the agent's four trimming passes without the
+tally being updated.
+
+Nothing unsound reached the draft: the gate reads the file, not the
+summary, and passed on the real 47 keys and 76 instances. But **no
+figure in this section is taken from an agent's report**; every one is
+recomputed from disk. Any benchmark that trusts a drafting agent's own
+count is measuring the agent's bookkeeping.
+
+### A third finding, about the environment rather than the feature
+
+`/workspace` sits at `b4b5cb0e`; this worktree at `12e6f367`, which
+carries #247 and rewrites the figure contract. The two implement
+**different** contracts, and the documented marker-only form silently
+drops every figure under the older one — exit 0, no warning:
+
+| Draft form | b4b5cb0e | 12e6f367 (#247) |
+|---|---|---|
+| Marker only + `.tex`/`.txt` (**documented**) | `\input`=0, ASCII=0 — **dropped** | `\input`=1, ASCII=1 |
+| Marker + inline fence (pre-#247) | `\input`=1, ASCII=1 | `\input`=1, ASCII=**2** — duplicated |
+
+Both arms ran under `b4b5cb0e` and both hit it; both worked around it by
+inlining fences, which is why their drafts now satisfy the *old*
+contract and would double-render under #247. The `2026-08-18b` drafts,
+and the `digital-twin-platforms` drafts before them, were marker-only and
+therefore **rendered without their figures entirely.** Not filed as an
+issue: the newer contract is correct, the stale checkout is the fault.
+The live hazard worth filing separately is that #247 does not warn about
+the form it replaced.
+
+### What this section does not measure
+
+- **One variable.** Queries and structure both vary. See above.
+- **Run-to-run variance.** One agent per arm, one run each. Nothing here
+  separates the arm effect from ordinary variation in agent behaviour; a
+  repeated arm would be needed and was not run.
+- **A shelf large enough to discriminate.** 19 items, 94.7 % surfaced.
+- **Chapter quality.** Both are long (11.5k and 13.6k words against a
+  10k target) and neither has been read for teaching merit.
+- **Equal pipeline conditions.** Both arms ran under the stale checkout,
+  so the figure mechanics above apply to both — but that was luck, not
+  control.
+
+### Reproducing
+
+```bash
+python bench/bench_collection_scope.py \
+    --topic book-chapters/digital-twin-life-cycle-considerations \
+    --arm-f digital-twin-life-cycle-considerations-full-corpus \
+    --arm-c digital-twin-life-cycle-considerations \
+    --collection Lifecycle \
+    --hashes bench/results/2026-08-19-collection-scope-lifecycle-isolated/hashes.jsonl \
+    --arm-f-session <session>/subagents/agent-<f-id>.jsonl \
+    --arm-c-session <session>/subagents/agent-<c-id>.jsonl \
+    --out bench/results/2026-08-19-collection-scope-lifecycle-isolated/measurements.json
+```
+
+`--arm-f-session`/`--arm-c-session` are the isolated-arm form: one
+transcript per agent, no windowing, no quarantine, no ordering caveat.

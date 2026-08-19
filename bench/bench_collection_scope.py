@@ -208,12 +208,21 @@ def _shared_runs(path_a, path_b, n=WORD_RUN):
 def _pool_usage(session_file, start, end):
     """Turns and tokens for assistant entries timestamped in [start, end).
 
-    Dedups on requestId -- streaming writes an entry more than once
-    (docs/TOKENS.md) -- and records every distinct model seen, so a
-    mid-window `/model` switch shows up instead of being averaged away.
+    Groups by requestId and takes the **maximum** of each usage field
+    across that id's entries, rather than the first one seen.
+
+    This matters, and `docs/TOKENS.md`'s own recipe gets it wrong.
+    Streaming writes several entries per requestId and their `usage`
+    objects are *partial*: the counts grow as the response streams, and
+    only the last is final. Taking the first -- which is what
+    "dedup on requestId" does if it keeps the earliest -- reads a
+    fraction of the real total. Measured on this run's own subagent
+    transcripts: 219 usage entries across 101 requestIds, of which 70
+    had more than one entry; first-per-id summed to 8,259 output tokens
+    against a true 41,573, a **5x** undercount. Max is safe because
+    every field is monotonic within a request.
     """
-    seen = set()
-    turns = tokens_in = tokens_out = 0
+    per_request = {}
     models = {}
     if not session_file or not session_file.is_file():
         return {"turns": 0, "input_tokens": 0, "output_tokens": 0,
@@ -229,20 +238,21 @@ def _pool_usage(session_file, start, end):
                 continue
             message = entry.get("message") or {}
             usage = message.get("usage")
-            rid = entry.get("requestId")
-            if not usage or rid in seen:
+            if not usage:
                 continue
-            seen.add(rid)
-            turns += 1
-            tokens_in += (usage.get("input_tokens", 0)
-                          + usage.get("cache_read_input_tokens", 0)
-                          + usage.get("cache_creation_input_tokens", 0))
-            tokens_out += usage.get("output_tokens", 0)
+            fields = per_request.setdefault(entry.get("requestId"), {})
+            for key in ("input_tokens", "cache_read_input_tokens",
+                        "cache_creation_input_tokens", "output_tokens"):
+                fields[key] = max(fields.get(key, 0), usage.get(key, 0))
             model = message.get("model")
             if model:
                 models[model] = models.get(model, 0) + 1
-    return {"turns": turns, "input_tokens": tokens_in, "output_tokens": tokens_out,
-            "models": models}
+    tokens_in = sum(f.get("input_tokens", 0) + f.get("cache_read_input_tokens", 0)
+                    + f.get("cache_creation_input_tokens", 0)
+                    for f in per_request.values())
+    tokens_out = sum(f.get("output_tokens", 0) for f in per_request.values())
+    return {"turns": len(per_request), "input_tokens": tokens_in,
+            "output_tokens": tokens_out, "models": models}
 
 
 def _boundaries(hashes_path, session_file):
@@ -354,7 +364,38 @@ def run(args):
         },
     }
 
-    if args.session and args.hashes and args.hashes.is_file():
+    if args.arm_f_session and args.arm_c_session:
+        # Isolated arms: one subagent, one transcript, one context pool
+        # each. No timestamp windowing, because there is nothing to
+        # separate -- and no ordering bias to compensate for, because
+        # neither agent ever saw the other's context.
+        windows = {
+            "arm F -- whole agent": _pool_usage(args.arm_f_session, "", "~"),
+            "arm C -- whole agent": _pool_usage(args.arm_c_session, "", "~"),
+        }
+        result["tokens"] = windows
+        result["tokens_per_1k_words"] = {
+            "arm_f_output_tokens_per_1k_words":
+                round(1000 * windows["arm F -- whole agent"]["output_tokens"] / words_f, 1),
+            "arm_c_output_tokens_per_1k_words":
+                round(1000 * windows["arm C -- whole agent"]["output_tokens"] / words_c, 1),
+            "arm_f_words_drafted_total": words_f,
+            "arm_c_words_drafted_total": words_c,
+            "note": "Each arm drafted once, in its own agent, so words drafted "
+                    "equals the finished body and needs no discarded-draft "
+                    "correction. Both pools still contain non-drafting output "
+                    "(dossier, gate, renders, style, verbatim), so this remains "
+                    "an upper bound on the cost of drafting 1,000 words.",
+        }
+        result["tokens_note"] = (
+            "One context pool per arm, measured over each subagent's own "
+            "transcript. Unlike the inline run this needs no windowing, no "
+            "quarantine and no ordering caveat: neither agent could see the "
+            "other's context, and they ran in parallel. Input is overwhelmingly "
+            "cache reads of each agent's own growing context; output tokens and "
+            "turns are the comparison."
+        )
+    elif args.session and args.hashes and args.hashes.is_file():
         b = _boundaries(args.hashes, args.session)
         windows = {
             "setup (orientation + preregistration, shared)":
@@ -417,6 +458,12 @@ def _build_parser():
     parser.add_argument("--hashes", type=Path, default=None,
                         help="hashes.jsonl from the three checkpoints. Supplies the arm "
                              "boundaries and checks the replay's precondition.")
+    parser.add_argument("--arm-f-session", type=Path, default=None,
+                        help="Arm F's own subagent transcript JSONL. Use with "
+                             "--arm-c-session when each arm ran in its own agent; "
+                             "no windowing is then needed or applied.")
+    parser.add_argument("--arm-c-session", type=Path, default=None,
+                        help="Arm C's own subagent transcript JSONL")
     parser.add_argument("--session", type=Path, default=None,
                         help="Session transcript JSONL for the token accounting")
     parser.add_argument("--steering-at", default=None,
