@@ -69,3 +69,51 @@ def test_the_assembler_writes_no_prose_and_says_where_that_line_is():
     body = _body()
     assert "It writes no prose." in body
     assert "draft-reviser" in body, "a wording change belongs to the reviser, not here"
+
+
+def test_a_unit_is_converted_by_render_with_the_fragment_flag():
+    """A plain `render --format tex` emits a standalone `article` with its
+    own `\\begin{document}`, which cannot be `\\input` into a book -- this
+    file said to use one until the first real assembly. `--fragment` is
+    the flag that exists for it, and going through `render` rather than a
+    restated pandoc invocation is what keeps the citeproc, IEEE-style and
+    citekey-aliasing behaviour identical to every other rendered draft."""
+    body = _body()
+    assert "--format tex --fragment --output-dir" in body
+
+
+def test_the_book_carries_no_bibliography_of_its_own():
+    """Each chapter's citations were resolved per unit into its own IEEE
+    list, so a book-level bibliography would be a second, differently
+    numbered answer to the same question."""
+    body = _body()
+    assert "There is no bibliography at the end" in body
+    assert "no bibliography pass at all" in body
+
+
+def test_the_book_supplies_pandocs_citeproc_macros():
+    """The one thing a fragment legitimately emits that only the
+    standalone preamble defines. Without this block the book fails on
+    `Environment CSLReferences undefined`."""
+    assert "print-default-template=latex" in _body()
+
+
+def test_the_assembler_writes_a_markdown_twin_of_the_book():
+    body = _body()
+    assert "write `book.md`" in body
+    assert "hyperlinking the chapter files" in body
+
+
+def test_the_assembler_checks_the_build_log_before_believing_the_pdf():
+    """pdflatex exits 0 on a book that is missing something: a dropped
+    citation is a warning, not an error."""
+    assert "Read `book.log` before believing the PDF" in _body()
+
+
+def test_the_citeproc_macros_go_in_their_own_file():
+    """Inline, that block fails the gate on the assembled book: it holds
+    `\\cite{#1}` and `\\citeproc{mm}`, which read as citekeys. Found by
+    gating a real 15-chapter book, which FAILed on `@mm`, `@#1`, `@#2`."""
+    body = _body()
+    assert "citeproc-defs.def" in body
+    assert "**not inline**" in body

@@ -99,6 +99,7 @@ install_os_deps() {
         pandoc \
         texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended latexmk \
         lmodern texlive-pictures \
+        texlive-binaries texlive-publishers \
         libgl1 "$glib_pkg"
     # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
     # pip on this host regardless of root (see AGENTS.md), and Poetry is
@@ -116,6 +117,18 @@ install_os_deps() {
     # `dpkg -S`) -- src/render_output.py loads it conditionally for a
     # draft with a \input/\include'd TikZ figure (#222), and none of the
     # packages above pull it in.
+    # texlive-binaries owns /usr/bin/bibtex (confirmed via `dpkg -S` on
+    # the alternative's target) and texlive-publishers ships IEEEtran.bst.
+    # Named explicitly rather than relied on transitively, because the
+    # thing that needs them is a *book*: a LaTeX-side bibliography, in
+    # IEEE style, for a document assembled from many units
+    # (docs/BOOKS.md). Nothing else here needs either -- every ordinary
+    # render resolves citations with pandoc's citeproc against
+    # assets/csl/ieee.csl and emits no \cite at all -- which is exactly
+    # why they were missing until a real book was built.
+    # natbib is deliberately not preferred: its default author-year
+    # markers are not this project's house citation style, and every
+    # other genre skill produces IEEE numeric.
     # zip/unzip: scripts/release.py itself only needs stdlib zipfile,
     # not these binaries -- they're here so a human can inspect/repack a
     # release archive by hand.

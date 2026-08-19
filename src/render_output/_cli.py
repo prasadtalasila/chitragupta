@@ -39,16 +39,16 @@ def _figure_repair_hint(input_arg: str) -> str:
     )
 
 
-def main(argv: list[str] | None = None) -> int:
-    """CLI entry point -- deliberately independent of src/enrich/__main__.py.
+def _build_parser() -> argparse.ArgumentParser:
+    """This command's flags, and nothing else.
 
-    That script imports docling/embed/topic_model at module load and
-    builds the whole corpus before any stage runs, which drags in the
-    multi-GB `.venv-full` for a stage that itself only needs stdlib +
-    `src.config` + `src.citation_gate`. Genre skills that just want a
-    tex/pdf rendering of a draft should be able to run this with bare
-    `python`, no enrich group required.
+    Split from `main` when `--fragment` and `--output-dir` took it over
+    the 25-statement limit -- the same seam `src/draft.py` already draws
+    between `build_parser` and `main`, and the same one docs/CODE-
+    STANDARDS.md names as the usual shape of a C1 offender: a `main` that
+    parses arguments, does the work, and formats the output.
     """
+
     parser = argparse.ArgumentParser(
         prog="python -m src.draft render",
         description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.",
@@ -71,11 +71,35 @@ def main(argv: list[str] | None = None) -> int:
         help=f"CSL style for citations and the bibliography (default: {config.CSL_STYLE_PATH})",
     )
     parser.add_argument(
+        "--output-dir", default=None,
+        help="Write the output here instead of content/rendered/<mirrored path> "
+             "-- for a book unit, the directory book.tex \\input-s it from. "
+             "Confined to content/ like every other path this writes",
+    )
+    parser.add_argument(
+        "--fragment", action="store_true",
+        help="Emit an \\input-able LaTeX fragment (no preamble) whose top "
+             "heading is a chapter, for assembling a book -- see docs/BOOKS.md",
+    )
+    parser.add_argument(
         "--no-collapse-citations", dest="collapse_citations", action="store_false", default=None,
         help="Render a consecutive run as [3], [4], [5], [6] instead of [3]-[6] "
              "-- i.e. leave the CSL style exactly as it is on disk",
     )
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point -- deliberately independent of src/enrich/__main__.py.
+
+    That script imports docling/embed/topic_model at module load and
+    builds the whole corpus before any stage runs, which drags in the
+    multi-GB `.venv-full` for a stage that itself only needs stdlib +
+    `src.config` + `src.citation_gate`. Genre skills that just want a
+    tex/pdf rendering of a draft should be able to run this with bare
+    `python`, no enrich group required.
+    """
+    args = _build_parser().parse_args(argv)
 
     # Deferred, and it has to be: the package root imports this module at
     # its top, before `render` is defined, so a module-scope import here
@@ -88,7 +112,8 @@ def main(argv: list[str] | None = None) -> int:
         out_path = render(
             args.input, args.output_format, args.documentclass,
             args.fontsize, args.papersize, args.margin,
-            args.csl, args.collapse_citations,
+            args.csl, args.collapse_citations, args.output_dir,
+            fragment=args.fragment,
         )
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}")

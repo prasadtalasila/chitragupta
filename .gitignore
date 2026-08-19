@@ -1,25 +1,28 @@
-content/parsed/
-content/ledger.sqlite
-content/pipeline.lock.db
-content/pipeline.lock.db.holder
-content/library.bib
-content/verbatim_allowlist.toml
-# Same footing as the line above: a user's own acronym vocabulary
-# ([style].acronyms in config.toml), per-host data rather than a
-# project default. assets/style/acronyms.toml.example is the template
-# to copy here; assets/style/README.md has the shape.
-content/acronyms.toml
-content/review/
-content/docling/
-content/docling_cache.json
-content/chroma/
-content/topics.json
-content/topic_embed_cache.json
-content/retrieval_index.json
-content/overlap/
-content/rendered/
-content/drafts/
-content/dossiers/
+# Everything under content/ is per-host data: a user's own drafts and
+# dossiers, the ledger, the bib export, their acronym vocabulary
+# (content/acronyms.toml -- assets/style/acronyms.toml.example is the
+# template, assets/style/README.md the shape), and every cache the
+# pipeline builds.
+#
+# One blanket rule rather than a line per directory. The enumerated form
+# this replaces went stale the moment a new artefact directory landed --
+# content/specs/ in 5.34.0 -- and nothing failed: the new directory
+# simply started showing up as untracked in every `git status`, which is
+# a defect nobody notices until they run `git add -A`.
+content/*
+
+# Two exceptions, tracked deliberately: one worked draft of each genre
+# and the renders that match it, so a fresh clone can see what this
+# pipeline produces before it has a corpus of its own. Re-including a
+# nested path means re-including its parents first -- git never descends
+# into an ignored directory, so a bare `!content/drafts/<topic>/` would
+# never be reached.
+!content/drafts/
+content/drafts/*
+!content/drafts/digital-twins-for-software-engineers/
+!content/rendered/
+content/rendered/*
+!content/rendered/digital-twins-for-software-engineers/
 
 # The pipeline's rotated log file (see config.toml's [logging]
 # section) -- written by python -m src.corpus sync and scripts/enrich.py alike,

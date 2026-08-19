@@ -173,12 +173,27 @@ def _render_csl(csl: str | Path | None, collapse_citations: bool | None, tmp_dir
 def _pandoc_command(
     safe_md: Path, safe_bib: Path, csl_path: Path, out_path: Path, input_path: Path,
     output_format: str, documentclass: str, fontsize: str, papersize: str, margin: str,
-    figure_refs: list[str],
+    figure_refs: list[str], fragment: bool = False,
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in."""
+    # A fragment is for `\input` into a larger document, so it gets no
+    # preamble and no `\begin{document}` -- and its own `#` heading is
+    # that document's chapter, not a section, which is why the two flags
+    # travel together (docs/BOOKS.md's assembly step is the caller).
+    # Everything else is unchanged: the citations are still resolved by
+    # citeproc against the same CSL, so a fragment carries its own IEEE
+    # reference list under its own heading rather than deferring to a
+    # bibliography at the end of the book.
+    # `--no-highlight` travels with it for the same reason: pandoc's
+    # syntax-highlighting output uses `Shaded`/`Highlighting` environments
+    # that only the standalone template defines, so a highlighted fragment
+    # fails to compile in the book that \input-s it. Plain `verbatim` is
+    # what a fragment can promise. The citeproc macros are the one
+    # exception a book must supply itself -- see docs/BOOKS.md.
+    shape = (["--top-level-division=chapter", "--no-highlight"]
+             if fragment else ["--standalone"])
     cmd = [
-        "pandoc", str(safe_md),
-        "--standalone",
+        "pandoc", str(safe_md), *shape,
         # Local image references (`![...](figure.png)`) in the draft are
         # relative to input_path's own directory, not whatever directory
         # this CLI happened to be invoked from. Without this, pandoc's
@@ -236,6 +251,7 @@ def render(
     csl: str | Path | None = None,
     collapse_citations: bool | None = None,
     output_dir: str | Path | None = None,
+    fragment: bool = False,
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
@@ -259,10 +275,13 @@ def render(
     `--csl`, pandoc falls back to Chicago author-date, which is what this
     rendered before.
 
-    `--standalone` is always passed so a `tex` output is a complete,
-    compilable LaTeX document (documentclass + preamble), not a bare
-    fragment -- matching what pandoc already builds internally on the way
-    to a `pdf` output. `documentclass` defaults to LaTeX's plain `article`
+    `--standalone` is passed so a `tex` output is a complete, compilable
+    LaTeX document (documentclass + preamble), not a bare fragment --
+    matching what pandoc already builds internally on the way to a `pdf`
+    output. `fragment=True` is the exception, for a unit destined to be
+    `\\input` into a book (docs/BOOKS.md): no preamble, and its own top
+    heading becomes a `\\chapter`. `documentclass` defaults to LaTeX's
+    plain `article`
     class, the right shape for the short, section-based genre drafts this
     project produces (no chapters, no front matter); pass a different
     value only if a specific draft genuinely needs one. `fontsize`/
@@ -320,7 +339,7 @@ def render(
         cmd, env = _pandoc_command(
             safe_md, safe_bib, _render_csl(csl, collapse_citations, Path(tmp)),
             out_path, input_path, output_format, documentclass, fontsize,
-            papersize, margin, figure_refs,
+            papersize, margin, figure_refs, fragment,
         )
         subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
 
