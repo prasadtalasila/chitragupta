@@ -2,7 +2,7 @@
 (#130), measured over a real book against the corpus it was written from.
 
 #130 asks whether a long verbatim run should block a draft the way
-`python -m src.draft gate` blocks an unresolvable citekey, and forbids
+`python -m chitragupta.draft gate` blocks an unresolvable citekey, and forbids
 guessing the threshold: it is to be "tuned against real reports". This
 measures the report. For every candidate span threshold T it counts what
 the predicate below would block, and -- against hand-labelled ground
@@ -56,7 +56,7 @@ copyrighted PDFs.
     python3 bench/bench_overlap_gate.py --tag 2026-08-13-overlap-gate \\
         --drafts content/drafts/books/digital-twins-for-software-engineers
 
-Needs a synced corpus (`python -m src.corpus sync`) and pays one cold
+Needs a synced corpus (`python -m chitragupta.corpus sync`) and pays one cold
 corpus-index build on first run; every run after that is warm.
 """
 
@@ -70,7 +70,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, references  # noqa: E402
+from chitragupta import config, references  # noqa: E402
 
 # Below the report-bucket boundary a run is not "long" in any sense the
 # project already uses, and no candidate gate threshold sits there -- so
@@ -158,7 +158,7 @@ def scan_all(drafts, references_masked, allowlist=None):
     host -- the real allowlist is per-host and gitignored, so an arm that
     depended on it would measure whatever the operator happened to have.
     """
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     original_section = references.section_start
     original_allowlist = config.VERBATIM_ALLOWLIST_PATH
@@ -195,7 +195,7 @@ def self_check():
     positives at every threshold -- which reads exactly like a gate with
     a perfect false-positive rate.
 
-    `bench/` sits outside CI's coverage targets (--cov=src --cov=scripts)
+    `bench/` sits outside CI's coverage targets (--cov=chitragupta --cov=scripts)
     and outside the clean-code ratchet, so nothing in the test suite will
     catch a regression here. This runs on every invocation instead.
     """
@@ -289,7 +289,7 @@ def main(argv=None):
     self_check()
 
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync` first",
+        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
               file=sys.stderr)
         return 1
     drafts = sorted(p for p in Path(args.drafts).glob("*.md") if p.name[0].isdigit())

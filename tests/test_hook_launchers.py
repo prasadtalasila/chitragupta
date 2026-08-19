@@ -1,8 +1,8 @@
-"""`src/hook_launchers.py`: can each registered hook's launcher start?
+"""`chitragupta/hook_launchers.py`: can each registered hook's launcher start?
 
 These cases were `tests/test_hook_modules.py::TestLauncherFaults` until the
-check moved out of `.claude/hooks/session_start_hook.py` and into `src/`,
-so that a command the working interpreter runs -- `python -m src.draft
+check moved out of `.claude/hooks/session_start_hook.py` and into `chitragupta/`,
+so that a command the working interpreter runs -- `python -m chitragupta.draft
 gate` -- can report a launcher the preflight is unable to report, because
 the preflight is started by the same interpreter name it vets (#197).
 
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from src import hook_launchers
+from chitragupta import hook_launchers
 
 
 @pytest.fixture
@@ -120,7 +120,7 @@ class TestOneLauncher:
 class TestProjectRoot:
     """Where this module looks for `.claude/settings.json`.
 
-    It cannot ask `src.config`, and the module docstring says why: that
+    It cannot ask `chitragupta.config`, and the module docstring says why: that
     import raises without a `config.toml`, which would break both
     docs/CLI.md's tier-1 promise and the preflight's ability to run in a
     fresh clone. So the marker walk is deliberately duplicated here, and

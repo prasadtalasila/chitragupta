@@ -6,11 +6,11 @@ optional enrichment layer, the Docling passage sidecars and the draft's
 own dossier are all present. Written 2026-08-10; tier 2 added 2026-08-13
 (#133), tier 3 added 2026-08-15 (#134/#164).
 
-**Written for** someone deciding whether `src/review/verbatim_check.py`'s
+**Written for** someone deciding whether `chitragupta/review/verbatim_check.py`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
-a synced corpus (`python -m src.corpus sync`) and a citekey-verified draft
-(`python -m src.draft gate`).
+a synced corpus (`python -m chitragupta.corpus sync`) and a citekey-verified draft
+(`python -m chitragupta.draft gate`).
 
 **Not covered here, deliberately:**
 
@@ -46,15 +46,15 @@ could not run says so, by name, in every form of the report.
 ## What "plagiarism" means here, and what it deliberately doesn't
 
 This pipeline draws citekeys from a synced bibliography and gates on
-them (`src/citation_gate.py`): a draft cannot cite a source that isn't
+them (`chitragupta/citation_gate.py`): a draft cannot cite a source that isn't
 real. That answers "is every citation genuine" and says nothing about
 "does the wording around a citation actually belong to whoever it credits,
-or to someone else". `src/review/verbatim_check.py`'s two modes exist to
+or to someone else". `chitragupta/review/verbatim_check.py`'s two modes exist to
 answer the second question, mechanically, over what is currently checked
 verbatim word-n-gram reuse.
 
 **Verbatim and light-paraphrase reuse only.** Tier 2's stemmed
-skip-grams (`src/overlap_skipgram.py`, #133) catch a synonym swapped
+skip-grams (`chitragupta/overlap_skipgram.py`, #133) catch a synonym swapped
 every few words, or an inflection changed. Genuine restatement in new
 sentence structure -- the same claim, said differently -- is invisible to
 both deterministic tiers by construction.
@@ -125,7 +125,7 @@ named.
 ### `scan`: the whole draft against the whole corpus
 
 Normalizes the entire draft once, masking code fences and inline code the
-same way `src/citation_gate.py` does, and masking the generated
+same way `chitragupta/citation_gate.py` does, and masking the generated
 References section so a source's own title page never reads as "overlap
 with itself". Then, for every draft position, it looks up **every**
 posting for that position's gram hash across **every** parsed document --
@@ -154,12 +154,12 @@ It also carries `id`, a position-free name for the finding, and four
 fields that locate it in the draft as written. One of those is easy to
 misread: `start` is a word offset into the normalised stream, not a
 position in the draft file, and the locators are what to use instead. All
-of them are in [CLI.md](CLI.md#python--m-srcreview-verbatim).
+of them are in [CLI.md](CLI.md#python--m-chitraguptareview-verbatim).
 
 Matches are grouped by `(citekey, diagonal)`, where `diagonal =
 source_position - draft_position`. That `source_position` is a *global*
 token position in the source document, not reset at each page break
-(`src/overlap_index.py`, #131).
+(`chitragupta/overlap_index.py`, #131).
 
 Two matches on the same diagonal are "in step" with each other even with
 non-matching words between them. So a **gap-tolerant merge** collapses
@@ -295,7 +295,7 @@ being visible from the report's own side.
 Detection without remediation leaves the human doing the tedious part.
 Issue #129 adds the other half: the `overlap-reviser` skill
 ([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)) works a scan's
-findings one at a time, and `python -m src.review verbatim recheck`
+findings one at a time, and `python -m chitragupta.review verbatim recheck`
 decides whether each repair may be kept.
 
 **The scan payload locates a finding for an editor, not just a reader.**
@@ -338,7 +338,7 @@ states one particular way -- and [SOUL.md](../SOUL.md) puts deciding that
 for someone under *what you will not do*.
 
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
-every other review command. `python -m src.draft gate` remains the only
+every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
 should ever join it is [#130](AUTO-IMPROVEMENT.md#build-order)'s question;
 it has now been measured rather than guessed, and
@@ -353,7 +353,7 @@ is not detected. An empty findings list is not a clean bill of health.
 
 `[parser].backend` (`config.toml`) is `pdftotext` or `docling`. Both
 backends' output gets the same `\f` page-break convention
-(`src/pdf_text.py`), so nothing about `overlap`/`scan`'s page-locating
+(`chitragupta/pdf_text.py`), so nothing about `overlap`/`scan`'s page-locating
 breaks either way. But the two extract genuinely different text, and this
 project's own corpus is configured for `docling`.
 
@@ -364,7 +364,7 @@ by this project's two full-length benchmark chapters
 were extracted fresh with `pdftotext -layout` and compared against the
 corpus's existing `docling`-parsed text, with `scan` run over both.
 
-**Page counts matched exactly for all 26 documents.** `src/pdf_text.py`'s
+**Page counts matched exactly for all 26 documents.** `chitragupta/pdf_text.py`'s
 own comment warns that docling can under-count pages relative to
 pdftotext when a page contributes no extracted item at all -- a blank
 page, or a pure-image one. That is a real risk in principle, and was not

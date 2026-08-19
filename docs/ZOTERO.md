@@ -24,13 +24,13 @@ general feature):
    every attachment -- the exported `.bib`'s `file` field encodes that
    folder's name as a literal relative path, tied to whatever name you
    gave the export at save time.
-4. **Don't rename that companion folder afterward.** `src/bib_reader.py`'s
+4. **Don't rename that companion folder afterward.** `chitragupta/bib_reader.py`'s
    `_resolve_pdf_path` resolves each entry's `file` field relative to
    wherever `bibliography.bib` itself lives (`papers/`) -- if you rename
    or move the attachments folder, that relative path breaks silently
    (entries just show up as "without a PDF attachment" after `sync`, not
    as an error).
-5. Re-run `python -m src.corpus sync`.
+5. Re-run `python -m chitragupta.corpus sync`.
 
 ## Keeping your collections (optional)
 
@@ -40,9 +40,9 @@ papers*. This pipeline can use it to scope a draft's retrieval to the
 subset you curated for it, rather than to the whole library (#195):
 
 ```bash
-python -m src.corpus ledger --collections               # what exists
-python -m src.corpus ledger --collection "Digital twins"
-python -m src.draft retrieve search "surrogate models" --collection "Digital twins"
+python -m chitragupta.corpus ledger --collections               # what exists
+python -m chitragupta.corpus ledger --collection "Digital twins"
+python -m chitragupta.draft retrieve search "surrogate models" --collection "Digital twins"
 ```
 
 The genre skills use this too, and ask about it once. Each of them
@@ -75,7 +75,7 @@ in any collection. Keeping it needs
    into every entry, naming each collection the item belongs to.
 3. Export as **Better BibTeX** rather than the built-in BibTeX, with
    **Export Files** checked as in step 2 above.
-4. Re-run `python -m src.corpus sync`.
+4. Re-run `python -m chitragupta.corpus sync`.
 
 **The stated cost, and why it is probably not a cost for you.** Better
 BibTeX warns that this option "will disable caching in exports", and its
@@ -113,14 +113,14 @@ A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into to have it indexed:
 the enrichment layer's corpus is the bibliography, so anything it can
 retrieve is something a draft may cite -- see
-[`src/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/corpus.py)
+[`chitragupta/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/corpus.py)
 and AGENTS.md's citekey
 invariant. (Earlier versions did have such a directory, `papers/pdfs/`;
 it is gone. A PDF there is now ignored.)
 
 To add more papers later: add the entry in Zotero, re-export the same way
 (re-check **Export Files** so new attachments are included), then re-run
-`python -m src.corpus sync`.
+`python -m chitragupta.corpus sync`.
 
 Removing a paper: delete the entry in Zotero, re-export, re-run `sync`.
 By default `sync` only *reports* citekeys that dropped out of the bib file
@@ -159,5 +159,5 @@ filename.
 
 All paths are configurable in `config.toml` (repo root), overridable
 per-run with an env var of the same name, e.g. `BIB_FILE=/path/to/other.bib
-python -m src.corpus sync`. See [CONFIG.md](CONFIG.md) for the
+python -m chitragupta.corpus sync`. See [CONFIG.md](CONFIG.md) for the
 full settings reference.

@@ -101,18 +101,18 @@ second.
 
 ## Three code facts behind the numbers
 
-1. **`src/sync.py`'s parse loop is serial** -- a plain
+1. **`chitragupta/sync.py`'s parse loop is serial** -- a plain
    `for ref in references:`. Its own comment names `ProcessPoolExecutor`
    as the deferred candidate and pre-commits to the right shape (ledger
    writes stay on the main thread). The reasons it gives for deferring
    hold for the `pdftotext` default and for routine incremental syncs;
    they do not hold for a bulk Docling run.
 
-2. **`src/pdf_text.py:_extract_docling` builds `DocumentConverter()`
+2. **`chitragupta/pdf_text.py:_extract_docling` builds `DocumentConverter()`
    inside the function** -- once per PDF. `initialized_pipelines` is an
    instance attribute, so every document re-initialises the models.
    Measured cold start for the first converter: **16.5s**.
-   `src/enrich/docling_parse.py` calls `_build_converter()` inside
+   `chitragupta/enrich/docling_parse.py` calls `_build_converter()` inside
    `parse_doc`, with the same effect.
 
 3. **`AcceleratorDevice.AUTO` resolves to `cuda:0`, always**
@@ -130,7 +130,7 @@ A fourth fact, host-specific but a live trap for worker sizing:
 
 ## 2026-08-02: parallel `sync`, and the ceiling it hit
 
-Measured 2026-08-02 with the real `python -m src.corpus sync`, not the bench
+Measured 2026-08-02 with the real `python -m chitragupta.corpus sync`, not the bench
 harness: 60 bib PDFs (1,166 pages), `parser.backend = "docling"`, OCR off,
 via `[parser].workers`.
 
@@ -224,7 +224,7 @@ parse time.
 
 `DocumentConverter` cold start is **16.5s** on this host, and
 `initialized_pipelines` is an instance attribute -- so the pre-0.12.0
-`src/pdf_text.py`, which built one converter per PDF, paid a model reload
+`chitragupta/pdf_text.py`, which built one converter per PDF, paid a model reload
 for every document in the corpus. Both `pdf_text.py` and
 `enrich/docling_parse.py` now build one converter and reuse it, and
 `parse_corpus` defers the build until a document actually needs parsing,
@@ -232,7 +232,7 @@ so a fully-cached re-run loads no models at all.
 
 ## 2026-08-02: spreading workers across the four A40s
 
-Measured 2026-08-02 with the real `python -m src.corpus sync` over the **whole
+Measured 2026-08-02 with the real `python -m chitragupta.corpus sync` over the **whole
 501-PDF corpus** (13,400 pages), `docling`, OCR off, 12 workers. The A/B
 is the same binary either way -- `CUDA_VISIBLE_DEVICES=0` confines every
 worker to one card, which is exactly the pre-v1.1.0 behaviour, since
@@ -446,7 +446,7 @@ of the start method).
 
 ## 2026-08-04: the full-corpus sweep
 
-Measured with the real `python -m src.corpus sync` over **all 501 PDFs** rather
+Measured with the real `python -m chitragupta.corpus sync` over **all 501 PDFs** rather
 than a sample, on the same machine (4x A40, 48 CPUs available of 96 host
 logical CPUs), repository at `92c1420` (v2.1.0). Every run started from
 an empty `CONTENT_DIR` and reported 501 parsed, 0 failed. Raw records:
@@ -620,7 +620,7 @@ Raw records: `results/2026-08-07-passage-repro/*.json`.
 
 That finding compared `content/parsed/<citekey>.txt` and concluded the
 differences were cosmetic, on the grounds that retrieval tokenises on
-whitespace. True for BM25 -- but `src/passages.py` writes **one passage
+whitespace. True for BM25 -- but `chitragupta/passages.py` writes **one passage
 record per `dl_doc.texts` item**, and `PASSAGE_LABELS` contains
 `list_item`, the element type that finding names. So the same variance
 could be changing the exact span this pipeline would quote to a reviewer,
@@ -755,8 +755,8 @@ distinct failure modes, not as a frequency distribution over them.
 
 ## 2026-08-08: what a drift sweep costs
 
-`python3 -m src.dossier status --all` builds a BM25 index in memory and
-throws it away, rather than calling `src.retrieval.search()` -- which
+`python3 -m chitragupta.dossier status --all` builds a BM25 index in memory and
+throws it away, rather than calling `chitragupta.retrieval.search()` -- which
 would take a write connection to the ledger and rewrite
 `content/retrieval_index.json` on every scan
 ([docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md#why-the-new-papers-are-not-found-with-search)).
@@ -766,7 +766,7 @@ and a cold one costs one corpus tokenization *shared across every
 dossier*. This is the stopwatch.
 
 Host: the multi-GPU machine (48 allowed CPUs, 251 GB RAM), bare
-`python3` 3.12.3, no GPU involved -- `src.dossier` is stdlib-only, so
+`python3` 3.12.3, no GPU involved -- `chitragupta.dossier` is stdlib-only, so
 this needs no venv. Medians of 5 runs.
 
 ### The real corpus: 646 ledger rows, 47.4 MB of parsed text
@@ -875,7 +875,7 @@ against a real draft and this project's own real corpus, rather than the
 tiny synthetic fixtures the unit test suite uses.
 
 Host: the multi-GPU machine (48 allowed CPUs, 251 GB RAM), bare `python3`
-3.13.5, no GPU involved -- `src.overlap_index` and `scripts/verbatim_check.py`
+3.13.5, no GPU involved -- `chitragupta.overlap_index` and `scripts/verbatim_check.py`
 are stdlib-only. Corpus: this project's own `content/ledger.sqlite`, 497
 parsed items. Draft: `bench/fixtures/cloud-computing-for-digital-twins.md`,
 a genuine ~3,000-word chapter written for this measurement, citing 16 real
@@ -979,7 +979,7 @@ CONTENT_DIR=/path/to/your/content python3 bench/bench_overlap.py \
 
 [#130](https://github.com/prasadtalasila/chitragupta/issues/130) asks
 whether a long verbatim run should block a draft the way `python -m
-src.draft gate` blocks an unresolvable citekey, and forbids guessing the
+chitragupta.draft gate` blocks an unresolvable citekey, and forbids guessing the
 threshold: it is to be "tuned against real reports". This is the report.
 
 Host: as above. Corpus: the same 497 parsed documents, `docling` backend,
@@ -1010,7 +1010,7 @@ were not.
 bucket, 1,013 against 16), from one unanchored regex. Unmasked, chapter 1
 alone produced 577 findings of which 97.7% sat in the reference list and
 **100% of its long bucket** did. Every number below is from the masked
-arm; the pattern is fixed in `src/references.py`.
+arm; the pattern is fixed in `chitragupta/references.py`.
 
 `section_start` is also what `references apply` splices on and what
 `render_output` strips, and both act destructively on the index it
@@ -1262,7 +1262,7 @@ classes rather than competing.
 - **Stability under corpus change.** `index.json`'s key is a sha256 over
   every document's own change-detection key, so every DF here moves when
   a paper is added or re-parsed. A DF-based suppression is deterministic
-  *given a corpus state* -- weaker than `src.draft gate`'s guarantee, and
+  *given a corpus state* -- weaker than `chitragupta.draft gate`'s guarantee, and
   the same shape as #128's per-host allowlist. #130 is where that is
   priced.
 - **Whether DF beats the hand allowlist.** #128's candidate allowlist
@@ -1476,9 +1476,9 @@ The pre-fix run is committed alongside it at
 `results/2026-08-14-skipgram-precision-before/skipgram_precision.json`
 -- 190 rows, unlabelled, kept so the 190 -> 125 -> 27 arithmetic above
 can be re-derived rather than taken on trust. Reproducing *it* needs the
-parent commit, since the fixes are in `src/`.
+parent commit, since the fixes are in `chitragupta/`.
 
-## 2026-08-14b: `src.draft style` on a real 178k-word book, and the four bugs measuring it exposed (#107)
+## 2026-08-14b: `chitragupta.draft style` on a real 178k-word book, and the four bugs measuring it exposed (#107)
 
 Payload: `results/2026-08-14-style-precision/style_precision.json`.
 Corpus: the fifteen chapters of
@@ -1547,7 +1547,7 @@ Bugs 2-4 are each pinned by a test in
 ### Reproducing
 
 ```bash
-python -m src.draft style --json \
+python -m chitragupta.draft style --json \
   content/drafts/books/digital-twins-for-software-engineers/*.md
 ```
 
@@ -1609,10 +1609,10 @@ This is the concrete, sentence-level form of the warning the
 [2026-08-13b document-frequency section](#2026-08-13b-does-a-grams-corpus-document-frequency-separate-boilerplate-from-reuse)
 records at corpus level: in a single-field corpus, topical similarity is
 high by default, so a detector has to compare something smaller than a
-topic. It is why `src/overlap_segments.py` windows both sides, and it is
+topic. It is why `chitragupta/overlap_segments.py` windows both sides, and it is
 the single change without which none of the results below happen.
 
-It is also why `src/overlap_embed.report` ranks rather than thresholds.
+It is also why `chitragupta/overlap_embed.report` ranks rather than thresholds.
 Even windowed, no cutoff separates the classes: in that same section of
 chapter 1 the true pair's window scores 0.62 against the source sentence
 it restates while the *opening clause of the same draft sentence* scores
@@ -1639,7 +1639,7 @@ Two things in that table are worth more than the "yes" column.
 
 **Tier 2 catches nothing on this ladder, including the rung it was built
 for.** The word-substitution grade swaps words in place -- exactly the
-perturbation `src/overlap_skipgram.py`'s odd/even family split is
+perturbation `chitragupta/overlap_skipgram.py`'s odd/even family split is
 designed to tolerate -- and skip-gram misses it, because substituting
 words also *moved* them (a six-word phrase became five). That is the
 finding #134's 2026-08-14 comment reached by controlled ablation,
@@ -1837,7 +1837,7 @@ The book is restored from `content/backup/`'s archive, which was written
 by **chitragupta 3.12.0**. One thing has to be ported before any of this
 runs: `sections.md` recorded section names as `1.1 / Subsection` paths
 then and records the heading verbatim now, so every dossier needs
-`python -m src.draft dossier sections <chapter> --citekeys --write`
+`python -m chitragupta.draft dossier sections <chapter> --citekeys --write`
 first. Without it tier 3 matches no section and reports itself
 unavailable -- correctly, but the run measures nothing. Everything else
 in those dossiers reads unchanged, and `dossier status` confirms the
@@ -1968,12 +1968,12 @@ shared 10.
   not shown to be more *right*; it is shown to fire on more sections.
 - **A recommendation to change the default.** See above: the design
   spec scopes this benchmark to a recommendation recorded in this file,
-  not a `config.toml.example`/`src/config.py` change.
+  not a `config.toml.example`/`chitragupta/config.py` change.
 - **`EMBEDDING_MODEL`'s other consumers.** Only the overlap-scan path
   (`embed_index.py`'s symmetric, un-prefixed `encode()`, feeding
-  `overlap_embed.py`) is exercised. `src/enrich/topic_model.py` reads
+  `overlap_embed.py`) is exercised. `chitragupta/enrich/topic_model.py` reads
   the same setting for its own embedding cache; that path is untouched
-  by this sweep. `src/retrieval.py`'s search is unaffected either way --
+  by this sweep. `chitragupta/retrieval.py`'s search is unaffected either way --
   it is BM25, not embedding-based.
 - **A second corpus or a second book.** One 15-chapter book, one bib
   corpus, one host. Whether the ranking (mpnet-base > MiniLM ~
@@ -2084,7 +2084,7 @@ Printed by `main()`, and written to
 
 | row | n | recall@5 | nDCG@5 |
 |---|---|---|---|
-| BM25 (`src/retrieval.py`) | 48 | **0.7708** | **0.6641** |
+| BM25 (`chitragupta/retrieval.py`) | 48 | **0.7708** | **0.6641** |
 | dense-only: `all-MiniLM-L6-v2` | 48 | 0.5208 | 0.4407 |
 | dense+rerank: `all-MiniLM-L6-v2` | 48 | 0.5208 | 0.4420 |
 | dense-only: `all-mpnet-base-v2` | 48 | 0.5417 | 0.4664 |
@@ -2100,7 +2100,7 @@ population.
 
 **Four different candidate-pool sizes sit under the same table columns,
 and only BM25 ranks over the whole ledger.** BM25 ranks over all 642
-ledger entries (`src/retrieval.py`'s corpus-wide index indexes every
+ledger entries (`chitragupta/retrieval.py`'s corpus-wide index indexes every
 item's title whether or not it has parsed text -- see
 `embed_index.search()`'s own docstring: a bib entry whose PDF is missing
 or failed to parse is searchable by title there even though it never
@@ -2281,7 +2281,7 @@ The section above answers "which retrieval configuration finds the
 citekey a real drafting session cited" from ground truth *reconstructed*
 after the fact -- a claim's text re-extracted from the restored book,
 joined back onto a committed judgment. This section asks the same
-question a different way: from what `src.retrieval`/`embed_index`
+question a different way: from what `chitragupta.retrieval`/`embed_index`
 actually *logged* while the session ran, no reconstruction, no
 book-restore-and-rejoin risk. Same nine rows, same scoring
 (`bench_retrieval_live_logs.py` imports `recall_at_k`/`ndcg_at_k`/
@@ -2319,7 +2319,7 @@ assertion against chapter 9, independently reproducible).
 
 | row | recall@5 | nDCG@5 |
 |---|---|---|
-| BM25 (`src/retrieval.py`) | 0.8542 | **0.4707** |
+| BM25 (`chitragupta/retrieval.py`) | 0.8542 | **0.4707** |
 | dense-only: `all-MiniLM-L6-v2` | 0.8125 | 0.3499 |
 | dense+rerank: `all-MiniLM-L6-v2` | 0.7292 | 0.3132 |
 | dense-only: `all-mpnet-base-v2` | 0.8125 | 0.3286 |
@@ -2445,7 +2445,7 @@ there.
 
 The two sections above both score against citekeys that reached
 `evidence.md` because a real drafting session's `retrieval.md` shows
-only one retrieval tool in use -- `src.retrieval.search()` (BM25). A
+only one retrieval tool in use -- `chitragupta.retrieval.search()` (BM25). A
 paper dense retrieval or SPECTER2 would have surfaced but BM25 never
 did was never shown to a human to judge, so it can never be scored as a
 hit in either section above, independent of how good a citation it
@@ -2457,9 +2457,9 @@ uncorrected.
 This section sidesteps it rather than correcting for it after the fact.
 The query for each of 256 bib entries is *that entry's own
 author-assigned `keywords` field* (`bibliography.bib`, read via
-`src.bib_reader.read_library()` -- the project's one sanctioned bib
+`chitragupta.bib_reader.read_library()` -- the project's one sanctioned bib
 parser; `keywords` is absent from `content/ledger.sqlite`, dropped by
-the same "per-host noise" exclusion `src/ledger.py` applies to
+the same "per-host noise" exclusion `chitragupta/ledger.py` applies to
 `abstract`). The correct answer is the entry itself. No retrieval
 method's search history decided that -- the paper's own author did,
 once, independent of BM25, dense retrieval, SPECTER2, and the cascade
@@ -2496,7 +2496,7 @@ answers "did you find it among everything."
 
 | row | recall@5 | nDCG@5 |
 |---|---|---|
-| BM25 (`src/retrieval.py`) | **0.8047** | **0.7314** |
+| BM25 (`chitragupta/retrieval.py`) | **0.8047** | **0.7314** |
 | dense-only: `all-MiniLM-L6-v2` | 0.6367 | 0.5186 |
 | dense+rerank: `all-MiniLM-L6-v2` | 0.6406 | 0.5354 |
 | dense-only: `all-mpnet-base-v2` | 0.6367 | 0.5069 |
@@ -2796,7 +2796,7 @@ are not a fair arm-to-arm comparison in either direction.
 
 ### Verbatim overlap
 
-`python -m src.review verbatim scan --json`, same tiers both times.
+`python -m chitragupta.review verbatim scan --json`, same tiers both times.
 **All three tiers ran, including the embedding tier** -- the first run
 could not run it, so this is strictly better evidence.
 
@@ -2917,7 +2917,7 @@ python bench/bench_collection_scope.py \
 
 Stdlib only, no venv, no lock -- reads `content/ledger.sqlite` and
 `content/retrieval_index.json` read-only and replays each dossier's own
-logged queries through `src.retrieval.search()`. `--session` and
+logged queries through `chitragupta.retrieval.search()`. `--session` and
 `--steering-at` are optional; omit them and every non-token figure still
 reproduces. The replay reproduces identically only while the ledger is
 unmoved, which `--hashes` now checks and reports as `replay_sound`

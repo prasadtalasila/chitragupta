@@ -4,7 +4,7 @@ title: "Appendix — the life of a single citekey in the ledger"
 stateDiagram-v2
     direction TB
 
-    [*] --> discovered : appears in bibliography.bib<br/>(src.bib_reader)
+    [*] --> discovered : appears in bibliography.bib<br/>(chitragupta.bib_reader)
 
     discovered --> no_pdf : no resolvable<br/>file field
     discovered --> parsing : PDF found and<br/>its bytes changed
@@ -28,7 +28,7 @@ stateDiagram-v2
 
     note right of parsed
         Only this state makes the citekey citable.
-        src.draft gate resolves a citekey against
+        chitragupta.draft gate resolves a citekey against
         the ledger, so a row that is not here
         cannot appear in a draft that renders.
     end note

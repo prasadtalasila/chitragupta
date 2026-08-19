@@ -1,7 +1,7 @@
 # The vendored prose style
 
-What `python -m src.draft style` checks a draft against. Read by
-`src/style_check.py`; not meant to be run with a bare `vale`, which would
+What `python -m chitragupta.draft style` checks a draft against. Read by
+`chitragupta/style_check.py`; not meant to be run with a bare `vale`, which would
 enable all three dialect rules at once and report every draft as wrong in
 two directions.
 
@@ -39,7 +39,7 @@ the flag") is a defect marker and the adjective ("a just outcome") is not,
 and no string match separates them. It is reported for a human eye and
 never auto-fixed, which is what the lower level encodes.
 
-**The dialect rules are mutually exclusive.** `src/style_check.py` enables
+**The dialect rules are mutually exclusive.** `chitragupta/style_check.py` enables
 exactly one set per draft, chosen from the `language:` line in the draft's
 dossier `scope.md`, using Vale's `--filter`. A draft with no recorded
 dialect gets none of them and is told so.

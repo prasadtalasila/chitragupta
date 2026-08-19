@@ -1,6 +1,6 @@
-"""src/retrieval.py: BM25-ranked search over a cached term-frequency
+"""chitragupta/retrieval.py: BM25-ranked search over a cached term-frequency
 index, the retrieval contract genre skills call before the
-embeddings-based upgrade (src/enrich/embed_index.py)."""
+embeddings-based upgrade (chitragupta/enrich/embed_index.py)."""
 
 import json
 import os
@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from src import config, ledger, retrieval
+from chitragupta import config, ledger, retrieval
 
 from tests.conftest import make_reference
 
@@ -53,7 +53,7 @@ class TestSnippet:
         subprocesses because PYTHONHASHSEED is read at interpreter
         start."""
         program = (
-            "from src import retrieval;"
+            "from chitragupta import retrieval;"
             "text = 'ABSTRACT twin ' + 'x '*400 + ' MIDDLE greenhouse ' "
             "+ 'y '*400 + ' END actuator ';"
             "terms = set(retrieval._tokenize('twin greenhouse actuator'));"
@@ -394,7 +394,7 @@ class TestCli:
 
     def test_no_ledger_exits_nonzero_with_the_fix(self, isolated_config, capsys):
         assert retrieval.main(["search", "anything"]) == 1
-        assert "src.corpus sync" in capsys.readouterr().err
+        assert "chitragupta.corpus sync" in capsys.readouterr().err
 
     def test_no_results_is_not_an_error(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
@@ -416,7 +416,7 @@ class TestCli:
         assert "no parsed text" in out
 
     def test_log_records_the_call_in_the_dossier(self, ledger_con, tmp_path, capsys):
-        from src import dossier
+        from chitragupta import dossier
 
         self._seed(ledger_con, tmp_path)
         draft = config.DRAFTS_DIR / "survey.md"
@@ -482,7 +482,7 @@ class TestLogNeverFailsTheSearch:
     def test_an_oserror_while_logging_is_reported_not_raised(
         self, ledger_con, tmp_path, capsys, monkeypatch
     ):
-        from src import dossier
+        from chitragupta import dossier
 
         self._seed(ledger_con, tmp_path)
         draft = config.DRAFTS_DIR / "survey.md"

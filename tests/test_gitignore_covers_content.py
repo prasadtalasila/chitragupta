@@ -8,7 +8,7 @@ one `git add -A` from being committed as somebody's per-host data. A
 blanket `content/*` cannot go stale that way, and this pins that it
 stays blanket rather than drifting back to a list.
 
-It derives the names from `src/config.py` rather than restating them, so
+It derives the names from `chitragupta/config.py` rather than restating them, so
 a new `config.SOMETHING_DIR` under `content/` is covered on the day it is
 added, not on the day someone remembers this file.
 
@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from src import config
+from chitragupta import config
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

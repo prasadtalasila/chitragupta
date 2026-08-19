@@ -13,7 +13,7 @@ requirement in direct conflict with a size limit and would reward deleting
 the rationale -- the one edit this project least wants. Counting statements
 measures how much a function *does* and is blind to how well it is
 explained. The difference is not cosmetic: at 5.7.1, 128 functions in
-`src/` exceed 25 physical lines and 26 exceed 25 statements.
+`chitragupta/` exceed 25 physical lines and 26 exceed 25 statements.
 
 **A ratchet, not a wall.** Both rules are violated by code that exists
 today, and a rule that fails on the day it lands is a rule that gets
@@ -48,29 +48,29 @@ MAX_CODE_LINES = 250
 # it is one of the trees scripts/release.py excludes from the release
 # archive, and its scripts are one-shot analysis code whose `main()` reads
 # top to bottom on purpose.
-STATEMENT_ROOTS = ("src", "scripts", "tests")
-CODE_LINE_ROOTS = ("src", "scripts")
+STATEMENT_ROOTS = ("chitragupta", "scripts", "tests")
+CODE_LINE_ROOTS = ("chitragupta", "scripts")
 
 # Every offender as of 5.7.1 that remains, frozen. Ordered worst-first,
 # with today's count in a trailing comment so the size of each debt is
 # visible without running anything. The original register held 28
-# functions, worst of them src/sync.py::run at 117 statements -- the
+# functions, worst of them chitragupta/sync.py::run at 117 statements -- the
 # 5.8.x SonarCloud-debt series split the worst offenders and delisted
 # each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    # Unchanged by #219's split of src/dossier.py into src/dossier/: every
+    # Unchanged by #219's split of chitragupta/dossier.py into chitragupta/dossier/: every
     # _cmd_* handler moved out, but main()'s own argparse-tree statements
     # didn't, so its count didn't either. +1 for acronyms-suggest's
     # --apply flag.
-    "src/dossier/_cli.py::main",  # 50
-    "src/enrich/embed_index.py::build_index",  # 40
-    "src/enrich/docling_parse.py::parse_doc",  # 36
-    "src/sync.py::_parse_parallel",  # 33
-    "src/enrich/topic_model.py::run_topic_model",  # 32
+    "chitragupta/dossier/_cli.py::main",  # 50
+    "chitragupta/enrich/embed_index.py::build_index",  # 40
+    "chitragupta/enrich/docling_parse.py::parse_doc",  # 36
+    "chitragupta/sync.py::_parse_parallel",  # 33
+    "chitragupta/enrich/topic_model.py::run_topic_model",  # 32
     "tests/test_release.py::make_repo",  # 31
-    "src/retrieval.py::_windows",  # 28
-    "src/overlap_index.py::build_corpus_index",  # 27
-    "src/overlap_skipgram.py::build_corpus_index",  # 27
+    "chitragupta/retrieval.py::_windows",  # 28
+    "chitragupta/overlap_index.py::build_corpus_index",  # 27
+    "chitragupta/overlap_skipgram.py::build_corpus_index",  # 27
     "scripts/release.py::build_release",  # 26
 }
 
@@ -81,17 +81,17 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "src/review/verbatim_check.py",  # 1880
-    "src/pdf_text.py",  # 1001
-    "src/enrich/docling_parse.py",  # 522
-    "src/overlap_index.py",  # 492
-    "src/sync.py",  # 519
-    "src/review/citation_provenance.py",  # 388
-    "src/ledger.py",  # 430
-    "src/retrieval.py",  # 397
-    "src/references.py",  # 375
-    "src/overlap_skipgram.py",  # 315
-    "src/config.py",  # 351
+    "chitragupta/review/verbatim_check.py",  # 1880
+    "chitragupta/pdf_text.py",  # 1001
+    "chitragupta/enrich/docling_parse.py",  # 522
+    "chitragupta/overlap_index.py",  # 492
+    "chitragupta/sync.py",  # 519
+    "chitragupta/review/citation_provenance.py",  # 388
+    "chitragupta/ledger.py",  # 430
+    "chitragupta/retrieval.py",  # 398
+    "chitragupta/references.py",  # 376
+    "chitragupta/overlap_skipgram.py",  # 315
+    "chitragupta/config.py",  # 351
 }
 
 
@@ -150,7 +150,7 @@ def functions(source):
     reading.
 
     Qualified (`Class.method`, `outer.inner`), not the bare name, because
-    the bare name is not unique within a file: `src/pdf_text.py` defines
+    the bare name is not unique within a file: `chitragupta/pdf_text.py` defines
     `__init__` twice. `long_functions()` keys a dict on this, so a
     collision would drop one offender of a colliding pair -- and, worse,
     would let a register entry for one `main` silently license a *different*
@@ -178,7 +178,7 @@ def _python_files(roots):
     """Every `.py` file under `roots` in the working tree, path-sorted.
 
     The working tree, not `git ls-files`: an untracked scratch file under
-    `src/` is scanned and can fail the suite. That is deliberate -- it is
+    `chitragupta/` is scanned and can fail the suite. That is deliberate -- it is
     the state the code is actually in -- but it means a local-only failure
     naming a file you never committed is a stray file, not a bug here.
 
@@ -285,16 +285,16 @@ def test_the_scan_reaches_the_source_tree():
     scanned = {_relative(path) for path in _python_files(STATEMENT_ROOTS)}
     # One per root, so a root silently dropped from STATEMENT_ROOTS fails
     # here rather than quietly halving what the ratchet covers.
-    assert "src/sync.py" in scanned
+    assert "chitragupta/sync.py" in scanned
     assert "scripts/release.py" in scanned
     assert "tests/test_code_standards_scan.py" in scanned
     # Two *nested* modules, which is the specific thing the glob has to get
     # right: `**/*.py` degraded to `*.py` still finds all three paths above
     # -- they sit directly in their roots -- while silently dropping every
-    # module in src/enrich/ and src/review/, half of which are on the
+    # module in chitragupta/enrich/ and chitragupta/review/, half of which are on the
     # register. A count alone would only imply this; these name it.
-    assert "src/enrich/docling_parse.py" in scanned
-    assert "src/review/verbatim_check.py" in scanned
+    assert "chitragupta/enrich/docling_parse.py" in scanned
+    assert "chitragupta/review/verbatim_check.py" in scanned
     assert not any(name.startswith("bench/") for name in scanned)
 
 
@@ -444,7 +444,7 @@ def test_two_same_named_methods_in_one_module_stay_distinct():
     Keyed on the bare name, the second of these would overwrite the first
     -- so a colliding pair would report as one offender, and a register
     entry for one would license a different function of the same name
-    added to that module later. `src/pdf_text.py` is the live case: it
+    added to that module later. `chitragupta/pdf_text.py` is the live case: it
     defines `__init__` on both `interrupt_guard` and `_AnnotatedStream`.
     """
     source = (

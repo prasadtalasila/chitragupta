@@ -1,4 +1,4 @@
-"""Sweep the REAL `python -m src.corpus sync` across worker/GPU/OCR settings.
+"""Sweep the REAL `python -m chitragupta.corpus sync` across worker/GPU/OCR settings.
 
 This is the harness that produces trustworthy pool-level numbers, and it
 exists because the two older tools cannot:
@@ -12,7 +12,7 @@ exists because the two older tools cannot:
 Neither answers "what does the shipped pipeline cost", which is the only
 question a user actually has. This runs the shipped pipeline.
 
-Three things it does that a hand-rolled `time python -m src.corpus sync` does not:
+Three things it does that a hand-rolled `time python -m chitragupta.corpus sync` does not:
 
 1. **A fresh CONTENT_DIR per run.** The ledger skips any PDF whose bytes
    haven't changed, so a second run over the same output directory times
@@ -50,7 +50,7 @@ import threading
 import time
 from pathlib import Path
 
-# "  [12/501] citekey" -- src/sync.py's per-completion progress line.
+# "  [12/501] citekey" -- chitragupta/sync.py's per-completion progress line.
 PROGRESS_RE = re.compile(r"^\s*\[\d+/\d+\]\s")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -155,7 +155,7 @@ class ResourceSampler:
 
 def one_run(workers: int, gpus: int, ocr: bool, python: str,
             keep_output: bool = False) -> dict:
-    """One full `src.corpus sync` over the whole corpus, from an empty ledger."""
+    """One full `chitragupta.corpus sync` over the whole corpus, from an empty ledger."""
     content_dir = Path(tempfile.mkdtemp(prefix="bench-content-"))
     env = {
         **os.environ,
@@ -181,7 +181,7 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
             # long document imposes, and the gaps between are the
             # steady-state rate.
             proc = subprocess.Popen(
-                [python, "-m", "src.corpus", "sync"], cwd=str(REPO_ROOT), env=env,
+                [python, "-m", "chitragupta.corpus", "sync"], cwd=str(REPO_ROOT), env=env,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             completions: list[float] = []
             err_lines: list[str] = []

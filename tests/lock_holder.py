@@ -15,13 +15,13 @@ imports `cv2.dnn`, which needs `libGL.so.1`. On a host without that
 library the child dies before it can take the lock, the parent waits out
 its timeout, and the suite stalls -- see issue #45.
 
-Keeping the child's import graph to `time` plus `src.runlock` makes it
+Keeping the child's import graph to `time` plus `chitragupta.runlock` makes it
 independent of whatever the parent happened to import.
 """
 
 import time
 
-from src import runlock
+from chitragupta import runlock
 
 # How long the child keeps the lock if nothing kills it. Long enough that
 # no test races it, short enough that a leaked child cannot outlive the

@@ -1,4 +1,4 @@
-"""src/review/citation_provenance.py: what in a cited source supports the claim
+"""chitragupta/review/citation_provenance.py: what in a cited source supports the claim
 citing it.
 
 The interesting cases here are the ones a synthetic fixture makes easy to
@@ -6,7 +6,7 @@ get wrong: hard-wrapped prose (every draft this project writes), and a
 claim that scores against nothing.
 
 Where the passages themselves come from -- sidecar, form-feed pages, or
-`pdftotext` -- is tests/test_passages.py's, since src/passages.py owns
+`pdftotext` -- is tests/test_passages.py's, since chitragupta/passages.py owns
 that ladder. What stays here is what this module still decides: which
 sentence carries a citation, how it scores, and how the report reads.
 """
@@ -15,8 +15,8 @@ import json
 
 import pytest
 
-from src.review import citation_provenance as cp
-from src import config, ledger
+from chitragupta.review import citation_provenance as cp
+from chitragupta import config, ledger
 
 
 def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
@@ -461,7 +461,7 @@ class TestWriteReportAndCli:
         assert written["md"].exists()
 
     def test_missing_render_binary_warns_and_still_returns_md(self, isolated_config, monkeypatch, capsys):
-        from src import render_output
+        from chitragupta import render_output
 
         def raise_missing(*a, **k):
             raise render_output.MissingBinary("pandoc not found")
@@ -486,7 +486,7 @@ class TestWriteReportAndCli:
         layout fault, not this report's -- the md above is already written to
         content/review/, so it must degrade like a missing binary rather
         than taking the run out with a traceback."""
-        from src import render_output
+        from chitragupta import render_output
 
         def raise_outside(*a, **k):
             raise render_output.OutsideContentDir("content/rendered resolves to /elsewhere")
@@ -510,7 +510,7 @@ class TestWriteReportAndCli:
         that must degrade the same way rather than crashing the CLI."""
         import subprocess
 
-        from src import render_output
+        from chitragupta import render_output
 
         def raise_called_process_error(*a, **k):
             raise subprocess.CalledProcessError(
@@ -540,7 +540,7 @@ class TestWriteReportAndCli:
         reason -- exercise it directly so it can't silently print `None`."""
         import subprocess
 
-        from src import render_output
+        from chitragupta import render_output
 
         def raise_called_process_error(*a, **k):
             raise subprocess.CalledProcessError(43, ["pandoc"])
@@ -619,7 +619,7 @@ class TestEdgeShapes:
         assert set(cp.write_report(path, ["md"])) == {"md"}
 
     def test_renders_tex_when_the_renderer_succeeds(self, isolated_config, monkeypatch, tmp_path):
-        from src import render_output
+        from chitragupta import render_output
 
         out = tmp_path / "r.tex"
         out.write_text("tex")

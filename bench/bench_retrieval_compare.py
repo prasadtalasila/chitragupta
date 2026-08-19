@@ -6,7 +6,7 @@ context, not the target every other row is measured against.
 
 Each dense model's row runs in its own subprocess
 (--dense-worker <model>), because config.EMBEDDING_MODEL is fixed at
-src/config.py's import time -- three models cannot be swept by mutating
+chitragupta/config.py's import time -- three models cannot be swept by mutating
 os.environ mid-process.
 
     .venv-full/bin/python bench/bench_retrieval_compare.py \\
@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, retrieval  # noqa: E402
+from chitragupta import config, retrieval  # noqa: E402
 
 K_REPORT = 5
 K_POOL = 50  # first-pass depth offered to the reranker, per discussion #43 Sec.3
@@ -106,7 +106,7 @@ def bm25_row(ground_truth):
         key = (row["chapter"], row["line"], row["citekey"])
         results = retrieval.search(row["query"], k=K_REPORT)
         ranked_by_query[key] = [r.citekey for r in results]
-    return {"row": "BM25 (src/retrieval.py)", **score_rows(ranked_by_query, ground_truth)}
+    return {"row": "BM25 (chitragupta/retrieval.py)", **score_rows(ranked_by_query, ground_truth)}
 
 
 def _venv_python():
@@ -142,7 +142,7 @@ def _dense_worker(ground_truth):
     its environment -- config.EMBEDDING_MODEL is read at import, so this
     function must not be called from the orchestrating process."""
     from sentence_transformers import CrossEncoder
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     reranker = CrossEncoder(RERANK_MODEL)
     dense_ranked, reranked = {}, {}
@@ -221,12 +221,12 @@ def _cascade_worker(ground_truth, shortlist_size):
     close, rather than the whole corpus."""
     import embed_models as em
     from sentence_transformers import CrossEncoder
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     # A corpus-wide SPECTER2 shortlist needs the whole ledger, not just
     # this ground truth's own citekeys -- otherwise every shortlist is
     # trivially exactly right by construction.
-    from src import ledger
+    from chitragupta import ledger
     all_citekeys = [r[0] for r in ledger.connect().execute("SELECT citekey FROM items")]
     paper_vectors = em.embed_paper(all_citekeys)
 

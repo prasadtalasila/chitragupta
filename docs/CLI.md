@@ -19,21 +19,21 @@ short path; this is the full set.
 - [Which interpreter](#which-interpreter)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
-  - [`src.corpus sync`](#python--m-srccorpus-sync)
+  - [`chitragupta.corpus sync`](#python--m-chitraguptacorpus-sync)
   - [When `sync` re-parses a document it already parsed](#when-sync-re-parses-a-document-it-already-parsed)
-  - [`src.corpus ledger`](#python--m-srccorpus-ledger)
-  - [`src.draft gate`](#python--m-srcdraft-gate)
-  - [`src.draft references`](#python--m-srcdraft-references)
-  - [`src.draft dossier`](#python--m-srcdraft-dossier)
-  - [`src.draft retrieve`](#python--m-srcdraft-retrieve)
-  - [`src.review coverage`](#python--m-srcreview-coverage)
-  - [`src.review provenance`](#python--m-srcreview-provenance)
-  - [`src.review verbatim`](#python--m-srcreview-verbatim)
-  - [`src.draft render`](#python--m-srcdraft-render)
-  - [`src.draft spec`](#python--m-srcdraft-spec)
-  - [`src.draft unit`](#python--m-srcdraft-unit)
-  - [`src.draft registry`](#python--m-srcdraft-registry)
-  - [`src.enrich`](#python--m-srcenrich)
+  - [`chitragupta.corpus ledger`](#python--m-chitraguptacorpus-ledger)
+  - [`chitragupta.draft gate`](#python--m-chitraguptadraft-gate)
+  - [`chitragupta.draft references`](#python--m-chitraguptadraft-references)
+  - [`chitragupta.draft dossier`](#python--m-chitraguptadraft-dossier)
+  - [`chitragupta.draft retrieve`](#python--m-chitraguptadraft-retrieve)
+  - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
+  - [`chitragupta.review provenance`](#python--m-chitraguptareview-provenance)
+  - [`chitragupta.review verbatim`](#python--m-chitraguptareview-verbatim)
+  - [`chitragupta.draft render`](#python--m-chitraguptadraft-render)
+  - [`chitragupta.draft spec`](#python--m-chitraguptadraft-spec)
+  - [`chitragupta.draft unit`](#python--m-chitraguptadraft-unit)
+  - [`chitragupta.draft registry`](#python--m-chitraguptadraft-registry)
+  - [`chitragupta.enrich`](#python--m-chitraguptaenrich)
   - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
@@ -57,12 +57,13 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python`** -- stdlib only, no venv | `src.draft` (all six commands), `src.corpus ledger`, `src.review` (all three aids) |
-| 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `src.corpus sync` |
-| 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m src.enrich` |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids) |
+| 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
+| 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
 Tier 1 is deliberate, not incidental. The chain that enforces the one
-rule -- `src.draft gate` -> `src.draft references` -> `src.draft render`
+rule -- `chitragupta.draft gate` -> `chitragupta.draft references` ->
+`chitragupta.draft render`
 -- imports nothing outside the standard library. A broken, missing or
 wrong-Python virtual environment therefore cannot block it.
 `docs/ARCHITECTURE.md` has the
@@ -70,17 +71,21 @@ wrong-Python virtual environment therefore cannot block it.
 
 Two commands look like they belong in a higher tier and don't:
 
-- `src.draft render` (`src/render_output.py`) needs only stdlib plus
-  `src.config`/`src.citation_gate`/`src.references`. It shells out to the
+- `chitragupta.draft render` (`chitragupta/render_output.py`) needs only stdlib
+  plus
+  `chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references`. It
+  shells out to the
   `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
   dependencies.
-- `src.review`'s `coverage` and `verbatim` aids are built on
-  `src.retrieval` and `src.config`, both stdlib. `verbatim` calls the
+- `chitragupta.review`'s `coverage` and `verbatim` aids are built on
+  `chitragupta.retrieval` and `chitragupta.config`, both stdlib. `verbatim`
+  calls the
   `pdftotext` binary, again an OS package.
 
 Using the wrong interpreter is the most likely first error you will hit:
 `ModuleNotFoundError: No module named 'bibtexparser'` means you ran
-`python -m src.corpus sync` instead of `.venv-full/bin/python -m src.corpus sync`.
+`python -m chitragupta.corpus sync` instead of `.venv-full/bin/python -m
+chitragupta.corpus sync`.
 
 ## The full first run, step by step
 
@@ -101,7 +106,7 @@ mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
 
 # 1b. Create your config from the tracked example. config.toml is
 #     gitignored per-host data, so a fresh clone has none, and
-#     src/config.py refuses to import without it (naming this exact
+#     chitragupta/config.py refuses to import without it (naming this exact
 #     command). Every key in it is optional -- see CONFIG.md.
 cp config.toml.example config.toml
 
@@ -119,30 +124,30 @@ bash scripts/install_full_pipeline.sh python-deps  # .venv-full/ + the enrich gr
 
 # 3. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
 #    venv, and holds the write lock.
-.venv-full/bin/python -m src.corpus sync
-# .venv-full/bin/python -m src.corpus sync --reparse         # re-extract text even if the PDF is unchanged
-# .venv-full/bin/python -m src.corpus sync --remove-stale    # only after reading the stale list it prints
+.venv-full/bin/python -m chitragupta.corpus sync
+# .venv-full/bin/python -m chitragupta.corpus sync --reparse         # re-extract text even if the PDF is unchanged
+# .venv-full/bin/python -m chitragupta.corpus sync --remove-stale    # only after reading the stale list it prints
 
 # 4. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python -m src.corpus ledger
-# python -m src.corpus ledger --list
-# python -m src.corpus ledger --status parse_failed
-# python -m src.corpus ledger --citekey talasila_composable_2025
+python -m chitragupta.corpus ledger
+# python -m chitragupta.corpus ledger --list
+# python -m chitragupta.corpus ledger --status parse_failed
+# python -m chitragupta.corpus ledger --citekey talasila_composable_2025
 
 # 5. Optional, and only when you want it: the enrichment layer.
 #    Layout-aware parsing, semantic search and topic clustering over the
 #    whole corpus. Nothing below needs it, and no skill builds it for you
 #    -- RETRIEVAL.md says which stage is worth your time. Takes the same
 #    write lock as sync.
-.venv-full/bin/python -m src.enrich --stages docling,embed
-# .venv-full/bin/python -m src.enrich --stages docling --for-draft content/drafts/<slug>.md
+.venv-full/bin/python -m chitragupta.enrich --stages docling,embed
+# .venv-full/bin/python -m chitragupta.enrich --stages docling --for-draft content/drafts/<slug>.md
 
 # 6. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
 #    cost can be totalled later -- omit it for a one-off look.
-python -m src.draft retrieve search "digital twin composability" --k 15
-python -m src.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
+python -m chitragupta.draft retrieve search "digital twin composability" --k 15
+python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
 # 7. In Claude Code, ask for a draft, e.g.:
@@ -151,34 +156,34 @@ python -m src.draft retrieve evidence "calibration" --citekey talasila_composabl
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own gate -> references -> render chain (python -m src.draft <verb>),
+# including its own gate -> references -> render chain (python -m chitragupta.draft <verb>),
 # and writes a dossier beside the draft as it goes.
 
 # 8. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
 #    refused, so that one directory stays the whole record of the work.
-python -m src.draft gate content/drafts/<slug>.md
-python -m src.draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
-python -m src.draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
-python -m src.draft render content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
-python -m src.draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
-python -m src.draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
+python -m chitragupta.draft gate content/drafts/<slug>.md
+python -m chitragupta.draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
+python -m chitragupta.draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
+python -m chitragupta.draft render content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
+python -m chitragupta.draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
+python -m chitragupta.draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
 
 # 9. Read and maintain the draft's dossier -- what was kept, what was
 #    rejected and why, and whether the corpus has moved under it since.
-python -m src.draft dossier list
-python -m src.draft dossier brief content/drafts/<slug>.md
-python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
-python -m src.draft dossier status --all --json
-python -m src.draft dossier export <slug>
+python -m chitragupta.draft dossier list
+python -m chitragupta.draft dossier brief content/drafts/<slug>.md
+python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
+python -m chitragupta.draft dossier status --all --json
+python -m chitragupta.draft dossier export <slug>
 
 # 10. Check the draft against its sources. Review aids, not gates: none of
 #     these runs automatically, and none of them can block a draft.
-python -m src.review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
-python -m src.review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
-python -m src.review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
-python -m src.review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
-python -m src.review coverage content/drafts/<slug>.md --query "digital twin composability"
+python -m chitragupta.review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
+python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
+python -m chitragupta.review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
+python -m chitragupta.review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
+python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
 # add --write to any of the three to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -198,7 +203,7 @@ python scripts/release.py                       # bundles release/chitragupta-<v
 
 Defaults shown are the value used when the flag is omitted.
 
-### `python -m src.corpus sync`
+### `python -m chitragupta.corpus sync`
 
 Bibliography -> ledger -> parsed text. **Needs the venv.** Takes the
 write lock, so only one run at a time; a second run exits **2** rather
@@ -211,10 +216,10 @@ than waiting.
 | `--remove-stale` | off (report only) | Delete ledger rows for citekeys no longer in the bib file. Without it they are only *reported* |
 
 ```bash
-.venv-full/bin/python -m src.corpus sync
-# .venv-full/bin/python -m src.corpus sync --reparse
-# .venv-full/bin/python -m src.corpus sync --remove-stale
-# .venv-full/bin/python -m src.corpus sync --reparse --remove-stale
+.venv-full/bin/python -m chitragupta.corpus sync
+# .venv-full/bin/python -m chitragupta.corpus sync --reparse
+# .venv-full/bin/python -m chitragupta.corpus sync --remove-stale
+# .venv-full/bin/python -m chitragupta.corpus sync --reparse --remove-stale
 
 # Exit codes: 0 = clean, 1 = at least one parse failed,
 #             2 = another run holds the lock.
@@ -236,10 +241,10 @@ sidecar you delete by hand is restored by the same check.
 It costs one re-parse each, once (6.65s per PDF serial, 0.62s at twelve
 workers -- see [PERFORMANCE.md](PERFORMANCE.md)), and the run reports
 them the way it reports any other parse. Nothing to do, in other words --
-but `python -m src.corpus sync --reparse` forces it all at once if you
+but `python -m chitragupta.corpus sync --reparse` forces it all at once if you
 would rather not wait for the next run.
 
-### `python -m src.corpus ledger`
+### `python -m chitragupta.corpus ledger`
 
 Read-only view of the corpus layer. **Takes no lock**, so it works while
 a sync is running. With no flags it prints a summary.
@@ -254,13 +259,13 @@ a sync is running. With no flags it prints a summary.
 | `--collection NAME` | -- | List only items in this collection, or one beneath it |
 
 ```bash
-python -m src.corpus ledger
-# python -m src.corpus ledger --list
-# python -m src.corpus ledger --status parse_failed
-# python -m src.corpus ledger --status no_pdf
-# python -m src.corpus ledger --citekey talasila_composable_2025
-# python -m src.corpus ledger --collections
-# python -m src.corpus ledger --collection "Digital twins"
+python -m chitragupta.corpus ledger
+# python -m chitragupta.corpus ledger --list
+# python -m chitragupta.corpus ledger --status parse_failed
+# python -m chitragupta.corpus ledger --status no_pdf
+# python -m chitragupta.corpus ledger --citekey talasila_composable_2025
+# python -m chitragupta.corpus ledger --collections
+# python -m chitragupta.corpus ledger --collection "Digital twins"
 ```
 
 Collections need a Better BibTeX export with JabRef fields enabled --
@@ -270,7 +275,7 @@ nothing and says why. See
 parent collection selects everything beneath it, matching is
 case-insensitive, and it is per-segment rather than by substring.
 
-### `python -m src.draft gate`
+### `python -m chitragupta.draft gate`
 
 The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 **Takes no options** -- every argument is a file to check.
@@ -281,8 +286,8 @@ The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 | `<file> [<file> ...]` | One or more drafts to check |
 
 ```bash
-python -m src.draft gate content/drafts/survey.md
-# python -m src.draft gate content/drafts/*.md      # several at once
+python -m chitragupta.draft gate content/drafts/survey.md
+# python -m chitragupta.draft gate content/drafts/*.md      # several at once
 
 # Exit codes: 0 = every citation verified,
 #             1 = at least one unresolved citekey, or a file outside content/,
@@ -297,17 +302,17 @@ code 2 for the same reason: this is a document that did not pass,
 alongside the rest.
 
 **Check the spelling in any script or CI step that runs this.**
-`src/citation_gate.py` carries no `__main__` block -- the drafting layer
+`chitragupta/citation_gate.py` carries no `__main__` block -- the drafting layer
 has one entry point, and this is it (see
 [ARCHITECTURE.md](ARCHITECTURE.md#which-interpreter-and-why)). So
-`python -m src.citation_gate <draft>` does not error: it imports the
+`python -m chitragupta.citation_gate <draft>` does not error: it imports the
 module and exits **0** with empty stdout. For every other command in this
 layer that trap is a harmless no-op, but for the gate it means an
 automated caller gets a **silent, unconditional pass** on a draft nothing
-ever checked. `python -m src.draft` with no arguments prints the layer's
+ever checked. `python -m chitragupta.draft` with no arguments prints the layer's
 usage and exits 0, which is the fastest way to confirm a spelling.
 
-### `python -m src.draft references`
+### `python -m chitragupta.draft references`
 
 Append or replace a `References` section built from a draft's own cited
 citekeys.
@@ -325,7 +330,7 @@ markers are still `[@citekey]`:
 Authors, venue, volume and pages come from the ledger's `bib_fields`
 column, which `sync` populates from the bib file. A row synced before
 that column existed has no fields to format, so its entry degrades to
-title and year until the next `python -m src.corpus sync`.
+title and year until the next `python -m chitragupta.corpus sync`.
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -334,11 +339,11 @@ title and year until the next `python -m src.corpus sync`.
 | `--heading HEADING` | `References` | Heading text, e.g. `"6. References"` to match a draft's own numbered headings |
 
 ```bash
-python -m src.draft references content/drafts/survey.md
-# python -m src.draft references content/drafts/thesis.md --heading "6. References"
+python -m chitragupta.draft references content/drafts/survey.md
+# python -m chitragupta.draft references content/drafts/thesis.md --heading "6. References"
 ```
 
-### `python -m src.draft dossier`
+### `python -m chitragupta.draft dossier`
 
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
@@ -370,7 +375,8 @@ and the other isn't:
 | No ledger, or an unreadable one | Reports the dossier as usual, says the drift check is unavailable, **exits 0** |
 | No dossier for this draft | Prints the `init` command to create one, **exits 1** |
 
-So `python -m src.draft dossier status <draft> >/dev/null` is a usable test for
+So `python -m chitragupta.draft dossier status <draft> >/dev/null` is a usable
+test for
 "does this draft have a dossier yet", while a machine with no corpus built
 still gets a full report of what it has.
 
@@ -462,50 +468,50 @@ material is gone rather than mislaid.
 | `--force` | `restore` | Actually write, overwriting what is already there |
 
 ```bash
-python -m src.draft dossier init content/drafts/survey.md --genre survey
-python -m src.draft dossier status content/drafts/survey.md
-python -m src.draft dossier sections content/drafts/survey.md
+python -m chitragupta.draft dossier init content/drafts/survey.md --genre survey
+python -m chitragupta.draft dossier status content/drafts/survey.md
+python -m chitragupta.draft dossier sections content/drafts/survey.md
 # Derive the section -> citekey map instead of writing it by hand
-python -m src.draft dossier sections content/drafts/survey.md --citekeys --write
+python -m chitragupta.draft dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
-python -m src.draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
+python -m chitragupta.draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
 
 # New acronyms this draft's glossary or prose defines; --apply writes them to
 # your [style].acronyms file (see docs/CONFIG.md)
-python -m src.draft dossier acronyms-suggest content/drafts/survey.md
-python -m src.draft dossier acronyms-suggest content/drafts/survey.md --apply
+python -m chitragupta.draft dossier acronyms-suggest content/drafts/survey.md
+python -m chitragupta.draft dossier acronyms-suggest content/drafts/survey.md --apply
 
 # Before dispatching a section writer: do this section's rows resolve?
-python -m src.draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
+python -m chitragupta.draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
 # What the writer itself runs
-python -m src.draft dossier brief content/drafts/survey.md --section "2. Failure modes"
-python -m src.draft dossier brief content/drafts/survey.md talasila_composable_2025
+python -m chitragupta.draft dossier brief content/drafts/survey.md --section "2. Failure modes"
+python -m chitragupta.draft dossier brief content/drafts/survey.md talasila_composable_2025
 
 # After a sync: which drafts went stale, and what specifically
-python -m src.draft dossier status --all
-python -m src.draft dossier status --all --json
+python -m chitragupta.draft dossier status --all
+python -m chitragupta.draft dossier status --all --json
 
 # Back up everything, then one topic with its PDFs
-python -m src.draft dossier export
-python -m src.draft dossier export digital-twins-for-software-engineers --with-rendered
+python -m chitragupta.draft dossier export
+python -m chitragupta.draft dossier export digital-twins-for-software-engineers --with-rendered
 
 # Restore: look first, then commit to it
-python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz
-python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz --force
+python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz
+python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 A bundle carries `drafts/`, `dossiers/` and optionally `rendered/`, with
 paths relative to `content/` so it restores into a checkout whose
 `[content].dir` points elsewhere. It does **not** carry
-`content/ledger.sqlite` (regenerate with `python -m src.corpus sync`) or
+`content/ledger.sqlite` (regenerate with `python -m chitragupta.corpus sync`) or
 `papers/bibliography.bib` (your reference manager's export, which
 AGENTS.md keeps as the source of truth rather than something this
 pipeline copies). Restore refuses the whole archive -- rather than
 skipping a member -- if any entry is a link or device node, escapes the
 extraction directory, or sits outside those three directories.
 
-### `python -m src.draft retrieve`
+### `python -m chitragupta.draft retrieve`
 
 BM25 retrieval over the synced corpus. Read-only, takes no lock, needs no
 venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
@@ -537,15 +543,15 @@ withdrawn.
 | `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
 
 ```bash
-python -m src.draft retrieve search "digital twin architecture" --k 15 \
+python -m chitragupta.draft retrieve search "digital twin architecture" --k 15 \
     --log content/drafts/survey.md
-python -m src.draft retrieve evidence "digital twin architecture" \
+python -m chitragupta.draft retrieve evidence "digital twin architecture" \
     --citekey ferko_architecting_2022 --log content/drafts/survey.md
 ```
 
 `--log` appends to `retrieval.md` in that draft's dossier, which is what
 turns "retrieval is where the tokens go" into a number for a particular
-draft (`python -m src.draft dossier status` totals it). A `--log` path that
+draft (`python -m chitragupta.draft dossier status` totals it). A `--log` path that
 isn't under `content/drafts/`, or a filesystem error while writing, is
 reported on stderr and skipped -- the measurement never fails the search
 it was measuring.
@@ -553,12 +559,12 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
-### `python -m src.review coverage`
+### `python -m chitragupta.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
 citations. **Informational, not a gate**, and unlike the gate it never
 runs automatically. Stdlib-only, like `citation_gate` and `references` --
-it reuses `src.retrieval`, which is itself stdlib.
+it reuses `chitragupta.retrieval`, which is itself stdlib.
 
 | Flag | Default | What it does |
 |---|---|---|
@@ -570,7 +576,7 @@ it reuses `src.retrieval`, which is itself stdlib.
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report -- so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python -m src.review coverage content/drafts/survey.md \
+python -m chitragupta.review coverage content/drafts/survey.md \
     --query "digital twin composability" \
     --query "runtime verification"
 # ... --k 10
@@ -580,7 +586,7 @@ python -m src.review coverage content/drafts/survey.md \
 A written report records the whole invocation in its header, queries
 included: a coverage figure means nothing without knowing 62% *of what*.
 
-### `python -m src.review provenance`
+### `python -m chitragupta.review provenance`
 
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
@@ -597,19 +603,19 @@ with its `.tex`/`.pdf` renders beside it.
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python -m src.review provenance content/drafts/survey.md
-# python -m src.review provenance content/drafts/survey.md --formats md
-# python -m src.review provenance content/drafts/survey.md --formats md,tex,pdf
+python -m chitragupta.review provenance content/drafts/survey.md
+# python -m chitragupta.review provenance content/drafts/survey.md --formats md
+# python -m chitragupta.review provenance content/drafts/survey.md --formats md,tex,pdf
 ```
 
-### `python -m src.review verbatim`
+### `python -m chitragupta.review verbatim`
 
 Layer 4, the review layer, with four subcommands: verbatim overlap
 between a draft and one cited source, a whole-draft x whole-corpus scan,
 a re-scan compared against a recorded one, and page location for a
 phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary,
 so that subcommand needs poppler-utils on `PATH`. `overlap`, `scan` and
-`recheck` read already-parsed text via `src/overlap_index.py`'s cache
+`recheck` read already-parsed text via `chitragupta/overlap_index.py`'s cache
 instead. Run with no arguments to print its usage.
 
 [PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
@@ -636,14 +642,14 @@ CLI-usage error rather than a verdict. `recheck` also uses `2` for a
 baseline it cannot compare against.
 
 ```bash
-python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025
-# python -m src.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
-python -m src.review verbatim scan content/drafts/survey.md
-# python -m src.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
-# python -m src.review verbatim scan content/drafts/survey.md --write --formats md
-# python -m src.review verbatim scan content/drafts/survey.md --json > findings.json
-# python -m src.review verbatim recheck content/drafts/survey.md --baseline content/review/survey.verbatim.json
-# python -m src.review verbatim locate talasila_composable_2025 "a digital twin is"
+python -m chitragupta.review verbatim overlap content/drafts/survey.md talasila_composable_2025
+# python -m chitragupta.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
+python -m chitragupta.review verbatim scan content/drafts/survey.md
+# python -m chitragupta.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
+# python -m chitragupta.review verbatim scan content/drafts/survey.md --write --formats md
+# python -m chitragupta.review verbatim scan content/drafts/survey.md --json > findings.json
+# python -m chitragupta.review verbatim recheck content/drafts/survey.md --baseline content/review/survey.verbatim.json
+# python -m chitragupta.review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
 
 **`--json`, and who it is for.** Until 5.4.0 the findings were text and
@@ -833,7 +839,7 @@ touched.
 The `overlap-reviser` skill
 ([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)) is the intended
 caller: it takes a baseline, repairs findings one at a time, and keeps a
-repair only when `recheck` and `python -m src.draft gate` both come back
+repair only when `recheck` and `python -m chitragupta.draft gate` both come back
 clean. Nothing obliges you to use it -- `recheck` is as free and as
 advisory as every other command here.
 
@@ -933,9 +939,9 @@ you can turn to whichever one parsed the citekey -- see
 writes a break between consecutive pages that carry text, so a page with
 no extracted items at all shifts the numbering after it. The passage
 sidecar records each item's own page and is not affected; where the two
-disagree, believe `python -m src.review provenance`.
+disagree, believe `python -m chitragupta.review provenance`.
 
-### `python -m src.draft render`
+### `python -m chitragupta.draft render`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
 for PDF) on `PATH`, but no Python package from the enrich group.
@@ -943,7 +949,7 @@ for PDF) on `PATH`, but no Python package from the enrich group.
 Citations render IEEE-style -- `[1]`, and `[3]–[6]` for a consecutive run
 -- over a numbered bibliography of complete entries, via the CSL style
 vendored at `assets/csl/ieee.csl`. In the copy handed to pandoc, the
-draft's own References section -- if `python -m src.draft references`
+draft's own References section -- if `python -m chitragupta.draft references`
 added one -- keeps its heading, but its entries are replaced by
 citeproc's placement anchor. The output therefore carries exactly one
 bibliography, citeproc's, which is the one that can be numbered
@@ -1020,27 +1026,27 @@ converting a thesis fragment's `\citep{...}` genuinely is a format
 conversion.
 
 ```bash
-python -m src.draft render content/drafts/survey.md --format pdf
-# python -m src.draft render content/drafts/survey.md --format tex
-# python -m src.draft render content/drafts/survey.md --format docx
-# python -m src.draft render content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
-# python -m src.draft render content/drafts/thesis.md \
+python -m chitragupta.draft render content/drafts/survey.md --format pdf
+# python -m chitragupta.draft render content/drafts/survey.md --format tex
+# python -m chitragupta.draft render content/drafts/survey.md --format docx
+# python -m chitragupta.draft render content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
+# python -m chitragupta.draft render content/drafts/thesis.md \
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
-### `python -m src.draft style`
+### `python -m chitragupta.draft style`
 
 Report where a draft's prose departs from
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers, §8's
 recorded dialect, and a glossary acronym whose recorded expansion has
 drifted from the current `[style].acronyms` vocabulary (§9;
-`src/style_acronym_drift.py`, the one finding here not sourced from
+`chitragupta/style_acronym_drift.py`, the one finding here not sourced from
 Vale). **A review aid: it exits 0 whatever it finds**, and nothing in
 this pipeline reads its output back or blocks on it.
 
 ```bash
-python -m src.draft style content/drafts/<path>
-python -m src.draft style content/drafts/<path> --json
+python -m chitragupta.draft style content/drafts/<path>
+python -m chitragupta.draft style content/drafts/<path> --json
 ```
 
 It is not a gate and cannot be made one, not even behind a flag. The gate
@@ -1063,7 +1069,7 @@ most specific first, and the report names which one was used:
 Record a draft's dialect with:
 
 ```bash
-python -m src.draft dossier set-language en-GB content/drafts/<path>
+python -m chitragupta.draft dossier set-language en-GB content/drafts/<path>
 ```
 
 With none of the three set -- the shipped "not settled" placeholder, or
@@ -1073,7 +1079,7 @@ command measures the draft both ways and proposes one:
 ```text
 dialect: not checked -- no `language:` in scope.md and no [style].language
 it reads as en-GB (en-GB: 0, en-US: 13). To record that:
-  python -m src.draft dossier set-language en-GB content/drafts/<path>
+  python -m chitragupta.draft dossier set-language en-GB content/drafts/<path>
 ```
 
 It proposes and never writes: [HOUSE-STYLE.md](HOUSE-STYLE.md)'s rule is
@@ -1094,7 +1100,7 @@ settles any of them.
 #### Assembling a book: `--fragment` and `--output-dir`
 
 ```bash
-python -m src.draft render content/drafts/<book>/<unit>.md \
+python -m chitragupta.draft render content/drafts/<book>/<unit>.md \
     --format tex --fragment --output-dir content/drafts/<book>
 ```
 
@@ -1112,7 +1118,7 @@ fragment carries its own numbered reference list.
 command writes. [BOOKS.md](BOOKS.md) is the assembly procedure both exist
 for.
 
-### `python -m src.draft spec`
+### `python -m chitragupta.draft spec`
 
 The outline a book is generated from, and the human sign-off on it --
 the book-scale track's first artefact ([BOOKS.md](BOOKS.md)). Stdlib
@@ -1120,11 +1126,11 @@ only, no venv needed. Writes only under `content/specs/`, mirroring the
 book's own directory under `content/drafts/`.
 
 ```bash
-python -m src.draft spec init content/drafts/<book> --title "<title>"
-python -m src.draft spec show content/drafts/<book>
-python -m src.draft spec show content/drafts/<book> --unit sec-1
-python -m src.draft spec sign content/drafts/<book> --by "<name>"
-python -m src.draft spec status content/drafts/<book>
+python -m chitragupta.draft spec init content/drafts/<book> --title "<title>"
+python -m chitragupta.draft spec show content/drafts/<book>
+python -m chitragupta.draft spec show content/drafts/<book> --unit sec-1
+python -m chitragupta.draft spec sign content/drafts/<book> --by "<name>"
+python -m chitragupta.draft spec status content/drafts/<book>
 ```
 
 | Command | Does | Exit |
@@ -1145,23 +1151,23 @@ judging any draft's content, and nothing it says can refuse a write.
 [BOOKS.md](BOOKS.md#what-statuss-exit-code-is-and-is-not) has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
-### `python -m src.draft unit`
+### `python -m chitragupta.draft unit`
 
 One section's generation contract, and the record of its acceptance --
 the book-scale track's second artefact ([BOOKS.md](BOOKS.md)). Reads the
 outline `spec` owns; writes only `content/specs/<book>/units/<id>.json`.
 
 ```bash
-python -m src.draft unit contract content/drafts/<book> <unit-id> [--source CITEKEY]...
-python -m src.draft unit contract content/drafts/<book> <unit-id> --json
-python -m src.draft unit accept   content/drafts/<book> <unit-id> [--source CITEKEY]...
-python -m src.draft unit status   content/drafts/<book>
+python -m chitragupta.draft unit contract content/drafts/<book> <unit-id> [--source CITEKEY]...
+python -m chitragupta.draft unit contract content/drafts/<book> <unit-id> --json
+python -m chitragupta.draft unit accept   content/drafts/<book> <unit-id> [--source CITEKEY]...
+python -m chitragupta.draft unit status   content/drafts/<book>
 ```
 
 | Command | Does | Exit |
 |---|---|---|
 | `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
-| `accept` | record a generated unit, once `src.draft gate` passes on it | 1 if the outline is unsigned, the draft is missing, or the gate refuses it |
+| `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the outline is unsigned, the draft is missing, or the gate refuses it |
 | `status` | where every unit in the book stands | 1 while any unit is not accepted and current |
 
 `--source` is repeatable and is part of the input digest, so grounding a
@@ -1172,16 +1178,16 @@ it can answer "does this need regenerating?".
 `accept` **invokes the citation gate, it does not replace it**: a unit
 the gate refuses cannot be accepted, and nothing here is a second gate.
 
-### `python -m src.draft registry`
+### `python -m chitragupta.draft registry`
 
 Terminology, claims and cross-references over a book's **accepted** units
 ([BOOKS.md](BOOKS.md)). Three registries, built by a deterministic pass
 and written under `content/specs/<book>/registries/`.
 
 ```bash
-python -m src.draft registry build   content/drafts/<book>
-python -m src.draft registry check   content/drafts/<book>
-python -m src.draft registry excerpt content/drafts/<book> <unit-id>
+python -m chitragupta.draft registry build   content/drafts/<book>
+python -m chitragupta.draft registry check   content/drafts/<book>
+python -m chitragupta.draft registry excerpt content/drafts/<book> <unit-id>
 ```
 
 | Command | Does | Exit |
@@ -1191,7 +1197,7 @@ python -m src.draft registry excerpt content/drafts/<book> <unit-id>
 | `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
 
 **`check` is a review aid and exits 0 whatever it finds**, like the three
-`src.review` aids and unlike `spec status`/`unit status`. Those two report
+`chitragupta.review` aids and unlike `spec status`/`unit status`. Those two report
 whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block --
@@ -1204,7 +1210,7 @@ skipped, because a registry over half a book is a different claim from
 one over all of it. Contradiction between claims is **not** detected --
 only duplication, which is what a machine can decide.
 
-### `python -m src.enrich`
+### `python -m chitragupta.enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
 BERTopic -> provenance -> render. **Needs the venv.** Each stage probes
@@ -1220,15 +1226,15 @@ therefore a correct answer rather than a bug.
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
 
 ```bash
-.venv-full/bin/python -m src.enrich
-# .venv-full/bin/python -m src.enrich --stages docling
-# .venv-full/bin/python -m src.enrich --stages embed,bertopic
-# .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
+.venv-full/bin/python -m chitragupta.enrich
+# .venv-full/bin/python -m chitragupta.enrich --stages docling
+# .venv-full/bin/python -m chitragupta.enrich --stages embed,bertopic
+# .venv-full/bin/python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
 
 # A review report and a draft render are tier-1 commands, not stages --
 # no venv, no lock:
-# python -m src.review provenance content/drafts/survey.md
-# python -m src.draft render content/drafts/survey.md --format pdf
+# python -m chitragupta.review provenance content/drafts/survey.md
+# python -m chitragupta.draft render content/drafts/survey.md --format pdf
 ```
 
 #### Enriching one draft's papers
@@ -1236,12 +1242,12 @@ therefore a correct answer rather than a bug.
 By default the unit of work is the corpus: every ledger item, whether a
 draft cites it or not. `--for-draft` narrows that to the papers one draft
 cites. It reads them out of the draft with the same reader the citation
-gate uses, `src.citation_gate.extract_citekeys`. A draft resting on
+gate uses, `chitragupta.citation_gate.extract_citekeys`. A draft resting on
 twenty-three papers therefore costs twenty-three parses rather than the
 whole library:
 
 ```console
-$ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md
+$ .venv-full/bin/python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
 Target: host
 Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/drafts/digital-twins.md
 
@@ -1258,16 +1264,16 @@ Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/draft
 With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
 this is usually for. To carry on into the draft's own review report, run
-`python -m src.review provenance <draft>` afterwards: it is a tier-1
+`python -m chitragupta.review provenance <draft>` afterwards: it is a tier-1
 command, so it needs no venv and waits on no lock.
 
 Two stages refuse the scope rather than honouring it:
 
 ```console
-$ .venv-full/bin/python -m src.enrich --for-draft content/drafts/digital-twins.md --stages embed
+$ .venv-full/bin/python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages embed
   --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
-      python -m src.enrich --for-draft content/drafts/digital-twins.md --stages docling
-      python -m src.enrich --stages embed
+      python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages docling
+      python -m chitragupta.enrich --stages embed
 ```
 
 That is a tier, not a ladder ([LADDERS.md](LADDERS.md)). `embed` writes a
@@ -1301,7 +1307,7 @@ real corpus is legible rather than silent for its whole duration:
 
 `unchanged` is the incremental skip (same text as last run, not
 re-encoded); `no text to embed` is a bib entry with no parsed text behind
-it, which stays searchable by title through `src/retrieval.py` and not by
+it, which stays searchable by title through `chitragupta/retrieval.py` and not by
 meaning. Ctrl+C is safe: every chunk upserted before the interrupt is
 already in `content/chroma/`, the stage says how far it got, and re-running
 picks up from there.
@@ -1360,16 +1366,16 @@ archive. Every prose document ships: `docs/`, `README.md`, `SOUL.md`,
 
 ## Running sync on a schedule
 
-`python -m src.corpus sync` is deterministic, idempotent, and takes its
-own write lock (`src.runlock`), so it was already safe to run unattended.
+`python -m chitragupta.corpus sync` is deterministic, idempotent, and takes its
+own write lock (`chitragupta.runlock`), so it was already safe to run unattended.
 Two other things make it worth *actually* putting on a schedule: exit
 codes an unattended caller can branch on without parsing any text, and
 `logs/pipeline.log` as a persistent transcript to check afterwards. That
 log is rotated -- see `[logging]` in `config.toml.example`.
 
-`src/enrich/__main__.py` writes to the same file, so a host that schedules
+`chitragupta/enrich/__main__.py` writes to the same file, so a host that schedules
 both has one transcript rather than two. Each line names its source in
-`%(name)s` -- the module, so `sync` logs as `src.sync` whatever the
+`%(name)s` -- the module, so `sync` logs as `chitragupta.sync` whatever the
 command that started it is spelled -- and either layer can be narrowed
 back out:
 
@@ -1404,7 +1410,7 @@ unattended.
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
 
 **A schedule written before 5.2.0 now fails instead of lying.** That
-release moved this command behind `python -m src.corpus sync` and left
+release moved this command behind `python -m chitragupta.corpus sync` and left
 the old spelling importing a module and exiting **0**. An unedited
 crontab therefore kept reporting success while syncing nothing, for a
 release.
@@ -1420,7 +1426,7 @@ whole fix.
 ```bash
 # crontab -e -- runs hourly, on the hour. cd into the repo first: sync
 # resolves config.toml and papers/bibliography.bib relative to it.
-0 * * * * cd /path/to/chitragupta && .venv-full/bin/python -m src.corpus sync
+0 * * * * cd /path/to/chitragupta && .venv-full/bin/python -m chitragupta.corpus sync
 ```
 
 cron's own default, with no `MAILTO` set, is to mail stdout/stderr to
@@ -1442,7 +1448,7 @@ Description=Chitragupta corpus sync
 [Service]
 Type=oneshot
 WorkingDirectory=/path/to/chitragupta
-ExecStart=/path/to/chitragupta/.venv-full/bin/python -m src.corpus sync
+ExecStart=/path/to/chitragupta/.venv-full/bin/python -m chitragupta.corpus sync
 # Exit 2 (another run still holds the lock) is an expected, harmless
 # outcome under this schedule, not a service failure -- don't let
 # systemd treat it as one.
@@ -1483,15 +1489,15 @@ a command line:
 
 ```bash
 # Point at a different bibliography or output directory for one run
-# BIB_FILE=/path/to/other.bib .venv-full/bin/python -m src.corpus sync
-# CONTENT_DIR=/tmp/scratch-content .venv-full/bin/python -m src.corpus sync
+# BIB_FILE=/path/to/other.bib .venv-full/bin/python -m chitragupta.corpus sync
+# CONTENT_DIR=/tmp/scratch-content .venv-full/bin/python -m chitragupta.corpus sync
 
 # Keep config.toml somewhere else entirely
-# CONFIG_PATH=/etc/research/config.toml .venv-full/bin/python -m src.corpus sync
+# CONFIG_PATH=/etc/research/config.toml .venv-full/bin/python -m chitragupta.corpus sync
 
 # Try the higher-fidelity parser with some parallelism, without editing the file
-# PARSER=docling PARSER_WORKERS=auto .venv-full/bin/python -m src.corpus sync
+# PARSER=docling PARSER_WORKERS=auto .venv-full/bin/python -m chitragupta.corpus sync
 
 # Confine a docling run to one GPU (no config setting for this, by design)
-# CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python -m src.corpus sync
+# CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python -m chitragupta.corpus sync
 ```

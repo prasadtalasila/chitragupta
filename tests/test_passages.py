@@ -1,9 +1,9 @@
-"""src/passages.py: where a citekey's supporting text comes from, and
+"""chitragupta/passages.py: where a citekey's supporting text comes from, and
 whether it may be quoted.
 
 These cases moved here from tests/test_citation_provenance.py when the
 ladder was extracted -- they were never really about provenance
-reporting, and src/retrieval.py is about to become the second consumer.
+reporting, and chitragupta/retrieval.py is about to become the second consumer.
 The invariant they exist to pin is the one the whole module is for: a
 source with no reading order yields a page number and never a quotation.
 """
@@ -15,7 +15,7 @@ import types
 
 import pytest
 
-from src import config, ledger, passages
+from chitragupta import config, ledger, passages
 
 
 def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
@@ -444,7 +444,7 @@ class TestSeamWithCitationProvenance:
         """`citation_provenance` is a consumer of this module now, not the
         owner -- but it stays the import site its own callers already use,
         so the extraction isn't a breaking change for them."""
-        from src.review import citation_provenance as cp
+        from chitragupta.review import citation_provenance as cp
 
         assert cp.source_passages is passages.source_passages
         assert cp.Passage is passages.Passage

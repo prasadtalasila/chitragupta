@@ -1,4 +1,4 @@
-"""src/runlock.py: one writer at a time across content/.
+"""chitragupta/runlock.py: one writer at a time across content/.
 
 Deliberately a sqlite file used purely as a mutex, not an O_EXCL lock
 file and not the ledger itself. The experiment behind that choice, run
@@ -14,7 +14,7 @@ against real sqlite before any of this was written:
     part an O_EXCL lock file cannot do portably;
   - a bare BEGIN IMMEDIATE with no write still holds it.
 
-The ledger itself is not used, because src/ledger.py commits at five
+The ledger itself is not used, because chitragupta/ledger.py commits at five
 separate points: wrapping a run in one transaction would trade
 incremental durability for the mutex.
 """
@@ -29,7 +29,7 @@ import time
 
 import pytest
 
-from src import config, runlock
+from chitragupta import config, runlock
 from tests.lock_holder import hold
 
 
@@ -88,7 +88,7 @@ class TestReadersAreNotBlocked:
         """The lock is a separate file precisely so this stays true --
         citation_gate and the drafting skills read the ledger while sync
         writes it."""
-        from src import ledger
+        from chitragupta import ledger
 
         con = ledger.connect()
         con.close()

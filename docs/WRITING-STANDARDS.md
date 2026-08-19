@@ -336,12 +336,12 @@ pipeline.
   bitmap changes nothing about whose figure it is. Reading a source
   figure for understanding is fine; the boundary is the same one as
   above.
-- **No citekeys inside a figure file.** `python -m src.draft gate` reads
+- **No citekeys inside a figure file.** `python -m chitragupta.draft gate` reads
   the draft and does not follow `\input`, so a citekey in a node label
   or a caption inside `figures/<name>.tex` is invisible to the one check
   standing between this pipeline and a fabricated reference. Cite in the
   draft's prose, where the gate can see it. This is stated and not
-  gated, deliberately: `docs/CODE-STANDARDS.md` keeps `src.draft gate`
+  gated, deliberately: `docs/CODE-STANDARDS.md` keeps `chitragupta.draft gate`
   as the project's only gate, meaning exactly one thing -- a fabricated
   citekey fails -- and giving it a second meaning would blunt the first.
 - **Verify the TikZ compiles before keeping it.** A figure that does not
@@ -422,7 +422,7 @@ attribution under their licences; this section is that attribution.
 
 The prose in this file and in every `.claude/skills/*/SKILL.md` is written
 from scratch. A verbatim n-gram check against all three sources above
-(107,272 words of source; the algorithm is `src/review/verbatim_check.py`'s
+(107,272 words of source; the algorithm is `chitragupta/review/verbatim_check.py`'s
 `cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
 above five consecutive shared words anywhere. What is borrowed is the
 *ideas*, credited above; what is added is their translation into

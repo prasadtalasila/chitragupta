@@ -1,11 +1,11 @@
-"""src/overlap_skipgram.py: tier 2's stemmed skip-gram index -- the
-disk-cached, family-split analogue of src/overlap_index.py's exact
-8-gram index, built for src/review/verbatim_check.py's `_skipgram_tier_findings`.
+"""chitragupta/overlap_skipgram.py: tier 2's stemmed skip-gram index -- the
+disk-cached, family-split analogue of chitragupta/overlap_index.py's exact
+8-gram index, built for chitragupta/review/verbatim_check.py's `_skipgram_tier_findings`.
 """
 
 import json
 
-from src import config, ledger, overlap_skipgram
+from chitragupta import config, ledger, overlap_skipgram
 
 from tests.conftest import make_reference
 
@@ -287,7 +287,7 @@ class TestFingerprintDocument:
         # stemmer/stopword-list change must never invalidate tier 1's
         # cache, and vice versa -- verified here by confirming the two
         # tiers write to two entirely different files for the same doc.
-        from src import overlap_index
+        from chitragupta import overlap_index
 
         parsed = tmp_path / "smith_2024.txt"
         parsed.write_text("digital twins require continuous validation against physical measurements")

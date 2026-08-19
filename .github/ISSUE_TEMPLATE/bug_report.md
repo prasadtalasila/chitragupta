@@ -15,7 +15,7 @@ A clear and concise description of what the bug is.
 
 The exact commands run, in order, and where it went wrong:
 
-1. `python -m src.corpus sync` / a genre skill invoked as '...'
+1. `python -m chitragupta.corpus sync` / a genre skill invoked as '...'
 1. See error
 
 ## Expected Behaviour

@@ -1,7 +1,7 @@
-"""src/render_output/__init__.py: render() itself, end to end.
+"""chitragupta/render_output/__init__.py: render() itself, end to end.
 
-Split from one test module to mirror `src/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `src/enrich/`. Shared setup --
+Split from one test module to mirror `chitragupta/render_output/`'s own split,
+the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
 the binary probes and the figure fixtures -- lives in `tests/conftest.py`
 so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
@@ -11,8 +11,8 @@ import shutil
 import subprocess
 import sys
 import pytest
-from src import ledger
-from src import render_output
+from chitragupta import ledger
+from chitragupta import render_output
 from tests.conftest import content_draft
 from tests.conftest import make_reference
 from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
@@ -529,7 +529,7 @@ class TestInputsAreConfinedToContent:
 
 
 class TestOutputDirOverride:
-    """`render(output_dir=...)` -- how src/review/__init__.py lands a report's
+    """`render(output_dir=...)` -- how chitragupta/review/__init__.py lands a report's
     renders beside the report instead of in content/rendered/."""
 
     def test_the_caller_s_directory_is_used_verbatim(self, isolated_config, monkeypatch):

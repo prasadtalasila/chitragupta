@@ -16,7 +16,7 @@ import sqlite3
 
 import pytest
 
-from src import bib_collections, config, ledger, retrieval
+from chitragupta import bib_collections, config, ledger, retrieval
 
 from tests.conftest import make_reference
 
@@ -87,7 +87,7 @@ class TestTheBibField:
     def test_the_field_name_is_configurable(self, monkeypatch):
         """A user whose exporter writes them elsewhere should not have to
         patch the parser to be read."""
-        from src import bib_reader
+        from chitragupta import bib_reader
         monkeypatch.setattr(config, "BIB_COLLECTIONS_FIELD", "keywords")
         entry = {"ID": "k_2024", "ENTRYTYPE": "article", "title": "T",
                  "keywords": "Shelf > Sub", "groups": "Ignored"}

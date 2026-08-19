@@ -23,7 +23,7 @@ its citekeys. Pointing both at the same tmp_path is what keeps the two
 consistent -- as they always are in production, where both derive from
 the same repo root.
 
-The hook's own subprocess.run call for `python -m src.draft gate`
+The hook's own subprocess.run call for `python -m chitragupta.draft gate`
 doesn't pass env=, so it inherits whatever env this test process hands to
 the hook subprocess -- used here for CONTENT_DIR, and for a PYTHONPATH
 that lets the child import this checkout's real `src` while running from
@@ -40,7 +40,7 @@ from pathlib import Path
 
 import pytest
 
-from src import ledger
+from chitragupta import ledger
 
 from tests.conftest import make_reference
 
@@ -68,7 +68,7 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
     """Whether an env var would make a child process start its own coverage.
 
     Stripped from the hook's environment because the hook runs
-    `python -m src.draft gate` with `cwd` set to *its* repo root --
+    `python -m chitragupta.draft gate` with `cwd` set to *its* repo root --
     the temp one, under this fixture. Coverage started there finds no
     config file, so it records statement-only data while the parent
     records branch data, and the run dies at combine time with
@@ -82,7 +82,7 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
     (what `poetry run` gives CI) is instrumented while a bare system
     interpreter is not. Stripping these makes every combination behave
     the same. Nothing is lost: the in-process tests already cover
-    `src/citation_gate.py` fully, which is why the total is 100% on a
+    `chitragupta/citation_gate.py` fully, which is why the total is 100% on a
     host where these children were never measured.
     """
     return name.startswith("COV_CORE") or name in (

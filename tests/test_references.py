@@ -1,4 +1,4 @@
-"""src/references.py: auto-generated References sections, built only
+"""chitragupta/references.py: auto-generated References sections, built only
 from citekeys a draft already cites (never inventing one)."""
 
 import subprocess
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src import ledger, references
+from chitragupta import ledger, references
 
 from tests.conftest import content_draft, make_reference
 
@@ -436,7 +436,7 @@ class TestMainCli:
 
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [system_python, "-m", "src.draft", "references", str(draft)],
+            [system_python, "-m", "chitragupta.draft", "references", str(draft)],
             cwd=str(repo_root),
             capture_output=True, text=True,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},

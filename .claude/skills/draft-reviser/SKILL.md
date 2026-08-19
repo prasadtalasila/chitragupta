@@ -1,6 +1,6 @@
 ---
 name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also covers whole-document copy-editing that touches no evidence -- triggers on "fix the grammar", "fix the spelling", "convert this to British English", "make it en-GB/en-IN", or rephrasing to meet a style guideline -- in a copy-edit mode that reads scope.md's recorded dialect, skips retrieval and evidence entirely, edits section by section rather than rewriting the file, and logs one revisions.md entry naming the convention applied; it refuses to change a claim, add or drop a citation, or reorder an argument under cover of a style pass. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m src.draft gate` before presenting and never invents a citekey.
+description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also covers whole-document copy-editing that touches no evidence -- triggers on "fix the grammar", "fix the spelling", "convert this to British English", "make it en-GB/en-IN", or rephrasing to meet a style guideline -- in a copy-edit mode that reads scope.md's recorded dialect, skips retrieval and evidence entirely, edits section by section rather than rewriting the file, and logs one revisions.md entry naming the convention applied; it refuses to change a claim, add or drop a citation, or reorder an argument under cover of a style pass. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
@@ -29,10 +29,11 @@ is shaped that way.
 | A sync moved the corpus, or `dossier status --all` names this draft | Re-grounding mode (below), not the ordinary loop |
 | User asks to re-check the **whole** draft against the corpus, cost regardless | Hand off to `corpus-reviser` -- not this skill, and never the genre skill |
 | User asks for a different genre of the same topic | That's a new draft -- use the genre skill |
-| Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `python -m src.corpus sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
+| Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `python -m chitragupta.corpus sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
-**Read-only over the corpus layer.** Never run `python -m src.corpus sync` and
-never run `python -m src.enrich`. Both take the pipeline's write lock and
+**Read-only over the corpus layer.** Never run `python -m chitragupta.corpus
+sync` and
+never run `python -m chitragupta.enrich`. Both take the pipeline's write lock and
 can run for tens of minutes; they are the user's to run.
 
 ## Prose standards
@@ -99,7 +100,7 @@ everything -- exactly as this skill behaved before this section existed.
 ### 1. Locate the draft and read its state
 
 ```bash
-python -m src.draft dossier status content/drafts/<path>
+python -m chitragupta.draft dossier status content/drafts/<path>
 ```
 
 This prints which dossier files are filled in, the draft's section count,
@@ -119,7 +120,7 @@ Mark the start of this revision session in `retrieval.md`, before any
 retrieval call:
 
 ```bash
-python -m src.draft dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
+python -m chitragupta.draft dossier mark-revision content/drafts/<path> --label "<one phrase, e.g. what the user asked for>"
 ```
 
 `retrieval.md` rows otherwise carry only a date, and two revisions on the
@@ -139,7 +140,7 @@ scope change made without saying so is not.
 ### 3. Map the change onto sections
 
 ```bash
-python -m src.draft dossier sections content/drafts/<path>
+python -m chitragupta.draft dossier sections content/drafts/<path>
 ```
 
 Read **only** the sections the change touches, using the printed line
@@ -171,11 +172,11 @@ Before any retrieval call:
 Search only when the change opens genuinely new ground. If it does:
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
-python -m src.draft retrieve evidence "<query>" --citekey <key> --log content/drafts/<path>
+python -m chitragupta.draft retrieve search "<query>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
+python -m chitragupta.draft retrieve evidence "<query>" --citekey <key> --log content/drafts/<path>
 ```
 
-(or `src.enrich.embed_index.search()` in place of `search` where the
+(or `chitragupta.enrich.embed_index.search()` in place of `search` where the
 embedding stack has been built). `evidence` is optional -- reach for it
 when a snippet is not enough to decide on a source you are minded to
 cite. Score what you keep as `survey-writer` step 2 describes, and record
@@ -231,11 +232,11 @@ Update only what actually changed:
 ### 7. Gate, reference, render
 
 ```bash
-python -m src.draft gate content/drafts/<path>
-python -m src.draft references content/drafts/<path>          # .md drafts; see --heading below
-python -m src.draft render content/drafts/<path> --format tex
-python -m src.draft render content/drafts/<path> --format pdf
-python -m src.draft render content/drafts/<path> --format md
+python -m chitragupta.draft gate content/drafts/<path>
+python -m chitragupta.draft references content/drafts/<path>          # .md drafts; see --heading below
+python -m chitragupta.draft render content/drafts/<path> --format tex
+python -m chitragupta.draft render content/drafts/<path> --format pdf
+python -m chitragupta.draft render content/drafts/<path> --format md
 ```
 
 Fix and re-run until the gate reports `OK`. **Never present a draft that
@@ -246,7 +247,7 @@ Two things the genre decides, which a reviser has to look up rather than
 assume:
 
 - **`--heading`, if the draft's references section isn't called
-  "References".** `src.draft references` finds the existing section by heading
+  "References".** `chitragupta.draft references` finds the existing section by heading
   and replaces it; miss it and you append a second one. A tutorial calls
   it `## Further reading` (pass `--heading "Further reading"`), and a
   numbered textbook chapter calls it `## N. References` (pass
@@ -268,7 +269,7 @@ assume:
 After step 7 and before presenting:
 
 ```bash
-python -m src.draft style content/drafts/<path>
+python -m chitragupta.draft style content/drafts/<path>
 ```
 
 **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
@@ -296,7 +297,7 @@ Before presenting, offer this -- don't run it silently, and never make it
 a condition of presenting:
 
 ```bash
-python -m src.review verbatim scan content/drafts/<path>
+python -m chitragupta.review verbatim scan content/drafts/<path>
 ```
 
 It reports wording the draft shares with **any** parsed source, cited or not.
@@ -388,7 +389,7 @@ Two things this mode refuses outright:
 
 ## Acronym-realignment mode
 
-The prose check above (§9's newest row -- `src/style_acronym_drift.py`)
+The prose check above (§9's newest row -- `chitragupta/style_acronym_drift.py`)
 can report a glossary acronym whose recorded expansion has drifted from
 the current vocabulary (`content/acronyms.toml` merged over the vendored
 floor). Recognise a request to fix that finding -- "align this draft's
@@ -405,7 +406,7 @@ diff, and no mechanical check here reads it. Two edits, not one:
    current expansion. This is what the finding named, so it is never
    optional.
 2. **Find the term's own first-use expansion in the draft body** (the
-   same "Name (ACRONYM)" shape `src/acronyms.py` looks for, or whatever
+   same "Name (ACRONYM)" shape `chitragupta/acronyms.py` looks for, or whatever
    shape this draft actually used) and update it too, if it disagrees.
    You can see this half because you are reading the section anyway;
    the check cannot. Say in the `revisions.md` entry that this half was
@@ -431,7 +432,8 @@ you were asked to fix.
 
 ## Re-grounding after the corpus moves
 
-When `python -m src.corpus sync` adds papers or drops stale ones, every existing
+When `python -m chitragupta.corpus sync` adds papers or drops stale ones, every
+existing
 draft moves with it and nothing says so. `dossier status --all` is what
 notices; this is what acts on it. It is the same loop entered from a
 report instead of a request, so steps 5, 6 and 7 above still apply
@@ -440,7 +442,7 @@ verbatim -- what changes is how the work is found.
 ### R1. Read the report as data
 
 ```bash
-python -m src.draft dossier status content/drafts/<path> --json
+python -m chitragupta.draft dossier status content/drafts/<path> --json
 ```
 
 Or take the payload from a `--all --json` sweep the user already has. The
@@ -456,7 +458,7 @@ anything else:
 - **`corpus_available` is `false`.** The ledger could not be read, so
   every finding list is empty because the check never ran, not because
   there is nothing to find. Say what you checked, point the user at
-  `python -m src.corpus sync`, and stop. Do not report the draft as current.
+  `python -m chitragupta.corpus sync`, and stop. Do not report the draft as current.
 - **The dossier does not exist.** `--json` returns an almost-empty entry
   and still exits 0. Go to "When there is no dossier", bootstrap, and
   come back.
@@ -469,7 +471,7 @@ this section exists to prevent.
 **`missing` is a defect.** The draft stands on a paper the corpus no
 longer has; `citation_gate` already disagrees with the draft. Always
 actioned, whatever else the revision is about. Each entry maps a citekey
-to the sections citing it, and `python -m src.draft dossier sections
+to the sections citing it, and `python -m chitragupta.draft dossier sections
 content/drafts/<path>` turns those into line ranges, so the edit stays as
 scoped as any other. Look for the replacement in this order, and stop at
 the first that supports the claim:
@@ -483,7 +485,7 @@ the first that supports the claim:
    because a claim left unsupported is genuinely new ground:
 
    ```bash
-   python -m src.draft retrieve search "<the claim>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
+   python -m chitragupta.draft retrieve search "<the claim>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
    ```
 
 If none of the three supports it, **remove the claim** and say so. Not a
@@ -503,12 +505,12 @@ re-running `search` for that query pays for fifteen snippets to be handed
 back the same fifteen citekeys:
 
 ```bash
-python -m src.draft retrieve evidence "<the query from the report>" \
+python -m chitragupta.draft retrieve evidence "<the query from the report>" \
     --citekey <candidate> --log content/drafts/<path>
 ```
 
 What the report lacks is text to judge on, and that is what `evidence` is
-for. Keep `python -m src.draft retrieve search "<query>" --k 15 --log <draft>`
+for. Keep `python -m chitragupta.draft retrieve search "<query>" --k 15 --log <draft>`
 for the case where the revision opens ground the dossier never covered --
 a query not already in `retrieval.md`, which by definition could not have
 produced a candidate.
@@ -563,7 +565,7 @@ Finish with step 7 and change nothing about it. `missing` is computed
 from the dossier's own `evidence.md` and `sections.md`, not from the
 draft body, so a citekey the draft cites that was never recorded in the
 dossier will not appear in the report at all. `python -m
-src.draft gate` is the check that reads the draft, and it is what
+chitragupta.draft gate` is the check that reads the draft, and it is what
 decides the draft is presentable. A clean drift report never does.
 
 The loop's two riders still apply, and neither is a gate. A re-grounding
@@ -601,15 +603,15 @@ discards the dossier and pays to rediscover a worse version of it.
 
 ## When there is no dossier
 
-Drafts written before `src/dossier.py` existed have none, and so do
+Drafts written before `chitragupta/dossier.py` existed have none, and so do
 drafts written by hand. Bootstrap rather than refusing:
 
 ```bash
-python -m src.draft dossier init content/drafts/<path> --genre <genre>
+python -m chitragupta.draft dossier init content/drafts/<path> --genre <genre>
 ```
 
 Then fill in what the draft itself can tell you -- `sections.md` from
-`python -m src.draft dossier sections`, and `scope.md`'s reader/covers/excludes
+`python -m chitragupta.draft dossier sections`, and `scope.md`'s reader/covers/excludes
 from the draft's own scope paragraph if it has one. Leave `evidence.md`
 and `rejected.md` empty and **say so in chat**: the first revision of a
 bootstrapped draft cannot check a claim against recorded evidence, and
@@ -633,7 +635,7 @@ citekey.
 - **Never refuse a wide pass either.** The scoped default is an economy,
   not a rule about what the user is allowed to want. Hand off to
   `corpus-reviser` rather than arguing.
-- **Never run `python -m src.corpus sync` or `python -m src.enrich`.**
+- **Never run `python -m chitragupta.corpus sync` or `python -m chitragupta.enrich`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.
 - **Never silently change scope, reader or terminology.**

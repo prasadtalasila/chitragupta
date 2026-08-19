@@ -1,26 +1,26 @@
-# Poetry is a dependency/lockfile manager here *for now* -- package-mode
-# = false below means this is not yet a publishable package (no
-# [build-system], and the import package is still `src`, which cannot
-# ship: a top-level `src` in site-packages claims the most generic name
-# on the index).
+# This IS a publishable package. docs/PACKAGING.md records the decision,
+# the objections it had to answer, and which of them survive; the short
+# version is that the import package could not be called `src` -- a
+# top-level `src` in site-packages claims the most generic name on the
+# index -- so it is `chitragupta`, while the *distribution* is
+# `chitragupta-cli` because `chitragupta` is taken on PyPI by an
+# unrelated project.
 #
-# That is a transitional state, not the settled position. The settled
-# position is docs/PACKAGING.md, which records the decision to ship an
-# installable distribution (`chitragupta-cli`, importing as
-# `chitragupta`, with a `chitragupta` console script and a `cg` alias),
-# the objections it had to answer, and which of them survive. An earlier
-# revision of this comment pointed at a "packaging pros/cons write-up"
-# that never existed anywhere in this repository; docs/PACKAGING.md is
-# that document, written for the first time.
+# Three names that look like one, and only the first is registered
+# anywhere:
 #
-# `poetry install` replaces the old docker/requirements-full.txt +
+#   name         = "chitragupta-cli"   the PyPI project    (globally unique)
+#   packages     = chitragupta         the import package  (unregistered)
+#   scripts      = chitragupta, cg     the executables     (unregistered)
+#
+# `poetry install` still replaces the old docker/requirements-full.txt +
 # requirements-dev.txt + hand-run `python3 -m venv` -- see
-# scripts/install_full_pipeline.sh, still the single install path for
-# host and Docker.
+# scripts/install_full_pipeline.sh, still the install path for a
+# checkout, Docker and CI.
 [tool.poetry]
-package-mode = false
-name = "chitragupta"
-version = "5.41.0"
+name = "chitragupta-cli"
+version = "6.0.0"
+packages = [{ include = "chitragupta" }]
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
@@ -28,19 +28,19 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.12"
 # The one dependency the otherwise-stdlib core pipeline needs
-# (src/bib_reader.py, used by `python -m src.corpus sync`): hand-rolling a
+# (chitragupta/bib_reader.py, used by `python -m chitragupta.corpus sync`): hand-rolling a
 # correct BibTeX parser (nested braces, LaTeX escapes, multi-line
-# values) isn't worth it. `python -m src.draft gate` needs none of
+# values) isn't worth it. `python -m chitragupta.draft gate` needs none of
 # this and still runs with the bare system interpreter, no venv at all.
 bibtexparser = ">=1.4,<2.0"
 # <2.0 is load-bearing, not just a style choice: bibtexparser v2 replaces
 # BibTexParser/customization/bibtexparser.load with a different,
 # incompatible API (bibtexparser.parse_file, no customization hook) that
-# src/bib_reader.py -- the sole source of citekeys -- doesn't use. Don't
+# chitragupta/bib_reader.py -- the sole source of citekeys -- doesn't use. Don't
 # relax this ceiling without rewriting that module against v2's API first.
 
-# Optional group (`poetry install --with enrich`): everything src/enrich/*
-# (the Docling/embeddings/Pandoc pipeline, src/enrich/__main__.py)
+# Optional group (`poetry install --with enrich`): everything chitragupta/enrich/*
+# (the Docling/embeddings/Pandoc pipeline, chitragupta/enrich/__main__.py)
 # needs. All of the below were installed and import-verified in a host
 # venv on 2026-07-28 (docker/requirements-full.txt, since replaced by this
 # group); sentence-transformers/chromadb/bertopic/docling were also
@@ -90,7 +90,7 @@ docling = ">=2.115,<3.0"
 # task-specific adapter weights (proximity/classification/etc.) through
 # this library, not through sentence-transformers/transformers alone.
 # Added for issue #194's Arm B (retrieval/reranking benchmark); not
-# imported by anything else in src/enrich, so if SPECTER2 is ever
+# imported by anything else in chitragupta/enrich, so if SPECTER2 is ever
 # dropped from that arm this is the line to remove with it. Resolved to
 # 1.3.0 and import-verified (`from adapters import AutoAdapterModel`) in
 # .venv-full on 2026-08-16 -- see the note above this dependency block
@@ -138,11 +138,11 @@ pythonpath = ["."]
 [tool.coverage.run]
 # .claude/hooks is in scope because those two files enforce the citekey
 # invariant and report when that enforcement has stopped -- code the bar
-# should apply to at least as much as anything under src/. It only became
+# should apply to at least as much as anything under chitragupta/. It only became
 # measurable once tests/test_hook_modules.py started importing them:
 # spawning a hook, which is how the harness runs it and what the other two
 # hook test files do, contributes no coverage at all.
-source = ["src", "scripts", ".claude/hooks"]
+source = ["chitragupta", "scripts", ".claude/hooks"]
 branch = true
 omit = [
     "*/enrich/__init__.py",
@@ -152,7 +152,7 @@ omit = [
 # The 100% bar DEVELOPER-AGENTS.md states, enforced rather than asserted.
 # It holds on a host with the full toolchain (pandoc, TeX Live, poppler)
 # installed -- without those binaries the render/pdf tests self-skip and
-# take src/render_output.py down to ~76%, which is a missing dependency
+# take chitragupta/render_output.py down to ~76%, which is a missing dependency
 # rather than a missing test. Pass --cov-fail-under=0 on such a host. CI's
 # Windows leg, where os-deps is apt-only, holds a 95 floor instead of the
 # full bar -- see .github/workflows/ci.yml for why that number.
@@ -167,3 +167,12 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
+
+
+# Required now that this is a real distribution: without it `pip install`
+# and `poetry build` have no backend to call. poetry-core rather than
+# poetry itself is the documented choice -- it is the build backend
+# alone, with none of the CLI's own dependency tree.
+[build-system]
+requires = ["poetry-core>=1.9"]
+build-backend = "poetry.core.masonry.api"

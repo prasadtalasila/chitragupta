@@ -8,7 +8,7 @@ Written as they were found, before the arms were both in.
 sits at **12e6f367**, which is *newer* and carries #247 -- "Make a
 Markdown draft's ASCII figure a file, matching thesis-chapter-writer's
 pair". The two checkouts therefore implement **different figure
-contracts**, and `src/render_output/_figures.py` differs between them.
+contracts**, and `chitragupta/render_output/_figures.py` differs between them.
 
 Measured on a throwaway draft under each checkout, marker-only being the
 form `textbook-chapter-writer` SKILL.md step 7 and

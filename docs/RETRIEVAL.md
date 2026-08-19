@@ -8,9 +8,10 @@ different question entirely. This document says which is which, so you can
 decide what is worth building.
 
 **Written for** someone choosing whether to run
-`python -m src.enrich --stages embed,bertopic`, or wondering why a
+`python -m chitragupta.enrich --stages embed,bertopic`, or wondering why a
 draft cited a paper they didn't expect. **Assumed:** you have run
-`python -m src.corpus sync` and have a populated ledger. **Not covered:** how to
+`python -m chitragupta.corpus sync` and have a populated ledger. **Not
+covered:** how to
 tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 [PERFORMANCE.md](PERFORMANCE.md) for what each costs.
 
@@ -18,7 +19,7 @@ tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 
 | | **BM25** | **embeddings** | **topic model** |
 |---|---|---|---|
-| Module | `src/retrieval.py` | `src/enrich/embed_index.py` | `src/enrich/topic_model.py` |
+| Module | `chitragupta/retrieval.py` | `chitragupta/enrich/embed_index.py` | `chitragupta/enrich/topic_model.py` |
 | Question it answers | which sources match this query? | *the same question* | what clusters exist in my corpus? |
 | Takes a query | yes | yes | **no** |
 | Method | Okapi BM25 over whitespace tokens | dense vectors, cosine distance | UMAP then HDBSCAN over one vector per document |
@@ -34,13 +35,13 @@ flowchart TB
 
   subgraph SEARCH["<b>SEARCHING</b> — same question, two implementations. Pick one; nothing merges them."]
     direction LR
-    BM25["<b>src/retrieval.py</b> · BM25<br/><small>stdlib · whole documents · always available</small>"]
-    EMB["<b>src/enrich/embed_index.py</b> · semantic<br/><small>enrich group · 200-word chunks<br/>same <code>search(q, k)</code> shape, so it is a drop-in</small>"]
+    BM25["<b>chitragupta/retrieval.py</b> · BM25<br/><small>stdlib · whole documents · always available</small>"]
+    EMB["<b>chitragupta/enrich/embed_index.py</b> · semantic<br/><small>enrich group · 200-word chunks<br/>same <code>search(q, k)</code> shape, so it is a drop-in</small>"]
   end
 
   subgraph SURVEY["<b>SURVEYING</b> — no query at all"]
     direction TB
-    BERT["<b>src/enrich/topic_model.py</b> · BERTopic<br/><small>clusters the whole corpus at once</small>"]
+    BERT["<b>chitragupta/enrich/topic_model.py</b> · BERTopic<br/><small>clusters the whole corpus at once</small>"]
     TOP[/"<b>content/topics.json</b><br/><small>read by you, not by any code here</small>"/]
     BERT --> TOP
   end
@@ -68,7 +69,7 @@ flowchart TB
 
 ## BM25 -- the default, and always available
 
-`src/retrieval.py` ranks whole documents by Okapi BM25 over
+`chitragupta/retrieval.py` ranks whole documents by Okapi BM25 over
 whitespace-separated tokens, with the usual constants (`k1 = 1.5`,
 `b = 0.75`). It is stdlib-only: no model download, no venv, nothing to
 build. `search(query, k)` returns
@@ -122,7 +123,7 @@ rejection.
 ### `evidence` -- zooming in on one document
 
 ```bash
-python -m src.draft retrieve evidence "<query>" --citekey <key>
+python -m chitragupta.draft retrieve evidence "<query>" --citekey <key>
 ```
 
 Returns the passages of that one document which bear on the query --
@@ -145,7 +146,7 @@ retrieval for a given draft a measurement rather than an estimate.
 
 ## Embeddings -- a replacement for BM25, not an addition
 
-`src/enrich/embed_index.py` chunks each document into 200 words with
+`chitragupta/enrich/embed_index.py` chunks each document into 200 words with
 40 words of overlap, encodes each chunk with a sentence-transformers model
 (`sentence-transformers/all-MiniLM-L6-v2` by default), and stores the
 vectors in a Chroma collection under `content/chroma/`. The collection is
@@ -172,7 +173,8 @@ be cited, and that second source is gone.) The way to make a paper
 searchable here is therefore the same as everywhere else in this
 repository: catalogue it in your reference manager, re-export, and
 re-run
-`sync`. `python -m src.enrich` prints what it is about to work on at the top of
+`sync`. `python -m chitragupta.enrich` prints what it is about to work on at the
+top of
 every run, before any stage touches it:
 
 ```text
@@ -186,7 +188,8 @@ skills use BM25 only.
 
 ## Topic model -- a different question
 
-`src/enrich/topic_model.py` takes no query. It embeds each document once as
+`chitragupta/enrich/topic_model.py` takes no query. It embeds each document once
+as
 a whole, reduces with UMAP, clusters with HDBSCAN, and writes
 `content/topics.json`: one topic assignment per document, plus a topic
 table. It needs at least two documents with text.

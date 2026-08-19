@@ -1,8 +1,8 @@
-"""src/enrich/corpus.py: the enrichment layer's corpus is the ledger, so
+"""chitragupta/enrich/corpus.py: the enrichment layer's corpus is the ledger, so
 every document it yields is citable, keyed by its citekey and nothing else."""
 
-from src import bib_reader, ledger
-from src.enrich import corpus
+from chitragupta import bib_reader, ledger
+from chitragupta.enrich import corpus
 
 from tests.conftest import make_reference
 
@@ -42,7 +42,7 @@ class TestBuildCorpus:
         """The citekey is the stem every on-disk artefact is written under
         -- Docling's <citekey>.md, Chroma's <citekey>::<n> chunk ids -- so
         one that cannot be a filename must never reach this layer.
-        `src/bib_reader.py` is what keeps it out; this pins the contract
+        `chitragupta/bib_reader.py` is what keeps it out; this pins the contract
         from the consuming end, where the breakage would actually happen."""
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))

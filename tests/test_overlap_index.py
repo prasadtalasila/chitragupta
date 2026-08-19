@@ -1,12 +1,12 @@
-"""src/overlap_index.py: the disk-cached corpus-wide n-gram fingerprint
-index that src/review/verbatim_check.py's `overlap` mode is ported onto."""
+"""chitragupta/overlap_index.py: the disk-cached corpus-wide n-gram fingerprint
+index that chitragupta/review/verbatim_check.py's `overlap` mode is ported onto."""
 
 import json
 from pathlib import Path
 
 import pytest
 
-from src import config, ledger, overlap_index
+from chitragupta import config, ledger, overlap_index
 
 from tests.conftest import make_reference
 

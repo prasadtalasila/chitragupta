@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # config.toml is gitignored per-host data, so a checkout never has
-      # one -- and src/config.py reads it at *import* time and fails hard
+      # one -- and chitragupta/config.py reads it at *import* time and fails hard
       # when it's absent (deliberately: see its own comment). Without this
       # step every test in the suite dies on collection, not just the
       # config ones. CI is the plain example file, unedited, which is also
@@ -126,7 +126,7 @@ jobs:
       # Linux installs os-deps and runs all of it, so it holds pyproject's
       # [tool.coverage.report] fail_under = 100. Windows gets python-deps
       # only (os-deps is apt-only: pandoc, TeX Live, poppler), so ~30
-      # render/pdf tests self-skip and src/render_output.py lands at ~76%,
+      # render/pdf tests self-skip and chitragupta/render_output.py lands at ~76%,
       # taking the total near 99%. 95 is a floor under that, not a target:
       # it catches pure-Python coverage collapsing on a platform where the
       # suite is partial, without re-tuning every time a pandoc-only line
@@ -191,7 +191,7 @@ jobs:
       # things and merging them silently would hide that: the Linux leg
       # installs os-deps and runs the whole suite, the Windows leg gets
       # python-deps only, so ~30 render/pdf tests self-skip there and
-      # src/render_output.py lands near 76%. Two flags keep those two
+      # chitragupta/render_output.py lands near 76%. Two flags keep those two
       # numbers separable in Codecov's UI, the same reason the two legs
       # hold two different --cov-fail-under floors here. They are not
       # decorative: Codecov's flags API reports `ubuntu-latest: 100.0` and
@@ -271,7 +271,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Same reason as the test job: src/config.py reads config.toml at
+      # Same reason as the test job: chitragupta/config.py reads config.toml at
       # import time, and pylint imports what it lints.
       - name: Create config.toml from the tracked example
         shell: bash
@@ -320,7 +320,7 @@ jobs:
         run: python3 scripts/check_version_bump.py
 
       - name: pylint
-        run: pylint --rcfile=.pylintrc src scripts .claude/hooks
+        run: pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 
       - uses: actions/setup-node@v4
         with:
@@ -363,7 +363,7 @@ jobs:
       # reported means an exemption broke.
       - name: Vale config parses and the exemptions hold
         run: |
-          python -m src.draft style --json \
+          python -m chitragupta.draft style --json \
             tests/fixtures/style/exemptions.md \
             tests/fixtures/style/exemptions.tex > /tmp/style.json
           python - <<'CHECK'

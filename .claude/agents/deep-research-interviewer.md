@@ -32,7 +32,7 @@ synced corpus, simulating one editorial angle on the topic.
 3. Run each against this project's corpus:
 
    ```bash
-   python -m src.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
+   python -m chitragupta.draft retrieve search "<query>" --k 15 --log <the draft path you were given>
    ```
 
    Pass `--log` on every call. The dispatching skill hands you the draft
@@ -43,14 +43,14 @@ synced corpus, simulating one editorial angle on the topic.
    this corpus):
 
    ```bash
-   python -c "from src.enrich import embed_index; [print(r) for r in embed_index.search('<query>', k=15)]"
+   python -c "from chitragupta.enrich import embed_index; [print(r) for r in embed_index.search('<query>', k=15)]"
    ```
 
    Where a 500-character snippet is not enough to decide on a source you
    are minded to cite, read more of that one document:
 
    ```bash
-   python -m src.draft retrieve evidence "<query>" --citekey <key> \
+   python -m chitragupta.draft retrieve evidence "<query>" --citekey <key> \
      --log <draft path>
    ```
 
@@ -75,10 +75,12 @@ synced corpus, simulating one editorial angle on the topic.
 
 ## The corpus is read-only, and you don't own any file
 
-Never run `python -m src.corpus sync`, `python -m src.enrich`, or any `src/enrich/*`
+Never run `python -m chitragupta.corpus sync`, `python -m chitragupta.enrich`,
+or any `chitragupta/enrich/*`
 build stage. Both take the pipeline's write lock and can run for tens of
 minutes, and several of you run in parallel. Use `content/chroma/` only if
-it already exists; if it doesn't, fall back to `src.retrieval.search()` and
+it already exists; if it doesn't, fall back to `chitragupta.retrieval.search()`
+and
 say so in your packet -- do not build one.
 
 You write no files at all. In particular you never write into

@@ -32,14 +32,16 @@ architecture:
 1. **Never fabricate a citekey**
    - Citekeys must come from `papers/bibliography.bib` and be synchronized into
      `content/ledger.sqlite`.
-   - Drafts must pass `python -m src.draft gate` before being considered valid.
+   - Drafts must pass `python -m chitragupta.draft gate` before being considered
+     valid.
    - This is the repo's primary safety invariant.
 
 2. **Four layers**
-   - Corpus layer: deterministic content maintenance (`python -m src.corpus sync`).
+   - Corpus layer: deterministic content maintenance (`python -m
+     chitragupta.corpus sync`).
    - Drafting layer: generative drafting via the Claude Code skills.
-   - Enrichment layer: optional heavier processing (`python -m src.enrich`).
-   - Review layer: advisory aids over a finished draft (`python -m src.review`),
+   - Enrichment layer: optional heavier processing (`python -m chitragupta.enrich`).
+   - Review layer: advisory aids over a finished draft (`python -m chitragupta.review`),
      run by hand and never blocking. They stay outside the automatic chain.
    - [ARCHITECTURE.md](ARCHITECTURE.md#the-four-layers) is the map; this
      lists them only to say what the constraint is.
@@ -260,7 +262,7 @@ platform-specific branch.
 
 Two rejected alternatives: an `O_EXCL` lock file needs exactly that
 staleness heuristic, and locking the ledger itself would force a run into
-one transaction, discarding `src/ledger.py`'s five incremental commit
+one transaction, discarding `chitragupta/ledger.py`'s five incremental commit
 points on a crash. Contention is detected by `sqlite_errorcode ==
 SQLITE_BUSY` rather than by message, since `OperationalError` also covers
 a full disk and a corrupt file, and the lock file is never deleted --
@@ -292,7 +294,7 @@ recommendations. Four became sequenced items in that issue (splitting
 `retrieval.py`, section-aware chunking over hierarchical document
 representations, reranking, and platform portability) and the fifth --
 preserving richer per-document metadata -- is partly delivered by
-`src/passages.py` and the Docling sidecar. The parse path's own roadmap,
+`chitragupta/passages.py` and the Docling sidecar. The parse path's own roadmap,
 which is narrower and measured, is in
 [PARALLELISM.md](PARALLELISM.md#roadmap).
 

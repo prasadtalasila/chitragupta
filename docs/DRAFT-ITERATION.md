@@ -49,8 +49,10 @@ Related reading:
 Half of this pipeline already survives a session ending, and half of it
 doesn't.
 
-`src/citation_gate.py`, `src/references.py`, `src/render_output.py` and
-`src/review/citation_provenance.py` are all stateless with respect to *how* a
+`chitragupta/citation_gate.py`, `chitragupta/references.py`,
+`chitragupta/render_output.py` and
+`chitragupta/review/citation_provenance.py` are all stateless with respect to
+*how* a
 draft was written. Hand any of them a `.md` file from last month and they
 work: the gate re-checks its citekeys, `references` rebuilds the
 bibliography, `render_output` produces the PDF, `citation_provenance`
@@ -90,7 +92,7 @@ rewrites, and **no revision path at all**.
 
 The fourth is the one this module exists to remove, and the only one of
 the four that is *structural* rather than a constant factor. Before
-`src/dossier/` and the `draft-reviser` skill, no genre skill had a
+`chitragupta/dossier/` and the `draft-reviser` skill, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run Phase 1 through Phase 7 again.
 
@@ -114,7 +116,7 @@ depth was asked for.
 
 `content/rendered/` mirrors the same path, so a topic directory names a
 draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together --
-[CLI.md](CLI.md#python--m-srcdraft-render) has the detail. That is
+[CLI.md](CLI.md#python--m-chitraguptadraft-render) has the detail. That is
 what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.
@@ -143,7 +145,7 @@ two that were missing entirely are the two that matter most:
 
 Everything a dossier holds is read by a model or by a human, both of
 which read Markdown natively. Nothing in it is a data structure another
-module consumes -- `src/dossier/` parses only two things out of it (the
+module consumes -- `chitragupta/dossier/` parses only two things out of it (the
 corpus fingerprint line and backticked citekeys), and both degrade to
 "unavailable" rather than to an error if a human has been editing freely.
 A restored tarball is also legible on its own a year later, without this
@@ -151,7 +153,8 @@ code.
 
 The cost of that choice is real: there is no schema, so nothing validates
 that `evidence.md` is well-formed. This is accepted deliberately, on the
-same principle as `src/review/citation_provenance.py` -- a check that blocked on
+same principle as `chitragupta/review/citation_provenance.py` -- a check that
+blocked on
 something it cannot verify exactly would train people to work around it.
 A malformed dossier makes the next revision less efficient. It cannot
 make a draft wrong, because the citation gate still stands between any
@@ -176,7 +179,7 @@ disagrees with the draft hands `draft-reviser` the wrong section for a
 citation.
 
 ```bash
-python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
+python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
 ```
 
 builds it instead, from both citation syntaxes, skipping fenced code and
@@ -229,13 +232,13 @@ written, plus a 12-character digest of that set:
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
 ```
 
-`python -m src.draft dossier status` recomputes it. If it differs, the corpus
+`python -m chitragupta.draft dossier status` recomputes it. If it differs, the corpus
 has moved, and the command names the citekeys that appear nowhere in the
 dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
 
 The ledger is opened read-only with `timeout=0`, exactly as
-`python -m src.corpus ledger` does. This is an inspection: it must not
+`python -m chitragupta.corpus ledger` does. This is an inspection: it must not
 take a write lock, run a migration, or block behind a sync that is
 mid-run.
 
@@ -276,7 +279,7 @@ transcription put it there.
 `sections.md`, and the dispatch prompt carries one line:
 
 ```bash
-Your evidence: python -m src.draft dossier brief <draft> --section "2. Failure modes"
+Your evidence: python -m chitragupta.draft dossier brief <draft> --section "2. Failure modes"
 ```
 
 An estimated ~40 output tokens per writer, ~0.8k equivalents for the
@@ -339,7 +342,8 @@ changes, the command is already there.
 
 `status <draft>` answers "did the corpus move under this one draft?",
 which is only useful if you already suspect it did. The corpus half of
-the bottleneck is the one nobody is watching: `src.corpus sync` adds papers and
+the bottleneck is the one nobody is watching: `chitragupta.corpus sync` adds
+papers and
 `--remove-stale` drops them, and every draft written before that moment
 silently drifts. `status --all` is the sweep that makes it visible --
 one report over every dossier under `content/dossiers/`, always exiting
@@ -410,7 +414,7 @@ because there the consumer reads it at the moment it acts.
 
 ### Why the new papers are not found with `search()`
 
-The obvious implementation -- call `src.retrieval.search(query, k=15)`
+The obvious implementation -- call `chitragupta.retrieval.search(query, k=15)`
 for each recorded query -- is the one thing this could not do, for two
 reasons that are both about a report having no business changing what it
 reports on:
@@ -430,7 +434,7 @@ reports on:
 makes the alternative easy. The ledger holds bibliographic rows and a
 `parsed_path`; the index is a separate `content/retrieval_index.json`
 mapping each citekey to `{fingerprint, length, term_freqs}`, derived from
-the parsed text. And the two halves of `src.retrieval` that matter --
+the parsed text. And the two halves of `chitragupta.retrieval` that matter --
 `_tokenize_item` and `_bm25_scores` -- are pure; the only thing that
 persists is the cache write sitting between them.
 
@@ -486,22 +490,23 @@ branches on the contents, not on the status code.
 The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
 
-1. `python -m src.draft dossier status <draft>` -- what is on disk, and has
-   the corpus moved? Then `python -m src.draft dossier mark-revision <draft>`,
+1. `python -m chitragupta.draft dossier status <draft>` -- what is on disk, and
+   has
+   the corpus moved? Then `python -m chitragupta.draft dossier mark-revision <draft>`,
    before any retrieval call, so `retrieval.md` can tell this revision's
    cost apart from the last one -- its rows otherwise carry only a date,
    and two revisions on the same day would merge into one figure.
 2. Read `scope.md` and `steering.md`. These bound what the revision may
    change: a request that contradicts the recorded scope is a scope
    change, and gets said out loud rather than silently applied.
-3. `python -m src.draft dossier sections <draft>` -- heading to line range.
+3. `python -m chitragupta.draft dossier sections <draft>` -- heading to line range.
 4. Read *only* the affected sections, at those line ranges, and edit
    inside them.
 5. Re-search only if the change genuinely opens new ground, consulting
    `rejected.md` first so the same candidates aren't re-judged.
 6. Update `evidence.md` / `rejected.md` / `sections.md` for whatever
    actually changed, append to `revisions.md` and `steering.md`.
-7. Re-gate (`python -m src.draft gate`), rebuild references, re-render.
+7. Re-gate (`python -m chitragupta.draft gate`), rebuild references, re-render.
 
 Steps 3 and 4 are where the output-token saving lives: a scoped edit
 inside one section replaces an estimated ~4.6k-token whole-file rewrite.
@@ -647,14 +652,14 @@ What replaces version control is an explicit bundle:
 
 ```bash
 # everything
-python -m src.draft dossier export
+python -m chitragupta.draft dossier export
 
 # one topic, including rendered PDFs
-python -m src.draft dossier export digital-twins-for-software-engineers --with-rendered
+python -m chitragupta.draft dossier export digital-twins-for-software-engineers --with-rendered
 
 # restore -- a dry run that reports what it would write
-python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz
-python -m src.draft dossier restore drafts-all-2026-08-06.tar.gz --force
+python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz
+python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 Three properties worth knowing:
@@ -676,7 +681,7 @@ Three properties worth knowing:
 ### What a bundle does not carry
 
 `content/ledger.sqlite` and `papers/bibliography.bib`. The ledger is
-regenerable with `python -m src.corpus sync`, and the bib file is your reference
+regenerable with `python -m chitragupta.corpus sync`, and the bib file is your reference
 manager's export -- AGENTS.md's invariant is that the bib file is the
 source of truth *and not this pipeline's to own*, so a bundle does not
 start keeping copies of it. Back it up where you back up that tool.
@@ -689,7 +694,7 @@ beats a gate that passes because there is nothing to check against.
 
 ## What this deliberately does not do
 
-**It is not a gate and it takes no lock.** Nothing in `src/dossier/`
+**It is not a gate and it takes no lock.** Nothing in `chitragupta/dossier/`
 blocks a draft, and nothing in it writes to the corpus layer. A dossier
 that is missing, stale or hand-edited degrades the next revision's
 efficiency and can never make a draft wrong.
@@ -697,7 +702,7 @@ efficiency and can never make a draft wrong.
 **It does not verify that a dossier matches its draft.** `sections.md`
 can disagree with the draft's actual headings if someone edits by hand.
 The reviser rebuilds the section map from the draft rather than trusting
-the file, and `src/review/citation_provenance.py` already reconciles a draft
+the file, and `chitragupta/review/citation_provenance.py` already reconciles a draft
 against its sources independently.
 
 **It does not itself cut what enters the orchestrator's context.** That is

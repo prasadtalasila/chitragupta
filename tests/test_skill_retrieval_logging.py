@@ -1,7 +1,7 @@
-"""Every `src.draft retrieve` CLI invocation named in `.claude/` must carry `--log`.
+"""Every `chitragupta.draft retrieve` CLI invocation named in `.claude/` must carry `--log`.
 
 `--log` is what turns a drafting run's retrieval cost from an estimate
-(docs/TOKENS.md) into something `python -m src.draft dossier status` can total.
+(docs/TOKENS.md) into something `python -m chitragupta.draft dossier status` can total.
 A skill or subagent protocol that names the CLI without it is a silent gap
 in that measurement -- found once already (peer-reviewer.md's
 domain-accuracy fallback had none), and cheap to lose again the next time
@@ -10,7 +10,7 @@ an exercise of the retrieval or dossier code -- both already have their
 own tests for the flag's actual effect.
 
 Deliberately does not flag `search(query, k, snippet_chars)` /
-`src.enrich.embed_index.search()` mentions: those name the Python API,
+`chitragupta.enrich.embed_index.search()` mentions: those name the Python API,
 which has no `--log` parameter to check for (a real, separate gap -- see
 docs/TOKENS.md's coverage note -- not a doc typo this test can catch).
 """
@@ -21,9 +21,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLAUDE_DIR = REPO_ROOT / ".claude"
 
-# `python -m src.draft retrieve search "..."` / `... evidence "..." --citekey ...`
+# `python -m chitragupta.draft retrieve search "..."` / `... evidence "..." --citekey ...`
 # -- the CLI form, which is the only one `--log` exists on.
-_INVOCATION = re.compile(r"python -m src\.draft retrieve (search|evidence)\b")
+_INVOCATION = re.compile(r"python -m chitragupta\.draft retrieve (search|evidence)\b")
 
 # How far past the start of a matched invocation to look for its `--log`.
 # Generous enough to span a `\`-continued line (draft-reviser's `evidence`
@@ -106,12 +106,12 @@ def _worktree_fixture(claude_dir):
     would fail -- the shape §4.3 actually reported, in miniature."""
     (claude_dir / "skills" / "writer").mkdir(parents=True)
     (claude_dir / "skills" / "writer" / "SKILL.md").write_text(
-        'python -m src.draft retrieve search "topic" --log\n', encoding="utf-8"
+        'python -m chitragupta.draft retrieve search "topic" --log\n', encoding="utf-8"
     )
     nested = claude_dir / _WORKTREES / "issue-999" / "docs"
     nested.mkdir(parents=True)
     (nested / "RETRIEVAL.md").write_text(
-        'python -m src.draft retrieve evidence "claim"\n', encoding="utf-8"
+        'python -m chitragupta.draft retrieve evidence "claim"\n', encoding="utf-8"
     )
     return nested / "RETRIEVAL.md"
 

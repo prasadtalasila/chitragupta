@@ -1,4 +1,4 @@
-"""src/bib_names.py: the one implementation of the BibTeX author-name
+"""chitragupta/bib_names.py: the one implementation of the BibTeX author-name
 grammar, and the proof that both its callers actually route through it.
 
 The grammar's own edge cases are covered here rather than twice more;
@@ -10,7 +10,7 @@ independently-tested modules, not between two aliases of one call.
 
 import pytest
 
-from src import bib_names, bib_reader, references
+from chitragupta import bib_names, bib_reader, references
 
 
 class TestSplitName:

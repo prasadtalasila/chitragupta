@@ -1,6 +1,6 @@
 [
  {
-  "row": "BM25 (src/retrieval.py)",
+  "row": "BM25 (chitragupta/retrieval.py)",
   "n_queries": 256,
   "n_missing": 0,
   "recall@5": 0.8047,

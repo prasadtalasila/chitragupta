@@ -1,14 +1,14 @@
-"""src/render_output/_csl.py: the CSL style a render formats citations with.
+"""chitragupta/render_output/_csl.py: the CSL style a render formats citations with.
 
-Split from one test module to mirror `src/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `src/enrich/`. Shared setup --
+Split from one test module to mirror `chitragupta/render_output/`'s own split,
+the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
 the binary probes and the figure fixtures -- lives in `tests/conftest.py`
 so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
 """
 
 from pathlib import Path
-from src import render_output
+from chitragupta import render_output
 
 
 class TestResolveCsl:
@@ -82,7 +82,7 @@ class TestCollapsedCsl:
 
 class TestVendoredIeeeStyle:
     def test_is_present_and_is_the_configured_default(self):
-        from src import config
+        from chitragupta import config
 
         style = Path(__file__).resolve().parent.parent / "assets" / "csl" / "ieee.csl"
         assert style.is_file()

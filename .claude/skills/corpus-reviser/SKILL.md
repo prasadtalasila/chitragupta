@@ -1,6 +1,6 @@
 ---
 name: corpus-reviser
-description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m src.draft gate` before presenting.
+description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m chitragupta.draft gate` before presenting.
 tags: [revision, dossier, citation, corpus]
 ---
 
@@ -42,7 +42,8 @@ sentence; being wrongly wide costs the tokens, and the user did not
 agree to spend them.
 
 **Read-only over the corpus layer**, exactly as everywhere else. Never
-run `python -m src.corpus sync` and never run `python -m src.enrich`: both
+run `python -m chitragupta.corpus sync` and never run `python -m
+chitragupta.enrich`: both
 take the
 pipeline's write lock and can run for tens of minutes, and they are the
 user's to run.
@@ -88,7 +89,7 @@ through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same
 edit discipline, the same dossier write-back and the same exit.
 
-**Step 3 becomes a whole-draft read.** `python -m src.draft dossier sections
+**Step 3 becomes a whole-draft read.** `python -m chitragupta.draft dossier sections
 content/drafts/<path>` still gives the outline, but here it is a work
 list rather than a filter: you read every section, because a wide pass
 is judging the whole draft against the corpus, not one claim.
@@ -104,9 +105,9 @@ doesn't, which is the case for any draft written before `--log` was
 passed. One search each:
 
 ```bash
-python -m src.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<path>
+python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<path>
 # no --collection: a whole-corpus pass is a widening -- see "Collection scoping" above
-python -m src.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
+python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
 ```
 
 `evidence` stays optional and stays for deepening an acceptance -- reach
@@ -152,8 +153,8 @@ turn a wide pass into the re-run this skill exists to avoid.
   same thing, and a wide pass is the one most likely to edit a figure
   in passing while re-reading a section for something else.
 - **The gate is the exit.** Never present a draft that hasn't passed
-  `python -m src.draft gate`.
-- **Run the prose check** -- `python -m src.draft style
+  `python -m chitragupta.draft gate`.
+- **Run the prose check** -- `python -m chitragupta.draft style
   content/drafts/<path>` -- after the gate and before presenting.
   `draft-reviser`'s numbered steps 1-7 do not reach its unnumbered riders,
   so this is written out here for the same reason the scan offer is.
@@ -167,7 +168,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   spelling along with their point, and also the pass least entitled to
   tidy prose nobody asked about. Findings go to `draft-reviser`'s
   copy-edit mode, not into this pass.
-- **Offer the verbatim scan** -- `python -m src.review verbatim scan
+- **Offer the verbatim scan** -- `python -m chitragupta.review verbatim scan
   content/drafts/<path>` -- before presenting. Don't run it silently and never
   make it a condition of presenting. It reports wording the draft shares with
   **any** parsed source, cited or not, which earns its place after a wide pass
@@ -188,7 +189,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   can happen without anyone asking for it.
 - **Never re-run the genre skill.** If the request truly needs a new
   draft, say that and hand off explicitly.
-- **Never run `python -m src.corpus sync` or `python -m src.enrich`.**
+- **Never run `python -m chitragupta.corpus sync` or `python -m chitragupta.enrich`.**
 - **Never treat a wide search as permission to re-judge `rejected.md`.**
 - **Never silently change scope, reader or terminology.**
 - **Report what the pass actually changed** -- including the sections you

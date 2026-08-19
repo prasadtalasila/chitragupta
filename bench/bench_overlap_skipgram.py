@@ -43,7 +43,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, overlap_skipgram  # noqa: E402
+from chitragupta import config, overlap_skipgram  # noqa: E402
 
 # Same recorded-field discipline as bench_overlap_gate.py: no `fragment`,
 # `context` or `draft_text` -- copyrighted source/draft prose -- since
@@ -62,7 +62,7 @@ CAPABILITY_SOURCE = (
 # Even strides only: an odd stride does not keep every substitution on
 # one original-index parity, so a miss there would not test the
 # family-split design -- it would just be noise. See
-# src/overlap_skipgram.py's module docstring.
+# chitragupta/overlap_skipgram.py's module docstring.
 CAPABILITY_STRIDES = (2, 4, 6, 8, 10, 12, 14)
 
 
@@ -116,7 +116,7 @@ def eligible(finding):
 
 
 def scan_all(drafts):
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     out = []
     total_suppressed = 0
@@ -150,7 +150,7 @@ def integrity_complaints(drafts, findings, labels):
 
 def precision_run(drafts_dir, labels_path, out_dir):
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync` first",
+        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
               file=sys.stderr)
         return 1
     drafts = sorted(p for p in Path(drafts_dir).glob("*.md") if p.name[0].isdigit())

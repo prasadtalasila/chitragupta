@@ -17,7 +17,7 @@ Needs the "enrich" Poetry group (`bash scripts/install_full_pipeline.sh
 python-deps`), since it drives the real Docling stack.
 
 `bench_drift.py` and `bench_overlap.py` are the exceptions: they measure
-`src.dossier` and `src.overlap_index`/`src/review/verbatim_check.py`, all
+`chitragupta.dossier` and `chitragupta.overlap_index`/`chitragupta/review/verbatim_check.py`, all
 stdlib-only, so both run under bare `python` with no corpus built and no
 GPU. `bench_drift.py` generates its own throwaway corpus and never
 touches `content/`; `bench_overlap.py` reads this host's real
@@ -30,7 +30,7 @@ it is unlike every other script here in what it consumes: not a corpus
 and a sample, but **two finished drafts and their dossiers** from a
 two-arm run that was pre-registered before either arm was written. It
 measures a drafting session after the fact rather than driving one, and
-it re-runs `src.retrieval.search()` only to reconstruct what those
+it re-runs `chitragupta.retrieval.search()` only to reconstruct what those
 sessions already saw -- which is sound only while the ledger has not
 moved since, so `--hashes` checks that and reports `replay_sound`.
 
@@ -71,7 +71,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 
 | Question | Tool |
 |---|---|
-| What does the **shipped pipeline** cost at these settings? | **`sweep_sync.py`** -- runs the real `python -m src.corpus sync` |
+| What does the **shipped pipeline** cost at these settings? | **`sweep_sync.py`** -- runs the real `python -m chitragupta.corpus sync` |
 | How does Docling itself behave per document? | `bench_docling.py` |
 | How does the workload spread across N processes and G cards? | `run_parallel.py` |
 | What would the whole corpus cost, from a sample? | `estimate.py` -- **but see its docstring: it understates** |
@@ -116,13 +116,13 @@ gives you 12 — a trap that hid a measured 1.41x for a whole release.
 `run_parallel.py` launches N **independent** worker processes, each
 handed a shard and a GPU via `CUDA_VISIBLE_DEVICES`. That predates
 `[parser].workers` and is deliberately a different thing from the pool
-`src/sync.py` actually uses -- no shared counter, no pool initialiser, no
+`chitragupta/sync.py` actually uses -- no shared counter, no pool initialiser, no
 `start_method`. It answers "how does this workload scale across
 processes and cards", not "what does the shipped pool cost".
 
 So every **pool-level** figure in `RESULTS.md` -- worker counts,
 per-worker GPU assignment, and `[parser].start_method` -- was measured
-with the real `python -m src.corpus sync`, not with this harness. `sweep_sync.py`
+with the real `python -m chitragupta.corpus sync`, not with this harness. `sweep_sync.py`
 now automates that; the equivalent by hand is:
 
 ```bash
@@ -136,7 +136,7 @@ for method in spawn forkserver; do
       env CONTENT_DIR=/tmp/bench-content BIB_FILE=/path/to/subset.bib \
           PARSER=docling PARSER_OCR=false \
           PARSER_WORKERS=4 PARSER_START_METHOD=$method \
-      .venv-full/bin/python -m src.corpus sync > /dev/null
+      .venv-full/bin/python -m chitragupta.corpus sync > /dev/null
   done
 done
 ```
@@ -160,7 +160,7 @@ being tested.
 | `bench_docling.py` | Times Docling per PDF; switches device (`cuda`/`cpu`) and converter reuse (`fresh`/`reused`) |
 | `estimate.py` | Extrapolates a sample's timings to the full corpus, two ways |
 | `run_parallel.py` | Runs N worker processes over G GPUs, reports aggregate throughput |
-| `sweep_sync.py` | Sweeps the **real** `src.corpus sync` over worker/GPU/OCR settings -- the pool-level numbers |
+| `sweep_sync.py` | Sweeps the **real** `chitragupta.corpus sync` over worker/GPU/OCR settings -- the pool-level numbers |
 | `repro_check.py` | Asks whether two runs *agree*, not what they cost: parses one subset under two GPU counts and compares text, passage spans and passage texts |
 | `bench_overlap_gate.py` | Sweeps #130's gate predicate over a real book's `scan` findings and scores each candidate threshold (**T**, a run length in words) against hand-authored labels -- **tp**/**fp** being a blocked finding that is, or is not, genuine uncredited reuse; also measures what References masking is worth |
 | `bench_overlap_df.py` | Asks whether the **corpus document frequency** of a run's 8-grams -- distinct citekeys in `overlap_index.postings_for_gram`, so a projection of the #110 index rather than a new artefact -- tells a field's stock phrasing apart from genuine reuse. Two arms, because the book supplies only false positives: the labelled book, and the planted-reuse fixture as the one true positive |
@@ -168,7 +168,7 @@ being tested.
 | `bench_overlap_embed.py` | Runs one real corpus claim at four gradings -- verbatim, substituted in place, lightly edited, genuinely restated, each its own section of `fixtures/graded-paraphrase-of-singh-offload-2022.md` -- through the whole scan and reports which tier caught each; with `--drafts`, also isolates real `tier == "embedding"` findings and scores them against hand labels. Not a threshold sweep: tier 3 can never gate and does not threshold |
 | `bench_embed_model_compare.py` | Orchestrates `bench_overlap_embed.py` and `bench_paraphrase_hunt.py --crosscheck` once per candidate model in `docs/CONFIG.md`'s "Choosing an embedding model", via `EMBEDDING_MODEL` -- neither script is modified, only invoked once per model |
 | `bench_retrieval_ground_truth.py` | Recovers 48 real `(query, citekey)` pairs for Arm B (#194) by joining `bench_paraphrase_hunt.py`'s committed judgments back onto claim text re-extracted from the restored book; its own `ground_truth.json` output is gitignored -- carries claim text, same discipline as `pairs.json` |
-| `bench_retrieval_compare.py` | Scores BM25, each of three dense drop-ins (alone and cross-encoder-reranked), SPECTER2 standalone, and a SPECTER2-shortlist cascade against the ground truth above, by recall@5/nDCG@5 -- each dense model and the cascade run in their own `.venv-full` subprocess since `EMBEDDING_MODEL` is fixed at `src/config.py` import time |
+| `bench_retrieval_compare.py` | Scores BM25, each of three dense drop-ins (alone and cross-encoder-reranked), SPECTER2 standalone, and a SPECTER2-shortlist cascade against the ground truth above, by recall@5/nDCG@5 -- each dense model and the cascade run in their own `.venv-full` subprocess since `EMBEDDING_MODEL` is fixed at `chitragupta/config.py` import time |
 | `bench_retrieval_live_logs.py` | Same nine rows as `bench_retrieval_compare.py` (imports its scoring functions rather than reimplementing them), against a different ground truth: 96 real `search`-mode queries logged live in the restored book's own `retrieval.md`, each scored against its whole chapter's real kept-citekey set from `evidence.md` -- coarser than a single-citekey pair, so its nDCG@5 has a different (harsher) ideal denominator and is not comparable in magnitude to `bench_retrieval_compare.py`'s |
 | `bench_retrieval_keyword_selfretrieval.py` | Same nine rows again, against a ground truth built by neither of the two scripts above: 256 real bib entries' own `keywords` field as the query, that entry's own citekey as the correct answer -- independent of what any retrieval method surfaced during drafting, since no drafting session is involved at all. Also the one script here whose `specter2_row()` ranks over the whole ledger rather than the ground truth's own citekeys, to keep every row's pool the same size |
 | `bench_collection_scope.py` | What a `--collection` filter costs and buys across a real two-arm drafting run: retrieval payload from each dossier's `retrieval.md`, surfaced/selected/rejected by replaying each arm's own logged queries at its own `--k` (with and without the filter), index cost by md5 across three checkpoints, tokens windowed from the session transcript by those same checkpoints, and both arms' verbatim scans. Parameterised (`--topic`/`--arm-f`/`--arm-c`/`--collection`) so one script serves every run of the design -- the first run's copy hard-coded its paths and was never committed |

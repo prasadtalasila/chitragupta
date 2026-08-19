@@ -18,7 +18,7 @@ phase-by-phase record of it, which had stopped being a plan.
 Five rules, each of which was learned by getting it wrong:
 
 1. **Measure the thing you ship.** Every pool-level figure must come from
-   the real `python -m src.corpus sync` (`sweep_sync.py`), not from a harness
+   the real `python -m chitragupta.corpus sync` (`sweep_sync.py`), not from a harness
    that approximates it. `run_parallel.py` launches independent processes
    and shares none of the pool's machinery; it answers a different
    question.
@@ -100,7 +100,7 @@ only question 1 below says whether it is the same target elsewhere.
 **Sweeping past the shipped ceiling needs instrumentation.**
 `worker_ceiling()` clamps to `allowed_cpus // 4`, so `--workers 32`
 resolves to 12 on a 48-CPU machine and `sweep_sync.py` will say so. The
-2026-08-04 sweep added two temporary env overrides to `src/pdf_text.py`
+2026-08-04 sweep added two temporary env overrides to `chitragupta/pdf_text.py`
 — `BENCH_CPUS_PER_WORKER` and `BENCH_DOCLING_THREADS` — to get past it.
 Those were measurement instruments and were **not** committed; re-add
 them locally when you need them, and do not ship them.

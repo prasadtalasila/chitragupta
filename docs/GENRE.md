@@ -233,7 +233,7 @@ fingerprint. What that promises is no *missing* citations, not an empty
 candidate list -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#re-grounding-after-the-corpus-moves).
 
-Drafts written before `src/dossier.py` existed have no dossier, and
+Drafts written before `chitragupta/dossier.py` existed have no dossier, and
 neither do hand-written ones. It bootstraps rather than refusing:
 `dossier init`, then fill in what the draft itself can tell you.
 
@@ -302,7 +302,7 @@ version of it.
 ## Repairing overlap: `overlap-reviser`
 
 Not a genre either, and narrower than both revisers above: its input is
-one report rather than a request in prose. `python -m src.review verbatim
+one report rather than a request in prose. `python -m chitragupta.review verbatim
 scan --json` lists every run of wording a draft shares with the corpus.
 This skill works that list, repairing each finding and re-checking the
 repair before keeping it.
@@ -322,8 +322,8 @@ the field states some things one particular way.
 [SOUL.md](../SOUL.md) puts deciding it for you under *what you will not
 do*.
 
-**Every repair is verified before it is kept.** `python -m src.draft
-gate` and `python -m src.review verbatim recheck` both have to come back
+**Every repair is verified before it is kept.** `python -m chitragupta.draft
+gate` and `python -m chitragupta.review verbatim recheck` both have to come back
 clean, the finding has to be gone, and the count of objective findings
 must not have risen. That last condition catches a rewrite that fixes its
 own finding by lifting from a different source.
@@ -343,8 +343,8 @@ cannot repair is escalated, not worked around.
 `book-assembler` is the ninth skill and the only one that writes no
 prose. It composes units that are already accepted and gate-passed into
 one LaTeX book -- front matter, `\part`, `\chapter`, one `\input` per
-unit, back matter -- from the outline `python -m src.draft spec` holds
-and the acceptance records `python -m src.draft unit` wrote.
+unit, back matter -- from the outline `python -m chitragupta.draft spec` holds
+and the acceptance records `python -m chitragupta.draft unit` wrote.
 
 It is the last step of the book-scale track and stops at that track's
 second human gate: it presents what it composed, with every registry
@@ -372,11 +372,12 @@ No skill fabricates one, ever, and none may "fix" a gate failure by
 inventing a plausible-looking key -- it corrects the key or removes the
 claim.
 
-**The gate is the only exit.** `python -m src.draft gate` runs on the
+**The gate is the only exit.** `python -m chitragupta.draft gate` runs on the
 skill's own output, and no draft is presented until it reports `OK`.
 
-**The corpus is read-only.** No skill runs `python -m src.corpus sync` or any
-`python -m src.enrich` stage. Both take the pipeline's write lock and can
+**The corpus is read-only.** No skill runs `python -m chitragupta.corpus sync`
+or any
+`python -m chitragupta.enrich` stage. Both take the pipeline's write lock and can
 run for tens of minutes; they are yours to run. If the ledger is empty or
 nothing is `parsed`, the skill says exactly what it checked and what it
 found and stops, rather than drafting around it.
@@ -408,7 +409,7 @@ anyway.
 
 **The verbatim scan is offered, never run silently and never a gate.**
 Once the gate has passed and the renders are done, and before presenting,
-each skill offers `python -m src.review verbatim scan
+each skill offers `python -m chitragupta.review verbatim scan
 content/drafts/<path>`. That reports wording the draft shares with *any*
 parsed source, cited or not. It cannot block a draft, and no skill treats
 it as a condition of presenting. The offer carries its own
@@ -422,7 +423,7 @@ are all present. So a clean scan is not a clean bill of health.
 it sees.
 
 **The prose check is run, reported, and never acted on.** Before
-presenting, each skill runs `python -m src.draft style
+presenting, each skill runs `python -m chitragupta.draft style
 content/drafts/<path>` and reports what it says -- the findings, and the
 header lines naming which dialect was checked and on whose authority. It
 measures only what [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 marks

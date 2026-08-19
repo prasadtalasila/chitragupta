@@ -1,4 +1,4 @@
-"""src/overlap_align.py: Smith-Waterman local alignment over a
+"""chitragupta/overlap_align.py: Smith-Waterman local alignment over a
 similarity matrix -- the arithmetic half of tier 3.
 
 No fixtures, no config, no model. Every matrix here is written by hand,
@@ -10,7 +10,7 @@ Matrices are in the module's own units -- already `cosine - TAU`, so a
 positive cell is a pair worth keeping and a negative one terminates a
 run."""
 
-from src import overlap_align
+from chitragupta import overlap_align
 
 
 class TestAlign:
@@ -119,7 +119,7 @@ class TestAlign:
 
     def test_a_caller_supplied_floor_stops_the_tracing(self):
         # The parameter exists for `bench/bench_overlap_embed.py`, which
-        # sweeps it; nothing in `src/` passes one, because the tier ranks
+        # sweeps it; nothing in `chitragupta/` passes one, because the tier ranks
         # rather than thresholds.
         scores = [[-9.0] * 12 for _ in range(12)]
         scores[0][0] = 0.9

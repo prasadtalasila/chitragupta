@@ -1,8 +1,8 @@
-"""src/porter_stemmer.py: the vendored Porter (1980) stemmer
-src/overlap_skipgram.py's tier-2 skip-gram tokenizer folds inflected word
+"""chitragupta/porter_stemmer.py: the vendored Porter (1980) stemmer
+chitragupta/overlap_skipgram.py's tier-2 skip-gram tokenizer folds inflected word
 forms through before hashing."""
 
-from src.porter_stemmer import stem
+from chitragupta.porter_stemmer import stem
 
 
 class TestStem:
@@ -45,7 +45,7 @@ class TestStem:
     def test_synonym_swap_does_not_converge(self):
         # Stemming folds inflection, not vocabulary -- "continuous" and
         # "constant" share no root, which is exactly why
-        # src/overlap_skipgram.py's robustness against a synonym swap
+        # chitragupta/overlap_skipgram.py's robustness against a synonym swap
         # comes from the even/odd family split, not from stemming
         # somehow unifying the two words.
         assert stem("continuous") != stem("constant")

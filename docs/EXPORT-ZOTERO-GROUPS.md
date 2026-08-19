@@ -22,7 +22,7 @@ pipeline does with collections once it has them, which is
 
 Two of this project's rules bend for it:
 
-- **`src/bib_reader.py` is the only sanctioned reader of bibliographic
+- **`chitragupta/bib_reader.py` is the only sanctioned reader of bibliographic
   data** ([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s module
   boundaries). It reads an *export* -- a file the user deliberately
   produced and can inspect. This script reaches behind the export into
@@ -55,7 +55,7 @@ turned out to be flaky for this library, so this script fills the same
 field by reading collection membership out of `zotero.sqlite`.
 
 `groups` here means "which Zotero collection(s) is this reference filed
-under", and it is what `src/bib_collections.py` parses after a sync. The
+under", and it is what `chitragupta/bib_collections.py` parses after a sync. The
 script writes the **leaf collection name only**,
 comma-separated when an item is filed under several -- deliberately
 matching what Better BibTeX emits, so the two producers of this field
@@ -87,7 +87,7 @@ a deliberate design property, not an accident: the file is produced by
 splicing text into the original rather than by re-serialising a parsed
 model, so `diff input output` shows exactly what the script decided and
 nothing else. It needs `bibtexparser`, the same dependency
-`src/bib_reader.py` uses.
+`chitragupta/bib_reader.py` uses.
 
 Re-running is safe: an entry that already has a `groups` field is left
 untouched, so a second pass over the same output adds nothing.
@@ -108,7 +108,7 @@ The order is strongest identifier first: a DOI names a work, a URL names a
 copy of one, and a title merely describes one.
 
 Reading the `.bib` file is delegated to `bibtexparser` rather than done
-with regular expressions, for the reason `src/bib_reader.py` gives: nested
+with regular expressions, for the reason `chitragupta/bib_reader.py` gives: nested
 braces, multi-line values and LaTeX escapes make a hand-rolled BibTeX
 parser a worse bet than a maintained one. Titles therefore arrive already
 decoded, so `Caf\'{e}` compares equal to the `Café` Zotero stores, and

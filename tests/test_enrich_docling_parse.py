@@ -1,4 +1,4 @@
-"""src/enrich/docling_parse.py: layout-aware PDF parsing via Docling.
+"""chitragupta/enrich/docling_parse.py: layout-aware PDF parsing via Docling.
 
 Docling is mocked via sys.modules (imported lazily inside parse_doc, not
 at module top), so these stay fast and don't need real model weights.
@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from src import config, passages, pdf_text
-from src.enrich import docling_parse
-from src.enrich.corpus import CorpusDoc
+from chitragupta import config, passages, pdf_text
+from chitragupta.enrich import docling_parse
+from chitragupta.enrich.corpus import CorpusDoc
 
 
 # Docling names artifacts image_<index>_<sha256>.png. The digest is
@@ -379,7 +379,7 @@ class TestReusingTheCorpusLayersParse:
     """The dependency this repository allows: the enrichment layer reads
     the corpus layer's artefacts, never the reverse.
 
-    Nothing in these cases reaches into `src/` to make it work -- the
+    Nothing in these cases reaches into `chitragupta/` to make it work -- the
     corpus layer writes what it writes for its own reasons, and this
     stage either finds it or parses the PDF itself.
     """
@@ -936,7 +936,7 @@ class TestParseCorpusParallel:
     def test_the_parent_owns_every_cache_write(self, isolated_config, fake_docling, tmp_path, monkeypatch):
         """Workers can't share the parent's cache dict, so they hand back
         a fingerprint and the parent records it -- the same shape as
-        src/sync.py keeping every ledger write on the main process."""
+        chitragupta/sync.py keeping every ledger write on the main process."""
         docs = self._docs(tmp_path)
         docling_parse.parse_corpus(docs)
 
@@ -1035,7 +1035,7 @@ class TestParallelHelpers:
         assert captured["initargs"][2] == [0, 1, 2, 3]
         # Whichever start method pdf_text picked -- asserted against that
         # rather than a literal, so this stays one source of truth with
-        # src/sync.py's pool rather than two that can drift apart.
+        # chitragupta/sync.py's pool rather than two that can drift apart.
         assert captured["mp_context"].get_start_method() == pdf_text.start_method()[0]
 
     def test_a_full_card_is_kept_out_of_this_pool_too(self, monkeypatch):
@@ -1243,7 +1243,7 @@ class TestWorkerConverterReuse:
 
 
 class TestParseCorpusInterrupt:
-    """Same fix as src/sync.py's: `with executor` waits for every queued
+    """Same fix as chitragupta/sync.py's: `with executor` waits for every queued
     job, so Ctrl+C over a real corpus drained the whole backlog first."""
 
     @pytest.fixture(autouse=True)
@@ -1296,7 +1296,7 @@ class TestParseCorpusInterrupt:
 
 
 class TestEnrichPartialSuccess:
-    """The enrichment stage had the same silent-truncation hole src/pdf_text.py
+    """The enrichment stage had the same silent-truncation hole chitragupta/pdf_text.py
     closed in v1.2.0: convert(raises_on_error=True) raises only on
     FAILURE, so a PARTIAL_SUCCESS returned a document that stops early
     and parse_doc wrote it to content/docling/<doc>.md as if complete.

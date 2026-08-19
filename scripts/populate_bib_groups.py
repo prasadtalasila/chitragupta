@@ -6,7 +6,7 @@ collection membership read out of `zotero.sqlite`.
 
 It reads Zotero's **internal SQLite database** directly. Nothing else in
 this repository does that, and nothing else should. Two rules bend for
-it: `src/bib_reader.py` is meant to be the only reader of bibliographic
+it: `chitragupta/bib_reader.py` is meant to be the only reader of bibliographic
 data, and it reads an *export* rather than application internals; and the
 pipeline's inputs are meant to be auditable by the person who produced
 them, which a multi-megabyte application database is not. The tables this
@@ -37,7 +37,7 @@ import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
-# The field Better BibTeX writes and src/bib_collections.py parses. Named
+# The field Better BibTeX writes and chitragupta/bib_collections.py parses. Named
 # rather than inlined because it appears in the "don't clobber" check and
 # in the text this script emits, and those two must not drift apart.
 GROUPS_FIELD = "groups"
@@ -85,7 +85,7 @@ def normalise_title(value: str) -> str:
 def read_fields(text: str) -> dict:
     """Every entry's fields, keyed by citekey."""
     # Parsing is delegated to bibtexparser -- the same library
-    # src/bib_reader.py uses, and for the same reason it gives there:
+    # chitragupta/bib_reader.py uses, and for the same reason it gives there:
     # nested braces, multi-line values and LaTeX escapes make a
     # hand-rolled BibTeX parser a worse bet than a maintained one. An
     # earlier version of this script hand-rolled it with regular

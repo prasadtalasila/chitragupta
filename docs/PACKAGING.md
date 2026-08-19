@@ -13,13 +13,14 @@ about to change a command name.
 exhaustive per-flag reference and stays so. This file is the surface and
 the naming, not the semantics.
 
-> **Status of this document.** The command table below is the agreed
-> target, decided in [#258](https://github.com/prasadtalasila/chitragupta/issues/258).
-> None of it is invocable yet: the package is still `src/`, and
-> `pyproject.toml` is still `package-mode = false`. Each row's `python -m`
-> equivalent works today. #258's children land the rest, and
-> [CLI.md](CLI.md) is rewritten as each one does -- so where this file and
-> CLI.md disagree, CLI.md is what currently runs.
+> **Status of this document.** The distribution is real as of 6.0.0: the
+> import package is `chitragupta`, `pyproject.toml` declares a
+> `[build-system]`, and `poetry build` produces
+> `chitragupta_cli-<version>-py3-none-any.whl`. **The `chitragupta`
+> command itself does not exist yet** -- #262 adds the console script, so
+> today every row below is invoked as its `python -m chitragupta.<layer>`
+> equivalent. #258's remaining children land the rest, and
+> [CLI.md](CLI.md) is rewritten as each one does.
 
 ## Table of contents
 
@@ -126,7 +127,7 @@ suite.
 
 Two things are deliberately absent. `agenda` is described as unbuilt in
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) -- the strings in the tree are
-a proposal, not a command. And `src/sync.py` still carries a `__main__`
+a proposal, not a command. And `chitragupta/sync.py` still carries a `__main__`
 block, which makes it look like a fifth entry point; it is a
 **tombstone**, refusing with exit 64 because the corpus layer's old
 direct invocation was removed in 5.2.0. After the rename it must keep
@@ -152,7 +153,7 @@ Both are supported, deliberately, and they are for different callers:
   `bin/`; the module form resolves from any interpreter that can import
   the package. [CLI.md](CLI.md#which-interpreter) records why tier 1
   exists at all -- the gate chain must not be blockable by a broken venv
-  -- and `src/hook_launchers.py` records the measurement behind it: a hook
+  -- and `chitragupta/hook_launchers.py` records the measurement behind it: a hook
   launcher that does not resolve produces *nothing at all*, no error and
   no log entry. Routing the citation gate through a `PATH` lookup that can
   silently miss is the one change in this whole series that would be worse
@@ -180,7 +181,7 @@ than as a conclusion, because three of them survive.
 | pip cannot pick a wheel index from the GPU driver | `pyproject.toml`'s torch note | **Survives, reduced.** `pip install …[enrich]` still lands CPU-only torch on a CUDA host. `chitragupta doctor` detects it and `chitragupta install gpu-torch` fixes it -- but neither is automatic |
 | Command names can be renamed freely because nothing external holds them | the PR closing #123 | **Survives, sharpened** -- see [the last section](#what-a-shipped-command-name-costs) |
 | The deliverable is the docs and skills, not the code | `scripts/release.py`'s docstring | **Retired by `chitragupta init`.** This was the strongest objection and the reason a bare wheel would have been the wrong shape |
-| Everything is anchored to where the *code* lives | `src/config.py`'s `REPO_ROOT` | **Retired by splitting it** into a discovered project root and a package-data root |
+| Everything is anchored to where the *code* lives | `chitragupta/config.py`'s `REPO_ROOT` | **Retired by splitting it** into a discovered project root and a package-data root |
 
 ## Why the zip ships too
 
@@ -204,8 +205,8 @@ Worth stating where the next person renaming a verb will read it.
 Until this package ships, renaming a command is nearly free: the strings
 live only in this repository's own docs, skills and tests, so a rename is
 a sweep plus a migration-table row. That freedom has been spent twice --
-`src.heavy.*` abandoned in 3.0.0, and the flat provenance/coverage paths
-folded into `src.review` in 5.0.0.
+`chitragupta.heavy.*` abandoned in 3.0.0, and the flat provenance/coverage paths
+folded into `chitragupta.review` in 5.0.0.
 
 An installed console script ends it. After `chitragupta` exists in users'
 `bin/`, the name also lives in shell scripts, Makefiles, CI configs, cron
@@ -213,6 +214,6 @@ jobs and muscle memory -- places `git grep` cannot reach. A verb rename
 becomes a MAJOR bump with a deprecation window, and breaks somebody's
 setup anyway.
 
-The verb vocabulary was chosen once and argued for at the time (`src/draft.py`'s
+The verb vocabulary was chosen once and argued for at the time (`chitragupta/draft.py`'s
 own docstring sets out why `retrieve` rather than `retrieval`). From the
 first published release it is chosen for good.

@@ -74,8 +74,8 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, ledger, overlap_index, passages  # noqa: E402
-from src.review import citation_provenance as cp  # noqa: E402
+from chitragupta import config, ledger, overlap_index, passages  # noqa: E402
+from chitragupta.review import citation_provenance as cp  # noqa: E402
 
 # Claims at or above this lexical support are shortlisted for reading.
 # Not a threshold on anything published -- a reading order, and the cap
@@ -158,7 +158,7 @@ def lexical_findings(drafts_dir):
     well, re-embedding every shortlisted source for a third time to
     recover a population `bench_overlap_embed.py` has already recorded.
     """
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     out = {}
     for chapter in sorted(Path(drafts_dir).glob("*.md")):
@@ -240,7 +240,7 @@ def main(argv=None):
 
     self_check()
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m src.corpus sync`",
+        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync`",
               file=sys.stderr)
         return 1
     out_dir = BENCH_DIR / "results" / Path(args.tag).name

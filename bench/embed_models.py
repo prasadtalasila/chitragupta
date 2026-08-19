@@ -5,7 +5,7 @@ allenai/specter2_base's own model card. adhoc_query is the one
 asymmetric exception: it encodes a short raw query string as-is,
 compared against documents encoded with the proximity adapter.
 
-The abstract has no home in the ledger -- src/ledger.py's
+The abstract has no home in the ledger -- chitragupta/ledger.py's
 _BIB_FIELDS_KEPT drops it on purpose. abstract_for() recovers it from
 content/docling/<citekey>.passages.json instead: the text between an
 "Abstract" section_header and the next one. Measured on this host: 132
@@ -25,7 +25,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from src import ledger, passages  # noqa: E402
+from chitragupta import ledger, passages  # noqa: E402
 
 PAPER_CACHE_PATH = Path(__file__).resolve().parent / "results" / "specter2_paper_cache.json"
 
@@ -86,7 +86,7 @@ def embed_paper(citekeys):
     that needs SPECTER2 would pay the same cost three times over for no
     reason.
 
-    The cache has no invalidation key: unlike src/enrich/embed_index.py's
+    The cache has no invalidation key: unlike chitragupta/enrich/embed_index.py's
     build_index(), which keys its own cache by a per-chunk text_hash
     specifically to avoid this, PAPER_CACHE_PATH is keyed by citekey
     alone -- no model id, adapter name, or text hash. It will keep

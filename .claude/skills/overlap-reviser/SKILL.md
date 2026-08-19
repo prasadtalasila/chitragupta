@@ -1,12 +1,12 @@
 ---
 name: overlap-reviser
-description: Repairs the verbatim overlap a scan found, one finding at a time, in a draft that already exists in content/drafts/. Reads `python -m src.review verbatim scan --json`, rewrites each short uncited run to preserve the claim and the citation while breaking the borrowed wording, and stops to ask the human paraphrase-or-quote on every long run rather than deciding silently. Repairs only what that scan's deterministic tiers can see: genuine restatement is only detected where the embedding tier can run, so finishing this loop is never a clean bill of health. Every repair must re-pass `python -m src.draft gate` and `python -m src.review verbatim recheck` before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to fix, clean up or remediate verbatim overlap, borrowed wording, a plagiarism report or the findings of a verbatim scan -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything that is not a verbatim finding is draft-reviser, not this skill; hand off and say so. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
+description: Repairs the verbatim overlap a scan found, one finding at a time, in a draft that already exists in content/drafts/. Reads `python -m chitragupta.review verbatim scan --json`, rewrites each short uncited run to preserve the claim and the citation while breaking the borrowed wording, and stops to ask the human paraphrase-or-quote on every long run rather than deciding silently. Repairs only what that scan's deterministic tiers can see: genuine restatement is only detected where the embedding tier can run, so finishing this loop is never a clean bill of health. Every repair must re-pass `python -m chitragupta.draft gate` and `python -m chitragupta.review verbatim recheck` before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to fix, clean up or remediate verbatim overlap, borrowed wording, a plagiarism report or the findings of a verbatim scan -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything that is not a verbatim finding is draft-reviser, not this skill; hand off and say so. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
 tags: [revision, plagiarism, verbatim, dossier, citation]
 ---
 
 # overlap-reviser
 
-`python -m src.review verbatim scan` finds every run of borrowed wording
+`python -m chitragupta.review verbatim scan` finds every run of borrowed wording
 in a draft, buckets it by severity and files it as JSON. Then it stops,
 because it is a review aid and review aids report. Everything after that
 -- reading the report, finding the passage, rewriting it without losing
@@ -50,8 +50,8 @@ is a defect.
 | The draft has no dossier | Bootstrap one as `draft-reviser` describes, then continue here. `revisions.md` is where this skill's record goes, so it has to exist |
 | The ledger is empty or absent | Stop and say so. A repair that converts a lift into a quotation needs a citekey the gate will accept |
 
-**Read-only over the corpus layer.** Never run `python -m src.corpus
-sync` and never run `python -m src.enrich`; both take the pipeline's
+**Read-only over the corpus layer.** Never run `python -m chitragupta.corpus
+sync` and never run `python -m chitragupta.enrich`; both take the pipeline's
 write lock and are the user's to run.
 
 ## What may be repaired unattended, and what may not
@@ -84,13 +84,13 @@ it from memory.
 Before the first edit:
 
 ```bash
-python -m src.draft dossier export <name>
-python -m src.draft dossier mark-revision content/drafts/<path> --label "overlap remediation"
+python -m chitragupta.draft dossier export <name>
+python -m chitragupta.draft dossier mark-revision content/drafts/<path> --label "overlap remediation"
 ```
 
 `<name>` is the draft's path under `content/drafts/` with the suffix
 dropped -- `dt-for-engineers/survey`, not the full path and not the bare
-stem. `python -m src.draft dossier list` prints the names it will match.
+stem. `python -m chitragupta.draft dossier list` prints the names it will match.
 
 The export is the way back if the pass as a whole turns out wrong. The
 marker is what lets `dossier status` attribute this session's cost
@@ -104,7 +104,7 @@ a reader notices.
 ### 2. Take the baseline
 
 ```bash
-python -m src.review verbatim scan content/drafts/<path> --write --json
+python -m chitragupta.review verbatim scan content/drafts/<path> --write --json
 ```
 
 Uncapped -- **never pass `--limit` to a baseline**. A capped payload lists
@@ -140,7 +140,7 @@ per finding.
 
 ### 4. Repair one finding
 
-Read only the section that owns it -- `python -m src.draft dossier
+Read only the section that owns it -- `python -m chitragupta.draft dossier
 sections content/drafts/<path>` gives the line ranges -- and edit with
 `Edit`, using the finding's own `draft_text` as `old_string`. That field
 is the passage exactly as written, casing, punctuation, line breaks and
@@ -172,7 +172,7 @@ rejected.
   when `end_page` is greater than `page` -- a quotation lifted from a run
   spanning a source page break (#131) is misattributed if the citation
   names only where it starts.
-- Check the source can actually be quoted first. `src/passages.py` gives
+- Check the source can actually be quoted first. `chitragupta/passages.py` gives
   a page-level passage no text at all when the source was parsed by
   `pdftotext -layout`, because an excerpt cut from a two-column paper is
   a collage of two arguments rather than a quotation. If it is not
@@ -188,8 +188,8 @@ different request and belongs to `draft-reviser`.
 Both of these, after every repair:
 
 ```bash
-python -m src.draft gate content/drafts/<path>
-python -m src.review verbatim recheck content/drafts/<path> \
+python -m chitragupta.draft gate content/drafts/<path>
+python -m chitragupta.review verbatim recheck content/drafts/<path> \
     --baseline content/review/<topic>/<stem>.verbatim.json --json
 ```
 
@@ -237,7 +237,7 @@ The human accepts. Nothing here merges, commits or renders on its own.
 Before you present:
 
 ```bash
-python -m src.draft style content/drafts/<path>
+python -m chitragupta.draft style content/drafts/<path>
 ```
 
 Your repairs are new prose, written under pressure to avoid someone
@@ -263,7 +263,7 @@ The baseline in step 2 is that scan, so it has already run. What still
 has to be said when you present is what it does **not** cover:
 
 ```bash
-python -m src.review verbatim scan content/drafts/<path>
+python -m chitragupta.review verbatim scan content/drafts/<path>
 ```
 
 It reports verbatim and near-verbatim reuse against any parsed source, cited or
@@ -290,9 +290,9 @@ as an all-clear. A review aid, not a gate: it exits 0 either way.
   citekey is the one failure this whole pipeline exists to prevent, and a
   repair that needs a page-anchored citation is exactly where the
   temptation shows up.
-- **Never run `python -m src.corpus sync` or `python -m src.enrich`.**
+- **Never run `python -m chitragupta.corpus sync` or `python -m chitragupta.enrich`.**
 - **Never present a draft that has not passed
-  `python -m src.draft gate`.**
+  `python -m chitragupta.draft gate`.**
 - **Never report a repair you did not verify.** If `recheck` was not run,
   say so rather than describing the edit as accepted.
 

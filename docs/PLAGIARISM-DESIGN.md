@@ -4,9 +4,9 @@ Status: **three detection tiers, all built; the second and third
 advisory-only.** Written 2026-08-15, splitting the design half out of
 [PLAGIARISM.md](PLAGIARISM.md), which had grown to carry both.
 
-**Written for** someone changing `src/overlap_index.py`,
-`src/overlap_skipgram.py`, `src/overlap_embed.py` or
-`src/review/verbatim_check.py` -- or deciding whether a proposed fourth
+**Written for** someone changing `chitragupta/overlap_index.py`,
+`chitragupta/overlap_skipgram.py`, `chitragupta/overlap_embed.py` or
+`chitragupta/review/verbatim_check.py` -- or deciding whether a proposed fourth
 tier is worth building. **Assumed:**
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the process around a
 change, and [ARCHITECTURE.md](ARCHITECTURE.md) for where the review
@@ -39,7 +39,7 @@ re-litigated.
 
 ## Fingerprinting: word n-grams, hashed deterministically
 
-Both tools run on top of `src/overlap_index.py`'s corpus-wide fingerprint
+Both tools run on top of `chitragupta/overlap_index.py`'s corpus-wide fingerprint
 index. Every parsed document is tokenized into lowercase `[a-z0-9]+`
 words. Every 8-word sliding window -- a "gram", `n=8`, the smallest unit
 either tool can detect -- is then hashed to a 64-bit integer with a
@@ -167,7 +167,7 @@ tiers 2 and 3 should be built in.
 
 That is not incidental to detection; it is the governing fact. This
 project is built to be aimed at a deep corpus on one topic, and the
-drafts are written *from* it: `src.retrieval` hands a skill the nearest
+drafts are written *from* it: `chitragupta.retrieval` hands a skill the nearest
 passages and the skill writes from those. Two consequences follow, and
 they pull in opposite directions.
 
@@ -244,7 +244,7 @@ disjoint populations rather than competing for the same one.
   sha256 over every document's own change-detection key, so adding a
   paper or re-parsing one shifts every number above, and a run that was
   clean can turn dirty with no draft edit. That is deterministic *given a
-  corpus state* -- a weaker guarantee than `src.draft gate`'s, and the
+  corpus state* -- a weaker guarantee than `chitragupta.draft gate`'s, and the
   same shape as the per-host allowlist below. #130 is where that trade is
   priced, not here.
 
@@ -263,7 +263,7 @@ habit. Summary, for anyone deciding what to build next:
 
 | Source | What it established | Where it lands here |
 |---|---|---|
-| Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013 winner, quality and runtime) | Contextual n-grams with odd/even skip-grams -- exact-matching family, well-engineered n-gram methods beat fancier ones on speed at comparable quality; skip-grams + stemming tolerate single-word edits | The exact tier here (`overlap`/`scan`) is this family. Skip-grams are the tier-2 upgrade, built in `src/overlap_skipgram.py` (#133) |
+| Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013 winner, quality and runtime) | Contextual n-grams with odd/even skip-grams -- exact-matching family, well-engineered n-gram methods beat fancier ones on speed at comparable quality; skip-grams + stemming tolerate single-word edits | The exact tier here (`overlap`/`scan`) is this family. Skip-grams are the tier-2 upgrade, built in `chitragupta/overlap_skipgram.py` (#133) |
 | Sánchez-Pérez et al., [PAN 2014/2015 winner](https://ceur-ws.org/Vol-1180/CLEF2014wn-Pan-SanchezPerezEt2014.pdf) | TF-IDF sentence similarity + recursive passage extension -- the fuzzy-match family wins only on *obfuscated* reuse | Not used: built for obfuscation the exact tier doesn't target, and competes with skip-grams for tier 2 on determinism-adjacent simplicity |
 | [PAN 2025 generated-plagiarism task](https://arxiv.org/abs/2510.06805) | Measured the LLM case directly: exact-matching approaches miss LLM-paraphrased reuse, and detection degrades further as paraphrase complexity rises; embedding-based alignment (SBERT + local alignment, e.g. Smith-Waterman) is the validated answer for that tier | This is exactly why this document's [scope section](PLAGIARISM.md#what-plagiarism-means-here-and-what-it-deliberately-doesnt) insists a clean `scan` is not "no borrowed wording" |
 | Schleimer, Wilkerson & Aiken, [winnowing / MOSS](https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf) | Keep the minimum hash per window of size w; detection of any match >= w+n-1 is still *guaranteed*, index shrinks to ~2/(w+1) of full size | Deferred: a real lever at book scale, unnecessary at ~500 papers where the full index already fits in RAM. The cache-key design (`tokenizer_version`) leaves room for it later |
@@ -278,8 +278,8 @@ advise.
 
 That produces **three detection tiers**, cumulative rather than a menu
 you pick one option from. This document covers tier 1 in depth. Tier 2's
-own mechanism is documented in `src/overlap_skipgram.py`'s module
-docstring, and tier 3's in `src/overlap_embed.py`'s. Their measurements
+own mechanism is documented in `chitragupta/overlap_skipgram.py`'s module
+docstring, and tier 3's in `chitragupta/overlap_embed.py`'s. Their measurements
 are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
 2026-08-15 embedding sections:
 
@@ -288,7 +288,7 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
 2. **Deterministic light-paraphrase tier.** Stemmed, stopword-filtered
    odd/even skip-grams in the same index framework -- the CoReMo design.
    Catches synonym swaps and inflection changes while staying objective
-   enough to gate eventually. Built (#133), `src/overlap_skipgram.py`,
+   enough to gate eventually. Built (#133), `chitragupta/overlap_skipgram.py`,
    findings carry `tier: "skip-gram"`. Shipped **advisory only**, on
    discussion #115's "start advisory, promote with evidence". Nothing in
    `scan` decides gate-eligibility for it; that is #130's decision, and
@@ -309,8 +309,9 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    See `bench/RESULTS.md`'s #180 section before trusting a clean `scan`
    on this tier any more than on tier 1.
 3. **Embedding paraphrase tier.** Built (#134/#164, 2026-08-15),
-   `src/overlap_embed.py` with `src/overlap_align.py`,
-   `src/overlap_segments.py` and `src/overlap_chroma.py`; findings carry
+   `chitragupta/overlap_embed.py` with `chitragupta/overlap_align.py`,
+   `chitragupta/overlap_segments.py` and `chitragupta/overlap_chroma.py`;
+   findings carry
    `tier: "embedding"` and a `score`. **Not** the k-NN-against-the-whole-
    corpus-and-threshold shape this list originally proposed -- that form
    is the one [the DF measurement](#measured-document-frequency-and-what-a-single-field-corpus-changes)

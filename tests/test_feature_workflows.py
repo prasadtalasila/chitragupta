@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from src import bib_reader, citation_gate, config, dossier, ledger, references, sync
-from src import render_output
+from chitragupta import bib_reader, citation_gate, config, dossier, ledger, references, sync
+from chitragupta import render_output
 
 from tests.conftest import content_draft, make_reference
 
@@ -142,7 +142,7 @@ class TestRealBibliographySmoke:
         # attachment with no metadata, and this library has two. Dropping
         # those is correct -- they have no title, author or year to lose
         # -- so counting every `@` block instead would assert that a real
-        # export is broken. `src/bib_reader.py`'s own warning counts them,
+        # export is broken. `chitragupta/bib_reader.py`'s own warning counts them,
         # which is why it reports 2 dropped on a library that is fine.
         raw = real_bib.read_text(encoding="utf-8")
         blocks = re.split(r"^@", raw, flags=re.M)[1:]
@@ -306,7 +306,7 @@ class TestReGroundingAfterTheCorpusMoves:
     `.claude/skills/draft-reviser/SKILL.md`, which no test can assert on.
     What these pin is the composition underneath it -- the three findings
     the skill branches on, and the fact that acting on them needs no new
-    machinery. A change in `src/` that broke the mode would otherwise
+    machinery. A change in `chitragupta/` that broke the mode would otherwise
     break nothing that fails.
 
     No binaries: the seams here are dossier <-> ledger <-> citation_gate,
@@ -396,7 +396,7 @@ class TestReGroundingAfterTheCorpusMoves:
 
     def test_a_scoped_re_grounding_clears_the_defect_and_passes_the_gate(self, grounded):
         """Swapping the citation and recording the swap drives `missing`
-        empty and the gate back to OK -- with nothing in `src/` beyond the
+        empty and the gate back to OK -- with nothing in `chitragupta/` beyond the
         files the skill already writes, and no fingerprint change."""
         _drop_paper("kept_paper_2024")
         _add_paper("fresh_twin_2026", "Digital twin fidelity",
@@ -615,7 +615,7 @@ def _run_scan(draft, *args):
     step -- long after every test has passed, with a message
     (`Can't combine statement coverage data with branch data`) that names
     nothing connected to the test that caused it. That happened for real
-    on PR #114. `src/review/verbatim_check.py` is covered in process by
+    on PR #114. `chitragupta/review/verbatim_check.py` is covered in process by
     tests/test_verbatim_check.py, so nothing is lost by not measuring
     these children. The environment itself -- coverage variables
     stripped, `CONTENT_DIR` set -- is `_run_verbatim`'s job; this just
@@ -635,14 +635,14 @@ def _run_verbatim(mode, *args):
     }
     env["CONTENT_DIR"] = str(config.CONTENT_DIR)
     return subprocess.run(
-        [sys.executable, "-m", "src.review", "verbatim", mode, *args],
+        [sys.executable, "-m", "chitragupta.review", "verbatim", mode, *args],
         cwd=str(Path(__file__).resolve().parent.parent),
         capture_output=True, text=True, env=env,
     )
 
 
 class TestVerbatimScanEndToEnd:
-    """`python -m src.review verbatim scan <draft>` over a real
+    """`python -m chitragupta.review verbatim scan <draft>` over a real
     mini-ledger: index build -> disk cache -> findings, through the entry
     point README's step 7 and the seven skills now point at.
 
@@ -796,7 +796,7 @@ class TestVerbatimScanEndToEnd:
         self, planted_draft
     ):
         """The flip discussion #115 and #133 promised: the deterministic
-        skip-gram tier (`src/overlap_skipgram.py`) catches the same
+        skip-gram tier (`chitragupta/overlap_skipgram.py`) catches the same
         every-fourth-word paraphrase the test above shows the exact tier
         missing.
 
@@ -981,7 +981,7 @@ class TestVerbatimScanEndToEnd:
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
         result = subprocess.run(
-            [system_python, "-m", "src.review", "verbatim", "scan", str(planted_draft)],
+            [system_python, "-m", "chitragupta.review", "verbatim", "scan", str(planted_draft)],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True, env=env,
         )
@@ -1083,7 +1083,7 @@ class TestOverlapRemediationEndToEnd:
 
     def test_recheck_exits_zero_on_a_draft_it_could_not_improve(self, draft):
         """Still a review aid: the comparison is evidence, and the only
-        gate in the pipeline is `python -m src.draft gate`."""
+        gate in the pipeline is `python -m chitragupta.draft gate`."""
         path, _ = self._baseline(draft)
 
         assert _run_verbatim(
@@ -1102,7 +1102,7 @@ class TestOverlapRemediationEndToEnd:
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
         result = subprocess.run(
-            [system_python, "-m", "src.review", "verbatim", "recheck",
+            [system_python, "-m", "chitragupta.review", "verbatim", "recheck",
              str(draft), "--baseline", str(path)],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True, env=env,
@@ -1142,8 +1142,8 @@ class TestOneDraftsReviewArtefactsLandTogether:
         return draft
 
     def test_all_three_reports_share_one_mirrored_directory(self, isolated_config, capsys):
-        from src.review import verbatim_check as vc
-        from src.review import citation_coverage, citation_provenance
+        from chitragupta.review import verbatim_check as vc
+        from chitragupta.review import citation_coverage, citation_provenance
 
         draft = self._draft(isolated_config)
 
@@ -1165,7 +1165,7 @@ class TestOneDraftsReviewArtefactsLandTogether:
         """A review artefact in `content/rendered/` is the layer smear
         this issue removed -- 3.19.2 rendered a report's `.tex`/`.pdf`
         there, because `render()` had no way to be told otherwise."""
-        from src.review import citation_provenance
+        from chitragupta.review import citation_provenance
 
         draft = self._draft(isolated_config)
         citation_provenance.write_report(draft, ["md"])
@@ -1178,8 +1178,8 @@ class TestOneDraftsReviewArtefactsLandTogether:
         """The banner has to be in the file, not only in the docs: a
         report found on disk months later is the case the docs can't
         reach."""
-        from src.review import verbatim_check as vc
-        from src.review import citation_coverage, citation_provenance
+        from chitragupta.review import verbatim_check as vc
+        from chitragupta.review import citation_coverage, citation_provenance
 
         draft = self._draft(isolated_config)
         citation_provenance.write_report(draft, ["md"])
@@ -1193,8 +1193,8 @@ class TestOneDraftsReviewArtefactsLandTogether:
     def test_the_bundle_carries_them_and_restores_them(self, isolated_config, tmp_path, capsys):
         """`dossier export` is the tool the findability property is *for*
         -- #114's own rationale for confining everything to `content/`."""
-        from src.review import verbatim_check as vc
-        from src.review import citation_provenance
+        from chitragupta.review import verbatim_check as vc
+        from chitragupta.review import citation_provenance
 
         draft = self._draft(isolated_config)
         dossier.init(draft, "survey")

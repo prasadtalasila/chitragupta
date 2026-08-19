@@ -4,7 +4,7 @@ vendored entry the user doesn't redefine still applies. See
 assets/style/README.md and GitHub issue #190.
 """
 
-from src import acronyms, config
+from chitragupta import acronyms, config
 
 
 def test_defaults_to_the_vendored_file_when_no_override_is_set(monkeypatch, tmp_path):
@@ -70,7 +70,7 @@ class TestSuggest:
     """suggest() -- which glossary entries look like an acronym and
     aren't in the vocabulary yet. Takes a plain dict, not a draft path:
     `dossier.glossary_terms()` supplies the glossary, so this module
-    never needs to import `src.dossier` (that module already imports
+    never needs to import `chitragupta.dossier` (that module already imports
     this one for load_vocabulary(), and a two-way import would cycle)."""
 
     def test_suggests_an_acronym_shaped_term_not_in_the_vocabulary(self, monkeypatch):

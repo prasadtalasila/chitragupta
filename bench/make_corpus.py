@@ -24,12 +24,12 @@ import sys
 from pathlib import Path
 
 BENCH_DIR = Path(__file__).resolve().parent
-# Same shape as src/review/verbatim_check.py: running this as a file puts
-# bench/ on sys.path, not the repo root, so `from src import ...` needs
+# Same shape as chitragupta/review/verbatim_check.py: running this as a file puts
+# bench/ on sys.path, not the repo root, so `from chitragupta import ...` needs
 # the root put back first.
 sys.path.insert(0, str(BENCH_DIR.parent))
 
-from src import bib_reader  # noqa: E402 -- needs the repo root on sys.path first
+from chitragupta import bib_reader  # noqa: E402 -- needs the repo root on sys.path first
 
 
 def build_corpus() -> list[dict]:

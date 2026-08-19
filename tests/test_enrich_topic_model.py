@@ -1,4 +1,4 @@
-"""src/enrich/topic_model.py: BERTopic clustering, with the small-corpus
+"""chitragupta/enrich/topic_model.py: BERTopic clustering, with the small-corpus
 UMAP/HDBSCAN scaling formula this module relies on to not crash outright
 on a handful of documents.
 
@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from src import config
-from src.enrich import embed_index, topic_model
-from src.enrich.corpus import CorpusDoc
+from chitragupta import config
+from chitragupta.enrich import embed_index, topic_model
+from chitragupta.enrich.corpus import CorpusDoc
 
 
 class FakeUMAP:

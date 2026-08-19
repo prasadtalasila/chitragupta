@@ -8,16 +8,16 @@ its *command surface* may not.
 tests/test_review_entrypoint.py and tests/test_draft_entrypoint.py pin
 the code half -- no submodule of a layer carries a `__main__` block, so
 a nested command cannot be made to work. This file pins the half those
-two cannot see. A doc or a skill can *print* `python -m src.a.b` at a
+two cannot see. A doc or a skill can *print* `python -m chitragupta.a.b` at a
 reader whether or not it runs, and the reader will type it. Since no
 submodule has a `__main__` block, what they get is exit 0 and empty
-stdout -- a silent no-op. For `src.draft gate` that failure mode is
+stdout -- a silent no-op. For `chitragupta.draft gate` that failure mode is
 worse than an error: an automated caller gets an unconditional pass on a
 draft nothing ever checked.
 
 Anchored on `-m ` specifically, which is what separates an *invocation*
-from an *API reference*. `src.retrieval.search()` and
-`src.enrich.embed_index.search()` are dotted, legitimate, and appear
+from an *API reference*. `chitragupta.retrieval.search()` and
+`chitragupta.enrich.embed_index.search()` are dotted, legitimate, and appear
 throughout the skills; they name Python callables, not commands, and
 must never be flagged.
 
@@ -47,11 +47,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # the module can land on the next line.
 #
 # `{2,}` rather than a fixed two segments so the whole path is reported.
-# A fixed pattern still *detects* `-m src.a.b.c` -- it matches the
-# `src.a.b` prefix -- but it reports the offender truncated, which sends
+# A fixed pattern still *detects* `-m chitragupta.a.b.c` -- it matches the
+# `chitragupta.a.b` prefix -- but it reports the offender truncated, which sends
 # whoever reads the failure looking for a module path that isn't the one
 # they wrote.
-_NESTED = re.compile(r"-m\s+src(?:\.\w+){2,}")
+_NESTED = re.compile(r"-m\s+chitragupta(?:\.\w+){2,}")
 
 # What makes a mention legal: prose saying, in the same breath, that the
 # command does nothing. Deliberately narrow. Looser phrases that occur
@@ -160,14 +160,14 @@ def test_no_doc_or_skill_hands_a_reader_a_two_level_command():
             )
 
     assert not report, (
-        "Nested `python -m src.a.b` invocations with nothing saying they do "
+        "Nested `python -m chitragupta.a.b` invocations with nothing saying they do "
         "nothing:" + "".join(report) + "\n\n"
         "The command surface is one level deep -- no submodule of a layer "
         "carries a `__main__` block, so what a reader who types this gets is "
         "exit 0 and empty stdout, and for the gate that is a silent pass on "
         "an unchecked draft. Use the layer's own entry point "
-        "(`python -m src.corpus <verb>`, `python -m src.draft <verb>`, "
-        "`python -m src.review <aid>`), or say in the same sentence that the "
+        "(`python -m chitragupta.corpus <verb>`, `python -m chitragupta.draft <verb>`, "
+        "`python -m chitragupta.review <aid>`), or say in the same sentence that the "
         "nested form does nothing. See docs/ARCHITECTURE.md."
     )
 
@@ -207,20 +207,20 @@ def test_a_guarded_mention_is_what_keeps_the_architecture_doc_legal():
     assert _NESTED.search(text), (
         "docs/ARCHITECTURE.md no longer names the nested form at all. The "
         "invariant is worth stating with the trap it forbids -- a reader who "
-        "has never seen `python -m src.enrich.docling_parse` cannot be warned "
+        "has never seen `python -m chitragupta.enrich.docling_parse` cannot be warned "
         "off it."
     )
     assert not unguarded(text)
 
 
 def test_an_unguarded_nested_invocation_is_flagged():
-    assert unguarded("Run `python -m src.draft.dossier init` to begin.")
+    assert unguarded("Run `python -m chitragupta.draft.dossier init` to begin.")
 
 
 def test_a_nested_invocation_is_allowed_when_the_prose_disarms_it():
     assert not unguarded(
-        "`src/draft/dossier.py` carries no `__main__` block, so "
-        "`python -m src.draft.dossier` imports the module and exits 0."
+        "`chitragupta/draft/dossier.py` carries no `__main__` block, so "
+        "`python -m chitragupta.draft.dossier` imports the module and exits 0."
     )
 
 
@@ -235,9 +235,9 @@ def test_a_guard_does_not_license_a_real_invocation_after_it():
     """
     assert unguarded(
         "Submodules carry no `__main__` block, so "
-        "`python -m src.enrich.docling_parse` imports the module and exits 0. "
+        "`python -m chitragupta.enrich.docling_parse` imports the module and exits 0. "
         + "x" * 80
-        + " For a one-off run, try `python -m src.draft.dossier init` instead."
+        + " For a one-off run, try `python -m chitragupta.draft.dossier init` instead."
     )
 
 
@@ -246,9 +246,9 @@ def test_two_mentions_sharing_one_guard_are_both_allowed():
     legitimately disarms two spellings at once, which is what
     docs/ARCHITECTURE.md actually does."""
     assert not unguarded(
-        "The submodules inside `src/enrich/` and `src/review/` carry no "
-        "`__main__` block, so `python -m src.enrich.docling_parse` or "
-        "`python -m src.review.verbatim_check` imports a module and exits 0."
+        "The submodules inside `chitragupta/enrich/` and `chitragupta/review/` carry no "
+        "`__main__` block, so `python -m chitragupta.enrich.docling_parse` or "
+        "`python -m chitragupta.review.verbatim_check` imports a module and exits 0."
     )
 
 
@@ -256,12 +256,12 @@ def test_a_deeper_path_is_flagged_and_reported_in_full():
     """Three segments or more, not just two.
 
     A fixed two-segment pattern would still catch this -- it matches the
-    `src.a.b` prefix -- but would report the command truncated, sending
+    `chitragupta.a.b` prefix -- but would report the command truncated, sending
     whoever reads the failure looking for a path they never wrote.
     """
-    found = unguarded("Run `python -m src.layer.sub1.sub2 init` to begin.")
+    found = unguarded("Run `python -m chitragupta.layer.sub1.sub2 init` to begin.")
     assert found
-    assert found[0][1] == "-m src.layer.sub1.sub2"
+    assert found[0][1] == "-m chitragupta.layer.sub1.sub2"
 
 
 def test_an_offender_is_reported_with_enough_context_to_find_it():
@@ -269,7 +269,7 @@ def test_an_offender_is_reported_with_enough_context_to_find_it():
     so the snippet is the part that makes a CI failure actionable."""
     (_, _, snippet), = unguarded(
         "The dossier is the working state behind a draft. "
-        "Run `python -m src.draft.dossier init` to create one."
+        "Run `python -m chitragupta.draft.dossier init` to create one."
     )
     assert "working state behind a draft" in snippet
     assert "to create one" in snippet
@@ -279,13 +279,13 @@ def test_a_dotted_python_api_reference_is_not_flagged():
     """The carve-out the whole regex is shaped around: these name
     callables, not commands, and appear all over the skills."""
     assert not unguarded(
-        "Search the corpus with `src.retrieval.search()`, or "
-        "`src.enrich.embed_index.search()` when content/chroma/ exists."
+        "Search the corpus with `chitragupta.retrieval.search()`, or "
+        "`chitragupta.enrich.embed_index.search()` when content/chroma/ exists."
     )
 
 
 def test_a_one_level_command_is_not_flagged():
     assert not unguarded(
-        "Run `python -m src.draft gate content/drafts/survey.md`, then "
-        "`python -m src.review verbatim scan <draft>` and `python -m src.enrich`."
+        "Run `python -m chitragupta.draft gate content/drafts/survey.md`, then "
+        "`python -m chitragupta.review verbatim scan <draft>` and `python -m chitragupta.enrich`."
     )

@@ -1,10 +1,10 @@
-"""findings() -- the one `python -m src.draft style` finding not
+"""findings() -- the one `python -m chitragupta.draft style` finding not
 delegated to Vale: a draft's recorded glossary checked against the
-current acronym vocabulary. See src/style_acronym_drift.py and the
-measurement behind it in src/acronyms.py.
+current acronym vocabulary. See chitragupta/style_acronym_drift.py and the
+measurement behind it in chitragupta/acronyms.py.
 """
 
-from src import acronyms, config, dossier, style_acronym_drift
+from chitragupta import acronyms, config, dossier, style_acronym_drift
 from tests.conftest import content_draft
 
 

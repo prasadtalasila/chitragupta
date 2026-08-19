@@ -1,4 +1,4 @@
-"""src/enrich/__main__.py: the orchestrator -- Docling -> embed -> BERTopic.
+"""chitragupta/enrich/__main__.py: the orchestrator -- Docling -> embed -> BERTopic.
 Each stage_* wrapper's ok/partial/skipped/missing-binary shaping is
 tested directly against mocked underlying module calls; main()'s
 stage-selection and per-stage exception isolation are tested against a
@@ -19,10 +19,10 @@ from pathlib import Path
 
 import pytest
 
-from src.enrich import __main__ as enrich_script
-from src import config
-from src.enrich import docling_parse, embed_index, topic_model
-from src.enrich.corpus import CorpusDoc
+from chitragupta.enrich import __main__ as enrich_script
+from chitragupta import config
+from chitragupta.enrich import docling_parse, embed_index, topic_model
+from chitragupta.enrich.corpus import CorpusDoc
 
 
 def make_args(**overrides):
@@ -363,7 +363,7 @@ class TestForDraftScope:
 
         assert rc == enrich_script.EXIT_BAD_SCOPE
         assert "nothing to enrich" in out
-        assert "python -m src.corpus sync" in out
+        assert "python -m chitragupta.corpus sync" in out
         assert recorded_stages == {}
 
     def test_every_stage_now_reads_the_corpus_so_an_empty_scope_always_stops(
@@ -494,7 +494,7 @@ class TestLogging:
             if handler not in before:
                 root.removeHandler(handler)
                 handler.close()
-        logging.getLogger("src").setLevel(logging.NOTSET)
+        logging.getLogger("chitragupta").setLevel(logging.NOTSET)
 
     def _run_one_stage(self, monkeypatch, **kwargs):
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
@@ -509,14 +509,14 @@ class TestLogging:
     def test_the_run_is_logged_when_the_entrypoint_asks_for_it(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
     ):
-        """What `python -m src.enrich` actually does: the stage table
+        """What `python -m chitragupta.enrich` actually does: the stage table
         it prints also lands in logs/pipeline.log, tagged with this
         script's logger name so it can be told apart from sync's lines in
         the shared file."""
         assert self._run_one_stage(monkeypatch, configure_logging=True) == 0
 
         log_text = (config.LOGS_DIR / "pipeline.log").read_text()
-        assert "src.enrich" in log_text
+        assert "chitragupta.enrich" in log_text
         assert "=== embed ===" in log_text
         assert "Corpus: 1 doc(s)" in log_text
 
@@ -567,7 +567,7 @@ class TestPipelineLock:
         writes are not atomic -- so an enrichment run overlapping a sync can
         read a half-written .txt. Exit code 2, distinct from 1, so an
         unattended caller can tell "skipped" from "failed"."""
-        from src import runlock
+        from chitragupta import runlock
 
         def refuse():
             raise runlock.AlreadyRunning("another sync or pipeline run is already running")

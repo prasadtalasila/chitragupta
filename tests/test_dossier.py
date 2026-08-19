@@ -1,4 +1,4 @@
-"""Tests for src/dossier/ (#219 split it out of one src/dossier.py).
+"""Tests for chitragupta/dossier/ (#219 split it out of one chitragupta/dossier.py).
 
 Three things carry most of the weight here, because they are the three
 that can lose someone's work or waste the tokens the module exists to
@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from src import acronyms, config, dossier
-from src.dossier import (
+from chitragupta import acronyms, config, dossier
+from chitragupta.dossier import (
     _acronyms, _archive, _brief, _citekeys, _create, _drift, _retrieval, _sections,
     _status,
 )
@@ -43,7 +43,7 @@ def _seed_ledger(citekeys):
     takes a `bib_reader.Reference` and so would drag bibtexparser into a
     module that is deliberately stdlib-only.
     """
-    from src import ledger
+    from chitragupta import ledger
 
     con = ledger.connect()
     try:
@@ -765,7 +765,7 @@ class TestExport:
         )
 
     def test_a_name_selects_the_rendered_output_of_a_nested_draft(self, draft):
-        # Rendering mirrors the draft's own path (src/render_output.py's
+        # Rendering mirrors the draft's own path (chitragupta/render_output.py's
         # _output_dir), which is what makes this match: while every format
         # wrote flat, `export dt-for-engineers --with-rendered` produced a
         # bundle with no PDFs in it and said nothing about it.
@@ -1403,7 +1403,7 @@ def _seed_corpus(entries):
     rank against, so this writes `content/parsed/<citekey>.txt` and points
     the ledger's `parsed_path` at it -- the same shape `sync` produces.
     """
-    from src import ledger
+    from chitragupta import ledger
 
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     con = ledger.connect()
@@ -1623,7 +1623,7 @@ class TestDrift:
 class TestEphemeralIndex:
     """The drift scan must leave the corpus layer exactly as it found it.
 
-    `src.retrieval.search()` cannot be called here: it goes through
+    `chitragupta.retrieval.search()` cannot be called here: it goes through
     `ledger.connect()`, which creates `content/`, executes the schema and
     runs migrations, and through `_load_index`, which rewrites
     `retrieval_index.json` whenever a fingerprint moved -- both of which a
@@ -1653,7 +1653,7 @@ class TestEphemeralIndex:
         proves the cache was read: the match can only come from the cache,
         since the parsed text says something else entirely."""
         _seed_corpus([("cached_paper_2026", "Cached", "sourdough starter")])
-        from src import retrieval
+        from chitragupta import retrieval
 
         con = __import__("sqlite3").connect(config.LEDGER_PATH)
         con.row_factory = __import__("sqlite3").Row
@@ -1715,9 +1715,9 @@ class TestDriftAll:
 
         calls = []
         # Patched on _drift, not on dossier: drift_all() calls _corpus_rows()
-        # through _drift.py's own `from src.dossier import _corpus_rows`,
+        # through _drift.py's own `from chitragupta.dossier import _corpus_rows`,
         # which is its own name binding to the same function object --
-        # patching src.dossier's copy doesn't reach it (#219).
+        # patching chitragupta.dossier's copy doesn't reach it (#219).
         real = _drift._corpus_rows
         monkeypatch.setattr(_drift, "_corpus_rows", lambda: calls.append(1) or real())
         dossier.drift_all()
@@ -2186,7 +2186,7 @@ class TestRestoreCLIOutput:
         (dossier.dossier_dir(draft) / "evidence.md").write_text(
             "# Kept evidence\n\n## `a_paper_2024`\n\nkept.\n\n## `b_paper_2024`\n\nkept.\n"
         )
-        from src import ledger
+        from chitragupta import ledger
         con = ledger.connect()
         con.execute("DELETE FROM items WHERE citekey = 'b_paper_2024'")
         con.commit()

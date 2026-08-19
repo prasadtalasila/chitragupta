@@ -38,7 +38,7 @@ What was actually run, not what was intended (see DEVELOPER-AGENTS.md,
 
 - [ ] Full suite with coverage: `.venv-full/bin/python -m pytest --cov
       --cov-report=term-missing` -- still 100% line and branch
-- [ ] Both linters, at their full paths: `pylint --rcfile=.pylintrc src
+- [ ] Both linters, at their full paths: `pylint --rcfile=.pylintrc chitragupta
       scripts .claude/hooks` and `markdownlint-cli2 "*.md" "docs/**/*.md"
       ".claude/**/*.md"` -- read each one's own exit code, not a pipeline's
 - [ ] `poetry check`

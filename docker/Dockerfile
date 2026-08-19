@@ -46,8 +46,8 @@ RUN scripts/install_full_pipeline.sh os-deps && rm -rf /var/lib/apt/lists/*
 
 # Stage 2: Python deps -- same script + pyproject.toml/poetry.lock as
 # the host (Poetry itself came from stage 1's os-deps, which apt-installs
-# python3-poetry). python -m src.draft gate doesn't need any of this
-# and still runs with the bare python3 from stage 1; python -m src.corpus sync
+# python3-poetry). python -m chitragupta.draft gate doesn't need any of this
+# and still runs with the bare python3 from stage 1; python -m chitragupta.corpus sync
 # needs bibtexparser, the one dependency the rest of the core pipeline
 # can't avoid.
 RUN python3 -m venv /opt/venv

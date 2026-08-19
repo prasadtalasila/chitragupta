@@ -99,7 +99,7 @@ question is already answered:
 Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) -- *"A gate
 `FAIL` is a failing test, not a lint warning"* -- and
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) both bar promoting any new
-check into a gate beside `src/citation_gate.py`. #183 records the argument
+check into a gate beside `chitragupta/citation_gate.py`. #183 records the argument
 in full.
 
 The gate compares a citekey against the ledger, which is ground truth.
@@ -152,8 +152,8 @@ outside.
 see.** The preflight is launched by the same interpreter name it vets. If
 `python` is missing, the preflight is missing too, and the report that was
 supposed to arrive never does -- on precisely the host where the gate is
-dead. The check therefore lives in `src/hook_launchers.py`, and
-`python -m src.draft gate` makes it as well: that command runs on an
+dead. The check therefore lives in `chitragupta/hook_launchers.py`, and
+`python -m chitragupta.draft gate` makes it as well: that command runs on an
 interpreter which has demonstrably started, and every genre skill runs it.
 The two reporters share one implementation.
 
@@ -163,7 +163,7 @@ It makes three checks, of which **only the first two are faults**:
 |---|---|---|
 | Can each registered hook's launcher start? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
-| Has the corpus been synced? | `python -m src.corpus ledger` | **stage** |
+| Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
 | all three fine | -- | says nothing at all |
 
 Note the inversion in the second: the alarm is the bad probe *passing*.
@@ -172,7 +172,7 @@ Note the inversion in the second: the alarm is the bad probe *passing*.
 
 This is the design decision the hook turns on, and the naive version gets
 it wrong. The normal sequence is clone -> `config.toml` ->
-`python -m src.corpus sync` -> drafting. A user who starts a session before
+`python -m chitragupta.corpus sync` -> drafting. A user who starts a session before
 that third step has done nothing wrong; they are not there yet. A
 preflight that called an empty ledger a failure would fire on every first
 session in every clone, and would teach people to ignore the one channel
@@ -186,7 +186,7 @@ checks are corpus-independent by construction:
   corpus, no interpreter beyond the one already running.
 - **A fabricated citekey is absent from an empty ledger and a full one
   alike.** Measured before it was relied on: with no `ledger.sqlite`
-  present at all, `src.draft gate` exits 0 on a citation-free draft and
+  present at all, `chitragupta.draft gate` exits 0 on a citation-free draft and
   non-zero on a fabricated key, exactly as against a populated one.
 
 Two smaller things learned building it, both from a failing test rather
@@ -218,8 +218,8 @@ three layers with a rule about what may live in each.
     ├── citation_gate_hook.py   gate class     -- may block
     └── style_check_hook.py     advisory class -- never blocks
 
-src/
-├── draft.py                    `python -m src.draft <gate|style|...>`
+chitragupta/
+├── draft.py                    `python -m chitragupta.draft <gate|style|...>`
 ├── citation_gate.py            what the gate hook shells out to
 ├── hook_launchers.py           can the registered launchers start?
 └── style_check.py              what the style hook shells out to
@@ -232,9 +232,9 @@ tests/
 └── test_style_check_hook.py    the process contract, not the branches
 ```
 
-**Layer 1, `src/`, holds the checks.** They are importable, tested, and
+**Layer 1, `chitragupta/`, holds the checks.** They are importable, tested, and
 know nothing about hooks, harnesses or JSON envelopes. Each is reachable by
-hand as `python -m src.draft <verb>`.
+hand as `python -m chitragupta.draft <verb>`.
 
 `hook_launchers.py` is the one exception, and the rule names it rather than
 being quietly broken: **layer 1 may read the launcher config, never a
@@ -359,9 +359,9 @@ and runs under a bare interpreter with no venv, measured.
 whose `command` does not resolve produces nothing at all -- no error to the
 model, nothing in a log (see [the trials](#what-is-measured-and-what-is-merely-documented)).
 `session_start_hook.py` cannot cover that alone, being launched by the same
-name; `python -m src.draft gate` prints the same warning from an
+name; `python -m chitragupta.draft gate` prints the same warning from an
 interpreter that has demonstrably started. Both call
-`src/hook_launchers.py`.
+`chitragupta/hook_launchers.py`.
 
 **What does not transfer.** `obra/superpowers` solves the adjacent
 problem -- bash being absent, rather than a variable being unexpanded --
@@ -486,7 +486,7 @@ preflight, each before it was relied on:
   `ledger.sqlite` present at all, it exits 0 on a citation-free draft and
   non-zero on a fabricated citekey. That is what makes the preflight's
   liveness probe runnable before a first sync.
-- **`python -m src.corpus ledger` exits 0 whether the corpus is synced or
+- **`python -m chitragupta.corpus ledger` exits 0 whether the corpus is synced or
   not**, and prints a different sentence for each of the two pre-sync
   states. It is read-only and takes no lock, so the preflight can call it
   at every session start without contending with anything.
@@ -522,7 +522,7 @@ it. That is precisely what the session preflight would check live.
 
 Hook tests live in `tests/`, run under pytest with the rest of the suite,
 and **`.claude/hooks` is inside `[tool.coverage.run].source`**, so the same
-100% line-and-branch bar applies to a hook as to anything under `src/`.
+100% line-and-branch bar applies to a hook as to anything under `chitragupta/`.
 Given what these two files enforce, a lower bar for them than for the code
 they call would be the wrong way round.
 
@@ -619,7 +619,7 @@ way.
 
 **A `jq` dependency.** One upstream hook shells out to `jq` to build its
 JSON and degrades to a warning when it is missing. Incompatible with the
-stdlib-only posture `src/style_check.py` documents, and `jq` is not
+stdlib-only posture `chitragupta/style_check.py` documents, and `jq` is not
 reliably present here in any case. Python's `json` module builds the
 envelope.
 
@@ -639,12 +639,12 @@ is a harness adapter: it exists to read a `PostToolUse` payload on stdin
 and write a JSON envelope on stdout. A skill has no payload, so it would
 have to fabricate one to satisfy the adapter and then parse the envelope
 back out to recover what it wanted. That is the dependency arrow backwards.
-The hook depends on `python -m src.draft style`; anything else that wants
+The hook depends on `python -m chitragupta.draft style`; anything else that wants
 the check calls that command directly. It would also couple every skill to
 a harness output format this document describes as measured rather than
 documented, and therefore liable to change.
 
-**A generic skill wrapping `python -m src.draft style` is not an
+**A generic skill wrapping `python -m chitragupta.draft style` is not an
 antipattern in general, but is the wrong shape here**, for three reasons.
 [GENRE.md](GENRE.md) already sets the precedent for shared invariants --
 *"These are not per-skill choices. They are the same rules restated in
@@ -693,7 +693,7 @@ whoever is changing a hook and wants the sources.
    the Windows half of the reasoning is read off CPython's `venv` module
    and the harness documentation -- no Windows host without Git Bash was
    available to try it on. The Linux half is measured. If the answer there
-   is ever *no*, the failure is at least audible now: `python -m src.draft
+   is ever *no*, the failure is at least audible now: `python -m chitragupta.draft
    gate` says so.
 2. **Whether `{"decision": "block"}` on `PostToolUse` stays supported.**
    Measured working, documented nowhere. The preflight is the tripwire.
@@ -704,7 +704,7 @@ whoever is changing a hook and wants the sources.
    only on recent ones.
 5. **Whether a session-start message is the right register for a fault.**
    The preflight reports once and cannot re-report: a user who runs
-   `python -m src.corpus sync` two minutes later keeps stale advice in
+   `python -m chitragupta.corpus sync` two minutes later keeps stale advice in
    context for the rest of the session, which is why the message says so
    in its own last line. Whether that is good enough will only be answered
    by living with it.

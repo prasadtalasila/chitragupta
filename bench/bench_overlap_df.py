@@ -56,7 +56,7 @@ word sequence on both sides, so `fragment` is the run.
 `index.json`'s key is a sha256 over every document's own change-detection
 key, so adding a paper or re-parsing one moves every DF in this table. A
 suppression built on it is deterministic *given a corpus state*, which is
-a weaker guarantee than `src.draft gate`'s and the same shape as #128's
+a weaker guarantee than `chitragupta.draft gate`'s and the same shape as #128's
 per-host allowlist. The corpus key is recorded in the output for exactly
 that reason. #130 is where that trade is priced, not here.
 
@@ -67,7 +67,7 @@ copyrighted PDFs. DF profiles are counts, so they are safe to record.
     python3 bench/bench_overlap_df.py --tag 2026-08-13-overlap-df \\
         --drafts content/drafts/books/digital-twins-for-software-engineers
 
-Needs a synced corpus (`python -m src.corpus sync`) and pays one cold
+Needs a synced corpus (`python -m chitragupta.corpus sync`) and pays one cold
 corpus-index build on first run; every run after that is warm.
 """
 
@@ -81,7 +81,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, overlap_index  # noqa: E402
+from chitragupta import config, overlap_index  # noqa: E402
 
 # The same floor as bench_overlap_gate.py, and for the same reason: the
 # hand labels this arm joins to were only ever authored at or above it,
@@ -175,7 +175,7 @@ def scan_arm(index, drafts):
     a bibliography's shared titles, where DF is trivially high and says
     nothing about prose.
     """
-    from src.review import verbatim_check as vc
+    from chitragupta.review import verbatim_check as vc
 
     out = []
     for draft in drafts:

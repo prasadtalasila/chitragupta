@@ -1,6 +1,6 @@
 ---
 name: textbook-chapter-writer
-description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via src.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m src.draft gate` before the draft is presented -- never a fabricated citekey.
+description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
 tags: [textbook, teaching, undergraduate, pedagogy, explanation]
 ---
 
@@ -22,19 +22,22 @@ user asked for the other one. See "When to invoke".
 - `content/ledger.sqlite` -- per-citekey status, populated by `sync`
 - `content/parsed/<citekey>.txt` -- extracted PDF text, useful for pulling a
   real worked example or dataset description from a paper if relevant
-- `src/retrieval.py` -- `search(query, k, snippet_chars)` if you want to
+- `chitragupta/retrieval.py` -- `search(query, k, snippet_chars)` if you want to
   ground the motivation section in the corpus (citing the result is still
   optional -- see step 3)
 
-**Read-only means read-only: never run `python -m src.corpus sync`, and never
-run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
+**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
+never
+run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
+Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `src.retrieval.search()`; do not
+help and none exists, say so and use `chitragupta.retrieval.search()`; do not
 build one.
 
-If `python -m src.corpus ledger` reports an empty ledger, say so before you
+If `python -m chitragupta.corpus ledger` reports an empty ledger, say so before
+you
 start. Citations are optional in this genre, so the draft is still
 possible -- but it will carry none, and that is the user's call to make,
 not something to discover at the end. Ask whether to proceed uncited or to
@@ -45,7 +48,7 @@ Citations here are optional, not the point. Don't force them in.
 ## Collection scoping (#195): draft from the shelf, not the library
 
 A Zotero library usually spans several topics, and its owner has already
-sorted it -- "these are the modelling papers". `src/bib_collections.py`
+sorted it -- "these are the modelling papers". `chitragupta/bib_collections.py`
 carries that judgement into the ledger and `search()` can honour it.
 
 Use it. BM25 over a whole library and BM25 over one shelf do not return
@@ -58,7 +61,7 @@ pool promotes what a large pool's competition buries
 **At step 0, before any retrieval, offer the choice once:**
 
 ```bash
-python -m src.corpus ledger --collections     # what exists, with counts
+python -m chitragupta.corpus ledger --collections     # what exists, with counts
 ```
 
 Show what exists, ask which one this draft belongs to, and accept "none,
@@ -73,7 +76,7 @@ header, beside `language:`:
 **Then pass it on every retrieval call in the run:**
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 \
+python -m chitragupta.draft retrieve search "<query>" --k 15 \
     --collection "<the recorded name>" --log <draft>
 ```
 
@@ -110,7 +113,7 @@ was chosen and **which candidates were tried and dropped, and why** -- and it
 belongs on disk, not in this conversation. Without it the next revision has to
 reconstruct the whole pedagogical design in order to change one exercise.
 
-`src/dossier/` owns that state, in Markdown, one directory per draft at
+`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before you
 draft anything (step 0) and fill it in as you go -- not at the end, when the
 example you abandoned has already fallen out of your context.
@@ -183,7 +186,7 @@ candidate for the chapter.
    Then create the dossier and record those decisions there:
 
    ```bash
-   python -m src.draft dossier init content/drafts/<slug>.md --genre textbook-chapter
+   python -m chitragupta.draft dossier init content/drafts/<slug>.md --genre textbook-chapter
    ```
 
    **Settle `<slug>` with the user before running that.** It is a path
@@ -231,7 +234,7 @@ candidate for the chapter.
    retrieval discipline as the other skills: over-fetch
 
    ```bash
-   python -m src.draft retrieve search "<topic>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
+   python -m chitragupta.draft retrieve search "<topic>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
    ```
 
    `--log` records the query in the dossier's `retrieval.md`. **Pass it on
@@ -346,7 +349,7 @@ candidate for the chapter.
     dossier's `sections.md` rather than writing it by hand:
 
     ```bash
-    python -m src.draft dossier sections content/drafts/<slug>.md --citekeys --write
+    python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
     ```
 
     so a later revision can find the section that owns a change without
@@ -359,7 +362,7 @@ candidate for the chapter.
     any citations, save the draft as `content/drafts/<slug>.md` and gate it:
 
     ```bash
-    python -m src.draft gate content/drafts/<slug>.md
+    python -m chitragupta.draft gate content/drafts/<slug>.md
     ```
 
     Fix and re-run until `OK` before presenting. If there are no citations at
@@ -369,7 +372,7 @@ candidate for the chapter.
     exactly the gated citekeys rather than writing it by hand:
 
     ```bash
-    python -m src.draft references content/drafts/<slug>.md
+    python -m chitragupta.draft references content/drafts/<slug>.md
     ```
 
     Stdlib-only, like the citation gate -- bare `python`, no venv. Writes
@@ -389,9 +392,9 @@ candidate for the chapter.
     citations), also render the other three formats:
 
     ```bash
-    python -m src.draft render content/drafts/<slug>.md --format tex
-    python -m src.draft render content/drafts/<slug>.md --format pdf
-    python -m src.draft render content/drafts/<slug>.md --format md
+    python -m chitragupta.draft render content/drafts/<slug>.md --format tex
+    python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
+    python -m chitragupta.draft render content/drafts/<slug>.md --format md
     ```
 
     All three land beside the draft: a draft at
@@ -419,7 +422,7 @@ candidate for the chapter.
     presenting:
 
     ```bash
-    python -m src.draft style content/drafts/<slug>.md
+    python -m chitragupta.draft style content/drafts/<slug>.md
     ```
 
     **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
@@ -447,7 +450,7 @@ candidate for the chapter.
     it silently, and never make it a condition of presenting:
 
     ```bash
-    python -m src.review verbatim scan content/drafts/<slug>.md
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.md
     ```
 
     It reports wording the chapter shares with **any** parsed source, cited or
@@ -466,7 +469,7 @@ candidate for the chapter.
     they succeeded, or the warning if not). Tell the user where the dossier
     is, that changes to this chapter should go through `draft-reviser` rather
     than another run of this skill, and that `content/drafts/` and
-    `content/dossiers/` are gitignored -- so `python -m src.draft dossier
+    `content/dossiers/` are gitignored -- so `python -m chitragupta.draft dossier
     export <slug>` is how a draft and its working state get backed up.
 
 ## House style for this genre

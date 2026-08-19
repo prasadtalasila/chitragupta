@@ -6,7 +6,7 @@ itself**, as opposed to using it to draft content. The user-facing half is
 
 [AGENTS.md](AGENTS.md)'s citekey invariant binds code here too: no module
 may generate, guess or rewrite a citekey, and no new check may be promoted
-into a gate beside `src/citation_gate.py`.
+into a gate beside `chitragupta/citation_gate.py`.
 
 ## Role
 
@@ -82,7 +82,7 @@ Read it before a non-trivial change. In brief:
 
 ## Module boundaries
 
-`src/references.py` formats an IEEE bibliography entry (authors, venue,
+`chitragupta/references.py` formats an IEEE bibliography entry (authors, venue,
 volume, pages) from the ledger's `bib_fields` column, which `sync`
 populates via `bib_reader` -- it does not, and must not, parse
 `bibliography.bib` itself. The one thing that legitimately reads the bib
@@ -90,9 +90,10 @@ file directly is pandoc's `--citeproc`, which is not this codebase. See
 [AGENTS.md](AGENTS.md) for why `bib_reader` is the sole reader.
 
 What a part *does* and what it *costs to install* are separate axes:
-`src/render_output.py` is drafting-layer code that needs no package from
-the `enrich` group, which is why it sits in `src/` rather than
-`src/enrich/`. `src/review/verbatim_check.py` is the same axis read the
+`chitragupta/render_output.py` is drafting-layer code that needs no package from
+the `enrich` group, which is why it sits in `chitragupta/` rather than
+`chitragupta/enrich/`. `chitragupta/review/verbatim_check.py` is the same axis
+read the
 other way: it sits beside the two aids it belongs with, not in
 `scripts/`, which holds dev tooling and no layer entry point at all.
 
@@ -100,10 +101,10 @@ other way: it sits beside the two aids it belongs with, not in
 
 `pip install` outside a venv is blocked (PEP 668) -- unconditionally, on
 every host, regardless of root access. **This matters for the corpus
-layer too**: `python -m src.corpus sync` needs `bibtexparser` (parsing
+layer too**: `python -m chitragupta.corpus sync` needs `bibtexparser` (parsing
 `bibliography.bib` correctly -- nested braces, LaTeX escapes -- isn't
 worth hand-rolling), so it must be run via the installed venv, not the
-bare system interpreter. `python -m src.draft gate` is the exception
+bare system interpreter. `python -m chitragupta.draft gate` is the exception
 (see [AGENTS.md](AGENTS.md)).
 
 **Probe for a toolchain; never assume one, in either direction.** An
@@ -117,9 +118,9 @@ durable rule is the probe:
   not only inside `docker/` -- there is nothing docker-exclusive about
   any of them.
 - **When they're absent:** don't hang, stack-trace, or silently skip
-  without saying so. Every `src/enrich/*` stage already self-probes its
+  without saying so. Every `chitragupta/enrich/*` stage already self-probes its
   own prerequisites and reports honestly (`ok`/`skipped`/`missing-binary`)
-  via `src/enrich/__main__.py` rather than assuming the target implies
+  via `chitragupta/enrich/__main__.py` rather than assuming the target implies
   availability -- keep any new stage consistent with that pattern instead
   of inventing a new fallback policy.
 
@@ -160,7 +161,7 @@ withheld). **It has still not been built or run in this environment** (no
 Docker daemon here) -- treat it as a draft to validate, not a tested
 artifact.
 
-## The enrichment layer (`src/enrich/`, `src/enrich/__main__.py`)
+## The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
 Implements Docling -> sentence-transformers/Chroma ->
 BERTopic -> Pandoc/LaTeX, one script for both host and Docker. Each stage
@@ -171,9 +172,9 @@ target-specific behavior; fix the probe if it's wrong. `--target
 host|docker` is **informational only** for exactly that reason: the
 probes decide, not the flag, so nothing branches on it.
 
-`src/enrich/embed_index.py`, `src/enrich/topic_model.py`, and
-`src/enrich/docling_parse.py` are all incremental, mirroring
-`src/ledger.py`'s own skip-what-hasn't-changed logic for the corpus
+`chitragupta/enrich/embed_index.py`, `chitragupta/enrich/topic_model.py`, and
+`chitragupta/enrich/docling_parse.py` are all incremental, mirroring
+`chitragupta/ledger.py`'s own skip-what-hasn't-changed logic for the corpus
 layer: a doc whose text hasn't changed since the last run isn't
 re-embedded, and a PDF whose `(size, mtime_ns)` hasn't changed since the
 last run (`config.DOCLING_CACHE_PATH`) isn't re-parsed by Docling.
@@ -195,12 +196,12 @@ step are all local/deterministic. Any LLM-backed synthesis happens only
 via the `.claude/skills/` drafting layer, invoked through a Claude Code
 session rather than a standalone API call.
 
-`src/enrich/corpus.py` sources the enrichment corpus from the ledger and
+`chitragupta/enrich/corpus.py` sources the enrichment corpus from the ledger and
 nothing else, so every document it yields is citable and
 keyed by its citekey alone. Keep it that way -- the enrichment layer must never
 index a document a draft would not be allowed to cite. If a paper is
 worth enriching, it belongs in the reference manager: catalogue it,
-re-export, and re-run `python -m src.corpus sync`.
+re-export, and re-run `python -m chitragupta.corpus sync`.
 
 ## Conventions a new stage has to follow
 
@@ -285,7 +286,7 @@ Before saying so, actually run, in this repo:
   green suite says nothing about it:
 
   ```bash
-  pylint --rcfile=.pylintrc src scripts .claude/hooks
+  pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
   ```
 
@@ -293,7 +294,7 @@ Before saying so, actually run, in this repo:
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --
   e.g. if you touch a CLI script, run it for real; if you touch
-  `src/enrich/*` and the `enrich` Poetry group is installed, run it against
+  `chitragupta/enrich/*` and the `enrich` Poetry group is installed, run it against
   the real sentence-transformers/chromadb/bertopic stack, not just
   `sys.modules`-mocked fakes. Unit tests catch regressions in logic;
   smoke tests catch wrong assumptions about how the real library actually
@@ -343,7 +344,7 @@ and the paths are part of the command rather than a detail -- a narrower
 glob is how a tree stops being checked without anyone deciding it should:
 
 ```bash
-pylint --rcfile=.pylintrc src scripts .claude/hooks
+pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"   # npm i -g markdownlint-cli2
 ```
 
@@ -449,7 +450,7 @@ both directions -- it would flag the dense *why*-comments, the f-string
 `PRAGMA` and the deliberately duplicated pool builders, and it does not
 know the citekey invariant, the layer boundaries, C1/C2 counted in
 statements, or the `encoding="utf-8"` rule. The project file replaces it
-for `src/`, `tests/`, `scripts/`, `bench/` and `.github/`, and excludes
+for `chitragupta/`, `tests/`, `scripts/`, `bench/` and `.github/`, and excludes
 `content/` and `papers/` -- the user's drafts and their personal
 bibliography, which are not this repository's code and have no business
 being sent to a third-party endpoint.
@@ -484,7 +485,7 @@ Two traps, both of which have already caught someone:
 ### It is an aid, not a gate
 
 Same standing as the review layer ([SOUL.md](SOUL.md)): nothing here
-blocks on it, `python -m src.draft gate` remains the only gate, and a
+blocks on it, `python -m chitragupta.draft gate` remains the only gate, and a
 finding is a claim to agree or disagree with. Judge each against
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) rather than adopting it
 because a tool said so -- a change made only to silence a reviewer is the
@@ -663,7 +664,7 @@ of commits:
   changes, test-only additions -- nothing that changes what the pipeline
   does or how it's invoked.
 - **MINOR** (x.Y.0): new backward-compatible functionality -- a new
-  script, a new `src/` module, a new optional config key, a performance
+  script, a new `chitragupta/` module, a new optional config key, a performance
   improvement that doesn't change output shape.
 - **MAJOR** (X.0.0): breaking changes -- anything that changes an
   existing citekey/output format, removes or renames a `config.toml` key

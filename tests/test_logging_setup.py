@@ -1,8 +1,8 @@
-"""src/logging_setup.py: one log file, logs/pipeline.log, shared by
+"""chitragupta/logging_setup.py: one log file, logs/pipeline.log, shared by
 everything that holds the pipeline write lock.
 
 These cases moved here from tests/test_sync.py when configure() was
-lifted out of src/sync.py so src/enrich/__main__.py could share it -- the
+lifted out of chitragupta/sync.py so chitragupta/enrich/__main__.py could share it -- the
 behaviour they pin (level applies to the file and not the console,
 third-party records reach the file only, `file_only` suppresses the
 console copy) is now a property of the shared module rather than of
@@ -22,7 +22,7 @@ import logging.handlers
 
 import pytest
 
-from src import config, logging_setup
+from chitragupta import config, logging_setup
 
 
 @pytest.fixture(autouse=True)
@@ -34,13 +34,13 @@ def _reset_logging():
         if handler not in before:
             root.removeHandler(handler)
             handler.close()
-    logging.getLogger("src").setLevel(logging.NOTSET)
+    logging.getLogger("chitragupta").setLevel(logging.NOTSET)
     logging.getLogger("scripts").setLevel(logging.NOTSET)
 
 
 @pytest.fixture
 def src_logger():
-    return logging.getLogger("src.sync")
+    return logging.getLogger("chitragupta.sync")
 
 
 class TestConfigure:
@@ -66,7 +66,7 @@ class TestConfigure:
         self, isolated_config, monkeypatch, capsys, src_logger
     ):
         """The hazard the single shared module introduced: two
-        entrypoints now import this, and src/enrich/__main__.py runs several
+        entrypoints now import this, and chitragupta/enrich/__main__.py runs several
         stages in one process. An unguarded second call would double
         every subsequent line in both the file and the console, which
         reads as corrupt output rather than as a configuration bug."""
@@ -160,12 +160,12 @@ class TestConfigure:
     def test_the_enrich_entrypoints_logger_reaches_the_console(
         self, isolated_config, monkeypatch, capsys
     ):
-        """The other entrypoint that holds the lock logs as `src.enrich`.
+        """The other entrypoint that holds the lock logs as `chitragupta.enrich`.
 
         It logged as `scripts.enrich` until 5.0.0, when the enrichment
         layer's entry point moved from scripts/enrich.py into the package
-        as src/enrich/__main__.py and _TREES collapsed from
-        ("src", "scripts") to ("src",). What this pins is unchanged by
+        as chitragupta/enrich/__main__.py and _TREES collapsed from
+        ("chitragupta", "scripts") to ("chitragupta",). What this pins is unchanged by
         that move: an enrich line must reach both the file and the
         console. The bug it guards against -- every enrich line landing
         in the file and vanishing from the console -- was a half-failure
@@ -173,7 +173,7 @@ class TestConfigure:
         """
         monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
         logging_setup.configure()
-        logging.getLogger("src.enrich").info("an enrich line")
+        logging.getLogger("chitragupta.enrich").info("an enrich line")
 
         assert "an enrich line" in (config.LOGS_DIR / "pipeline.log").read_text()
         assert "an enrich line" in capsys.readouterr().err
@@ -188,7 +188,7 @@ class TestConfigure:
         enrich."""
         monkeypatch.setattr(config, "LOGGING_LEVEL", "CRITICAL")
         logging_setup.configure()
-        logging.getLogger("src.enrich").info("enrich progress")
+        logging.getLogger("chitragupta.enrich").info("enrich progress")
 
         assert "enrich progress" not in (config.LOGS_DIR / "pipeline.log").read_text()
         assert "enrich progress" in capsys.readouterr().err
@@ -212,7 +212,7 @@ class TestConfigure:
     def test_a_file_only_record_reaches_the_file_but_not_the_console(
         self, isolated_config, monkeypatch, capsys, src_logger
     ):
-        """Confirmed against a real `python -m src.corpus sync` run: without
+        """Confirmed against a real `python -m chitragupta.corpus sync` run: without
         this filter, run()'s summary line -- already printed to stdout
         -- prints a second time via the console handler, once for each
         handler on the same logger call."""
@@ -307,8 +307,8 @@ class TestSay:
         for line in (config.LOGS_DIR / "pipeline.log").read_text().splitlines():
             assert line.strip(), "a record must not be an empty line"
         log_text = (config.LOGS_DIR / "pipeline.log").read_text()
-        assert "src.sync: === a stage ===" in log_text
-        assert "src.sync:   indented detail" in log_text
+        assert "chitragupta.sync: === a stage ===" in log_text
+        assert "chitragupta.sync:   indented detail" in log_text
 
     def test_log_as_gives_the_file_a_different_rendering(
         self, isolated_config, monkeypatch, capsys, src_logger
@@ -390,7 +390,7 @@ class TestSay:
         assert "a complaint" not in captured.err
 
     def test_still_prints_when_configure_has_not_run(self, capsys, src_logger):
-        """Library callers (src/enrich/*) use say() but are imported by
+        """Library callers (chitragupta/enrich/*) use say() but are imported by
         tests that never configure logging. With no handler attached the
         logger call goes nowhere, and the print must still behave
         exactly as it did before logging existed here."""

@@ -1,6 +1,6 @@
 ---
 name: thesis-chapter-writer
-description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via src.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m src.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m src.corpus sync` has been run.
+description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m chitragupta.corpus sync` has been run.
 tags: [thesis, dissertation, latex, citation]
 ---
 
@@ -8,7 +8,7 @@ tags: [thesis, dissertation, latex, citation]
 
 Genre-specific drafting agent for thesis-chapter output. The drafting
 layer (generative, on-demand, user-reviewed) -- distinct from
-`python -m src.corpus sync` (the corpus layer: deterministic, unattended-safe).
+`python -m chitragupta.corpus sync` (the corpus layer: deterministic, unattended-safe).
 
 ## Shared corpus layer (read, don't regenerate)
 
@@ -17,8 +17,8 @@ layer (generative, on-demand, user-reviewed) -- distinct from
   point the thesis document's `\addbibresource` (biblatex) or `\bibliography`
   (bibtex) at this file directly rather than a copy
 - `content/parsed/<citekey>.txt` -- extracted PDF text
-- `src/retrieval.py` --
-  `python -m src.draft retrieve search "<q>" --k 15 --log <draft>`,
+- `chitragupta/retrieval.py` --
+  `python -m chitragupta.draft retrieve search "<q>" --k 15 --log <draft>`,
   which returns a citekey, title, score and a 500-character snippet per
   candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
   one document when a snippet is not enough to judge it
@@ -26,7 +26,7 @@ layer (generative, on-demand, user-reviewed) -- distinct from
 ## Collection scoping (#195): draft from the shelf, not the library
 
 A Zotero library usually spans several topics, and its owner has already
-sorted it -- "these are the modelling papers". `src/bib_collections.py`
+sorted it -- "these are the modelling papers". `chitragupta/bib_collections.py`
 carries that judgement into the ledger and `search()` can honour it.
 
 Use it. BM25 over a whole library and BM25 over one shelf do not return
@@ -39,7 +39,7 @@ pool promotes what a large pool's competition buries
 **At step 0, before any retrieval, offer the choice once:**
 
 ```bash
-python -m src.corpus ledger --collections     # what exists, with counts
+python -m chitragupta.corpus ledger --collections     # what exists, with counts
 ```
 
 Show what exists, ask which one this draft belongs to, and accept "none,
@@ -54,7 +54,7 @@ header, beside `language:`:
 **Then pass it on every retrieval call in the run:**
 
 ```bash
-python -m src.draft retrieve search "<query>" --k 15 \
+python -m chitragupta.draft retrieve search "<query>" --k 15 \
     --collection "<the recorded name>" --log <draft>
 ```
 
@@ -91,7 +91,7 @@ terminology the chapter settled on, which candidates were kept and
 conversation. Without it the next revision has to re-retrieve and
 re-score the whole research question to change one paragraph.
 
-`src/dossier/` owns that state, in Markdown, one directory per draft at
+`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
 `content/dossiers/<the draft's path, minus its suffix>/`. Create it before
 you search (step 0) and fill it in as you go -- not at the end, when what
 you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
@@ -103,24 +103,26 @@ record used for audit, beside the human-readable working state a later
 revision reads (reader, scope, glossary, rejected candidates and why,
 steering). Two shapes for two readers, one directory per draft.
 
-**Read-only means read-only: never run `python -m src.corpus sync`, and never
-run `python -m src.enrich` or any `src/enrich/*` build stage.** Both belong to the
+**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
+never
+run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
+Both belong to the
 corpus layer, both take the pipeline's write lock, and either can run for
 tens of minutes -- a first full-corpus parse, or building the embedding
 index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `src.retrieval.search()`; do not
+help and none exists, say so and use `chitragupta.retrieval.search()`; do not
 build one.
 
 **If the ledger is empty, stop.** Check before drafting anything:
 
 ```bash
-python -m src.corpus ledger
+python -m chitragupta.corpus ledger
 ```
 
 If it reports no items, or none with status `parsed`, say so plainly --
 name what you checked and what you found -- and stop there. Do not draft
 around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m src.corpus sync` and come back.
+`.venv-full/bin/python -m chitragupta.corpus sync` and come back.
 
 ## When to invoke
 
@@ -131,7 +133,7 @@ around it, do not sync, do not cite. Tell the user to run
 | User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer` instead |
 | User asks for a hands-on tutorial | Use `tutorial-writer` instead |
 | User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m src.corpus sync` yourself |
+| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
 
 ## Prose standards
 
@@ -166,7 +168,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    the same decisions there:
 
    ```bash
-   python -m src.draft dossier init content/drafts/<slug>.tex --genre thesis-chapter
+   python -m chitragupta.draft dossier init content/drafts/<slug>.tex --genre thesis-chapter
    ```
 
    **Settle `<slug>` with the user before running that.** It is a path
@@ -201,7 +203,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    are automatically the right ones:
 
    ```bash
-   python -m src.draft retrieve search "<concept>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.tex
+   python -m chitragupta.draft retrieve search "<concept>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.tex
    ```
 
    `--log` records the query and the call's size in the dossier's
@@ -250,7 +252,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    writing it by hand:
 
    ```bash
-   python -m src.draft dossier sections content/drafts/<slug>.tex --citekeys --write
+   python -m chitragupta.draft dossier sections content/drafts/<slug>.tex --citekeys --write
    ```
 
    It reads `\citep`/`\citet` as readily as `[@key]` and tracks
@@ -316,7 +318,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     then run:
 
     ```bash
-    python -m src.draft gate content/drafts/<slug>.tex
+    python -m chitragupta.draft gate content/drafts/<slug>.tex
     ```
 
     Fix and re-run until `OK`. Never present a draft that hasn't passed.
@@ -327,8 +329,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     fragment fine):
 
     ```bash
-    python -m src.draft render content/drafts/<slug>.tex --format md
-    python -m src.draft render content/drafts/<slug>.tex --format pdf
+    python -m chitragupta.draft render content/drafts/<slug>.tex --format md
+    python -m chitragupta.draft render content/drafts/<slug>.tex --format pdf
     ```
 
     Both previews land beside the fragment: a draft at
@@ -347,7 +349,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     handing over a chapter that cannot be typeset.
 
     Unlike the Markdown-native genre skills, don't run `python -m
-    src.draft references` on this fragment and don't add a manual References
+    chitragupta.draft references` on this fragment and don't add a manual References
     section to it -- the fragment is designed to inherit the thesis's own
     document-wide `\addbibresource`/`\bibliography` (the shared corpus
     layer above), and a per-chapter list would duplicate that. The `.pdf`
@@ -377,7 +379,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     presenting:
 
     ```bash
-    python -m src.draft style content/drafts/<slug>.tex
+    python -m chitragupta.draft style content/drafts/<slug>.tex
     ```
 
     **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
@@ -405,7 +407,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     it silently, and never make it a condition of presenting:
 
     ```bash
-    python -m src.review verbatim scan content/drafts/<slug>.tex
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.tex
     ```
 
     It reports wording the chapter shares with **any** parsed source, cited or
@@ -423,7 +425,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of this
     skill, and that `content/drafts/` and `content/dossiers/` are gitignored
-    -- so `python -m src.draft dossier export <slug>` is how a draft and its
+    -- so `python -m chitragupta.draft dossier export <slug>` is how a draft and
+    its
     working state get backed up.
 
 ## Sources

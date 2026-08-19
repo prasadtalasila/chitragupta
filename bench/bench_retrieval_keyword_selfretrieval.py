@@ -3,7 +3,7 @@ a fairness correction to bench_retrieval_compare.py and
 bench_retrieval_live_logs.py, not a third opinion alongside them.
 
 Both of those score against citekeys that were *kept during a real
-drafting session that only ever ran BM25* (`src.retrieval.search()` is
+drafting session that only ever ran BM25* (`chitragupta.retrieval.search()` is
 the only retrieval tool either session's `retrieval.md` log shows in
 use). A paper dense retrieval or SPECTER2 would have surfaced but BM25
 never did was never shown to a human to judge -- so it can never be
@@ -15,8 +15,8 @@ This script sidesteps the problem instead of correcting for it: the
 query for each paper is *that paper's own author-assigned keywords*
 (`bibliography.bib`'s `keywords` field, present on 285 of 646 entries,
 absent from `content/ledger.sqlite` by the same
-"per-host noise" exclusion `src/ledger.py` applies to `abstract` -- read
-via `src.bib_reader.read_library()`, the project's one sanctioned bib
+"per-host noise" exclusion `chitragupta/ledger.py` applies to `abstract` -- read
+via `chitragupta.bib_reader.read_library()`, the project's one sanctioned bib
 parser, not a second one). The correct answer is the paper itself. No
 method's search history decided that -- the paper's own author did, once,
 independent of every retrieval method compared here.
@@ -47,7 +47,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import bib_reader, ledger, retrieval  # noqa: E402
+from chitragupta import bib_reader, ledger, retrieval  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
     K_REPORT, K_POOL, DENSE_MODELS, RERANK_MODEL,
     recall_at_k, ndcg_at_k, collapse_to_citekeys, _venv_python,
@@ -116,12 +116,12 @@ def bm25_row(ground_truth):
     for row in ground_truth:
         results = retrieval.search(row["query"], k=K_REPORT)
         ranked_by_query[row["citekey"]] = [r.citekey for r in results]
-    return {"row": "BM25 (src/retrieval.py)", **score_keyword_rows(ranked_by_query, ground_truth)}
+    return {"row": "BM25 (chitragupta/retrieval.py)", **score_keyword_rows(ranked_by_query, ground_truth)}
 
 
 def _dense_worker(ground_truth):
     from sentence_transformers import CrossEncoder
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     reranker = CrossEncoder(RERANK_MODEL)
     dense_ranked, reranked = {}, {}
@@ -187,7 +187,7 @@ def specter2_row(ground_truth):
 def _cascade_worker(ground_truth, shortlist_size):
     import embed_models as em
     from sentence_transformers import CrossEncoder, SentenceTransformer
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     all_citekeys = [r[0] for r in ledger.connect().execute("SELECT citekey FROM items")]
     paper_vectors = em.embed_paper(all_citekeys)

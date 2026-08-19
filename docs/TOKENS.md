@@ -151,7 +151,8 @@ subject of
 ["What the dossier actually recovers"](#what-the-dossier-actually-recovers)
 below is careful about which part of it a dossier can and cannot remove.
 The half that could be removed now has been: Phase 5 dispatches through
-`python -m src.draft dossier brief` rather than pasting the packets into four
+`python -m chitragupta.draft dossier brief` rather than pasting the packets into
+four
 prompts. The residency itself is untouched, and the reason it cannot be
 touched from inside a run is the subject of that section.
 
@@ -164,7 +165,7 @@ every time, including for a gate failure that touches one citekey.
 
 ### 4. No revision path at all
 
-This was the big one, and it is what `src/dossier/` plus the
+This was the big one, and it is what `chitragupta/dossier/` plus the
 `draft-reviser` skill exist to remove. Before them, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run every step again. That is a **structural**
@@ -238,7 +239,7 @@ resident pool:
 That last row is the one #74 could actually collect, and it is why the
 answer is a file rather than better summarising. **Implemented**: the
 pasted material is now the one line
-`python -m src.draft dossier brief <draft> --section "<heading>"`, an
+`python -m chitragupta.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
 
 **An estimated 15k equivalents saved, in the 5x direction.** That is the
@@ -314,7 +315,7 @@ eliminations are each recorded elsewhere:
 
 | Lever | Status for this skill |
 |---|---|
-| Remove the structural cost (no revision path) | Done -- `src/dossier/` plus `draft-reviser` |
+| Remove the structural cost (no revision path) | Done -- `chitragupta/dossier/` plus `draft-reviser` |
 | Trim what retrieval returns (two-stage triage) | Withdrawn. See [REJECTION.md](REJECTION.md): `deep-research`'s reads already happen inside subagents, so triage optimises the *cheap* pool, adds an estimated 270 further process starts at standard depth, and discards exactly the qualifying passages contradiction mapping exists to find |
 | Move reads behind the subagent boundary | Done -- Phases 2, 5 and 7 all dispatch |
 | Cut the fan-out payload the orchestrator carries and re-emits | Done in 3.10.0 -- `dossier brief`, an estimated 15k equivalents |
@@ -432,16 +433,17 @@ reason is worth knowing because it is narrower than "the module is safe".
 - **One writer.** The orchestrator is single-threaded with respect to its
   own tool calls, and it is the only dossier writer. Concurrent
   modification of `evidence.md` or `rejected.md` cannot arise.
-- **`init` cannot clobber.** `src.dossier.init` only creates files that
+- **`init` cannot clobber.** `chitragupta.dossier.init` only creates files that
   are missing, so re-running it against a part-filled dossier adds what
   is absent and touches nothing else.
-- **No locks, deliberately.** `src/dossier/` takes no lock and is not a
+- **No locks, deliberately.** `chitragupta/dossier/` takes no lock and is not a
   gate. It must not block behind a `sync` that is mid-run, and a
   bookkeeping write is never allowed to fail the work it was recording.
 
 There is one path that *can* produce concurrent writers, and it is worth
 naming because it was found by writing this document rather than by
-anything failing. `python -m src.draft retrieve ... --log <draft>` appends to
+anything failing. `python -m chitragupta.draft retrieve ... --log <draft>`
+appends to
 the dossier's `retrieval.md`, and subagents can run Bash. Today only
 `survey-writer` and `draft-reviser` pass `--log`, and both are single
 orchestrators -- but give `--log` to six parallel interviewers and it is
@@ -626,9 +628,10 @@ by four. No new run required.
 
 ### Already instrumented: `retrieval.md`
 
-`python -m src.draft retrieve ... --log <draft>` appends one row per call --
+`python -m chitragupta.draft retrieve ... --log <draft>` appends one row per
+call --
 mode, query, `k`, results, characters -- to the dossier's `retrieval.md`,
-and `python -m src.draft dossier status` totals it. That is characters rather
+and `python -m chitragupta.draft dossier status` totals it. That is characters rather
 than tokens and covers retrieval only, but it is the one number this
 repository already collects on a real corpus, it is comparable between
 runs, and it costs nothing beyond passing a flag.
@@ -649,14 +652,14 @@ Method: the shipped example report
 citations -- `sections.md` from the citekeys each section actually cites,
 and one `evidence.md` block per citekey whose `support:` line is a real
 600-character evidence window pulled from the 501-paper corpus, i.e. the
-same `src.draft retrieve evidence` call an interviewer makes. Then, per
+same `chitragupta.draft retrieve evidence` call an interviewer makes. Then, per
 section, `dossier brief --section` on one side and the dispatch line that
 replaces it on the other.
 
 | | Characters |
 |---|---|
 | Evidence a Phase 5 dispatch would have pasted, all sections | **15,660** |
-| Dispatch lines that replace it (`Your evidence: python -m src.draft dossier brief ... --section "..."`) | **901** |
+| Dispatch lines that replace it (`Your evidence: python -m chitragupta.draft dossier brief ... --section "..."`) | **901** |
 | Ratio | **17.4x** |
 
 At the documented conversions -- four characters per token, output at 5x

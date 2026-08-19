@@ -1,4 +1,4 @@
-"""src/config.py: env-var overrides, config.toml defaults, and the two
+"""chitragupta/config.py: env-var overrides, config.toml defaults, and the two
 pure helpers (_get/_get_float) that implement the override precedence."""
 
 import importlib
@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from src import config
+from chitragupta import config
 
 
 class TestGetHelpers:
@@ -220,7 +220,7 @@ class TestGetStartMethod:
 
 
 class TestGetLogLevel:
-    """[logging].level decides how much python -m src.corpus sync writes to
+    """[logging].level decides how much python -m chitragupta.corpus sync writes to
     logs/pipeline.log. A typo has to be rejected at load, naming the
     alternatives, same reasoning as _get_start_method above."""
 
@@ -453,9 +453,9 @@ class TestDiscoverProjectRoot:
         -- it is what deriving the root from `__file__` used to do.
         """
         checkout = tmp_path / "checkout"
-        (checkout / "src").mkdir(parents=True)
+        (checkout / "chitragupta").mkdir(parents=True)
         (checkout / config.PROJECT_MARKER).write_text("", encoding="utf-8")
-        monkeypatch.setattr(config, "PACKAGE_ROOT", checkout / "src")
+        monkeypatch.setattr(config, "PACKAGE_ROOT", checkout / "chitragupta")
         unrelated = tmp_path / "unrelated"
         unrelated.mkdir()
         assert config.discover_project_root(cwd=unrelated, environ={}) == checkout

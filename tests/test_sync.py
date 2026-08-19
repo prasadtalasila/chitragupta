@@ -1,4 +1,4 @@
-"""src/sync.py: the deterministic bib -> ledger -> parsed-text entrypoint
+"""chitragupta/sync.py: the deterministic bib -> ledger -> parsed-text entrypoint
 (the corpus layer -- AGENTS.md). No LLM calls, must be idempotent."""
 
 import contextlib
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from src import bib_reader, config, ledger, pdf_text, runlock, sync
+from chitragupta import bib_reader, config, ledger, pdf_text, runlock, sync
 from tests.conftest import make_reference
 
 
@@ -23,7 +23,7 @@ def _pdftotext_present_by_default(monkeypatch):
     # Every test in this file exercises sync's own parse-loop logic via a
     # mocked pdf_text.extract_text, not the real pdftotext binary -- but
     # sync.run() now probes pdf_text.is_available() before that loop
-    # (src/pdf_text.py's missing-binary handling), so without this these
+    # (chitragupta/pdf_text.py's missing-binary handling), so without this these
     # tests would silently depend on pdftotext actually being on PATH on
     # whatever host runs them (true here, but os-deps -- the stage that
     # installs poppler-utils -- is explicitly opt-in per DEVELOPER-AGENTS.md, and
@@ -487,7 +487,7 @@ class TestRun:
         # propagate subprocess.run's bare FileNotFoundError as an
         # uncaught traceback (only CalledProcessError was ever caught
         # here) instead of being probed and reported honestly, the way
-        # every src/enrich/* stage already handles a missing binary.
+        # every chitragupta/enrich/* stage already handles a missing binary.
         monkeypatch.setattr(pdf_text, "is_available", lambda: False)
         rc = sync.run()
         out = capsys.readouterr().out
@@ -549,7 +549,7 @@ class TestRun:
 class TestCliEntrypoint:
     def test_remove_stale_flag_is_registered(self, isolated_config):
         result = subprocess.run(
-            [sys.executable, "-m", "src.corpus", "sync", "--help"],
+            [sys.executable, "-m", "chitragupta.corpus", "sync", "--help"],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -558,7 +558,7 @@ class TestCliEntrypoint:
 
     def test_unknown_flag_is_rejected(self, isolated_config):
         result = subprocess.run(
-            [sys.executable, "-m", "src.corpus", "sync", "--bogus-flag"],
+            [sys.executable, "-m", "chitragupta.corpus", "sync", "--bogus-flag"],
             cwd=str(Path(__file__).resolve().parent.parent),
             capture_output=True, text=True,
         )
@@ -578,7 +578,7 @@ class TestTheRemovedDirectInvocation:
         assert sync.refuse_direct_invocation() == sync.EXIT_COMMAND_REMOVED
         captured = capsys.readouterr()
         assert captured.out == ""
-        assert "python -m src.corpus sync" in captured.err
+        assert "python -m chitragupta.corpus sync" in captured.err
 
     def test_its_exit_code_is_none_of_the_ones_sync_publishes(self):
         """docs/CLI.md's exit-code table is an API an unattended caller
@@ -1000,7 +1000,7 @@ class TestGpuAssignment:
         assert "WARNING skipping cuda:0" in caplog.text
 
     def test_the_start_method_is_pdf_texts_to_choose(self, monkeypatch):
-        """One decision, in one place: sync and src/enrich/docling_parse
+        """One decision, in one place: sync and chitragupta/enrich/docling_parse
         build the same kind of pool, and a start method hard-coded in
         each would be two that can drift apart.
 
@@ -1281,7 +1281,7 @@ class TestReparse:
     def test_reparse_is_registered_on_the_cli(self, isolated_config):
         import subprocess
         out = subprocess.run(
-            [sys.executable, "-m", "src.corpus", "sync", "--help"],
+            [sys.executable, "-m", "chitragupta.corpus", "sync", "--help"],
             capture_output=True, text=True, cwd=str(config.PROJECT_ROOT),
         ).stdout
         assert "--reparse" in out

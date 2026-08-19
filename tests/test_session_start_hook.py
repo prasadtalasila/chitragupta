@@ -10,13 +10,13 @@ The hook derives its repo root from its own on-disk location, so each test
 gives it one -- a `PreflightRepo` copies the hook into a tmp_path
 `.claude/hooks/` and writes that root's own `.claude/settings.json`. The
 hook's two child processes run with `cwd` set to that same temp root, so
-`python -m src.draft` resolves through PYTHONPATH to this checkout's real
+`python -m chitragupta.draft` resolves through PYTHONPATH to this checkout's real
 code -- unless a test deliberately shadows it with a stub package in the
 temp root, which `-m` picks up from cwd first. That is how a dead gate is
 simulated without breaking the real one.
 
 The one behaviour worth stating separately, because it is the reason this
-hook can exist at all: **it must work before `python -m src.corpus sync`
+hook can exist at all: **it must work before `python -m chitragupta.corpus sync`
 has ever run.** A fresh clone has no ledger, and reporting that as a
 failure would fire on every first session. So an empty ledger is reported
 as a stage in a normal sequence, and only a launcher that cannot start or
@@ -32,7 +32,7 @@ from pathlib import Path
 
 import pytest
 
-from src import ledger
+from chitragupta import ledger
 
 from tests.conftest import make_reference
 from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP
@@ -79,10 +79,10 @@ class PreflightRepo:
         """Shadow `src.<module>` for the hook's children only.
 
         `python -m` puts the child's cwd first on sys.path, and the child's
-        cwd is this temp root -- so a `src/` package here wins over the real
+        cwd is this temp root -- so a `chitragupta/` package here wins over the real
         one reached through PYTHONPATH.
         """
-        pkg = self.root / "src"
+        pkg = self.root / "chitragupta"
         pkg.mkdir(exist_ok=True)
         (pkg / "__init__.py").touch()
         (pkg / f"{module}.py").write_text(body)
@@ -163,13 +163,13 @@ class TestSilenceWhenReady:
 
 class TestCorpusStageIsNotAFault:
     """The case this hook was nearly wrong about: a user who has cloned the
-    repo and not yet run `python -m src.corpus sync` has done nothing
+    repo and not yet run `python -m chitragupta.corpus sync` has done nothing
     wrong, and must not be told they have."""
 
     def test_absent_ledger_is_reported_with_the_next_command(self, preflight):
         context = PreflightRepo.context(preflight.run())
         assert "before a first sync" in context
-        assert "python -m src.corpus sync" in context
+        assert "python -m chitragupta.corpus sync" in context
 
     def test_present_but_empty_ledger_is_reported_too(self, preflight, ledger_con):
         """The two pre-sync states print different sentences -- "No ledger
@@ -217,9 +217,9 @@ class TestLauncherFaults:
     One of two detectors, not the only one. A hook that fails to start
     cannot report anything itself, and this hook is started by the same
     interpreter name it vets -- so it is silent on precisely the host where
-    the gate's launcher is missing. `python -m src.draft gate` makes the
+    the gate's launcher is missing. `python -m chitragupta.draft gate` makes the
     same report from the other side of that gap (#197); the check they
-    share is `src/hook_launchers.py`.
+    share is `chitragupta/hook_launchers.py`.
     """
 
     def test_exec_form_with_a_braced_placeholder_is_clean(self, synced):

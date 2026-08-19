@@ -6,7 +6,7 @@ bench_retrieval_ground_truth.py/bench_retrieval_compare.py score against
 restored book and joining it back onto committed judgments -- a real but
 indirect proxy. This script uses what a drafting session actually
 *logged* while it ran: every real `search`-mode query in each restored
-chapter's `retrieval.md` (`src.retrieval`/`embed_index`'s own append-only
+chapter's `retrieval.md` (`chitragupta.retrieval`/`embed_index`'s own append-only
 call log), scored against that chapter's real kept-citekey set
 (`evidence.md`). No claim-text re-extraction, no book-restore-and-rejoin
 risk -- the queries and the outcomes were both written by the real run.
@@ -40,7 +40,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from src import config, ledger, retrieval  # noqa: E402
+from chitragupta import config, ledger, retrieval  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
     K_REPORT, K_POOL, DENSE_MODELS, RERANK_MODEL,
     recall_at_k, ndcg_at_k, collapse_to_citekeys, _venv_python,
@@ -124,12 +124,12 @@ def bm25_row(ground_truth):
         key = (row["chapter"], row["query_index"])
         results = retrieval.search(row["query"], k=K_REPORT)
         ranked_by_query[key] = [r.citekey for r in results]
-    return {"row": "BM25 (src/retrieval.py)", **score_live_rows(ranked_by_query, ground_truth)}
+    return {"row": "BM25 (chitragupta/retrieval.py)", **score_live_rows(ranked_by_query, ground_truth)}
 
 
 def _dense_worker(ground_truth):
     from sentence_transformers import CrossEncoder
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     reranker = CrossEncoder(RERANK_MODEL)
     dense_ranked, reranked = {}, {}
@@ -192,7 +192,7 @@ def specter2_row(ground_truth):
 def _cascade_worker(ground_truth, shortlist_size):
     import embed_models as em
     from sentence_transformers import CrossEncoder, SentenceTransformer
-    from src.enrich import embed_index
+    from chitragupta.enrich import embed_index
 
     all_citekeys = [r[0] for r in ledger.connect().execute("SELECT citekey FROM items")]
     paper_vectors = em.embed_paper(all_citekeys)

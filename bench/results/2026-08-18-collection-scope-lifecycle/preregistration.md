@@ -13,7 +13,7 @@ one thing the first run got wrong and this one fixes -- see
 
 ## The question
 
-`src/retrieval.py`'s `search()` grew a `collection` argument (#195): a
+`chitragupta/retrieval.py`'s `search()` grew a `collection` argument (#195): a
 draft can be retrieved against the subset of the library its owner
 already curated for it, rather than against all 642 items. The feature's
 claimed advantage is cheaper, better-targeted retrieval. This measures
@@ -198,7 +198,7 @@ Derived from the skeleton above, before any retrieval ran.
 | Index cost | md5 of `content/retrieval_index.json` **and** `content/ledger.sqlite` at three points | expected to be *identical* throughout -- `search()` scores corpus-wide and filters the ranking, so the cache is shared and never rebuilt |
 | Surfaced / selected / rejected | `bench_collection_scope.py` replays each logged query at its logged `k`, with and without the filter | `retrieval.md` records a result *count*, never which citekeys came back -- the replay reconstructs them, sound only because the ledger did not move. Selection ratio = cited / surfaced; rejection ratio = 1 - selection |
 | Common papers | intersection of the two arms' cited sets and of their surfaced sets | -- |
-| Verbatim overlap | `python -m src.review verbatim scan --json` per arm, same tiers both times | tier availability is reported; a clean scan is not a clean bill of health. A draft-vs-draft comparison is reported separately as an extra |
+| Verbatim overlap | `python -m chitragupta.review verbatim scan --json` per arm, same tiers both times | tier availability is reported; a clean scan is not a clean bill of health. A draft-vs-draft comparison is reported separately as an extra |
 
 ## Known confounds, stated in advance
 

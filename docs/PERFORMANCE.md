@@ -230,7 +230,7 @@ a corpus parse fast.
 **The largest lever on a multi-core machine, and the code currently caps
 it well below where the curve flattens.**
 
-Measured 2026-08-04 with the real `python -m src.corpus sync` over the **whole
+Measured 2026-08-04 with the real `python -m chitragupta.corpus sync` over the **whole
 501-PDF corpus** (13,400 pages), docling, OCR off, 4 GPUs. Each row is
 one run from an empty ledger; all reported 501 parsed, 0 failed:
 
@@ -431,7 +431,7 @@ Two costs, both worth knowing before turning it on:
 
 Nothing left to measure: the enrichment corpus is now the bibliography
 alone, so there is no second source to deduplicate against. A config file
-still naming the key is ignored. `src/enrich/corpus.py` has the reasoning,
+still naming the key is ignored. `chitragupta/enrich/corpus.py` has the reasoning,
 and the retired duplicate-check timings stand in `bench/RESULTS.md`.
 
 ## Where it all ended up
@@ -459,19 +459,19 @@ including the conclusions later ones overturned.
 ## What a drift sweep costs
 
 Everything above is the corpus layer: `sync` and the enrichment stages,
-where a run is measured in minutes. `python -m src.draft dossier status
+where a run is measured in minutes. `python -m chitragupta.draft dossier status
 --all` sits in the drafting layer and is measured in seconds. It is worth
 pricing here for one reason: it is meant to be run **after every sync**,
 so "cheap enough to be habitual" is a requirement rather than a
 nicety.
 
 The sweep builds a BM25 index in memory and discards it, rather than
-calling `src.retrieval.search()` -- which would take a write connection
+calling `chitragupta.retrieval.search()` -- which would take a write connection
 to the ledger and rewrite `content/retrieval_index.json` every time an
 inspection ran. [DRAFT-ITERATION.md](DRAFT-ITERATION.md#why-the-new-papers-are-not-found-with-search)
 is the argument; this is the price.
 
-Multi-GPU machine, bare `python` (no venv -- `src.dossier` is
+Multi-GPU machine, bare `python` (no venv -- `chitragupta.dossier` is
 stdlib-only), no GPU involved. Medians of 5 runs over this project's own
 corpus: 646 ledger rows, 47.4 MB of parsed text. The drift scan never
 opens a PDF, so what it costs depends on the parsed text and the row

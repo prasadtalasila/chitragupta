@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from src import spec, unit
+from chitragupta import spec, unit
 
 
 GOOD_SPEC = """# Composable Digital Twins
@@ -54,7 +54,7 @@ def write_unit_draft(book, unit_id, body="A paragraph citing @smith_example_2024
 def corpus(ledger_con, make_ref):
     """One real ledger row, so the citation gate `accept` runs has
     something to check a citekey against."""
-    from src import ledger
+    from chitragupta import ledger
 
     ledger.upsert_reference(ledger_con, make_ref(citekey="smith_example_2024"))
     ledger_con.commit()
@@ -303,7 +303,7 @@ def test_status_refuses_a_spec_that_does_not_parse(book, capsys):
 
 
 def test_the_verb_is_reachable_through_the_drafting_layers_front_door(book, capsys):
-    from src import draft
+    from chitragupta import draft
 
     assert draft.main(["unit", "contract", str(book), "sec-model"]) == 0
     assert "The model half" in capsys.readouterr().out

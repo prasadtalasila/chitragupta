@@ -23,11 +23,11 @@ invariant itself.
 
 Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
 (source of truth -- see below) and was picked up into `content/ledger.sqlite`
-by `python -m src.corpus sync`.
+by `python -m chitragupta.corpus sync`.
 
 All five genre skills (`survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research` in
-`.claude/skills/`) must run `python -m src.draft gate <file>` on its
+`.claude/skills/`) must run `python -m chitragupta.draft gate <file>` on its
 own output and only present the draft once it exits 0. So must
 `book-assembler`, which writes no prose but does write a document: the
 LaTeX book it composes is a new file, and this layer has one exit
@@ -55,7 +55,7 @@ export feature -- no auto-sync plugin is installed, so it is not
 continuously auto-synced. Whatever citekey BibTeX assigns there
 (e.g. `talasila_composable_2025`, or `noauthor_digital_nodate` for an item
 with no discoverable author) is the citekey everywhere downstream.
-`src/bib_reader.py` parses it and is the only place that reads it; nothing
+`chitragupta/bib_reader.py` parses it and is the only place that reads it; nothing
 else should ever generate or guess a citekey.
 
 One constraint follows from that, enforced in `bib_reader.citekey_problem()`:
@@ -72,7 +72,8 @@ That rule is why a module needing bibliographic detail reads it back out
 of the ledger rather than re-opening the bib file.
 
 Adding or removing a paper is the user's job, not a skill's: change it in
-the reference manager, re-export, re-run `python -m src.corpus sync`. There is no
+the reference manager, re-export, re-run `python -m chitragupta.corpus sync`.
+There is no
 watch/auto-export step. Removal is deliberately opt-in -- `sync` only
 *reports* a citekey that has dropped out of the bib file until it is
 re-run with `--remove-stale`, because a short export is more often a
@@ -86,7 +87,8 @@ meet them: you need a corpus before a draft, and there is nothing to
 review until a draft exists. They are not a dependency rank -- the
 enrichment layer is optional and nothing above it needs it.
 
-- **Layer 1, the corpus layer -- deterministic** (`python -m src.corpus sync`):
+- **Layer 1, the corpus layer -- deterministic** (`python -m chitragupta.corpus
+  sync`):
   bib file
   read -> ledger update -> PDF text extraction -> duplicate-citekey check
   -> stale-citekey report. No LLM calls, no judgment calls, idempotent;
@@ -95,14 +97,14 @@ enrichment layer is optional and nothing above it needs it.
   on
   demand, reviewed by the user. **Read-only over the corpus layer**: they
   never write to `content/ledger.sqlite`, and they never run `python -m
-  src.corpus sync` or the enrichment layer on the user's behalf. On an empty
+  chitragupta.corpus sync` or the enrichment layer on the user's behalf. On an empty
   ledger a skill says so and stops rather than regenerating anything --
   except the two teaching genres, where citations are optional:
   `textbook-chapter-writer` and `tutorial-writer` instead ask the user
   whether to proceed uncited, and wait. Each run writes a **dossier**
   beside its draft
   (`content/dossiers/<the draft's path minus its suffix>/`, Markdown,
-  owned by `src/dossier/`) holding the reader, scope, glossary, kept
+  owned by `chitragupta/dossier/`) holding the reader, scope, glossary, kept
   evidence, **rejected candidates and why**, and the steering the user
   gave in chat. That is what makes a draft revisable weeks later:
   `draft-reviser` reads the dossier and edits the affected sections
@@ -114,10 +116,10 @@ enrichment layer is optional and nothing above it needs it.
   the dossier. And if what you want repaired is the verbatim overlap a
   scan reported, that is `overlap-reviser`: it works the findings one at
   a time, reasks you before deciding paraphrase-or-quote on a long run,
-  and keeps no repair that `python -m src.draft gate` and `python -m
-  src.review verbatim recheck` do not both accept. Never re-run a genre
+  and keeps no repair that `python -m chitragupta.draft gate` and `python -m
+  chitragupta.review verbatim recheck` do not both accept. Never re-run a genre
   skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
-- **Layer 3, the enrichment layer -- optional** (`python -m src.enrich`):
+- **Layer 3, the enrichment layer -- optional** (`python -m chitragupta.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
   generative, everything it writes is a corpus artefact, and it takes the
@@ -125,8 +127,9 @@ enrichment layer is optional and nothing above it needs it.
   skill. It imports nothing from the drafting or review layers, which is
   what keeps this picture free of a cycle -- a per-draft stage wrapping
   either one would reintroduce it.
-- **Layer 4, the review layer -- advisory** (`src/review/citation_provenance.py`,
-  `src/review/verbatim_check.py`, `src/review/citation_coverage.py`): run by
+- **Layer 4, the review layer -- advisory** (`chitragupta/review/citation_provenance.py`,
+  `chitragupta/review/verbatim_check.py`,
+  `chitragupta/review/citation_coverage.py`): run by
   hand on
   a finished draft, never invoked automatically. Each reads a draft plus
   the corpus and produces **evidence for a human judgement, never a
@@ -134,12 +137,13 @@ enrichment layer is optional and nothing above it needs it.
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
   corpus, so it keeps working during a `sync`, like `python -m
-  src.corpus ledger` and retrieval. Input is a draft under `content/`; output is
+  chitragupta.corpus ledger` and retrieval. Input is a draft under `content/`;
+  output is
   `content/review/`, mirroring the draft's path under `content/drafts/`
   the way `content/rendered/` and `content/dossiers/` do, with
-  `src/review/__init__.py` owning that contract.
+  `chitragupta/review/__init__.py` owning that contract.
 
-  *Review*, not *verification*: `src.draft gate` is verification, it lives
+  *Review*, not *verification*: `chitragupta.draft gate` is verification, it lives
   in the drafting layer, and it is that layer's only exit. The gate
   answers a question with one correct answer and may block; these three
   answer questions of judgement and may not.
@@ -154,7 +158,7 @@ enrichment layer is optional and nothing above it needs it.
   never blocks however mechanical its answer, because blocking on it
   would refuse a correct draft on a bad target. That holds whichever
   layer the check lives in, and it is why DEVELOPER-AGENTS.md bars
-  promoting any new check into a gate beside `src/citation_gate.py`.
+  promoting any new check into a gate beside `chitragupta/citation_gate.py`.
   docs/ARCHITECTURE.md's "Layer 4" has the argument.
 
   `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus one,
@@ -171,15 +175,15 @@ enrichment layer is optional and nothing above it needs it.
 
 ## Retrieval
 
-`src/retrieval.py` (BM25 over a cached term-frequency index, stdlib-only,
+`chitragupta/retrieval.py` (BM25 over a cached term-frequency index, stdlib-only,
 no venv or model download needed) is what the genre skills use by
-default. `src/enrich/embed_index.py` (sentence-transformers + Chroma) is
+default. `chitragupta/enrich/embed_index.py` (sentence-transformers + Chroma) is
 a working upgrade path with a matching `search(query, k)` shape, to swap
 in when BM25 stops being enough -- a judgement call, not a corpus-size
 threshold. docs/RETRIEVAL.md has the caching mechanics and the
 choose-between-them guidance.
 
-Retrieval finds a *document*; `src/passages.py` decides which part of it
+Retrieval finds a *document*; `chitragupta/passages.py` decides which part of it
 may be shown. Anything that needs to point at a span of a source rather
 than the whole of it -- `citation_provenance`, `verbatim_check`, the
 enrichment layer -- goes through that one ladder rather than re-deriving
@@ -190,10 +194,11 @@ quotable. See docs/LADDERS.md.
 
 Every setting lives in `config.toml` at the repo root, and every one is
 overridable by an env var of the same name (e.g.
-`BIB_FILE=/other/path.bib python -m src.corpus sync`). docs/CONFIG.md is the
+`BIB_FILE=/other/path.bib python -m chitragupta.corpus sync`). docs/CONFIG.md is
+the
 reference.
 
-`python -m src.draft gate` needs no venv -- it only reads
+`python -m chitragupta.draft gate` needs no venv -- it only reads
 `content/ledger.sqlite` through stdlib `sqlite3` and runs with bare
-`python`. `python -m src.corpus sync` does need the venv, and must be run
+`python`. `python -m chitragupta.corpus sync` does need the venv, and must be run
 through the installed one rather than the bare system interpreter.

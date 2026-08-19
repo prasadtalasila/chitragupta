@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PostToolUse hook: report a draft's prose findings, and never block.
 
-`python -m src.draft style` has existed since 5.13.0 and nothing called
+`python -m chitragupta.draft style` has existed since 5.13.0 and nothing called
 it. docs/ARCHITECTURE.md's "Grounding is enforced, not requested" is the
 argument for why that is not enough -- the citation gate runs twice on
 every draft and neither run is the skill's own good intentions -- and
@@ -22,7 +22,7 @@ any of them is a defect, stays a judgement, and nothing here acts on one.
 - It says nothing when there is nothing to say: no findings, no `vale`
   binary, not a draft.
 
-Two behaviours here are not guesses about `src.draft style` but measured
+Two behaviours here are not guesses about `chitragupta.draft style` but measured
 facts about it, and both would be bugs if assumed the other way:
 
 - **It exits 0 whatever it finds**, so the return code carries no
@@ -44,7 +44,7 @@ import draft_target
 # list. The check sees §9's decidable rules and nothing else, and a
 # quoted "simply" is indistinguishable to it from the draft's own voice.
 PREAMBLE = (
-    "Prose findings from `python -m src.draft style` (WRITING-STANDARDS.md "
+    "Prose findings from `python -m chitragupta.draft style` (WRITING-STANDARDS.md "
     "§9's decidable rules only -- it is silent on whether a paragraph leads "
     "with its point, and it cannot tell a quotation from the draft's own "
     "voice). A review aid, not a gate: nothing here blocks, and a finding is "
@@ -73,7 +73,7 @@ def _findings(draft) -> str:
     the reader to skip the channel this one shares with the citation gate.
     """
     result = subprocess.run(
-        [sys.executable, "-m", "src.draft", "style", "--json", str(draft)],
+        [sys.executable, "-m", "chitragupta.draft", "style", "--json", str(draft)],
         check=False, cwd=draft_target.REPO_ROOT, capture_output=True, text=True,
     )
     try:

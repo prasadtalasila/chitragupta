@@ -34,7 +34,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 GENRE_DOC = REPO_ROOT / "docs" / "GENRE.md"
 
-_STEP = re.compile(r"-m src\.draft style\b")
+_STEP = re.compile(r"-m chitragupta\.draft style\b")
 _FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", re.DOTALL)
 
 # Measured over the eight files once they were written: the furthest either
@@ -83,7 +83,7 @@ def test_every_drafting_skill_runs_the_prose_check():
     assert files, "expected to find SKILL.md files under .claude/skills/"
     missing = [p.parent.name for p in files if not _STEP.search(_body(p))]
     assert not missing, (
-        f"these skills never mention `-m src.draft style`, so a draft they "
+        f"these skills never mention `-m chitragupta.draft style`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
         'docs/GENRE.md\'s "What all eight have in common" claims otherwise, '
         "and #183 is the issue this leaves half-built: the hook would still "
@@ -111,7 +111,7 @@ def test_every_step_carries_its_qualifier(literal, why):
             if literal not in window:
                 offenders.setdefault(path.parent.name, []).append(match.start())
     assert not offenders, (
-        f"`-m src.draft style` appears without {literal!r} nearby in "
+        f"`-m chitragupta.draft style` appears without {literal!r} nearby in "
         f"{sorted(offenders)}. {why}. If you added a second mention of the "
         "command, carry the qualifier with it or don't name the command."
     )
@@ -121,7 +121,7 @@ def test_the_shared_conventions_doc_names_the_command():
     """The scan pins a rule docs/GENRE.md states; without the statement this
     test would be inventing one."""
     genre = GENRE_DOC.read_text(encoding="utf-8")
-    assert "python -m src.draft style" in genre, (
+    assert "python -m chitragupta.draft style" in genre, (
         "docs/GENRE.md speaks for all eight skills and does not mention the "
         "prose check, so this test would be pinning a convention no document "
         "states"

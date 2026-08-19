@@ -11,7 +11,7 @@ This is the code counterpart of
 genre skills write prose against, this one is the standard an agent
 changes *this repository's own code* against.
 
-**Written for** someone changing code in `src/` or `scripts/`, or
+**Written for** someone changing code in `chitragupta/` or `scripts/`, or
 deciding whether a proposed rule is worth enforcing. It assumes
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the process around a
 change -- test policy, the local check suite, commit/PR/release
@@ -146,7 +146,7 @@ Here that proxy mostly measures comment discipline:
 
 | Scope | Functions over 25 **physical lines** | Functions over 25 **statements** |
 |---|---|---|
-| `src/` (383 functions) | 128 | 26 |
+| `chitragupta/` (383 functions) | 128 | 26 |
 | `tests/` (1926 functions) | 63 | 1 |
 
 *Measured at 5.7.1.* These four numbers are dated rather than pinned by a
@@ -166,16 +166,16 @@ edit this project least wants.
 
 Counting **statements** measures what "do one thing" is actually about --
 how much a function *does* -- and is blind to how well it is explained. On
-that measure the codebase is in good shape: 26 offenders in `src/`, not
+that measure the codebase is in good shape: 26 offenders in `chitragupta/`, not
 128, and the tests hold the bar almost perfectly at 1 in 1926.
 
-The same correction applies to files: `src/config.py` is 509 physical
+The same correction applies to files: `chitragupta/config.py` is 509 physical
 lines and 288 lines of code, the difference being 221 lines of
 per-setting rationale. The file rule counts code lines -- non-blank,
 non-comment -- for the same reason.
 
 **This is a re-expression, not a relaxation.** One outlier got stricter
-under it, not looser: at 5.7.1, `src/sync.py::run` was 322 physical lines
+under it, not looser: at 5.7.1, `chitragupta/sync.py::run` was 322 physical lines
 but **117 statements**, 4.7× the next worst function in the repository.
 Physical lines ranked it 2.4× the next worst and understated how far out
 it was. (It has since been split back under the limit and delisted -- the
@@ -207,9 +207,9 @@ open:
 
 That keeps what the rule is *for* -- decay is not permitted -- while
 keeping diffs reviewable. Concretely: noticing that
-`src/review/verbatim_check.py` is on the register while fixing something
+`chitragupta/review/verbatim_check.py` is on the register while fixing something
 unrelated in it is a reason to say so in the PR, not a licence to
-refactor it there. `src/dossier.py` was this example until #219 gave it
+refactor it there. `chitragupta/dossier.py` was this example until #219 gave it
 its own PR and delisted it -- the ratchet doing exactly what it's for.
 
 The one case where the rule applies to your own edit unchanged is the
@@ -226,8 +226,8 @@ quality gate to keep in sync -- the same idiom as
 
 | | Rule | Scope | Counted as |
 |---|---|---|---|
-| **C1** | A function body holds at most **25 statements** | `src/`, `scripts/`, `tests/` | `ast` statement nodes in the body, not descending into nested definitions |
-| **C2** | A module holds at most **250 lines of code** | `src/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment |
+| **C1** | A function body holds at most **25 statements** | `chitragupta/`, `scripts/`, `tests/` | `ast` statement nodes in the body, not descending into nested definitions |
+| **C2** | A module holds at most **250 lines of code** | `chitragupta/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment |
 
 **Why the scopes differ.** C1 covers the tests because the tests already
 hold it -- 1 offender in 1926 -- so including them locks in a bar that is
@@ -328,7 +328,8 @@ Three reasons beyond the general argument.
    failing test reaches a session that read nothing.
 3. **It makes the debt legible instead of ambient.** "The code quality is
    poor" is unactionable and, measured properly, was not even true here.
-   "`src/sync.py::run` is 117 statements and `src/dossier.py` is 1605
+   "`chitragupta/sync.py::run` is 117 statements and `chitragupta/dossier.py` is
+   1605
    code lines" -- the register's two worst entries on the day it was
    written -- is a worklist, ordered, with the entries worth taking
    first at the top.
@@ -365,8 +366,8 @@ should not get one.
 | Rule | Fate |
 |---|---|
 | Keep configurable data at high levels | Already here: `config.toml` is the single source, every key overridable by an env var |
-| Prefer polymorphism to if/else | **N/A as stated** -- `src/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
-| Separate multi-threading code | Already here: the process pool lives in `src/pdf_text.py` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
+| Prefer polymorphism to if/else | **N/A as stated** -- `chitragupta/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
+| Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text.py` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
 | Prevent over-configurability | Review. A `config.toml` key with one caller and no user asking for it is a maintenance cost, not flexibility |
 | Use dependency injection | Already here as **the probe pattern**: a stage depends on "is pandoc on PATH?", answered at run time, never on a `--target` flag naming its environment |
 | Follow Law of Demeter | Already here as module boundaries: `references.py` reads the ledger's `bib_fields` column and must not reach through to `bibliography.bib` |
@@ -383,7 +384,7 @@ inversion is the probe pattern.
 |---|---|
 | Be consistent | Review, and the highest-value one in this list. A second way of doing something already done is the most common finding here |
 | Use explanatory variables | Review |
-| Encapsulate boundary conditions | Already here, as a whole module: `src/passages.py` is the single place that decides which span of a source may be shown, so no caller re-derives it |
+| Encapsulate boundary conditions | Already here, as a whole module: `chitragupta/passages.py` is the single place that decides which span of a source may be shown, so no caller re-derives it |
 | Prefer dedicated value objects to primitive types | **Mostly N/A.** A citekey is deliberately a bare `str`, because it is also a filename stem and a ledger key; the invariant is enforced at the one entrance (`bib_reader.citekey_problem()`) rather than by a wrapper type |
 | Avoid logical dependency | Review |
 | Avoid negative conditionals | Review |
@@ -423,7 +424,7 @@ indentation.
 ### Objects and data structures
 
 Largely **N/A**, and the reason is worth stating rather than leaving as
-an omission. `src/` has almost no classes, and the few it has --
+an omission. `chitragupta/` has almost no classes, and the few it has --
 `interrupt_guard`, `_AnnotatedStream` -- are small context managers and
 wrappers.
 
@@ -453,7 +454,7 @@ agree or disagree with.
 |---|---|
 | **Rigidity** -- a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
 | **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than three aids each writing their own path |
-| **Immobility** -- code cannot be reused | The reason `src/passages.py` is a module and not logic inlined into `verbatim_check` |
+| **Immobility** -- code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
 | **Needless complexity** | Speculative configurability, an abstraction with one call site, defensive handling for an impossible state |
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |
 | **Opacity** -- hard to understand | Usually a missing *why*-comment rather than bad code |
@@ -495,7 +496,7 @@ different shape than proposed here -- see their own notes.
    Genuinely still open, and only `ruff` (or an equivalent per-site
    suppression check) closes it; `pylint`'s category-level `disable=`
    does not.
-3. **Type annotations and a checker.** `src/` is partly annotated. A
+3. **Type annotations and a checker.** `chitragupta/` is partly annotated. A
    checker over a 100%-covered stdlib codebase is worth having and is its
    own project, not a step in this one.
 4. **A doc-drift detector.** **Half built, in #239** -- and the half
@@ -510,7 +511,7 @@ different shape than proposed here -- see their own notes.
    as currently-open C1/C2 debt that the register no longer lists. Both
    incidents on record are caught by it, checked against the real
    historical files: the C1/C2 counts that read 26/13 against a real
-   10/11 until #228, and `src/sync.py::run`, delisted in #178 and still
+   10/11 until #228, and `chitragupta/sync.py::run`, delisted in #178 and still
    named as the second-highest-priority open item four days later.
 
    **Not built, and not a backlog item:** `docs/DESIGN.md`'s "Three
@@ -531,7 +532,7 @@ different shape than proposed here -- see their own notes.
 
 ## What this does not change
 
-- **No new gate.** `python -m src.draft gate` remains the only gate in
+- **No new gate.** `python -m chitragupta.draft gate` remains the only gate in
   the project. C1 and C2 are a test, and a test is not a gate on a
   draft -- [SOUL.md](../SOUL.md)'s review-layer rule is untouched.
 - **No refactor.** The register freezes today's code exactly as it
