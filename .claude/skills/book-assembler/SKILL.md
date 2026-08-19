@@ -53,7 +53,7 @@ The document skeleton, in order:
 ```latex
 \documentclass[11pt,a4paper]{book}
 \usepackage[T1]{fontenc}\usepackage{lmodern}\usepackage{textcomp}
-\usepackage[a4paper,margin=40pt]{geometry}   % see "Margins" below
+\usepackage[a4paper,margin=80pt]{geometry}   % see "Margins" below
 \usepackage{longtable,booktabs,array,calc}   % what the converted units use
 \usepackage{graphicx}
 \usepackage[hidelinks]{hyperref}
@@ -109,10 +109,13 @@ pandoc --print-default-template=latex | \
     print('\n'.join(l for l in b.splitlines() if not l.strip().startswith('\$')))"
 ```
 
-**Margins.** The `book` class at a4/11pt leaves 94pt inner and 143pt
-outer (measured with `\the\oddsidemargin`), a 119pt mean. `margin=40pt`
-is a third of that, which is this project's setting for an assembled
-book -- a 15-chapter book came out 326 pages rather than 546.
+**Margins.** `margin=80pt` -- about 28mm, and this project's setting for
+an assembled book. Arrived at by measurement rather than taste: the
+`book` class at a4/11pt leaves 94pt inner and 143pt outer (measured with
+`\the\oddsidemargin`), a 119pt mean, which is generous enough that a
+15-chapter book ran to 546 pages. A third of that was tried first and
+read too tight for a book meant to be printed -- 80pt is that doubled,
+and is the number to keep unless someone measures a better one.
 
 **The bibliography points at the user's own `.bib` file**, the same one
 `python -m src.corpus sync` read -- not a copy, and never a file this

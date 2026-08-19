@@ -367,9 +367,10 @@ macro block, taken from `pandoc --print-default-template=latex` so it
 matches the pandoc that did the conversion -- written to
 `citeproc-defs.def` and `\input`, not inline, because that block contains
 `\cite{#1}` and `\@`-internals which the citation gate reads as citekeys
-and would fail the assembled book on. And `margin=40pt`, a third of the
-`book` class's own margins (94pt inner, 143pt outer, 119pt mean), which
-took one real 15-chapter book from 546 pages to 326.
+and would fail the assembled book on. And `margin=80pt` -- about 28mm.
+The `book` class's own margins are 94pt inner and 143pt outer (measured),
+generous enough to run a 15-chapter book to 546 pages; a third of that
+was tried and read too tight for print, so the setting is that doubled.
 
 **`book.md` is written beside `book.tex`**: the same structure in
 Markdown, hyperlinking the chapter files alongside it, for anyone who is
@@ -445,19 +446,18 @@ scan is not a clean bill of health ([PLAGIARISM.md](PLAGIARISM.md)).
 ## What one real book looked like
 
 The first book assembled by this track, so the numbers are measured
-rather than illustrative -- a 15-chapter textbook, 20,630 lines of
-Markdown, on 2026-08-19:
+rather than illustrative -- a 15-chapter textbook, 22,155 lines of
+Markdown, re-measured on 2026-08-19 after the chapters were revised:
 
 | | |
 |---|---|
 | outline | 3 parts, 15 chapters, 15 units |
-| citations, gate-verified | 866 across the 15 units, 193 distinct citekeys |
+| citations, gate-verified | 864 across the 15 units, 194 distinct citekeys |
 | terminology registry | 15 definitions |
-| claim register | 390 claims |
+| claim register | 388 claims |
 | cross-reference graph | 0 edges -- the chapters refer to each other in English, not as links |
 | `registry check` | 1 finding: one claim made in two chapters |
-| prose check | 106 findings across 15 units, none acted on |
-| the book | 326 pages, 1.6 MB, 0 undefined citations |
+| the book | 430 pages, 1.7 MB, 0 undefined citations |
 
 Two things that build found, both now fixed in the skill: the Markdown
 conversion step named the wrong command, and three citekeys containing
