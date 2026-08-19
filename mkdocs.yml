@@ -147,6 +147,7 @@ nav:
       - Which genre skill: docs/GENRE.md
       - Getting your library in: docs/ZOTERO.md
       - Commands: docs/CLI.md
+      - Installing and the CLI surface: docs/PACKAGING.md
       - Settings: docs/CONFIG.md
   - Understanding the system:
       - Architecture: docs/ARCHITECTURE.md
