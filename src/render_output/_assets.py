@@ -51,9 +51,25 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
         src = input_path.parent / ref_path
         if not src.is_file():
             continue
-        dst = dest_dir / ref_path
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        _copy_beside(src, dest_dir / ref_path)
+
+
+def _copy_beside(src: Path, dst: Path) -> None:
+    """Copies `src` to `dst`, unless they are the same file.
+
+    Rendering *into the draft's own directory* is a real case, not a
+    degenerate one: `--output-dir` exists so a book's fragments land
+    beside the `book.tex` that \\input-s them, which is the directory the
+    chapters already live in. There the source and the destination of
+    every figure and image are the same path, and `shutil.copy2` raises
+    `SameFileError` rather than doing nothing -- which failed all fifteen
+    fragment conversions of a real book at once (2026-08-19). Compared by
+    resolved path, so a symlinked output directory is caught too.
+    """
+    if src.resolve() == dst.resolve():
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
 
 
 def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
@@ -69,6 +85,4 @@ def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
         src = _resolve_sibling(input_path.parent, ref)
         if src is None:
             continue
-        dst = dest_dir / ref
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        _copy_beside(src, dest_dir / ref)
