@@ -1,9 +1,20 @@
-# Poetry as a dependency/lockfile manager only -- package-mode = false
-# below means this is NOT a publishable package (no [build-system], no
-# renaming the `src` layout; see the packaging pros/cons write-up for why
-# that's a separate, larger decision this project explicitly isn't
-# making). `poetry install` replaces the old docker/requirements-full.txt
-# + requirements-dev.txt + hand-run `python3 -m venv` -- see
+# Poetry is a dependency/lockfile manager here *for now* -- package-mode
+# = false below means this is not yet a publishable package (no
+# [build-system], and the import package is still `src`, which cannot
+# ship: a top-level `src` in site-packages claims the most generic name
+# on the index).
+#
+# That is a transitional state, not the settled position. The settled
+# position is docs/PACKAGING.md, which records the decision to ship an
+# installable distribution (`chitragupta-cli`, importing as
+# `chitragupta`, with a `chitragupta` console script and a `cg` alias),
+# the objections it had to answer, and which of them survive. An earlier
+# revision of this comment pointed at a "packaging pros/cons write-up"
+# that never existed anywhere in this repository; docs/PACKAGING.md is
+# that document, written for the first time.
+#
+# `poetry install` replaces the old docker/requirements-full.txt +
+# requirements-dev.txt + hand-run `python3 -m venv` -- see
 # scripts/install_full_pipeline.sh, still the single install path for
 # host and Docker.
 [tool.poetry]

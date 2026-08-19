@@ -223,8 +223,9 @@ config.toml.example       tracked template for the central config -- paths, pars
 papers/                   gitignored, per-host data -- not shipped in the repo
   bibliography.bib          BibTeX export -- source of truth for citekeys/metadata (config.toml's [bib].path default)
   bibliography/             the export's companion attachment folder, referenced by each entry's file field
-pyproject.toml            Poetry config (dependency/lockfile manager only, package-mode = false --
-                          no [build-system], nothing published) + pytest/coverage tool config
+pyproject.toml            Poetry config (dependency/lockfile manager for now, package-mode = false --
+                          no [build-system] yet; docs/PACKAGING.md has the decision to publish and
+                          what still has to land first) + pytest/coverage tool config
 poetry.toml               project-local Poetry config: virtualenvs.create = false (installs into
                           whatever venv VIRTUAL_ENV points at, e.g. .venv-full/, instead of Poetry's own)
 poetry.lock               resolved dependency versions -- regenerate with `poetry lock` after editing pyproject.toml

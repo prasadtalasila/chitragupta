@@ -136,11 +136,22 @@ This is **the single install script for both the host and Docker and CI**
 -- `docker/Dockerfile` calls it once per stage as separate `RUN` lines, and
 `.github/workflows/ci.yml` calls it directly too, rather than any of them
 having their own separate apt-get/pip/poetry install logic. Python
-dependencies are managed by Poetry as a lockfile/venv manager only
-(`package-mode = false` in `pyproject.toml` -- nothing here is published
-or pip-installable). If you find a dependency-order issue, fix it once in
-`pyproject.toml` (+ `poetry lock` to update `poetry.lock`) and every
-target picks it up. Don't add a second install path.
+dependencies are managed by Poetry as a lockfile/venv manager
+(`package-mode = false` in `pyproject.toml` -- not yet published or
+pip-installable; [docs/PACKAGING.md](docs/PACKAGING.md) records the
+decision to change that and what has to land first). If you find a
+dependency-order issue, fix it once in `pyproject.toml` (+ `poetry lock`
+to update `poetry.lock`) and every target picks it up. Don't add a second
+install path.
+
+Read that last sentence as the invariant it protects, not as the
+mechanism: the goal is **one place a dependency fact can be written**, so
+a fix lands once and every target picks it up. The single script is
+today's mechanism for it. When the package ships there will be two front
+doors -- `install_full_pipeline.sh` for a checkout, Docker and CI, and
+`chitragupta install` for someone who pip-installed -- onto that same
+script and that same `pyproject.toml`. Two front doors, one source of
+truth, still no second place to write a version down.
 
 `docker/` (Dockerfile) builds the same TeX Live/Pandoc stack inside a
 container instead, for hosts where the
