@@ -62,10 +62,10 @@ class TestSnippet:
         outputs = set()
         for seed in ("0", "1", "2", "3", "4"):
             env = {**os.environ, "PYTHONHASHSEED": seed,
-                   "PYTHONPATH": str(config.REPO_ROOT)}
+                   "PYTHONPATH": str(config.PACKAGE_ROOT.parent)}
             result = subprocess.run(
                 [sys.executable, "-c", program], capture_output=True, text=True,
-                env=env, cwd=config.REPO_ROOT, check=True,
+                env=env, cwd=config.PROJECT_ROOT, check=True,
             )
             outputs.add(result.stdout.strip())
         assert len(outputs) == 1, f"snippet varied with hash seed: {outputs}"
@@ -451,7 +451,7 @@ class TestDocsQuoteTheActualDefaults:
     quoted values are pinned to the constants rather than trusted."""
 
     def test_the_docs_quote_the_actual_defaults(self):
-        cli = (config.REPO_ROOT / "docs" / "CLI.md").read_text(encoding="utf-8")
+        cli = (config.shipped("docs", "CLI.md")).read_text(encoding="utf-8")
         chars_row = next(line for line in cli.splitlines() if "`--chars N`" in line)
         assert f"{retrieval.EVIDENCE_CHARS} / 500" in chars_row
 
@@ -463,7 +463,7 @@ class TestDocsQuoteTheActualDefaults:
         )
         assert f"{retrieval.EVIDENCE_WINDOWS} by default" in evidence_row
 
-        retr = (config.REPO_ROOT / "docs" / "RETRIEVAL.md").read_text(encoding="utf-8")
+        retr = (config.shipped("docs", "RETRIEVAL.md")).read_text(encoding="utf-8")
         assert f"{retrieval.EVIDENCE_WINDOWS} x {retrieval.EVIDENCE_CHARS} characters" in retr
 
 

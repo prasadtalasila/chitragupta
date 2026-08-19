@@ -50,7 +50,18 @@ worse failure than one that refuses to start.
   `BIB_FILE=/path/to/other.bib python -m src.corpus sync`. The environment
   always wins.
 - Set **`CONFIG_PATH`** to keep the file elsewhere:
-  `CONFIG_PATH=/etc/research/config.toml python -m src.corpus sync`.
+  `CONFIG_PATH=/etc/research/config.toml python -m src.corpus sync`. This
+  names *which file to read* and nothing else -- a relative `[bib] path`
+  still resolves against the project directory, not against wherever the
+  config file happens to sit.
+- The **project directory** is what relative paths below resolve against:
+  your `papers/`, `content/` and `logs/`. It is found by walking up from
+  the working directory for the nearest `config.toml`, so any command
+  works from anywhere inside the project. Set **`CHITRAGUPTA_PROJECT`** to
+  say so explicitly instead. Files that ship with the code rather than
+  with your project -- the CSL style, the Vale rules, the default acronym
+  list -- resolve from the installation instead, and
+  [PACKAGING.md](PACKAGING.md) says why the two are separate.
 - **Every key is optional.** Anything absent falls back to the default in
   the tables below, so your file only needs the settings you want to
   change.
@@ -161,10 +172,12 @@ citation gate.
   it at any other `.csl` file to use a different style;
   [the CSL project](https://github.com/citation-style-language/styles)
   publishes several thousand. Without this, pandoc falls back to Chicago
-  author-date. Relative to the repo root here, as with every other path
-  setting; `render_output`'s `--csl` flag additionally accepts a path
-  relative to the current directory, since that is what a shell-typed
-  path means.
+  author-date. Relative to the project directory here, as with every
+  other path setting -- so your own `house-style.csl` is found where you
+  keep it, while the shipped `assets/csl/ieee.csl` is found wherever this
+  code is installed. `render_output`'s `--csl` flag additionally accepts
+  a path relative to the current directory, since that is what a
+  shell-typed path means.
 - **`collapse_citations`** -- whether a run of consecutive numbers
   collapses: `[3]–[6]` rather than `[3], [4], [5], [6]`. The IEEE
   Reference Guide's own examples use the collapsed form, but upstream

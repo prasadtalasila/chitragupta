@@ -104,7 +104,7 @@ class TestFullPipelineNoMocks:
             references.apply(draft)
 
 
-real_bib_available = (config.REPO_ROOT / "papers" / "bibliography.bib").exists()
+real_bib_available = (config.PROJECT_ROOT / "papers" / "bibliography.bib").exists()
 
 
 @pytest.mark.skipif(
@@ -119,7 +119,7 @@ class TestRealBibliographySmoke:
     invariant exists to prevent."""
 
     def test_real_bib_file_parses_without_error(self, isolated_config, monkeypatch):
-        real_bib = config.REPO_ROOT / "papers" / "bibliography.bib"
+        real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
         refs = bib_reader.read_library()
@@ -169,7 +169,7 @@ class TestRealBibliographySmoke:
         """Every real citekey, cited in Pandoc form, must be recognized
         as known once synced -- the gate's regex must not choke on any
         real citekey shape (hyphens, underscores, digits, "--")."""
-        real_bib = config.REPO_ROOT / "papers" / "bibliography.bib"
+        real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
         refs = bib_reader.read_library()

@@ -11,8 +11,86 @@ import os
 import tomllib
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", str(REPO_ROOT / "config.toml")))
+# Two roots, because `REPO_ROOT` was doing two unrelated jobs under one
+# name and they stop being the same directory the moment this code is
+# installed rather than cloned (docs/PACKAGING.md).
+#
+#   PACKAGE_ROOT  -- where the code is. Follows the code.
+#   PROJECT_ROOT  -- where the user's corpus, drafts and config are.
+#                    Follows the user.
+#
+# In a git checkout they are the same directory and nothing about this
+# module's behaviour changes; that equality is what let the split land
+# before anything was renamed.
+PACKAGE_ROOT = Path(__file__).resolve().parent
+
+# The marker that identifies a project directory. Deliberately the file
+# this module already refuses to start without, so there is nothing new
+# for a user to create -- and a real file rather than a heuristic, so
+# "am I in a project?" has one answer rather than a guess.
+PROJECT_MARKER = "config.toml"
+
+
+def shipped(*parts: str) -> Path:
+    """A file that ships with the code, not with the user's project.
+
+    The CSL style, the Vale rules and the default acronym list are the
+    project's own vendored assets: a user gets them by installing, never
+    by authoring them. They therefore resolve from the code's location,
+    not the user's working directory.
+
+    One function rather than a constant because it is the single seam
+    that changes when `assets/` moves under the import package (#261) and
+    this becomes an `importlib.resources` call. Today the assets are a
+    sibling of the package, so this reaches up one level; every caller is
+    already written against the seam rather than against that fact.
+    """
+    return PACKAGE_ROOT.parent.joinpath(*parts)
+
+
+def discover_project_root(cwd: "Path | None" = None,
+                          environ: "dict | None" = None) -> "Path | None":
+    """The project directory, or None when there is no project here.
+
+    Order, first hit wins:
+
+    1. `CHITRAGUPTA_PROJECT`, so an explicit answer always beats a
+       discovered one.
+    2. The nearest ancestor of the working directory holding a
+       `config.toml` -- how an installed `chitragupta` finds the project
+       the user is standing in.
+    3. The directory above the package, when *it* holds one. This is the
+       git checkout, and it is what keeps every existing invocation
+       working from anywhere, exactly as deriving the root from
+       `__file__` used to.
+
+    Note what is deliberately *not* here: `CONFIG_PATH`. That variable
+    has always meant "read this file", never "the project lives beside
+    this file" -- `tests/test_config.py::test_custom_config_path` pins
+    that a custom config still resolves a relative `[bib] path` against
+    the checkout. Folding it in would silently move a user's whole data
+    root as a side effect of naming a config file.
+    """
+    environ = os.environ if environ is None else environ
+    explicit = environ.get("CHITRAGUPTA_PROJECT")
+    if explicit:
+        return Path(explicit)
+    start = (Path.cwd() if cwd is None else Path(cwd)).resolve()
+    for candidate in (start, *start.parents):
+        if (candidate / PROJECT_MARKER).is_file():
+            return candidate
+    beside_package = PACKAGE_ROOT.parent
+    if (beside_package / PROJECT_MARKER).is_file():
+        return beside_package
+    return None
+
+
+# Falls back to the directory above the package when no project was
+# found, so the error below names the path a checkout would have used --
+# `cp config.toml.example config.toml` is only actionable if the message
+# points somewhere the reader recognises.
+PROJECT_ROOT = discover_project_root() or PACKAGE_ROOT.parent
+CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", str(PROJECT_ROOT / PROJECT_MARKER)))
 
 # config.toml is gitignored per-host data (every user edits the parser
 # backend, the paths, the worker count), so a fresh clone genuinely does
@@ -135,9 +213,9 @@ def _get_bool(env_var: str, *toml_path: str, default: bool) -> bool:
     return node if isinstance(node, bool) else default
 
 
-# REPO_ROOT / <absolute path> correctly collapses to the absolute path
+# PROJECT_ROOT / <absolute path> correctly collapses to the absolute path
 # (pathlib behavior), so env var overrides may be absolute or relative.
-BIB_FILE_PATH = REPO_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibliography.bib")
+BIB_FILE_PATH = PROJECT_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibliography.bib")
 
 # Which BibTeX field carries Zotero collection membership. `groups` is
 # JabRef's, and what Better BibTeX writes under "Export JabRef-specific
@@ -148,7 +226,7 @@ BIB_FILE_PATH = REPO_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibl
 BIB_COLLECTIONS_FIELD = _get("BIB_COLLECTIONS_FIELD", "bib", "collections_field",
                              default="groups").strip().lower()
 
-CONTENT_DIR = REPO_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
+CONTENT_DIR = PROJECT_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
 LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # Every report the review layer writes, one directory per draft,
@@ -383,7 +461,7 @@ LOGGING_LEVEL = _get_log_level("LOGGING_LEVEL", "logging", "level", default="INF
 # file gets one, and a real subprocess CLI test needs to point this
 # somewhere other than this checkout's own logs/. Gitignored; see
 # src/logging_setup.py for what lands here and why it is one file.
-LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(REPO_ROOT / "logs")))
+LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(PROJECT_ROOT / "logs")))
 
 # src/review/citation_provenance.py band thresholds: the fraction of a citing
 # sentence's distinctive words that must appear in the best-matching
@@ -426,15 +504,18 @@ RENDERED_DIR = CONTENT_DIR / "rendered"
 # with. Vendored (assets/csl/) rather than fetched, so rendering works with
 # no network and so a style change can never silently renumber a draft that
 # was already reviewed -- see assets/csl/README.md.
-CSL_STYLE_PATH = REPO_ROOT / _get("CSL_STYLE", "render", "csl", default="assets/csl/ieee.csl")
+_CSL_STYLE = _get("CSL_STYLE", "render", "csl", default="")
+CSL_STYLE_PATH = ((PROJECT_ROOT / _CSL_STYLE) if _CSL_STYLE
+                  else shipped("assets", "csl", "ieee.csl"))
 
 # The Vale configuration `python -m src.draft style` checks a draft
 # against, vendored at assets/vale/ for the reason assets/csl/ieee.csl is:
 # a style fetched at run time is not the style that was reviewed, and a
 # check whose rules differ per clone is not a check. Overridable so a user
 # can point at their own house style without editing what ships.
-VALE_CONFIG_PATH = REPO_ROOT / _get("VALE_CONFIG", "style", "vale_config",
-                                    default="assets/vale/vale.ini")
+_VALE_CONFIG = _get("VALE_CONFIG", "style", "vale_config", default="")
+VALE_CONFIG_PATH = ((PROJECT_ROOT / _VALE_CONFIG) if _VALE_CONFIG
+                    else shipped("assets", "vale", "vale.ini"))
 
 # A fallback dialect for a draft whose dossier records none -- the
 # standing preference docs/HOUSE-STYLE.md calls for under "What persists
@@ -466,10 +547,9 @@ RENDER_COLLAPSE_CITATIONS = _get_bool(
 # merges ACRONYMS_PATH's file over it when the two differ, because a
 # user's own vocabulary and this project's PDF/CPU/URL floor are
 # additive, not alternatives. See assets/style/README.md.
-ACRONYMS_DEFAULT_PATH = REPO_ROOT / "assets" / "style" / "acronyms.toml"
-ACRONYMS_PATH = REPO_ROOT / _get(
-    "ACRONYMS", "style", "acronyms", default="assets/style/acronyms.toml"
-)
+ACRONYMS_DEFAULT_PATH = shipped("assets", "style", "acronyms.toml")
+_ACRONYMS = _get("ACRONYMS", "style", "acronyms", default="")
+ACRONYMS_PATH = (PROJECT_ROOT / _ACRONYMS) if _ACRONYMS else ACRONYMS_DEFAULT_PATH
 
 EMBEDDING_MODEL = _get(
     "EMBEDDING_MODEL", "enrich", "embedding_model",

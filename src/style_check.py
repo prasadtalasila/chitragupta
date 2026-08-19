@@ -157,7 +157,7 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
         )
     result = subprocess.run(
         _vale_argv(draft, language), capture_output=True, text=True, check=False,
-        cwd=config.REPO_ROOT,
+        cwd=config.PROJECT_ROOT,
     )
     # Vale prints `{}` for a clean run and a JSON object keyed by path
     # otherwise. A parse failure is a broken vendored config rather than a

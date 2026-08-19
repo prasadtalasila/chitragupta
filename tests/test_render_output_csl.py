@@ -30,7 +30,7 @@ class TestResolveCsl:
         monkeypatch.chdir(tmp_path)
         resolved = render_output._resolve_csl("assets/csl/ieee.csl")
         assert resolved.is_file()
-        assert resolved == render_output.config.REPO_ROOT / "assets" / "csl" / "ieee.csl"
+        assert resolved == render_output.config.shipped("assets", "csl", "ieee.csl")
 
     def test_the_working_directory_wins_when_both_exist(self, tmp_path, monkeypatch):
         # A local file the user actually typed a path to is never shadowed
