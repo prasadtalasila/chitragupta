@@ -296,7 +296,11 @@
       "output_tokens": 9689,
       "models": {
         "claude-opus-5": 149
-      }
+      },
+      "usage_entries_seen": 149,
+      "output_tokens_first_per_request": 2347,
+      "streaming_partials_present": true,
+      "self_check": "streaming partials present: first-per-request would report 2,347 against 9,689. The max reading is the correct one; see bench/RESULTS.md 2026-08-19."
     }
   },
   "tokens": {
@@ -306,7 +310,11 @@
       "output_tokens": 41573,
       "models": {
         "claude-opus-5": 219
-      }
+      },
+      "usage_entries_seen": 219,
+      "output_tokens_first_per_request": 8259,
+      "streaming_partials_present": true,
+      "self_check": "streaming partials present: first-per-request would report 8,259 against 41,573. The max reading is the correct one; see bench/RESULTS.md 2026-08-19."
     },
     "arm C -- whole agent": {
       "turns": 102,
@@ -314,7 +322,11 @@
       "output_tokens": 55985,
       "models": {
         "claude-opus-5": 193
-      }
+      },
+      "usage_entries_seen": 193,
+      "output_tokens_first_per_request": 25511,
+      "streaming_partials_present": true,
+      "self_check": "streaming partials present: first-per-request would report 25,511 against 55,985. The max reading is the correct one; see bench/RESULTS.md 2026-08-19."
     }
   },
   "tokens_per_1k_words": {

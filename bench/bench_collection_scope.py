@@ -249,7 +249,9 @@ def _pool_usage(session_file, start, end):
     every field is monotonic within a request.
     """
     per_request = {}
+    first_seen = {}
     models = {}
+    entries = 0
     if not session_file or not session_file.is_file():
         return {"turns": 0, "input_tokens": 0, "output_tokens": 0,
                 "note": "transcript not found"}
@@ -266,10 +268,15 @@ def _pool_usage(session_file, start, end):
             usage = message.get("usage")
             if not usage:
                 continue
-            fields = per_request.setdefault(entry.get("requestId"), {})
+            entries += 1
+            rid = entry.get("requestId")
+            fields = per_request.setdefault(rid, {})
             for key in ("input_tokens", "cache_read_input_tokens",
                         "cache_creation_input_tokens", "output_tokens"):
                 fields[key] = max(fields.get(key, 0), usage.get(key, 0))
+            # What docs/TOKENS.md's recipe would have read, kept only so
+            # the two can be compared below.
+            first_seen.setdefault(rid, usage.get("output_tokens", 0))
             model = message.get("model")
             if model:
                 models[model] = models.get(model, 0) + 1
@@ -277,8 +284,29 @@ def _pool_usage(session_file, start, end):
                     + f.get("cache_creation_input_tokens", 0)
                     for f in per_request.values())
     tokens_out = sum(f.get("output_tokens", 0) for f in per_request.values())
-    return {"turns": len(per_request), "input_tokens": tokens_in,
-            "output_tokens": tokens_out, "models": models}
+    naive_out = sum(first_seen.values())
+    return {
+        "turns": len(per_request),
+        "input_tokens": tokens_in,
+        "output_tokens": tokens_out,
+        "models": models,
+        # Self-check, in the spirit of repro_check.py's own: this figure
+        # was silently 5x low once (docs/TOKENS.md's first-per-requestId
+        # recipe reading partial streaming usage), and nothing caught it
+        # because a wrong total looks exactly like a right one. Publishing
+        # both readings makes the discrepancy visible in every run instead
+        # of waiting for someone to notice a number is implausible.
+        "usage_entries_seen": entries,
+        "output_tokens_first_per_request": naive_out,
+        "streaming_partials_present": naive_out != tokens_out,
+        "self_check": (
+            "ok -- one usage entry per request, both readings agree"
+            if naive_out == tokens_out else
+            f"streaming partials present: first-per-request would report "
+            f"{naive_out:,} against {tokens_out:,}. The max reading is the "
+            f"correct one; see bench/RESULTS.md 2026-08-19."
+        ),
+    }
 
 
 def _boundaries(hashes_path, session_file):
@@ -449,11 +477,19 @@ def run(args):
             "arm C -- whole agent": _pool_usage(args.arm_c_session, "", "~"),
         }
         result["tokens"] = windows
+        def _per_1k(window, words):
+            """None rather than a crash when a draft body is empty.
+
+            An empty body means the draft failed to parse or was not
+            written, and a benchmark that dies on that is harder to
+            diagnose than one that reports the gap."""
+            return round(1000 * window["output_tokens"] / words, 1) if words else None
+
         result["tokens_per_1k_words"] = {
             "arm_f_output_tokens_per_1k_words":
-                round(1000 * windows["arm F -- whole agent"]["output_tokens"] / words_f, 1),
+                _per_1k(windows["arm F -- whole agent"], words_f),
             "arm_c_output_tokens_per_1k_words":
-                round(1000 * windows["arm C -- whole agent"]["output_tokens"] / words_c, 1),
+                _per_1k(windows["arm C -- whole agent"], words_c),
             "arm_f_words_drafted_total": words_f,
             "arm_c_words_drafted_total": words_c,
             "note": "Each arm drafted once, in its own agent, so words drafted "
