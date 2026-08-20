@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.8.1"
+version = "6.8.2"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -49,15 +49,28 @@ include = [
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
-# Without this, PyPI's project page shows only `description` above (one
-# line) and nothing else -- confirmed against the real, already-published
-# chitragupta-cli 6.7.0, whose page has an empty long description because
-# no `readme` was declared when that release was built. README.md is
-# already package data (`include` above, for `chitragupta init` -- #263);
-# this is the separate, Poetry-native declaration that copies its content
-# into the wheel/sdist METADATA as the long description, content-type
-# inferred from the extension (text/markdown).
-readme = "README.md"
+homepage = "https://prasad.talasila.in/chitragupta/"
+repository = "https://github.com/prasadtalasila/chitragupta"
+documentation = "https://prasad.talasila.in/chitragupta/"
+# Without one of these, PyPI's project page shows only `description`
+# above (one line) and nothing else -- confirmed against the real,
+# already-published chitragupta-cli 6.7.0, whose page had an empty long
+# description *and* no "Project links" sidebar, because neither `readme`
+# nor `homepage`/`repository` was declared when that release was built.
+#
+# README.md is the tracked source (package data too, `include` above,
+# for `chitragupta init` -- #263) and stays relative-link-friendly for
+# GitHub and the mkdocs site (mkdocs.yml's `docs_dir: .` is built
+# specifically so those two agree) -- but PyPI's renderer has no
+# knowledge of the GitHub repo, so those same relative links and the
+# logo's <img src="docs/logo.svg"> just 404 there. README.pypi.md is
+# `scripts/release.py`'s generated, absolute-link rewrite of it, never
+# git-tracked (.gitignore). **`readme` pointing here means `poetry
+# build`/`publish` depends on `python3 scripts/release.py` having
+# already run in this checkout** -- true in release.yml by construction
+# (its "Build release archive" step runs first), and the reason a bare
+# `poetry build` from a fresh checkout fails until you run that once.
+readme = "README.pypi.md"
 
 # Two executables, one entry point, one distribution. `cg` is *not* a
 # second PyPI project -- a console script name is not a PyPI name, and
