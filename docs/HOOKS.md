@@ -161,7 +161,7 @@ It makes three checks, of which **only the first two are faults**:
 
 | Checked | How | Verdict |
 |---|---|---|
-| Can each registered hook's launcher start? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged | fault |
+| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
 | all three fine | -- | says nothing at all |
@@ -182,8 +182,9 @@ with the command that advances it, and never as `BROKEN`.
 That distinction is what lets the hook run this early at all. Both fault
 checks are corpus-independent by construction:
 
-- The launcher check reads a config file and calls `shutil.which`. No
-  corpus, no interpreter beyond the one already running.
+- The launcher check reads a config file, calls `shutil.which`, and -- for
+  each distinct launcher that resolves -- spawns it once to ask whether it
+  can import `chitragupta`. No corpus either way.
 - **A fabricated citekey is absent from an empty ledger and a full one
   alike.** Measured before it was relied on: with no `ledger.sqlite`
   present at all, `chitragupta.draft gate` exits 0 on a citation-free draft and

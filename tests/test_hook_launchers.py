@@ -13,6 +13,8 @@ rather than raise on a file it merely finds odd.
 """
 
 import json
+import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -149,3 +151,83 @@ class TestProjectRoot:
         monkeypatch.chdir(bare)
         expected = Path(hook_launchers.__file__).resolve().parent.parent
         assert hook_launchers._project_root() == expected
+
+
+class TestImportFaultDirectly:
+    """`_import_fault` on its own, for the shapes a whole settings file
+    would only reach by first resolving `shutil.which` -- which is the
+    caller's job, not this function's."""
+
+    def test_a_program_that_cannot_be_spawned_at_all_is_not_a_fault(self):
+        """`faults()` only calls this once `shutil.which` has already
+        resolved the program, so a program that can't be spawned at all
+        is `OSError` from a race (removed between the two checks) rather
+        than something new to report -- the PATH check already covers it."""
+        assert hook_launchers._import_fault("/nonexistent/nowhere-abcx") is None
+
+    def test_an_interpreter_that_can_import_the_package_is_clean(self):
+        assert hook_launchers._import_fault(sys.executable) is None
+
+
+@pytest.fixture
+def fake_interpreter(tmp_path):
+    """A throwaway program that ignores its arguments and exits with a
+    chosen code, optionally after a delay -- stands in for a `python` that
+    starts but cannot import `chitragupta`, or one too slow to answer."""
+    def make(code: int, sleep: float = 0) -> str:
+        script = tmp_path / "fake-interpreter"
+        script.write_text(f"#!/bin/sh\n{f'sleep {sleep}' if sleep else ''}\nexit {code}\n",
+                          encoding="utf-8")
+        script.chmod(script.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        return str(script)
+    return make
+
+
+@pytest.mark.skipif(sys.platform == "win32",
+                     reason="a shebang script is not directly executable on Windows")
+class TestImportProbeThroughFaults:
+    """`faults()`'s new check, end to end through a settings file: once a
+    launcher resolves on PATH, can it import `chitragupta`?"""
+
+    def test_an_interpreter_that_cannot_import_the_package_is_a_fault(
+            self, settings, fake_interpreter):
+        program = fake_interpreter(code=1)
+        found = hook_launchers.faults(settings({"hooks": {"PostToolUse": [{"hooks": [
+            {"command": program, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}]}}))
+        assert "cannot import chitragupta" in found[0]
+
+    def test_a_timeout_is_reported_as_a_fault_never_as_clean(
+            self, settings, fake_interpreter, monkeypatch):
+        monkeypatch.setattr(hook_launchers, "IMPORT_PROBE_TIMEOUT", 0.05)
+        program = fake_interpreter(code=0, sleep=1)
+        found = hook_launchers.faults(settings({"hooks": {"PostToolUse": [{"hooks": [
+            {"command": program, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}]}}))
+        assert "did not respond" in found[0]
+
+    def test_a_working_interpreter_adds_no_fault(self, settings):
+        found = hook_launchers.faults(settings({"hooks": {"PostToolUse": [{"hooks": [
+            {"command": sys.executable, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}]}}))
+        assert found == []
+
+
+class TestImportProbeIsPerDistinctProgram:
+    """The probe is one subprocess per distinct launcher, not one per hook
+    entry -- both because two entries naming the same program is one
+    problem, not two, and because a slow probe should not multiply."""
+
+    def test_runs_once_for_a_program_two_entries_share(self, settings, monkeypatch):
+        calls = []
+        monkeypatch.setattr(hook_launchers, "_import_fault",
+                             lambda program: calls.append(program) or None)
+        same = {"command": sys.executable, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
+        hook_launchers.faults(settings({"hooks": {
+            "PostToolUse": [{"hooks": [same]}], "SessionStart": [{"hooks": [same]}]}}))
+        assert calls == [sys.executable]
+
+    def test_never_runs_for_a_program_not_on_path(self, settings, monkeypatch):
+        calls = []
+        monkeypatch.setattr(hook_launchers, "_import_fault",
+                             lambda program: calls.append(program) or None)
+        hook_launchers.faults(settings({"hooks": {"PostToolUse": [{"hooks": [
+            {"command": "python4.2", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}]}}))
+        assert calls == []

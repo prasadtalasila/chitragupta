@@ -69,7 +69,13 @@ class TestLauncherContract:
         assert all(isinstance(a, str) for a in hook["args"])
 
     def test_launches_the_agreed_interpreter(self, hook):
-        assert hook["command"] == INTERPRETER
+        """Never the `chitragupta`/`cg` console script (#262): that depends on
+        whichever venv is first on PATH, which reintroduces exactly the
+        silent-launcher failure `chitragupta/hook_launchers.py` exists to
+        catch (#264) -- `python <script>.py` degrades to a clear PATH
+        fault instead."""
+        assert hook["command"] == INTERPRETER, (
+            f"hook launches {hook['command']!r}, not the agreed {INTERPRETER!r}")
 
     def test_every_placeholder_is_braced(self, hook):
         """Claude Code substitutes `${CLAUDE_PROJECT_DIR}` itself, into

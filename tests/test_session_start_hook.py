@@ -251,3 +251,23 @@ class TestLauncherFaults:
         synced.write_settings({"hooks": {"SessionStart": [
             {"hooks": [{"type": "command", "command": "python4.2"}]}]}})
         assert "python4.2" in PreflightRepo.context(synced.run())
+
+
+class TestImportProbeFault:
+    """A launcher that resolves on PATH and still cannot import the
+    package -- the failure mode a venv install adds, once `python` no
+    longer guarantees `chitragupta` is on its `sys.path` (#264).
+
+    A raising `chitragupta/__init__.py` shadowed into the temp root's cwd
+    stands in for that host: `python -c "import chitragupta"` searches cwd
+    ('' at sys.path[0]) before the real PYTHONPATH entry, the same
+    mechanism `PreflightRepo.stub` documents for the `-m` invocations.
+    """
+
+    def test_is_reported_through_the_real_hook(self, synced):
+        pkg = synced.root / "chitragupta"
+        pkg.mkdir(exist_ok=True)
+        (pkg / "__init__.py").write_text("raise ImportError('stubbed for #264')\n",
+                                          encoding="utf-8")
+        context = PreflightRepo.context(synced.run())
+        assert "cannot import chitragupta" in context

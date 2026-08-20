@@ -5,15 +5,20 @@ Advisory class (docs/HOOKS.md): it never blocks, exits 0 whatever it
 finds, and stays silent when the project is ready to draft. Three checks,
 and only the first two are faults:
 
-1. **Can each registered hook's launcher start?** A hook that fails to
-   spawn cannot report that it failed to spawn -- the settings file still
-   lists it, the tests still pass, and the citation gate silently stops
-   enforcing CLAUDE.md's one invariant. Noticing that is the whole reason
-   this hook exists (#197). It is not, on its own, enough: **this hook is
-   launched by the same interpreter name it vets**, so the one host where
-   the gate's launcher is missing is a host where this report never
-   arrives either. `chitragupta/hook_launchers.py` holds the check for that
-   reason, and `python -m chitragupta.draft gate` makes it too.
+1. **Can each registered hook's launcher start, and can it import
+   `chitragupta` once it has?** A hook that fails to spawn cannot report
+   that it failed to spawn -- the settings file still lists it, the tests
+   still pass, and the citation gate silently stops enforcing CLAUDE.md's
+   one invariant. Noticing that is the whole reason this hook exists
+   (#197). Since the package can now live in a venv the harness may not
+   be using, a launcher that resolves on `PATH` is no longer enough on
+   its own -- an `init`-ed project can have a `python` that starts and
+   then cannot `import chitragupta`, which fails exactly as silently. It
+   is not, on its own, enough either way: **this hook is launched by the
+   same interpreter name it vets**, so the one host where the gate's
+   launcher is missing or broken is a host where this report never
+   arrives either. `chitragupta/hook_launchers.py` holds both checks for
+   that reason, and `python -m chitragupta.draft gate` makes them too.
 2. **Does `python -m chitragupta.draft gate` still refuse a fabricated citekey?**
 3. **Has the corpus been synced?** -- reported as a *stage*, not a fault.
 
