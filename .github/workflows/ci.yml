@@ -412,7 +412,7 @@ jobs:
       # because the two fence rules that dominate the baseline there are
       # the same ones that reached docs/ unnoticed.
       - name: markdownlint
-        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
+        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
 
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a

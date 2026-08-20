@@ -25,10 +25,18 @@ does, which is
 (`scope.md`'s `language:` line, and
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8), so what this document
 called *the objective function* is now normative in that file's §9 rather
-than proposed here. What remains unbuilt is the machinery: everything under "What
-persists across drafts" below, which no issue yet covers. The detector
-(#107) shipped in 5.13.0, and its automatic invocation (#183) in 5.19.0 --
-a PostToolUse hook per write and a step in all nine skills.
+than proposed here. The detector (#107) shipped in 5.13.0, and its automatic
+invocation (#183) in 5.19.0 -- a PostToolUse hook per write and a step in
+all nine skills.
+
+What remains unbuilt is **part** of the machinery under "What persists
+across drafts" below -- not all of it, as this paragraph previously
+said. Two of its four items have since been built and that section says
+so in its own body: the boilerplate allowlist (#128, as per-host
+gitignored data rather than the version-controlled file first framed
+here) and the acronym-shaped slice of the glossary (#190). Genuinely
+unbuilt, and covered by no issue: the cross-draft dialect default,
+plain-term glossary reconciliation, and recurring refusals.
 
 ## Table of contents
 

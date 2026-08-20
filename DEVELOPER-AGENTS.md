@@ -291,6 +291,23 @@ something you can't first demonstrate is broken. Exception: exploratory
 spikes to understand a problem before committing to an approach don't
 need up-front tests, but the resulting real change does.
 
+### Recording a plan before you build
+
+[docs/FEATURE-ROADMAP.md](docs/FEATURE-ROADMAP.md) holds what would be
+built and in what order. For an item whose design is genuinely
+underdetermined, write the plan down in `plans/` **before** the first
+test, and link it from the PR.
+
+Most items do not need one -- a roadmap entry already carries the files
+touched, the size and the dependencies, and for a mechanical change that
+is the whole plan. [plans/README.md](plans/README.md) has the three
+tests for when a plan earns its place, the shape to follow, and the rule
+that a merged plan records which PR closed it.
+
+`plans/` does not ship: it is in `scripts/release.py`'s
+`EXCLUDE_TOP_LEVEL`, like `tests/` and `bench/`. It is linted, though --
+the markdownlint globs above include it.
+
 ## Before claiming a task complete: run all local checks
 
 Never report a task as done on the strength of a plan or a code read alone.
@@ -319,7 +336,7 @@ Before saying so, actually run, in this repo:
 
   ```bash
   pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
-  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"
+  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
   ```
 
 - `poetry check`.
@@ -377,7 +394,7 @@ glob is how a tree stops being checked without anyone deciding it should:
 
 ```bash
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
-markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md"   # npm i -g markdownlint-cli2
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"   # npm i -g markdownlint-cli2
 ```
 
 **Read the linter's own exit code, not a pipeline's.** `pylint … | tail`

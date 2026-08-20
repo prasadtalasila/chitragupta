@@ -68,6 +68,16 @@ EXCLUDE_TOP_LEVEL = {
     ".github",
     ".gitignore",
     "bench",
+    # Implementation plans for this repository's own PRs
+    # (docs/FEATURE-ROADMAP.md is the shipped roadmap; these are the
+    # working documents behind individual items). Developer-only
+    # material in the same sense as `tests/` and `bench/`: a release
+    # consumer working on the pipeline needs DEVELOPER-AGENTS.md and the
+    # roadmap, not the half-finished plan for chitragupta PR #291. They
+    # are also the one prose directory that is deliberately allowed to go
+    # stale, which is the opposite of the contract every shipped document
+    # here is held to.
+    "plans",
     # CI config that happens to live at the root rather than under
     # .github/: it names *this* repository's SonarQube project key and
     # organisation, so in an unzipped release it is either inert or

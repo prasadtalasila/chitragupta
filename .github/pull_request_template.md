@@ -40,7 +40,8 @@ What was actually run, not what was intended (see DEVELOPER-AGENTS.md,
       --cov-report=term-missing` -- still 100% line and branch
 - [ ] Both linters, at their full paths: `pylint --rcfile=.pylintrc chitragupta
       scripts .claude/hooks` and `markdownlint-cli2 "*.md" "docs/**/*.md"
-      ".claude/**/*.md"` -- read each one's own exit code, not a pipeline's
+      ".claude/**/*.md" "plans/**/*.md"` -- read each one's own exit code,
+      not a pipeline's
 - [ ] `poetry check`
 - [ ] At least one real end-to-end smoke test against real dependencies,
       not only mocked unit tests -- [name it here]
