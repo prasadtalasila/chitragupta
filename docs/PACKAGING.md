@@ -50,6 +50,18 @@ console script and a `chitragupta` import package. `chitragupta-cli` was
 free; the command you type stays `chitragupta`, because the command name
 is not a PyPI name and never was.
 
+```bash
+pip install chitragupta-cli     # once the publisher is configured (#269)
+```
+
+Published from a tagged release by **Trusted Publishing** -- GitHub's
+OIDC token exchanged for a short-lived PyPI one -- so there is no
+long-lived API token in repository settings to leak or rotate. The
+publish job runs *after* the GitHub Release is created, so a PyPI failure
+leaves a complete, downloadable release behind rather than a tag with
+nothing attached. Until the publisher is registered on PyPI against this
+repository, that job fails and the release still lands.
+
 `cg` is likewise **not** a second PyPI project. One distribution declares
 both executables against one entry point:
 

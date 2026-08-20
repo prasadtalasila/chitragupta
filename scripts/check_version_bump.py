@@ -34,6 +34,9 @@ a string and that is precisely the comparison this has to get right.
 from __future__ import annotations
 
 import argparse
+import json
+import urllib.error
+import urllib.request
 import subprocess
 import sys
 import tomllib
@@ -82,6 +85,46 @@ def problems(current: str, base: str, tags: "list[str] | tuple[str, ...]") -> li
             f"v{current}. Whatever this branch ships, it is not that."
         )
     return found
+
+
+def on_pypi(version: str, fetch) -> "bool | None":
+    """Whether `version` is already published as chitragupta-cli.
+
+    True, False, or **None for "could not tell"** -- the three cases are
+    kept distinct on purpose. A published version is *immutable*: PyPI
+    refuses a re-upload even after a deletion, and yanking does not free
+    the number. So this is the one release check that has to block rather
+    than warn, and equally the one that must never block on a network
+    hiccup. A `None` is reported as a warning; only a definite `True`
+    fails the build.
+
+    `fetch` is injected rather than called directly so the rule is
+    testable without reaching the network -- the same separation
+    `problems()` already has from the git plumbing.
+    """
+    try:
+        payload = fetch(f"https://pypi.org/pypi/chitragupta-cli/{version}/json")
+    except Exception:  # noqa: BLE001 -- any transport failure means "unknown"
+        return None
+    if payload is None:
+        return None
+    return payload is not False
+
+
+def _fetch_json(url: str):
+    """`False` for a 404, the decoded body otherwise, None if unreadable.
+
+    A 404 is the *answer* here -- the version is not on PyPI -- not a
+    failure, so it is distinguished from every other error rather than
+    lumped in with them.
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return False if exc.code == 404 else None
+    except (urllib.error.URLError, ValueError, TimeoutError):
+        return None
 
 
 def unreleased(base: str, tags: "list[str] | tuple[str, ...]") -> "str | None":
@@ -136,6 +179,8 @@ def main(argv: "list[str] | None" = None) -> int:
     )
     parser.add_argument("--base-ref", default="origin/main",
                         help="What this branch must out-rank (default origin/main)")
+    parser.add_argument("--offline", action="store_true",
+                        help="Skip the PyPI check (no network in this environment)")
     args = parser.parse_args(argv)
 
     # The working tree is the *merge* commit on a pull_request event, so
@@ -161,6 +206,20 @@ def main(argv: "list[str] | None" = None) -> int:
     owed = unreleased(base, tags)
     if owed:
         print(f"::warning::{owed}", file=sys.stderr)
+
+    # A published version can never be reused, so this blocks -- but a
+    # network failure must not. See on_pypi() for why the three outcomes
+    # are kept distinct.
+    published = on_pypi(current, _fetch_json) if not args.offline else None
+    if published is True:
+        print(f"::error::{current} is already published as chitragupta-cli "
+              f"{current} on PyPI, and a published version can never be "
+              "re-uploaded -- not after a deletion, and yanking does not free "
+              "the number. Choose the next version.", file=sys.stderr)
+        return 1
+    if published is None and not args.offline:
+        print("::warning::could not reach PyPI to check whether "
+              f"{current} is already published; continuing.", file=sys.stderr)
 
     found = problems(current, base, tags)
     for problem in found:

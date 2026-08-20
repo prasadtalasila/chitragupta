@@ -278,3 +278,114 @@ class TestTheWarningDoesNotGate:
                             lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
         assert check.main([]) == 0
         assert "::warning::" not in capsys.readouterr().err
+
+
+class TestOnPyPI:
+    """A published version is immutable: PyPI refuses a re-upload even
+    after deletion, and yanking does not free the number. So this is the
+    one release check that blocks -- and the one that must never block on
+    a network hiccup, which is why "unknown" is a third outcome rather
+    than being folded into either answer."""
+
+    def test_a_404_means_not_published(self, check):
+        assert check.on_pypi("9.9.9", lambda url: False) is False
+
+    def test_a_payload_means_published(self, check):
+        assert check.on_pypi("0.1.1", lambda url: {"info": {}}) is True
+
+    def test_a_transport_failure_is_unknown_not_an_answer(self, check):
+        def boom(url):
+            raise OSError("no network")
+        assert check.on_pypi("1.0.0", boom) is None
+
+    def test_an_unreadable_body_is_unknown(self, check):
+        assert check.on_pypi("1.0.0", lambda url: None) is None
+
+    def test_it_asks_about_the_distribution_not_the_import_package(self, check):
+        """`chitragupta` on PyPI is an unrelated project. Asking about it
+        would report every one of our versions as taken."""
+        seen = []
+        check.on_pypi("1.2.3", lambda url: seen.append(url) or False)
+        assert "chitragupta-cli/1.2.3" in seen[0]
+
+
+class TestPyPIBlocks:
+    def test_a_published_version_fails_the_check(self, check, monkeypatch, capsys):
+        monkeypatch.setattr(check, "on_pypi", lambda *a: True)
+        monkeypatch.setattr(check, "_git",
+                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        assert check.main([]) == 1
+        assert "can never be re-uploaded" in capsys.readouterr().err
+
+    def test_an_unreachable_pypi_warns_and_continues(self, check, monkeypatch, capsys):
+        monkeypatch.setattr(check, "on_pypi", lambda *a: None)
+        monkeypatch.setattr(check, "problems", lambda *a: [])
+        monkeypatch.setattr(check, "unreleased", lambda *a: None)
+        monkeypatch.setattr(check, "_git",
+                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        assert check.main([]) == 0
+        assert "could not reach PyPI" in capsys.readouterr().err
+
+    def test_offline_skips_the_network_entirely(self, check, monkeypatch, capsys):
+        def boom(*_a):
+            raise AssertionError("--offline must not touch the network")
+        monkeypatch.setattr(check, "on_pypi", boom)
+        monkeypatch.setattr(check, "problems", lambda *a: [])
+        monkeypatch.setattr(check, "unreleased", lambda *a: None)
+        monkeypatch.setattr(check, "_git",
+                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        assert check.main(["--offline"]) == 0
+        assert "could not reach PyPI" not in capsys.readouterr().err
+
+
+class TestFetchJson:
+    """`_fetch_json` alone, with urlopen stubbed.
+
+    Never reaches the network: a unit test that depends on PyPI being up
+    is a test that fails for reasons having nothing to do with this code.
+    The live path is exercised once, deliberately, in TestOnPyPI's
+    injection point instead.
+    """
+
+    @staticmethod
+    def _stub_urlopen(check, monkeypatch, result):
+        import contextlib
+
+        @contextlib.contextmanager
+        def fake(_url, timeout=None):
+            if isinstance(result, Exception):
+                raise result
+            yield result
+        monkeypatch.setattr(check.urllib.request, "urlopen", fake)
+
+    def test_a_body_is_decoded(self, check, monkeypatch):
+        class Body:
+            @staticmethod
+            def read():
+                return b'{"info": {"version": "1.0.0"}}'
+        self._stub_urlopen(check, monkeypatch, Body())
+        assert check._fetch_json("https://example.invalid")["info"]["version"] == "1.0.0"
+
+    def test_a_404_is_the_answer_not_a_failure(self, check, monkeypatch):
+        """Not on PyPI is exactly what this is asking, so a 404 is
+        distinguished from every other error rather than lumped in."""
+        err = check.urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+        self._stub_urlopen(check, monkeypatch, err)
+        assert check._fetch_json("https://example.invalid") is False
+
+    def test_any_other_http_status_is_unknown(self, check, monkeypatch):
+        err = check.urllib.error.HTTPError("u", 503, "Unavailable", {}, None)
+        self._stub_urlopen(check, monkeypatch, err)
+        assert check._fetch_json("https://example.invalid") is None
+
+    def test_a_transport_error_is_unknown(self, check, monkeypatch):
+        self._stub_urlopen(check, monkeypatch, check.urllib.error.URLError("down"))
+        assert check._fetch_json("https://example.invalid") is None
+
+    def test_an_unparseable_body_is_unknown(self, check, monkeypatch):
+        class Body:
+            @staticmethod
+            def read():
+                return b"not json"
+        self._stub_urlopen(check, monkeypatch, Body())
+        assert check._fetch_json("https://example.invalid") is None

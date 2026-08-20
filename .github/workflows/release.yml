@@ -70,6 +70,16 @@ jobs:
       # Codecov pin states: S7637 -- a movable tag on a third-party action
       # running with `contents: write` is exactly the dependency to pin.
       # Bump it deliberately, by resolving the tag again.
+      # Handed to the publish job rather than rebuilt there, so what
+      # reaches PyPI is byte-identical to what is attached to the
+      # release. Two `poetry build` runs are not guaranteed to agree.
+      - name: Keep the built distributions for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
@@ -78,3 +88,48 @@ jobs:
             dist/chitragupta_cli-*.whl
             dist/chitragupta_cli-*.tar.gz
           generate_release_notes: true
+
+  # Separate job, and separate permissions. Trusted Publishing needs an
+  # OIDC token; the release job needs to write releases. Neither needs
+  # the other's, and `permissions:` is per job, so splitting them is what
+  # keeps the OIDC token off every step that has no business holding one.
+  #
+  # `needs: release` orders it *after* the GitHub Release is published,
+  # deliberately: a PyPI failure then leaves a complete, downloadable
+  # release behind rather than a tag with no artefacts. That ordering is
+  # load-bearing right now, because this job is expected to fail until
+  # Trusted Publishing is configured (see below).
+  publish-pypi:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # the OIDC token Trusted Publishing exchanges
+    steps:
+      - name: Fetch the distributions the release job built
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      # No API token, and no secret in repository settings: Trusted
+      # Publishing exchanges GitHub's OIDC token for a short-lived PyPI
+      # one, so there is no long-lived credential to leak or rotate.
+      #
+      # **This fails until the publisher is configured on PyPI**, and
+      # that is expected rather than a defect. It has to be registered
+      # there against this repository, this workflow filename and the
+      # `pypi` environment above -- PyPI cannot be told any of that from
+      # here. Until then the failure is confined to this job: the tag,
+      # the release and all three artefacts still land.
+      #
+      # The project is `chitragupta-cli`, not `chitragupta`: that name
+      # belongs to an unrelated package on PyPI. docs/PACKAGING.md has
+      # the three-namespaces table and why the command is still
+      # `chitragupta`.
+      #
+      # Pinned to a commit SHA for the reason the release action above
+      # is: a movable tag on a third-party action that can publish to
+      # PyPI is strictly worse than one that can write a release.
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
