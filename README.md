@@ -206,7 +206,7 @@ arguing your point in different words, and topic clustering over the whole
 corpus.
 
 ```bash
-.venv-full/bin/python -m chitragupta.enrich --stages docling,embed
+chitragupta enrich --stages docling,embed          # or: python -m chitragupta.enrich --stages docling,embed
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in

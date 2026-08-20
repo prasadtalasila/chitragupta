@@ -46,15 +46,21 @@ jobs:
       # The zip and the wheel answer different questions and both ship.
       # The zip is the whole project directory -- docs, .claude/ skills,
       # hooks, config example -- for someone who wants to work in a
-      # checkout. The wheel installs the code and the CLI.
-      #
-      # No PyPI publish step here: `chitragupta` on PyPI belongs to an
-      # unrelated project, so this distribution is `chitragupta-cli` and
-      # publishing it is #269. Until then the install line is this
-      # release's own asset URL. That is the one thing to change if PyPI
-      # is revisited.
+      # checkout. The wheel installs the code and the CLI, and is what
+      # `publish-pypi` below hands to PyPI.
       - name: Install Poetry
         run: pipx install poetry==2.4.1
+
+      # pyproject.toml's `readme` stays README.md (poetry install reads
+      # it too, not just poetry build, so it has to be a file every
+      # checkout actually has -- see that file's own comment; pointing
+      # it at a generated file broke ci.yml's install step the first
+      # time this was tried, #286). This overwrites README.md with
+      # scripts/release.py's absolute-link rewrite of it in *this*
+      # checkout only, right before the one build that reaches PyPI --
+      # never committed, and gone the moment this job's runner is.
+      - name: Rewrite README.md for the PyPI-bound build
+        run: cp README.pypi.md README.md
 
       - name: Build wheel and sdist
         run: poetry build

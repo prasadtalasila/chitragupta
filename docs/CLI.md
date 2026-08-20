@@ -143,6 +143,18 @@ would want one -- [Every command and flag](#every-command-and-flag) is
 the exhaustive reference, and each command's own section links from the
 table of contents.
 
+Two parts, same sequence, same steps, differing only in which of the two
+equivalent forms invokes each command -- see [Which
+interpreter](#which-interpreter) for why both exist and when each one
+resolves. Pick whichever you'll actually type; nothing else in this
+walkthrough depends on which you use, and the module form works either
+way if you switch mid-session.
+
+### As the `chitragupta` command
+
+Once the package is installed -- `pip install`, or a checkout with
+`source .venv-full/bin/activate` (see [Installing](#installing)).
+
 ```bash
 # 1. Install, and get a project directory -- see Installing above for
 #    both paths (pip install + chitragupta init, or a git checkout).
@@ -165,30 +177,30 @@ cp config.toml.example config.toml   # git checkout only
 
 # 4. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
 #    venv, and holds the write lock.
-.venv-full/bin/python -m chitragupta.corpus sync
-# .venv-full/bin/python -m chitragupta.corpus sync --reparse         # re-extract text even if the PDF is unchanged
-# .venv-full/bin/python -m chitragupta.corpus sync --remove-stale    # only after reading the stale list it prints
+chitragupta corpus sync
+# chitragupta corpus sync --reparse         # re-extract text even if the PDF is unchanged
+# chitragupta corpus sync --remove-stale    # only after reading the stale list it prints
 
 # 5. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
-python -m chitragupta.corpus ledger
-# python -m chitragupta.corpus ledger --list
-# python -m chitragupta.corpus ledger --status parse_failed
-# python -m chitragupta.corpus ledger --citekey talasila_composable_2025
+chitragupta corpus ledger
+# chitragupta corpus ledger --list
+# chitragupta corpus ledger --status parse_failed
+# chitragupta corpus ledger --citekey talasila_composable_2025
 
 # 6. Optional, and only when you want it: the enrichment layer.
 #    Layout-aware parsing, semantic search and topic clustering over the
 #    whole corpus. Nothing below needs it, and no skill builds it for you
 #    -- RETRIEVAL.md says which stage is worth your time. Takes the same
 #    write lock as sync.
-.venv-full/bin/python -m chitragupta.enrich --stages docling,embed
-# .venv-full/bin/python -m chitragupta.enrich --stages docling --for-draft content/drafts/<slug>.md
+chitragupta enrich --stages docling,embed
+# chitragupta enrich --stages docling --for-draft content/drafts/<slug>.md
 
 # 7. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
 #    cost can be totalled later -- omit it for a one-off look.
-python -m chitragupta.draft retrieve search "digital twin composability" --k 15
-python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
+chitragupta draft retrieve search "digital twin composability" --k 15
+chitragupta draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
 # 8. In Claude Code, ask for a draft, e.g.:
@@ -197,47 +209,111 @@ python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_c
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own gate -> references -> render chain (python -m chitragupta.draft <verb>),
+# including its own gate -> references -> render chain (chitragupta draft <verb>),
 # and writes a dossier beside the draft as it goes.
 
 # 9. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
 #    refused, so that one directory stays the whole record of the work.
-python -m chitragupta.draft gate content/drafts/<slug>.md
-python -m chitragupta.draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
-python -m chitragupta.draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
-python -m chitragupta.draft render content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
-python -m chitragupta.draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
-python -m chitragupta.draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
+chitragupta draft gate content/drafts/<slug>.md
+chitragupta draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
+chitragupta draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
+chitragupta draft render content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
+chitragupta draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
+chitragupta draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
 
 # 10. Read and maintain the draft's dossier -- what was kept, what was
 #    rejected and why, and whether the corpus has moved under it since.
-python -m chitragupta.draft dossier list
-python -m chitragupta.draft dossier brief content/drafts/<slug>.md
-python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
-python -m chitragupta.draft dossier status --all --json
-python -m chitragupta.draft dossier export <slug>
+chitragupta draft dossier list
+chitragupta draft dossier brief content/drafts/<slug>.md
+chitragupta draft dossier sections content/drafts/<slug>.md --citekeys --write
+chitragupta draft dossier status --all --json
+chitragupta draft dossier export <slug>
 
 # 11. Check the draft against its sources. Review aids, not gates: none of
 #     these runs automatically, and none of them can block a draft.
-python -m chitragupta.review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
-python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
-python -m chitragupta.review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
-python -m chitragupta.review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
-python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
+chitragupta review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
+chitragupta review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
+chitragupta review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
+chitragupta review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
+chitragupta review coverage content/drafts/<slug>.md --query "digital twin composability"
 # add --write to any of the three to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
 
 Two commands are not part of a first run at all, and are listed here only
 so this walkthrough is complete. Both are for working *on* this
-repository rather than drafting with it:
+repository rather than drafting with it, so only their checkout form
+exists -- there is no console-script equivalent of either:
 
 ```bash
 bash scripts/install_full_pipeline.sh dev-deps   # pytest + pytest-cov, only to run the test suite
-.venv-full/bin/python -m pytest                  # the suite itself
+python -m pytest                                 # the suite itself
 
-python scripts/release.py                       # bundles release/chitragupta-<version>.zip
+python3 scripts/release.py                       # bundles release/chitragupta-<version>.zip
+```
+
+### As the module form (`python -m chitragupta.<layer>`)
+
+The exact same eleven steps -- what's below explains nothing a second
+time; see the numbered comments above for that. This is what hooks and
+skills invoke, and the one form guaranteed to work regardless of how the
+package got here (checkout with an active venv, or `pip install`). Steps
+1-3 (install, export, config) don't change at all -- reproduced here only
+so the numbering matches:
+
+```bash
+# 1. Install, and get a project directory -- see Installing above.
+
+# 2. Export your reference manager's library.
+mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
+
+# 3. Create your config, if step 1 didn't already.
+cp config.toml.example config.toml   # git checkout only
+
+# 4.
+python -m chitragupta.corpus sync
+# python -m chitragupta.corpus sync --reparse
+# python -m chitragupta.corpus sync --remove-stale
+
+# 5.
+python -m chitragupta.corpus ledger
+# python -m chitragupta.corpus ledger --list
+# python -m chitragupta.corpus ledger --status parse_failed
+# python -m chitragupta.corpus ledger --citekey talasila_composable_2025
+
+# 6.
+python -m chitragupta.enrich --stages docling,embed
+# python -m chitragupta.enrich --stages docling --for-draft content/drafts/<slug>.md
+
+# 7.
+python -m chitragupta.draft retrieve search "digital twin composability" --k 15
+python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
+    --log content/drafts/<slug>.md
+
+# 8. (In Claude Code -- the matching skill invokes this form itself.)
+
+# 9.
+python -m chitragupta.draft gate content/drafts/<slug>.md
+python -m chitragupta.draft references content/drafts/<slug>.md --heading "References"
+python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
+python -m chitragupta.draft render content/drafts/<slug>.md --format tex
+python -m chitragupta.draft render content/drafts/<slug>.md --format docx
+python -m chitragupta.draft render content/drafts/<slug>.md --format md
+
+# 10.
+python -m chitragupta.draft dossier list
+python -m chitragupta.draft dossier brief content/drafts/<slug>.md
+python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
+python -m chitragupta.draft dossier status --all --json
+python -m chitragupta.draft dossier export <slug>
+
+# 11.
+python -m chitragupta.review provenance content/drafts/<slug>.md
+python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>
+python -m chitragupta.review verbatim scan content/drafts/<slug>.md
+python -m chitragupta.review verbatim locate <citekey> "a phrase to find"
+python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
 ```
 
 ### Migrating a checkout to `pip install`
@@ -263,6 +339,18 @@ package now ships as a runnable command instead.
 
 Defaults shown are the value used when the flag is omitted.
 
+**Examples below assume one interpreter is already on `PATH`** -- from a
+checkout, `source .venv-full/bin/activate` once (as in [the full first
+run](#the-full-first-run-step-by-step)); from a `pip install`, nothing
+more is needed. Every command is then exactly `python -m
+chitragupta.<layer> <verb>`, or `chitragupta <layer> <verb>` if you
+installed the package -- see [Which interpreter](#which-interpreter) for
+which needs which. Two sections below this one -- [Running sync on a
+schedule](#running-sync-on-a-schedule) and [Environment
+variables](#environment-variables) -- spell out `.venv-full/bin/python`
+in full instead, because a cron job or a systemd unit has no shell to
+have activated anything in.
+
 ### `python -m chitragupta.corpus sync`
 
 Bibliography -> ledger -> parsed text. **Needs the venv.** Takes the
@@ -276,10 +364,10 @@ than waiting.
 | `--remove-stale` | off (report only) | Delete ledger rows for citekeys no longer in the bib file. Without it they are only *reported* |
 
 ```bash
-.venv-full/bin/python -m chitragupta.corpus sync
-# .venv-full/bin/python -m chitragupta.corpus sync --reparse
-# .venv-full/bin/python -m chitragupta.corpus sync --remove-stale
-# .venv-full/bin/python -m chitragupta.corpus sync --reparse --remove-stale
+python -m chitragupta.corpus sync
+# python -m chitragupta.corpus sync --reparse
+# python -m chitragupta.corpus sync --remove-stale
+# python -m chitragupta.corpus sync --reparse --remove-stale
 
 # Exit codes: 0 = clean, 1 = at least one parse failed,
 #             2 = another run holds the lock.
@@ -1293,10 +1381,10 @@ therefore a correct answer rather than a bug.
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
 
 ```bash
-.venv-full/bin/python -m chitragupta.enrich
-# .venv-full/bin/python -m chitragupta.enrich --stages docling
-# .venv-full/bin/python -m chitragupta.enrich --stages embed,bertopic
-# .venv-full/bin/python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
+python -m chitragupta.enrich
+# python -m chitragupta.enrich --stages docling
+# python -m chitragupta.enrich --stages embed,bertopic
+# python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
 
 # A review report and a draft render are tier-1 commands, not stages --
 # no venv, no lock:
@@ -1314,7 +1402,7 @@ twenty-three papers therefore costs twenty-three parses rather than the
 whole library:
 
 ```console
-$ .venv-full/bin/python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
+$ python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
 Target: host
 Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/drafts/digital-twins.md
 
@@ -1337,7 +1425,7 @@ command, so it needs no venv and waits on no lock.
 Two stages refuse the scope rather than honouring it:
 
 ```console
-$ .venv-full/bin/python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages embed
+$ python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages embed
   --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
       python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages docling
       python -m chitragupta.enrich --stages embed
@@ -1427,7 +1515,7 @@ Builds the release archive under `release/`. A maintainer tool.
 it ignores while building the archive anyway. Run it bare:
 
 ```bash
-.venv-full/bin/python scripts/release.py
+python3 scripts/release.py
 ```
 
 `tests/`, `bench/`, `.github/` and `.gitignore` are excluded from the

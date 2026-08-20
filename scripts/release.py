@@ -31,14 +31,28 @@ already handled) except:
   (content.dir, bib.path's parent) still resolve to something that exists
   before a first `sync` run populates them.
 
-Stdlib only (tomllib, zipfile, shutil) -- runs with bare `python3`, no
-venv, same as citation_gate.py/references.py. Needs `git` on PATH to list
-tracked files; nothing else.
+Also generates README.pypi.md -- README.md with every relative link and
+image rewritten to an absolute GitHub URL, pinned to this release's tag.
+README.md itself stays relative-link-friendly on purpose: GitHub and the
+mkdocs site (mkdocs.yml's `docs_dir: .`) are built specifically so the
+same relative paths resolve identically on both, and rewriting them
+there is "a thing that can be wrong" that file's own comment already
+rejects for that exact reason. PyPI's renderer has no knowledge of the
+GitHub repo at all, so a relative `docs/GENRE.md` link or an
+`<img src="docs/logo.svg">` that works on both of those just 404s there
+-- confirmed against the real, already-published chitragupta-cli
+6.7.0/6.8.0/6.8.1. README.pypi.md is `pyproject.toml`'s `readme`, is
+never git-tracked (.gitignore), and this is the one place it is written.
+
+Stdlib only (tomllib, zipfile, shutil, re) -- runs with bare `python3`,
+no venv, same as citation_gate.py/references.py. Needs `git` on PATH to
+list tracked files; nothing else.
 
 Usage:
     python3 scripts/release.py
 """
 
+import re
 import shutil
 import subprocess
 import tomllib
@@ -75,10 +89,17 @@ EXCLUDE_TOP_LEVEL = {
 EMPTY_TOP_LEVEL = {"content", "papers"}
 
 
-def get_version() -> str:
+def _poetry_table() -> dict:
     with open(REPO_ROOT / "pyproject.toml", "rb") as f:
-        data = tomllib.load(f)
-    return data["tool"]["poetry"]["version"]
+        return tomllib.load(f)["tool"]["poetry"]
+
+
+def get_version() -> str:
+    return _poetry_table()["version"]
+
+
+def get_repository() -> str:
+    return _poetry_table()["repository"]
 
 
 def tracked_files() -> list[str]:
@@ -131,9 +152,40 @@ def build_release() -> tuple[Path, int]:
     return zip_path, len(paths)
 
 
+def render_pypi_readme(version: str) -> str:
+    """README.md, with every relative link and image rewritten to an
+    absolute GitHub URL pinned to `v<version>` -- see the module
+    docstring for why README.md itself is not the thing to change.
+    """
+    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    repository = get_repository()
+    tag = f"v{version}"
+    blob = f"{repository}/blob/{tag}/"
+    raw = repository.replace("github.com", "raw.githubusercontent.com") + f"/{tag}/"
+
+    # <img src="..."> / <source srcset="..."> in the centred logo block,
+    # the only raw-HTML asset references in the file.
+    text = re.sub(r'(src|srcset)="(?!https?://)([^"]+)"',
+                  lambda m: f'{m.group(1)}="{raw}{m.group(2)}"', text)
+
+    # Markdown [text](target) links -- skip ones already absolute and
+    # the in-page #anchor ones (the table of contents).
+    def _rewrite_link(match: "re.Match") -> str:
+        label, target = match.group(1), match.group(2)
+        if target.startswith(("http://", "https://", "#")):
+            return match.group(0)
+        return f"[{label}]({blob}{target})"
+
+    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", _rewrite_link, text)
+
+
 def main() -> int:
+    version = get_version()
     zip_path, n_files = build_release()
     print(f"Release archive: {zip_path} ({n_files} files)")
+    pypi_readme = REPO_ROOT / "README.pypi.md"
+    pypi_readme.write_text(render_pypi_readme(version), encoding="utf-8")
+    print(f"PyPI readme: {pypi_readme}")
     return 0
 
 
