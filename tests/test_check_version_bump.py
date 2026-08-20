@@ -215,3 +215,66 @@ class TestCIWiring:
             "the version-bump step lost its pull_request guard -- it will fail "
             "unconditionally on every push to main"
         )
+
+
+class TestUnreleased:
+    """A version on main that was never tagged.
+
+    Not a `problems()` entry, and that distinction is the whole design:
+    the state is legitimate immediately after every merge, because the
+    bump lands in the PR and the tag is pushed afterwards. Failing on it
+    would fail every merge. It is surfaced as a warning instead, so the
+    same version quoted back across several PRs becomes noticeable.
+    """
+
+    def test_a_tagged_base_is_silent(self, check):
+        assert check.unreleased("6.2.0", ["v6.1.0", "v6.2.0"]) is None
+
+    def test_an_untagged_base_is_reported(self, check):
+        found = check.unreleased("6.2.0", ["v6.1.0"])
+        assert found is not None and "6.2.0" in found
+
+    def test_it_names_the_command_that_fixes_it(self, check):
+        """A warning nobody can act on is noise. This one carries the
+        literal tag-and-push, the way config.py's missing-file error
+        carries `cp config.toml.example config.toml`."""
+        found = check.unreleased("6.2.0", ["v6.1.0"])
+        assert "git tag -a v6.2.0" in found
+        assert "git push origin v6.2.0" in found
+
+    def test_no_tags_at_all_is_reported_rather_than_crashing(self, check):
+        assert check.unreleased("0.1.0", []) is not None
+
+    def test_a_prefix_match_is_not_a_tag(self, check):
+        """`v6.2.0` is not released just because `v6.2.0-rc1` exists."""
+        assert check.unreleased("6.2.0", ["v6.2.0-rc1"]) is not None
+
+
+class TestTheWarningDoesNotGate:
+    """The exit code belongs to problems(); this must never touch it."""
+
+    def test_an_untagged_base_alone_still_exits_zero(self, check, monkeypatch, capsys):
+        monkeypatch.setattr(check, "problems", lambda *a: [])
+        monkeypatch.setattr(check, "unreleased", lambda *a: "a release is owed")
+        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        assert check.main([]) == 0
+        assert "::warning::a release is owed" in capsys.readouterr().err
+
+    def test_a_real_problem_still_exits_one(self, check, monkeypatch, capsys):
+        monkeypatch.setattr(check, "problems", lambda *a: ["collision"])
+        monkeypatch.setattr(check, "unreleased", lambda *a: "a release is owed")
+        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        assert check.main([]) == 1
+        err = capsys.readouterr().err
+        assert "::warning::" in err and "::error::collision" in err
+
+    def test_a_tagged_base_emits_no_warning_at_all(self, check, monkeypatch, capsys):
+        """The quiet path: nothing is owed, so nothing is said. Pinned
+        because a warning that fires unconditionally is one nobody
+        reads, which would defeat the point of adding it."""
+        monkeypatch.setattr(check, "problems", lambda *a: [])
+        monkeypatch.setattr(check, "unreleased", lambda *a: None)
+        monkeypatch.setattr(check, "_git",
+                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        assert check.main([]) == 0
+        assert "::warning::" not in capsys.readouterr().err

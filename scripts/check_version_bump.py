@@ -84,6 +84,39 @@ def problems(current: str, base: str, tags: "list[str] | tuple[str, ...]") -> li
     return found
 
 
+def unreleased(base: str, tags: "list[str] | tuple[str, ...]") -> "str | None":
+    """A warning when the base branch's version was never tagged.
+
+    Deliberately a warning and not a problem, because the condition is
+    *legitimate and transient*: the version bump lands in the PR and the
+    tag is pushed afterwards, so for a while after every merge main
+    carries a version with no tag. Failing on it would fail every merge.
+
+    What it catches is the same state *persisting*. `release.yml` fires
+    on a pushed `v*` tag and nothing else, so a version that reaches main
+    and never gets tagged simply never becomes a release -- silently, and
+    for as long as nobody looks at the releases page. That is not
+    hypothetical: v5.40.1, v5.41.0, v6.0.0, v6.1.0 and v6.2.0 all reached
+    main and none of them was released until the gap was noticed by eye,
+    five versions later.
+
+    Surfaced on every pull request rather than on the push that causes
+    it, because a PR is the thing a person is already reading. One
+    unreleased version is business as usual; seeing the same one quoted
+    back at you across several PRs is the signal.
+    """
+    if f"v{base}" in tags:
+        return None
+    return (
+        f"main is at {base}, and there is no v{base} tag -- so that "
+        "version has never been released and its archive does not exist. "
+        "release.yml runs on a pushed tag and on nothing else. If the "
+        "release for it is still owed, cut it: `git tag -a v" + base +
+        " <commit> -m v" + base + " && git push origin v" + base + "` "
+        "(DEVELOPER-AGENTS.md, 'Versioning and releases')."
+    )
+
+
 def _git(*args: str) -> str:
     """Git's stdout, decoded as UTF-8 rather than as the host's locale.
 
@@ -121,6 +154,13 @@ def main(argv: "list[str] | None" = None) -> int:
               "`git fetch --depth=1 origin main`, and the tags with "
               "`+refs/tags/*:refs/tags/*`.", file=sys.stderr)
         return 1
+
+    # Emitted before the errors and regardless of them: it is about the
+    # *base* branch, so it is equally true whether or not this branch's
+    # own bump is sound, and it must not change the exit code.
+    owed = unreleased(base, tags)
+    if owed:
+        print(f"::warning::{owed}", file=sys.stderr)
 
     found = problems(current, base, tags)
     for problem in found:

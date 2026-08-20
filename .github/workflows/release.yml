@@ -43,6 +43,28 @@ jobs:
       - name: Build release archive
         run: python3 scripts/release.py
 
+      # The zip and the wheel answer different questions and both ship.
+      # The zip is the whole project directory -- docs, .claude/ skills,
+      # hooks, config example -- for someone who wants to work in a
+      # checkout. The wheel installs the code and the CLI.
+      #
+      # No PyPI publish step here: `chitragupta` on PyPI belongs to an
+      # unrelated project, so this distribution is `chitragupta-cli` and
+      # publishing it is #269. Until then the install line is this
+      # release's own asset URL. That is the one thing to change if PyPI
+      # is revisited.
+      - name: Install Poetry
+        run: pipx install poetry==2.4.1
+
+      - name: Build wheel and sdist
+        run: poetry build
+
+      # Named with an underscore, not a hyphen: a distribution name
+      # normalises that way in a wheel filename, so `chitragupta-cli-*`
+      # would silently match nothing and attach no artefact.
+      - name: Show what will be attached
+        run: ls -l release/chitragupta-*.zip dist/chitragupta_cli-*
+
       # Pinned to a commit SHA rather than the `v2` tag (which currently
       # resolves to this same commit, v2.6.2), for the reason ci.yml's
       # Codecov pin states: S7637 -- a movable tag on a third-party action
@@ -51,5 +73,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          files: release/chitragupta-*.zip
+          files: |
+            release/chitragupta-*.zip
+            dist/chitragupta_cli-*.whl
+            dist/chitragupta_cli-*.tar.gz
           generate_release_notes: true
