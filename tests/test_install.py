@@ -68,16 +68,22 @@ class TestOsDeps:
 
 
 class TestGpuTorch:
-    def test_targets_the_running_interpreters_own_venv(self, monkeypatch):
+    def test_targets_the_running_interpreters_own_venv(self, monkeypatch, tmp_path):
+        # tmp_path, not a hardcoded POSIX string: Path(...).resolve() on
+        # Windows turns "/opt/some-venv/bin/python" into a drive-letter
+        # path, which a literal "/opt/..." assertion on the other side
+        # can never match -- caught on the Windows CI leg.
+        fake_python = tmp_path / "some-venv" / "bin" / "python"
         monkeypatch.setattr(install.shutil, "which", lambda b: "/usr/bin/bash")
-        monkeypatch.setattr(install.sys, "executable", "/opt/some-venv/bin/python")
+        monkeypatch.setattr(install.sys, "executable", str(fake_python))
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["gpu-torch"]) == 0
         (command, kwargs), = recorded.calls
         assert command == ["bash", str(install.SCRIPT), "gpu-torch"]
-        assert kwargs["env"]["CHITRAGUPTA_PIP"] == "/opt/some-venv/bin/pip"
-        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == "/opt/some-venv/bin/python"
+        bin_dir = fake_python.resolve().parent
+        assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
+        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
 
     def test_refuses_without_bash(self, monkeypatch, capsys):
         monkeypatch.setattr(install.shutil, "which", lambda b: None)
