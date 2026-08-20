@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.3.0"
+version = "6.4.0"
 packages = [{ include = "chitragupta" }]
 
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."

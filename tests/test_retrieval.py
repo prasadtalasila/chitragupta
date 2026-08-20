@@ -430,6 +430,47 @@ class TestCli:
         assert chars > 0
         assert "Logged to" in capsys.readouterr().out
 
+    def test_log_records_the_collection_the_search_was_scoped_to(
+            self, ledger_con, tmp_path, capsys):
+        from chitragupta import dossier
+        from chitragupta.dossier import _retrieval
+
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text("padding " * 50 + "digital twin architecture patterns catalog")
+        ledger.upsert_reference(ledger_con, make_reference(
+            citekey="a2024", title="Twin Patterns", collections=("Digital twins",)))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert retrieval.main([
+            "search", "digital twin architecture",
+            "--collection", "Digital twins", "--log", str(draft),
+        ]) == 0
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("digital twin architecture", "Digital twins"),
+        ]
+
+    def test_evidence_log_records_no_collection(self, ledger_con, tmp_path, capsys):
+        """`evidence` takes no `--collection` -- its args namespace never
+        gets the attribute, and logging it must not crash on the missing
+        attribute rather than record a scope that was never asked for."""
+        from chitragupta import dossier
+        from chitragupta.dossier import _retrieval
+
+        self._seed(ledger_con, tmp_path)
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert retrieval.main(
+            ["evidence", "digital twin", "--citekey", "a2024", "--log", str(draft)]) == 0
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("digital twin", ""),
+        ]
+
     def test_a_draft_outside_drafts_reports_but_does_not_fail_the_search(
         self, ledger_con, tmp_path, capsys
     ):

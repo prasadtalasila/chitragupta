@@ -141,10 +141,17 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      mark-revision` writes one, at the start of each draft-reviser pass,
      so `dossier status` can total retrieval cost per revision instead of
      only as one lifetime figure -- the date column alone can't tell two
-     same-day revisions apart. -->
+     same-day revisions apart.
 
-| date | mode | query | asked | results | chars |
-|---|---|---|---|---|---|
+     `collection` is the Zotero collection `--collection` scoped the call
+     to, empty for a corpus-wide call -- which is also how every row
+     written before this column existed reads, since an absent seventh
+     cell is padded in the same way (#254). Without it, a scoped call and
+     a corpus-wide one write byte-identical rows, and `dossier status`
+     re-asks a scoped draft's queries against the whole corpus. -->
+
+| date | mode | query | asked | results | chars | collection |
+|---|---|---|---|---|---|---|
 """
 
 

@@ -1224,6 +1224,21 @@ class TestRetrievalLog:
         dossier.log_retrieval(draft, "search", "twin\tshadow\r\nmodel", 15, 15, 100)
         assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
+    def test_a_scoped_call_records_its_collection(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(
+            draft, "search", "q", 15, 15, 100, collection="Digital twins")
+        text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
+        assert "| Digital twins |" in text
+
+    def test_a_row_written_before_the_collection_column_still_parses(self, draft):
+        """A six-cell row -- what every `retrieval.md` on disk before #254
+        looks like -- must keep costing exactly what it always has."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        path.write_text(path.read_text() + "| 2026-01-01 | search | q | 15 | 15 | 100 |\n")
+        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+
 
 class TestRevisionMarker:
     """`mark_revision` and `retrieval_cost_by_revision`.
@@ -1402,19 +1417,29 @@ def _seed_corpus(entries):
     need citekeys to exist. Query matching needs the text those citekeys
     rank against, so this writes `content/parsed/<citekey>.txt` and points
     the ledger's `parsed_path` at it -- the same shape `sync` produces.
+
+    An entry is `(citekey, title, body)`, or `(citekey, title, body,
+    collections)` for a drift-scoping test that needs a citekey inside or
+    outside a Zotero collection -- `collections` a tuple of paths, stored
+    the same way `chitragupta.ledger` stores them (JSON, or NULL for none).
     """
+    import json
+
     from chitragupta import ledger
 
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     con = ledger.connect()
     try:
-        for citekey, title, body in entries:
+        for entry in entries:
+            citekey, title, body = entry[:3]
+            collections = entry[3] if len(entry) > 3 else ()
             parsed = config.PARSED_DIR / f"{citekey}.txt"
             parsed.write_text(body, encoding="utf-8")
             con.execute(
-                "INSERT INTO items (citekey, title, parsed_path, status, last_synced) "
-                "VALUES (?, ?, ?, 'parsed', '2026-01-01')",
-                (citekey, title, str(parsed)),
+                "INSERT INTO items (citekey, title, parsed_path, status, last_synced, "
+                "collections) VALUES (?, ?, ?, 'parsed', '2026-01-01', ?)",
+                (citekey, title, str(parsed),
+                 json.dumps(list(collections)) if collections else None),
             )
         con.commit()
     finally:
@@ -1502,6 +1527,75 @@ class TestRecordedQueries:
         _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["digital twin"]
+
+
+class TestRecordedQueriesWithCollection:
+    """`recorded_queries`'s sibling (#254): pairs each query with the
+    collection its call actually ran against, so a caller can honour the
+    scope instead of losing it the way `recorded_queries` alone does."""
+
+    def test_an_unscoped_call_pairs_with_an_empty_collection(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("digital twin", ""),
+        ]
+
+    def test_a_scoped_call_pairs_with_its_collection(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins")
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("digital twin", "Digital twins"),
+        ]
+
+    def test_the_same_query_scoped_and_unscoped_are_two_distinct_pairs(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "twin", 15, 15, 100)
+        dossier.log_retrieval(
+            draft, "search", "twin", 15, 15, 100, collection="Digital twins")
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("twin", ""), ("twin", "Digital twins"),
+        ]
+
+    def test_a_repeated_scoped_pair_is_reported_once(self, draft):
+        dossier.init(draft, "survey")
+        for _ in range(2):
+            dossier.log_retrieval(
+                draft, "search", "twin", 15, 15, 100, collection="Digital twins")
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("twin", "Digital twins"),
+        ]
+
+    def test_a_row_written_before_the_collection_column_pairs_with_empty(self, draft):
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        path.write_text(
+            path.read_text() + "| 2026-01-01 | search | old query | 15 | 15 | 100 |\n")
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("old query", ""),
+        ]
+
+    def test_a_revision_marker_contributes_no_pair(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        _retrieval.mark_revision(draft, "shorten the introduction")
+        dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100)
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
+            ("digital twin", ""), ("co-simulation", ""),
+        ]
+
+    def test_no_retrieval_file_means_no_pairs(self, draft):
+        dossier.init(draft, "survey")
+        (dossier.dossier_dir(draft) / "retrieval.md").unlink()
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == []
+
+    def test_an_empty_query_cell_contributes_no_pair(self, draft):
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write("| 2026-01-01 | search |  | 5 | 5 | 100 | Digital twins |\n")
+        assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == []
 
 
 class TestSectionCitekeys:
@@ -1618,6 +1712,67 @@ class TestDrift:
         _seed_corpus([("kept_paper_2024", "Kept", "text")])
         report = _drift.drift(grounded)
         assert report.draft is None
+
+
+class TestDriftCollectionScoping:
+    """#254: a query scoped with `--collection` must rank candidates over
+    that shelf only, not the whole corpus -- the false-drift bug a
+    collection-scoped draft hit once #229 made scoping reachable."""
+
+    def test_a_scoped_query_does_not_surface_a_candidate_outside_its_collection(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins")
+        _seed_corpus([
+            ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+            ("outside_shelf_2025", "Outside shelf", "digital twin simulation",
+             ("Other shelf",)),
+        ])
+        report = _drift.drift(target)
+        assert [c.citekey for c in report.candidates] == ["in_shelf_2024"]
+
+    def test_a_subcollection_still_matches_its_parent(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins")
+        _seed_corpus([
+            ("nested_2024", "Nested", "digital twin architecture",
+             ("Digital twins > Modelling",)),
+        ])
+        report = _drift.drift(target)
+        assert [c.citekey for c in report.candidates] == ["nested_2024"]
+
+    def test_an_unscoped_query_still_ranks_over_the_whole_corpus(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        _seed_corpus([
+            ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+            ("outside_shelf_2025", "Outside shelf", "digital twin simulation",
+             ("Other shelf",)),
+        ])
+        report = _drift.drift(target)
+        assert {c.citekey for c in report.candidates} == {
+            "in_shelf_2024", "outside_shelf_2025",
+        }
+
+    def test_a_row_predating_the_collection_column_behaves_as_corpus_wide(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        path = target / "retrieval.md"
+        path.write_text(
+            path.read_text() + "| 2026-01-01 | search | digital twin | 15 | 15 | 100 |\n")
+        _seed_corpus([
+            ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+            ("outside_shelf_2025", "Outside shelf", "digital twin simulation",
+             ("Other shelf",)),
+        ])
+        report = _drift.drift(target)
+        assert {c.citekey for c in report.candidates} == {
+            "in_shelf_2024", "outside_shelf_2025",
+        }
 
 
 class TestEphemeralIndex:

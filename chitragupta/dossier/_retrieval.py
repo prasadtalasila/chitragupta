@@ -19,9 +19,17 @@ from chitragupta.dossier import RETRIEVAL_MD, _ROW_SPLIT, dossier_dir, draft_rel
 from chitragupta.dossier._create import _RETRIEVAL_TEMPLATE
 
 def log_retrieval(
-    draft: Path, mode: str, query: str, k: int, results: int, chars: int
+    draft: Path, mode: str, query: str, k: int, results: int, chars: int,
+    collection: str | None = None,
 ) -> Path:
     """Append one retrieval call to the dossier's `retrieval.md`.
+
+    `collection` is the Zotero collection the call was scoped to
+    (`retrieval.search(..., collection=...)`, #195) -- `None`/empty for a
+    corpus-wide call, which is also how a row logged before this
+    parameter existed reads back (#254). Without it, a scoped call and a
+    corpus-wide one at the same query and `--k` wrote byte-identical
+    rows, and nothing downstream could tell which had actually run.
 
     Creates the file if the dossier exists but predates it, and creates
     the dossier directory if a skill logged before running `init` --
@@ -83,7 +91,9 @@ def log_retrieval(
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD
     safe_query = " ".join(query.split()).replace("|", "\\|")
-    row = f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | {chars} |\n"
+    safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
+    row = (f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
+           f"{chars} | {safe_collection} |\n")
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
             handle.write(_RETRIEVAL_TEMPLATE)
@@ -120,7 +130,8 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
-    row = f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 |\n"
+    row = (f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | "
+           "0 | 0 | 0 | |\n")
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
             handle.write(_RETRIEVAL_TEMPLATE)
@@ -129,12 +140,19 @@ def mark_revision(draft: Path, label: str = "") -> Path:
 
 
 def _retrieval_rows(dossier: Path) -> list[list[str]]:
-    """The parseable rows of `retrieval.md`, six cells each.
+    """The parseable rows of `retrieval.md`, normalised to seven cells:
+    date, mode, query, asked, results, chars, collection.
 
     An integer `chars` cell is what separates a logged call from the
     template's own header and separator rows, which otherwise parse to
-    six cells like any other. Advisory like every other read here: a
-    hand-edited row that doesn't parse is skipped rather than raising.
+    six or seven cells like any other. Advisory like every other read
+    here: a hand-edited row that doesn't parse is skipped rather than
+    raising.
+
+    A six-cell row -- every row written before #254 added the collection
+    column -- is padded with a trailing empty cell rather than rejected,
+    so it reads back exactly as it always has: a call with no recorded
+    collection, indistinguishable from one explicitly logged corpus-wide.
     """
     path = dossier / RETRIEVAL_MD
     if not path.is_file():
@@ -143,14 +161,16 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
     for line in path.read_text(encoding="utf-8").splitlines():
         # Split on unescaped pipes only: `log_retrieval` writes a query
         # containing a pipe as `\|`, which is markdown's literal, and
-        # splitting there would cut the row into seven cells.
+        # splitting there would cut the row into extra cells.
         cells = [cell.strip() for cell in _ROW_SPLIT.split(line.strip().strip("|"))]
-        if len(cells) != 6:
+        if len(cells) not in (6, 7):
             continue
         try:
             int(cells[5])
         except ValueError:
             continue
+        if len(cells) == 6:
+            cells.append("")
         rows.append(cells)
     return rows
 
@@ -229,8 +249,14 @@ def recorded_queries(dossier: Path) -> list[str]:
     Skips `mark_revision`'s boundary rows. Their third cell holds the
     `--label` text, not a query -- without this exclusion a label like
     "shorten intro" would be ranked against the corpus as if someone had
-    searched for it, both here and in every caller (`corpus-reviser`'s
-    sub-theme list, `status --all`'s candidate matching).
+    searched for it, both here and in `recorded_queries_with_collection`,
+    its sibling below, which skips them the same way.
+
+    Says nothing about the collection a call was scoped to --
+    `recorded_queries_with_collection` is the sibling that does, and is
+    what `dossier status`'s drift check reads instead of this, so that a
+    collection-scoped draft's candidates are ranked over the shelf it
+    actually used (#254) rather than the whole corpus.
     """
     seen: dict[str, None] = {}
     for cells in _retrieval_rows(dossier):
@@ -241,6 +267,31 @@ def recorded_queries(dossier: Path) -> list[str]:
         query = cells[2].replace("\\|", "|").strip()
         if query:
             seen[query] = None
+    return list(seen)
+
+
+def recorded_queries_with_collection(dossier: Path) -> list[tuple[str, str]]:
+    """The distinct (query, collection) pairs this draft was retrieved
+    with, first seen first -- `recorded_queries`'s sibling (#254).
+
+    An empty collection means the call was corpus-wide, which is also
+    what a row logged before this column existed means -- `_retrieval_rows`
+    pads it in, so an old dossier reads back exactly as it always has.
+
+    Deduplicated on the *pair*, not the query alone: the same query asked
+    once corpus-wide and once scoped to a shelf is two different calls,
+    and collapsing them the way `recorded_queries` does would silently
+    widen the scoped one back to corpus-wide.
+    """
+    seen: dict[tuple[str, str], None] = {}
+    for cells in _retrieval_rows(dossier):
+        if cells[1] == _REVISION_MARKER_MODE:
+            continue
+        query = cells[2].replace("\\|", "|").strip()
+        if not query:
+            continue
+        collection = cells[6].replace("\\|", "|").strip()
+        seen[(query, collection)] = None
     return list(seen)
 
 

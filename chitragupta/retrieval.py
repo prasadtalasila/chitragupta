@@ -511,9 +511,13 @@ def _log_call(args, results: int, chars: int) -> None:
         # `evidence` has no `--k`, and logging a bare 1 there put a
         # number in the column that meant nothing.
         asked_for = args.windows if args.command == "evidence" else args.k
+        # `--collection` is a `search`-only flag (`evidence` zooms into a
+        # citekey already chosen, not a ranking to narrow), so `evidence`'s
+        # args namespace never gets the attribute at all.
         path = dossier.log_retrieval(
             Path(args.log), args.command, args.query,
             asked_for, results, chars,
+            collection=getattr(args, "collection", None),
         )
     except (dossier.DossierError, OSError) as exc:
         # A measurement is worth less than the retrieval it measures:
