@@ -74,6 +74,32 @@ jobs:
         shell: bash
         run: cp config.toml.example config.toml
 
+      # `poetry.lock` is the key, not `pyproject.toml`: the lock is what
+      # actually determines resolved versions (#275). Restored on every
+      # run, on every branch -- a cache written on the default branch is
+      # readable from any branch, so a PR benefits from `main`'s entry
+      # without ever writing its own. That asymmetry is what keeps this
+      # repository under the 10GB-per-repo cache limit: six open PRs
+      # writing their own ~1-2GB entry would thrash it, one entry per
+      # `poetry.lock` hash does not. `restore-keys` falls back to the
+      # newest same-OS entry on a lock-hash miss, which is still a real
+      # head start over an empty `.venv-full`.
+      #
+      # This never lets a hit skip the install script below: it still
+      # runs unconditionally, against whatever `.venv-full` this step
+      # restored (empty, on a miss). That is deliberate -- `ci.yml`
+      # calling `install_full_pipeline.sh` is itself an end-to-end test
+      # that the script still works on a clean host, and poetry's own
+      # up-to-date check is what makes a hit fast (nothing left to
+      # install) without this workflow needing to know that.
+      - name: Restore the .venv-full cache
+        id: venv-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .venv-full
+          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: venv-${{ runner.os }}-
+
       # Dogfoods the project's own single install path (DEVELOPER-AGENTS.md: "don't
       # add a second install path") rather than hand-rolling equivalent
       # steps here -- this is also, itself, a real end-to-end test that
@@ -131,6 +157,30 @@ jobs:
       - name: Install dev dependencies (pytest/pytest-cov)
         shell: bash
         run: bash scripts/install_full_pipeline.sh dev-deps
+
+      # Exceeding the 10GB cache limit is silent -- eviction, not an
+      # error -- so a miss has to say so in the log rather than pass
+      # unremarked; the install steps above already paid for it either
+      # way, this just says which happened.
+      - name: Report whether the venv cache was a hit
+        shell: bash
+        run: |
+          if [ "${{ steps.venv-cache.outputs.cache-hit }}" = "true" ]; then
+            echo "venv cache: HIT for ${{ steps.venv-cache.outputs.cache-primary-key }}"
+          else
+            echo "venv cache: MISS for ${{ steps.venv-cache.outputs.cache-primary-key }} (fell back to a restore-keys match, or installed from nothing)"
+          fi
+
+      # Saved only from `main`, and only on a miss -- a cache write on
+      # every PR branch is exactly the thrash #275 exists to avoid, and
+      # re-saving an already-current entry costs upload time for no
+      # benefit. `main`'s entry is what every PR branch restores above.
+      - name: Save the .venv-full cache (main only, on a miss)
+        if: github.ref == 'refs/heads/main' && steps.venv-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .venv-full
+          key: ${{ steps.venv-cache.outputs.cache-primary-key }}
 
       # poetry run (not a hardcoded .venv-full/bin/python) resolves
       # correctly on both venv layouts (POSIX bin/ vs a native Windows
