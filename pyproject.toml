@@ -19,8 +19,27 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.5.1"
+version = "6.6.0"
 packages = [{ include = "chitragupta" }]
+# Everything below is not Python, so `packages` above doesn't reach it --
+# `poetry build` includes only what `packages`/`include` name. Each entry
+# ships to both sdist and wheel (an unadorned string here defaults to
+# sdist only) and lands as a *sibling* of `chitragupta/` at the top of
+# the installed environment, e.g. `site-packages/assets/csl/ieee.csl` --
+# exactly where `chitragupta/config.py`'s `shipped()` already looks
+# (`PACKAGE_ROOT.parent`), so that function needs no change once these
+# ship (#263). `chitragupta init` (#263) reads `.claude/`, `docs/` and
+# the four root `.md` files from the same sibling location.
+include = [
+    { path = "assets", format = ["sdist", "wheel"] },
+    { path = ".claude", format = ["sdist", "wheel"] },
+    { path = "docs", format = ["sdist", "wheel"] },
+    { path = "AGENTS.md", format = ["sdist", "wheel"] },
+    { path = "CLAUDE.md", format = ["sdist", "wheel"] },
+    { path = "SOUL.md", format = ["sdist", "wheel"] },
+    { path = "README.md", format = ["sdist", "wheel"] },
+    { path = "config.toml.example", format = ["sdist", "wheel"] },
+]
 
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]

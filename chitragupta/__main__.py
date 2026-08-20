@@ -7,6 +7,11 @@ Four layers, each already a complete entry point of its own:
     chitragupta review <aid>  ...   read-only aids, never a gate
     chitragupta enrich        ...   the optional enrichment layer
 
+Plus package-level commands that only make sense once the code is
+installed rather than cloned (#258):
+
+    chitragupta init [DIR]     ...   scaffold a project directory (#263)
+
 **This adds a front door, not a command surface.** Every verb, flag and
 exit code below belongs to the layer it dispatches to, unchanged. Like
 `chitragupta/draft.py`, this file parses exactly one thing -- the layer
@@ -58,6 +63,20 @@ LAYERS = {
                "Docling -> embeddings/Chroma -> BERTopic, over the whole corpus"),
 }
 
+# Package-level commands (#258's "package itself" table): only meaningful
+# once the code is installed rather than cloned, and -- unlike LAYERS --
+# operate on the environment around the pipeline (scaffolding a project
+# directory; later, #265's doctor/install) rather than being an entry
+# point into one of its four layers. Dispatched the same way as LAYERS,
+# in CHOICES below, so this stays the only place the distinction is drawn.
+COMMANDS = {
+    "init": ("chitragupta.init",
+             "scaffold a project directory -- config.toml, .claude/, "
+             "papers/, content/ and the prose docs"),
+}
+
+CHOICES = {**LAYERS, **COMMANDS}
+
 DESCRIPTION = ("Turn a curated bibliography into grounded drafts, "
                "with every citekey verified against a real parse.")
 
@@ -82,9 +101,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=prog_for(""), description=DESCRIPTION)
     parser.add_argument("--version", action="version", version=_version())
     parser.add_argument(
-        "layer", choices=sorted(LAYERS), nargs="?",
+        "layer", choices=sorted(CHOICES), nargs="?",
         help=" / ".join(f"{name} -- {help_text}"
-                        for name, (_, help_text) in LAYERS.items()),
+                        for name, (_, help_text) in CHOICES.items()),
     )
     # REMAINDER, so a layer can take its own `-h`/`--help` and this parser
     # never sees it -- the same contract chitragupta/draft.py uses for its
@@ -104,7 +123,7 @@ def main(argv=None) -> int:
     if args.layer is None:
         parser.print_help()
         return 0
-    module = importlib.import_module(LAYERS[args.layer][0])
+    module = importlib.import_module(CHOICES[args.layer][0])
     # `enrich` reads sys.argv itself rather than taking an argv argument,
     # so it is handed a rewritten one instead of being special-cased into
     # a different calling convention. Restored afterwards because a test
