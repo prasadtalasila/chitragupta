@@ -138,22 +138,43 @@ This is **the single install script for both the host and Docker and CI**
 -- `docker/Dockerfile` calls it once per stage as separate `RUN` lines, and
 `.github/workflows/ci.yml` calls it directly too, rather than any of them
 having their own separate apt-get/pip/poetry install logic. Python
-dependencies are managed by Poetry as a lockfile/venv manager
-(`package-mode = false` in `pyproject.toml` -- not yet published or
-pip-installable; [docs/PACKAGING.md](docs/PACKAGING.md) records the
-decision to change that and what has to land first). If you find a
-dependency-order issue, fix it once in `pyproject.toml` (+ `poetry lock`
-to update `poetry.lock`) and every target picks it up. Don't add a second
-install path.
+dependencies are managed by Poetry as a lockfile/venv manager for a
+checkout, Docker and CI ([docs/PACKAGING.md](docs/PACKAGING.md) records
+the decision to also make this a published, pip-installable package, and
+what had to land first). If you find a dependency-order issue, fix it
+once in `pyproject.toml` (+ `poetry lock` to update `poetry.lock`) and
+every target picks it up. Don't add a second install path.
 
 Read that last sentence as the invariant it protects, not as the
 mechanism: the goal is **one place a dependency fact can be written**, so
-a fix lands once and every target picks it up. The single script is
-today's mechanism for it. When the package ships there will be two front
-doors -- `install_full_pipeline.sh` for a checkout, Docker and CI, and
-`chitragupta install` for someone who pip-installed -- onto that same
-script and that same `pyproject.toml`. Two front doors, one source of
-truth, still no second place to write a version down.
+a fix lands once and every target picks it up. The single script is the
+mechanism for a checkout, Docker and CI; **there are now two front
+doors** onto it (#265) -- `install_full_pipeline.sh` for those three, and
+`chitragupta install os-deps|gpu-torch` for someone who pip-installed,
+reaching the *same script's* `os-deps` stage and the *same*
+`ensure_gpu_torch` function rather than a reimplementation of either.
+`chitragupta install python-deps|dev-deps|all` refuse by name instead,
+each naming the `pip install chitragupta-cli[...]` extra that already
+replaces it (below) -- accepting them would run something with a
+different meaning than the argument implies, which is worse than
+refusing. Two front doors, one source of truth, still no second place to
+write a version down.
+
+**Extras mirror the three optional Poetry groups below**, so `pip
+install chitragupta-cli[enrich]` resolves the same versions `poetry
+install --with enrich` does. The two declarations are unrelated Poetry
+mechanisms that happen to need the same facts -- a group dependency never
+reaches a built wheel's metadata, so an extra needs its own, duplicate
+entry under `[tool.poetry.dependencies]` (`optional = true`) -- and
+`tests/test_pyproject_extras.py` is what keeps the two from drifting
+apart silently. The one thing pip cannot do that `poetry install
+--with enrich` does: match torch to this host's GPU driver
+(`ensure_gpu_torch`, above) -- `pip install chitragupta-cli[enrich]` on a
+CUDA host still lands a CPU-only wheel, silently, exactly as a bare
+`pip install torch` would. `chitragupta doctor` detects that mismatch and
+names `chitragupta install gpu-torch` as the fix; nothing makes it
+automatic, because pip has no post-install hook this project would be
+willing to use.
 
 `cpu-torch` is deliberately **not** part of `all`, and is not something
 the script infers. It asserts that a GPU is absent *for good* -- true of

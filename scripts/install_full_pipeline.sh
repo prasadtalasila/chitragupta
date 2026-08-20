@@ -10,18 +10,28 @@
 #   python-deps  (default if no STAGE given) -- venv + `poetry install
 #                --with enrich` (see pyproject.toml/poetry.lock). What
 #                every host needs regardless of which OS packages are
-#                present. Poetry is a dependency/lockfile manager here
-#                only -- package-mode = false in pyproject.toml, nothing
-#                is published or pip-installable from this repo.
+#                present. Poetry is a dependency/lockfile manager here,
+#                for a checkout, Docker and CI -- `pip install
+#                chitragupta-cli[enrich]` is the equivalent for someone
+#                who installed the package rather than cloned it (#265;
+#                `chitragupta install` refuses this stage by name and
+#                prints that command, rather than running it a second way).
 #   os-deps      -- apt-get the system packages the full pipeline needs
 #                (TeX Live, Pandoc, poppler-utils, Poetry itself,
 #                git/curl/unzip, and OpenCV's runtime libraries). Needs
 #                root; auto-sudo's if not already root. Opt-in -- not
-#                everyone wants this script touching apt.
+#                everyone wants this script touching apt. Also reachable
+#                as `chitragupta install os-deps` (#265), unmodified.
 #   dev-deps     -- `poetry install --with dev` (pytest, pytest-cov) into
 #                the same venv as python-deps. Only needed to run the
 #                test suite, not the pipeline itself -- opt-in, and not
 #                part of `all`. Run `python-deps` first.
+#   gpu-torch    -- calls ensure_gpu_torch (below) directly, pointed at
+#                CHITRAGUPTA_PIP/CHITRAGUPTA_PYTHON rather than this
+#                script's own venv -- what `chitragupta install gpu-torch`
+#                (#265) reaches, for someone who pip-installed rather than
+#                cloned. Not part of `all` or `python-deps`, which already
+#                call ensure_gpu_torch themselves against their own venv.
 #   all          -- os-deps + python-deps.
 #
 # Host usage:
@@ -499,10 +509,27 @@ for stage in "${STAGES[@]}"; do
         # below with no stage -- which defaults to python-deps and fails
         # on a runner that has no poetry.
         vale) install_vale ;;
+        # `chitragupta install gpu-torch` (#265) reaches ensure_gpu_torch
+        # the same way vale above reaches install_vale -- a stage of its
+        # own, for the same reason the comment above vale gives: sourcing
+        # this script to call the function directly would also run the
+        # dispatcher below with no stage, defaulting to python-deps.
+        # CHITRAGUPTA_PIP/CHITRAGUPTA_PYTHON name the environment
+        # `chitragupta` is actually installed into -- not .venv-full,
+        # which is a checkout concept a pip install has no equivalent of,
+        # so resolve_venv_dir/venv_bin_dir are deliberately not used here.
+        gpu-torch)
+            if [[ -z "${CHITRAGUPTA_PIP:-}" || -z "${CHITRAGUPTA_PYTHON:-}" ]]; then
+                echo "gpu-torch needs CHITRAGUPTA_PIP and CHITRAGUPTA_PYTHON set to" >&2
+                echo "the target environment's pip and python (chitragupta install sets both)." >&2
+                exit 1
+            fi
+            ensure_gpu_torch "$CHITRAGUPTA_PIP" "$CHITRAGUPTA_PYTHON"
+            ;;
         all) install_os_deps; install_python_deps ;;
         *)
             echo "Unknown stage: $stage" >&2
-            echo "Expected one of: os-deps, python-deps, dev-deps, cpu-torch, vale, all" >&2
+            echo "Expected one of: os-deps, python-deps, dev-deps, cpu-torch, vale, gpu-torch, all" >&2
             exit 1
             ;;
     esac
