@@ -13,14 +13,15 @@ about to change a command name.
 exhaustive per-flag reference and stays so. This file is the surface and
 the naming, not the semantics.
 
-> **Status of this document.** The distribution is real as of 6.0.0: the
-> import package is `chitragupta`, `pyproject.toml` declares a
-> `[build-system]`, and `poetry build` produces
-> `chitragupta_cli-<version>-py3-none-any.whl`, which installs both the
-> `chitragupta` and `cg` commands. The four layer rows below are live;
-> `init`, `doctor` and `install` are not yet, and their issues are named
-> in the table. #258's remaining children land the rest, and
-> [CLI.md](CLI.md) is rewritten as each one does.
+> **Status of this document.** The distribution is real as of 6.0.0, and
+> #258's whole series has now landed: the import package is
+> `chitragupta`, `pyproject.toml` declares a `[build-system]`, and
+> `poetry build` produces `chitragupta_cli-<version>-py3-none-any.whl`,
+> which installs the `chitragupta` and `cg` commands. Every row in the
+> table below is live -- the four layers, and `init`/`doctor`/`install`
+> alike -- and `chitragupta-cli` is published to PyPI via Trusted
+> Publishing on every tagged release (#269). [CLI.md](CLI.md) carries the
+> exhaustive per-flag reference; this table is the surface.
 
 ## Table of contents
 
@@ -51,16 +52,17 @@ free; the command you type stays `chitragupta`, because the command name
 is not a PyPI name and never was.
 
 ```bash
-pip install chitragupta-cli     # once the publisher is configured (#269)
+pip install chitragupta-cli
 ```
 
 Published from a tagged release by **Trusted Publishing** -- GitHub's
 OIDC token exchanged for a short-lived PyPI one -- so there is no
 long-lived API token in repository settings to leak or rotate. The
-publish job runs *after* the GitHub Release is created, so a PyPI failure
-leaves a complete, downloadable release behind rather than a tag with
-nothing attached. Until the publisher is registered on PyPI against this
-repository, that job fails and the release still lands.
+publish job runs *after* the GitHub Release is created, so a PyPI
+failure would leave a complete, downloadable release behind rather than
+a tag with nothing attached -- the ordering that mattered on the first
+tag, `v6.7.0`, before the publisher was registered on PyPI against this
+repository; every tag since has published cleanly.
 
 `cg` is likewise **not** a second PyPI project. One distribution declares
 both executables against one entry point:
@@ -81,7 +83,7 @@ name is the failure class
 
 ## The command surface
 
-Four layers, unchanged from what `python -m src.<layer>` already exposes,
+Four layers, unchanged from what `python -m chitragupta.<layer>` already exposes,
 plus four commands that only make sense once the code is installed rather
 than cloned. Every flag, exit code and subcommand name is the one that
 command already has -- this is a front door, not a redesign.

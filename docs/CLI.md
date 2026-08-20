@@ -16,6 +16,7 @@ short path; this is the full set.
 
 ## Table of contents
 
+- [Installing](#installing)
 - [Which interpreter](#which-interpreter)
 - [The full first run, step by step](#the-full-first-run-step-by-step)
 - [Every command and flag](#every-command-and-flag)
@@ -38,6 +39,34 @@ short path; this is the full set.
   - [`scripts/release.py`](#scriptsreleasepy)
 - [Running sync on a schedule](#running-sync-on-a-schedule)
 - [Environment variables](#environment-variables)
+
+## Installing
+
+Two paths, and everything below this section is identical either way:
+
+```bash
+pip install chitragupta-cli
+chitragupta init my-project && cd my-project
+```
+
+or, from a git checkout (for working on the pipeline itself --
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)):
+
+```bash
+git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
+pipx install poetry
+bash scripts/install_full_pipeline.sh all
+source .venv-full/bin/activate
+```
+
+`chitragupta init DIR` writes the same project directory a checkout
+gives you -- `config.toml` from `config.toml.example`, `.claude/`,
+`papers/`, `content/{drafts,dossiers,specs,review,rendered}/` and the
+prose docs -- so everything from [step 1](#the-full-first-run-step-by-step)
+onward reads the same regardless of which path got you here.
+[PACKAGING.md](PACKAGING.md) has the full command-surface table;
+[NAME.md](NAME.md) has why the distribution is `chitragupta-cli` while
+the command stays `chitragupta` (`cg` for short).
 
 ## Which interpreter
 
@@ -69,6 +98,25 @@ wrong-Python virtual environment therefore cannot block it.
 `docs/ARCHITECTURE.md` has the
 [full reasoning](ARCHITECTURE.md#which-interpreter-and-why).
 
+**For a `pip install`ed reader, there is one environment, not three**, and
+the tiers collapse to a different distinction: which commands need the
+`enrich` extra and which don't. `chitragupta <layer> <verb>` -- the
+console script -- reaches every command below exactly as
+`python -m chitragupta.<layer> <verb>` does, because both resolve to the
+same installed package; the difference tier 1 protects against (a
+missing or broken venv) still cannot happen to it. That is *why* the
+module form is kept working at all rather than replaced -- the hooks and
+every genre skill invoke `python -m chitragupta.draft gate` specifically
+because it is the one command that must survive a broken environment,
+console script included, and `chitragupta/hook_launchers.py` is what
+checks that it still can (#264). So: a bare `pip install chitragupta-cli`
+covers tiers 1 and 2 (`bibtexparser` is a main, non-optional dependency
+-- `chitragupta corpus sync` needs nothing extra); only tier 3
+(`chitragupta enrich`) needs `pip install chitragupta-cli[enrich]`, the
+same as `python-deps` needing the enrich group from a checkout.
+`chitragupta doctor` reports which you have. Use whichever form you like
+by hand, but don't change what a hook or a skill invokes.
+
 Two commands look like they belong in a higher tier and don't:
 
 - `chitragupta.draft render` (`chitragupta/render_output.py`) needs only stdlib
@@ -96,46 +144,39 @@ the exhaustive reference, and each command's own section links from the
 table of contents.
 
 ```bash
-# 1. Export your reference manager's library to BibTeX at
+# 1. Install, and get a project directory -- see Installing above for
+#    both paths (pip install + chitragupta init, or a git checkout).
+#    Nothing below this step differs by which one you took.
+
+# 2. Export your reference manager's library to BibTeX at
 #    papers/bibliography.bib (create papers/ if needed -- it's gitignored,
-#    so a fresh clone never has it). Skipping this makes step 3 fail
+#    so neither path above populates it). Skipping this makes step 4 fail
 #    immediately with a FileNotFoundError telling you to do exactly this.
 #    Zotero specifics, including the attachment-path trap that silently
 #    leaves every entry without a PDF, are in ZOTERO.md.
 mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
 
-# 1b. Create your config from the tracked example. config.toml is
-#     gitignored per-host data, so a fresh clone has none, and
-#     chitragupta/config.py refuses to import without it (naming this exact
-#     command). Every key in it is optional -- see CONFIG.md.
-cp config.toml.example config.toml
+# 3. Create your config, if step 1 didn't already: config.toml is
+#    gitignored per-host data, so a git checkout has none -- chitragupta
+#    init already wrote it from the same template, from an installed
+#    package. chitragupta/config.py refuses to import without it (naming
+#    this exact command). Every key in it is optional -- see CONFIG.md.
+cp config.toml.example config.toml   # git checkout only
 
-# 2. Install. scripts/install_full_pipeline.sh is the only install path;
-#    it takes stage names as positional arguments (see its own section
-#    below for the full table). Poetry must exist before python-deps
-#    runs -- install it yourself, or let the os-deps stage do it.
-pipx install poetry
-bash scripts/install_full_pipeline.sh os-deps      # root; pdftotext, Pandoc, TeX Live
-bash scripts/install_full_pipeline.sh python-deps  # .venv-full/ + the enrich group
-
-# `all` is os-deps + python-deps in one call, and deliberately excludes
-# dev-deps (which only the test suite needs -- see the last block below):
-# bash scripts/install_full_pipeline.sh all
-
-# 3. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
+# 4. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
 #    venv, and holds the write lock.
 .venv-full/bin/python -m chitragupta.corpus sync
 # .venv-full/bin/python -m chitragupta.corpus sync --reparse         # re-extract text even if the PDF is unchanged
 # .venv-full/bin/python -m chitragupta.corpus sync --remove-stale    # only after reading the stale list it prints
 
-# 4. Inspect what it found. Read-only, takes no lock (so it works while a
+# 5. Inspect what it found. Read-only, takes no lock (so it works while a
 #    sync is running), and needs no venv.
 python -m chitragupta.corpus ledger
 # python -m chitragupta.corpus ledger --list
 # python -m chitragupta.corpus ledger --status parse_failed
 # python -m chitragupta.corpus ledger --citekey talasila_composable_2025
 
-# 5. Optional, and only when you want it: the enrichment layer.
+# 6. Optional, and only when you want it: the enrichment layer.
 #    Layout-aware parsing, semantic search and topic clustering over the
 #    whole corpus. Nothing below needs it, and no skill builds it for you
 #    -- RETRIEVAL.md says which stage is worth your time. Takes the same
@@ -143,14 +184,14 @@ python -m chitragupta.corpus ledger
 .venv-full/bin/python -m chitragupta.enrich --stages docling,embed
 # .venv-full/bin/python -m chitragupta.enrich --stages docling --for-draft content/drafts/<slug>.md
 
-# 6. Search the corpus yourself, the same way a skill does. Read-only.
+# 7. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
 #    cost can be totalled later -- omit it for a one-off look.
 python -m chitragupta.draft retrieve search "digital twin composability" --k 15
 python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
-# 7. In Claude Code, ask for a draft, e.g.:
+# 8. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
@@ -159,7 +200,7 @@ python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_c
 # including its own gate -> references -> render chain (python -m chitragupta.draft <verb>),
 # and writes a dossier beside the draft as it goes.
 
-# 8. Re-run any step of that chain by hand (no venv needed for these).
+# 9. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
 #    refused, so that one directory stays the whole record of the work.
 python -m chitragupta.draft gate content/drafts/<slug>.md
@@ -169,7 +210,7 @@ python -m chitragupta.draft render content/drafts/<slug>.md --format tex   #    
 python -m chitragupta.draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
 python -m chitragupta.draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
 
-# 9. Read and maintain the draft's dossier -- what was kept, what was
+# 10. Read and maintain the draft's dossier -- what was kept, what was
 #    rejected and why, and whether the corpus has moved under it since.
 python -m chitragupta.draft dossier list
 python -m chitragupta.draft dossier brief content/drafts/<slug>.md
@@ -177,7 +218,7 @@ python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys
 python -m chitragupta.draft dossier status --all --json
 python -m chitragupta.draft dossier export <slug>
 
-# 10. Check the draft against its sources. Review aids, not gates: none of
+# 11. Check the draft against its sources. Review aids, not gates: none of
 #     these runs automatically, and none of them can block a draft.
 python -m chitragupta.review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
 python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
@@ -198,6 +239,25 @@ bash scripts/install_full_pipeline.sh dev-deps   # pytest + pytest-cov, only to 
 
 python scripts/release.py                       # bundles release/chitragupta-<version>.zip
 ```
+
+### Migrating a checkout to `pip install`
+
+Nothing about an existing checkout changes -- this only matters if
+you're switching from one path to the other, or explaining the
+difference to someone else. Old, on the left, is still there and still
+correct; new is what an installed package gives you that a checkout has
+no equivalent of, or where a checkout's own equivalent is a script this
+package now ships as a runnable command instead.
+
+| Old (git checkout) | New (`pip install chitragupta-cli`) |
+|---|---|
+| `cp config.toml.example config.toml`, then create `.claude/`, `papers/`, `content/` by hand or by cloning | `chitragupta init DIR` -- writes all of it at once (#263) |
+| `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install chitragupta-cli[enrich]` |
+| `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps` -- the same script, reached a different way (#265) |
+| `python-deps`'s `ensure_gpu_torch` reinstall step | `chitragupta install gpu-torch` |
+| Checking pandoc/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
+| `.venv-full/bin/python -m chitragupta.<layer> <verb>` | `chitragupta <layer> <verb>` -- the module form still works too, and is what hooks and skills keep using ([Which interpreter](#which-interpreter)) |
+| `python scripts/release.py` (build the zip) | Not needed -- `pip install` already gives you the wheel |
 
 ## Every command and flag
 
@@ -1326,9 +1386,12 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 |---|---|
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich` |
-| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt |
-| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first |
+| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[enrich]` (#265) |
+| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
+| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[dev]` |
+| `cpu-torch` | Swaps torch to the CPU-only wheel index and removes the CUDA runtime the default wheel pulled in. Opt-in and never part of `all` -- it asserts a GPU is absent *for good* (a hosted CI runner, a CPU-only container), which the script cannot infer about a host that might grow one later |
+| `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON` rather than this script's own venv -- what `chitragupta install gpu-torch` (#265) reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
+| `vale` | Installs Vale alone, without the TeX Live and poppler `os-deps` also brings -- what CI's `lint` job and a bare `python-deps` run (which needs no `poetry`) both want |
 | `all` | `os-deps` + `python-deps`. **Does not include `dev-deps`** |
 
 ```bash

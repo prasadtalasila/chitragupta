@@ -112,6 +112,30 @@ little they can pin down are in
 
 ## Quickstart
 
+Two ways to get a project directory, and everything from step 2 onward
+is identical either way. Pick whichever matches what you're doing:
+
+```bash
+# pip install: for using the pipeline. chitragupta init writes the same
+# project directory a git checkout gives you -- config.toml, .claude/,
+# papers/, content/ and the prose docs -- into DIR (default: .).
+pip install chitragupta-cli
+chitragupta init my-project && cd my-project
+```
+
+```bash
+# git checkout: for working on the pipeline itself, or if you'd rather
+# have the source beside your project -- see DEVELOPER-AGENTS.md. Needs
+# root for os-deps (TeX Live, Pandoc, poppler); dev-deps is opt-in and
+# only needed to run the test suite. docs/CLI.md's "Which interpreter"
+# explains why the module form (python -m chitragupta.<layer>) still
+# works either way.
+git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
+pipx install poetry
+bash scripts/install_full_pipeline.sh all
+source .venv-full/bin/activate
+```
+
 ```bash
 # 1. Export Zotero's library: format BibTeX, tick "Export Files", and save
 #    it as `bibliography` inside papers/. Zotero writes the .bib plus a
@@ -123,7 +147,9 @@ little they can pin down are in
 #      Ex: file = {Full Text PDF:bibliography/files/16/paper-name.pdf:application/pdf}
 mkdir -p papers && cp -r /path/to/your/export/. papers/
 
-cp config.toml.example config.toml
+# config.toml already exists if you ran `chitragupta init` above -- it's
+# gitignored per-host data, so only a git checkout needs its own copy:
+# cp config.toml.example config.toml
 
 # ...and, only if your field has its own acronyms (DT, FMU, ...) beyond
 #    the PDF/CPU/URL/API/HTML every draft already gets: copy the template,
@@ -132,53 +158,36 @@ cp config.toml.example config.toml
 # cp assets/style/acronyms.toml.example content/acronyms.toml
 # # then edit [style].acronyms in config.toml to content/acronyms.toml
 
-# 2. Install dependencies. scripts/install_full_pipeline.sh is the only
-#    install path -- one script for a bare host and for the Docker image,
-#    taking stage names as positional arguments:
-#      python-deps  creates .venv-full/ and runs `poetry install --with
-#                   enrich` into it. The default when no stage is given.
-#      os-deps      apt-gets pdftotext, Pandoc, TeX Live, git/curl/unzip.
-#                   Needs root; auto-sudo's. Opt-in.
-#      dev-deps     pytest + pytest-cov, to run the test suite.
-#      all          os-deps + python-deps (NOT dev-deps).
-#    Poetry has to exist first -- either install it yourself, as here, or
-#    let the os-deps stage do it.
-pipx install poetry
-bash scripts/install_full_pipeline.sh all
-
-# ...and, only if you want to run the test suite:
-# bash scripts/install_full_pipeline.sh dev-deps
-# .venv-full/bin/python -m pytest
-
-# 3. Sync the corpus layer from papers/bibliography.bib. A citekey that
+# 2. Sync the corpus layer from papers/bibliography.bib. A citekey that
 #    later drops out of the bib file (a paper removed from your reference
 #    manager) is only *reported* by default; re-run with --remove-stale
 #    to actually delete its ledger row once you've reviewed the reported
 #    list -- not needed on a first run. docs/ZOTERO.md has the full
 #    semantics and why the default is to report rather than delete.
-source .venv-full/bin/activate
-python -m chitragupta.corpus sync
+chitragupta corpus sync            # or: python -m chitragupta.corpus sync
 
 # ...and only once you've read the stale list it prints, and agree with it:
-# python -m chitragupta.corpus sync --remove-stale
+# chitragupta corpus sync --remove-stale
 
-# 4. Inspect what it found. Read-only, takes no lock (so it works while a
-#    sync is running), and needs no venv.
-python -m chitragupta.corpus ledger
+# 3. Inspect what it found. Read-only, takes no lock (so it works while a
+#    sync is running).
+chitragupta corpus ledger
 
-# 5. Optional, and only when you want it: the enrichment layer -- layout-aware
+# 4. Optional, and only when you want it: the enrichment layer -- layout-aware
 #    parsing, semantic search and topic clustering over the whole corpus.
 #    Nothing else needs it and no skill builds it for you, so skip this on a
 #    first run. What it costs and which stage is worth it: "The enrichment
-#    layer" below, then docs/RETRIEVAL.md.
+#    layer" below, then docs/RETRIEVAL.md. Needs the enrich extra
+#    (pip install chitragupta-cli[enrich], or scripts/install_full_pipeline.sh
+#    python-deps from a checkout) -- chitragupta doctor says which you have.
 
-# 6. In Claude Code, ask for a draft, e.g.:
+# 5. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 # The matching skill in .claude/skills/ picks this up automatically,
-# including its own gate -> references -> render chain (python -m chitragupta.draft <verb>)
+# including its own gate -> references -> render chain (chitragupta draft <verb>)
 ```
 
 Every command that chain runs, every way to re-run one by hand, and all
