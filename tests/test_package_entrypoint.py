@@ -23,12 +23,25 @@ class TestDispatch:
         """The four layers, and nothing invented beside them."""
         assert sorted(entry.LAYERS) == ["corpus", "draft", "enrich", "review"]
 
+    def test_commands_are_reachable_beside_the_layers(self):
+        """Package-level commands (#258) dispatch through the same
+        mechanism as a layer, but are not one -- CHOICES is where the
+        two merge for the parser and for main()'s import."""
+        assert "init" in entry.COMMANDS
+        assert entry.CHOICES == {**entry.LAYERS, **entry.COMMANDS}
+
     @pytest.mark.parametrize("layer", ["corpus", "draft", "review", "enrich"])
     def test_a_layer_forwards_help_to_that_layer(self, layer, capsys):
         with pytest.raises(SystemExit) as excinfo:
             entry.main([layer, "--help"])
         assert excinfo.value.code == 0
         assert layer in capsys.readouterr().out
+
+    def test_a_command_forwards_help_to_that_command(self, capsys):
+        with pytest.raises(SystemExit) as excinfo:
+            entry.main(["init", "--help"])
+        assert excinfo.value.code == 0
+        assert "init" in capsys.readouterr().out
 
     def test_no_layer_prints_usage_and_exits_zero(self, capsys):
         """"Tell me how to use this" is a request, not an error -- the
