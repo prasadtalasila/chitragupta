@@ -359,8 +359,9 @@ whoever opens the directory next; those seven are:
 - `sections.md` -- which section cites which citekey.
 - `steering.md` -- the user's steering.
 - `revisions.md` -- a revision log.
-- `retrieval.md` -- every retrieval call, plus a `mark-revision` boundary
-  per revision pass.
+- `retrieval.md` -- every retrieval call, the Zotero collection it was
+  scoped to (empty for a corpus-wide call), plus a `mark-revision`
+  boundary per revision pass.
 
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
 
@@ -397,7 +398,11 @@ status code. It reports two different things per dossier:
   that has left the ledger, listed with the sections citing it. A defect.
 - **candidates** -- papers now in the ledger that one of the dossier's own
   `retrieval.md` queries would surface in its top 15, minus everything
-  already kept *or rejected*. A decision, not a defect.
+  already kept *or rejected*. A query recorded against a Zotero
+  collection is re-ranked over that collection only, matching what the
+  call actually searched -- a collection-scoped draft is not reported
+  drift against papers outside the shelf it was scoped to. A decision,
+  not a defect.
 - **reconsider** -- papers the draft already declined that those queries
   still reach, carried with the recorded reason. Not drift (it is true on
   every sweep), so it never marks a dossier stale and prints only
@@ -527,6 +532,8 @@ where a chapter on modelling retrieves only from the modelling shelf.
 Scoring stays corpus-wide, so a filtered result carries the same score it
 would unfiltered; only the candidate set narrows. Needs the export
 described in [ZOTERO.md](ZOTERO.md#keeping-your-collections-optional).
+Combined with `--log`, the collection is written to `retrieval.md` too,
+so a scoped call and a corpus-wide one no longer write identical rows.
 
 `evidence` is a lookup, not a stage: use it when a `search` snippet is not
 enough to judge a source you are minded to cite. Nothing is obliged to

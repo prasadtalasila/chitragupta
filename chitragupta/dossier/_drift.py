@@ -22,6 +22,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from chitragupta import bib_collections
 from chitragupta.dossier._citekeys import (
     CITED_FILES, _citekeys_in, cited_citekeys, rejected_reasons, section_citekeys,
 )
@@ -29,7 +30,7 @@ from chitragupta.dossier import (
     _corpus_rows, all_dossiers, digest, dossier_name, draft_relpath, find_draft,
     recorded_corpus,
 )
-from chitragupta.dossier._retrieval import recorded_queries
+from chitragupta.dossier._retrieval import recorded_queries_with_collection
 
 # How deep to look down each recorded query's ranking. 15 matches
 # `survey-writer`'s own `search(sub_theme, k=15)`: the report should
@@ -91,6 +92,7 @@ class Corpus:
         self.rows = rows
         self.citekeys = {row["citekey"] for row in rows}
         self.titles = {row["citekey"]: row["title"] or "" for row in rows}
+        self.collections = {row["citekey"]: bib_collections.of_row(row) for row in rows}
         self._index: dict | None = None
 
     @property
@@ -99,16 +101,40 @@ class Corpus:
             self._index = _ephemeral_index(self.rows)
         return self._index
 
-    def matches(self, queries: list[str], k: int = CANDIDATE_K) -> dict[str, list[str]]:
-        """citekey -> the recorded queries whose top-k it would land in."""
+    def matches(
+        self, queries: list[tuple[str, str]], k: int = CANDIDATE_K
+    ) -> dict[str, list[str]]:
+        """citekey -> the recorded queries whose top-k it would land in.
+
+        Each query carries the collection its call actually ran against
+        (`recorded_queries_with_collection`, #254) -- empty for a
+        corpus-wide call. A non-empty collection filters the ranking to
+        that shelf *before* taking the top-k, the same order
+        `chitragupta.retrieval.search()` filters in: a shelf's top-k is not
+        necessarily a prefix of the whole corpus's, so filtering after
+        would report the wrong k candidates for a scoped query.
+
+        The filter itself is a second `bib_collections.matches()` call
+        site rather than a shared helper with `search()`'s: `search()`
+        looks a row's collections up from the ledger rows it already
+        loaded for scoring, while this class precomputes `self.collections`
+        once per sweep (`__init__`, beside `self.titles`) so a multi-dossier
+        `status --all` pays for the lookup once rather than once per
+        dossier -- two different data shapes behind the same one-line call.
+        """
         from chitragupta import retrieval
 
         hits: dict[str, list[str]] = {}
-        for query in queries:
+        for query, collection in queries:
             terms = retrieval._tokenize(query)
             if not terms:
                 continue
             scores = retrieval._bm25_scores(self.index, terms)
+            if collection:
+                scores = {
+                    citekey: score for citekey, score in scores.items()
+                    if bib_collections.matches(self.collections.get(citekey, ()), collection)
+                }
             # Ties broken by citekey so that two runs over an unchanged
             # corpus report the same candidates in the same order.
             ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
@@ -231,7 +257,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     report.unconsidered = len(corpus.citekeys - mentioned)
 
     declined = rejected_reasons(dossier)
-    matched = sorted(corpus.matches(recorded_queries(dossier)).items())
+    matched = sorted(corpus.matches(recorded_queries_with_collection(dossier)).items())
     report.candidates = [
         Candidate(citekey, corpus.titles.get(citekey, ""), queries)
         for citekey, queries in matched
