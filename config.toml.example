@@ -382,3 +382,27 @@ docling_images = false
 # read a figure back without storing print-resolution files.
 #                                                            Default: 2.0
 docling_image_scale = 2.0
+
+# How close a document must sit to one of your seed topics, as cosine
+# similarity, to be listed under it. Seed topics are the phrases you
+# write in content/seed_topics.toml (start from
+# assets/style/topics.toml.example); `--stages seed-topics` matches them
+# against the corpus and `chitragupta corpus topics` prints the result.
+#
+# The same floor also decides BERTopic's zero-shot assignment in the
+# bertopic stage, since both measure the same thing in the same space
+# with the same model. Raise it for a shorter, stricter list under each
+# topic; lower it for a longer, looser one. It gates nothing -- no run
+# fails and no draft is blocked on it, it only decides how much you are
+# shown.
+#
+# Lower than intuition suggests, on purpose: a short phrase never reaches
+# the cosine against a document-length passage that a sentence-to-sentence
+# comparison would. On a small probe with all-mpnet-base-v2, clearly
+# on-topic pairs scored 0.45-0.67 and the best off-topic pair 0.20.
+#
+# Nothing here happens at all without a content/seed_topics.toml: with no
+# seed file the bertopic stage behaves exactly as it always has, and the
+# seed-topics stage reports itself skipped.
+#                                                           Default: 0.35
+seed_topic_min_similarity = 0.35

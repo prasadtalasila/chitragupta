@@ -244,3 +244,81 @@ class TestEmbeddingCache:
 
         assert len(FakeModel.encode_call_texts) == 2
         assert FakeModel.encode_call_texts[1] == ["a brand new document"]
+
+
+class TestSeedPhrases:
+    """The zero-shot half of #206: BERTopic steered by phrases a person
+    wrote, and -- just as much the requirement -- left exactly as it was
+    for the libraries that have none."""
+
+    def test_unseeded_run_passes_no_zeroshot_list(self, isolated_config,
+                                                  fake_bertopic_stack, tmp_path):
+        """None rather than [], because BERTopic branches on falsiness to
+        decide whether to run zero-shot assignment at all."""
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert FakeBERTopic.last_kwargs["zeroshot_topic_list"] is None
+
+    def test_unseeded_output_carries_no_seed_key(self, isolated_config,
+                                                 fake_bertopic_stack, tmp_path):
+        """The "unchanged, not degraded" bar: a library with no seed file
+        gets the same content/topics.json shape it got before seeding
+        existed, with no empty list to interpret."""
+        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert "seed_phrases" not in result
+        assert "seed_phrases" not in json.loads(
+            isolated_config.TOPICS_PATH.read_text(encoding="utf-8"))
+
+    def test_phrases_reach_bertopic_whole(self, isolated_config,
+                                          fake_bertopic_stack, tmp_path):
+        """A three-word seed arrives as one list element, never split into
+        terms -- the property `seed_topic_list` could not have given."""
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path),
+                                    ("structural health monitoring", "digital twin"))
+        assert FakeBERTopic.last_kwargs["zeroshot_topic_list"] == [
+            "structural health monitoring", "digital twin"]
+
+    def test_threshold_comes_from_config(self, isolated_config,
+                                         fake_bertopic_stack, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.72)
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path), ("digital twin",))
+        assert FakeBERTopic.last_kwargs["zeroshot_min_similarity"] == 0.72
+
+    def test_seeded_output_records_the_phrases(self, isolated_config,
+                                               fake_bertopic_stack, tmp_path):
+        """So a reader can tell topic names a person chose from ones the
+        clustering invented."""
+        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path),
+                                             ("digital twin",))
+        assert result["seed_phrases"] == ["digital twin"]
+
+    def test_one_topic_per_document_is_still_all_bertopic_gives(self, isolated_config,
+                                                                fake_bertopic_stack, tmp_path):
+        """Stated as a test because it is the whole reason
+        chitragupta/enrich/topic_seeding.py exists: this artefact maps each
+        citekey to exactly one topic id and cannot express a paper that
+        belongs under two."""
+        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path),
+                                             ("digital twin", "lifecycle"))
+        assert all(isinstance(topic_id, int)
+                   for topic_id in result["assignments"].values())
+
+
+class TestDocumentEmbeddingsSeam:
+    def test_returns_one_vector_per_citekey(self, isolated_config,
+                                            fake_bertopic_stack, tmp_path):
+        docs = make_docs_with_text(3, tmp_path)
+        texts = topic_model.corpus_texts(docs)
+        vectors = topic_model.document_embeddings(texts, FakeModel())
+        assert set(vectors) == set(texts)
+
+    def test_reuses_the_cache_across_callers(self, isolated_config,
+                                             fake_bertopic_stack, tmp_path):
+        """topic_seeding.py scores against the same vectors this stage
+        clusters, so the second caller must encode nothing."""
+        docs = make_docs_with_text(3, tmp_path)
+        texts = topic_model.corpus_texts(docs)
+        model = FakeModel()
+        topic_model.document_embeddings(texts, model)
+        FakeModel.encode_call_texts = []
+        topic_model.document_embeddings(texts, model)
+        assert FakeModel.encode_call_texts == []

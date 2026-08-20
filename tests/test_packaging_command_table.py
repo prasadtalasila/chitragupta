@@ -40,7 +40,7 @@ DRAFT_FLAT_VERBS = {"gate", "references", "render", "style"}
 REVIEW_SUBCOMMANDS = {"verbatim": {"overlap", "scan", "recheck", "locate"}}
 REVIEW_FLAT_AIDS = {"provenance", "coverage"}
 
-CORPUS_VERBS = {"sync", "ledger"}
+CORPUS_VERBS = {"sync", "ledger", "topics"}
 
 
 def _help(*module_args) -> str:
@@ -132,21 +132,21 @@ class TestInstall:
 
 
 class TestStatedCounts:
-    """The formula docs/PACKAGING.md states in prose: 4 layers, 15 verbs
-    and aids, 38 invocable leaf commands -- computed here from the same
+    """The formula docs/PACKAGING.md states in prose: 4 layers, 16 verbs
+    and aids, 39 invocable leaf commands -- computed here from the same
     structures the tests above already verified against the live code,
     not retyped as a fresh set of literals."""
 
-    def test_fifteen_verbs_and_aids(self):
+    def test_sixteen_verbs_and_aids(self):
         verbs_and_aids = (len(CORPUS_VERBS) + len(DRAFT_FLAT_VERBS) + len(DRAFT_SUBCOMMANDS)
                            + len(REVIEW_FLAT_AIDS) + len(REVIEW_SUBCOMMANDS) + 1)  # enrich
-        assert verbs_and_aids == 15
-        assert "15 verbs and aids" in PACKAGING_TEXT
+        assert verbs_and_aids == 16
+        assert "16 verbs and aids" in PACKAGING_TEXT
 
-    def test_thirty_eight_leaf_commands(self):
+    def test_thirty_nine_leaf_commands(self):
         draft_leaves = len(DRAFT_FLAT_VERBS) + sum(len(v) for v in DRAFT_SUBCOMMANDS.values())
         review_leaves = len(REVIEW_FLAT_AIDS) + sum(len(v) for v in REVIEW_SUBCOMMANDS.values())
         package_level = 3  # init, doctor, install -- each one atomic command
         total = package_level + len(CORPUS_VERBS) + draft_leaves + review_leaves + 1  # enrich
-        assert total == 38
-        assert "38 invocable leaf commands" in PACKAGING_TEXT
+        assert total == 39
+        assert "39 invocable leaf commands" in PACKAGING_TEXT

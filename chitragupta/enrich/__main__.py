@@ -1,6 +1,6 @@
 """Orchestrates the full enrichment layer:
 
-    Docling -> sentence-transformers/Chroma -> BERTopic
+    Docling -> sentence-transformers/Chroma -> BERTopic -> seed topics
 
 The enrichment layer's single entry point, one level deep like every
 other layer's: `python -m chitragupta.enrich`, as the corpus layer has
@@ -46,13 +46,13 @@ import json
 import logging
 from pathlib import Path
 
-from chitragupta.enrich import corpus, docling_parse, embed_index, topic_model
+from chitragupta.enrich import corpus, docling_parse, embed_index, topic_model, topic_seeding
 # citation_gate is read, not called into: draft_citekeys() below uses its
 # citekey reader so a scoped run covers exactly the papers the gate will
 # check against. That is this layer reading a draft, not invoking the
 # drafting layer -- see the module docstring on why nothing else from
 # chitragupta/ outside the corpus path is imported here.
-from chitragupta import citation_gate, config, logging_setup, runlock
+from chitragupta import citation_gate, config, logging_setup, runlock, seed_topics
 from chitragupta.progname import prog_for
 
 # A fixed name, not __name__: this file is the layer's entry point, so
@@ -62,24 +62,28 @@ from chitragupta.progname import prog_for
 # here would reach the log file and be silently dropped from the console.
 logger = logging.getLogger("chitragupta.enrich")
 
-STAGE_ORDER = ["docling", "embed", "bertopic"]
+STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics"]
 
 # The stages --for-draft refuses to run, rather than running over a
-# subset. Both write one whole-corpus artefact whose partial form is
+# subset. Each writes one whole-corpus artefact whose partial form is
 # indistinguishable from its complete one: `embed` upserts into a Chroma
 # collection that records no completeness marker, and four skills branch
 # on nothing more than "does content/chroma/ exist" before searching it,
 # so a collection holding a draft's eleven papers would answer as if it
 # held the corpus; `bertopic` overwrites content/topics.json outright, so
 # a scoped run replaces a corpus-wide topic model with an eleven-document
-# one. Allowing either would mean inventing that marker, which is a
-# larger change than this filter and belongs to its own issue.
+# one; `seed-topics` overwrites content/topic_seeds.json the same way, and
+# its whole value is telling an author which of their papers no seed
+# phrase describes -- an answer computed over eleven of them is not a
+# smaller version of that answer, it is a wrong one. Allowing any of the
+# three would mean inventing that marker, which is a larger change than
+# this filter and belongs to its own issue.
 #
 # This is a tier and not a ladder, in docs/LADDERS.md's vocabulary: the
 # run stops and names what it cannot give you, rather than quietly
 # substituting the whole corpus (an hour of work nobody asked for) or a
 # fraction of it (an index that lies about its coverage).
-SCOPE_REFUSED = ("embed", "bertopic")
+SCOPE_REFUSED = ("embed", "bertopic", "seed-topics")
 
 # The stages that read the corpus at all -- every stage there is, since
 # 4.0.0 removed the two per-draft passthroughs. Kept as its own name
@@ -87,7 +91,7 @@ SCOPE_REFUSED = ("embed", "bertopic")
 # question: an empty scope is only a reason to stop if some stage was
 # going to use it, and SCOPE_REFUSED says which stages refuse to have a
 # scope narrowed rather than which read one.
-CORPUS_STAGES = ("docling", "embed", "bertopic")
+CORPUS_STAGES = ("docling", "embed", "bertopic", "seed-topics")
 
 # 3, not 2: argparse already exits 2 for a usage error it detects
 # itself, and runlock.EXIT_ALREADY_RUNNING is 2 as well. A wrapper needs
@@ -123,16 +127,29 @@ def stage_embed(docs, args):
 
 
 def stage_bertopic(docs, args):
-    result = topic_model.run_topic_model(docs)
+    result = topic_model.run_topic_model(docs, seed_topics.load())
     return {"status": "ok",
             "detail": {"n_docs": result["n_docs"],
                        "assignments": result["assignments"]}}
+
+
+# Unlike the three above, this stage's ok/skipped shaping lives in
+# topic_seeding.run_stage() rather than here. Not a style break for its
+# own sake: this module is four code lines under docs/CODE-STANDARDS.md's
+# 250-line ceiling with three stages, so spelling a fourth out in the
+# local idiom would push the orchestrator over a boundary that adding a
+# stage is no reason to move. The seed list is read here, though, because
+# "is there a seed file" is the question that decides whether the stage
+# runs at all, and that is this file's decision to make.
+def stage_seed_topics(docs, args):
+    return topic_seeding.run_stage(docs, seed_topics.load())
 
 
 STAGE_FUNCS = {
     "docling": stage_docling,
     "embed": stage_embed,
     "bertopic": stage_bertopic,
+    "seed-topics": stage_seed_topics,
 }
 
 

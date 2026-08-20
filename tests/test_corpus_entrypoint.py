@@ -42,6 +42,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKING_MODULES = {
     "sync": "sync",
     "ledger": "ledger",
+    "topics": "seed_topics",
 }
 
 # The backing modules that keep the silent-no-op trap docs/ARCHITECTURE.md
@@ -50,7 +51,7 @@ BACKING_MODULES = {
 # was a real command until 5.2.0 and is the one spelling in this project
 # that plausibly sits in a crontab, so it refuses out loud instead (#153).
 # See TestTheRemovedSyncCommandRefuses.
-SILENT_NO_OP_MODULES = ["ledger"]
+SILENT_NO_OP_MODULES = ["ledger", "seed_topics"]
 
 # A real top-level entry-point block, anchored at column 0 -- not the
 # string wherever it appears. Same reasoning as test_draft_entrypoint.py:
@@ -67,8 +68,8 @@ def _run(*argv):
     )
 
 
-class TestTheVerbsAreTheCorpusLayersTwoCommands:
-    def test_the_verb_set_is_exactly_the_two_backing_modules(self):
+class TestTheVerbsAreTheCorpusLayersCommands:
+    def test_the_verb_set_is_exactly_the_backing_modules(self):
         assert set(entrypoint.VERBS) == set(BACKING_MODULES)
 
     @pytest.mark.parametrize("verb", sorted(BACKING_MODULES))

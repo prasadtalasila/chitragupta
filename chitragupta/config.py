@@ -498,6 +498,41 @@ TOPICS_PATH = CONTENT_DIR / "topics.json"
 # topic_model.run_topic_model() only re-encodes docs whose text actually
 # changed since the last run -- see that module's docstring.
 TOPIC_EMBED_CACHE_PATH = CONTENT_DIR / "topic_embed_cache.json"
+
+# The author's own list of topic phrases, and what matching them against
+# the corpus produced. TOML in, JSON out, which is this repository's
+# standing split rather than a choice made here: the first is hand-written
+# and wants comments, the second is written by a program and read by one.
+# Neither has to exist -- a library with no seed file gets the emergent,
+# unseeded topic model it has always had (chitragupta/seed_topics.py).
+SEED_TOPICS_PATH = CONTENT_DIR / "seed_topics.toml"
+TOPIC_SEEDS_PATH = CONTENT_DIR / "topic_seeds.json"
+# Cosine similarity a document must reach, against a seed phrase's own
+# embedding, to be listed under it -- and the same floor BERTopic's
+# zero-shot assignment uses, since both measure the same thing in the
+# same space with the same model. One key rather than two because two
+# would invite them to drift apart and mean nothing together.
+#
+# Note what this threshold is not: a gate. docs/HOUSE-STYLE.md's R3 keeps
+# continuous scores out of pass/fail decisions, and nothing here fails a
+# run, blocks a draft or refuses a citekey. It decides how long a list a
+# human reads, and they can move it and look again.
+#
+# 0.35 rather than a rounder 0.5, and the difference is not cosmetic: a
+# short phrase and a document-length passage do not reach the cosine an
+# intuition calibrated on sentence-pair similarity expects, so 0.5 drops
+# genuine matches. Measured on a three-document probe with
+# all-mpnet-base-v2, on-topic pairs scored 0.666 and 0.448 while the
+# best off-topic pair reached 0.200 -- so 0.5 loses a true match that
+# 0.35 keeps, and 0.35 still clears every false one by 0.15.
+#
+# Honest about what that is: a probe with two phrases and three
+# documents, not a benchmark. It is enough to rule 0.5 out and to place
+# the default inside a wide gap; it is not enough to call 0.35 optimal,
+# and a real corpus is the thing to re-check it against.
+SEED_TOPIC_MIN_SIMILARITY = _get_float(
+    "SEED_TOPIC_MIN_SIMILARITY", "enrich", "seed_topic_min_similarity", default=0.35,
+)
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
 # The CSL style pandoc's --citeproc formats citations and the bibliography

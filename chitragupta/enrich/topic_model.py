@@ -55,24 +55,37 @@ def _save_embed_cache(cache: dict) -> None:
     config.TOPIC_EMBED_CACHE_PATH.write_text(json.dumps(cache), encoding="utf-8")
 
 
-def run_topic_model(docs: list[CorpusDoc]) -> dict:
-    import numpy as np
-    from bertopic import BERTopic
-    from hdbscan import HDBSCAN
-    from umap import UMAP
-
+def corpus_texts(docs: list[CorpusDoc]) -> dict:
+    """Every doc that has text at all, by citekey. Docs with none are
+    dropped rather than embedded as empty strings, which would cluster
+    together on their emptiness and invent a topic out of missing PDFs."""
     doc_texts = {}
     for doc in docs:
         text = embed_index.get_text(doc)
         if text:
             doc_texts[doc.citekey] = text
+    return doc_texts
 
-    if len(doc_texts) < 2:
-        raise ValueError("Need at least 2 documents with text to run BERTopic; "
-                         f"got {len(doc_texts)}")
 
-    _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
+def document_embeddings(doc_texts: dict, model) -> dict:
+    """One whole-text vector per citekey, re-encoding only what changed.
 
+    Split out of run_topic_model() so chitragupta/enrich/topic_seeding.py
+    can match seed phrases against the same vectors this stage clusters.
+    That sharing is the point rather than a convenience: a phrase scored
+    against one embedding of a document and clustered against another
+    would be two different opinions about the same corpus, and the
+    similarity numbers the report prints would not explain the topic
+    assignments sitting beside them.
+
+    Note what "the document's embedding" really is: `model.encode()`
+    truncates at the model's own input limit (256 word pieces for
+    all-MiniLM-L6-v2, 384 for the mpnet models), so this is a vector for
+    a paper's opening -- title, abstract and the start of the
+    introduction -- not for its whole text. That is a reasonable proxy
+    for what a paper is about, and it is not the same claim as "the
+    document was embedded".
+    """
     cache = _load_embed_cache()
     doc_hashes = {citekey: embed_index.hash_text(text) for citekey, text in doc_texts.items()}
     # Track which model produced each cached vector, not just the text hash
@@ -94,10 +107,45 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
                 "embedding": vec.tolist(),
             }
         _save_embed_cache(cache)
+    return {citekey: cache[citekey]["embedding"] for citekey in doc_texts}
+
+
+def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
+    """Cluster the corpus, optionally steered by the author's own phrases.
+
+    `seed_phrases` non-empty turns on BERTopic's zero-shot mode: each
+    phrase is embedded whole and documents close enough to one are
+    assigned to it by name, with the remainder clustered as before. The
+    phrase reaches BERTopic as a single string, never a term list, which
+    is what keeps "structural health monitoring" one topic rather than
+    three -- `seed_topic_list`, the older mechanism, matches against a
+    bag-of-words vocabulary and would decompose it.
+
+    **This half assigns each document exactly one topic**, because
+    `fit_transform` returns one topic id per document and always has.
+    The many-to-many view -- a paper under every phrase it matched, which
+    is what a corpus grouped by hand in Zotero actually looks like --
+    is chitragupta/enrich/topic_seeding.py's artefact, not this one's.
+    Neither replaces the other and both read the same embeddings.
+    """
+    import numpy as np
+    from bertopic import BERTopic
+    from hdbscan import HDBSCAN
+    from umap import UMAP
+
+    doc_texts = corpus_texts(docs)
+
+    if len(doc_texts) < 2:
+        raise ValueError("Need at least 2 documents with text to run BERTopic; "
+                         f"got {len(doc_texts)}")
+
+    _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
+
+    cache = document_embeddings(doc_texts, model)
 
     citekeys = list(doc_texts)
     texts = [doc_texts[d] for d in citekeys]
-    embeddings = np.array([cache[d]["embedding"] for d in citekeys])
+    embeddings = np.array([cache[d] for d in citekeys])
 
     # UMAP's spectral initialization needs n_neighbors < n_samples or it
     # raises outright (not just a bad clustering) -- BERTopic's own
@@ -120,9 +168,26 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
         metric="euclidean", cluster_selection_method="eom", prediction_data=True,
     )
 
+    # None, not [], when there are no seeds: BERTopic branches on this
+    # argument being falsy to decide whether to run zero-shot assignment
+    # at all, so a library with no seed file takes byte-for-byte the same
+    # path it took before this feature existed. That is the bar #206 set
+    # -- unchanged for the common case, not merely tolerant of it.
+    #
+    # Both degenerate outcomes are safe on bertopic 0.17.4 and neither
+    # needs a guard here, checked against the real library rather than
+    # assumed: every document clearing the threshold (nothing left for
+    # HDBSCAN to cluster) returns every document under the seed topic,
+    # and no document clearing it returns the same all-outlier result an
+    # unseeded run on a small corpus already gives. Worth re-checking if
+    # the bertopic pin in pyproject.toml ever widens past 0.17.
+    zeroshot = list(seed_phrases) or None
+
     topic_model = BERTopic(
         embedding_model=model, umap_model=umap_model, hdbscan_model=hdbscan_model,
         calculate_probabilities=False, verbose=False,
+        zeroshot_topic_list=zeroshot,
+        zeroshot_min_similarity=config.SEED_TOPIC_MIN_SIMILARITY,
     )
     topics, _probs = topic_model.fit_transform(texts, embeddings)
 
@@ -131,6 +196,14 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
         "assignments": dict(zip(citekeys, [int(t) for t in topics])),
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
     }
+    # Recorded only when there were seeds, so an unseeded run's
+    # content/topics.json is byte-identical to what this stage wrote
+    # before seeding existed. A reader that finds this key knows the
+    # topic names it is looking at were partly chosen by a person; one
+    # that does not find it is looking at the same emergent output as
+    # always, rather than at an empty list it has to interpret.
+    if seed_phrases:
+        result["seed_phrases"] = list(seed_phrases)
     config.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
     config.TOPICS_PATH.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result

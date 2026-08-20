@@ -28,6 +28,7 @@ this document can stay a reference rather than an argument.
 - [How values are parsed](#how-values-are-parsed)
 - [Notes on individual settings](#notes-on-individual-settings)
 - [Choosing an embedding model](#choosing-an-embedding-model)
+- [Seed topics: organising the corpus by phrases you wrote](#seed-topics-organising-the-corpus-by-phrases-you-wrote)
 
 ## How configuration is loaded
 
@@ -362,6 +363,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
+| `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.35` | `0.35` |
 
 **The two `embedding_model` columns differ on purpose, and the
 distinction matters.** The code's fallback is the smaller, faster
@@ -687,3 +689,86 @@ python -m chitragupta.enrich --stages embed
 The model downloads on first use (needs network), and Chroma's existing
 collection is **not** re-embedded automatically -- switch only when you
 are prepared to rebuild the index.
+
+## Seed topics: organising the corpus by phrases you wrote
+
+`content/seed_topics.toml` is a list of topic phrases in your own words.
+It is optional and absent by default; with no such file the enrichment
+layer behaves exactly as it did before the feature existed -- the
+`bertopic` stage clusters without steering, and the `seed-topics` stage
+reports itself skipped rather than failing.
+
+```toml
+# content/seed_topics.toml -- start from assets/style/topics.toml.example
+topics = [
+    "digital twin",
+    "structural health monitoring",
+]
+```
+
+**A phrase is one topic and is never split into words.** "structural
+health monitoring" is embedded whole and compared as a single point
+against each document, rather than looked up as three separate terms in a
+bag-of-words vocabulary -- which is what would happen under BERTopic's
+older `seed_topic_list`, where "monitoring" alone would match every paper
+with a monitoring section. Write the phrase you mean.
+
+### Where the phrases come from
+
+Yours to write. If your Zotero export carries collection labels
+([ZOTERO.md](ZOTERO.md)), your own collection names are the best starting
+point, since they are groupings you already trust:
+
+```bash
+chitragupta corpus ledger --collections
+```
+
+Paste in the ones that read as topics and leave out the ones that read as
+shelves. "Digital twins" is a topic; "Reading list", "To read" and "2024
+submissions" are not, and nothing can tell them apart mechanically --
+which is why this file is written by hand rather than generated. That is
+[HOUSE-STYLE.md](HOUSE-STYLE.md)'s "it proposes; the human accepts",
+applied to the one decision a heuristic would get wrong.
+
+### Running it, and reading the result
+
+```bash
+chitragupta enrich --stages seed-topics   # needs the enrich group
+chitragupta corpus topics                 # stdlib only, no venv, no GPU
+chitragupta corpus topics --topic "digital twin"
+```
+
+The match report is written to `content/topic_seeds.json` and read back
+by `chitragupta corpus topics`, which needs neither the venv nor a GPU --
+the same split [#204](https://github.com/prasadtalasila/chitragupta/issues/204)
+made for collections, where matching is expensive and reading what it
+decided is not.
+
+**A paper appears under every topic it matched, not just its closest
+one.** That is deliberate and is the difference between this artefact and
+`content/topics.json`: BERTopic assigns each document exactly one topic
+id, but a library grouped by hand does not work that way -- a paper on
+digital twins in manufacturing genuinely belongs under both. Both
+artefacts are written, from the same embeddings, and neither replaces the
+other.
+
+The report also lists every document that matched **no** topic. That list
+is the useful half for planning a draft: it is the part of your own
+corpus your own topic list does not yet describe. Add a phrase, run it
+again, and watch it shrink.
+
+`[enrich].seed_topic_min_similarity` (above) decides how long each
+topic's list is, and the same floor governs BERTopic's zero-shot
+assignment. It gates nothing -- no run fails on it and no draft is
+blocked by it.
+
+The `0.35` default is lower than it looks like it should be, and
+deliberately so: a two-word phrase compared against a document-length
+passage does not reach the cosine that a sentence-against-sentence
+comparison would, so a "obviously about half" intuition of `0.5` silently
+drops real matches. On a small probe with `all-mpnet-base-v2`, clearly
+on-topic pairs scored `0.666` and `0.448` while the best off-topic pair
+reached only `0.200`. That is a probe rather than a benchmark -- enough
+to rule `0.5` out and to sit the default in a wide gap, not enough to
+call `0.35` optimal. If a topic's list looks too short, lower it and look
+again; that is what it is for.

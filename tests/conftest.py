@@ -88,31 +88,48 @@ def isolated_config(tmp_path, monkeypatch):
     """
     content_dir = tmp_path / "content"
 
+    # A table rather than a run of setattr calls, so that adding a path
+    # to config.py costs one line here instead of pushing this fixture
+    # past docs/CODE-STANDARDS.md's 25-statement limit -- which is what
+    # happened when the seed-topic paths arrived. The relative names are
+    # exactly what config.py derives from CONTENT_DIR, kept in the same
+    # spelling so the two are diffable by eye.
+    under_content = {
+        "CONTENT_DIR": "",
+        "PARSED_DIR": "parsed",
+        "LEDGER_PATH": "ledger.sqlite",
+        "REVIEW_DIR": "review",
+        "DRAFTS_DIR": "drafts",
+        "DOSSIERS_DIR": "dossiers",
+        "SPECS_DIR": "specs",
+        "RETRIEVAL_INDEX_PATH": "retrieval_index.json",
+        "OVERLAP_DIR": "overlap",
+        "VERBATIM_ALLOWLIST_PATH": "verbatim_allowlist.toml",
+        "PIPELINE_LOCK_PATH": "pipeline.lock.db",
+        "DOCLING_DIR": "docling",
+        "DOCLING_CACHE_PATH": "docling_cache.json",
+        "CHROMA_DIR": "chroma",
+        "TOPICS_PATH": "topics.json",
+        "TOPIC_EMBED_CACHE_PATH": "topic_embed_cache.json",
+        "SEED_TOPICS_PATH": "seed_topics.toml",
+        "TOPIC_SEEDS_PATH": "topic_seeds.json",
+        "RENDERED_DIR": "rendered",
+    }
+    for name, relative in under_content.items():
+        monkeypatch.setattr(config, name, content_dir / relative if relative else content_dir)
+
     monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "bibliography.bib")
-    monkeypatch.setattr(config, "CONTENT_DIR", content_dir)
-    monkeypatch.setattr(config, "PARSED_DIR", content_dir / "parsed")
-    monkeypatch.setattr(config, "LEDGER_PATH", content_dir / "ledger.sqlite")
-    monkeypatch.setattr(config, "REVIEW_DIR", content_dir / "review")
-    monkeypatch.setattr(config, "DRAFTS_DIR", content_dir / "drafts")
-    monkeypatch.setattr(config, "DOSSIERS_DIR", content_dir / "dossiers")
-    monkeypatch.setattr(config, "SPECS_DIR", content_dir / "specs")
-    monkeypatch.setattr(config, "RETRIEVAL_INDEX_PATH", content_dir / "retrieval_index.json")
-    monkeypatch.setattr(config, "OVERLAP_DIR", content_dir / "overlap")
-    monkeypatch.setattr(config, "VERBATIM_ALLOWLIST_PATH", content_dir / "verbatim_allowlist.toml")
-    monkeypatch.setattr(config, "PIPELINE_LOCK_PATH", content_dir / "pipeline.lock.db")
-    monkeypatch.setattr(config, "DOCLING_DIR", content_dir / "docling")
-    monkeypatch.setattr(config, "DOCLING_CACHE_PATH", content_dir / "docling_cache.json")
+    monkeypatch.setattr(config, "LOGS_DIR", tmp_path / "logs")
     # Pinned rather than inherited from config.toml: DOCLING_IMAGES
     # participates in the Docling cache key, so a test asserting a
     # cache hit would otherwise pass or fail based on the repo's
     # current setting. Tests that care set it explicitly.
     monkeypatch.setattr(config, "DOCLING_IMAGES", False)
     monkeypatch.setattr(config, "DOCLING_IMAGE_SCALE", 2.0)
-    monkeypatch.setattr(config, "CHROMA_DIR", content_dir / "chroma")
-    monkeypatch.setattr(config, "TOPICS_PATH", content_dir / "topics.json")
-    monkeypatch.setattr(config, "TOPIC_EMBED_CACHE_PATH", content_dir / "topic_embed_cache.json")
-    monkeypatch.setattr(config, "RENDERED_DIR", content_dir / "rendered")
-    monkeypatch.setattr(config, "LOGS_DIR", tmp_path / "logs")
+    # Pinned for the same reason: this threshold decides which documents
+    # land under a seed phrase, so a test asserting a match would
+    # otherwise pass or fail on the developer's own config.toml.
+    monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
     return config
 
 
