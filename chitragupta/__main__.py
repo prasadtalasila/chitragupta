@@ -11,6 +11,8 @@ Plus package-level commands that only make sense once the code is
 installed rather than cloned (#258):
 
     chitragupta init [DIR]     ...   scaffold a project directory (#263)
+    chitragupta doctor         ...   probe the toolchain, report, never install (#265)
+    chitragupta install <stage> ...  os-deps or gpu-torch, the two pip cannot do itself (#265)
 
 **This adds a front door, not a command surface.** Every verb, flag and
 exit code below belongs to the layer it dispatches to, unchanged. Like
@@ -73,6 +75,12 @@ COMMANDS = {
     "init": ("chitragupta.init",
              "scaffold a project directory -- config.toml, .claude/, "
              "papers/, content/ and the prose docs"),
+    "doctor": ("chitragupta.doctor",
+               "probe and report: OS binaries, the enrich extra, torch "
+               "vs. the GPU driver, a competing distribution"),
+    "install": ("chitragupta.install",
+                "run the install_full_pipeline.sh stages a pip install "
+                "cannot do itself -- os-deps, gpu-torch"),
 }
 
 CHOICES = {**LAYERS, **COMMANDS}

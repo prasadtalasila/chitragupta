@@ -6,11 +6,12 @@ version = "1.14.0"
 description = "Accelerate"
 optional = false
 python-versions = ">=3.10.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "accelerate-1.14.0-py3-none-any.whl", hash = "sha256:e94390c2863b873be18f623f9df48a0d8fe5eff13ea7f1a00092b0a7904888c6"},
     {file = "accelerate-1.14.0.tar.gz", hash = "sha256:41b9c4377a54e0b460a959b0defa1b736e4ca0a2373252d9a539964c2afe3c8d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 huggingface_hub = ">=0.21.0"
@@ -39,11 +40,12 @@ version = "1.3.0"
 description = "A Unified Library for Parameter-Efficient and Modular Transfer Learning"
 optional = false
 python-versions = ">=3.9.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "adapters-1.3.0-py3-none-any.whl", hash = "sha256:c0620b1b98df4af3876aa1e053ba43d0a19d82e62fc6a3ebc67d158183e07919"},
     {file = "adapters-1.3.0.tar.gz", hash = "sha256:36f5d24fbdd99d00c00aaa1f724b9e124fb1a9fd1dbae19dc3dd5a483d02fd5c"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 packaging = "*"
@@ -65,11 +67,12 @@ version = "2.7.1"
 description = "Happy Eyeballs for asyncio"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "aiohappyeyeballs-2.7.1-py3-none-any.whl", hash = "sha256:9243213661e29250eb41368e5daa826fc017156c3b8a11440826b2e3ed376472"},
     {file = "aiohappyeyeballs-2.7.1.tar.gz", hash = "sha256:065665c041c42a5938ed220bdcd7230f22527fbec085e1853d2402c8a3615d9d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "aiohttp"
@@ -77,7 +80,7 @@ version = "3.14.3"
 description = "Async http client/server framework (asyncio)"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "aiohttp-3.14.3-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:eb0495d778817619273c108784292be161a924b9f5ae5cbbc70a2caa6838250b"},
     {file = "aiohttp-3.14.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:c3c200cf9757edd785051dc699c7ecbec22110dbfcb3fefc7a9f9695eda8ea7a"},
@@ -199,6 +202,7 @@ files = [
     {file = "aiohttp-3.14.3-cp314-cp314t-win_arm64.whl", hash = "sha256:2e1161602f45a54de2ce0905243a95f58cb42dcd378402f3697f5e0b21e9d2e7"},
     {file = "aiohttp-3.14.3.tar.gz", hash = "sha256:9491196535a88924a60afd5b5f434b5b203b6cc616250878dbdb223a8f7844bc"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 aiohappyeyeballs = ">=2.5.0"
@@ -219,11 +223,12 @@ version = "1.4.0"
 description = "aiosignal: a list of registered asynchronous callbacks"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "aiosignal-1.4.0-py3-none-any.whl", hash = "sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e"},
     {file = "aiosignal-1.4.0.tar.gz", hash = "sha256:f47eecd9468083c2029cc99945502cb7708b082c232f9aca65da147157b251c7"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 frozenlist = ">=1.1.0"
@@ -235,11 +240,12 @@ version = "0.0.5"
 description = "Document parameters, class attributes, return types, and variables inline, with Annotated."
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "annotated_doc-0.0.5-py3-none-any.whl", hash = "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101"},
     {file = "annotated_doc-0.0.5.tar.gz", hash = "sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "annotated-types"
@@ -247,11 +253,12 @@ version = "0.8.0"
 description = "Reusable constraint types to use with typing.Annotated"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "annotated_types-0.8.0-py3-none-any.whl", hash = "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"},
     {file = "annotated_types-0.8.0.tar.gz", hash = "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "antlr4-python3-runtime"
@@ -259,10 +266,11 @@ version = "4.9.3"
 description = "ANTLR 4.9.3 runtime for Python 3.7"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "antlr4-python3-runtime-4.9.3.tar.gz", hash = "sha256:f224469b4168294902bb1efa80a8bf7855f24c99aef99cbefc1bcd3cce77881b"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "anyio"
@@ -270,11 +278,12 @@ version = "4.14.2"
 description = "High-level concurrency and networking framework on top of asyncio or Trio"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "anyio-4.14.2-py3-none-any.whl", hash = "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494"},
     {file = "anyio-4.14.2.tar.gz", hash = "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 idna = ">=2.8"
@@ -289,11 +298,12 @@ version = "26.1.0"
 description = "Classes Without Boilerplate"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309"},
     {file = "attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "babel"
@@ -301,11 +311,12 @@ version = "2.18.0"
 description = "Internationalization utilities"
 optional = false
 python-versions = ">=3.8"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "babel-2.18.0-py3-none-any.whl", hash = "sha256:e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35"},
     {file = "babel-2.18.0.tar.gz", hash = "sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.extras]
 dev = ["backports.zoneinfo ; python_version < \"3.9\"", "freezegun (>=1.0,<2.0)", "jinja2 (>=3.0)", "pytest (>=6.0)", "pytest-cov", "pytz", "setuptools", "tzdata ; sys_platform == \"win32\""]
@@ -316,7 +327,7 @@ version = "8.0"
 description = "A wrapper around re and regex that adds additional back references."
 optional = false
 python-versions = ">=3.10"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "backrefs-8.0-py310-none-any.whl", hash = "sha256:4a627b817fd2dce43b79ab48da63613340509381cd8ce0897078a0bce79a2ab8"},
     {file = "backrefs-8.0-py311-none-any.whl", hash = "sha256:f0c35cf0102ba6b6070c12a492be3c1c1d3f5839529784b9a9565d6d04569a01"},
@@ -325,6 +336,7 @@ files = [
     {file = "backrefs-8.0-py314-none-any.whl", hash = "sha256:9ec96efa080938be92323e8e730e57718c9c88eb15ad70bbef4e1766df591408"},
     {file = "backrefs-8.0.tar.gz", hash = "sha256:b556cd7d36c3a3a2f256b89590b176b8eddfb73bcfaee3a3ddd84ea66d21ce50"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.extras]
 extras = ["regex"]
@@ -335,7 +347,7 @@ version = "5.0.0"
 description = "Modern password hashing for your software and your servers"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "bcrypt-5.0.0-cp313-cp313t-macosx_10_12_universal2.whl", hash = "sha256:f3c08197f3039bec79cee59a606d62b96b16669cff3949f21e74796b6e3cd2be"},
     {file = "bcrypt-5.0.0-cp313-cp313t-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:200af71bc25f22006f4069060c88ed36f8aa4ff7f53e67ff04d2ab3f1e79a5b2"},
@@ -401,6 +413,7 @@ files = [
     {file = "bcrypt-5.0.0-pp311-pypy311_pp73-manylinux_2_34_x86_64.whl", hash = "sha256:6b8f520b61e8781efee73cba14e3e8c9556ccfb375623f4f97429544734545b4"},
     {file = "bcrypt-5.0.0.tar.gz", hash = "sha256:f748f7c2d6fd375cc93d3fba7ef4a9e3a092421b8dbf34d8d4dc06be9492dfdd"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 tests = ["pytest (>=3.2.1,!=3.3.0)"]
@@ -412,11 +425,12 @@ version = "4.15.0"
 description = "Screen-scraping library"
 optional = false
 python-versions = ">=3.7.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "beautifulsoup4-4.15.0-py3-none-any.whl", hash = "sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9"},
     {file = "beautifulsoup4-4.15.0.tar.gz", hash = "sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 soupsieve = ">=1.6.1"
@@ -435,11 +449,12 @@ version = "0.17.4"
 description = "BERTopic performs topic Modeling with state-of-the-art transformer models."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "bertopic-0.17.4-py3-none-any.whl", hash = "sha256:0dbe7ee22c18fb76efe7f4fbf3a14b51c1e67d9fccc569e3f81e75b8f32646d1"},
     {file = "bertopic-0.17.4.tar.gz", hash = "sha256:f92aa560cdf2bcbf9e22c8ee83dd3bfb225b8dc29381dec7327cc0b21bd852ad"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 hdbscan = ">=0.8.29"
@@ -484,11 +499,12 @@ version = "1.5.0"
 description = "A simple, correct Python build frontend"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "build-1.5.0-py3-none-any.whl", hash = "sha256:13f3eecb844759ab66efec90ca17639bbf14dc06cb2fdf37a9010322d9c50a6f"},
     {file = "build-1.5.0.tar.gz", hash = "sha256:302c22c3ba2a0fd5f3911918651341ebb3896176cbdec15bd421f80b1afc7647"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 colorama = {version = "*", markers = "os_name == \"nt\""}
@@ -506,11 +522,12 @@ version = "2026.7.22"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.7"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"},
     {file = "certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [[package]]
 name = "charset-normalizer"
@@ -518,7 +535,7 @@ version = "3.4.9"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 optional = false
 python-versions = ">=3.7"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "charset_normalizer-3.4.9-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:cd6280cf040f233bd7d3407b743b4b4c74f70e8e1c4199cb112a62c941c0772a"},
     {file = "charset_normalizer-3.4.9-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:aa99adc8f081b475a12843953db36831eaf83ec33eb46a90629ca6a5de45a616"},
@@ -614,6 +631,7 @@ files = [
     {file = "charset_normalizer-3.4.9-py3-none-any.whl", hash = "sha256:68e5f26a1ad57ded6d1cfb85331d1c1a195314756471d97758c48498bb4dcdf5"},
     {file = "charset_normalizer-3.4.9.tar.gz", hash = "sha256:673611bbd43f0810bec0b0f028ddeaaa501190339cac411f347ac76917c3ae7b"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [[package]]
 name = "chromadb"
@@ -621,7 +639,7 @@ version = "1.5.9"
 description = "Chroma."
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "chromadb-1.5.9-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:60701011b5e6409647fa40d12c7c5a66b2b0bfcf33a52db2ad53a30a2abc4957"},
     {file = "chromadb-1.5.9-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:814b9c95617377f6501e5757d63dfddb554a283a7739c87b9fa573850174e6f3"},
@@ -630,6 +648,7 @@ files = [
     {file = "chromadb-1.5.9-cp39-abi3-win_amd64.whl", hash = "sha256:4fd0b560e56761b7f3cb4d5c6205fd5f20814484b4a3e4e9af9038c2b428fc6c"},
     {file = "chromadb-1.5.9.tar.gz", hash = "sha256:5c20e62a455c28bacac927f26116a73fd8e1799e0d908be8e8a4f02197a54731"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 bcrypt = ">=4.0.1"
@@ -669,11 +688,12 @@ version = "8.4.2"
 description = "Composable command line interface toolkit"
 optional = false
 python-versions = ">=3.10"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "click-8.4.2-py3-none-any.whl", hash = "sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76"},
     {file = "click-8.4.2.tar.gz", hash = "sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [package.dependencies]
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
@@ -684,12 +704,12 @@ version = "0.4.6"
 description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
-groups = ["dev", "docs", "enrich"]
+groups = ["main", "dev", "docs", "enrich"]
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {dev = "sys_platform == \"win32\"", enrich = "platform_system == \"Windows\" or os_name == \"nt\" or sys_platform == \"win32\""}
+markers = {main = "platform_system == \"Windows\" and (extra == \"enrich\" or extra == \"docs\") or os_name == \"nt\" and (extra == \"enrich\" or extra == \"docs\") or extra == \"docs\" or sys_platform == \"win32\" and (extra == \"enrich\" or extra == \"docs\" or extra == \"dev\")", dev = "sys_platform == \"win32\"", enrich = "platform_system == \"Windows\" or os_name == \"nt\" or sys_platform == \"win32\""}
 
 [[package]]
 name = "colorlog"
@@ -697,11 +717,12 @@ version = "6.12.0"
 description = "Add colours to the output of Python's logging module."
 optional = false
 python-versions = ">=3.6"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "colorlog-6.12.0-py3-none-any.whl", hash = "sha256:30d392604e9110045a2c2aeefc27d7a017abbab63f3a8aee594eac0801df784e"},
     {file = "colorlog-6.12.0.tar.gz", hash = "sha256:2a7924c1dadf18b22a0eb8b06d1c7b01d5341707ec1641eb6fcc4fde0c3e8e5f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
@@ -715,7 +736,7 @@ version = "7.15.2"
 description = "Code coverage measurement for Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "coverage-7.15.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9b5bd92ff1ec22e535eab0de75fa6db021992791f461a2aceb7822c625a1187d"},
     {file = "coverage-7.15.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:44826758cfe73fcd0e6af5deb4ba6d5417cc1d13df3acb35c93484a11160f846"},
@@ -809,6 +830,7 @@ files = [
     {file = "coverage-7.15.2-py3-none-any.whl", hash = "sha256:eb6bcae8d1a9d305351ecb108232441d11c5cfe9de840a04388ba5d2db8d735c"},
     {file = "coverage-7.15.2.tar.gz", hash = "sha256:3df60dc267f0a2ca23cb7a9ab1109c62b9335ffbf519fcfe167157c28c09b81d"},
 ]
+markers = {main = "extra == \"dev\""}
 
 [package.extras]
 toml = ["tomli ; python_full_version <= \"3.11.0a6\""]
@@ -819,11 +841,12 @@ version = "0.7.1"
 description = "XML bomb protection for Python stdlib modules"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"},
     {file = "defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "dill"
@@ -831,11 +854,12 @@ version = "0.4.1"
 description = "serialize all of Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d"},
     {file = "dill-0.4.1.tar.gz", hash = "sha256:423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 graph = ["objgraph (>=1.7.2)"]
@@ -847,11 +871,12 @@ version = "0.7.3"
 description = "DocLang reference toolkit"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "doclang-0.7.3-py3-none-any.whl", hash = "sha256:9440c4ca9f7e061a7b8d33bdf15b1029be69a4c13cd8952dd6ce541884e4c685"},
     {file = "doclang-0.7.3.tar.gz", hash = "sha256:ca50615357e46ebf9597bb9065b9112367103ec24bd539f8ae12649224cf50b0"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 lxml = ">=4.8.0"
@@ -866,11 +891,12 @@ version = "2.117.0"
 description = "SDK and CLI for parsing PDF, DOCX, HTML, and more, to a unified document representation for powering downstream workflows such as gen AI applications."
 optional = false
 python-versions = "<4.0,>=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "docling-2.117.0-py3-none-any.whl", hash = "sha256:524ed03a8036c8a192ff5d2f2dfa950d33be08f4bec5693d08365eb74ecfbcfa"},
     {file = "docling-2.117.0.tar.gz", hash = "sha256:48853b979450770a8e2e0c3a0bb6a2a8a22cede593b92083ca672584757ce31d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 docling-slim = {version = "2.117.0", extras = ["standard"]}
@@ -893,11 +919,12 @@ version = "2.89.0"
 description = "A python library to define and validate data types in Docling."
 optional = false
 python-versions = "<4.0,>=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "docling_core-2.89.0-py3-none-any.whl", hash = "sha256:b3ecc82070186ad56b21ffd038977c365bd1ea581d054680595b63e633b4284d"},
     {file = "docling_core-2.89.0.tar.gz", hash = "sha256:1aafa2fc55a70f1d14565e4371bef1c521aafea48e6cd660147ea64a1cc20bdb"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 defusedxml = ">=0.7.1,<0.8.0"
@@ -936,11 +963,12 @@ version = "3.13.3"
 description = "This package contains the AI models used by the Docling PDF conversion package"
 optional = false
 python-versions = "<4.0,>=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "docling_ibm_models-3.13.3-py3-none-any.whl", hash = "sha256:50fc83d244ce2dc43158e02155d1caa68374d7a169d0f34e67d7eb14f396ffe6"},
     {file = "docling_ibm_models-3.13.3.tar.gz", hash = "sha256:8c8b55e80b3d20fc74d85ca49a4d064578ef75b9f7251eec42fc9df6af426218"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 accelerate = ">=1.2.1,<2.0.0"
@@ -970,7 +998,7 @@ version = "7.8.1"
 description = "Simple package to extract text with coordinates from programmatic PDFs"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "docling_parse-7.8.1-cp310-cp310-macosx_14_0_arm64.whl", hash = "sha256:b093bcf509064b6d71cce48fad58afe7badd8eed74fb01faa6ca3ba4fd7a18e9"},
     {file = "docling_parse-7.8.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c2df079f4cf938daeff9b052cd37c928881cb119d087c016e3e57ec9a613eb90"},
@@ -999,6 +1027,7 @@ files = [
     {file = "docling_parse-7.8.1-cp314-cp314-win_arm64.whl", hash = "sha256:d8d318a6250828e42df3406f11153a2b449d6d791b08972ddfa08ef4528bcbb2"},
     {file = "docling_parse-7.8.1.tar.gz", hash = "sha256:5bb5ff8e003b9d0a88da9bf1d1f9927c81677dc9dc20815c87ba6e117d1af661"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 docling-core = ">=2.85.0,<3.0.0"
@@ -1012,11 +1041,12 @@ version = "2.117.0"
 description = "Modular version of the Docling package: SDK and CLI for parsing PDF, DOCX, HTML, and more, to a unified document representation for powering downstream workflows such as gen AI applications."
 optional = false
 python-versions = "<4.0,>=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "docling_slim-2.117.0-py3-none-any.whl", hash = "sha256:837877ad2046cd68b6b1bcc42042a77ae4df7620663e0b32fb408bf41a953125"},
     {file = "docling_slim-2.117.0.tar.gz", hash = "sha256:7c2b8ce1700b7dcc235b9839d85e83e21d89cbb43b593a3e2fdb4e880e56c483"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 accelerate = {version = ">=1.0.0,<2", optional = true, markers = "extra == \"standard\""}
@@ -1101,11 +1131,12 @@ version = "0.10"
 description = "Module for converting between datetime.timedelta and Go's Duration strings."
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "durationpy-0.10-py3-none-any.whl", hash = "sha256:3b41e1b601234296b4fb368338fdcd3e13e0b4fb5b67345948f4f2bf9868b286"},
     {file = "durationpy-0.10.tar.gz", hash = "sha256:1fa6893409a6e739c9c72334fc65cca1f355dbdd93405d30f726deb5bde42fba"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "et-xmlfile"
@@ -1113,11 +1144,12 @@ version = "2.0.0"
 description = "An implementation of lxml.xmlfile for the standard library"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "et_xmlfile-2.0.0-py3-none-any.whl", hash = "sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"},
     {file = "et_xmlfile-2.0.0.tar.gz", hash = "sha256:dab3f4764309081ce75662649be815c4c9081e88f0837825f90fd28317d4da54"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "faker"
@@ -1125,11 +1157,12 @@ version = "40.36.0"
 description = "Faker is a Python package that generates fake data for you."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "faker-40.36.0-py3-none-any.whl", hash = "sha256:82b9497d9cfe017048075bcf969298a74b1b6e39f5e4dad1211085d1133f7b62"},
     {file = "faker-40.36.0.tar.gz", hash = "sha256:754048c76c03afa7de83eee8f4bcee3cf668cbb7d995f54a4e9678db7f110308"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 tzdata = {version = "*", markers = "platform_system == \"Windows\""}
@@ -1143,11 +1176,12 @@ version = "3.32.2"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "filelock-3.32.2-py3-none-any.whl", hash = "sha256:87dd94cf281e586d135fa51132b8e3d9a598b316e90377a288663c9321036c82"},
     {file = "filelock-3.32.2.tar.gz", hash = "sha256:c33351e1f49cae33414acbc6d56784e6ecee82514ec90795da1161fc4836b5b8"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "filetype"
@@ -1155,11 +1189,12 @@ version = "1.2.0"
 description = "Infer file type and MIME type of any file/buffer. No external dependencies."
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "filetype-1.2.0-py2.py3-none-any.whl", hash = "sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25"},
     {file = "filetype-1.2.0.tar.gz", hash = "sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "flatbuffers"
@@ -1167,10 +1202,11 @@ version = "25.12.19"
 description = "The FlatBuffers serialization format for Python"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "frozenlist"
@@ -1178,7 +1214,7 @@ version = "1.8.0"
 description = "A list-like structure which implements collections.abc.MutableSequence"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "frozenlist-1.8.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:b37f6d31b3dcea7deb5e9696e529a6aa4a898adc33db82da12e4c60a7c4d2011"},
     {file = "frozenlist-1.8.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ef2b7b394f208233e471abc541cc6991f907ffd47dc72584acee3147899d6565"},
@@ -1311,6 +1347,7 @@ files = [
     {file = "frozenlist-1.8.0-py3-none-any.whl", hash = "sha256:0c18a16eab41e82c295618a77502e17b195883241c563b00f0aa5106fc4eaa0d"},
     {file = "frozenlist-1.8.0.tar.gz", hash = "sha256:3ede829ed8d842f6cd48fc7081d7a41001a56f1f38603f9d49bf3020d59a31ad"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "fsspec"
@@ -1318,11 +1355,12 @@ version = "2026.7.0"
 description = "File-system specification"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "fsspec-2026.7.0-py3-none-any.whl", hash = "sha256:b57ddbafedfaef7018c1ecab32aa200a9d7ca26b77965f64e48b70061249d279"},
     {file = "fsspec-2026.7.0.tar.gz", hash = "sha256:c803c40f4cf860b49dea58ee3e1c33cb9c790520e233537e1340049f89b82a88"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 abfs = ["adlfs"]
@@ -1358,11 +1396,12 @@ version = "2.1.0"
 description = "Copy your docs directly to the gh-pages branch."
 optional = false
 python-versions = "*"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "ghp-import-2.1.0.tar.gz", hash = "sha256:9c535c4c61193c2df8871222567d7fd7e5014d835f97dc7b7439069e2413d343"},
     {file = "ghp_import-2.1.0-py3-none-any.whl", hash = "sha256:8337dd7b50877f163d4c0289bc1f1c7f127550241988d568c1db512c4324a619"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 python-dateutil = ">=2.8.1"
@@ -1376,11 +1415,12 @@ version = "1.75.0"
 description = "Common protobufs used in Google APIs"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "googleapis_common_protos-1.75.0-py3-none-any.whl", hash = "sha256:961ed60399c457ceb0ee8f285a84c870aabc9c6a832b9d37bb281b5bebde43ed"},
     {file = "googleapis_common_protos-1.75.0.tar.gz", hash = "sha256:53a062ff3c32552fbd62c11fe23768b78e4ddf0494d5e5fd97d3f4689c75fbbd"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 protobuf = ">=4.25.8,<8.0.0"
@@ -1394,7 +1434,7 @@ version = "1.83.0"
 description = "HTTP/2-based RPC framework"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "grpcio-1.83.0-cp310-cp310-linux_armv7l.whl", hash = "sha256:fba099b716e73512d61b97f71ea3c31a72abb36904036e316bf4dd148ca8dcc8"},
     {file = "grpcio-1.83.0-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:6755ed67cc3e454d51ae9f6e1915b80d3942fa4de956ef48dacd45ab7f40b727"},
@@ -1448,6 +1488,7 @@ files = [
     {file = "grpcio-1.83.0-cp314-cp314-win_amd64.whl", hash = "sha256:2bb48cb5e6dd005ca12b89ce4b6ac0b48ff3112c747542ee7986ef611a8ca6d9"},
     {file = "grpcio-1.83.0.tar.gz", hash = "sha256:7674587248fbbb2ac6e4eecf83a8a0f3d91a928f941de571acfd3a2f007fbc24"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 typing-extensions = ">=4.12,<5.0"
@@ -1461,11 +1502,12 @@ version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"},
     {file = "h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "hdbscan"
@@ -1473,7 +1515,7 @@ version = "0.8.44"
 description = "Clustering based on density with variable density clusters"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "hdbscan-0.8.44-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:80101ed4897ecbbb5ec36358c4d4c5c38ce4e53b9da5996923d1ec72d21ce665"},
     {file = "hdbscan-0.8.44-cp310-cp310-macosx_15_0_x86_64.whl", hash = "sha256:91dac2f5668b946e3b6335bf6ea4c95fd446af45f7169cf0ab93fea34d4b0e73"},
@@ -1493,6 +1535,7 @@ files = [
     {file = "hdbscan-0.8.44-cp314-cp314-win_amd64.whl", hash = "sha256:5ea248dcaca951861e811411bf3eb9954f932f3a90c8bbe5629b5ee8479e011e"},
     {file = "hdbscan-0.8.44.tar.gz", hash = "sha256:1ac6196fabdd42072284b60c9be7b9b504b5f4f25cf7a551a8af29a3c7963a4d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 joblib = ">=1.0"
@@ -1506,8 +1549,7 @@ version = "1.5.2"
 description = "Fast transfer of large files with the Hugging Face Hub."
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
-markers = "platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"arm64\" or platform_machine == \"aarch64\""
+groups = ["main", "enrich"]
 files = [
     {file = "hf_xet-1.5.2-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:4a5ecb9cda8512ba2aa8ee5d37c87a1422992165892d653098c7b90247481c3b"},
     {file = "hf_xet-1.5.2-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:8764488197c1d7b1378c8438c18d2eea902e150dbca0b0f0d2d32603fb9b5576"},
@@ -1527,6 +1569,7 @@ files = [
     {file = "hf_xet-1.5.2-cp38-abi3-win_arm64.whl", hash = "sha256:1da28519496eb7c8094c11e4d25509b4a468457a0302d58136099db2fd9a671d"},
     {file = "hf_xet-1.5.2.tar.gz", hash = "sha256:73044bd31bae33c984af832d19c752a0dffb67518fee9ddbd91d616e1101cf47"},
 ]
+markers = {main = "extra == \"enrich\" and (platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"arm64\" or platform_machine == \"aarch64\")", enrich = "platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"arm64\" or platform_machine == \"aarch64\""}
 
 [package.extras]
 tests = ["pytest"]
@@ -1537,11 +1580,12 @@ version = "1.0.9"
 description = "A minimal low-level HTTP client."
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"},
     {file = "httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 certifi = "*"
@@ -1559,7 +1603,7 @@ version = "0.8.0"
 description = "A collection of framework independent HTTP protocol utils."
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "httptools-0.8.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:bf3b6f807c8541503cecfbb8a8dffb385640d0d96102f3d112aa8740f9b7c826"},
     {file = "httptools-0.8.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:da684f2e1aa2ee9bdcb083f3f3a68c5956750b375bc5df864d3a5f0c42a40b77"},
@@ -1612,6 +1656,7 @@ files = [
     {file = "httptools-0.8.0-cp39-cp39-win_amd64.whl", hash = "sha256:5d7fa4ba7292c1139c0526f0b5aad507c6263c948206ea1b1cbca015c8af1b62"},
     {file = "httptools-0.8.0.tar.gz", hash = "sha256:6b2a32f18d97e16e90827d7a819ffa8dbd8cc245fc4e1fa9d1095b54ef4bd999"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "httpx"
@@ -1619,11 +1664,12 @@ version = "0.28.1"
 description = "The next generation HTTP client."
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"},
     {file = "httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 anyio = "*"
@@ -1644,11 +1690,12 @@ version = "0.36.2"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
 optional = false
 python-versions = ">=3.8.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "huggingface_hub-0.36.2-py3-none-any.whl", hash = "sha256:48f0c8eac16145dfce371e9d2d7772854a4f591bcb56c9cf548accf531d54270"},
     {file = "huggingface_hub-0.36.2.tar.gz", hash = "sha256:1934304d2fb224f8afa3b87007d58501acfda9215b334eed53072dd5e815ff7a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 filelock = "*"
@@ -1683,11 +1730,12 @@ version = "3.18"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.9"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2"},
     {file = "idna-3.18.tar.gz", hash = "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [package.extras]
 all = ["mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
@@ -1698,11 +1746,12 @@ version = "7.1.0"
 description = "Read resources from Python packages"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "importlib_resources-7.1.0-py3-none-any.whl", hash = "sha256:1bd7b48b4088eddb2cd16382150bb515af0bd2c70128194392725f82ad2c96a1"},
     {file = "importlib_resources-7.1.0.tar.gz", hash = "sha256:0722d4c6212489c530f2a145a34c0a7a3b4721bc96a15fada5930e2a0b760708"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 check = ["pytest-checkdocs (>=2.14)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\""]
@@ -1718,11 +1767,12 @@ version = "2.3.0"
 description = "brain-dead simple config-ini parsing"
 optional = false
 python-versions = ">=3.10"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12"},
     {file = "iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730"},
 ]
+markers = {main = "extra == \"dev\""}
 
 [[package]]
 name = "jinja2"
@@ -1730,11 +1780,12 @@ version = "3.1.6"
 description = "A very fast and expressive template engine."
 optional = false
 python-versions = ">=3.7"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"},
     {file = "jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [package.dependencies]
 MarkupSafe = ">=2.0"
@@ -1748,11 +1799,12 @@ version = "1.5.3"
 description = "Lightweight pipelining with Python functions"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "joblib-1.5.3-py3-none-any.whl", hash = "sha256:5fc3c5039fc5ca8c0276333a188bbd59d6b7ab37fe6632daa76bc7f9ec18e713"},
     {file = "joblib-1.5.3.tar.gz", hash = "sha256:8561a3269e6801106863fd0d6d84bb737be9e7631e33aaed3fb9ce5953688da3"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "jsonlines"
@@ -1760,11 +1812,12 @@ version = "4.0.0"
 description = "Library with helpers for the jsonlines file format"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "jsonlines-4.0.0-py3-none-any.whl", hash = "sha256:185b334ff2ca5a91362993f42e83588a360cf95ce4b71a73548502bda52a7c55"},
     {file = "jsonlines-4.0.0.tar.gz", hash = "sha256:0c6d2c09117550c089995247f605ae4cf77dd1533041d366351f6f298822ea74"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 attrs = ">=19.2.0"
@@ -1775,11 +1828,12 @@ version = "1.1.0"
 description = "jsonref is a library for automatic dereferencing of JSON Reference objects for Python."
 optional = false
 python-versions = ">=3.7"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "jsonref-1.1.0-py3-none-any.whl", hash = "sha256:590dc7773df6c21cbf948b5dac07a72a251db28b0238ceecce0a2abfa8ec30a9"},
     {file = "jsonref-1.1.0.tar.gz", hash = "sha256:32fe8e1d85af0fdefbebce950af85590b22b60f9e95443176adbde4e1ecea552"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "jsonschema"
@@ -1787,11 +1841,12 @@ version = "4.26.0"
 description = "An implementation of JSON Schema validation for Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "jsonschema-4.26.0-py3-none-any.whl", hash = "sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce"},
     {file = "jsonschema-4.26.0.tar.gz", hash = "sha256:0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 attrs = ">=22.2.0"
@@ -1809,11 +1864,12 @@ version = "2025.9.1"
 description = "The JSON Schema meta-schemas and vocabularies, exposed as a Registry"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "jsonschema_specifications-2025.9.1-py3-none-any.whl", hash = "sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe"},
     {file = "jsonschema_specifications-2025.9.1.tar.gz", hash = "sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 referencing = ">=0.31.0"
@@ -1824,11 +1880,12 @@ version = "36.0.3"
 description = "Kubernetes python client"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "kubernetes-36.0.3-py2.py3-none-any.whl", hash = "sha256:8fde9241c4b298e6374a069dcf728359b4e72c2fb29489a975ba4e1c047cf10f"},
     {file = "kubernetes-36.0.3.tar.gz", hash = "sha256:36993ed25ce59b789c9341473a228fcf268504a2fec7c2b2b1531d73072e5ce7"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 aiohttp = ">=3.13.5,<4.0.0"
@@ -1851,11 +1908,12 @@ version = "3.81.0"
 description = "Pure Python library for LaTeX to MathML conversion"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "latex2mathml-3.81.0-py3-none-any.whl", hash = "sha256:d317710393fe20579aea39cfe8928fa2ad9b8780896e585326c75e89c1d1d1a4"},
     {file = "latex2mathml-3.81.0.tar.gz", hash = "sha256:4b959cdc3cac8686bc0e3e5aece8127dfb1b81ca1241bed8e00ef31b82bb4022"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "llvmlite"
@@ -1863,7 +1921,7 @@ version = "0.49.0rc1"
 description = "lightweight wrapper around basic LLVM functionality"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "llvmlite-0.49.0rc1-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:db4119ee6da29cd4238adc87a14c30df49867e39e1f306f37195884f0987a818"},
     {file = "llvmlite-0.49.0rc1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:299d50e0adf0163f55443a777d55efcc4058f0b8a22c95ababd1737493967697"},
@@ -1892,6 +1950,7 @@ files = [
     {file = "llvmlite-0.49.0rc1-cp314-cp314t-win_amd64.whl", hash = "sha256:1066afb564504d903ac9e0e8889c09ac5e999b3a27bacbd66ef2d9d3f1f91d53"},
     {file = "llvmlite-0.49.0rc1.tar.gz", hash = "sha256:73843b8a3189c9231eae9666b073fe545a0ff677b519ea902ea4e494950c34cc"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "lxml"
@@ -1899,7 +1958,7 @@ version = "6.1.1"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "lxml-6.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:09dd5b7075dc2f7709654a46543ba1ea3c2e217b2ed8fbd413a8a945a0f40f60"},
     {file = "lxml-6.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f6ac4ef4d82dff54670227a69c67782ae0b811b5cf6b17954f1e8f7502fc0d1d"},
@@ -2036,6 +2095,7 @@ files = [
     {file = "lxml-6.1.1-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:ed21202aec73cda4d55d1ce57b389aadb90ffb044e6cd1080b8347efe1b1ec84"},
     {file = "lxml-6.1.1.tar.gz", hash = "sha256:ba96ae44888e0185281e937633a743ea90d5a196c6000f82565ebb0580012d40"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 cssselect = ["cssselect (>=0.7)"]
@@ -2049,11 +2109,12 @@ version = "4.1.4"
 description = "Improved wrapper for email standard library"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "mail_parser-4.1.4-py3-none-any.whl", hash = "sha256:ec2f7996792d81c0beb174a14795865f9c0f09f47c8afc7b9f7c1240f59d71c2"},
     {file = "mail_parser-4.1.4.tar.gz", hash = "sha256:b65abad3beee3ffb75c7851bc373412c69e1a22561d49dd7142ee7fb4321ed82"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 six = "*"
@@ -2068,11 +2129,12 @@ version = "3.10.3"
 description = "Python implementation of John Gruber's Markdown."
 optional = false
 python-versions = ">=3.10"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "markdown-3.10.3-py3-none-any.whl", hash = "sha256:fa6c92a00a4a3c98b22728c64a935ae1928250ae65058a6ded814d2cc29a4cea"},
     {file = "markdown-3.10.3.tar.gz", hash = "sha256:3589362618f743188b4d955b874402bc814f4f83f544dc207719f4baa7d9c45f"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.extras]
 docs = ["mdx_gh_links (>=0.2)", "mkdocs (>=1.6)", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-nature (>=0.6)", "mkdocs-section-index", "mkdocstrings[python] (>=0.28.3)"]
@@ -2084,11 +2146,12 @@ version = "4.2.0"
 description = "Python port of markdown-it. Markdown parsing, done right!"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a"},
     {file = "markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 mdurl = ">=0.1,<1.0"
@@ -2108,11 +2171,12 @@ version = "2.2.3"
 description = "A markdown parser with high extensibility."
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "marko-2.2.3-py3-none-any.whl", hash = "sha256:8e1d7a0387281e59dfbc52a381b58c570156970e36b2bbe047f8a3a2f368cacc"},
     {file = "marko-2.2.3.tar.gz", hash = "sha256:e31ec2875383bc62f9093d16babed5a2c2cde601c00d834ea935a2222120ec19"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 codehilite = ["pygments"]
@@ -2125,7 +2189,7 @@ version = "3.0.3"
 description = "Safely add untrusted strings to HTML/XML markup."
 optional = false
 python-versions = ">=3.9"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "markupsafe-3.0.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:2f981d352f04553a7171b8e44369f2af4055f888dfb147d55e42d29e29e74559"},
     {file = "markupsafe-3.0.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:e1c1493fb6e50ab01d20a22826e57520f1284df32f2d8601fdd90b6304601419"},
@@ -2217,6 +2281,7 @@ files = [
     {file = "markupsafe-3.0.3-cp39-cp39-win_arm64.whl", hash = "sha256:38664109c14ffc9e7437e86b4dceb442b0096dfe3541d7864d9cbe1da4cf36c8"},
     {file = "markupsafe-3.0.3.tar.gz", hash = "sha256:722695808f4b6457b320fdc131280796bdceb04ab50fe1795cd540799ebe1698"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [[package]]
 name = "mdurl"
@@ -2224,11 +2289,12 @@ version = "0.1.2"
 description = "Markdown URL utilities"
 optional = false
 python-versions = ">=3.7"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "mergedeep"
@@ -2236,11 +2302,12 @@ version = "1.3.4"
 description = "A deep merge function for 🐍."
 optional = false
 python-versions = ">=3.6"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "mergedeep-1.3.4-py3-none-any.whl", hash = "sha256:70775750742b25c0d8f36c55aed03d24c3384d17c951b3175d898bd778ef0307"},
     {file = "mergedeep-1.3.4.tar.gz", hash = "sha256:0096d52e9dad9939c3d975a774666af186eda617e6ca84df4c94dec30004f2a8"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [[package]]
 name = "mkdocs"
@@ -2248,11 +2315,12 @@ version = "1.6.1"
 description = "Project documentation with Markdown."
 optional = false
 python-versions = ">=3.8"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "mkdocs-1.6.1-py3-none-any.whl", hash = "sha256:db91759624d1647f3f34aa0c3f327dd2601beae39a366d6e064c03468d35c20e"},
     {file = "mkdocs-1.6.1.tar.gz", hash = "sha256:7b432f01d928c084353ab39c57282f29f92136665bdd6abf7c1ec8d822ef86f2"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 click = ">=7.0"
@@ -2279,11 +2347,12 @@ version = "0.2.2"
 description = "An extra command for MkDocs that infers required PyPI packages from `plugins` in mkdocs.yml"
 optional = false
 python-versions = ">=3.9"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "mkdocs_get_deps-0.2.2-py3-none-any.whl", hash = "sha256:e7878cbeac04860b8b5e0ca31d3abad3df9411a75a32cde82f8e44b6c16ff650"},
     {file = "mkdocs_get_deps-0.2.2.tar.gz", hash = "sha256:8ee8d5f316cdbbb2834bc1df6e69c08fe769a83e040060de26d3c19fad3599a1"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 mergedeep = ">=1.3.4"
@@ -2296,11 +2365,12 @@ version = "9.7.7"
 description = "Documentation that simply works"
 optional = false
 python-versions = ">=3.8"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "mkdocs_material-9.7.7-py3-none-any.whl", hash = "sha256:8ea9bb1737a5b524a5f9dcf2e1b4ebda8274ae3008aa7845720a97083bef708f"},
     {file = "mkdocs_material-9.7.7.tar.gz", hash = "sha256:c0649c065b1b0512d60aad8c10f947f8e455284475239b364b610f2deb4d0855"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 babel = ">=2.10"
@@ -2326,11 +2396,12 @@ version = "1.3.1"
 description = "Extension pack for Python Markdown and MkDocs Material."
 optional = false
 python-versions = ">=3.8"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "mkdocs_material_extensions-1.3.1-py3-none-any.whl", hash = "sha256:adff8b62700b25cb77b53358dad940f3ef973dd6db797907c49e3c2ef3ab4e31"},
     {file = "mkdocs_material_extensions-1.3.1.tar.gz", hash = "sha256:10c9511cea88f568257f960358a467d12b970e1f7b2c0e5fb2bb48cab1928443"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [[package]]
 name = "mkdocs-same-dir"
@@ -2338,11 +2409,12 @@ version = "0.1.5"
 description = "ProperDocs plugin to allow placing properdocs.yml in the same directory as documentation"
 optional = false
 python-versions = ">=3.10"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "mkdocs_same_dir-0.1.5-py3-none-any.whl", hash = "sha256:a9cc599caf438da288ba14b21d24db4bb7975106eef1cd56d0d92e6835c366aa"},
     {file = "mkdocs_same_dir-0.1.5.tar.gz", hash = "sha256:677cf8d682d0ae6226620871c01906a1a631083f2b00fac58ffe9019b2cb2322"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 mkdocs = ">=1.2,<=1.6.1"
@@ -2354,7 +2426,7 @@ version = "5.2.1"
 description = "Python extension for MurmurHash (MurmurHash3), a set of fast and robust hash functions."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "mmh3-5.2.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:5d87a3584093e1a89987e3d36d82c98d9621b2cb944e22a420aa1401e096758f"},
     {file = "mmh3-5.2.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:30e4d2084df019880d55f6f7bea35328d9b464ebee090baa372c096dc77556fb"},
@@ -2464,6 +2536,7 @@ files = [
     {file = "mmh3-5.2.1-cp314-cp314t-win_arm64.whl", hash = "sha256:dfd51b4c56b673dfbc43d7d27ef857dd91124801e2806c69bb45585ce0fa019b"},
     {file = "mmh3-5.2.1.tar.gz", hash = "sha256:bbea5b775f0ac84945191fb83f845a6fd9a21a03ea7f2e187defac7e401616ad"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 benchmark = ["pymmh3 (==0.0.5)", "pyperf (==2.10.0)", "xxhash (==3.6.0)"]
@@ -2479,11 +2552,12 @@ version = "2.10.2"
 description = "A Python package for easy multiprocessing, but faster than multiprocessing"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "mpire-2.10.2-py3-none-any.whl", hash = "sha256:d627707f7a8d02aa4c7f7d59de399dec5290945ddf7fbd36cbb1d6ebb37a51fb"},
     {file = "mpire-2.10.2.tar.gz", hash = "sha256:f66a321e93fadff34585a4bfa05e95bd946cf714b442f51c529038eb45773d97"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 multiprocess = {version = ">=0.70.15", optional = true, markers = "python_version >= \"3.11\" and extra == \"dill\""}
@@ -2503,11 +2577,12 @@ version = "1.3.0"
 description = "Python library for arbitrary-precision floating-point arithmetic"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c"},
     {file = "mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 develop = ["codecov", "pycodestyle", "pytest (>=4.6)", "pytest-cov", "wheel"]
@@ -2521,7 +2596,7 @@ version = "6.7.1"
 description = "multidict implementation"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "multidict-6.7.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:c93c3db7ea657dd4637d57e74ab73de31bccefe144d3d4ce370052035bc85fb5"},
     {file = "multidict-6.7.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:974e72a2474600827abaeda71af0c53d9ebbc3c2eb7da37b37d7829ae31232d8"},
@@ -2670,6 +2745,7 @@ files = [
     {file = "multidict-6.7.1-py3-none-any.whl", hash = "sha256:55d97cc6dae627efa6a6e548885712d4864b81110ac76fa4e534c03819fa4a56"},
     {file = "multidict-6.7.1.tar.gz", hash = "sha256:ec6652a1bee61c53a3e5776b6049172c53b6aaba34f18c9ad04f82712bac623d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "multiprocess"
@@ -2677,7 +2753,7 @@ version = "0.70.19"
 description = "better multiprocessing and multithreading in Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "multiprocess-0.70.19-pp310-pypy310_pp73-macosx_10_15_x86_64.whl", hash = "sha256:02e5c35d7d6cd2bdc89c1858867f7bde4012837411023a4696c148c1bdd7c80e"},
     {file = "multiprocess-0.70.19-pp310-pypy310_pp73-macosx_11_0_arm64.whl", hash = "sha256:79576c02d1207ec405b00cabf2c643c36070800cca433860e14539df7818b2aa"},
@@ -2696,6 +2772,7 @@ files = [
     {file = "multiprocess-0.70.19-py39-none-any.whl", hash = "sha256:0d4b4397ed669d371c81dcd1ef33fd384a44d6c3de1bd0ca7ac06d837720d3c5"},
     {file = "multiprocess-0.70.19.tar.gz", hash = "sha256:952021e0e6c55a4a9fe4cd787895b86e239a40e76802a789d6305398d3975897"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 dill = ">=0.4.1"
@@ -2706,11 +2783,12 @@ version = "2.24.0"
 description = "Extremely lightweight compatibility layer between dataframe libraries"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "narwhals-2.24.0-py3-none-any.whl", hash = "sha256:42fdedf44e5b2ca7505630d45b4ac3058f38d8485cba9fe1652ca23152df7489"},
     {file = "narwhals-2.24.0.tar.gz", hash = "sha256:b5c0f684ccd9d7475b564111e319a4964abcf2baf79d3cf6b1003d06ac9b828d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 cudf = ["cudf-cu12 (>=24.10.0) ; sys_platform == \"linux\""]
@@ -2732,11 +2810,12 @@ version = "3.6"
 description = "Python package for creating and manipulating graphs and networks"
 optional = false
 python-versions = ">=3.11"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "networkx-3.6-py3-none-any.whl", hash = "sha256:cdb395b105806062473d3be36458d8f1459a4e4b98e236a66c3a48996e07684f"},
     {file = "networkx-3.6.tar.gz", hash = "sha256:285276002ad1f7f7da0f7b42f004bcba70d381e936559166363707fdad3d72ad"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 benchmarking = ["asv", "virtualenv"]
@@ -2755,7 +2834,7 @@ version = "0.67.0rc1"
 description = "compiling Python code using LLVM"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "numba-0.67.0rc1-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:819c0a755d32c061f379347b94d3fbc8d8ef90ec3a8da7183c48f3ca7e0c9162"},
     {file = "numba-0.67.0rc1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:20501b9391be5262711ddbfbdce0efef799994dc697f0419e37efbfb22f4821f"},
@@ -2784,6 +2863,7 @@ files = [
     {file = "numba-0.67.0rc1-cp314-cp314t-win_amd64.whl", hash = "sha256:2a713cc30aaba562209a3480de0a3c6e64718418dafb7a7087919bf5bb818bb1"},
     {file = "numba-0.67.0rc1.tar.gz", hash = "sha256:36d3f50cbb992a4c40a53f070eb04ae774d8be5c0c733994307f65e134112e3e"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 llvmlite = "==0.49.*"
@@ -2795,7 +2875,7 @@ version = "2.5.1"
 description = "Fundamental package for array computing in Python"
 optional = false
 python-versions = ">=3.12"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "numpy-2.5.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:2c889b56fe48b1018f764b0eec8df59ab654e9148aa91faa12596043500de277"},
     {file = "numpy-2.5.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ab451b59c5643c570974c43aef780703ef1d3b4965d2be07afd530615a9358d1"},
@@ -2842,6 +2922,7 @@ files = [
     {file = "numpy-2.5.1-cp314-cp314t-win_arm64.whl", hash = "sha256:5a6db61f9aaa57e369905c67d852045d3c4f7126405b29d09b19dec118e9c9cb"},
     {file = "numpy-2.5.1.tar.gz", hash = "sha256:a48a113e6afea91f5608793bafa7ef2ad481fefbda87ec5069f483de61cb9fa3"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "nvidia-cublas-cu12"
@@ -2849,13 +2930,13 @@ version = "12.6.4.1"
 description = "CUBLAS native runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:08ed2686e9875d01b58e3cb379c6896df8e76c75e0d4a7f7dace3d7b6d9ef8eb"},
     {file = "nvidia_cublas_cu12-12.6.4.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:235f728d6e2a409eddf1df58d5b0921cf80cfa9e72b9f2775ccb7b4a87984668"},
     {file = "nvidia_cublas_cu12-12.6.4.1-py3-none-win_amd64.whl", hash = "sha256:9e4fa264f4d8a4eb0cdbd34beadc029f453b3bafae02401e999cf3d5a5af75f8"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-cuda-cupti-cu12"
@@ -2863,8 +2944,7 @@ version = "12.6.80"
 description = "CUDA profiling tools runtime libs."
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cuda_cupti_cu12-12.6.80-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:166ee35a3ff1587f2490364f90eeeb8da06cd867bd5b701bf7f9a02b78bc63fc"},
     {file = "nvidia_cuda_cupti_cu12-12.6.80-py3-none-manylinux2014_aarch64.whl", hash = "sha256:358b4a1d35370353d52e12f0a7d1769fc01ff74a191689d3870b2123156184c4"},
@@ -2872,6 +2952,7 @@ files = [
     {file = "nvidia_cuda_cupti_cu12-12.6.80-py3-none-manylinux2014_x86_64.whl", hash = "sha256:a3eff6cdfcc6a4c35db968a06fcadb061cbc7d6dde548609a941ff8701b98b73"},
     {file = "nvidia_cuda_cupti_cu12-12.6.80-py3-none-win_amd64.whl", hash = "sha256:bbe6ae76e83ce5251b56e8c8e61a964f757175682bbad058b170b136266ab00a"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-cuda-nvrtc-cu12"
@@ -2879,13 +2960,13 @@ version = "12.6.77"
 description = "NVRTC native runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_aarch64.whl", hash = "sha256:5847f1d6e5b757f1d2b3991a01082a44aad6f10ab3c5c0213fa3e25bddc25a13"},
     {file = "nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl", hash = "sha256:35b0cc6ee3a9636d5409133e79273ce1f3fd087abb0532d2d2e8fff1fe9efc53"},
     {file = "nvidia_cuda_nvrtc_cu12-12.6.77-py3-none-win_amd64.whl", hash = "sha256:f7007dbd914c56bd80ea31bc43e8e149da38f68158f423ba845fc3292684e45a"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-cuda-runtime-cu12"
@@ -2893,8 +2974,7 @@ version = "12.6.77"
 description = "CUDA Runtime native Libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cuda_runtime_cu12-12.6.77-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:6116fad3e049e04791c0256a9778c16237837c08b27ed8c8401e2e45de8d60cd"},
     {file = "nvidia_cuda_runtime_cu12-12.6.77-py3-none-manylinux2014_aarch64.whl", hash = "sha256:d461264ecb429c84c8879a7153499ddc7b19b5f8d84c204307491989a365588e"},
@@ -2902,6 +2982,7 @@ files = [
     {file = "nvidia_cuda_runtime_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl", hash = "sha256:a84d15d5e1da416dd4774cb42edf5e954a3e60cc945698dc1d5be02321c44dc8"},
     {file = "nvidia_cuda_runtime_cu12-12.6.77-py3-none-win_amd64.whl", hash = "sha256:86c58044c824bf3c173c49a2dbc7a6c8b53cb4e4dca50068be0bf64e9dab3f7f"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-cudnn-cu12"
@@ -2909,13 +2990,13 @@ version = "9.5.1.17"
 description = "cuDNN runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:9fd4584468533c61873e5fda8ca41bac3a38bcb2d12350830c69b0a96a7e4def"},
     {file = "nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:30ac3869f6db17d170e0e556dd6cc5eee02647abc31ca856634d5a40f82c15b2"},
     {file = "nvidia_cudnn_cu12-9.5.1.17-py3-none-win_amd64.whl", hash = "sha256:d7af0f8a4f3b4b9dbb3122f2ef553b45694ed9c384d5a75bab197b8eefb79ab8"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [package.dependencies]
 nvidia-cublas-cu12 = "*"
@@ -2926,8 +3007,7 @@ version = "11.3.0.4"
 description = "CUFFT native runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d16079550df460376455cba121db6564089176d9bac9e4f360493ca4741b22a6"},
     {file = "nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_aarch64.whl", hash = "sha256:8510990de9f96c803a051822618d42bf6cb8f069ff3f48d93a8486efdacb48fb"},
@@ -2935,6 +3015,7 @@ files = [
     {file = "nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.whl", hash = "sha256:768160ac89f6f7b459bee747e8d175dbf53619cfe74b2a5636264163138013ca"},
     {file = "nvidia_cufft_cu12-11.3.0.4-py3-none-win_amd64.whl", hash = "sha256:6048ebddfb90d09d2707efb1fd78d4e3a77cb3ae4dc60e19aab6be0ece2ae464"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [package.dependencies]
 nvidia-nvjitlink-cu12 = "*"
@@ -2945,12 +3026,12 @@ version = "1.11.1.6"
 description = "cuFile GPUDirect libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cufile_cu12-1.11.1.6-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:cc23469d1c7e52ce6c1d55253273d32c565dd22068647f3aa59b3c6b005bf159"},
     {file = "nvidia_cufile_cu12-1.11.1.6-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:8f57a0051dcf2543f6dc2b98a98cb2719c37d3cee1baba8965d57f3bbc90d4db"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-curand-cu12"
@@ -2958,8 +3039,7 @@ version = "10.3.7.77"
 description = "CURAND native runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_aarch64.whl", hash = "sha256:6e82df077060ea28e37f48a3ec442a8f47690c7499bff392a5938614b56c98d8"},
     {file = "nvidia_curand_cu12-10.3.7.77-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a42cd1344297f70b9e39a1e4f467a4e1c10f1da54ff7a85c12197f6c652c8bdf"},
@@ -2967,6 +3047,7 @@ files = [
     {file = "nvidia_curand_cu12-10.3.7.77-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:7b2ed8e95595c3591d984ea3603dd66fe6ce6812b886d59049988a712ed06b6e"},
     {file = "nvidia_curand_cu12-10.3.7.77-py3-none-win_amd64.whl", hash = "sha256:6d6d935ffba0f3d439b7cd968192ff068fafd9018dbf1b85b37261b13cfc9905"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-cusolver-cu12"
@@ -2974,8 +3055,7 @@ version = "11.7.1.2"
 description = "CUDA solver native runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_aarch64.whl", hash = "sha256:0ce237ef60acde1efc457335a2ddadfd7610b892d94efee7b776c64bb1cac9e0"},
     {file = "nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:e9e49843a7707e42022babb9bcfa33c29857a93b88020c4e4434656a655b698c"},
@@ -2983,6 +3063,7 @@ files = [
     {file = "nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:dbbe4fc38ec1289c7e5230e16248365e375c3673c9c8bac5796e2e20db07f56e"},
     {file = "nvidia_cusolver_cu12-11.7.1.2-py3-none-win_amd64.whl", hash = "sha256:6813f9d8073f555444a8705f3ab0296d3e1cb37a16d694c5fc8b862a0d8706d7"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [package.dependencies]
 nvidia-cublas-cu12 = "*"
@@ -2995,8 +3076,7 @@ version = "12.5.4.2"
 description = "CUSPARSE native runtime libraries"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d25b62fb18751758fe3c93a4a08eff08effedfe4edf1c6bb5afd0890fe88f887"},
     {file = "nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_aarch64.whl", hash = "sha256:7aa32fa5470cf754f72d1116c7cbc300b4e638d3ae5304cfa4a638a5b87161b1"},
@@ -3004,6 +3084,7 @@ files = [
     {file = "nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.whl", hash = "sha256:23749a6571191a215cb74d1cdbff4a86e7b19f1200c071b3fcf844a5bea23a2f"},
     {file = "nvidia_cusparse_cu12-12.5.4.2-py3-none-win_amd64.whl", hash = "sha256:4acb8c08855a26d737398cba8fb6f8f5045d93f82612b4cfd84645a2332ccf20"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [package.dependencies]
 nvidia-nvjitlink-cu12 = "*"
@@ -3014,13 +3095,13 @@ version = "0.6.3"
 description = "NVIDIA cuSPARSELt"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_aarch64.whl", hash = "sha256:8371549623ba601a06322af2133c4a44350575f5a3108fb75f3ef20b822ad5f1"},
     {file = "nvidia_cusparselt_cu12-0.6.3-py3-none-manylinux2014_x86_64.whl", hash = "sha256:e5c8a26c36445dd2e6812f1177978a24e2d37cacce7e090f297a688d1ec44f46"},
     {file = "nvidia_cusparselt_cu12-0.6.3-py3-none-win_amd64.whl", hash = "sha256:3b325bcbd9b754ba43df5a311488fca11a6b5dc3d11df4d190c000cf1a0765c7"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-nccl-cu12"
@@ -3028,12 +3109,12 @@ version = "2.26.2"
 description = "NVIDIA Collective Communication Library (NCCL) Runtime"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:5c196e95e832ad30fbbb50381eb3cbd1fadd5675e587a548563993609af19522"},
     {file = "nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:694cf3879a206553cc9d7dbda76b13efaf610fdb70a50cba303de1b0d1530ac6"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-nvjitlink-cu12"
@@ -3041,13 +3122,13 @@ version = "12.6.85"
 description = "Nvidia JIT LTO Library"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:eedc36df9e88b682efe4309aa16b5b4e78c2407eac59e8c10a6a47535164369a"},
     {file = "nvidia_nvjitlink_cu12-12.6.85-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:cf4eaa7d4b6b543ffd69d6abfb11efdeb2db48270d94dfd3a452c24150829e41"},
     {file = "nvidia_nvjitlink_cu12-12.6.85-py3-none-win_amd64.whl", hash = "sha256:e61120e52ed675747825cdd16febc6a0730537451d867ee58bee3853b1b13d1c"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "nvidia-nvtx-cu12"
@@ -3055,8 +3136,7 @@ version = "12.6.77"
 description = "NVIDIA Tools Extension"
 optional = false
 python-versions = ">=3"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "nvidia_nvtx_cu12-12.6.77-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:f44f8d86bb7d5629988d61c8d3ae61dddb2015dee142740536bc7481b022fe4b"},
     {file = "nvidia_nvtx_cu12-12.6.77-py3-none-manylinux2014_aarch64.whl", hash = "sha256:adcaabb9d436c9761fca2b13959a2d237c5f9fd406c8e4b723c695409ff88059"},
@@ -3064,6 +3144,7 @@ files = [
     {file = "nvidia_nvtx_cu12-12.6.77-py3-none-manylinux2014_x86_64.whl", hash = "sha256:6574241a3ec5fdc9334353ab8c479fe75841dbe8f4532a8fc97ce63503330ba1"},
     {file = "nvidia_nvtx_cu12-12.6.77-py3-none-win_amd64.whl", hash = "sha256:2fb11a4af04a5e6c84073e6404d26588a34afd35379f0855a99797897efa75c0"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [[package]]
 name = "oauthlib"
@@ -3071,11 +3152,12 @@ version = "3.3.1"
 description = "A generic, spec-compliant, thorough implementation of the OAuth request-signing logic"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1"},
     {file = "oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 rsa = ["cryptography (>=3.0.0)"]
@@ -3088,11 +3170,12 @@ version = "2.3.1"
 description = "A flexible configuration library"
 optional = false
 python-versions = ">=3.6"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "omegaconf-2.3.1-py3-none-any.whl", hash = "sha256:3d701d14e9a8828f1edd28bb70b725908b34277cdd72cf7d6a83f94dadc6b6a0"},
     {file = "omegaconf-2.3.1.tar.gz", hash = "sha256:e5e7de64aeebeddaf8e6d3f7a783b32ac2a01c0fbd9c878012caecb891a1f42a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 antlr4-python3-runtime = "==4.9.*"
@@ -3104,7 +3187,7 @@ version = "1.28.0"
 description = "ONNX Runtime is a runtime accelerator for Machine Learning models"
 optional = false
 python-versions = ">=3.11"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "onnxruntime-1.28.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:f5c5daabd28aad610f83fdcf32acec8fb57e6adc6c6a39fe2a3c755db957b410"},
     {file = "onnxruntime-1.28.0-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8d66f9ceb29909c70839e4e4fb3435c7b490050d8f162bd5f3aba4ca01ee517f"},
@@ -3131,6 +3214,7 @@ files = [
     {file = "onnxruntime-1.28.0-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e562d6e36a749f6764481c0ddb0f2af3d0b5a3c164291361d08803c557f369af"},
     {file = "onnxruntime-1.28.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4f6e92367ddce1e4d33cf295024f40192be6c6171a09208f515ba169ced06c8e"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 flatbuffers = "*"
@@ -3148,7 +3232,7 @@ version = "5.0.0.93"
 description = "Wrapper package for OpenCV python bindings."
 optional = false
 python-versions = ">=3.6"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opencv_python-5.0.0.93-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:198a75138241810206a17c829dbcc40a7cb1841cda538ca86cbbfc6c7d95f898"},
     {file = "opencv_python-5.0.0.93-cp37-abi3-macosx_14_0_x86_64.whl", hash = "sha256:6bbc32f59e1b1a7db7b39c81f63d00625f041d333037fd8702f6da52cc39108b"},
@@ -3160,6 +3244,7 @@ files = [
     {file = "opencv_python-5.0.0.93-cp37-abi3-win_amd64.whl", hash = "sha256:f90ba04b8f73bc5c3814037699739f0156f597338a98f05956c684e7c3ca10d2"},
     {file = "opencv_python-5.0.0.93.tar.gz", hash = "sha256:66aac3e5b5faa48d4025816592f3af19e4bfc2c68dec067bae2dbb4ca10aa9e2"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numpy = {version = ">=2", markers = "python_version >= \"3.9\""}
@@ -3170,11 +3255,12 @@ version = "3.1.5"
 description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "openpyxl-3.1.5-py2.py3-none-any.whl", hash = "sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2"},
     {file = "openpyxl-3.1.5.tar.gz", hash = "sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 et-xmlfile = "*"
@@ -3185,11 +3271,12 @@ version = "1.44.0"
 description = "OpenTelemetry Python API"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opentelemetry_api-1.44.0-py3-none-any.whl", hash = "sha256:94b98c893a91b88657eaac1e3ba89618cdb85be6918196705354f34728b2cdef"},
     {file = "opentelemetry_api-1.44.0.tar.gz", hash = "sha256:67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 typing-extensions = ">=4.5.0"
@@ -3200,11 +3287,12 @@ version = "1.44.0"
 description = "OpenTelemetry Protobuf encoding"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opentelemetry_exporter_otlp_proto_common-1.44.0-py3-none-any.whl", hash = "sha256:9a9fe61bba73d802904bc989f1d6b4a7b1ee40f06c40e98d6f85af65aaebb694"},
     {file = "opentelemetry_exporter_otlp_proto_common-1.44.0.tar.gz", hash = "sha256:dc87a5a5bc58f149a56d1547e4691588fa12994cdc3bc039a694ccb3375862ac"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 opentelemetry-proto = "1.44.0"
@@ -3215,11 +3303,12 @@ version = "1.44.0"
 description = "OpenTelemetry Collector Protobuf over gRPC Exporter"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opentelemetry_exporter_otlp_proto_grpc-1.44.0-py3-none-any.whl", hash = "sha256:6a1a645ea182a2f59440c51fa8301d309f3324a8f9d65f8395584b064b67ee4e"},
     {file = "opentelemetry_exporter_otlp_proto_grpc-1.44.0.tar.gz", hash = "sha256:40d1ae9e03fcc36de3cbac610cc99f35894938bff9cfd90fc4ec68bd85448463"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 googleapis-common-protos = ">=1.57,<2.0"
@@ -3243,11 +3332,12 @@ version = "1.44.0"
 description = "OpenTelemetry Python Proto"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opentelemetry_proto-1.44.0-py3-none-any.whl", hash = "sha256:898b155a0e1557afd867478fb6158e8122a46329ca0bb8dc53cc55e98f017f56"},
     {file = "opentelemetry_proto-1.44.0.tar.gz", hash = "sha256:c547a79c2f8c0c515d31509154682e5921c7cfd5ca67b70e1f9266e2c3e103f3"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 protobuf = ">=5.0,<8.0"
@@ -3258,11 +3348,12 @@ version = "1.44.0"
 description = "OpenTelemetry Python SDK"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opentelemetry_sdk-1.44.0-py3-none-any.whl", hash = "sha256:df081c4c6bcfdb1211e3e86140376792643128a25f8d72d1d27675936e7e96ad"},
     {file = "opentelemetry_sdk-1.44.0.tar.gz", hash = "sha256:cebe7f65dc12f26ead75c6064de12fd2a9052e5060c0272d402cfa203aae123b"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 opentelemetry-api = "1.44.0"
@@ -3278,11 +3369,12 @@ version = "0.65b0"
 description = "OpenTelemetry Semantic Conventions"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "opentelemetry_semantic_conventions-0.65b0-py3-none-any.whl", hash = "sha256:1cacde7b0ad306f84c5ef08c3dbe1bbaf20165bba6f8bff43b670e555a086bcb"},
     {file = "opentelemetry_semantic_conventions-0.65b0.tar.gz", hash = "sha256:f9b2b81e9d5b64f11bc952075e7e9c7fb0aab075c7fd1c46d597f1b919852d60"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 opentelemetry-api = "1.44.0"
@@ -3294,7 +3386,7 @@ version = "3.11.9"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "orjson-3.11.9-cp310-cp310-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:135869ef917b8704ea0a94e01620e0c05021c15c52036e4663baffe75e72f8ce"},
     {file = "orjson-3.11.9-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:115ab5f5f4a0f203cc2a5f0fb09aee503a3f771aa08392949ab5ca230c4fbdbd"},
@@ -3371,6 +3463,7 @@ files = [
     {file = "orjson-3.11.9-cp314-cp314-win_arm64.whl", hash = "sha256:eebdbdeef0094e4f5aefa20dcd4eb2368ab5e7a3b4edea27f1e7b2892e009cf9"},
     {file = "orjson-3.11.9.tar.gz", hash = "sha256:4fef17e1f8722c11587a6ef18e35902450221da0028e65dbaaa543619e68e48f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "overrides"
@@ -3378,11 +3471,12 @@ version = "7.7.0"
 description = "A decorator to automatically detect mismatch when overriding a method."
 optional = false
 python-versions = ">=3.6"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "overrides-7.7.0-py3-none-any.whl", hash = "sha256:c7ed9d062f78b8e4c1a7b70bd8796b35ead4d9f510227ef9c5dc7626c60d7e49"},
     {file = "overrides-7.7.0.tar.gz", hash = "sha256:55158fa3d93b98cc75299b1e67078ad9003ca27945c76162c1c0766d6f91820a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "packaging"
@@ -3390,11 +3484,12 @@ version = "26.2"
 description = "Core utilities for Python packages"
 optional = false
 python-versions = ">=3.8"
-groups = ["dev", "docs", "enrich"]
+groups = ["main", "dev", "docs", "enrich"]
 files = [
     {file = "packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e"},
     {file = "packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"dev\" or extra == \"docs\""}
 
 [[package]]
 name = "paginate"
@@ -3402,11 +3497,12 @@ version = "0.5.7"
 description = "Divides large result sets into pages for easier browsing"
 optional = false
 python-versions = "*"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "paginate-0.5.7-py2.py3-none-any.whl", hash = "sha256:b885e2af73abcf01d9559fd5216b57ef722f8c42affbb63942377668e35c7591"},
     {file = "paginate-0.5.7.tar.gz", hash = "sha256:22bd083ab41e1a8b4f3690544afb2c60c25e5c9a63a30fa2f483f6c60c8e5945"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.extras]
 dev = ["pytest", "tox"]
@@ -3418,7 +3514,7 @@ version = "3.0.5"
 description = "Powerful data structures for data analysis, time series, and statistics"
 optional = false
 python-versions = ">=3.11"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pandas-3.0.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:2946e77e4a53cd248cbde631a12f0e51c8324ce354c3eba4d20147c1ad6f4282"},
     {file = "pandas-3.0.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:71ecc8fb7ed1a7aa4392316b5309a6347e8e7f832f38fd897846b3a1457a9298"},
@@ -3463,6 +3559,7 @@ files = [
     {file = "pandas-3.0.5-cp314-cp314t-win_arm64.whl", hash = "sha256:3c5015fd1730fbf883647e88068176c839c102cea883ba1769a6f4593bfc1f8c"},
     {file = "pandas-3.0.5.tar.gz", hash = "sha256:dca3734d6ab7c906e6730f0788b0a1dbb9f2467731f9711f77995c8e9d62d712"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numpy = [
@@ -3504,11 +3601,12 @@ version = "1.1.1"
 description = "Utility library for gitignore style pattern matching of file paths."
 optional = false
 python-versions = ">=3.9"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"},
     {file = "pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.extras]
 hyperscan = ["hyperscan (>=0.7)"]
@@ -3521,7 +3619,7 @@ version = "12.3.0"
 description = "Python Imaging Library (fork)"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pillow-12.3.0-cp310-cp310-macosx_10_10_x86_64.whl", hash = "sha256:6c0016e7b354317c4e9e525b937ac8596c38d2d232b419529b9cd7a1cd46e39a"},
     {file = "pillow-12.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:bcc33feacfaefce60c12fd500a277533bdc02b10a19f7f6d348763d8140bbba7"},
@@ -3611,6 +3709,7 @@ files = [
     {file = "pillow-12.3.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:04f01d28a6aaff387bf842a13be313df23ba0597a44f1a976c9feb3c6ff4711a"},
     {file = "pillow-12.3.0.tar.gz", hash = "sha256:3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 docs = ["furo", "olefile", "sphinx (>=8.2)", "sphinx-autobuild", "sphinx-copybutton", "sphinx-inline-tabs", "sphinxext-opengraph"]
@@ -3626,11 +3725,12 @@ version = "4.11.1"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.10"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "platformdirs-4.11.1-py3-none-any.whl", hash = "sha256:2efd27d363e8dd2e661639ffb398865a5e0a46442a11d266bf375a0e0c10e386"},
     {file = "platformdirs-4.11.1.tar.gz", hash = "sha256:bb1af68078f25e2f3e111e2d43b8d536df41b73c8a684b40bb018223b66fae27"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [[package]]
 name = "plotly"
@@ -3638,11 +3738,12 @@ version = "6.9.0"
 description = "An open-source interactive data visualization library for Python"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "plotly-6.9.0-py3-none-any.whl", hash = "sha256:36bebe2f1bb13884774fe61689c329071446f6ce4a8927fb1f0d6fb24f581236"},
     {file = "plotly-6.9.0.tar.gz", hash = "sha256:967ad33e8c704fed051800d11d985eb206a9c795c14206b30a6f463ed9c67d0d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 narwhals = ">=1.15.1"
@@ -3665,11 +3766,12 @@ version = "1.6.0"
 description = "plugin and hook calling mechanisms for python"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev", "enrich"]
+groups = ["main", "dev", "enrich"]
 files = [
     {file = "pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"},
     {file = "pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"dev\""}
 
 [package.extras]
 dev = ["pre-commit", "tox"]
@@ -3681,11 +3783,12 @@ version = "3.3.0"
 description = "Mock data generation factories"
 optional = false
 python-versions = "<4.0,>=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "polyfactory-3.3.0-py3-none-any.whl", hash = "sha256:686abcaa761930d3df87b91e95b26b8d8cb9fdbbbe0b03d5f918acff5c72606e"},
     {file = "polyfactory-3.3.0.tar.gz", hash = "sha256:237258b6ff43edf362ffd1f68086bb796466f786adfa002b0ac256dbf2246e9a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 faker = ">=5.0.0"
@@ -3706,7 +3809,7 @@ version = "0.5.2"
 description = "Accelerated property cache"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "propcache-0.5.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d5a81be28596d6559f6131ef33e10200de6e17643b3c74ce03f9eb103be6ae8b"},
     {file = "propcache-0.5.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:29cbaac5ea0212663e6845e04b5e188d5a6ae6dd919810ac835bf1d3b42c3f4c"},
@@ -3830,6 +3933,7 @@ files = [
     {file = "propcache-0.5.2-py3-none-any.whl", hash = "sha256:be1ddfcbb376e3de5d2e2db1d58d6d67463e6b4f9f040c000de8e300295465fe"},
     {file = "propcache-0.5.2.tar.gz", hash = "sha256:01c4fc7480cd0598bb4b57022df55b9ca296da7fc5a8760bd8451a7e63a7d427"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "properdocs"
@@ -3837,11 +3941,12 @@ version = "1.6.7"
 description = "Project documentation with Markdown."
 optional = false
 python-versions = ">=3.9"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "properdocs-1.6.7-py3-none-any.whl", hash = "sha256:6fa0cfa2e01bf338f684892c8a506cf70ea88ae7f3479c933b6fa20168101cbd"},
     {file = "properdocs-1.6.7.tar.gz", hash = "sha256:adc7b16e562890af0e098a7e5b02e3a81c20894a87d6a28d345c9300de73c26e"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 click = ">=7.0"
@@ -3866,7 +3971,7 @@ version = "7.35.1"
 description = ""
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "protobuf-7.35.1-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:24f857477359a85c0c235261b8ba905fd51b2562f4a64ca1df5473f29850cbf6"},
     {file = "protobuf-7.35.1-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:11d6b0ec246892d85215b0a13ca6e0233cf5284b68f0ac02646427f4ff88a799"},
@@ -3877,6 +3982,7 @@ files = [
     {file = "protobuf-7.35.1-py3-none-any.whl", hash = "sha256:4bc97768d8fe4ad6743c8a19403e314511ed9f6d13205b687e52421c023ac1b9"},
     {file = "protobuf-7.35.1.tar.gz", hash = "sha256:ce115a26fe0c39a2c29973d914d327e516a6455464489fe3cd1e51a1b354f81a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "psutil"
@@ -3884,7 +3990,7 @@ version = "7.2.2"
 description = "Cross-platform lib for process and system monitoring."
 optional = false
 python-versions = ">=3.6"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "psutil-7.2.2-cp313-cp313t-macosx_10_13_x86_64.whl", hash = "sha256:2edccc433cbfa046b980b0df0171cd25bcaeb3a68fe9022db0979e7aa74a826b"},
     {file = "psutil-7.2.2-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:e78c8603dcd9a04c7364f1a3e670cea95d51ee865e4efb3556a3a63adef958ea"},
@@ -3908,6 +4014,7 @@ files = [
     {file = "psutil-7.2.2-cp37-abi3-win_arm64.whl", hash = "sha256:8c233660f575a5a89e6d4cb65d9f938126312bca76d8fe087b947b3a1aaac9ee"},
     {file = "psutil-7.2.2.tar.gz", hash = "sha256:0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 dev = ["abi3audit", "black", "check-manifest", "colorama ; os_name == \"nt\"", "coverage", "packaging", "psleak", "pylint", "pyperf", "pypinfo", "pyreadline3 ; os_name == \"nt\"", "pytest", "pytest-cov", "pytest-instafail", "pytest-xdist", "pywin32 ; os_name == \"nt\" and implementation_name != \"pypy\"", "requests", "rstcheck", "ruff", "setuptools", "sphinx", "sphinx_rtd_theme", "toml-sort", "twine", "validate-pyproject[all]", "virtualenv", "vulture", "wheel", "wheel ; os_name == \"nt\" and implementation_name != \"pypy\"", "wmi ; os_name == \"nt\" and implementation_name != \"pypy\""]
@@ -3919,7 +4026,7 @@ version = "1.4.3"
 description = "Fast Base64 encoding/decoding"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pybase64-1.4.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f63aa7f29139b8a05ce5f97cdb7fad63d29071e5bdc8a638a343311fe996112a"},
     {file = "pybase64-1.4.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f5943ec1ae87a8b4fe310905bb57205ea4330c75e2c628433a7d9dd52295b588"},
@@ -4137,6 +4244,7 @@ files = [
     {file = "pybase64-1.4.3-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:5de708043de95a3d2d621f5d51dc8e774bbdf969aa39021eee3ba5209d35dbea"},
     {file = "pybase64-1.4.3.tar.gz", hash = "sha256:c2ed274c9e0ba9c8f9c4083cfe265e66dd679126cd9c2027965d807352f3f053"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pyclipper"
@@ -4144,7 +4252,7 @@ version = "1.4.0"
 description = "Cython wrapper for the C++ translation of the Angus Johnson's Clipper library (ver. 6.4.2)"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pyclipper-1.4.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:bafad70d2679c187120e8c44e1f9a8b06150bad8c0aecf612ad7dfbfa9510f73"},
     {file = "pyclipper-1.4.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:0b74a9dd44b22a7fd35d65fb1ceeba57f3817f34a97a28c3255556362e491447"},
@@ -4183,6 +4291,7 @@ files = [
     {file = "pyclipper-1.4.0-pp311-pypy311_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:98b2a40f98e1fc1b29e8a6094072e7e0c7dfe901e573bf6cfc6eb7ce84a7ae87"},
     {file = "pyclipper-1.4.0.tar.gz", hash = "sha256:9882bd889f27da78add4dd6f881d25697efc740bf840274e749988d25496c8e1"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pydantic"
@@ -4190,11 +4299,12 @@ version = "2.13.4"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pydantic-2.13.4-py3-none-any.whl", hash = "sha256:45a282cde31d808236fd7ea9d919b128653c8b38b393d1c4ab335c62924d9aba"},
     {file = "pydantic-2.13.4.tar.gz", hash = "sha256:c40756b57adaa8b1efeeced5c196f3f3b7c435f90e84ea7f443901bec8099ef6"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 annotated-types = ">=0.6.0"
@@ -4212,7 +4322,7 @@ version = "2.46.4"
 description = "Core functionality for Pydantic validation and serialization"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pydantic_core-2.46.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:a396dcc17e5a0b164dbe026896245a4fa9ff402edca1dff0be3d53a517f74de4"},
     {file = "pydantic_core-2.46.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:da4b951fe36dc7c3a1ccb4e3cd1747c3542b8c9ceede8fc86cae054e764485f5"},
@@ -4335,6 +4445,7 @@ files = [
     {file = "pydantic_core-2.46.4-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:d51026d73fcfd93610abc7b27789c26b313920fcfb20e27462d74a7f8b06e983"},
     {file = "pydantic_core-2.46.4.tar.gz", hash = "sha256:62f875393d7f270851f20523dd2e29f082bcc82292d66db2b64ea71f64b6e1c1"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 typing-extensions = ">=4.14.1"
@@ -4345,11 +4456,12 @@ version = "2.14.2"
 description = "Settings management using Pydantic"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pydantic_settings-2.14.2-py3-none-any.whl", hash = "sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440"},
     {file = "pydantic_settings-2.14.2.tar.gz", hash = "sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 pydantic = ">=2.7.0"
@@ -4369,11 +4481,12 @@ version = "2.20.0"
 description = "Pygments is a syntax highlighting package written in Python."
 optional = false
 python-versions = ">=3.9"
-groups = ["dev", "docs", "enrich"]
+groups = ["main", "dev", "docs", "enrich"]
 files = [
     {file = "pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176"},
     {file = "pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"dev\" or extra == \"docs\""}
 
 [package.extras]
 windows-terminal = ["colorama (>=0.4.6)"]
@@ -4384,11 +4497,12 @@ version = "2.11"
 description = "Simple LaTeX parser providing latex-to-unicode and unicode-to-latex conversion"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pylatexenc-2.11-py2.py3-none-any.whl", hash = "sha256:e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"},
     {file = "pylatexenc-2.11.tar.gz", hash = "sha256:305a072a99ce736246049c9da05841b9d718c0f7ea8888f5f596cf15cb621053"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pymdown-extensions"
@@ -4396,11 +4510,12 @@ version = "11.0.1"
 description = "Extension pack for Python Markdown."
 optional = false
 python-versions = ">=3.10"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "pymdown_extensions-11.0.1-py3-none-any.whl", hash = "sha256:db3943a62bab7e03af1364f0c4083e64b91fb097675a4b6cceccfbe9a77e5eb2"},
     {file = "pymdown_extensions-11.0.1.tar.gz", hash = "sha256:dd2905ae6fc5b75582fafb139a1266ffc754705efa902aa50067fa7ff4f94ec0"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 markdown = ">=3.6"
@@ -4415,11 +4530,12 @@ version = "0.6.0"
 description = "Nearest Neighbor Descent"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pynndescent-0.6.0-py3-none-any.whl", hash = "sha256:dc8c74844e4c7f5cbd1e0cd6909da86fdc789e6ff4997336e344779c3d5538ef"},
     {file = "pynndescent-0.6.0.tar.gz", hash = "sha256:7ffde0fb5b400741e055a9f7d377e3702e02250616834231f6c209e39aac24f5"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 joblib = ">=0.11"
@@ -4452,7 +4568,7 @@ version = "5.12.1"
 description = "Python bindings to PDFium"
 optional = false
 python-versions = ">=3.6"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pypdfium2-5.12.1-py3-none-android_23_arm64_v8a.whl", hash = "sha256:05bab9b1ba2de7fc299ae2af25cb9c8a0543bc8bb893e879fe8c9ba8310e9ce4"},
     {file = "pypdfium2-5.12.1-py3-none-android_23_armeabi_v7a.whl", hash = "sha256:d4ee061e566a6422b660cdddaaa799a2d1cbf2f016921bcaf24d61426d01d942"},
@@ -4477,6 +4593,7 @@ files = [
     {file = "pypdfium2-5.12.1-py3-none-win_arm64.whl", hash = "sha256:afc0b7e0c975a429abc75875209ce17b66d749f6ac5cbe8ba72470e83901e304"},
     {file = "pypdfium2-5.12.1.tar.gz", hash = "sha256:d0e0648fb2e28f50efcd1ec0a5a18ced9f4d66b2c227fae9b603f0a883b2d13f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pypika"
@@ -4484,11 +4601,12 @@ version = "0.51.1"
 description = "A SQL query builder API for Python"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pypika-0.51.1-py2.py3-none-any.whl", hash = "sha256:77985b4d7ce71b9905255bf12468cf598349e98837c037541cfc240e528aec46"},
     {file = "pypika-0.51.1.tar.gz", hash = "sha256:c30c7c1048fbf056fd3920c5a2b88b0c29dd190a9b2bee971fd17e4abe4d0ebe"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pyproject-hooks"
@@ -4496,11 +4614,12 @@ version = "1.2.0"
 description = "Wrappers to call pyproject.toml-based build backend hooks."
 optional = false
 python-versions = ">=3.7"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "pyproject_hooks-1.2.0-py3-none-any.whl", hash = "sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913"},
     {file = "pyproject_hooks-1.2.0.tar.gz", hash = "sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pytest"
@@ -4508,11 +4627,12 @@ version = "8.4.2"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "pytest-8.4.2-py3-none-any.whl", hash = "sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79"},
     {file = "pytest-8.4.2.tar.gz", hash = "sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01"},
 ]
+markers = {main = "extra == \"dev\""}
 
 [package.dependencies]
 colorama = {version = ">=0.4", markers = "sys_platform == \"win32\""}
@@ -4530,11 +4650,12 @@ version = "6.3.0"
 description = "Pytest plugin for measuring coverage."
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "pytest_cov-6.3.0-py3-none-any.whl", hash = "sha256:440db28156d2468cafc0415b4f8e50856a0d11faefa38f30906048fe490f1749"},
     {file = "pytest_cov-6.3.0.tar.gz", hash = "sha256:35c580e7800f87ce892e687461166e1ac2bcb8fb9e13aea79032518d6e503ff2"},
 ]
+markers = {main = "extra == \"dev\""}
 
 [package.dependencies]
 coverage = {version = ">=7.5", extras = ["toml"]}
@@ -4550,11 +4671,12 @@ version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
     {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [package.dependencies]
 six = ">=1.5"
@@ -4565,11 +4687,12 @@ version = "1.2.0"
 description = "Create, read, and update Microsoft Word .docx files."
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "python_docx-1.2.0-py3-none-any.whl", hash = "sha256:3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"},
     {file = "python_docx-1.2.0.tar.gz", hash = "sha256:7bc9d7b7d8a69c9c02ca09216118c86552704edc23bac179283f2e38f86220ce"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 lxml = ">=3.1.0"
@@ -4581,11 +4704,12 @@ version = "1.2.2"
 description = "Read key-value pairs from a .env file and set them as environment variables"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a"},
     {file = "python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 cli = ["click (>=5.0)"]
@@ -4596,11 +4720,12 @@ version = "1.0.2"
 description = "Create, read, and update PowerPoint 2007+ (.pptx) files."
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "python_pptx-1.0.2-py3-none-any.whl", hash = "sha256:160838e0b8565a8b1f67947675886e9fea18aa5e795db7ae531606d68e785cba"},
     {file = "python_pptx-1.0.2.tar.gz", hash = "sha256:479a8af0eaf0f0d76b6f00b0887732874ad2e3188230315290cd1f9dd9cc7095"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 lxml = ">=3.1.0"
@@ -4614,8 +4739,7 @@ version = "312"
 description = "Python for Windows Extensions"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
-markers = "platform_system == \"Windows\" or sys_platform == \"win32\""
+groups = ["main", "enrich"]
 files = [
     {file = "pywin32-312-cp310-cp310-win32.whl", hash = "sha256:772235332b5d1024c696f11cea1ae4be7930f0a8b894bb43db14e3f435f1ff7e"},
     {file = "pywin32-312-cp310-cp310-win_amd64.whl", hash = "sha256:5dbc35d2b5320dc07f25fa31269cfb767471002b17de5eb067d03da68c7cb2db"},
@@ -4639,6 +4763,7 @@ files = [
     {file = "pywin32-312-cp39-cp39-win_amd64.whl", hash = "sha256:dc90147579a905b8635e1b0ec6514967dcb07e6e0d9c42f1477feef14cac23bb"},
     {file = "pywin32-312-cp39-cp39-win_arm64.whl", hash = "sha256:02ebca0f0242b75292e218065004310d6a477407c09fa449bfe4f6022bc0c0fc"},
 ]
+markers = {main = "extra == \"enrich\" and (platform_system == \"Windows\" or sys_platform == \"win32\")", enrich = "platform_system == \"Windows\" or sys_platform == \"win32\""}
 
 [[package]]
 name = "pyyaml"
@@ -4646,7 +4771,7 @@ version = "6.0.3"
 description = "YAML parser and emitter for Python"
 optional = false
 python-versions = ">=3.8"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
     {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
@@ -4722,6 +4847,7 @@ files = [
     {file = "pyyaml-6.0.3-cp39-cp39-win_amd64.whl", hash = "sha256:2e71d11abed7344e42a8849600193d15b6def118602c4c176f748e4583246007"},
     {file = "pyyaml-6.0.3.tar.gz", hash = "sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [[package]]
 name = "pyyaml-env-tag"
@@ -4729,11 +4855,12 @@ version = "1.1"
 description = "A custom YAML tag for referencing environment variables in YAML files."
 optional = false
 python-versions = ">=3.9"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "pyyaml_env_tag-1.1-py3-none-any.whl", hash = "sha256:17109e1a528561e32f026364712fee1264bc2ea6715120891174ed1b980d2e04"},
     {file = "pyyaml_env_tag-1.1.tar.gz", hash = "sha256:2eb38b75a2d21ee0475d6d97ec19c63287a7e140231e4214969d0eac923cd7ff"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.dependencies]
 pyyaml = "*"
@@ -4744,10 +4871,11 @@ version = "3.9.2"
 description = "Awesome OCR Library"
 optional = false
 python-versions = "<4,>=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "rapidocr-3.9.2-py3-none-any.whl", hash = "sha256:04d6b8d151f823d930bd91910555f57bea897c0c44fa6794267b94cf9c1ef9a0"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 colorlog = "*"
@@ -4768,11 +4896,12 @@ version = "0.37.0"
 description = "JSON Referencing + Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "referencing-0.37.0-py3-none-any.whl", hash = "sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231"},
     {file = "referencing-0.37.0.tar.gz", hash = "sha256:44aefc3142c5b842538163acb373e24cce6632bd54bdb01b21ad5863489f50d8"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 attrs = ">=22.2.0"
@@ -4785,7 +4914,7 @@ version = "2026.7.19"
 description = "Alternative regular expression module, to replace re."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "regex-2026.7.19-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:555497390743af1a65045fa4527782d10ff5b88970359412baa4a1e628fe393b"},
     {file = "regex-2026.7.19-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:343a4504e3fb688c47cad451221ca5d4814f42b1e16c0065bde9cbf7f473bd52"},
@@ -4902,6 +5031,7 @@ files = [
     {file = "regex-2026.7.19-cp314-cp314t-win_arm64.whl", hash = "sha256:9a15e785f244f3e07847b984ce8773fc3da10a9f3c131cc49a4c5b4d672b4547"},
     {file = "regex-2026.7.19.tar.gz", hash = "sha256:7e77b324909c1617cbb4c668677e2c6ae13f44d7c1de0d4f15f2e3c10f3315b5"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "requests"
@@ -4909,11 +5039,12 @@ version = "2.34.2"
 description = "Python HTTP for Humans."
 optional = false
 python-versions = ">=3.10"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"},
     {file = "requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [package.dependencies]
 certifi = ">=2023.5.7"
@@ -4931,11 +5062,12 @@ version = "2.0.0"
 description = "OAuthlib authentication support for Requests."
 optional = false
 python-versions = ">=3.4"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9"},
     {file = "requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 oauthlib = ">=3.0.0"
@@ -4950,11 +5082,12 @@ version = "15.0.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 optional = false
 python-versions = ">=3.9.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb"},
     {file = "rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 markdown-it-py = ">=2.2.0"
@@ -4969,7 +5102,7 @@ version = "2026.6.3"
 description = "Python bindings to Rust's persistent data structures (rpds)"
 optional = false
 python-versions = ">=3.11"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "rpds_py-2026.6.3-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:7b689145a1485c335569bd056464f3243a29af7ed3871c7be31ad624ba239bc7"},
     {file = "rpds_py-2026.6.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:db08f45aecde626498fb3df07bcf6d2ec040af42e859a4f5040d79c200342911"},
@@ -5088,6 +5221,7 @@ files = [
     {file = "rpds_py-2026.6.3-pp311-pypy311_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:8e65860d238379ed982fd9ba690579b5e95af2f4840f99c772816dbe573cb826"},
     {file = "rpds_py-2026.6.3.tar.gz", hash = "sha256:1cebd1337c242e4ec2293e541f712b2da849b29f48f0c293684b71c0632625d4"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "rtree"
@@ -5095,7 +5229,7 @@ version = "1.4.1"
 description = "R-Tree spatial index for Python GIS"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "rtree-1.4.1-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:d672184298527522d4914d8ae53bf76982b86ca420b0acde9298a7a87d81d4a4"},
     {file = "rtree-1.4.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:a7e48d805e12011c2cf739a29d6a60ae852fb1de9fc84220bbcef67e6e595d7d"},
@@ -5107,6 +5241,7 @@ files = [
     {file = "rtree-1.4.1-py3-none-win_arm64.whl", hash = "sha256:3d46f55729b28138e897ffef32f7ce93ac335cb67f9120125ad3742a220800f0"},
     {file = "rtree-1.4.1.tar.gz", hash = "sha256:c6b1b3550881e57ebe530cc6cffefc87cd9bf49c30b37b894065a9f810875e46"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "safetensors"
@@ -5114,7 +5249,7 @@ version = "0.8.0"
 description = ""
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "safetensors-0.8.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:c554f85858e05226d3c2828e32395e677434685d6d94594a41643361c5e837f0"},
     {file = "safetensors-0.8.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:c80201d22cbf405b80647a60ada77bba06c8fba2da2743ba1e89cdcc39a81f25"},
@@ -5134,6 +5269,7 @@ files = [
     {file = "safetensors-0.8.0-cp310-abi3-win_arm64.whl", hash = "sha256:f7838e5135a406ad3e02efdcb8cf2e5397d368b0154537c4fec682dbc544d452"},
     {file = "safetensors-0.8.0.tar.gz", hash = "sha256:fabaf3e0f18a6618d9b36560682562157f77c2b71fcffc7b432be2baed9d753d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numpy = {version = ">=1.24.6", optional = true, markers = "extra == \"numpy\""}
@@ -5160,7 +5296,7 @@ version = "1.9.0"
 description = "A set of python modules for machine learning and data mining"
 optional = false
 python-versions = ">=3.11"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "scikit_learn-1.9.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:9db6f4d34e68c8899e4cab27fdf8eafe6ed21f2ba52ceb25ea250cd237f8e47b"},
     {file = "scikit_learn-1.9.0-cp311-cp311-macosx_12_0_arm64.whl", hash = "sha256:f401448645a3e7bc115aa3c094097865155b34bff1cba8101857d9104e99074c"},
@@ -5194,6 +5330,7 @@ files = [
     {file = "scikit_learn-1.9.0-cp314-cp314t-win_arm64.whl", hash = "sha256:051075bda8b7aab87b1906ab3d4740a1e1224a19d7b3781a576736edc94e76aa"},
     {file = "scikit_learn-1.9.0.tar.gz", hash = "sha256:8833266989d3a5110178a9fae30783675460724d0e1efb13b14901d2c660c557"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 joblib = ">=1.4.0"
@@ -5217,7 +5354,7 @@ version = "1.18.0"
 description = "Fundamental algorithms for scientific computing in Python"
 optional = false
 python-versions = ">=3.12"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "scipy-1.18.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:7bd21faaf5a1a3b2eff922d02db5f191b99a6518db9078a8fb23169f6d22259a"},
     {file = "scipy-1.18.0-cp312-cp312-macosx_12_0_arm64.whl", hash = "sha256:265915e79107de9f946b855e50d7470d5893ec3f54b342e1aa6201cbdcd8bb6b"},
@@ -5261,6 +5398,7 @@ files = [
     {file = "scipy-1.18.0-cp314-cp314t-win_arm64.whl", hash = "sha256:368e0a705903c466aa5f08eefb39e6b1b6b2d659e7352a31fd9e2438365be0f8"},
     {file = "scipy-1.18.0.tar.gz", hash = "sha256:67b2ad2ad54c72ca6d04975a9b2df8c3638c34ddd5b28738e94fc2b57929d378"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numpy = ">=2.0.0,<2.8"
@@ -5276,11 +5414,12 @@ version = "3.2.5"
 description = "A fast, lightweight and easy-to-use Python library for splitting text into semantically meaningful chunks."
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "semchunk-3.2.5-py3-none-any.whl", hash = "sha256:fd09cc5f380bd010b8ca773bd81893f7eaf11d37dd8362a83d46cedaf5dae076"},
     {file = "semchunk-3.2.5.tar.gz", hash = "sha256:ee15e9a06a69a411937dd8fcf0a25d7ef389c5195863140436872a02c95b0218"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 mpire = {version = "*", extras = ["dill"]}
@@ -5292,11 +5431,12 @@ version = "5.6.1"
 description = "Embeddings, Retrieval, and Reranking"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "sentence_transformers-5.6.1-py3-none-any.whl", hash = "sha256:cefbb17b6325a982a4732c8c49fb013375392687049d1de3d435c4b04060680b"},
     {file = "sentence_transformers-5.6.1.tar.gz", hash = "sha256:16af5d682ef66672b076d58599a23905800e850ec2bfb1865938306bf684ad72"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 huggingface-hub = ">=0.23.0"
@@ -5324,11 +5464,12 @@ version = "83.0.0"
 description = "Most extensible Python build backend with support for C/C++ extension modules"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "setuptools-83.0.0-py3-none-any.whl", hash = "sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3"},
     {file = "setuptools-83.0.0.tar.gz", hash = "sha256:025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 check = ["pytest-checkdocs (>=2.14)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\"", "ruff (>=0.13.0) ; sys_platform != \"cygwin\""]
@@ -5345,7 +5486,7 @@ version = "2.1.2"
 description = "Manipulation and analysis of geometric objects"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "shapely-2.1.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7ae48c236c0324b4e139bea88a306a04ca630f49be66741b340729d380d8f52f"},
     {file = "shapely-2.1.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:eba6710407f1daa8e7602c347dfc94adc02205ec27ed956346190d66579eb9ea"},
@@ -5405,6 +5546,7 @@ files = [
     {file = "shapely-2.1.2-cp314-cp314t-win_amd64.whl", hash = "sha256:0036ac886e0923417932c2e6369b6c52e38e0ff5d9120b90eef5cd9a5fc5cae9"},
     {file = "shapely-2.1.2.tar.gz", hash = "sha256:2ed4ecb28320a433db18a5bf029986aa8afcfd740745e78847e330d5d94922a9"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numpy = ">=1.21"
@@ -5419,11 +5561,12 @@ version = "1.5.4"
 description = "Tool to Detect Surrounding Shell"
 optional = false
 python-versions = ">=3.7"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
     {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "six"
@@ -5431,11 +5574,12 @@ version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [[package]]
 name = "soupsieve"
@@ -5443,11 +5587,12 @@ version = "2.9.1"
 description = "A modern CSS selector implementation for Beautiful Soup."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "soupsieve-2.9.1-py3-none-any.whl", hash = "sha256:4f4477399246b7a0c720a88ca2454b11cd6bb9ae4c9d170140786e916776c14c"},
     {file = "soupsieve-2.9.1.tar.gz", hash = "sha256:c33e6605bbc71dd628b00c632d58ae607c22bade247e52553928f83bbb75b4ba"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "sympy"
@@ -5455,11 +5600,12 @@ version = "1.14.0"
 description = "Computer algebra system (CAS) in Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5"},
     {file = "sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 mpmath = ">=1.1.0,<1.4"
@@ -5473,11 +5619,12 @@ version = "0.10.0"
 description = "Pretty-print tabular data"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tabulate-0.10.0-py3-none-any.whl", hash = "sha256:f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3"},
     {file = "tabulate-0.10.0.tar.gz", hash = "sha256:e2cfde8f79420f6deeffdeda9aaec3b6bc5abce947655d17ac662b126e48a60d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 widechars = ["wcwidth"]
@@ -5488,11 +5635,12 @@ version = "9.1.4"
 description = "Retry code until it succeeds"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55"},
     {file = "tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 doc = ["reno", "sphinx"]
@@ -5504,11 +5652,12 @@ version = "3.6.0"
 description = "threadpoolctl"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "threadpoolctl-3.6.0-py3-none-any.whl", hash = "sha256:43a0b8fd5a2928500110039e43a5eed8480b918967083ea48dc3ab9f13c4a7fb"},
     {file = "threadpoolctl-3.6.0.tar.gz", hash = "sha256:8ab8b4aa3491d812b623328249fab5302a68d2d71745c8a4c719a2fcaba9f44e"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "tokenizers"
@@ -5516,7 +5665,7 @@ version = "0.22.2"
 description = ""
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tokenizers-0.22.2-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:544dd704ae7238755d790de45ba8da072e9af3eea688f698b137915ae959281c"},
     {file = "tokenizers-0.22.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:1e418a55456beedca4621dbab65a318981467a2b188e982a23e117f115ce5001"},
@@ -5543,6 +5692,7 @@ files = [
     {file = "tokenizers-0.22.2-pp39-pypy39_pp73-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:143b999bdc46d10febb15cbffb4207ddd1f410e2c755857b5a0797961bbdc113"},
     {file = "tokenizers-0.22.2.tar.gz", hash = "sha256:473b83b915e547aa366d1eee11806deaf419e17be16310ac0a14077f1e28f917"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 huggingface-hub = ">=0.16.4,<2.0"
@@ -5558,7 +5708,7 @@ version = "2.7.1"
 description = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
 optional = false
 python-versions = ">=3.9.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "torch-2.7.1-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:a103b5d782af5bd119b81dbcc7ffc6fa09904c423ff8db397a1e6ea8fd71508f"},
     {file = "torch-2.7.1-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:fe955951bdf32d182ee8ead6c3186ad54781492bf03d547d31771a01b3d6fb7d"},
@@ -5585,6 +5735,7 @@ files = [
     {file = "torch-2.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:df41989d9300e6e3c19ec9f56f856187a6ef060c3662fe54f4b6baf1fc90bd19"},
     {file = "torch-2.7.1-cp39-none-macosx_11_0_arm64.whl", hash = "sha256:a737b5edd1c44a5c1ece2e9f3d00df9d1b3fb9541138bee56d83d38293fb6c9d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 filelock = "*"
@@ -5620,7 +5771,7 @@ version = "0.22.1"
 description = "image and video datasets and models for torch deep learning"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "torchvision-0.22.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:3b47d8369ee568c067795c0da0b4078f39a9dfea6f3bc1f3ac87530dfda1dd56"},
     {file = "torchvision-0.22.1-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:990de4d657a41ed71680cd8be2e98ebcab55371f30993dc9bd2e676441f7180e"},
@@ -5647,6 +5798,7 @@ files = [
     {file = "torchvision-0.22.1-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:ef7dee376f42900c0e7b0e34624f391d9ece70ab90ee74b42de0c1fffe371284"},
     {file = "torchvision-0.22.1-cp39-cp39-win_amd64.whl", hash = "sha256:e01631046fda25a1eca2f58d5fdc9a152b93740eb82435cdb27c5151b8d20c02"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numpy = "*"
@@ -5663,11 +5815,12 @@ version = "4.70.0"
 description = "Fast, Extensible Progress Meter"
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tqdm-4.70.0-py3-none-any.whl", hash = "sha256:7f585706bfddbdebf89daac705b2dfcc16890130727d3197ca62c732b4310953"},
     {file = "tqdm-4.70.0.tar.gz", hash = "sha256:55b0b0dbd97462d06ebee91e4dac24ed4d4702be82b24f07e6c1d27e08cea220"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
@@ -5684,11 +5837,12 @@ version = "4.57.6"
 description = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
 optional = false
 python-versions = ">=3.9.0"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "transformers-4.57.6-py3-none-any.whl", hash = "sha256:4c9e9de11333ddfe5114bc872c9f370509198acf0b87a832a0ab9458e2bd0550"},
     {file = "transformers-4.57.6.tar.gz", hash = "sha256:55e44126ece9dc0a291521b7e5492b572e6ef2766338a610b9ab5afbb70689d3"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 filelock = "*"
@@ -5759,7 +5913,7 @@ version = "0.26.0"
 description = "Python bindings to the Tree-sitter parsing library"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tree_sitter-0.26.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ff527388df14cb5009f9274faf78cc69a7393ae6acf3b04784b8acca249519c5"},
     {file = "tree_sitter-0.26.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:7bcbadfa614326debef581957d5c780a9d7f66065c13deea61aa21d1dd36263f"},
@@ -5803,6 +5957,7 @@ files = [
     {file = "tree_sitter-0.26.0-cp314-cp314-win_arm64.whl", hash = "sha256:823251c4b6725a7c03ed497a339135ede7ae4bdde75bb8be7ef5e305aeb4ff52"},
     {file = "tree_sitter-0.26.0.tar.gz", hash = "sha256:b40c219edccc4564530c96f8f1556f6202b37cda964d1cbd7bd2b7e68b40a245"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 docs = ["sphinx (>=8.2,<9.0)", "sphinx-book-theme"]
@@ -5814,7 +5969,7 @@ version = "0.24.2"
 description = "C grammar for tree-sitter"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tree_sitter_c-0.24.2-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:4d4579a8b54f0a442f903d88d3304cab77cd5c2031d4015baa4f2f8e15d6dcb7"},
     {file = "tree_sitter_c-0.24.2-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:97bc80a224d48215d4e6e6376bf30d114f4c317b8145ff1b02afe785d4ba7bdd"},
@@ -5826,6 +5981,7 @@ files = [
     {file = "tree_sitter_c-0.24.2-cp310-abi3-win_arm64.whl", hash = "sha256:4a2f4371cd816cc3153458f69062135ebb2ea5f275ddd90494e5c823d778204a"},
     {file = "tree_sitter_c-0.24.2.tar.gz", hash = "sha256:1628584df0299b5a340aa63f8e67b6c97c91517f52fa7e7a4c557e40adb330a9"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 core = ["tree-sitter (>=0.24,<1.0)"]
@@ -5836,7 +5992,7 @@ version = "0.25.0"
 description = "JavaScript grammar for tree-sitter"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tree_sitter_javascript-0.25.0-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:b70f887fb269d6e58c349d683f59fa647140c410cfe2bee44a883b20ec92e3dc"},
     {file = "tree_sitter_javascript-0.25.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:8264a996b8845cfce06965152a013b5d9cbb7d199bc3503e12b5682e62bb1de1"},
@@ -5848,6 +6004,7 @@ files = [
     {file = "tree_sitter_javascript-0.25.0-cp310-abi3-win_arm64.whl", hash = "sha256:622a69d677aa7f6ee2931d8c77c981a33f0ebb6d275aa9d43d3397c879a9bb0b"},
     {file = "tree_sitter_javascript-0.25.0.tar.gz", hash = "sha256:329b5414874f0588a98f1c291f1b28138286617aa907746ffe55adfdcf963f38"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 core = ["tree-sitter (>=0.24,<1.0)"]
@@ -5858,7 +6015,7 @@ version = "0.25.0"
 description = "Python grammar for tree-sitter"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tree_sitter_python-0.25.0-cp310-abi3-macosx_10_9_x86_64.whl", hash = "sha256:14a79a47ddef72f987d5a2c122d148a812169d7484ff5c75a3db9609d419f361"},
     {file = "tree_sitter_python-0.25.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:480c21dbd995b7fe44813e741d71fed10ba695e7caab627fb034e3828469d762"},
@@ -5870,6 +6027,7 @@ files = [
     {file = "tree_sitter_python-0.25.0-cp310-abi3-win_arm64.whl", hash = "sha256:0fbf6a3774ad7e89ee891851204c2e2c47e12b63a5edbe2e9156997731c128bb"},
     {file = "tree_sitter_python-0.25.0.tar.gz", hash = "sha256:b13e090f725f5b9c86aa455a268553c65cadf325471ad5b65cd29cac8a1a68ac"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 core = ["tree-sitter (>=0.24,<1.0)"]
@@ -5880,7 +6038,7 @@ version = "0.23.2"
 description = "TypeScript and TSX grammars for tree-sitter"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "tree_sitter_typescript-0.23.2-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:3cd752d70d8e5371fdac6a9a4df9d8924b63b6998d268586f7d374c9fba2a478"},
     {file = "tree_sitter_typescript-0.23.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:c7cc1b0ff5d91bac863b0e38b1578d5505e718156c9db577c8baea2557f66de8"},
@@ -5891,6 +6049,7 @@ files = [
     {file = "tree_sitter_typescript-0.23.2-cp39-abi3-win_arm64.whl", hash = "sha256:05db58f70b95ef0ea126db5560f3775692f609589ed6f8dd0af84b7f19f1cbb7"},
     {file = "tree_sitter_typescript-0.23.2.tar.gz", hash = "sha256:7b167b5827c882261cb7a50dfa0fb567975f9b315e87ed87ad0a0a3aedb3834d"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 core = ["tree-sitter (>=0.23,<1.0)"]
@@ -5901,8 +6060,7 @@ version = "3.3.1"
 description = "A language and compiler for custom Deep Learning operations"
 optional = false
 python-versions = "*"
-groups = ["enrich"]
-markers = "platform_system == \"Linux\" and platform_machine == \"x86_64\""
+groups = ["main", "enrich"]
 files = [
     {file = "triton-3.3.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b74db445b1c562844d3cfad6e9679c72e93fdfb1a90a24052b03bb5c49d1242e"},
     {file = "triton-3.3.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b31e3aa26f8cb3cc5bf4e187bf737cbacf17311e1112b781d4a059353dfd731b"},
@@ -5911,6 +6069,7 @@ files = [
     {file = "triton-3.3.1-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a3198adb9d78b77818a5388bff89fa72ff36f9da0bc689db2f0a651a67ce6a42"},
     {file = "triton-3.3.1-cp39-cp39-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f6139aeb04a146b0b8e0fbbd89ad1e65861c57cfed881f21d62d3cb94a36bab7"},
 ]
+markers = {main = "platform_system == \"Linux\" and platform_machine == \"x86_64\" and extra == \"enrich\"", enrich = "platform_system == \"Linux\" and platform_machine == \"x86_64\""}
 
 [package.dependencies]
 setuptools = ">=40.8.0"
@@ -5926,11 +6085,12 @@ version = "0.26.8"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "typer-0.26.8-py3-none-any.whl", hash = "sha256:3512ca79ac5c11113414b36e80281b872884477722440691c89d1112e321a49c"},
     {file = "typer-0.26.8.tar.gz", hash = "sha256:c244a6bd558886fe3f8780efb6bdd28bb9aff005a94eedebaa5cb32926fe2f7e"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 annotated-doc = ">=0.0.2"
@@ -5944,11 +6104,12 @@ version = "4.16.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"},
     {file = "typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "typing-inspection"
@@ -5956,11 +6117,12 @@ version = "0.4.2"
 description = "Runtime typing introspection tools"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7"},
     {file = "typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 typing-extensions = ">=4.12.0"
@@ -5971,12 +6133,12 @@ version = "2026.3"
 description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
-groups = ["enrich"]
-markers = "platform_system == \"Windows\" or sys_platform == \"win32\" or sys_platform == \"emscripten\""
+groups = ["main", "enrich"]
 files = [
     {file = "tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"},
     {file = "tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415"},
 ]
+markers = {main = "extra == \"enrich\" and (platform_system == \"Windows\" or sys_platform == \"win32\" or sys_platform == \"emscripten\")", enrich = "platform_system == \"Windows\" or sys_platform == \"win32\" or sys_platform == \"emscripten\""}
 
 [[package]]
 name = "umap-learn"
@@ -5984,11 +6146,12 @@ version = "0.5.12"
 description = "Uniform Manifold Approximation and Projection"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "umap_learn-0.5.12-py3-none-any.whl", hash = "sha256:f2a85d2a2adcb52b541bed9b27a23ca169b56bb1b23283abeebfb8dfb8a42fe5"},
     {file = "umap_learn-0.5.12.tar.gz", hash = "sha256:6aff02ecac5f2aad9f3c65ee518d7ae93e1a985ae38721fdcffceee4232c33c7"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 numba = ">=0.51.2"
@@ -6010,11 +6173,12 @@ version = "2.7.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.10"
-groups = ["docs", "enrich"]
+groups = ["main", "docs", "enrich"]
 files = [
     {file = "urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"},
     {file = "urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c"},
 ]
+markers = {main = "extra == \"enrich\" or extra == \"docs\""}
 
 [package.extras]
 brotli = ["brotli (>=1.2.0) ; platform_python_implementation == \"CPython\"", "brotlicffi (>=1.2.0.0) ; platform_python_implementation != \"CPython\""]
@@ -6028,11 +6192,12 @@ version = "0.52.1"
 description = "The lightning-fast ASGI server."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "uvicorn-0.52.1-py3-none-any.whl", hash = "sha256:e4403f9d93188cf9d1088e9f40e3acd12630e2df8675316704379a7fc20fff6a"},
     {file = "uvicorn-0.52.1.tar.gz", hash = "sha256:112ec661814189acbccd3f7b86460147cc065fc92c0821afa78918780e4354dd"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 click = ">=7.0"
@@ -6053,8 +6218,7 @@ version = "0.22.1"
 description = "Fast implementation of asyncio event loop on top of libuv"
 optional = false
 python-versions = ">=3.8.1"
-groups = ["enrich"]
-markers = "platform_python_implementation != \"PyPy\" and sys_platform != \"win32\" and sys_platform != \"cygwin\""
+groups = ["main", "enrich"]
 files = [
     {file = "uvloop-0.22.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:ef6f0d4cc8a9fa1f6a910230cd53545d9a14479311e87e3cb225495952eb672c"},
     {file = "uvloop-0.22.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7cd375a12b71d33d46af85a3343b35d98e8116134ba404bd657b3b1d15988792"},
@@ -6106,6 +6270,7 @@ files = [
     {file = "uvloop-0.22.1-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:286322a90bea1f9422a470d5d2ad82d38080be0a29c4dd9b3e6384320a4d11e7"},
     {file = "uvloop-0.22.1.tar.gz", hash = "sha256:6c84bae345b9147082b17371e3dd5d42775bddce91f885499017f4607fdaf39f"},
 ]
+markers = {main = "platform_python_implementation != \"PyPy\" and extra == \"enrich\" and sys_platform != \"win32\" and sys_platform != \"cygwin\"", enrich = "platform_python_implementation != \"PyPy\" and sys_platform != \"win32\" and sys_platform != \"cygwin\""}
 
 [package.extras]
 dev = ["Cython (>=3.0,<4.0)", "setuptools (>=60)"]
@@ -6118,7 +6283,7 @@ version = "6.0.0"
 description = "Filesystem events monitoring"
 optional = false
 python-versions = ">=3.9"
-groups = ["docs"]
+groups = ["main", "docs"]
 files = [
     {file = "watchdog-6.0.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d1cdb490583ebd691c012b3d6dae011000fe42edb7a82ece80965b42abd61f26"},
     {file = "watchdog-6.0.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:bc64ab3bdb6a04d69d4023b29422170b74681784ffb9463ed4870cf2f3e66112"},
@@ -6151,6 +6316,7 @@ files = [
     {file = "watchdog-6.0.0-py3-none-win_ia64.whl", hash = "sha256:a1914259fa9e1454315171103c6a30961236f508b9b623eae470268bbcc6a22f"},
     {file = "watchdog-6.0.0.tar.gz", hash = "sha256:9ddf7c82fda3ae8e24decda1338ede66e1c99883db93711d8fb941eaa2d8c282"},
 ]
+markers = {main = "extra == \"docs\""}
 
 [package.extras]
 watchmedo = ["PyYAML (>=3.10)"]
@@ -6161,7 +6327,7 @@ version = "1.2.0"
 description = "Simple, modern and high performance file watching and code reload in python."
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "watchfiles-1.2.0-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:bb68bf4df85abebe5efddc53cf2075520f243a59868d9b3973278b23e76962a9"},
     {file = "watchfiles-1.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c16cb06dd17d43b9d185094268459eac92c9538356f050e55b54e82cf700e1d4"},
@@ -6271,6 +6437,7 @@ files = [
     {file = "watchfiles-1.2.0-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a88fc94e647bc4eec523f1caa540258eb71d14278b9daf72fa1e2658a98df0f0"},
     {file = "watchfiles-1.2.0.tar.gz", hash = "sha256:c995fba777f1ea992f090f9236e9284cf7a5d1a0130dd5a3d82c598cacd76838"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 anyio = ">=3.0.0"
@@ -6281,11 +6448,12 @@ version = "1.9.0"
 description = "WebSocket client for Python with low level API options"
 optional = false
 python-versions = ">=3.9"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "websocket_client-1.9.0-py3-none-any.whl", hash = "sha256:af248a825037ef591efbf6ed20cc5faa03d3b47b9e5a2230a529eeee1c1fc3ef"},
     {file = "websocket_client-1.9.0.tar.gz", hash = "sha256:9e813624b6eb619999a97dc7958469217c3176312b3a16a4bd1bc7e08a46ec98"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.extras]
 docs = ["Sphinx (>=6.0)", "myst-parser (>=2.0.0)", "sphinx_rtd_theme (>=1.1.0)"]
@@ -6298,7 +6466,7 @@ version = "16.1.1"
 description = "An implementation of the WebSocket Protocol (RFC 6455 & 7692)"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "websockets-16.1.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:49ae99bdfcae803a885c926bf14f886196e84925395bb3f568fef5c0f0979d7d"},
     {file = "websockets-16.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:5bfd1ac19b1b9986a9c95a82d5e23a391ebb09e12c34d7be6094b86efcc35731"},
@@ -6410,6 +6578,7 @@ files = [
     {file = "websockets-16.1.1-py3-none-any.whl", hash = "sha256:6abbd3e82c731c8e531714466acd5d87b5e88ac3243465337ba71d68e23ae7e3"},
     {file = "websockets-16.1.1.tar.gz", hash = "sha256:db234eda965dcce15df96bb9709f587cd87d4d52aaf0e80e2f34ec04c7670c57"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "xlsxwriter"
@@ -6417,11 +6586,12 @@ version = "3.2.9"
 description = "A Python module for creating Excel XLSX files."
 optional = false
 python-versions = ">=3.8"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "xlsxwriter-3.2.9-py3-none-any.whl", hash = "sha256:9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3"},
     {file = "xlsxwriter-3.2.9.tar.gz", hash = "sha256:254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "yarl"
@@ -6429,7 +6599,7 @@ version = "1.24.5"
 description = "Yet another URL library"
 optional = false
 python-versions = ">=3.10"
-groups = ["enrich"]
+groups = ["main", "enrich"]
 files = [
     {file = "yarl-1.24.5-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:88f50c94e21a0a7f14042c015b0eba1881af78562e7bf007e0033e624da59750"},
     {file = "yarl-1.24.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:6efbccc3d7f75d5b03105172a8dc86d82ba4da86817952529dd93185f4a88be2"},
@@ -6536,13 +6706,19 @@ files = [
     {file = "yarl-1.24.5-py3-none-any.whl", hash = "sha256:a33700d13d9b7d84fd10947b09ff69fb9a792e519c8cb9764a3ca70baa6c23a7"},
     {file = "yarl-1.24.5.tar.gz", hash = "sha256:e81b83143bee16329c23db3c1b2d82b29892fcbcb849186d2f6e98a5abe9a57f"},
 ]
+markers = {main = "extra == \"enrich\""}
 
 [package.dependencies]
 idna = ">=2.0"
 multidict = ">=4.0"
 propcache = ">=0.2.1"
 
+[extras]
+dev = ["pytest", "pytest-cov"]
+docs = ["mkdocs-material", "mkdocs-same-dir"]
+enrich = ["adapters", "bertopic", "chromadb", "docling", "sentence-transformers"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "89d64d6084bf144ea1741daacf1f0c418268d2c04e07a7808cc74220b45281fb"
+content-hash = "bd6be25ceca346c7633108ddd21ee29bf6e657c2e0f22994f096252af3eced96"

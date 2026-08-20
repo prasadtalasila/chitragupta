@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.7.0"
+version = "6.8.0"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -39,11 +39,25 @@ include = [
     { path = "SOUL.md", format = ["sdist", "wheel"] },
     { path = "README.md", format = ["sdist", "wheel"] },
     { path = "config.toml.example", format = ["sdist", "wheel"] },
+    # `chitragupta install` (#265) reads this one file, always invoked as
+    # `bash <path> <stage>` rather than executed directly -- so the
+    # executable bit surviving the packaging route (it does not, on
+    # every route -- #265's own trap) is not load-bearing here.
+    { path = "scripts/install_full_pipeline.sh", format = ["sdist", "wheel"] },
 ]
 
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = ["Prasad Talasila"]
 license = "MIT"
+# Without this, PyPI's project page shows only `description` above (one
+# line) and nothing else -- confirmed against the real, already-published
+# chitragupta-cli 6.7.0, whose page has an empty long description because
+# no `readme` was declared when that release was built. README.md is
+# already package data (`include` above, for `chitragupta init` -- #263);
+# this is the separate, Poetry-native declaration that copies its content
+# into the wheel/sdist METADATA as the long description, content-type
+# inferred from the extension (text/markdown).
+readme = "README.md"
 
 # Two executables, one entry point, one distribution. `cg` is *not* a
 # second PyPI project -- a console script name is not a PyPI name, and
@@ -66,6 +80,31 @@ bibtexparser = ">=1.4,<2.0"
 # incompatible API (bibtexparser.parse_file, no customization hook) that
 # chitragupta/bib_reader.py -- the sole source of citekeys -- doesn't use. Don't
 # relax this ceiling without rewriting that module against v2's API first.
+
+# Mirrors of the three optional groups below, purely so `pip install
+# chitragupta-cli[enrich|dev|docs]` resolves at all (#265). Poetry groups
+# and extras are unrelated mechanisms -- a group dependency never reaches
+# a built wheel's metadata, only `[tool.poetry.dependencies]` marked
+# `optional = true` plus the `[tool.poetry.extras]` table below do, so
+# each package with a `poetry install --with X` home needs a second,
+# duplicate declaration here to also have a `pip install ...[X]` one.
+# Two lists that must agree will drift -- `tests/test_pyproject_extras.py`
+# asserts these match the corresponding group's names and versions
+# exactly, name for name, constraint for constraint.
+sentence-transformers = {version = ">=5.6,<6.0", optional = true}
+chromadb = {version = ">=1.5,<2.0", optional = true}
+bertopic = {version = ">=0.17,<0.18", optional = true}
+docling = {version = ">=2.115,<3.0", optional = true}
+adapters = {version = ">=1.2,<2.0", optional = true}
+pytest = {version = ">=8.0,<9.0", optional = true}
+pytest-cov = {version = ">=5.0,<7.0", optional = true}
+mkdocs-material = {version = ">=9.5,<10.0", optional = true}
+mkdocs-same-dir = {version = ">=0.1.5,<0.2", optional = true}
+
+[tool.poetry.extras]
+enrich = ["sentence-transformers", "chromadb", "bertopic", "docling", "adapters"]
+dev = ["pytest", "pytest-cov"]
+docs = ["mkdocs-material", "mkdocs-same-dir"]
 
 # Optional group (`poetry install --with enrich`): everything chitragupta/enrich/*
 # (the Docling/embeddings/Pandoc pipeline, chitragupta/enrich/__main__.py)

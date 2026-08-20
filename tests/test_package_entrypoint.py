@@ -37,11 +37,12 @@ class TestDispatch:
         assert excinfo.value.code == 0
         assert layer in capsys.readouterr().out
 
-    def test_a_command_forwards_help_to_that_command(self, capsys):
+    @pytest.mark.parametrize("command", ["init", "doctor", "install"])
+    def test_a_command_forwards_help_to_that_command(self, command, capsys):
         with pytest.raises(SystemExit) as excinfo:
-            entry.main(["init", "--help"])
+            entry.main([command, "--help"])
         assert excinfo.value.code == 0
-        assert "init" in capsys.readouterr().out
+        assert command in capsys.readouterr().out
 
     def test_no_layer_prints_usage_and_exits_zero(self, capsys):
         """"Tell me how to use this" is a request, not an error -- the
