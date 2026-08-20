@@ -58,19 +58,18 @@ documentation = "https://prasad.talasila.in/chitragupta/"
 # description *and* no "Project links" sidebar, because neither `readme`
 # nor `homepage`/`repository` was declared when that release was built.
 #
-# README.md is the tracked source (package data too, `include` above,
-# for `chitragupta init` -- #263) and stays relative-link-friendly for
-# GitHub and the mkdocs site (mkdocs.yml's `docs_dir: .` is built
-# specifically so those two agree) -- but PyPI's renderer has no
-# knowledge of the GitHub repo, so those same relative links and the
-# logo's <img src="docs/logo.svg"> just 404 there. README.pypi.md is
-# `scripts/release.py`'s generated, absolute-link rewrite of it, never
-# git-tracked (.gitignore). **`readme` pointing here means `poetry
-# build`/`publish` depends on `python3 scripts/release.py` having
-# already run in this checkout** -- true in release.yml by construction
-# (its "Build release archive" step runs first), and the reason a bare
-# `poetry build` from a fresh checkout fails until you run that once.
-readme = "README.pypi.md"
+# This has to stay README.md, not a generated rewrite of it, even though
+# PyPI's renderer breaks on README.md's relative links and images (see
+# release.yml's "Rewrite README.md for the PyPI-bound build" step for
+# that fix). `readme` is read by `poetry install` too, not just `poetry
+# build` -- every `install_full_pipeline.sh python-deps`/`os-deps`
+# install, on every host and in CI's own test job, does a real project
+# install and needs this file to exist. Pointing it at a generated,
+# gitignored file broke `test (windows-latest)` and `test
+# (ubuntu-latest)` both, the first time this was tried (#286) -- the
+# "Build release archive" step that would have generated it runs only in
+# release.yml, never in ci.yml.
+readme = "README.md"
 
 # Two executables, one entry point, one distribution. `cg` is *not* a
 # second PyPI project -- a console script name is not a PyPI name, and
