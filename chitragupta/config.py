@@ -518,21 +518,113 @@ TOPIC_SEEDS_PATH = CONTENT_DIR / "topic_seeds.json"
 # run, blocks a draft or refuses a citekey. It decides how long a list a
 # human reads, and they can move it and look again.
 #
-# 0.35 rather than a rounder 0.5, and the difference is not cosmetic: a
-# short phrase and a document-length passage do not reach the cosine an
-# intuition calibrated on sentence-pair similarity expects, so 0.5 drops
-# genuine matches. Measured on a three-document probe with
-# all-mpnet-base-v2, on-topic pairs scored 0.666 and 0.448 while the
-# best off-topic pair reached 0.200 -- so 0.5 loses a true match that
-# 0.35 keeps, and 0.35 still clears every false one by 0.15.
+# A floor, not the selection rule -- and the distinction is what the real
+# corpus taught. Selection is per-phrase ranking (SEED_TOPIC_MAX_PAPERS
+# below); this only discards matches too weak to be worth ranking at all.
 #
-# Honest about what that is: a probe with two phrases and three
-# documents, not a benchmark. It is enough to rule 0.5 out and to place
-# the default inside a wide gap; it is not enough to call 0.35 optimal,
-# and a real corpus is the thing to re-check it against.
+# It governs the seed-topic *report* only. BERTopic's own zero-shot bar is
+# ZEROSHOT_MIN_SIMILARITY below, and the two were one key until a real
+# corpus proved that wrong: they measure the same quantity but make
+# different decisions, so a floor loose enough to rank against is far too
+# loose to assign on. See that constant for what it cost.
+#
+# Measured over 497 real documents and 14 real Zotero collection names,
+# every phrase turned out to have its own score scale, so no single
+# absolute cutoff can serve them: "Standards" peaked at 0.295 across the
+# whole corpus while "Digital Twin" had a *median* of 0.338. A 0.35 cutoff
+# therefore returned nothing at all for a genuine 25-paper topic and 238
+# papers for a broad one. Ranking each phrase against itself is immune to
+# that; a floor is not, which is why the floor is now low enough to bite
+# only on noise.
+#
+# 0.15 specifically: of four deliberately shelf-like collection names in
+# that run, the two with no semantic content at all -- "Others" and a
+# person's name, "Karen Wilcox" -- peaked at 0.143 and 0.112, so this
+# keeps a seed that means nothing returning nothing rather than its 25
+# nearest neighbours.
+#
+# Stated precisely because the looser claim is tempting and false: the
+# other two ("Reviews and Surveys", "opinions") do clear this floor and do
+# return papers. A shelf label that is *also* a description of a paper is
+# not distinguishable from a topic by score, and this floor does not try
+# to. Which names go in the list stays the author's decision, which is the
+# answer docs/HOUSE-STYLE.md gives and not a gap in this number.
 SEED_TOPIC_MIN_SIMILARITY = _get_float(
-    "SEED_TOPIC_MIN_SIMILARITY", "enrich", "seed_topic_min_similarity", default=0.35,
+    "SEED_TOPIC_MIN_SIMILARITY", "enrich", "seed_topic_min_similarity", default=0.15,
 )
+# How many papers a single seed topic may list, best-scoring first. The
+# actual selection rule: each phrase is ranked against its own scores, so
+# a generic word and a domain term both yield a readable list instead of
+# nothing and half the corpus respectively.
+#
+# 25 is a reading length, not an accuracy claim -- this artefact exists to
+# be read by a person deciding what to draft, and a topic answering with
+# 238 papers has told them nothing. Raise it when a topic is genuinely
+# broad and you want the tail.
+SEED_TOPIC_MAX_PAPERS = int(_get_float(
+    "SEED_TOPIC_MAX_PAPERS", "enrich", "seed_topic_max_papers", default=25,
+))
+# The cosine a document must reach against a seed phrase for BERTopic to
+# assign it to that phrase's topic outright, skipping the clustering step.
+# A *decision*, unlike SEED_TOPIC_MIN_SIMILARITY above, which is why the
+# two are separate keys and this one is far higher.
+#
+# They were one key, and a real 497-document corpus showed what that cost:
+# at 0.15, zero-shot assignment swallowed nearly the whole corpus, leaving
+# HDBSCAN fewer remaining points than the `min_samples` its own KDTree
+# query needs -- so the stage died with "k must be less than or equal to
+# the number of training points" from inside sklearn. Unseeded runs were
+# unaffected, which is exactly why a small-corpus test did not find it.
+#
+# 0.55 rather than BERTopic's own 0.7 default: measured on that corpus,
+# genuine on-topic pairs reach roughly 0.45-0.67 against document-length
+# passages, so 0.7 would assign almost nothing and 0.55 assigns the
+# confident half. Verified to fit and cluster (7 topics over 497 docs);
+# a much lower value is what breaks, and this comment is the reason to
+# leave it alone.
+ZEROSHOT_MIN_SIMILARITY = _get_float(
+    "ZEROSHOT_MIN_SIMILARITY", "enrich", "zeroshot_min_similarity", default=0.55,
+)
+# Whether the bertopic stage also records, per document, how strongly it
+# belongs to *every* topic rather than only the one id fit_transform
+# returns. That scalar is what BERTopic has always given and it cannot
+# express a paper that is genuinely about two things -- measured on a
+# planted two-topic document, the winning topic took 0.570 and the real
+# second topic 0.319, which the scalar discarded outright.
+#
+# On by default because "a paper belongs to several topics" is the whole
+# premise of the seed-topic work beside it, and a corpus grouped by hand
+# demonstrates it: 497 real documents carried 1.94 seed topics each. Off
+# is here for a corpus large enough that the extra pass costs more than
+# the answer is worth.
+TOPIC_DISTRIBUTION = _get_bool(
+    "TOPIC_DISTRIBUTION", "enrich", "topic_distribution", default=True,
+)
+# How strong a topic must be *relative to the document's own strongest*
+# to be recorded under it, and how many may be kept at all.
+#
+# Relative, not an absolute weight, and for the second time in this
+# feature the real corpus is what settled it. An absolute 0.05 floor
+# recorded 6.99 topics per document out of 7 -- every paper under every
+# topic, the dense matrix an absolute floor was supposed to prevent. The
+# reason is the same one that broke a fixed cosine cutoff for seed
+# phrases: the scale moves. Weights sum to about 1 across however many
+# topics BERTopic found, so a fixed floor means something entirely
+# different at 7 topics than at 70, and nothing at all at 200.
+#
+# A document's own strongest weight is the scale that travels. 0.5 keeps
+# a genuine second topic -- on a planted two-topic document the winner
+# took 0.570 and the real second 0.319, well over half -- while dropping
+# the long tail of a document that is diffuse rather than plural.
+TOPIC_MEMBERSHIP_RATIO = _get_float(
+    "TOPIC_MEMBERSHIP_RATIO", "enrich", "topic_membership_ratio", default=0.5,
+)
+# The cap, for a document whose weights are near-uniform because BERTopic
+# was not confident about it at all: every topic then clears the ratio,
+# and "belongs to all 7" is noise wearing the shape of an answer.
+TOPIC_MEMBERSHIP_MAX = int(_get_float(
+    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=3,
+))
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
 # The CSL style pandoc's --citeproc formats citations and the bibliography

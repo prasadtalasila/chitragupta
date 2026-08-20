@@ -73,37 +73,58 @@ def cosine(left, right) -> float:
 
 
 def assign(doc_embeddings: dict, phrase_embeddings: dict,
-           min_similarity: "float | None" = None) -> dict:
+           min_similarity: "float | None" = None,
+           max_papers: "int | None" = None) -> dict:
     """The many-to-many map, as `content/topic_seeds.json`'s payload.
 
-    Kept free of both the model and the corpus so it can be tested
-    against vectors chosen by hand: everything above it decides what to
-    embed, everything below it is arithmetic on the result.
+    **Each phrase is ranked against its own scores, then truncated.** The
+    absolute floor is only a noise gate. That ordering is the correction a
+    real corpus forced: measured over 497 documents and 14 real Zotero
+    collection names, each phrase had its own score scale, so one global
+    cutoff could not serve them. "Standards" -- a genuine 25-paper
+    collection -- peaked at 0.295 corpus-wide and returned *nothing* under
+    a 0.35 cutoff, while "Digital Twin" had a median of 0.338 and returned
+    238 papers, half the corpus. Both are useless answers, and no single
+    number fixes both, because the two distributions barely overlap.
 
-    Matches are sorted by descending score, so the first paper under a
-    phrase is the one that phrase describes best. Ties break on citekey,
-    because Python's sort is stable and dict order is insertion order --
-    without the second key, two papers with identical scores would swap
-    places between runs depending on what order the ledger happened to
-    return them in, and a report that shuffles is a report nobody trusts.
+    Ranking is immune to that: the best 25 papers for "Standards" are its
+    best 25 whatever their absolute scores, and "Digital Twin" stops
+    answering with half the library. The floor survives only to keep a
+    seed that means nothing -- a person's name left in the list by
+    accident -- returning nothing rather than its 25 nearest neighbours.
+
+    Kept free of both the model and the corpus so it can be tested against
+    vectors chosen by hand: everything above it decides what to embed,
+    everything below it is arithmetic on the result.
+
+    Ties break on citekey, because Python's sort is stable and dict order
+    is insertion order -- without the second key, two papers with
+    identical scores would swap places between runs depending on what
+    order the ledger happened to return them in, and a report that
+    shuffles is a report nobody trusts.
     """
     floor = config.SEED_TOPIC_MIN_SIMILARITY if min_similarity is None else min_similarity
+    limit = config.SEED_TOPIC_MAX_PAPERS if max_papers is None else max_papers
 
     topics = []
     matched: set[str] = set()
     for phrase, phrase_vec in phrase_embeddings.items():
-        matches = []
-        for citekey, doc_vec in doc_embeddings.items():
-            score = cosine(phrase_vec, doc_vec)
-            if score >= floor:
-                matches.append({"citekey": citekey, "score": round(score, 6)})
-                matched.add(citekey)
-        matches.sort(key=lambda match: (-match["score"], match["citekey"]))
-        topics.append({"phrase": phrase, "matches": matches})
+        scored = [{"citekey": citekey, "score": round(cosine(phrase_vec, doc_vec), 6)}
+                  for citekey, doc_vec in doc_embeddings.items()]
+        scored = [match for match in scored if match["score"] >= floor]
+        scored.sort(key=lambda match: (-match["score"], match["citekey"]))
+        matches = scored[:limit]
+        matched.update(match["citekey"] for match in matches)
+        # `considered` is what the floor left, before the limit cut it.
+        # Recorded because "25 shown" reads identically whether the 26th
+        # paper scored 0.01 below the 25th or the topic genuinely has 25 --
+        # and only the first is a reason to raise the limit.
+        topics.append({"phrase": phrase, "considered": len(scored), "matches": matches})
 
     return {
         "model": config.EMBEDDING_MODEL,
         "min_similarity": floor,
+        "max_papers": limit,
         "n_docs": len(doc_embeddings),
         "topics": topics,
         # Sorted for the same reason the matches are: this list is read

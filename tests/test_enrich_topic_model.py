@@ -43,15 +43,29 @@ class FakeTopicInfo:
 
 class FakeBERTopic:
     last_kwargs = None
+    # What fit_transform() hands back, so a test can put the model in the
+    # all-outlier state approximate_distribution() cannot answer for.
+    topics_returned = None
+    # Rows of per-topic weights, one per document; column i is topic i.
+    distribution = None
+    distribution_calls = []
 
     def __init__(self, **kwargs):
         FakeBERTopic.last_kwargs = kwargs
 
     def fit_transform(self, texts, embeddings):
+        if FakeBERTopic.topics_returned is not None:
+            return list(FakeBERTopic.topics_returned), None
         return [-1 for _ in texts], None
 
     def get_topic_info(self):
         return FakeTopicInfo()
+
+    def approximate_distribution(self, texts, min_similarity=0.0):
+        FakeBERTopic.distribution_calls.append(min_similarity)
+        if FakeBERTopic.distribution is not None:
+            return list(FakeBERTopic.distribution), None
+        return [[0.0] for _ in texts], None
 
 
 class FakeArray(list):
@@ -72,6 +86,9 @@ def fake_bertopic_stack(monkeypatch):
     FakeUMAP.last_kwargs = None
     FakeHDBSCAN.last_kwargs = None
     FakeBERTopic.last_kwargs = None
+    FakeBERTopic.topics_returned = None
+    FakeBERTopic.distribution = None
+    FakeBERTopic.distribution_calls = []
     FakeModel.encode_call_texts = []
 
     umap_module = types.ModuleType("umap")
@@ -277,11 +294,24 @@ class TestSeedPhrases:
         assert FakeBERTopic.last_kwargs["zeroshot_topic_list"] == [
             "structural health monitoring", "digital twin"]
 
-    def test_threshold_comes_from_config(self, isolated_config,
-                                         fake_bertopic_stack, tmp_path, monkeypatch):
-        monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.72)
+    def test_threshold_comes_from_its_own_config_key(self, isolated_config,
+                                                     fake_bertopic_stack, tmp_path,
+                                                     monkeypatch):
+        monkeypatch.setattr(config, "ZEROSHOT_MIN_SIMILARITY", 0.72)
         topic_model.run_topic_model(make_docs_with_text(6, tmp_path), ("digital twin",))
         assert FakeBERTopic.last_kwargs["zeroshot_min_similarity"] == 0.72
+
+    def test_the_assignment_bar_is_not_the_reports_floor(self, isolated_config,
+                                                         fake_bertopic_stack, tmp_path,
+                                                         monkeypatch):
+        """One key drove both until a 497-document corpus proved it wrong:
+        a floor loose enough to rank a report against assigns nearly the
+        whole corpus by zero-shot, starving HDBSCAN of the points its own
+        min_samples needs. They must not be able to drift back together."""
+        monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.15)
+        monkeypatch.setattr(config, "ZEROSHOT_MIN_SIMILARITY", 0.55)
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path), ("digital twin",))
+        assert FakeBERTopic.last_kwargs["zeroshot_min_similarity"] == 0.55
 
     def test_seeded_output_records_the_phrases(self, isolated_config,
                                                fake_bertopic_stack, tmp_path):
@@ -322,3 +352,110 @@ class TestDocumentEmbeddingsSeam:
         FakeModel.encode_call_texts = []
         topic_model.document_embeddings(texts, model)
         assert FakeModel.encode_call_texts == []
+
+
+class TestTopicMemberships:
+    """A document can belong to more than one topic BERTopic *discovered*,
+    not only to more than one phrase a person wrote. `assignments` gives
+    one id per document and always has; measured on a planted two-topic
+    document the winner took 0.570 and the real second topic 0.319, which
+    the scalar threw away."""
+
+    def test_a_document_carries_every_topic_it_belongs_to(self, isolated_config,
+                                                          fake_bertopic_stack, tmp_path):
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.57, 0.32], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert result["memberships"]["doc0"] == {"0": 0.57, "1": 0.32}
+
+    def test_the_scalar_assignment_survives_beside_it(self, isolated_config,
+                                                      fake_bertopic_stack, tmp_path):
+        """Additive, not a replacement: a reader wanting the single best
+        topic still finds it where it always was."""
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.57, 0.32], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert result["assignments"] == {"doc0": 0, "doc1": 1}
+
+    def test_memberships_are_ordered_strongest_first(self, isolated_config,
+                                                     fake_bertopic_stack, tmp_path):
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.40, 0.60], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert list(result["memberships"]["doc0"]) == ["1", "0"]
+
+    def test_a_weak_topic_is_dropped_relative_to_the_strongest(self, isolated_config,
+                                                               fake_bertopic_stack, tmp_path):
+        """Relative to the document's own best, not an absolute weight:
+        measured on 497 real documents an absolute 0.05 floor recorded
+        6.99 topics out of 7 for every paper -- the dense matrix a floor
+        was meant to prevent, because weights sum to ~1 over however many
+        topics were found and no fixed number survives that."""
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.57, 0.10], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert result["memberships"]["doc0"] == {"0": 0.57}
+
+    def test_a_genuine_second_topic_survives(self, isolated_config,
+                                             fake_bertopic_stack, tmp_path):
+        """The planted two-topic document: 0.570 and 0.319. The second is
+        over half the first, so it is a real membership, not a tail."""
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.570, 0.319], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert result["memberships"]["doc0"] == {"0": 0.57, "1": 0.319}
+
+    def test_a_diffuse_document_is_capped(self, isolated_config,
+                                          fake_bertopic_stack, tmp_path):
+        """Near-uniform weights mean BERTopic was not confident, not that
+        the paper is about all five topics."""
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.21, 0.20, 0.20, 0.20, 0.19], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert len(result["memberships"]["doc0"]) == 3
+
+    def test_the_ratio_and_cap_come_from_config(self, isolated_config, fake_bertopic_stack,
+                                                tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.9)
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.57, 0.40], [0.10, 0.80]]
+        result = topic_model.run_topic_model(docs)
+        assert result["memberships"]["doc0"] == {"0": 0.57}
+
+    def test_a_document_belonging_nowhere_is_omitted(self, isolated_config,
+                                                    fake_bertopic_stack, tmp_path):
+        """All-zero weights mean the distribution has nothing to say about
+        this document -- recording it under its arbitrary best would be
+        inventing a membership."""
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        FakeBERTopic.distribution = [[0.57, 0.32], [0.0, 0.0]]
+        result = topic_model.run_topic_model(docs)
+        assert "doc1" not in result["memberships"]
+
+    def test_an_all_outlier_corpus_records_no_memberships(self, isolated_config,
+                                                          fake_bertopic_stack, tmp_path):
+        """The correct result on a small corpus, per this module's own
+        docstring -- and the state where approximate_distribution() raises
+        from sklearn on a zero-row matrix. Guarded, not caught."""
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [-1, -1]
+        result = topic_model.run_topic_model(docs)
+        assert "memberships" not in result
+        assert FakeBERTopic.distribution_calls == []
+
+    def test_switching_it_off_skips_the_extra_pass(self, isolated_config,
+                                                  fake_bertopic_stack, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", False)
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        result = topic_model.run_topic_model(docs)
+        assert "memberships" not in result
+        assert FakeBERTopic.distribution_calls == []

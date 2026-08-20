@@ -175,7 +175,13 @@ def report(data: dict, phrase: "str | None" = None) -> str:
     lines = []
     for topic in topics:
         matches = topic["matches"]
-        lines.append(f"{topic['phrase']}  ({len(matches)} papers)")
+        # "25 of 240" rather than "25": a truncated list and a topic that
+        # genuinely has 25 papers read identically otherwise, and only the
+        # first is a reason to raise [enrich].seed_topic_max_papers.
+        considered = topic.get("considered", len(matches))
+        shown = (f"{len(matches)} of {considered} papers" if considered > len(matches)
+                 else f"{len(matches)} papers")
+        lines.append(f"{topic['phrase']}  ({shown})")
         for match in matches:
             lines.append(f"    {match['score']:.3f}  {match['citekey']}")
         lines.append("")

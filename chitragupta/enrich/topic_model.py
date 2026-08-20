@@ -110,42 +110,74 @@ def document_embeddings(doc_texts: dict, model) -> dict:
     return {citekey: cache[citekey]["embedding"] for citekey in doc_texts}
 
 
-def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
-    """Cluster the corpus, optionally steered by the author's own phrases.
+def topic_memberships(topic_model, texts: list, citekeys: list, topics: list) -> "dict | None":
+    """Every topic each document belongs to, with its weight -- or None
+    when there is nothing to distribute over.
 
-    `seed_phrases` non-empty turns on BERTopic's zero-shot mode: each
-    phrase is embedded whole and documents close enough to one are
-    assigned to it by name, with the remainder clustered as before. The
-    phrase reaches BERTopic as a single string, never a term list, which
-    is what keeps "structural health monitoring" one topic rather than
-    three -- `seed_topic_list`, the older mechanism, matches against a
-    bag-of-words vocabulary and would decompose it.
+    `assignments` beside this holds what `fit_transform` returns: one
+    topic id per document, which cannot express a paper that is genuinely
+    about two things. Measured on a planted two-topic document, the
+    winning topic took 0.570 and the real second topic 0.319, and the
+    scalar discarded the second outright. This recovers it, so the
+    many-to-many claim the seed-topic artefact makes for phrases a person
+    wrote is also true of the topics BERTopic discovered on its own --
+    which are the ones an author cannot seed, because they do not know
+    them yet.
 
-    **This half assigns each document exactly one topic**, because
-    `fit_transform` returns one topic id per document and always has.
-    The many-to-many view -- a paper under every phrase it matched, which
-    is what a corpus grouped by hand in Zotero actually looks like --
-    is chitragupta/enrich/topic_seeding.py's artefact, not this one's.
-    Neither replaces the other and both read the same embeddings.
+    Returns None rather than an empty dict for the three cases where the
+    question is not merely unanswered but meaningless, so a reader can
+    tell "no memberships" from "not computed":
+
+    - the feature is switched off (`[enrich].topic_distribution`);
+    - every document landed in the outlier topic, which is the *correct*
+      result on a small corpus (see this module's docstring) and leaves
+      approximate_distribution() with a zero-row c-TF-IDF matrix. It
+      raises `ValueError` from sklearn rather than returning empty, which
+      is checked here rather than caught: a guard that swallowed
+      ValueError would also swallow a real one.
     """
-    import numpy as np
+    if not config.TOPIC_DISTRIBUTION:
+        return None
+    # Excludes -1: the outlier topic is "no topic matched", not a topic a
+    # document can be partly about, and BERTopic's own c_tf_idf_ drops it
+    # before computing similarities.
+    if not {int(t) for t in topics} - {-1}:
+        return None
+
+    # 0.0 here, not the ratio: this argument is an absolute cut inside
+    # BERTopic, and the selection below is relative to each document's own
+    # strongest topic, which cannot be expressed as one number for the
+    # whole corpus. Filtering twice on different scales would silently
+    # apply whichever happened to be stricter.
+    distributions, _tokens = topic_model.approximate_distribution(texts, min_similarity=0.0)
+    memberships = {}
+    for citekey, row in zip(citekeys, distributions):
+        # Topic ids are the column index, per approximate_distribution's
+        # contract that column i is topic i with outliers already dropped.
+        ranked = sorted(((str(topic_id), round(float(weight), 6))
+                         for topic_id, weight in enumerate(row)),
+                        key=lambda item: (-item[1], item[0]))
+        best = ranked[0][1] if ranked else 0.0
+        if best <= 0.0:
+            continue
+        kept = [(tid, w) for tid, w in ranked
+                if w >= best * config.TOPIC_MEMBERSHIP_RATIO][:config.TOPIC_MEMBERSHIP_MAX]
+        memberships[citekey] = dict(kept)
+    return memberships
+
+
+def _fit(texts: list, embeddings, model, seed_phrases: tuple):
+    """Configure UMAP/HDBSCAN/BERTopic for a corpus of this size and fit.
+
+    Split out of run_topic_model() to keep it under
+    docs/CODE-STANDARDS.md's 25-statement limit once the membership pass
+    arrived, and the seam is a real one rather than an arithmetic
+    convenience: everything here is *how* to cluster, everything left
+    there is what to cluster and what to record.
+    """
     from bertopic import BERTopic
     from hdbscan import HDBSCAN
     from umap import UMAP
-
-    doc_texts = corpus_texts(docs)
-
-    if len(doc_texts) < 2:
-        raise ValueError("Need at least 2 documents with text to run BERTopic; "
-                         f"got {len(doc_texts)}")
-
-    _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
-
-    cache = document_embeddings(doc_texts, model)
-
-    citekeys = list(doc_texts)
-    texts = [doc_texts[d] for d in citekeys]
-    embeddings = np.array([cache[d] for d in citekeys])
 
     # UMAP's spectral initialization needs n_neighbors < n_samples or it
     # raises outright (not just a bad clustering) -- BERTopic's own
@@ -174,28 +206,76 @@ def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
     # path it took before this feature existed. That is the bar #206 set
     # -- unchanged for the common case, not merely tolerant of it.
     #
-    # Both degenerate outcomes are safe on bertopic 0.17.4 and neither
-    # needs a guard here, checked against the real library rather than
-    # assumed: every document clearing the threshold (nothing left for
-    # HDBSCAN to cluster) returns every document under the seed topic,
-    # and no document clearing it returns the same all-outlier result an
-    # unseeded run on a small corpus already gives. Worth re-checking if
-    # the bertopic pin in pyproject.toml ever widens past 0.17.
+    # The two *fully* degenerate outcomes are safe on bertopic 0.17.4,
+    # checked against the real library: every document clearing the
+    # threshold (nothing left for HDBSCAN at all) returns every document
+    # under its seed topic, and no document clearing it returns the same
+    # all-outlier result an unseeded small corpus already gives.
+    #
+    # The dangerous case is neither of those, and a 20-document check gave
+    # false confidence about it: when *nearly* every document is assigned,
+    # HDBSCAN is handed a remainder smaller than the `min_samples` its
+    # KDTree query needs and dies inside sklearn. min_cluster_size here is
+    # sized from the whole corpus because the remainder cannot be known
+    # before the zero-shot pass runs. config.ZEROSHOT_MIN_SIMILARITY is
+    # what keeps the remainder large enough, and why it is a separate,
+    # much higher key than the seed report's floor -- lowering it towards
+    # that floor is what reintroduces this.
     zeroshot = list(seed_phrases) or None
 
     topic_model = BERTopic(
         embedding_model=model, umap_model=umap_model, hdbscan_model=hdbscan_model,
         calculate_probabilities=False, verbose=False,
         zeroshot_topic_list=zeroshot,
-        zeroshot_min_similarity=config.SEED_TOPIC_MIN_SIMILARITY,
+        zeroshot_min_similarity=config.ZEROSHOT_MIN_SIMILARITY,
     )
-    topics, _probs = topic_model.fit_transform(texts, embeddings)
+    return topic_model, topic_model.fit_transform(texts, embeddings)[0]
+
+
+def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
+    """Cluster the corpus, optionally steered by the author's own phrases.
+
+    `seed_phrases` non-empty turns on BERTopic's zero-shot mode: each
+    phrase is embedded whole and documents close enough to one are
+    assigned to it by name, with the remainder clustered as before. The
+    phrase reaches BERTopic as a single string, never a term list, which
+    is what keeps "structural health monitoring" one topic rather than
+    three -- `seed_topic_list`, the older mechanism, matches against a
+    bag-of-words vocabulary and would decompose it.
+
+    **This half assigns each document exactly one topic**, because
+    `fit_transform` returns one topic id per document and always has.
+    The many-to-many view -- a paper under every phrase it matched, which
+    is what a corpus grouped by hand in Zotero actually looks like --
+    is chitragupta/enrich/topic_seeding.py's artefact, not this one's.
+    Neither replaces the other and both read the same embeddings.
+    """
+    import numpy as np
+
+    doc_texts = corpus_texts(docs)
+
+    if len(doc_texts) < 2:
+        raise ValueError("Need at least 2 documents with text to run BERTopic; "
+                         f"got {len(doc_texts)}")
+
+    _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
+
+    cache = document_embeddings(doc_texts, model)
+
+    citekeys = list(doc_texts)
+    texts = [doc_texts[d] for d in citekeys]
+    embeddings = np.array([cache[d] for d in citekeys])
+
+    topic_model, topics = _fit(texts, embeddings, model, seed_phrases)
 
     result = {
         "n_docs": len(texts),
         "assignments": dict(zip(citekeys, [int(t) for t in topics])),
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
     }
+    memberships = topic_memberships(topic_model, texts, citekeys, topics)
+    if memberships is not None:
+        result["memberships"] = memberships
     # Recorded only when there were seeds, so an unseeded run's
     # content/topics.json is byte-identical to what this stage wrote
     # before seeding existed. A reader that finds this key knows the

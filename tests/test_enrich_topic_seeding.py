@@ -218,3 +218,66 @@ class TestSharedSeamWithTopicModel:
         docs = make_docs(tmp_path, {"has_text": "words here"})
         docs.append(CorpusDoc(citekey="no_text", title="t", pdf_path=None))
         assert set(topic_model.corpus_texts(docs)) == {"has_text"}
+
+
+class TestPerPhraseRanking:
+    """The correction a real corpus forced: selection is each phrase's own
+    ranking, and the absolute floor is only a noise gate. Measured over
+    497 documents, "Standards" peaked at 0.295 corpus-wide and "Digital
+    Twin" had a median of 0.338 -- so one global cutoff returned nothing
+    for the first and half the corpus for the second."""
+
+    def test_a_phrase_is_truncated_to_the_limit(self, isolated_config):
+        docs = {f"doc{i:02d}": [1.0, i / 100.0] for i in range(10)}
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
+                                      min_similarity=0.0, max_papers=3)
+        assert len(result["topics"][0]["matches"]) == 3
+
+    def test_truncation_keeps_the_best_scoring(self, isolated_config):
+        """Ranked first, cut second -- the reverse would keep whichever
+        papers the ledger happened to return first."""
+        docs = {"far": [1.0, 0.9], "near": [1.0, 0.0], "mid": [1.0, 0.4]}
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
+                                      min_similarity=0.0, max_papers=2)
+        assert [m["citekey"] for m in result["topics"][0]["matches"]] == ["near", "mid"]
+
+    def test_considered_records_what_the_limit_cut(self, isolated_config):
+        """"3 shown" reads the same whether the 4th paper just missed or
+        the topic genuinely has 3; only the first justifies raising the
+        limit, so the artefact has to say which."""
+        docs = {f"doc{i:02d}": [1.0, 0.0] for i in range(10)}
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
+                                      min_similarity=0.0, max_papers=3)
+        assert result["topics"][0]["considered"] == 10
+        assert len(result["topics"][0]["matches"]) == 3
+
+    def test_the_floor_still_gates_a_meaningless_seed(self, isolated_config):
+        """A person's name left in the seed list by accident must return
+        nothing, not its N nearest neighbours -- the property that made
+        four real shelf-like collection names score zero."""
+        docs = {"a": [0.0, 1.0], "b": [0.0, 1.0]}
+        result = topic_seeding.assign(docs, {"noise": [1.0, 0.0]},
+                                      min_similarity=0.15, max_papers=25)
+        assert result["topics"][0]["matches"] == []
+        assert result["topics"][0]["considered"] == 0
+
+    def test_a_truncated_paper_is_not_counted_as_matched(self, isolated_config):
+        """Cut by the limit means not listed, so it belongs in `unmatched`
+        -- otherwise the coverage line counts papers nobody can see."""
+        docs = {"kept": [1.0, 0.0], "cut": [1.0, 0.1]}
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
+                                      min_similarity=0.0, max_papers=1)
+        assert result["unmatched"] == ["cut"]
+
+    def test_limit_and_floor_are_recorded(self, isolated_config):
+        result = topic_seeding.assign({"a": [1.0]}, {"x": [1.0]},
+                                      min_similarity=0.2, max_papers=7)
+        assert result["min_similarity"] == 0.2
+        assert result["max_papers"] == 7
+
+    def test_limit_defaults_to_config(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 2)
+        docs = {f"doc{i}": [1.0, 0.0] for i in range(5)}
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]}, min_similarity=0.0)
+        assert result["max_papers"] == 2
+        assert len(result["topics"][0]["matches"]) == 2

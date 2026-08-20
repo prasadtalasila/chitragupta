@@ -363,7 +363,12 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
-| `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.35` | `0.35` |
+| `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
+| `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
+| `zeroshot_min_similarity` | `ZEROSHOT_MIN_SIMILARITY` | number, cosine similarity | `0.55` | `0.55` |
+| `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
+| `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
+| `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `3` | `3` |
 
 **The two `embedding_model` columns differ on purpose, and the
 distinction matters.** The code's fallback is the smaller, faster
@@ -757,18 +762,51 @@ is the useful half for planning a draft: it is the part of your own
 corpus your own topic list does not yet describe. Add a phrase, run it
 again, and watch it shrink.
 
-`[enrich].seed_topic_min_similarity` (above) decides how long each
-topic's list is, and the same floor governs BERTopic's zero-shot
-assignment. It gates nothing -- no run fails on it and no draft is
-blocked by it.
+### How many papers a topic lists, and why it is a ranking
 
-The `0.35` default is lower than it looks like it should be, and
-deliberately so: a two-word phrase compared against a document-length
-passage does not reach the cosine that a sentence-against-sentence
-comparison would, so a "obviously about half" intuition of `0.5` silently
-drops real matches. On a small probe with `all-mpnet-base-v2`, clearly
-on-topic pairs scored `0.666` and `0.448` while the best off-topic pair
-reached only `0.200`. That is a probe rather than a benchmark -- enough
-to rule `0.5` out and to sit the default in a wide gap, not enough to
-call `0.35` optimal. If a topic's list looks too short, lower it and look
-again; that is what it is for.
+`[enrich].seed_topic_max_papers` (default `25`) is the selection rule:
+each phrase is ranked against **its own** scores and the best N kept.
+`[enrich].seed_topic_min_similarity` (default `0.15`) is only a noise
+floor beneath that.
+
+That ordering was a correction, not the first design, and a real corpus
+forced it. Measured over 497 documents against 14 real Zotero collection
+names, every phrase had its own score scale:
+
+| phrase | corpus-wide max | median |
+|---|---|---|
+| `Standards` | 0.295 | 0.069 |
+| `Digital Twin` | 0.669 | 0.338 |
+
+Under a single absolute cutoff of `0.35`, `Standards` -- a genuine
+25-paper collection -- returned **nothing at all**, while `Digital Twin`
+returned 238 papers, half the corpus. Both are useless answers and no
+single number fixes both, because the two distributions barely overlap.
+Ranking each phrase against itself is immune to that.
+
+The report always prints how many papers were *considered*, so a
+truncated list ("25 of 340 papers") never reads like a short one.
+
+What the floor does and does not do: of four deliberately shelf-like
+collection names in that run, the two with no semantic content --
+`Others` and a person's name, `Karen Wilcox` -- peaked at 0.143 and
+0.112 and correctly returned nothing. The other two, `Reviews and
+Surveys` and `opinions`, clear the floor and do return papers. A shelf
+label that is *also* a description of a paper is not distinguishable
+from a topic by score, and this floor does not try to be. Which names go
+in your list stays your decision.
+
+### The zero-shot bar is a separate key
+
+`[enrich].zeroshot_min_similarity` (default `0.55`) is the cosine at
+which BERTopic assigns a document to a seed topic outright, skipping
+clustering. It is deliberately much higher than the report floor and
+**must stay a separate setting**: the two were one key until a real
+corpus showed what that cost. At `0.15`, zero-shot assignment swallowed
+nearly the whole corpus, leaving HDBSCAN fewer remaining points than its
+own `min_samples` needs, and the stage died inside sklearn with `k must
+be less than or equal to the number of training points`. Unseeded runs
+were unaffected, which is exactly why a small-corpus test never found it.
+
+None of these gate anything: no run fails on them and no draft is
+blocked by one (`docs/HOUSE-STYLE.md` R3).

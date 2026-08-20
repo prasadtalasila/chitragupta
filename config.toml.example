@@ -383,26 +383,51 @@ docling_images = false
 #                                                            Default: 2.0
 docling_image_scale = 2.0
 
-# How close a document must sit to one of your seed topics, as cosine
-# similarity, to be listed under it. Seed topics are the phrases you
-# write in content/seed_topics.toml (start from
-# assets/style/topics.toml.example); `--stages seed-topics` matches them
-# against the corpus and `chitragupta corpus topics` prints the result.
+# --- Seed topics -------------------------------------------------------
+# Seed topics are phrases you write yourself in content/seed_topics.toml
+# (start from assets/style/topics.toml.example). `--stages seed-topics`
+# matches them against the corpus; `chitragupta corpus topics` prints the
+# result. With no such file nothing below applies: the bertopic stage
+# behaves exactly as it always has and the seed-topics stage is skipped.
+
+# How many papers one seed topic may list, best-scoring first.
 #
-# The same floor also decides BERTopic's zero-shot assignment in the
-# bertopic stage, since both measure the same thing in the same space
-# with the same model. Raise it for a shorter, stricter list under each
-# topic; lower it for a longer, looser one. It gates nothing -- no run
-# fails and no draft is blocked on it, it only decides how much you are
-# shown.
-#
-# Lower than intuition suggests, on purpose: a short phrase never reaches
-# the cosine against a document-length passage that a sentence-to-sentence
-# comparison would. On a small probe with all-mpnet-base-v2, clearly
-# on-topic pairs scored 0.45-0.67 and the best off-topic pair 0.20.
-#
-# Nothing here happens at all without a content/seed_topics.toml: with no
-# seed file the bertopic stage behaves exactly as it always has, and the
-# seed-topics stage reports itself skipped.
-#                                                           Default: 0.35
-seed_topic_min_similarity = 0.35
+# This is the selection rule. Each phrase is ranked against its *own*
+# scores, because measured over a real 497-document corpus every phrase
+# had its own scale -- "Standards" peaked at 0.295 corpus-wide while
+# "Digital Twin" had a median of 0.338, so one cutoff returned nothing for
+# the first and half the library for the second. Raise it when a topic is
+# genuinely broad and you want the tail; the report always says how many
+# papers were considered, so you can tell a truncated list from a short one.
+#                                                             Default: 25
+seed_topic_max_papers = 25
+
+# The noise floor beneath that ranking -- not the selection rule. It only
+# keeps a seed that means nothing (a person's name left in the list)
+# returning nothing rather than its 25 nearest neighbours.
+#                                                           Default: 0.15
+seed_topic_min_similarity = 0.15
+
+# A different job, which is why it is a different key and much higher:
+# the cosine at which BERTopic assigns a document to a seed topic
+# outright, skipping clustering. Sharing one key with the floor above
+# broke the bertopic stage outright on a real corpus -- zero-shot swallowed
+# nearly every document and left HDBSCAN too few points to cluster. Lower
+# this towards the floor and that returns.
+#                                                           Default: 0.55
+zeroshot_min_similarity = 0.55
+
+# Whether the bertopic stage also records which topics each document
+# belongs to, rather than only the single topic id BERTopic returns. A
+# paper genuinely about two things cannot be expressed by one id.
+#                                                            Default: true
+topic_distribution = true
+
+# How strong a topic must be relative to that document's own strongest to
+# count, and how many may be kept. Relative rather than absolute for the
+# same reason the seed ranking is: weights sum to about 1 across however
+# many topics were found, so a fixed floor means something different at 7
+# topics than at 70.
+#                                                       Defaults: 0.5 / 3
+topic_membership_ratio = 0.5
+topic_membership_max = 3

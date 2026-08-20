@@ -126,10 +126,18 @@ def isolated_config(tmp_path, monkeypatch):
     # current setting. Tests that care set it explicitly.
     monkeypatch.setattr(config, "DOCLING_IMAGES", False)
     monkeypatch.setattr(config, "DOCLING_IMAGE_SCALE", 2.0)
-    # Pinned for the same reason: this threshold decides which documents
-    # land under a seed phrase, so a test asserting a match would
-    # otherwise pass or fail on the developer's own config.toml.
+    # Pinned for the same reason: these decide which documents land under
+    # a seed phrase and under a discovered topic, so a test asserting a
+    # match would otherwise pass or fail on the developer's own
+    # config.toml. The 0.5 floor is deliberately higher than the shipped
+    # 0.15 so a test can place a vector below it without needing a
+    # near-orthogonal pair to do it.
     monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
+    monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 25)
+    monkeypatch.setattr(config, "ZEROSHOT_MIN_SIMILARITY", 0.55)
+    monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", True)
+    monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.5)
+    monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 3)
     return config
 
 
