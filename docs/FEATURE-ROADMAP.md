@@ -12,11 +12,18 @@ layout, and closes with one nice-to-have.
 Two upstreams are drawn on, both Apache-2.0:
 [OpenScholar](https://github.com/AkariAsai/OpenScholar) for the
 synthesis half, [PaperBanana](https://github.com/dwzhu-pku/PaperBanana)
-for the figure half. The project owner approved copying from both; a
-later question asked what declining that approval would cost, and
-[the borrowing posture](#the-borrowing-posture-inspiration-or-copy) prices
-it. **The recommendation there is inspiration-only**, because the measured
-delta is about one PR and the licence risk goes to zero.
+for the figure half.
+
+> **Nothing is copied from either.** Both are taken as inspiration and
+> attributed in [INSPIRATION.md](INSPIRATION.md), under that file's
+> existing rule -- *"Attribute the idea, and never copy the text."*
+
+That is a settled decision, not an open option: copying was offered and
+declined once the cost of declining had been measured at roughly one PR.
+[The borrowing posture](#the-borrowing-posture-inspiration-or-copy) has
+the working. Every item below is written to it -- where an upstream
+artefact is quoted in this document, it is quoted to say *what to learn
+from it*, never as text to paste.
 
 **Written for** someone picking the next PR up. It assumes
 [ARCHITECTURE.md](ARCHITECTURE.md) for the four layers,
@@ -171,25 +178,30 @@ splits again on `"\n### References"`), because its own generation prompt
 says *"you do not need to add Reference list by yourself"*. So
 [A4](#a4-the-evidence-appendix) is **our design, read off the sample
 output** -- there is nothing upstream to port for it. What the repository
-does supply is the prompt text behind property 1, which
-[B2](#b2-require-multi-source-paragraphs) copies.
+does supply is a prompt that demonstrably asks for property 1, which is
+why [B2](#b2-require-multi-source-paragraphs) can point at prior art for
+the behaviour it wants rather than arguing for it from scratch.
 
 ## The borrowing posture: inspiration, or copy?
 
-The owner approved copying from both Apache-2.0 upstreams, then asked
-what it would cost to decline that approval and keep
+**Decided: inspiration only, nothing copied.** This section is kept
+because the decision was a measured one and the measurement is the
+useful part -- not to leave the question open.
+
+Copying from both Apache-2.0 upstreams was offered. The question asked
+was what it would cost to decline, and keep
 [INSPIRATION.md](INSPIRATION.md)'s standing rule intact -- *"Attribute
 the idea, and never copy the text."*
 
 **Answer: about one PR's worth of work, concentrated almost entirely in
-one item.** The reason is that very little of what this roadmap takes is
-*text or code* in the first place. What it mostly takes is architecture,
-ordering and defect vocabulary, and an idea is inspiration by
-definition. Priced item by item:
+one item** -- and it was judged worth paying. The reason is that very
+little of what this roadmap takes is *text or code* in the first place.
+What it mostly takes is architecture, ordering and defect vocabulary,
+and an idea is inspiration by definition. Priced item by item:
 
 | Item | What would be copied | Cost of writing it instead |
 |---|---|---|
-| [A0](#a0-record-the-licence-position) | -- | **Negative.** No `NOTICE`, no per-file provenance headers. Becomes two INSPIRATION.md entries in the pattern that file already uses for its CC-BY-NC precedent |
+| [A0](#a0-record-the-attribution-done) | -- | **Negative.** No `NOTICE`, no per-file provenance headers; two INSPIRATION.md entries instead, in the pattern that file already uses for its CC-BY-NC precedent |
 | [A2](#a2-split-support-into-claim-and-quote) | Two prompt sentences | **~0.** They are generic ("summarize rather than copy"); house style differs anyway |
 | [B1](#b1-cap-passages-per-source) | ~12 lines of dict-counting | **~0.** Already being rewritten -- keyed on citekey rather than title, and with the off-by-one fixed. Only the cap-then-truncate *ordering* has value, and that is an idea |
 | [B2](#b2-require-multi-source-paragraphs) | `prompts_w_references` | **Small.** Its citation mechanics are positional `[n]` against a flat blob, so a substantial rewrite was required regardless. What is lost is validated wording |
@@ -212,26 +224,27 @@ considered:
   composition) is valuable *because* it is about LaTeX.
 - **(b) Re-run their synthesis method** -- 50 venue figures through
   three vision calls and one synthesis call -- to generate our own
-  guide. The method is a method, so this is inspiration rather than
-  copying, and it is cheap. Declined as the default because its output
-  is a generated artefact checked into `docs/`, which then needs a
-  provenance line to avoid reading as hand-authored rules. Worth
+  guide. A method is not text, so this stays within the
+  inspiration-only decision, and it is cheap. Declined as the default
+  because its output is a generated artefact checked into `docs/`, which
+  then needs a provenance line to avoid reading as hand-authored rules. Worth
   revisiting if (a)'s catalogue comes out thin.
 
-### Recommendation
+### The outcome
 
-**Take the inspiration-only position.** The delta is one PR, the licence
-surface goes to zero, and [SOUL.md](../SOUL.md)'s objection to
-manufacturing support is pointed at this project's own provenance as
-much as at a draft's -- [INSPIRATION.md](INSPIRATION.md) says so
-explicitly. A roadmap that relaxes that rule to save roughly one PR is a
-bad trade for a project whose entire proposition is that it does not cut
-this kind of corner.
+**Inspiration only.** The delta is one PR, the licence surface goes to
+zero, and [SOUL.md](../SOUL.md)'s objection to manufacturing support is
+pointed at this project's own provenance as much as at a draft's --
+[INSPIRATION.md](INSPIRATION.md) says so explicitly. Relaxing that rule
+to save roughly one PR would be a bad trade for a project whose entire
+proposition is that it does not cut this kind of corner.
 
-Every item below is written to the copy-approved position, since that is
-what was approved when it was drafted. Adopting inspiration-only changes
-the wording of A0, B2 and D1 and nothing else structural; each of those
-three says what changes.
+Concretely, for whoever builds these: **you may read either upstream,
+and you may not paste from it.** Where this document quotes a prompt, a
+veto list or a cap, the quotation is evidence for a design claim -- this
+is what they found worth saying -- and the implementation is written
+here from scratch. D1 is the one item where that costs real effort, and
+it says so.
 
 ## The decision that gates part of this
 
@@ -310,9 +323,10 @@ spaCy model at import that the module never uses, and reads
 prompt strings; rewrite the imports. Of everything proposed here, only
 [B4](#b4-cross-encoder-reranking) genuinely needs the ML stack.
 
-**4. Attribution survives the copy.** Apache-2.0 §4 requires retaining
-notices when redistributing inside an MIT-licensed project. Moot under
-the inspiration-only recommendation above.
+**4. Attribution is owed for the idea, not for the text.** Nothing is
+copied, so Apache-2.0 §4's notice obligations never attach --
+[INSPIRATION.md](INSPIRATION.md) carries both upstreams instead, which
+is what that file exists for.
 
 **5. `R1`-`R11` bind every new review aid and every unattended edit.**
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) states eleven obligations,
@@ -350,19 +364,22 @@ built and withdrawn.
 The highest-value theme, and the one the request is actually about.
 A1 is cheap and immediate; A2-A4 are the structural fix.
 
-### A0: record the licence position
+### A0: record the attribution (done)
 
-Update [INSPIRATION.md](INSPIRATION.md), whose current standing rule is
-*"Attribute the idea, and never copy the text."* That rule is now
-relaxed for two named Apache-2.0 upstreams and must say so, with a
-`NOTICE` file carrying both projects' copyright and licence text, and
-per-file provenance headers on anything copied. Merge this **with or
-before** the first PR that copies code (A3 or D2).
+[INSPIRATION.md](INSPIRATION.md) carries both upstreams under its
+existing rule, in the same shape it already uses for its CC-BY-NC
+precedent: what was taken, and what was deliberately not.
 
-Size: XS. Touches `docs/INSPIRATION.md`, new `NOTICE`. Note that
-`scripts/release.py`'s archive is a denylist -- a new root-level
-`NOTICE` ships automatically, which is correct here, but check
-`EXCLUDE_TOP_LEVEL` deliberately rather than by accident.
+**No `NOTICE` file and no per-file provenance headers**, because nothing
+is copied -- Apache-2.0 §4's notice obligations attach to
+redistribution, and reading a repository and writing your own
+implementation is not that. That is the whole of what the
+inspiration-only decision saves here, and it is why this item shrank
+from a PR to two entries.
+
+Size: none, shipped with this document. Listed so the sequence still
+reads correctly, and so nobody re-adds a `NOTICE` on the assumption one
+was forgotten.
 
 ### A1a: make the verbatim scan a required step
 
@@ -465,7 +482,11 @@ The second is the stronger of the two and sits in a prompt variant
 upstream defines but never wires up -- so it is available, unused, and
 exactly the instruction this project needs.
 
-Size: M. Depends on: A0 only if the prompt text above is copied.
+Those two sentences are quoted here as evidence that the instruction
+is worth giving, and as a target to beat. Write this project's own, in
+its own register; do not paste theirs.
+
+Size: M. Depends on: nothing.
 
 ### A3: extraction at the retrieval boundary
 
@@ -515,7 +536,7 @@ no new dependency -- and it is the precondition that makes B2 achievable
 rather than aspirational, because a drafter cannot cite two sources per
 paragraph if retrieval handed it six passages from one paper.
 
-**The ordering is the whole trick, and it is worth copying exactly.**
+**The ordering is the whole trick, and it is the part worth learning.**
 Upstream applies the cap to the *full reranked list*, before truncating
 to the top *n*. Dropping paper A's 4th-best passage therefore *promotes*
 a passage from paper B into the window the drafter sees. Cap-then-truncate
@@ -549,9 +570,10 @@ R3 exists to keep out of a loop. Note honestly in the
 report that a thin corpus legitimately produces single-source
 paragraphs; this counts, it does not judge.
 
-**This is the one place with directly copyable upstream text.**
+**Prior art, quoted as evidence rather than as source.**
 `src/instructions.py::prompts_w_references` already instructs exactly
-this behaviour, and its key sentence is worth taking close to verbatim:
+this behaviour, and its key sentence shows the shape the instruction
+has to take:
 
 > Rather than simply summarizing multiple papers one by one, try to
 > organize your answers based on similarities and differences between
@@ -564,8 +586,8 @@ response."* Adapt the citation mechanics, though: upstream cites by
 silently changes what every citation means. This project has real
 citekeys and must keep using them.
 
-Size: M. Depends on: B1 in practice. Carries A0 (prompt text is the
-attributable contribution).
+Size: M. Depends on: B1 in practice. The prompt is written here, not
+lifted; [INSPIRATION.md](INSPIRATION.md) carries the credit.
 
 ### B3: section thesis with source count
 
@@ -585,10 +607,13 @@ docstring already anticipates the swap, and
 `search(query, k)` shape. Better-ordered passages mean fewer passages
 are needed, which compounds with B1.
 
-Behind the `enrich` extra per constraint 3. This is the first item that
-copies OpenScholar code in bulk, so it carries A0.
+Behind the `enrich` extra per constraint 3. Nothing is taken from
+upstream here in any case: what ships there is a single
+`compute_score` call against a library, and the surrounding machinery is
+the dead code this roadmap already declines. The work is choosing a
+cross-encoder and wiring it to the existing `search(query, k)` shape.
 
-Size: M-L. Depends on: A0, B1.
+Size: M-L. Depends on: B1.
 
 ### B5: pre-gate self-feedback loop
 
@@ -781,8 +806,17 @@ chains with `positioning`, `matrix`, stacked `fit` layers, cyclic edges
 with `bend`, a tree, a star. Choosing one first converts "place these
 nine things" into a constrained problem.
 
-**2. Adopt the readability veto list as a pre-flight checklist.** The
-rubric's readability vetoes are concrete defects rather than taste:
+**2. Write a pre-flight defect checklist, informed by the rubric's
+readability vetoes.** **This is the one item the inspiration-only
+decision actually costs**, and the cost is the catalogue: upstream's
+vetoes are an enumerated list of concrete defects, and ours has to be
+enumerated too, in our own words and for LaTeX rather than for raster
+output. Much of theirs would not survive the translation anyway -- emoji
+iconography, "3D isometric cubes", fill-opacity expressed in image
+terms -- so the rewrite is a better artefact and not merely a safer one.
+
+Their vetoes are quoted below to show what the finished catalogue has to
+cover. They are concrete defects rather than taste:
 occlusion and overlap; "chaotic routing" (arrows forming spaghetti loops
 or crossing unnecessarily); illegible or inconsistently varying font
 sizes; low contrast; and -- the one worth quoting -- inefficient
@@ -797,7 +831,7 @@ situation here and not the situation PaperBanana itself is in. It is
 also mechanically checkable, which is what [D2](#d2-deterministic-tikz-layout-check)
 does with it.
 
-Take the *conciseness* vetoes in the same pass. One is a hard number --
+Cover the *conciseness* vetoes in the same pass. One is a hard number --
 a node whose text runs past about fifteen words is flagged -- and one is
 "literal copying", a "box-ified copy-paste of the Method Section text
 with no visual abstraction". That second one is Theme A's problem
@@ -806,8 +840,9 @@ launder borrowed wording past every detector in
 [PLAGIARISM.md](PLAGIARISM.md), because §10 already keeps citekeys out
 of figure files and the gate does not follow `\input`.
 
-The colour/shape/typography guide is still worth taking, just for what
-it is: a vocabulary of TikZ style keys (zone fills at 10-15% opacity via
+The colour/shape/typography guide is still worth reading, for what it
+teaches rather than for its words: it suggests a vocabulary of TikZ
+style keys (zone fills at 10-15% opacity via
 the `backgrounds` layer, dashed for auxiliary flow against solid for
 forward flow, sans-serif labels against serif-italic maths). The
 sans/serif split is free in LaTeX and is a rule PaperBanana's own raster
@@ -902,10 +937,12 @@ advisory, never in a default path, and explicitly outside the
 byte-identical rule -- which is why it is last. Skip it entirely if
 D1-D3 prove sufficient.
 
-If it is built, PaperBanana's loop shape is sound and worth copying: at
-most three rounds, a JSON `{critique, revised}` payload, an early exit
-on a literal `"No changes needed."` sentinel, and keeping the last good
-render on failure. Two further borrowings matter more than they look:
+If it is built, PaperBanana's loop *shape* is sound and worth learning
+from -- at most three rounds, a structured `{critique, revised}` payload,
+an early exit on an explicit "nothing to change" sentinel, and keeping
+the last good render on failure. That is architecture, which is the
+kind of thing this roadmap takes. Two further lessons matter more than
+they look:
 
 - **The calibration clause.** *"Readability is a baseline requirement,
   not a differentiator… Only severe violations of the Veto Rules
@@ -1065,7 +1102,7 @@ are marked.
 | 9 | [A4](#a4-the-evidence-appendix) Evidence appendix | A | M | A2 |
 | 10 | [D2](#d2-deterministic-tikz-layout-check) deterministic TikZ layout check | D | M-L | D1 |
 | 11 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 12 | [A0](#a0-record-the-licence-position) borrowing position | A | XS | before any borrowing |
+| 12 | [A0](#a0-record-the-attribution-done) borrowing position | A | XS | before any borrowing |
 | 13 | [B4](#b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
 | 14 | [F2](#f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
 | 15 | [D3](#d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 |
