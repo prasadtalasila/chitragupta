@@ -565,6 +565,25 @@ SEED_TOPIC_MIN_SIMILARITY = _get_float(
 SEED_TOPIC_MAX_PAPERS = int(_get_float(
     "SEED_TOPIC_MAX_PAPERS", "enrich", "seed_topic_max_papers", default=25,
 ))
+# Whether the words a topic is *named* by exclude the corpus's own
+# authors. Names, not clusters: this never touches how documents are
+# grouped, only how the resulting group is described.
+#
+# On by default because the failure it fixes was severe and measured --
+# `werner kritzinger, fraunhofer austria` was a top-three topic by
+# membership, which is a person and an institution rather than a subject.
+# It is not fixable by dropping bibliographies: `kritzinger` is in 101 of
+# 497 documents and 55 still carry it after the reference list goes,
+# because the papers are discussing his taxonomy in prose.
+#
+# The cost, measured rather than assumed: of 1,277 distinct surnames in
+# this corpus's bibliography, five are also ordinary English words
+# (black, brown, can, park, wood) and leave the label vocabulary too.
+# Turn this off for a corpus where that trade is wrong.
+TOPIC_EXCLUDE_AUTHOR_NAMES = _get_bool(
+    "TOPIC_EXCLUDE_AUTHOR_NAMES", "enrich", "topic_exclude_author_names", default=True,
+)
+
 # How fine the emergent topic structure is. The two knobs that decide it,
 # in config rather than hardcoded, because the right depth is a property
 # of the corpus and its owner rather than of this code.
