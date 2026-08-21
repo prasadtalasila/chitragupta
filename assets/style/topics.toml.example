@@ -1,0 +1,55 @@
+# A template for your own seed-topic list -- copy it to
+# content/seed_topics.toml (gitignored and per-host, the same footing as
+# config.toml itself, not this directory, which ships with the project)
+# and replace these with your own field's topics.
+#
+# Each entry is one topic, written the way you would say it. **A phrase
+# is never split**: "structural health monitoring" is one topic, not
+# three, and it is embedded whole rather than looked up word by word --
+# so write the phrase you mean rather than the keywords you would type
+# into a search box.
+#
+# Where to get your list: if your Zotero export carries collection
+# labels, your own collection names are the best possible starting point,
+# because they are groupings you already trust.
+#
+#     chitragupta corpus ledger --collections
+#
+# Paste in the ones that read as topics and leave out the ones that read
+# as shelves -- "Digital twins" belongs here, "Reading list", "To read"
+# and "2024 submissions" do not. Nothing can tell those apart
+# mechanically, which is why this file is yours to write rather than
+# something generated for you.
+#
+# Then match them against the corpus and read the result:
+#
+#     chitragupta enrich --stages seed-topics
+#     chitragupta corpus topics
+#
+# Write as many as you like. There is no limit, and -- less obviously --
+# no cost: seed topics are matched against the corpus *after* the topic
+# model has clustered it, never fed into the clustering, so naming a
+# hundred topics still leaves every topic the corpus had of its own to be
+# discovered. (That was not always true. Routing seeds through BERTopic's
+# zero-shot mode traded roughly three discovered topics for every named
+# one; the emergent count fell from 81 to 53 on nine phrases.)
+#
+# So the useful habit is: name what you already care about, then read what
+# the corpus had that you did not name. `chitragupta corpus topics` ends
+# with the papers no seed of yours matched, and content/topics.json holds
+# the topics nobody seeded. Neither shrinks because your list grew.
+#
+# Nothing here is a commitment. A paper can appear under several of these
+# topics at once, or under none. See docs/CONFIG.md for the threshold and
+# the per-topic list length.
+
+topics = [
+    "digital twin",
+    "structural health monitoring",
+    "model predictive control",
+    "cyber-physical systems",
+    # Comments are why this file is TOML and not JSON: a seed list is
+    # something you revise, and next month you will want to know why a
+    # phrase is on it.
+    "surrogate modelling",  # added after the March review; overlaps "digital twin" by design
+]

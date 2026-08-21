@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config
-from chitragupta.enrich import embed_index, topic_model
+from chitragupta.enrich import doc_vectors, embed_index, topic_model
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -43,15 +43,24 @@ class FakeTopicInfo:
 
 class FakeBERTopic:
     last_kwargs = None
+    # What fit_transform() hands back, so a test can put the model in the
+    # all-outlier state approximate_distribution() cannot answer for.
+    topics_returned = None
 
     def __init__(self, **kwargs):
         FakeBERTopic.last_kwargs = kwargs
+        # Real BERTopic keeps the clusterer it was handed; topic_memberships
+        # reads it back off the fitted model to ask for soft memberships.
+        self.hdbscan_model = kwargs.get("hdbscan_model")
 
     def fit_transform(self, texts, embeddings):
+        if FakeBERTopic.topics_returned is not None:
+            return list(FakeBERTopic.topics_returned), None
         return [-1 for _ in texts], None
 
     def get_topic_info(self):
         return FakeTopicInfo()
+
 
 
 class FakeArray(list):
@@ -72,6 +81,7 @@ def fake_bertopic_stack(monkeypatch):
     FakeUMAP.last_kwargs = None
     FakeHDBSCAN.last_kwargs = None
     FakeBERTopic.last_kwargs = None
+    FakeBERTopic.topics_returned = None
     FakeModel.encode_call_texts = []
 
     umap_module = types.ModuleType("umap")
@@ -147,15 +157,38 @@ class TestRunTopicModel:
         assert FakeUMAP.last_kwargs["n_components"] == expected_n_components
         assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == expected_min_cluster_size
 
-    def test_scaling_formula_for_large_corpus_caps_at_defaults(self, isolated_config, fake_bertopic_stack, tmp_path):
-        # n_docs=30: n_neighbors capped at 15, n_components capped at 5,
-        # min_cluster_size capped at 10.
+    def test_a_large_corpus_gets_the_configured_granularity(self, isolated_config,
+                                                            fake_bertopic_stack, tmp_path):
+        """The defect this replaced: every parameter saturated at n_docs>=20,
+        so a 497-document corpus got the settings written for a 20-document
+        one and could never yield more than ~13 topics however large it grew.
+        Past the small-corpus clamps, config decides."""
         docs = make_docs_with_text(30, tmp_path)
         topic_model.run_topic_model(docs)
 
+        assert FakeUMAP.last_kwargs["n_neighbors"] == config.TOPIC_NEIGHBORS
+        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == config.TOPIC_MIN_CLUSTER_SIZE
+        assert FakeHDBSCAN.last_kwargs["min_samples"] == config.TOPIC_MIN_SAMPLES
+
+    def test_depth_is_tunable_without_touching_code(self, isolated_config,
+                                                   fake_bertopic_stack, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 8)
+        monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 15)
+        topic_model.run_topic_model(make_docs_with_text(40, tmp_path))
+        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == 8
         assert FakeUMAP.last_kwargs["n_neighbors"] == 15
-        assert FakeUMAP.last_kwargs["n_components"] == 5
-        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == 10
+
+    def test_a_small_corpus_still_clamps_below_the_configured_value(self, isolated_config,
+                                                                   fake_bertopic_stack,
+                                                                   tmp_path, monkeypatch):
+        """The clamps only ever reduce. UMAP's spectral initialisation
+        genuinely fails when n_neighbors >= n_samples, which is what the
+        original formula existed for and what must survive the change."""
+        monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 50)
+        monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 50)
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert FakeUMAP.last_kwargs["n_neighbors"] == 5
+        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == 3
 
     def test_writes_result_and_returns_assignments(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
@@ -181,10 +214,10 @@ class TestEmbeddingCache:
     def test_second_run_with_unchanged_docs_encodes_nothing(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
         topic_model.run_topic_model(docs)
-        assert len(FakeModel.encode_call_texts) == 1  # one batch call for all 6 new docs
+        assert len(FakeModel.encode_call_texts) == 6  # one call per new doc, carrying its chunks
 
         topic_model.run_topic_model(docs)
-        assert len(FakeModel.encode_call_texts) == 1  # no second call -- every doc was cache-hit
+        assert len(FakeModel.encode_call_texts) == 6  # no further calls -- every doc was cache-hit
 
     def test_changed_doc_triggers_encode_for_only_that_doc(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
@@ -193,8 +226,10 @@ class TestEmbeddingCache:
         Path(docs[0].text_path).write_text("completely different content now")
         topic_model.run_topic_model(docs)
 
-        assert len(FakeModel.encode_call_texts) == 2
-        assert FakeModel.encode_call_texts[1] == ["completely different content now"]
+        # One encode() call per stale document, carrying that document's
+        # chunks -- pooling replaced the single batched call over raw texts.
+        assert len(FakeModel.encode_call_texts) == 7  # 6 first run, 1 re-encode
+        assert "completely different content now" in " ".join(FakeModel.encode_call_texts[-1])
 
     def test_cache_persisted_to_disk_between_calls(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
@@ -216,14 +251,13 @@ class TestEmbeddingCache:
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-a")
         docs = make_docs_with_text(6, tmp_path)
         topic_model.run_topic_model(docs)
-        assert len(FakeModel.encode_call_texts) == 1
-        assert len(FakeModel.encode_call_texts[0]) == 6
+        assert len(FakeModel.encode_call_texts) == 6  # one call per document
 
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-b")
         topic_model.run_topic_model(docs)
 
-        assert len(FakeModel.encode_call_texts) == 2
-        assert len(FakeModel.encode_call_texts[1]) == 6  # every doc re-embedded, not just changed ones
+        # Every doc re-embedded, not just changed ones: 6 more calls.
+        assert len(FakeModel.encode_call_texts) == 12
 
         cache = json.loads(isolated_config.TOPIC_EMBED_CACHE_PATH.read_text())
         assert all(v["model"] == "model-b" for v in cache.values())
@@ -242,5 +276,303 @@ class TestEmbeddingCache:
         )
         topic_model.run_topic_model(docs + [new_doc])
 
-        assert len(FakeModel.encode_call_texts) == 2
-        assert FakeModel.encode_call_texts[1] == ["a brand new document"]
+        assert len(FakeModel.encode_call_texts) == 7  # 6 + only the new one
+        assert FakeModel.encode_call_texts[-1] == ["a brand new document"]
+
+
+class TestSeedsDoNotSteerTheClustering:
+    """Seeds are matched separately, never fed to BERTopic. That is what
+    makes the seed list unlimited: measured on the real corpus, routing
+    nine phrases through `zeroshot_topic_list` took the emergent topic
+    count from 81 to 53, so every named topic cost roughly three
+    discovered ones."""
+
+    def test_bertopic_is_never_given_a_zeroshot_list(self, isolated_config,
+                                                     fake_bertopic_stack, tmp_path):
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert "zeroshot_topic_list" not in FakeBERTopic.last_kwargs
+        assert "zeroshot_min_similarity" not in FakeBERTopic.last_kwargs
+
+    def test_the_run_takes_no_seed_argument_at_all(self, isolated_config,
+                                                   fake_bertopic_stack, tmp_path):
+        """A signature that cannot accept seeds is the strongest form of
+        "seeds do not steer this"."""
+        import inspect
+
+        assert list(inspect.signature(topic_model.run_topic_model).parameters) == ["docs"]
+
+    def test_one_topic_per_document_is_still_all_bertopic_gives(self, isolated_config,
+                                                                fake_bertopic_stack, tmp_path):
+        """Why topic_memberships exists beside `assignments`."""
+        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert all(isinstance(v, int) for v in result["assignments"].values())
+
+
+class TestDocumentEmbeddingsSeam:
+    def test_returns_one_vector_per_citekey(self, isolated_config,
+                                            fake_bertopic_stack, tmp_path):
+        docs = make_docs_with_text(3, tmp_path)
+        texts = doc_vectors.corpus_texts(docs)
+        vectors = doc_vectors.document_embeddings(texts, FakeModel())
+        assert set(vectors) == set(texts)
+
+    def test_reuses_the_cache_across_callers(self, isolated_config,
+                                             fake_bertopic_stack, tmp_path):
+        """topic_seeding.py scores against the same vectors this stage
+        clusters, so the second caller must encode nothing."""
+        docs = make_docs_with_text(3, tmp_path)
+        texts = doc_vectors.corpus_texts(docs)
+        model = FakeModel()
+        doc_vectors.document_embeddings(texts, model)
+        FakeModel.encode_call_texts = []
+        doc_vectors.document_embeddings(texts, model)
+        assert FakeModel.encode_call_texts == []
+
+
+class FakeClusterer:
+    """Stands in for a fitted HDBSCAN. `labels_` are HDBSCAN's own cluster
+    ids, deliberately *not* BERTopic's topic ids -- BERTopic renumbers by
+    size, and conflating the two is the bug these tests exist to catch."""
+
+    def __init__(self, labels):
+        self.labels_ = labels
+
+
+class Placeholder:
+    """What BERTopic leaves in hdbscan_model on a zero-shot run: a
+    BaseCluster carrying no labels_ at all."""
+
+
+class TestTopicMemberships:
+    """A document can belong to more than one topic BERTopic *discovered*,
+    not only to more than one phrase a person wrote.
+
+    The soft-membership matrix is supplied directly rather than computed,
+    so these pin the selection and the id translation. That the numbers
+    themselves are right is HDBSCAN's business, and was checked against
+    the real library on 497 documents: its own assignment appears in the
+    memberships it produces for 100% of them, against 30-45% for every
+    centroid rule tried first.
+    """
+
+    def soft(self, monkeypatch, matrix):
+        monkeypatch.setattr(topic_model, "_soft_membership", lambda clusterer: matrix)
+
+    def test_a_document_between_two_topics_belongs_to_both(self, isolated_config,
+                                                           monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.5, 0.5]])
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["solo", "spans"], [0, 1])
+        assert len(got["spans"]) == 2
+        assert list(got["solo"]) == ["0"]
+
+    def test_hdbscan_cluster_ids_are_translated_to_topic_ids(self, isolated_config,
+                                                             monkeypatch):
+        """BERTopic renumbers topics by size -- on the real corpus its
+        cluster 0 was topic 6. Reporting the cluster id would name the
+        wrong topic in every artefact."""
+        self.soft(monkeypatch, [[0.9, 0.1], [0.2, 0.8]])
+        got = topic_model.topic_memberships(
+            FakeClusterer([0, 1]), ["a", "b"], [6, 8])
+        assert list(got["a"])[0] == "6"
+        assert list(got["b"])[0] == "8"
+
+    def test_a_weaker_second_topic_is_dropped(self, isolated_config, monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
+        assert list(got["a"]) == ["0"]
+
+    def test_the_ratio_decides_how_weak_a_second_may_be(self, isolated_config, monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.05)
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
+        assert len(got["a"]) == 2
+
+    def test_the_cap_bounds_a_plural_document(self, isolated_config, monkeypatch):
+        self.soft(monkeypatch, [[0.4, 0.3, 0.3], [0.1, 0.9, 0.0], [0.0, 0.1, 0.9]])
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 2)
+        got = topic_model.topic_memberships(FakeClusterer([0, 1, 2]), ["a", "b", "c"],
+                                            [0, 1, 2])
+        assert len(got["a"]) == 2
+
+    def test_a_seeded_run_has_no_clusterer_to_ask(self, isolated_config):
+        """BERTopic swaps in a BaseCluster placeholder when
+        zeroshot_topic_list is set. None, not an empty dict: the question
+        is unanswerable, not answered with nothing."""
+        assert topic_model.topic_memberships(Placeholder(), ["a"], [0]) is None
+
+    def test_an_all_outlier_corpus_has_no_cluster_to_belong_to(self, isolated_config):
+        assert topic_model.topic_memberships(FakeClusterer([-1, -1]), ["a", "b"],
+                                             [-1, -1]) is None
+
+    def test_a_document_with_no_positive_strength_is_omitted(self, isolated_config,
+                                                             monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.0, 0.0]])
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
+        assert "b" not in got
+
+    def test_switching_it_off_records_nothing(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", False)
+        assert topic_model.topic_memberships(FakeClusterer([0]), ["a"], [0]) is None
+
+    def test_it_reaches_the_artefact(self, isolated_config, fake_bertopic_stack,
+                                     tmp_path, monkeypatch):
+        """Wired into run_topic_model(), with the scalar surviving beside
+        it rather than being replaced."""
+        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
+        monkeypatch.setattr(FakeHDBSCAN, "labels_", [0, 1], raising=False)
+        docs = make_docs_with_text(2, tmp_path)
+        FakeBERTopic.topics_returned = [0, 1]
+        result = topic_model.run_topic_model(docs)
+        assert result["memberships"]["doc0"] == {"0": 0.9}
+        assert result["assignments"] == {"doc0": 0, "doc1": 1}
+
+
+class TestSoftMembershipSeam:
+    """The one place the real hdbscan library is exercised rather than
+    stubbed. Small and real on purpose: everything above it supplies a
+    matrix, so if `all_points_membership_vectors` ever changes shape or
+    name, this is what says so."""
+
+    def test_real_hdbscan_yields_a_row_per_point(self, isolated_config):
+        import hdbscan
+        import numpy as np
+
+        # Two clearly separated blobs, min_cluster_size low enough that a
+        # handful of points is a legitimate cluster rather than noise.
+        points = np.array([[0.0, 0.0], [0.1, 0.1], [0.0, 0.2], [0.2, 0.0],
+                           [9.0, 9.0], [9.1, 9.1], [9.0, 9.2], [9.2, 9.0]])
+        clusterer = hdbscan.HDBSCAN(min_cluster_size=3, prediction_data=True).fit(points)
+        soft = topic_model._soft_membership(clusterer)
+        assert soft.shape[0] == len(points)
+        # Always 2-D, even for a single cluster -- topic_memberships zips
+        # each row against the column list and a 1-D return would zip the
+        # wrong axis silently.
+        assert soft.ndim == 2
+
+
+class TestWholeDocumentPooling:
+    """Koh et al. (ACM CSUR 55:8) Finding 4: in long documents salient
+    content is scattered, so embedding a prefix embeds the wrong part.
+    Measured here, the prefix was ~2% of each paper -- heading, authors,
+    abstract opening -- which is why these vectors are pooled over the
+    whole document instead."""
+
+    def whitespace_doc(self, tmp_path, citekey):
+        path = tmp_path / f"{citekey}.txt"
+        path.write_text("   \n\t ", encoding="utf-8")
+        return CorpusDoc(citekey=citekey, title=citekey,
+                         pdf_path=None, text_path=str(path))
+
+    def test_every_chunk_reaches_the_model(self, isolated_config, fake_bertopic_stack,
+                                           tmp_path, monkeypatch):
+        """The whole document, not its first 512 word-pieces: a text long
+        enough to chunk must arrive as several chunks, not one string."""
+        monkeypatch.setattr(embed_index, "chunk_text",
+                            lambda text, **kw: ["chunk one", "chunk two", "chunk three"])
+        path = tmp_path / "long.txt"
+        path.write_text("word " * 2000, encoding="utf-8")
+        docs = [CorpusDoc(citekey="long", title="L", pdf_path=None, text_path=str(path)),
+                *make_docs_with_text(2, tmp_path)]
+        topic_model.run_topic_model(docs)
+        assert ["chunk one", "chunk two", "chunk three"] in FakeModel.encode_call_texts
+
+    def test_the_vector_is_the_mean_of_its_chunks(self, isolated_config, fake_bertopic_stack,
+                                                  monkeypatch):
+        """FakeModel encodes a string to its length, so three chunks of
+        10/20/30 characters must pool to 20."""
+        monkeypatch.setattr(embed_index, "chunk_text",
+                            lambda text, **kw: ["x" * 10, "x" * 20, "x" * 30])
+        got = doc_vectors.pooled_embedding("anything", FakeModel())
+        assert got == [20.0]
+
+    def test_text_that_chunks_to_nothing_has_no_vector(self, isolated_config):
+        assert doc_vectors.pooled_embedding("   \n\t ", FakeModel()) is None
+
+    def test_such_a_document_is_dropped_rather_than_zeroed(self, isolated_config,
+                                                           fake_bertopic_stack, tmp_path):
+        """A zero row would cluster with every other empty document and
+        invent a topic out of parse failures."""
+        docs = make_docs_with_text(3, tmp_path) + [self.whitespace_doc(tmp_path, "blank")]
+        result = topic_model.run_topic_model(docs)
+        assert "blank" not in result["assignments"]
+        assert result["n_docs"] == 3
+
+    def test_too_few_embeddable_documents_raises(self, isolated_config,
+                                                 fake_bertopic_stack, tmp_path):
+        """Distinct from "no text at all": these documents have text, it
+        just chunks to nothing, so the count only falls at this stage."""
+        docs = make_docs_with_text(1, tmp_path) + [self.whitespace_doc(tmp_path, "blank")]
+        with pytest.raises(ValueError, match="embeddable text"):
+            topic_model.run_topic_model(docs)
+
+    def test_the_method_is_recorded_so_old_vectors_go_stale(self, isolated_config,
+                                                            fake_bertopic_stack, tmp_path):
+        """Neither the text hash nor the model id changes when the pooling
+        arithmetic does, so without this a switch of method would keep
+        serving prefix vectors forever."""
+        topic_model.run_topic_model(make_docs_with_text(3, tmp_path))
+        cache = json.loads(isolated_config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
+        assert all(v["method"] == doc_vectors.EMBED_METHOD for v in cache.values())
+
+    def test_a_method_change_re_embeds_everything(self, isolated_config, fake_bertopic_stack,
+                                                  tmp_path, monkeypatch):
+        docs = make_docs_with_text(3, tmp_path)
+        topic_model.run_topic_model(docs)
+        assert len(FakeModel.encode_call_texts) == 3
+        monkeypatch.setattr(doc_vectors, "EMBED_METHOD", "something-else-v2")
+        topic_model.run_topic_model(docs)
+        assert len(FakeModel.encode_call_texts) == 6
+
+
+class TestContentText:
+    """Preprocessing as a modelling step, per Asta's first best practice
+    for narrow scientific corpora. Removes only what is provably not about
+    the paper: no stop-word stripping, no lowercasing, no low-frequency
+    filtering, all of which that survey warns destroy the multiword domain
+    terms a scientific corpus is discriminated by."""
+
+    def test_the_reference_list_is_dropped(self):
+        """A paper's densest block of *other people's* names. Pooling it
+        made two papers similar for citing the same work rather than for
+        being about the same thing -- measured, an author cluster
+        (`werner kritzinger, fraunhofer austria`) was the ninth largest
+        topic on this corpus."""
+        kept = doc_vectors.content_text(
+            "## Method\nour approach\n\n## References\n[1] Kritzinger, W.\n")
+        assert "our approach" in kept
+        assert "Kritzinger" not in kept
+
+    def test_the_last_heading_wins(self):
+        """A related-work section can say "References" in prose and an
+        appendix can follow the bibliography."""
+        kept = doc_vectors.content_text(
+            "## Intro\nalpha\n## References\n[1] x\n## Appendix\nbeta\n## References\n[2] y")
+        assert "beta" in kept
+        assert "[2] y" not in kept
+
+    def test_a_document_without_one_keeps_all_its_text(self):
+        """The honest outcome for the 9% with no detectable heading:
+        degrade to today's behaviour, not to a guessed boundary."""
+        assert "everything" in doc_vectors.content_text("## Method\neverything here\n")
+
+    def test_boilerplate_lines_go_at_any_depth(self):
+        kept = doc_vectors.content_text(
+            "real content\nfoo@bar.ac.uk\nhttps://example.com\ndoi:10.1000/xyz\n"
+            "Downloaded from somewhere\n(c) 2024 Publisher\n17\nmore content")
+        assert "real content" in kept and "more content" in kept
+        for gone in ("foo@bar", "example.com", "doi:10", "Downloaded", "2024 Publisher"):
+            assert gone not in kept
+        assert "\n17\n" not in kept
+
+    def test_technical_tokens_survive(self):
+        """The failure mode Asta names: generic preprocessing removes the
+        abbreviations, identifiers and rare phrases that carry the meaning."""
+        kept = doc_vectors.content_text("IEC 62304 and MQTT v5 govern the DTaaS platform")
+        assert kept == "IEC 62304 and MQTT v5 govern the DTaaS platform"
+
+    def test_it_is_applied_before_chunking(self, isolated_config, monkeypatch):
+        seen = {}
+        monkeypatch.setattr(embed_index, "chunk_text",
+                            lambda text, **kw: seen.setdefault("text", text) and ["x"] or ["x"])
+        doc_vectors.pooled_embedding("keep me\n## References\n[1] drop me", FakeModel())
+        assert "drop me" not in seen["text"]

@@ -74,6 +74,8 @@ from chitragupta.progname import prog_for
 VERBS = {
     "sync": ("chitragupta.sync", "bib file -> ledger -> PDF text: the deterministic corpus run"),
     "ledger": ("chitragupta.ledger", "read-only view of what that run recorded -- takes no lock"),
+    "topics": ("chitragupta.seed_topics",
+               "read-only view of which papers each seed topic matched -- takes no lock"),
 }
 
 # What `--help` prints, deliberately *not* this module's docstring (#152).

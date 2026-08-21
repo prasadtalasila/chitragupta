@@ -58,15 +58,10 @@ CODE_LINE_ROOTS = ("chitragupta", "scripts")
 # 5.8.x SonarCloud-debt series split the worst offenders and delisted
 # each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    # Unchanged by #219's split of chitragupta/dossier.py into chitragupta/dossier/: every
-    # _cmd_* handler moved out, but main()'s own argparse-tree statements
-    # didn't, so its count didn't either. +1 for acronyms-suggest's
-    # --apply flag.
     "chitragupta/dossier/_cli.py::main",  # 50
     "chitragupta/enrich/embed_index.py::build_index",  # 40
     "chitragupta/enrich/docling_parse.py::parse_doc",  # 36
     "chitragupta/sync.py::_parse_parallel",  # 33
-    "chitragupta/enrich/topic_model.py::run_topic_model",  # 32
     "tests/test_release.py::make_repo",  # 32
     "chitragupta/retrieval.py::_windows",  # 28
     "chitragupta/overlap_index.py::build_corpus_index",  # 27
@@ -89,8 +84,8 @@ LEGACY_LONG_FILES = {
     "chitragupta/ledger.py",  # 444
     "chitragupta/retrieval.py",  # 393
     "chitragupta/review/citation_provenance.py",  # 385
+    "chitragupta/config.py",  # 377
     "chitragupta/references.py",  # 370
-    "chitragupta/config.py",  # 351
     "chitragupta/overlap_skipgram.py",  # 315
 }
 

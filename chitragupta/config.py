@@ -498,6 +498,153 @@ TOPICS_PATH = CONTENT_DIR / "topics.json"
 # topic_model.run_topic_model() only re-encodes docs whose text actually
 # changed since the last run -- see that module's docstring.
 TOPIC_EMBED_CACHE_PATH = CONTENT_DIR / "topic_embed_cache.json"
+
+# The author's own list of topic phrases, and what matching them against
+# the corpus produced. TOML in, JSON out, which is this repository's
+# standing split rather than a choice made here: the first is hand-written
+# and wants comments, the second is written by a program and read by one.
+# Neither has to exist -- a library with no seed file gets the emergent,
+# unseeded topic model it has always had (chitragupta/seed_topics.py).
+SEED_TOPICS_PATH = CONTENT_DIR / "seed_topics.toml"
+TOPIC_SEEDS_PATH = CONTENT_DIR / "topic_seeds.json"
+# Cosine similarity a document must reach, against a seed phrase's own
+# embedding, to be listed under it -- and the same floor BERTopic's
+# zero-shot assignment uses, since both measure the same thing in the
+# same space with the same model. One key rather than two because two
+# would invite them to drift apart and mean nothing together.
+#
+# Note what this threshold is not: a gate. docs/HOUSE-STYLE.md's R3 keeps
+# continuous scores out of pass/fail decisions, and nothing here fails a
+# run, blocks a draft or refuses a citekey. It decides how long a list a
+# human reads, and they can move it and look again.
+#
+# A floor, not the selection rule -- and the distinction is what the real
+# corpus taught. Selection is per-phrase ranking (SEED_TOPIC_MAX_PAPERS
+# below); this only discards matches too weak to be worth ranking at all.
+#
+# It governs the seed-topic report, and nothing else. It briefly also
+# drove BERTopic's zero-shot assignment, which was wrong twice over: the
+# two measure the same quantity but make different decisions, and the
+# zero-shot path itself is gone -- seeds no longer steer the clustering at
+# all, so an author can name any number of them without costing a single
+# emergent topic. See chitragupta/enrich/topic_model.py.
+#
+# Measured over 497 real documents and 14 real Zotero collection names,
+# every phrase turned out to have its own score scale, so no single
+# absolute cutoff can serve them: "Standards" peaked at 0.295 across the
+# whole corpus while "Digital Twin" had a *median* of 0.338. A 0.35 cutoff
+# therefore returned nothing at all for a genuine 25-paper topic and 238
+# papers for a broad one. Ranking each phrase against itself is immune to
+# that; a floor is not, which is why the floor is now low enough to bite
+# only on noise.
+#
+# 0.15 specifically: of four deliberately shelf-like collection names in
+# that run, the two with no semantic content at all -- "Others" and a
+# person's name, "Karen Wilcox" -- peaked at 0.143 and 0.112, so this
+# keeps a seed that means nothing returning nothing rather than its 25
+# nearest neighbours.
+#
+# Stated precisely because the looser claim is tempting and false: the
+# other two ("Reviews and Surveys", "opinions") do clear this floor and do
+# return papers. A shelf label that is *also* a description of a paper is
+# not distinguishable from a topic by score, and this floor does not try
+# to. Which names go in the list stays the author's decision, which is the
+# answer docs/HOUSE-STYLE.md gives and not a gap in this number.
+SEED_TOPIC_MIN_SIMILARITY = _get_float(
+    "SEED_TOPIC_MIN_SIMILARITY", "enrich", "seed_topic_min_similarity", default=0.15,
+)
+# How many papers a single seed topic may list, best-scoring first. The
+# actual selection rule: each phrase is ranked against its own scores, so
+# a generic word and a domain term both yield a readable list instead of
+# nothing and half the corpus respectively.
+#
+# 25 is a reading length, not an accuracy claim -- this artefact exists to
+# be read by a person deciding what to draft, and a topic answering with
+# 238 papers has told them nothing. Raise it when a topic is genuinely
+# broad and you want the tail.
+SEED_TOPIC_MAX_PAPERS = int(_get_float(
+    "SEED_TOPIC_MAX_PAPERS", "enrich", "seed_topic_max_papers", default=25,
+))
+# How fine the emergent topic structure is. The two knobs that decide it,
+# in config rather than hardcoded, because the right depth is a property
+# of the corpus and its owner rather than of this code.
+#
+# Defaults chosen by sweeping this project's own 497-document corpus,
+# where the previous hardcoded values (10 and unset) were not a tuning
+# choice but a ceiling: every clustering parameter saturated at n_docs>=20,
+# so a 497-paper corpus and a 5000-paper one both got the settings written
+# for a 20-paper one. Measured, holding everything else fixed:
+#
+#     min_cluster_size=10   13 topics, 27% outliers, median 19 papers
+#     min_cluster_size=5    25 topics, 19% outliers, median 13
+#     min_cluster_size=3    50 topics, 12% outliers, median 6
+#     =3 with min_samples=2 75 topics, 10% outliers, median 5
+#
+# Note the outlier rate *falls* as the topics get finer: the coarse
+# setting was both under-clustering and discarding more of the corpus,
+# which is why this is a defect being fixed rather than a preference.
+#
+# Still clamped down for a small corpus at the point of use -- UMAP's
+# spectral initialisation genuinely fails when n_neighbors >= n_samples,
+# which is what the original formula existed for. What it never did was
+# scale *up*.
+TOPIC_MIN_CLUSTER_SIZE = int(_get_float(
+    "TOPIC_MIN_CLUSTER_SIZE", "enrich", "topic_min_cluster_size", default=3,
+))
+# HDBSCAN's own default is min_cluster_size; lowering it makes the
+# clustering less conservative and leaves fewer documents as outliers.
+TOPIC_MIN_SAMPLES = int(_get_float(
+    "TOPIC_MIN_SAMPLES", "enrich", "topic_min_samples", default=2,
+))
+# UMAP's neighbourhood size, the other half of granularity: smaller
+# reads more local structure and yields more, finer topics.
+TOPIC_NEIGHBORS = int(_get_float(
+    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=10,
+))
+
+# Whether the bertopic stage also records, per document, every topic it
+# belongs to rather than only the one id fit_transform returns. That
+# scalar cannot express a paper genuinely about two things: on 497 real
+# documents, 140 belong to more than one topic and the scalar discards
+# 222 memberships outright.
+#
+# Recorded from HDBSCAN's own soft clustering, which is the only
+# mechanism of four measured that agrees with the clustering it is
+# describing -- its assignment appears in the memberships it produces for
+# 100% of documents and leads for 99%, against 30-45% for every
+# centroid-distance rule. See chitragupta/enrich/topic_model.py.
+#
+# Recorded for every run since the zero-shot path was removed: BERTopic
+# only swaps its clusterer for a placeholder in that mode, so there is
+# always a real one to ask.
+TOPIC_DISTRIBUTION = _get_bool(
+    "TOPIC_DISTRIBUTION", "enrich", "topic_distribution", default=True,
+)
+# How strong a topic must be *relative to the document's own strongest*
+# to be recorded under it, and how many may be kept at all.
+#
+# Relative, not an absolute weight, and for the second time in this
+# feature the real corpus is what settled it. An absolute 0.05 floor
+# recorded 6.99 topics per document out of 7 -- every paper under every
+# topic, the dense matrix an absolute floor was supposed to prevent. The
+# reason is the same one that broke a fixed cosine cutoff for seed
+# phrases: the scale moves. Weights sum to about 1 across however many
+# topics BERTopic found, so a fixed floor means something entirely
+# different at 7 topics than at 70, and nothing at all at 200.
+#
+# A document's own strongest weight is the scale that travels. 0.5 keeps
+# a genuine second topic -- on a planted two-topic document the winner
+# took 0.570 and the real second 0.319, well over half -- while dropping
+# the long tail of a document that is diffuse rather than plural.
+TOPIC_MEMBERSHIP_RATIO = _get_float(
+    "TOPIC_MEMBERSHIP_RATIO", "enrich", "topic_membership_ratio", default=0.5,
+)
+# The cap, for a document whose weights are near-uniform because BERTopic
+# was not confident about it at all: every topic then clears the ratio,
+# and "belongs to all 7" is noise wearing the shape of an answer.
+TOPIC_MEMBERSHIP_MAX = int(_get_float(
+    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=3,
+))
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
 # The CSL style pandoc's --citeproc formats citations and the bibliography

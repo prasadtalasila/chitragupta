@@ -1,0 +1,52 @@
+{
+  "n_docs": 497,
+  "n_topics": 76,
+  "model": "sentence-transformers/all-mpnet-base-v2",
+  "rows": [
+    {
+      "mechanism": "approximate_distribution",
+      "topics_per_doc": 35.4486921529175,
+      "plural_share": 0.937625754527163,
+      "top_share": 0.027878542215940244,
+      "uniform_baseline": 0.013157894736842105,
+      "agreement": 1.0,
+      "is_top": 0.9491525423728814
+    },
+    {
+      "mechanism": "centroid-embed",
+      "topics_per_doc": 5.03420523138833,
+      "plural_share": 0.9235412474849095,
+      "top_share": 0.1201747952731435,
+      "uniform_baseline": 0.013157894736842105,
+      "agreement": 1.0,
+      "is_top": 0.9782082324455206
+    },
+    {
+      "mechanism": "centroid-umap",
+      "topics_per_doc": 9.551307847082494,
+      "plural_share": 0.9879275653923542,
+      "top_share": 0.04201522996597117,
+      "uniform_baseline": 0.013157894736842105,
+      "agreement": 1.0,
+      "is_top": 0.9903147699757869
+    },
+    {
+      "mechanism": "gaussian-mixture",
+      "topics_per_doc": 1.0020120724346075,
+      "plural_share": 0.002012072434607646,
+      "top_share": 0.9962872928576388,
+      "uniform_baseline": 0.013157894736842105,
+      "agreement": 0.004842615012106538,
+      "is_top": 0.004842615012106538
+    },
+    {
+      "mechanism": "hdbscan-soft",
+      "topics_per_doc": 1.6398390342052314,
+      "plural_share": 0.24949698189134809,
+      "top_share": 0.5809882904002271,
+      "uniform_baseline": 0.013157894736842105,
+      "agreement": 1.0,
+      "is_top": 0.9830508474576272
+    }
+  ]
+}

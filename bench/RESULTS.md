@@ -2441,6 +2441,123 @@ SPECTER2 paper-vector cache Arm A and the section above already built;
 a host with neither should budget the same first-run costs documented
 there.
 
+## 2026-08-21: how deep does this corpus divide, and what can say a paper is in two topics?
+
+Two questions from #287's topic work, on the same 497-document corpus and
+the same cached document vectors: how many topics the corpus divides into
+at each clustering setting, and which mechanism can honestly report a
+paper as belonging to more than one of them.
+
+Scripts: `bench_topic_depth.py`, `bench_topic_membership.py`.
+Raw output: `results/2026-08-21-topic-depth/depth.json`,
+`results/2026-08-21-topic-membership/membership.json`.
+
+### Depth: the hardcoded settings were a ceiling, not a default
+
+Until 6.9.0 the clustering parameters were computed by a formula that
+saturated at `n_docs >= 20` -- `min(15, n-1)`, `min(5, max(2, n-2))`,
+`max(2, min(10, n//2))` -- so a 497-document corpus was clustered with
+the values written for a 20-document one, and a 5000-document corpus
+would have been too. It was written as a small-corpus *correctness* fix
+(UMAP's spectral initialisation fails when `n_neighbors >= n_samples`)
+and only ever scaled down.
+
+| n_neighbors | n_components | min_cluster_size | min_samples | topics | outliers | median size | topics/doc |
+|---|---|---|---|---|---|---|---|
+| `15` | `5` | `10` | `-` | 5 | 12% | 34 | 1.15 |
+| `15` | `5` | `5` | `-` | 29 | 30% | 9 | 1.97 |
+| `15` | `5` | `3` | `-` | 51 | 26% | 6 | 1.78 |
+| `10` | `5` | `10` | `-` | 16 | 28% | 21 | 1.70 |
+| `10` | `5` | `5` | `-` | 30 | 27% | 12 | 1.98 |
+| `10` | `5` | `3` | `-` | 51 | 18% | 7 | 1.59 |
+| `10` | `5` | `3` | `2` | 76 | 17% | 4 | 1.64 |
+| `5` | `5` | `5` | `3` | 46 | 12% | 8 | 1.63 |
+| `5` | `5` | `3` | `2` | 83 | 9% | 5 | 1.37 |
+| `5` | `10` | `3` | `2` | 83 | 9% | 5 | 1.56 |
+
+**`min_cluster_size` is the dominant lever**, and the shipped default
+moves from 10 to 3 with `min_samples = 2` (the `10 / 5 / 3 / 2` row: 76
+topics).
+
+**The outlier share falls as topics get finer** -- 28% at
+`min_cluster_size = 10` against 17% at the new default and 9% at the
+finest setting swept. That is the finding that makes the old values a
+defect rather than a preference: the coarse setting was *both*
+under-clustering and discarding more of the corpus. A reader expecting
+the usual granularity/coverage trade-off should note it does not appear
+in this range.
+
+**The `15 / 5 / 10` row is unstable and should not be quoted.** It
+reports 5 topics with a median size of 34 here; an earlier ad-hoc sweep
+of the same setting on the same corpus gave 13 topics at 27% outliers.
+Nothing in the script is random -- `random_state=42` throughout -- so the
+difference is upstream: that sweep predated `content_text()`, which now
+removes reference lists before embedding. The lesson is the one Asta's
+survey states and this file has no other instance of: **a topic model
+that looks settled at one setting can move a long way on a preprocessing
+change**, and none of these numbers should be treated as properties of
+the corpus alone. Stability across runs and settings is measured by
+nothing here; see #300.
+
+### Membership: only one mechanism agrees with the clustering it describes
+
+`assignments` gives one topic per document because that is all
+`fit_transform` returns. Five candidates for the many-to-many view, at 76
+topics:
+
+| mechanism | topics/doc | plural | top-share | agreement | is-top |
+|---|---|---|---|---|---|
+| `approximate_distribution` (BERTopic's own) | 35.45 | 94% | 0.03 | 100% | 95% |
+| centroid cosine, centred, embedding space | 5.03 | 92% | **0.12** | 100% | 98% |
+| centroid cosine, reduced space | 9.55 | 99% | 0.04 | 100% | 99% |
+| Gaussian mixture over the reduced space | 1.00 | 0% | 1.00 | 0% | 0% |
+| **HDBSCAN soft clustering (shipped)** | **1.64** | 25% | **0.58** | 100% | 98% |
+
+**top-share** is the mean share of a document's total weight taken by its
+strongest topic; the uniform baseline at 76 topics is **0.01**, and a
+mechanism near it is not saying anything. `approximate_distribution`
+(0.03) and the reduced-space centroid rule (0.04) are close to that
+floor: they assign 35 and 10 topics per document at almost equal weight,
+which is a dense matrix wearing the shape of an answer. The Gaussian
+mixture fails the opposite way, returning hard assignments.
+
+That leaves HDBSCAN's own soft clustering, shipped, and the centred
+centroid rule -- **and the honest reading is that the shipped choice is
+the more confident one, not the more useful one.** At 1.64 topics per
+document with only 25% of papers plural, it under-reports the
+many-to-many structure the corpus is known to have (637 of 642 papers
+under 95 hand-made Zotero collections). The centred centroid rule reports
+5.03 at 92% plural while staying an order of magnitude above the uniform
+floor. Changing to it is #298.
+
+### Two corrections this section exists to record
+
+**The first version of `bench_topic_membership.py` scored the winning
+mechanism at 1% agreement.** It indexed HDBSCAN's *cluster* ids with
+BERTopic's *topic* ids, and BERTopic renumbers topics by size -- cluster 0
+was topic 6 on this run. The script now recovers the mapping from the
+documents, each of which carries both. A benchmark that silently compares
+the wrong columns looks exactly like a real negative result.
+
+**An earlier ad-hoc measurement put centroid agreement at 30-45%.** That
+was taken at 7 topics on a seeded run and does not hold at 76, where
+every non-degenerate mechanism agrees 100%. Agreement discriminates in
+the first regime and not the second. Quote this table, not that figure.
+
+### What this does not measure
+
+- **Stability.** Nothing here runs the same setting twice, and the
+  `15 / 5 / 10` discrepancy above shows the numbers move under changes
+  elsewhere in the pipeline. Asta's survey calls repeated resampling and
+  stability checking standard practice for exactly this reason (#300).
+- **Whether the topics are any good.** Every figure is a shape statistic.
+  No coherence score, no topic-diversity measure, and no human judging
+  whether the topics are nameable -- which is the check that would have
+  caught `werner kritzinger, fraunhofer austria` being a top-three topic.
+- **A second corpus or host.** One corpus, one host, one embedding model
+  (`all-mpnet-base-v2`), same limitation as every section above.
+
+
 ## 2026-08-16: retrieval quality with a ground truth no retrieval method built
 
 The two sections above both score against citekeys that reached
