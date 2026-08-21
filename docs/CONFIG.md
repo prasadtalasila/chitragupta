@@ -366,6 +366,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
 | `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
 | `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
+| `topic_converge_similarity` | `TOPIC_CONVERGE_SIMILARITY` | number, cosine similarity | `0.45` | `0.45` |
 | `topic_exclude_author_names` | `TOPIC_EXCLUDE_AUTHOR_NAMES` | boolean | `true` | `true` |
 | `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
 | `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
@@ -837,6 +838,50 @@ care about, then read what the corpus had that you did not name.** The
 `unmatched` list in `chitragupta corpus topics` and the emergent topics in
 `content/topics.json` are both answers to that question, and neither
 shrinks because your seed list grew.
+
+### One topic set, from your phrases and the corpus's own
+
+`content/topic_set.json` is the join of the two topic answers, written by
+the `converge` stage. Until it existed, `content/topic_seeds.json` held
+the phrases you wrote and `content/topics.json` held the topics
+clustering found, and nothing related them -- a seed phrase and an
+emergent topic covering the same papers appeared as two unrelated things
+and you reconciled them by eye.
+
+A topic here has one shape whatever it came from:
+
+```json
+{"label": "structural health monitoring", "provenance": "seed",
+ "topic_id": 41, "members": [{"citekey": "...", "score": 0.62}]}
+```
+
+**Convergence is your name winning.** An emergent topic whose descriptor
+sits within `[enrich].topic_converge_similarity` of one of your phrases
+is *renamed* by it rather than listed separately. That is what "seeds are
+a starting point" has to mean once it reaches a file: having written
+"structural health monitoring", you should not then have to notice that
+emergent topic 41 is the same thing under a derived name.
+
+Two collisions are resolved deliberately:
+
+- **Several phrases match one topic** -- the closest wins, ties broken on
+  the phrase text so a run is diffable against the last.
+- **Several topics match one phrase** -- each keeps its own row and its
+  own members. A phrase can legitimately name a family of neighbouring
+  clusters, and merging them would discard granularity the clustering
+  just found.
+
+A phrase that matches no emergent topic still appears, carrying the
+papers it matched and `"topic_id": null`. That is the useful case rather
+than a leftover: it is you naming something the clustering did not
+separate out, and seeing it with no cluster behind it is the signal that
+the corpus does not organise the way you assumed. The `uncovered` list at
+the end names the papers no topic of either kind reached.
+
+**The stage re-runs nothing.** It reads the two artefacts, recomputes
+only the topic descriptors -- arithmetic over vectors already cached, no
+clustering -- and joins. Run it after `bertopic` and `seed-topics`; on
+its own it reports itself skipped rather than quietly clustering for you.
 
 ### What a topic is called
 

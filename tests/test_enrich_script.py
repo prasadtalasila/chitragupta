@@ -21,7 +21,8 @@ import pytest
 
 from chitragupta.enrich import __main__ as enrich_script
 from chitragupta import config
-from chitragupta.enrich import docling_parse, embed_index, topic_model, topic_seeding
+from chitragupta.enrich import (docling_parse, embed_index, topic_converge,
+                                topic_model, topic_seeding)
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -625,3 +626,21 @@ class TestPipelineLock:
 
         assert enrich_script.main() == runlock.EXIT_ALREADY_RUNNING
         assert "already running" in capsys.readouterr().out
+
+
+class TestStageConverge:
+    """The join stage's wrapper. It computes nothing itself -- the
+    skip/ok decision and the counts belong to topic_converge -- so what
+    this pins is that the wrapper hands the seed list over and returns
+    what it is given."""
+
+    def test_it_passes_the_seed_list_through(self, isolated_config, monkeypatch):
+        isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.SEED_TOPICS_PATH.write_text(
+            'topics = ["digital twin"]', encoding="utf-8")
+        seen = {}
+        monkeypatch.setattr(
+            topic_converge, "run_stage",
+            lambda docs, phrases: seen.update(phrases=phrases) or {"status": "ok"})
+        assert enrich_script.stage_converge([], make_args()) == {"status": "ok"}
+        assert seen["phrases"] == ("digital twin",)
