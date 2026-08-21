@@ -366,6 +366,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
 | `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
 | `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
+| `topic_exclude_author_names` | `TOPIC_EXCLUDE_AUTHOR_NAMES` | boolean | `true` | `true` |
 | `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
 | `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
 | `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `10` | `10` |
@@ -836,6 +837,43 @@ care about, then read what the corpus had that you did not name.** The
 `unmatched` list in `chitragupta corpus topics` and the emergent topics in
 `content/topics.json` are both answers to that question, and neither
 shrinks because your seed list grew.
+
+### What a topic is called
+
+A topic's name comes from the terms BERTopic finds most distinguishing
+within it. Two things are excluded from that vocabulary, and neither
+touches which papers are grouped together:
+
+- **This corpus's own author names**, read from the ledger's `bib_fields`
+  -- your bibliography, not a general name list.
+  `[enrich].topic_exclude_author_names` turns it off.
+- **Citation and URL scaffolding** (`et al`, `doi`, `www`, `arxiv`),
+  which survives content preprocessing because it appears mid-sentence
+  rather than on lines of its own.
+
+Both fix labels that were measurably wrong on a real corpus. Before this,
+BERTopic's own names were function words (`0_the_and_of_to`, because
+nothing configured a stop-word list); with those removed, the top-ranked
+topic by membership was named `werner kritzinger, fraunhofer austria` --
+a person and their institution. `et al` and a DOI fragment named two more
+of the twenty largest.
+
+That was never a clustering failure. Those papers are a real topic: they
+survey a taxonomy, and they name its author because they are discussing
+his work. `kritzinger` appears in 101 of 497 documents and 55 still carry
+it after the reference list is removed, so dropping back matter cannot
+fix it -- the name is in the prose, and the prose *is* the topic.
+
+**The cost, measured:** of 1,277 distinct surnames in this corpus's
+bibliography, five are also ordinary English words (`black`, `brown`,
+`can`, `park`, `wood`) and leave the label vocabulary with the rest.
+
+**What it cannot reach:** the list holds authors of papers *in* the
+corpus. A person these papers cite whose own work is not in your library
+is still eligible to name a topic -- measured, `drath` and `kockmann`
+both survive for that reason. Widening it would mean inferring names from
+reference prose; the bibliography is the one place a name is asserted
+rather than guessed.
 
 ### How many topics, and how deep
 
