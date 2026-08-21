@@ -615,10 +615,26 @@ TOPIC_MIN_CLUSTER_SIZE = int(_get_float(
 TOPIC_MIN_SAMPLES = int(_get_float(
     "TOPIC_MIN_SAMPLES", "enrich", "topic_min_samples", default=2,
 ))
-# UMAP's neighbourhood size, the other half of granularity: smaller
-# reads more local structure and yields more, finer topics.
+# UMAP's neighbourhood size, the other half of granularity: smaller reads
+# more local structure and yields more, finer topics.
+#
+# 5, not the 10 it started at, and the third column is what decided it.
+# `bench/bench_topic_depth.py --repeats` scores how well a setting
+# reproduces under resampling (adjusted Rand index over the
+# document-to-topic assignment), and on this corpus:
+#
+#     n_neighbors=15, min_cluster_size=10    5 topics, 12% outliers, 0.14
+#     n_neighbors=10, min_cluster_size=10   16 topics, 28% outliers, 0.26
+#     n_neighbors=10, min_cluster_size=3     76 topics, 17% outliers, 0.71
+#     n_neighbors=5,  min_cluster_size=3     83 topics,  9% outliers, 0.80
+#
+# 5 is better on all three axes at once -- more topics, fewer documents
+# discarded, and a partition that actually reproduces. The old hardcoded
+# 15/10 pairing scoring 0.14 is the finding worth carrying: it was not
+# merely coarse, it was barely repeatable, which no amount of reading its
+# output would have revealed.
 TOPIC_NEIGHBORS = int(_get_float(
-    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=10,
+    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=5,
 ))
 
 # Whether the bertopic stage also records, per document, every topic it
