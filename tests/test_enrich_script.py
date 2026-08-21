@@ -143,7 +143,7 @@ class TestParseArgs:
         # terminal width, so the sentence is split across lines at a
         # column this test has no business predicting.
         out = re.sub(r"\s+", " ", capsys.readouterr().out)
-        assert "default: all three, or docling alone with --for-" in out
+        assert "default: all five, or docling alone with --for-" in out
 
 
 class TestMain:

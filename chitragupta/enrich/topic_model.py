@@ -32,9 +32,11 @@ BERTopic's clustering step is inherently whole-corpus -- adding one new
 document can shift every cluster assignment, so unlike
 embed_index.build_index() there's no "skip this doc" option for the
 clustering itself. What *is* skippable is the expensive part before it:
-embedding the documents. This module caches one pooled vector per citekey
-(config.TOPIC_EMBED_CACHE_PATH) keyed by text hash, embedding model *and*
-pooling method, and re-embeds only what those say is stale.
+embedding the documents. `doc_vectors.document_embeddings()`, which this
+module calls rather than embedding anything itself, caches one pooled
+vector per citekey (config.TOPIC_EMBED_CACHE_PATH) keyed by text hash,
+embedding model *and* pooling method, and re-embeds only what those say
+is stale.
 
 That cache overlaps embed_index.py's Chroma collection more than it used
 to, and the overlap is worth stating plainly rather than leaving for

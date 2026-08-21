@@ -1451,8 +1451,8 @@ therefore a correct answer rather than a bug.
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
-| `--stages STAGES` | all four, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics` |
-| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic` or `seed-topics` |
+| `--stages STAGES` | all five, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics,converge` |
+| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `seed-topics` or `converge` |
 
 ```bash
 python -m chitragupta.enrich

@@ -148,7 +148,7 @@ def parse_args():
     # stated and it has to state both halves.
     parser.add_argument("--stages", default=None,
                          help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
-                              "(default: all three, or docling alone with --for-draft)")
+                              "(default: all five, or docling alone with --for-draft)")
     parser.add_argument("--for-draft", metavar="PATH",
                          help="Scope the docling stage to the papers this draft cites, instead of "
                               "the whole corpus. Refused "
