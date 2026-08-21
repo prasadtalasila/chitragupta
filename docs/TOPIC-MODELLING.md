@@ -154,7 +154,30 @@ captions, equations and author blocks are one undifferentiated category,
 which is why `content_text()` has to find the bibliography by *heading
 regex* rather than by label. Adopting DocBank-grade structure means a
 LayoutLM-class model and Detectron2 -- a real dependency and its own
-piece of work, not a configuration change. Tracked as [#301](https://github.com/prasadtalasila/chitragupta/issues/301).
+piece of work, not a configuration change.
+
+**This was filed as [#301](https://github.com/prasadtalasila/chitragupta/issues/301)
+and is now closed as not planned**, because §3 removed the evidence for
+it. The artefact clusters that motivated it -- an author block, a
+publisher's front matter, a run of clause numbers -- all left the top
+twenty once topic *labels* stopped being drawn from author names and
+citation scaffolding, and that cost no new dependency at all. What
+survives is a DOI fragment and a broken `fi` ligature, and the ligature
+is a text-extraction defect rather than a layout one: it corrupts
+`identification` and `classification` into `identi fi cation`, which
+damages the clustering input and not merely the display. DocBank would
+not touch it.
+
+If structural extraction is wanted later, the better starting point is
+[GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md) rather than that
+issue. GROBID is purpose-built for the two spans `content_text()` finds
+by heading regex -- the author/affiliation block and the reference list
+-- returns them as structured records at roughly 0.87-0.90 F1 rather than
+as a class label per token, and does sequence labelling rather than
+layout inference, so it costs a fraction of a Docling parse per document.
+That proposal is itself unbuilt and argues a case for a *citation graph*,
+with structural extraction a by-product; it is the document to start
+from, not a queued piece of work.
 
 ### 7. Validate stability, not just fit -- [#300](https://github.com/prasadtalasila/chitragupta/issues/300)
 

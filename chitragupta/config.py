@@ -687,6 +687,23 @@ TOPIC_MEMBERSHIP_RATIO = _get_float(
 TOPIC_MEMBERSHIP_MAX = int(_get_float(
     "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=8,
 ))
+# The join of the two topic answers: the phrases the author wrote, and
+# the topics the corpus turned out to have. Written by the `converge`
+# stage from artefacts the earlier stages already produced, so it re-runs
+# no clustering and no matching of its own.
+TOPIC_SET_PATH = CONTENT_DIR / "topic_set.json"
+# How close an emergent topic's descriptor must sit to a seed phrase for
+# that phrase to *name* it rather than sit beside it as a separate topic.
+#
+# Deliberately higher than the seed report's own floor. That floor decides
+# which papers are worth listing under a phrase and is loose on purpose;
+# this decides whether two topics are the same topic, and being wrong here
+# merges things a reader expected to see apart. 0.45 measured on this
+# corpus as the point where a phrase claims the cluster a human would
+# agree it names, without reaching across to its neighbours.
+TOPIC_CONVERGE_SIMILARITY = _get_float(
+    "TOPIC_CONVERGE_SIMILARITY", "enrich", "topic_converge_similarity", default=0.45,
+)
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
 # The CSL style pandoc's --citeproc formats citations and the bibliography

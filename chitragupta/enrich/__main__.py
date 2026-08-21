@@ -46,13 +46,24 @@ import json
 import logging
 from pathlib import Path
 
-from chitragupta.enrich import corpus, docling_parse, embed_index, topic_model, topic_seeding
+from chitragupta.enrich import corpus
+# Re-exported, not used here: STAGE_FUNCS is what main() dispatches
+# through, and the individual wrappers are named so that
+# tests/test_enrich_script.py can reach them where it always has. The
+# disable names pylint's own code -- a flake8 noqa means nothing to it,
+# which is how two of these reached CI.
+# pylint: disable=unused-import
+from chitragupta.enrich.stages import (  # noqa: F401
+    STAGE_FUNCS, stage_bertopic, stage_converge, stage_docling,
+    stage_embed, stage_seed_topics,
+)
+# pylint: enable=unused-import
 # citation_gate is read, not called into: draft_citekeys() below uses its
 # citekey reader so a scoped run covers exactly the papers the gate will
 # check against. That is this layer reading a draft, not invoking the
 # drafting layer -- see the module docstring on why nothing else from
 # chitragupta/ outside the corpus path is imported here.
-from chitragupta import citation_gate, config, logging_setup, runlock, seed_topics
+from chitragupta import citation_gate, config, logging_setup, runlock
 from chitragupta.progname import prog_for
 
 # A fixed name, not __name__: this file is the layer's entry point, so
@@ -62,7 +73,7 @@ from chitragupta.progname import prog_for
 # here would reach the log file and be silently dropped from the console.
 logger = logging.getLogger("chitragupta.enrich")
 
-STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics"]
+STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics", "converge"]
 
 # The stages --for-draft refuses to run, rather than running over a
 # subset. Each writes one whole-corpus artefact whose partial form is
@@ -83,7 +94,7 @@ STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics"]
 # run stops and names what it cannot give you, rather than quietly
 # substituting the whole corpus (an hour of work nobody asked for) or a
 # fraction of it (an index that lies about its coverage).
-SCOPE_REFUSED = ("embed", "bertopic", "seed-topics")
+SCOPE_REFUSED = ("embed", "bertopic", "seed-topics", "converge")
 
 # The stages that read the corpus at all -- every stage there is, since
 # 4.0.0 removed the two per-draft passthroughs. Kept as its own name
@@ -91,7 +102,7 @@ SCOPE_REFUSED = ("embed", "bertopic", "seed-topics")
 # question: an empty scope is only a reason to stop if some stage was
 # going to use it, and SCOPE_REFUSED says which stages refuse to have a
 # scope narrowed rather than which read one.
-CORPUS_STAGES = ("docling", "embed", "bertopic", "seed-topics")
+CORPUS_STAGES = ("docling", "embed", "bertopic", "seed-topics", "converge")
 
 # 3, not 2: argparse already exits 2 for a usage error it detects
 # itself, and runlock.EXIT_ALREADY_RUNNING is 2 as well. A wrapper needs
@@ -114,43 +125,6 @@ def draft_citekeys(path: Path) -> set[str]:
     caller wants the papers, not the citations.
     """
     return {key for _, key in citation_gate.extract_citekeys(path.read_text(encoding="utf-8"))}
-
-
-def stage_docling(docs, args):
-    status = docling_parse.parse_corpus(docs)
-    errors = {k: v for k, v in status.items() if v.startswith("error")}
-    return {"status": "ok" if not errors else "partial", "detail": status}
-
-
-def stage_embed(docs, args):
-    return {"status": "ok", "detail": embed_index.build_index(docs)}
-
-
-def stage_bertopic(docs, args):
-    result = topic_model.run_topic_model(docs)
-    return {"status": "ok",
-            "detail": {"n_docs": result["n_docs"],
-                       "assignments": result["assignments"]}}
-
-
-# Unlike the three above, this stage's ok/skipped shaping lives in
-# topic_seeding.run_stage() rather than here. Not a style break for its
-# own sake: this module is four code lines under docs/CODE-STANDARDS.md's
-# 250-line ceiling with three stages, so spelling a fourth out in the
-# local idiom would push the orchestrator over a boundary that adding a
-# stage is no reason to move. The seed list is read here, though, because
-# "is there a seed file" is the question that decides whether the stage
-# runs at all, and that is this file's decision to make.
-def stage_seed_topics(docs, args):
-    return topic_seeding.run_stage(docs, seed_topics.load())
-
-
-STAGE_FUNCS = {
-    "docling": stage_docling,
-    "embed": stage_embed,
-    "bertopic": stage_bertopic,
-    "seed-topics": stage_seed_topics,
-}
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)

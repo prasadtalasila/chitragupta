@@ -1122,7 +1122,6 @@ this.
 | G2 | [#298](https://github.com/prasadtalasila/chitragupta/issues/298) descriptor-based membership | M | 1.64 topics/paper and 25% plural, against 5.03 and 92% for the descriptor mechanism measured beside it. HDBSCAN soft membership answers "which density region", which is near-binary for core points | -- |
 | G3 | [#299](https://github.com/prasadtalasila/chitragupta/issues/299) converged topic set | M | Seed and emergent topics are two artefacts describing one corpus, joined by nobody | G2 |
 | G4 | [#300](https://github.com/prasadtalasila/chitragupta/issues/300) stability validation | M | Nothing measures whether a topic set reproduces. One swept setting moved from 13 topics to 5 across an upstream change, with `random_state=42` throughout | -- |
-| G5 | [#301](https://github.com/prasadtalasila/chitragupta/issues/301) DocBank-grade structure | L | Docling emits three labels where DocBank annotates twelve, so bibliographies are found by heading regex. **Parked**: needs a LayoutLM-class dependency, and G1 may make the case for it much weaker | G1 |
 
 ### What Theme G is deliberately not doing
 
@@ -1131,6 +1130,7 @@ this.
 | Abstractive topic summaries | Abstractive models carry factual inconsistencies in up to 30% of outputs. A topic summary asserting a claim no paper made is the same failure class as a fabricated citekey ([SOUL.md](../SOUL.md)). Extractive first, behind a human gate |
 | An LLM transcribing document structure | Span *selection* (offsets to keep) is safe; span *transcription* is not, because a transcribed reference can be a fabricated one. See [#301](https://github.com/prasadtalasila/chitragupta/issues/301) |
 | Topic ids treated as stable | They are not, and the stage's own docstring says so. Anything downstream must key on labels or citekeys |
+| DocBank-grade structural extraction ([#301](https://github.com/prasadtalasila/chitragupta/issues/301), closed) | Filed because artefact clusters dominated the topic list; G1 removed all of them with no new dependency, which is what that issue said would retire it. If structural extraction is wanted later, [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md) is the better starting point -- purpose-built for the author block and reference list, structured records rather than token classes, and sequence labelling rather than layout inference |
 
 ## Build order
 

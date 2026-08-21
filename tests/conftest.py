@@ -113,6 +113,7 @@ def isolated_config(tmp_path, monkeypatch):
         "TOPIC_EMBED_CACHE_PATH": "topic_embed_cache.json",
         "SEED_TOPICS_PATH": "seed_topics.toml",
         "TOPIC_SEEDS_PATH": "topic_seeds.json",
+        "TOPIC_SET_PATH": "topic_set.json",
         "RENDERED_DIR": "rendered",
     }
     for name, relative in under_content.items():
@@ -144,6 +145,7 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.5)
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 8)
     monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", True)
+    monkeypatch.setattr(config, "TOPIC_CONVERGE_SIMILARITY", 0.45)
     return config
 
 

@@ -415,6 +415,18 @@ seed_topic_min_similarity = 0.15
 # through BERTopic's zero-shot mode did cost topics (81 down to 53 for
 # nine phrases, measured) and that path has been removed.
 
+# How close an emergent topic must sit to a seed phrase for that phrase to
+# *name* it, in the converged set (content/topic_set.json). Above this the
+# topic is listed under your wording; below it, it keeps a derived label
+# and sits beside your phrase as its own topic.
+#
+# Higher than seed_topic_min_similarity on purpose: that floor decides
+# which papers are worth listing under a phrase and is loose by design,
+# while this decides whether two topics are the *same* topic. Being wrong
+# here merges things you expected to see apart.
+#                                                           Default: 0.45
+topic_converge_similarity = 0.45
+
 # Whether the words a topic is *named* by exclude the corpus's own
 # authors -- read from your bibliography, not a name list. Names only:
 # this never changes which papers are grouped together, just how the
