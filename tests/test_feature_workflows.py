@@ -1154,10 +1154,13 @@ class TestOneDraftsReviewArtefactsLandTogether:
 
         review_dir = config.REVIEW_DIR / "dt"
         assert sorted(p.name for p in review_dir.iterdir()) == [
-            "survey.coverage.md", "survey.provenance.md",
-            # The machine-readable sibling lands in the same mirrored
-            # directory as the report it serialises, not somewhere a
-            # consumer would have to be told about separately (#127).
+            # The machine-readable siblings land in the same mirrored
+            # directory as the reports they serialise, not somewhere a
+            # consumer would have to be told about separately (#127, #309).
+            # `provenance` writes only through its CLI's `run()`, not
+            # through `write_report()` called directly above, so it has
+            # no `.json` here.
+            "survey.coverage.json", "survey.coverage.md", "survey.provenance.md",
             "survey.verbatim.json", "survey.verbatim.md",
         ]
 

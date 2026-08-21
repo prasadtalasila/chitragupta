@@ -33,6 +33,8 @@ Usage:
 """
 
 import argparse
+import hashlib
+import json
 import shlex
 import sys
 from dataclasses import dataclass, field
@@ -106,28 +108,71 @@ def format_report(draft_path: Path, queries: list[str], result: CoverageResult) 
     return "\n".join(lines)
 
 
-def _command(draft_path: Path, queries: list[str], k: int) -> str:
-    """The invocation that produced a report, for its header.
-
-    Recorded in full because a coverage report is meaningless without
-    its queries: "62% covered" says nothing until you know 62% of what
-    was asked for.
-
-    `--write` is part of it. This function is only ever reached under
-    that flag, and a recorded command without it reproduces the findings
-    on stdout but not the file -- which is the one thing a reader holding
-    the file wants to regenerate. `--formats` is deliberately left out:
-    it selects renders *of* the report and changes nothing in the
-    Markdown this header sits in.
+def _command(
+    draft_path: Path, queries: list[str], k: int, as_json: bool, write: bool
+) -> str:
+    """The invocation recorded in both the Markdown header and the JSON
+    envelope. Queries in full -- "62% covered" means nothing without
+    knowing 62% *of what*.
     """
     parts = ["python", "-m", "chitragupta.review", "coverage", str(draft_path)]
     for query in queries:
         parts += ["--query", query]
-    parts += ["--k", str(k), "--write"]
+    parts += ["--k", str(k)]
+    if as_json:
+        parts += ["--json"]
+    if write:
+        parts += ["--write"]
     return shlex.join(parts)
 
 
-def render_markdown(draft_path: Path, queries: list[str], k: int, result: CoverageResult) -> str:
+def finding_id(citekey: str, status: str) -> str:
+    """A finding's name, stable across runs and position-free -- the same
+    convention `verbatim_check.finding_id` and
+    `citation_provenance.finding_id` use.
+    """
+    digest = hashlib.sha256(f"{citekey}\x00{status}".encode())
+    return digest.hexdigest()[:12]
+
+
+def _findings(result: CoverageResult) -> list[dict]:
+    """One object per citekey the printed report itemises. Unconditional,
+    unlike `format_report`'s "retrieved but not cited" section: an empty
+    candidate set still leaves a cited-outside finding to report."""
+    findings = [
+        {"id": finding_id(key, "uncited_candidate"), "citekey": key,
+         "title": result.candidates[key], "status": "uncited_candidate"}
+        for key in sorted(result.uncited_candidates)
+    ]
+    findings += [
+        {"id": finding_id(key, "cited_outside_candidates"), "citekey": key,
+         "title": None, "status": "cited_outside_candidates"}
+        for key in sorted(result.cited_outside_candidates)
+    ]
+    return findings
+
+
+def coverage_payload(
+    draft_path: Path, queries: list[str], k: int, result: CoverageResult, command: str
+) -> dict:
+    """The same findings `format_report` prints, as data. An additional
+    serialisation of `result`, never a second computation.
+    """
+    payload = review.envelope(draft_path, "coverage", command)
+    payload.update({
+        "queries": queries,
+        "k": k,
+        "coverage_pct": result.coverage_pct,
+        "candidates_total": len(result.candidates),
+        "cited_candidates_total": len(result.cited_candidates),
+        "findings": _findings(result),
+    })
+    return payload
+
+
+def render_markdown(
+    draft_path: Path, queries: list[str], k: int, result: CoverageResult, command: str
+) -> str:
     """The same report as `format_report`, as a Markdown document.
 
     Kept beside the plain-text version rather than replacing it: stdout
@@ -135,7 +180,7 @@ def render_markdown(draft_path: Path, queries: list[str], k: int, result: Covera
     kept for months is read next to the draft's other review reports and
     should look like them.
     """
-    lines = review.header(draft_path, "coverage", _command(draft_path, queries, k))
+    lines = review.header(draft_path, "coverage", command)
     lines += [
         "## How to read this",
         "",
@@ -201,6 +246,9 @@ def build_parser(parser=None):
     parser.add_argument("--query", action="append", required=True, dest="queries",
                          help="A retrieval query to check coverage for (repeatable)")
     parser.add_argument("--k", type=int, default=5, help="Top-k results per query (default: 5)")
+    parser.add_argument("--json", action="store_true",
+                        help="Print the findings as JSON instead of as text. "
+                             "--write files it beside the report either way.")
     parser.add_argument("--write", action="store_true",
                         help="Also write the report to content/review/, mirroring the "
                              "draft's path. Off by default: printing is the usual use.")
@@ -217,11 +265,14 @@ def main(argv: list[str]) -> int:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments.
+    """Dispatch already-parsed arguments, split from main() so
+    chitragupta/review/__main__.py can hand over args parsed with this
+    module's own build_parser() rather than re-slicing argv.
 
-    Split from main() so chitragupta/review/__main__.py can hand over the args it
-    parsed with this module's own build_parser(), rather than re-slicing
-    argv and parsing it twice.
+    Mirrors `verbatim scan`'s own `--json`/`--write` contract: printing
+    stays the default and cheap path; `--json` prints the payload instead
+    of text; `--write` files it beside the Markdown either way, with the
+    written-files summary on stderr under `--json`.
     """
     try:
         draft_path = review.require_reviewable(Path(args.draft))
@@ -230,10 +281,20 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     result = compute_coverage(draft_path, args.queries, k=args.k)
-    print(format_report(draft_path, args.queries, result))
+
+    if not (args.json or args.write):
+        print(format_report(draft_path, args.queries, result))
+        return 0
+
+    command = _command(draft_path, args.queries, args.k, args.json, args.write)
+    payload = coverage_payload(draft_path, args.queries, args.k, result, command)
+    print(json.dumps(payload, indent=2) if args.json
+          else format_report(draft_path, args.queries, result))
 
     if args.write:
         formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        body = render_markdown(draft_path, args.queries, args.k, result)
-        review.print_written(review.write(draft_path, "coverage", body, formats))
+        body = render_markdown(draft_path, args.queries, args.k, result, command)
+        written = review.write(draft_path, "coverage", body, formats)
+        written["json"] = review.write_json(draft_path, "coverage", payload)
+        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
     return 0

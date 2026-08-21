@@ -35,6 +35,8 @@ Usage:
 """
 
 import argparse
+import hashlib
+import json
 import re
 import shlex
 import sys
@@ -441,6 +443,78 @@ def _finding_lines(finding: Finding) -> list[str]:
     return lines
 
 
+def finding_id(citekey: str, claim: str) -> str:
+    """A finding's name, stable across runs. Position-free (no `line`),
+    the same convention `verbatim_check.finding_id` uses and for the same
+    reason: an identity built on `line` would rename every remaining
+    finding the moment an edit above it shifted line numbers, and nothing
+    could then decide whether a given finding had survived a revision.
+
+    Two identical citekey/claim pairs therefore share an id -- a draft
+    citing the same source with the same sentence twice is the one case
+    that collides, and that is the correct read rather than a bug.
+    """
+    digest = hashlib.sha256(f"{citekey}\x00{claim}".encode())
+    return digest.hexdigest()[:12]
+
+
+def _passage_payload(passage: Passage | None) -> dict | None:
+    if passage is None:
+        return None
+    return {
+        "page": passage.page,
+        "quotable": passage.quotable,
+        "text": passage.text if passage.quotable else None,
+    }
+
+
+# The finding fields the JSON payload publishes, spelled out rather than
+# serialising the Finding dataclass's own `__dict__` -- see
+# `verbatim_check._PAYLOAD_FIELDS` for why: `Finding` is this module's
+# working representation, and a field added there for internal use should
+# not silently become part of a published contract.
+def published(finding: Finding) -> dict:
+    return {
+        "id": finding_id(finding.citekey, finding.claim),
+        "line": finding.line,
+        "citekey": finding.citekey,
+        "claim": finding.claim,
+        "score": finding.score,
+        "band": _band(finding.score),
+        "passage": _passage_payload(finding.passage),
+        "note": finding.note,
+    }
+
+
+def provenance_payload(report: Report, command: str) -> dict:
+    """The same findings `render_markdown` prints, as data: `review.envelope`'s
+    provenance plus one object per finding, worst-first like the report.
+
+    An additional serialisation of `report.findings`, never a second
+    computation, so the printed and published forms cannot disagree about
+    what was found.
+    """
+    payload = review.envelope(report.draft, "provenance", command)
+    payload.update({
+        "unreadable": report.unreadable,
+        "findings": [published(finding) for finding in report.findings],
+    })
+    return payload
+
+
+def _command(draft_path: Path, as_json: bool) -> str:
+    """The invocation recorded in the JSON payload's envelope.
+
+    `--formats` is left out, matching `citation_coverage._command`'s own
+    exclusion: it selects renders *of* the report and changes nothing in
+    the payload or the Markdown it describes.
+    """
+    parts = ["python", "-m", "chitragupta.review", "provenance", str(draft_path)]
+    if as_json:
+        parts += ["--json"]
+    return shlex.join(parts)
+
+
 def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
     """Writes the report and returns {format: path} for what succeeded.
 
@@ -474,6 +548,10 @@ def build_parser(parser=None):
              "report; tex/pdf are renders of it, and need pandoc/pdflatex "
              "on PATH.",
     )
+    parser.add_argument("--json", action="store_true",
+                        help="Print the findings as JSON instead of just the "
+                             "written-files summary. The .json sibling is filed "
+                             "beside the Markdown report either way.")
     return parser
 
 
@@ -487,6 +565,13 @@ def run(args: argparse.Namespace) -> int:
     Split from main() so chitragupta/review/__main__.py can hand over the args it
     parsed with this module's own build_parser(), rather than re-slicing
     argv and parsing it twice.
+
+    The `.json` sibling is filed unconditionally, matching the `.md`'s own
+    always-write policy (this aid, unlike the other two, was never
+    print-only) -- `--json` only decides what prints to stdout instead of
+    the written-files summary. Under `--json` that summary moves to
+    stderr, so `provenance --json > findings.json` stays a valid JSON
+    file, the same discipline `verbatim scan --json` follows.
     """
     try:
         draft_path = review.require_reviewable(Path(args.draft))
@@ -495,5 +580,14 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-    review.print_written(write_report(draft_path, formats))
+    report = build_report(draft_path)
+    written = review.write(draft_path, "provenance", render_markdown(report), formats)
+    payload = provenance_payload(report, _command(draft_path, args.json))
+    written["json"] = review.write_json(draft_path, "provenance", payload)
+
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        review.print_written(written, stream=sys.stderr)
+    else:
+        review.print_written(written)
     return 0

@@ -775,6 +775,7 @@ it reuses `chitragupta.retrieval`, which is itself stdlib.
 | `<draft>` | required | The draft to check |
 | `--query QUERY` | required, repeatable | A retrieval query to check coverage against. Give it more than once |
 | `--k K` | `5` | Top-k results per query |
+| `--json` | off | Print the findings as JSON instead of as text (see below). `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default -- the usual use is a question asked and answered in one sitting |
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report -- so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
@@ -784,10 +785,20 @@ python -m chitragupta.review coverage content/drafts/survey.md \
     --query "runtime verification"
 # ... --k 10
 # ... --write --formats md
+# ... --json > coverage.json
 ```
 
 A written report records the whole invocation in its header, queries
 included: a coverage figure means nothing without knowing 62% *of what*.
+
+**`--json`** follows the same contract `verbatim scan --json` does (see
+below): the envelope every review aid's JSON carries, plus `queries`,
+`k`, `coverage_pct`, `candidates_total`, `cited_candidates_total`, and
+one `findings` object per citekey the printed report itemises --
+`id`, `citekey`, `title` (`null` for a citation outside the candidate
+set), and `status` (`uncited_candidate` or `cited_outside_candidates`).
+An additional serialisation of what `format_report` already prints,
+never a second computation.
 
 ### `python -m chitragupta.review provenance`
 
@@ -797,19 +808,33 @@ quoting a real passage. Layer 4, the review layer: advisory, not a gate.
 Unlike the other two it writes by default -- reading a provenance report
 in a terminal was never the point. The report lands in
 `content/review/<topic>/<stem>.provenance.md`, mirroring the draft's path,
-with its `.tex`/`.pdf` renders beside it.
+with its `.tex`/`.pdf` renders and its `.json` sibling beside it, all
+filed whether or not `--json` is given.
 
 | Flag | Default | What it does |
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--json` | off | Print the findings as JSON instead of just the written-files summary (see below). The `.json` sibling is filed either way |
 
 ```bash
 python -m chitragupta.review provenance content/drafts/survey.md
 # python -m chitragupta.review provenance content/drafts/survey.md --formats md
 # python -m chitragupta.review provenance content/drafts/survey.md --formats md,tex,pdf
+# python -m chitragupta.review provenance content/drafts/survey.md --json > provenance.json
 ```
+
+**`--json`** carries the same envelope every review aid's JSON does, plus
+one `findings` object per citing sentence, worst-match-first like the
+Markdown report -- `id`, `line`, `citekey`, `claim`, `score`, `band`,
+`passage` (`page`/`quotable`/`text`, `null` when nothing matched) and
+`note` (why a source was unreadable, when one was). An additional
+serialisation of what `render_markdown` already prints, never a second
+computation. Unlike the other two aids, the `.json` is filed
+unconditionally -- matching the `.md`'s own always-write policy -- and
+`--json` only decides whether it is *also* printed to stdout, with the
+written-files summary moving to stderr in that case.
 
 ### `python -m chitragupta.review verbatim`
 
@@ -969,10 +994,11 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-Only `verbatim` emits one so far; `provenance` and `coverage` follow in
-their own issues, which is why
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s planned `agenda` aid treats
-each aid's JSON as optional.
+All three review aids emit one now (#309) -- `provenance` and `coverage`
+follow the same envelope, above. [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
+planned `agenda` aid still treats each aid's JSON as optional, though: not
+every draft has had every aid run against it, and `coverage`'s sibling is
+only ever filed under `--write`.
 
 **`recheck`, and what it is for.** `scan` says what a draft borrows.
 `recheck` says what changed since a particular scan. That is the question

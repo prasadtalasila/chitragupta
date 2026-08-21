@@ -1,14 +1,14 @@
 # The auto-improvement loop: what would be built
 
 Status: **specification of mostly unbuilt work.** Written 2026-08-11;
-step 1 partly built in 5.4.0, step 3 in 5.5.0, and step 5 built narrow
+step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, and step 5 built narrow
 (verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
 
 `python -m chitragupta.review agenda` is not a command and no skill consumes
-anything below. Of the review aids, `verbatim scan` emits JSON as of
-5.4.0 (#127) and the other two do not yet. This document states *what*
-would be built and *what it must satisfy*, in the order it would be
-built.
+anything below. Of the review aids, all three now emit JSON: `verbatim
+scan` as of 5.4.0 (#127), `provenance` and `coverage` as of 6.16.0 (#309).
+This document states *what* would be built and *what it must satisfy*, in
+the order it would be built.
 
 **It contains no argument.** Every "why" -- why the aid sits in the review
 layer rather than the drafting one, why three of six item classes may not
@@ -59,7 +59,7 @@ Three sentences.
 
 ## 1. `--json` on all three review aids
 
-**Partly built (5.4.0).** `chitragupta/review/__init__.py` owns one output
+**Built (5.4.0, 6.16.0).** `chitragupta/review/__init__.py` owns one output
 contract for the layer. Extend it with a JSON sibling beside the
 Markdown, at `content/review/<topic>/<stem>.<aid>.json`.
 
@@ -75,9 +75,15 @@ What 5.4.0 built, per #127's scope: the layer-level plumbing --
 `review.envelope()` (the payload's provenance, and the not-a-verdict
 notice, as data) and `review.write_json()` -- plus `verbatim scan
 --json`, which prints the payload and files it under `--write`.
-`provenance` and `coverage` reuse that plumbing when their own issues
-land; until then the `agenda` below finds one aid's JSON and not the
-other two, which is the case step 2 already accounts for.
+
+What 6.16.0 added, per #309's scope: `provenance --json` and
+`coverage --json`, reusing that same plumbing. `provenance` files its
+`.json` unconditionally, matching the `.md`'s own always-write policy;
+`coverage` files its `.json` only under `--write`, matching the `.md`'s.
+So the `agenda` below can still find an aid's JSON missing for a given
+draft -- not because an aid has yet to reuse the plumbing, but because
+that aid was never run against this draft, or `coverage` was run without
+`--write` -- which is the case step 2 already accounts for.
 
 ## 2. The `agenda` aid
 
