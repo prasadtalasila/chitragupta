@@ -1,12 +1,17 @@
 # Coverage config for CI's Windows leg only -- see pyproject.toml's
 # [tool.coverage.report] and docs/TECHNICAL-DEBT.md #3.6 for why this
-# exists rather than one shared config. `os-deps` (pandoc, pdflatex,
-# poppler-utils) is apt-only, so this leg never has them; the lines they
-# gate are marked `pragma: no cover-windows-toolchain` in source and
-# excluded only here, never in pyproject.toml's own exclude_lines --
-# the Linux leg has the toolchain and keeps measuring those lines for
-# real. tests/test_coverage_configs_agree.py pins the two [run] sections
-# to the same source/branch/omit, so this file can only drift from
+# exists rather than one shared config. Two kinds of line are marked
+# `pragma: no cover-windows` in source and excluded only here, never in
+# pyproject.toml's own exclude_lines -- the Linux leg has what each needs
+# and keeps measuring those same lines for real:
+#   - toolchain: `os-deps` (pandoc, pdflatex, poppler-utils) is apt-only,
+#     so ~30 render/pdf tests self-skip on this leg;
+#   - platform: multiprocessing has no "forkserver" start method on
+#     Windows at all, and a shebang script is not directly executable
+#     there, so the tests that would exercise those specific branches are
+#     structurally unrunnable regardless of what is installed.
+# tests/test_coverage_configs_agree.py pins the two [run] sections to the
+# same source/branch/omit, so this file can only drift from
 # pyproject.toml's on the one axis it is meant to.
 
 [tool.coverage.run]
@@ -25,5 +30,5 @@ precision = 2
 exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
-    "pragma: no cover-windows-toolchain",
+    "pragma: no cover-windows",
 ]

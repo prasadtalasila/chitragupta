@@ -626,13 +626,19 @@ def prestart_pool() -> None:
     if config.PARSER != "docling" or config.PARSER_WORKERS == 1:
         return
     if worker_ceiling() <= 1:
-        return
+        return  # pragma: no cover-windows
     if start_method()[0] != "forkserver":
         return
-    from multiprocessing import forkserver
+    # Unreachable on Windows: start_method() never returns "forkserver"
+    # there (multiprocessing has no such start method on that platform),
+    # so this line is always past the return above -- see
+    # tests/test_pdf_text.py::TestPrestartPool's own class-level skip for
+    # the same fact stated on the test side.
+    from multiprocessing import forkserver  # pragma: no cover-windows
 
-    multiprocessing.get_context("forkserver").set_forkserver_preload(preload_modules())
-    try:
+    ctx = multiprocessing.get_context("forkserver")  # pragma: no cover-windows
+    ctx.set_forkserver_preload(preload_modules())  # pragma: no cover-windows
+    try:  # pragma: no cover-windows
         forkserver.ensure_running()
     except Exception:  # noqa: BLE001 -- the pool will start one itself
         pass

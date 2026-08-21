@@ -59,9 +59,10 @@ jobs:
     # whatever happens. It gets python-deps without os-deps (apt-only), so
     # ~30 render/pdf tests self-skip there -- but it holds the same 100%
     # coverage bar as Linux regardless (docs/TECHNICAL-DEBT.md #3.6):
-    # coveragerc-windows.toml excludes exactly the toolchain-only lines
-    # those tests would have covered, rather than budgeting for the gap
-    # under a lower floor.
+    # coveragerc-windows.toml excludes exactly the lines that are
+    # genuinely untestable on this platform (missing toolchain, or no
+    # forkserver/shebang support at all), rather than budgeting for the
+    # gap under a lower floor.
     steps:
       - uses: actions/checkout@v4
 
@@ -192,8 +193,8 @@ jobs:
       # python-deps only (os-deps is apt-only: pandoc, TeX Live, poppler),
       # so ~30 render/pdf tests self-skip there -- but rather than budget
       # for that under a lower number, coveragerc-windows.toml excludes
-      # exactly the toolchain-only call sites those tests would have
-      # covered (`pragma: no cover-windows-toolchain` in source), so both
+      # exactly the lines untestable on this platform, toolchain-gated or
+      # not (`pragma: no cover-windows` in source), so both
       # legs hold pyproject's/that file's own fail_under = 100. A floor
       # under 100 couldn't tell "a render test self-skipped" from
       # "Windows-only code that nothing reaches at all"; this can.
@@ -256,11 +257,12 @@ jobs:
       # things and merging them silently would hide that: the Linux leg
       # installs os-deps and runs the whole suite, the Windows leg gets
       # python-deps only, so ~30 render/pdf tests self-skip there and
-      # chitragupta/render_output.py's toolchain-only lines are excluded by
-      # coveragerc-windows.toml rather than run at all
-      # (docs/TECHNICAL-DEBT.md #3.6) -- both hit 100%, of a different
-      # denominator. Two flags keep the two runs distinguishable in
-      # Codecov's UI even though they now agree on the headline number.
+      # chitragupta/render_output.py's/pdf_text.py's/hook_launchers.py's
+      # platform-untestable lines are excluded by coveragerc-windows.toml
+      # rather than run at all (docs/TECHNICAL-DEBT.md #3.6) -- both hit
+      # 100%, of a different denominator. Two flags keep the two runs
+      # distinguishable in Codecov's UI even though they now agree on the
+      # headline number.
       # Uploading only the Linux report would also have fixed the timing
       # problem below, and was rejected for that -- it would leave the
       # Windows leg's narrower measurement invisible rather than reported

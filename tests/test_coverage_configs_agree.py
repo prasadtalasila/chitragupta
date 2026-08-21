@@ -1,9 +1,11 @@
 """`pyproject.toml`'s `[tool.coverage.run]` and `coveragerc-windows.toml`'s
 own copy must agree on everything except the one axis they are meant to
-differ on (`docs/TECHNICAL-DEBT.md` #3.6): CI's Windows leg excludes the
-`pandoc`/`pdflatex`/`pdftotext` call sites it can never reach (`os-deps`
-is apt-only there), via its own `[tool.coverage.report].exclude_lines`
-entry, `pragma: no cover-windows-toolchain`. `--cov-config` replaces
+differ on (`docs/TECHNICAL-DEBT.md` #3.6): CI's Windows leg excludes
+lines it can never reach -- the `pandoc`/`pdflatex`/`pdftotext` call
+sites `os-deps` never installs there, and separately the
+`multiprocessing`-forkserver/shebang-script branches that platform lacks
+outright -- via its own `[tool.coverage.report].exclude_lines` entry,
+`pragma: no cover-windows`. `--cov-config` replaces
 config discovery entirely rather than merging with `pyproject.toml`, so
 the Windows file carries a full, independent copy of `[run]` -- exactly
 the kind of duplication that drifts silently if nothing pins it, the same

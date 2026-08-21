@@ -82,7 +82,7 @@ LEGACY_LONG_FUNCTIONS = {
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
     "chitragupta/review/verbatim_check.py",  # 1880
-    "chitragupta/pdf_text.py",  # 1032
+    "chitragupta/pdf_text.py",  # 1033
     "chitragupta/enrich/docling_parse.py",  # 511
     "chitragupta/sync.py",  # 499
     "chitragupta/overlap_index.py",  # 492

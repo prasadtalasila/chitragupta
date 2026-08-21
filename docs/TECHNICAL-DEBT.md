@@ -436,12 +436,20 @@ would silently reintroduce.
 **Resolved in #291.** `coveragerc-windows.toml` is a second, independent
 coverage config (needed in full: `--cov-config` replaces config discovery
 rather than merging with `pyproject.toml`) used only on the Windows leg,
-whose `[report].exclude_lines` adds one pattern,
-`pragma: no cover-windows-toolchain`, over `pyproject.toml`'s own two.
-Every `pandoc`/`pdflatex`/`pdftotext` call site the ~30 self-skipping
-tests would have covered is marked with it in source -- never in
+whose `[report].exclude_lines` adds one pattern, `pragma: no
+cover-windows`, over `pyproject.toml`'s own two. Measuring the real gap
+found two kinds of line, not one: the expected `pandoc`/`pdflatex`/
+`pdftotext` call sites the ~30 self-skipping tests would have covered
+(`chitragupta/render_output/`, `chitragupta/review/verbatim_check.py`), and a
+second, platform kind found only once the first fix was measured against
+real CI rather than a local approximation -- `chitragupta/pdf_text.py`'s
+forkserver-only branch (`multiprocessing` has no forkserver start method
+on Windows at all) and `chitragupta/hook_launchers.py`'s two fault-message
+returns (reached only by a test whose fake interpreter is a shebang
+script, which Windows cannot execute directly, per that test class's own
+pre-existing `skipif`). Both are marked with the same pragma -- never in
 `pyproject.toml`'s own `exclude_lines`, so the Linux leg, which has the
-real toolchain, keeps measuring those same lines for real.
+real toolchain and platform, keeps measuring all of it for real.
 `tests/test_coverage_configs_agree.py` pins the two configs' `[run]`
 sections identical and asserts the Windows `exclude_lines` is a strict
 superset of Linux's, so the one axis they are meant to differ on cannot
