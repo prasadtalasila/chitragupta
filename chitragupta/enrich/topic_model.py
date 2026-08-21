@@ -1,12 +1,18 @@
 """Stage 4: BERTopic clustering over the corpus.
 
-Needs `bertopic` from pyproject.toml's "enrich" Poetry group, in a venv. With a
-handful of documents, HDBSCAN's default min_cluster_size (10) will
-legitimately put everything in the outlier topic (-1) -- that is the
-correct output for a small corpus, not a bug. Don't lower
-min_cluster_size to force clusters into existence; report the outlier
-result honestly and let the topic model become meaningful once the
-corpus is large enough to justify it.
+Needs `bertopic` from pyproject.toml's "enrich" Poetry group, in a venv.
+With a handful of documents HDBSCAN will legitimately put everything in
+the outlier topic (-1) -- that is the correct output for a small corpus,
+not a bug. Don't lower `[enrich].topic_min_cluster_size` to force
+clusters into existence on a corpus too small for them; report the
+outlier result honestly instead.
+
+Granularity on a corpus that *is* large enough is a setting rather than a
+constant (`topic_min_cluster_size`, `topic_min_samples`,
+`topic_neighbors`). Until 6.9.0 it was neither: every parameter saturated
+at n_docs >= 20, so a 497-document corpus received the values written for
+a 20-document one and could not yield more than ~13 topics however far it
+grew. docs/CONFIG.md has the sweep.
 
 Unlike every other stage, this one has no downstream consumer in the
 repository: nothing imports it, and no genre skill reads
@@ -26,88 +32,27 @@ BERTopic's clustering step is inherently whole-corpus -- adding one new
 document can shift every cluster assignment, so unlike
 embed_index.build_index() there's no "skip this doc" option for the
 clustering itself. What *is* skippable is the expensive part before it:
-re-embedding a document's full text with model.encode(). This module
-caches one whole-text embedding per citekey (config.TOPIC_EMBED_CACHE_PATH,
-keyed by the same hash_text() embed_index.py uses for its own per-chunk
-cache) and only calls encode() for docs whose text hash changed since the
-last run, batching all of them into one encode() call rather than one per
-doc. Note this cache is intentionally separate from embed_index.py's
-Chroma collection: that one stores per-*chunk* embeddings for retrieval,
-this one stores one whole-document embedding per doc for clustering --
-different granularity, not reusable as-is between the two.
+embedding the documents. This module caches one pooled vector per citekey
+(config.TOPIC_EMBED_CACHE_PATH) keyed by text hash, embedding model *and*
+pooling method, and re-embeds only what those say is stale.
+
+That cache overlaps embed_index.py's Chroma collection more than it used
+to, and the overlap is worth stating plainly rather than leaving for
+someone to rediscover: since pooling arrived, both split a document with
+the *same* embed_index.chunk_text() call and embed the same chunks with
+the same model, so `content/chroma/` already holds every vector this
+stage recomputes -- 40,741 of them for a 497-document corpus. Pooling
+those instead of re-encoding would make this stage nearly free, at the
+cost of making it depend on the `embed` stage having run and on a
+fallback for documents Chroma lacks. That trade has not been made; the
+duplicated encode is a known cost, not an oversight.
 """
 
 import json
 
 from chitragupta import config
-from chitragupta.enrich import embed_index
+from chitragupta.enrich import doc_vectors, embed_index
 from chitragupta.enrich.corpus import CorpusDoc
-
-
-def _load_embed_cache() -> dict:
-    if config.TOPIC_EMBED_CACHE_PATH.exists():
-        return json.loads(config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
-    return {}
-
-
-def _save_embed_cache(cache: dict) -> None:
-    config.TOPIC_EMBED_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    config.TOPIC_EMBED_CACHE_PATH.write_text(json.dumps(cache), encoding="utf-8")
-
-
-def corpus_texts(docs: list[CorpusDoc]) -> dict:
-    """Every doc that has text at all, by citekey. Docs with none are
-    dropped rather than embedded as empty strings, which would cluster
-    together on their emptiness and invent a topic out of missing PDFs."""
-    doc_texts = {}
-    for doc in docs:
-        text = embed_index.get_text(doc)
-        if text:
-            doc_texts[doc.citekey] = text
-    return doc_texts
-
-
-def document_embeddings(doc_texts: dict, model) -> dict:
-    """One whole-text vector per citekey, re-encoding only what changed.
-
-    Split out of run_topic_model() so chitragupta/enrich/topic_seeding.py
-    can match seed phrases against the same vectors this stage clusters.
-    That sharing is the point rather than a convenience: a phrase scored
-    against one embedding of a document and clustered against another
-    would be two different opinions about the same corpus, and the
-    similarity numbers the report prints would not explain the topic
-    assignments sitting beside them.
-
-    Note what "the document's embedding" really is: `model.encode()`
-    truncates at the model's own input limit (256 word pieces for
-    all-MiniLM-L6-v2, 384 for the mpnet models), so this is a vector for
-    a paper's opening -- title, abstract and the start of the
-    introduction -- not for its whole text. That is a reasonable proxy
-    for what a paper is about, and it is not the same claim as "the
-    document was embedded".
-    """
-    cache = _load_embed_cache()
-    doc_hashes = {citekey: embed_index.hash_text(text) for citekey, text in doc_texts.items()}
-    # Track which model produced each cached vector, not just the text hash
-    # that produced it: swapping config.toml's embedding_model changes every
-    # vector's dimensionality without changing any doc's text, and mixing
-    # dimensions in the same `embeddings` array below breaks BERTopic outright.
-    stale_citekeys = [
-        citekey for citekey in doc_texts
-        if citekey not in cache
-        or cache[citekey]["hash"] != doc_hashes[citekey]
-        or cache[citekey].get("model") != config.EMBEDDING_MODEL
-    ]
-    if stale_citekeys:
-        new_vecs = model.encode([doc_texts[d] for d in stale_citekeys], show_progress_bar=False)
-        for citekey, vec in zip(stale_citekeys, new_vecs):
-            cache[citekey] = {
-                "hash": doc_hashes[citekey],
-                "model": config.EMBEDDING_MODEL,
-                "embedding": vec.tolist(),
-            }
-        _save_embed_cache(cache)
-    return {citekey: cache[citekey]["embedding"] for citekey in doc_texts}
 
 
 def _soft_membership(clusterer):
@@ -284,7 +229,7 @@ def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
     """
     import numpy as np
 
-    doc_texts = corpus_texts(docs)
+    doc_texts = doc_vectors.corpus_texts(docs)
 
     if len(doc_texts) < 2:
         raise ValueError("Need at least 2 documents with text to run BERTopic; "
@@ -292,9 +237,15 @@ def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
 
     _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
 
-    cache = document_embeddings(doc_texts, model)
+    cache = doc_vectors.document_embeddings(doc_texts, model)
 
-    citekeys = list(doc_texts)
+    # Keyed off what actually has a vector, not off doc_texts: a document
+    # whose text chunked to nothing is absent from the cache, and reading
+    # doc_texts here would raise on it.
+    citekeys = [citekey for citekey in doc_texts if citekey in cache]
+    if len(citekeys) < 2:
+        raise ValueError("Need at least 2 documents with embeddable text to run "
+                         f"BERTopic; got {len(citekeys)}")
     texts = [doc_texts[d] for d in citekeys]
     embeddings = np.array([cache[d] for d in citekeys])
 

@@ -19,7 +19,7 @@ import json
 import pytest
 
 from chitragupta import config
-from chitragupta.enrich import embed_index, topic_model, topic_seeding
+from chitragupta.enrich import doc_vectors, embed_index, topic_seeding
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -217,7 +217,7 @@ class TestSharedSeamWithTopicModel:
     def test_corpus_texts_drops_documents_with_none(self, isolated_config, tmp_path):
         docs = make_docs(tmp_path, {"has_text": "words here"})
         docs.append(CorpusDoc(citekey="no_text", title="t", pdf_path=None))
-        assert set(topic_model.corpus_texts(docs)) == {"has_text"}
+        assert set(doc_vectors.corpus_texts(docs)) == {"has_text"}
 
 
 class TestPerPhraseRanking:

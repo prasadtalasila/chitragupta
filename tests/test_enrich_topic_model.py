@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config
-from chitragupta.enrich import embed_index, topic_model
+from chitragupta.enrich import doc_vectors, embed_index, topic_model
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -214,10 +214,10 @@ class TestEmbeddingCache:
     def test_second_run_with_unchanged_docs_encodes_nothing(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
         topic_model.run_topic_model(docs)
-        assert len(FakeModel.encode_call_texts) == 1  # one batch call for all 6 new docs
+        assert len(FakeModel.encode_call_texts) == 6  # one call per new doc, carrying its chunks
 
         topic_model.run_topic_model(docs)
-        assert len(FakeModel.encode_call_texts) == 1  # no second call -- every doc was cache-hit
+        assert len(FakeModel.encode_call_texts) == 6  # no further calls -- every doc was cache-hit
 
     def test_changed_doc_triggers_encode_for_only_that_doc(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
@@ -226,8 +226,10 @@ class TestEmbeddingCache:
         Path(docs[0].text_path).write_text("completely different content now")
         topic_model.run_topic_model(docs)
 
-        assert len(FakeModel.encode_call_texts) == 2
-        assert FakeModel.encode_call_texts[1] == ["completely different content now"]
+        # One encode() call per stale document, carrying that document's
+        # chunks -- pooling replaced the single batched call over raw texts.
+        assert len(FakeModel.encode_call_texts) == 7  # 6 first run, 1 re-encode
+        assert "completely different content now" in " ".join(FakeModel.encode_call_texts[-1])
 
     def test_cache_persisted_to_disk_between_calls(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
@@ -249,14 +251,13 @@ class TestEmbeddingCache:
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-a")
         docs = make_docs_with_text(6, tmp_path)
         topic_model.run_topic_model(docs)
-        assert len(FakeModel.encode_call_texts) == 1
-        assert len(FakeModel.encode_call_texts[0]) == 6
+        assert len(FakeModel.encode_call_texts) == 6  # one call per document
 
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-b")
         topic_model.run_topic_model(docs)
 
-        assert len(FakeModel.encode_call_texts) == 2
-        assert len(FakeModel.encode_call_texts[1]) == 6  # every doc re-embedded, not just changed ones
+        # Every doc re-embedded, not just changed ones: 6 more calls.
+        assert len(FakeModel.encode_call_texts) == 12
 
         cache = json.loads(isolated_config.TOPIC_EMBED_CACHE_PATH.read_text())
         assert all(v["model"] == "model-b" for v in cache.values())
@@ -275,8 +276,8 @@ class TestEmbeddingCache:
         )
         topic_model.run_topic_model(docs + [new_doc])
 
-        assert len(FakeModel.encode_call_texts) == 2
-        assert FakeModel.encode_call_texts[1] == ["a brand new document"]
+        assert len(FakeModel.encode_call_texts) == 7  # 6 + only the new one
+        assert FakeModel.encode_call_texts[-1] == ["a brand new document"]
 
 
 class TestSeedPhrases:
@@ -353,8 +354,8 @@ class TestDocumentEmbeddingsSeam:
     def test_returns_one_vector_per_citekey(self, isolated_config,
                                             fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(3, tmp_path)
-        texts = topic_model.corpus_texts(docs)
-        vectors = topic_model.document_embeddings(texts, FakeModel())
+        texts = doc_vectors.corpus_texts(docs)
+        vectors = doc_vectors.document_embeddings(texts, FakeModel())
         assert set(vectors) == set(texts)
 
     def test_reuses_the_cache_across_callers(self, isolated_config,
@@ -362,11 +363,11 @@ class TestDocumentEmbeddingsSeam:
         """topic_seeding.py scores against the same vectors this stage
         clusters, so the second caller must encode nothing."""
         docs = make_docs_with_text(3, tmp_path)
-        texts = topic_model.corpus_texts(docs)
+        texts = doc_vectors.corpus_texts(docs)
         model = FakeModel()
-        topic_model.document_embeddings(texts, model)
+        doc_vectors.document_embeddings(texts, model)
         FakeModel.encode_call_texts = []
-        topic_model.document_embeddings(texts, model)
+        doc_vectors.document_embeddings(texts, model)
         assert FakeModel.encode_call_texts == []
 
 
@@ -489,3 +490,77 @@ class TestSoftMembershipSeam:
         # each row against the column list and a 1-D return would zip the
         # wrong axis silently.
         assert soft.ndim == 2
+
+
+class TestWholeDocumentPooling:
+    """Koh et al. (ACM CSUR 55:8) Finding 4: in long documents salient
+    content is scattered, so embedding a prefix embeds the wrong part.
+    Measured here, the prefix was ~2% of each paper -- heading, authors,
+    abstract opening -- which is why these vectors are pooled over the
+    whole document instead."""
+
+    def whitespace_doc(self, tmp_path, citekey):
+        path = tmp_path / f"{citekey}.txt"
+        path.write_text("   \n\t ", encoding="utf-8")
+        return CorpusDoc(citekey=citekey, title=citekey,
+                         pdf_path=None, text_path=str(path))
+
+    def test_every_chunk_reaches_the_model(self, isolated_config, fake_bertopic_stack,
+                                           tmp_path, monkeypatch):
+        """The whole document, not its first 512 word-pieces: a text long
+        enough to chunk must arrive as several chunks, not one string."""
+        monkeypatch.setattr(embed_index, "chunk_text",
+                            lambda text, **kw: ["chunk one", "chunk two", "chunk three"])
+        path = tmp_path / "long.txt"
+        path.write_text("word " * 2000, encoding="utf-8")
+        docs = [CorpusDoc(citekey="long", title="L", pdf_path=None, text_path=str(path)),
+                *make_docs_with_text(2, tmp_path)]
+        topic_model.run_topic_model(docs)
+        assert ["chunk one", "chunk two", "chunk three"] in FakeModel.encode_call_texts
+
+    def test_the_vector_is_the_mean_of_its_chunks(self, isolated_config, fake_bertopic_stack,
+                                                  monkeypatch):
+        """FakeModel encodes a string to its length, so three chunks of
+        10/20/30 characters must pool to 20."""
+        monkeypatch.setattr(embed_index, "chunk_text",
+                            lambda text, **kw: ["x" * 10, "x" * 20, "x" * 30])
+        got = doc_vectors.pooled_embedding("anything", FakeModel())
+        assert got == [20.0]
+
+    def test_text_that_chunks_to_nothing_has_no_vector(self, isolated_config):
+        assert doc_vectors.pooled_embedding("   \n\t ", FakeModel()) is None
+
+    def test_such_a_document_is_dropped_rather_than_zeroed(self, isolated_config,
+                                                           fake_bertopic_stack, tmp_path):
+        """A zero row would cluster with every other empty document and
+        invent a topic out of parse failures."""
+        docs = make_docs_with_text(3, tmp_path) + [self.whitespace_doc(tmp_path, "blank")]
+        result = topic_model.run_topic_model(docs)
+        assert "blank" not in result["assignments"]
+        assert result["n_docs"] == 3
+
+    def test_too_few_embeddable_documents_raises(self, isolated_config,
+                                                 fake_bertopic_stack, tmp_path):
+        """Distinct from "no text at all": these documents have text, it
+        just chunks to nothing, so the count only falls at this stage."""
+        docs = make_docs_with_text(1, tmp_path) + [self.whitespace_doc(tmp_path, "blank")]
+        with pytest.raises(ValueError, match="embeddable text"):
+            topic_model.run_topic_model(docs)
+
+    def test_the_method_is_recorded_so_old_vectors_go_stale(self, isolated_config,
+                                                            fake_bertopic_stack, tmp_path):
+        """Neither the text hash nor the model id changes when the pooling
+        arithmetic does, so without this a switch of method would keep
+        serving prefix vectors forever."""
+        topic_model.run_topic_model(make_docs_with_text(3, tmp_path))
+        cache = json.loads(isolated_config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
+        assert all(v["method"] == doc_vectors.EMBED_METHOD for v in cache.values())
+
+    def test_a_method_change_re_embeds_everything(self, isolated_config, fake_bertopic_stack,
+                                                  tmp_path, monkeypatch):
+        docs = make_docs_with_text(3, tmp_path)
+        topic_model.run_topic_model(docs)
+        assert len(FakeModel.encode_call_texts) == 3
+        monkeypatch.setattr(doc_vectors, "EMBED_METHOD", "something-else-v2")
+        topic_model.run_topic_model(docs)
+        assert len(FakeModel.encode_call_texts) == 6

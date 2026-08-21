@@ -44,7 +44,7 @@ similarity at all.
 import json
 
 from chitragupta import config
-from chitragupta.enrich import embed_index, topic_model
+from chitragupta.enrich import doc_vectors, embed_index
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -151,12 +151,12 @@ def run_topic_seeding(docs: list[CorpusDoc], seed_phrases: tuple) -> dict:
             "topics = [...] array of phrases first."
         )
 
-    doc_texts = topic_model.corpus_texts(docs)
+    doc_texts = doc_vectors.corpus_texts(docs)
     if not doc_texts:
         raise ValueError("No documents with text to match seed topics against")
 
     _client, model = embed_index.get_client_and_model()
-    doc_embeddings = topic_model.document_embeddings(doc_texts, model)
+    doc_embeddings = doc_vectors.document_embeddings(doc_texts, model)
 
     # One encode() call for every phrase rather than one per phrase, and
     # no cache: a seed list is tens of short strings against a corpus of
