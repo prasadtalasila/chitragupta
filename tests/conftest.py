@@ -135,6 +135,10 @@ def isolated_config(tmp_path, monkeypatch):
     # near-orthogonal pair to do it.
     monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
     monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 25)
+    # Pinned so a developer's own config.toml can't change how many
+    # chunks embed_index.search() admits per citekey out from under a
+    # test that is asserting the cap's arithmetic, not its default.
+    monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 3)
     # Pinned to the values the scaling-arithmetic tests assert against,
     # so a developer tuning topic depth in their own config.toml does not
     # fail a suite that is checking the clamps rather than the defaults.

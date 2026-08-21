@@ -46,6 +46,7 @@ class FakeCollection:
     def __init__(self):
         self.upserted = []
         self.query_response = None
+        self.last_n_results = None
         self._store = {}  # id -> {"document":..., "embedding":..., "metadata":...}
 
     def upsert(self, ids, documents, embeddings, metadatas):
@@ -71,6 +72,7 @@ class FakeCollection:
             self._store.pop(i, None)
 
     def query(self, query_embeddings, n_results):
+        self.last_n_results = n_results
         return self.query_response
 
 
@@ -508,3 +510,85 @@ class TestSearch:
         assert results[0]["citekey"] == "a2024"
         assert results[0]["distance"] == 0.123
         assert len(results[0]["snippet"]) == 10
+
+
+class TestSearchCapsPerSource:
+    """Issue #305: one paper's chunks must not own every slot in the top k."""
+
+    def make_response(self, hits):
+        """`hits`: `[(citekey, title, snippet_text, distance), ...]`, in the
+        distance-ranked order Chroma would return them."""
+        return {
+            "documents": [[text for _, _, text, _ in hits]],
+            "metadatas": [[{"citekey": citekey, "title": title} for citekey, title, _, _ in hits]],
+            "distances": [[distance for _, _, _, distance in hits]],
+        }
+
+    def test_capping_promotes_a_second_documents_chunk_into_top_k(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response([
+            ("a2024", "A", "chunk a1", 0.1),
+            ("a2024", "A", "chunk a2", 0.2),
+            ("a2024", "A", "chunk a3", 0.3),
+            ("a2024", "A", "chunk a4", 0.4),
+            ("b2024", "B", "chunk b1", 0.5),
+        ])
+
+        results = embed_index.search("query", k=3)
+
+        # Truncate-then-cap would have returned three a2024 chunks and
+        # never reached b2024 at all; cap-then-truncate promotes it in.
+        assert [r["citekey"] for r in results] == ["a2024", "a2024", "b2024"]
+
+    def test_cap_of_three_admits_exactly_three_not_four(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 3)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response([
+            ("a2024", "A", "chunk a1", 0.1),
+            ("a2024", "A", "chunk a2", 0.2),
+            ("a2024", "A", "chunk a3", 0.3),
+            ("a2024", "A", "chunk a4", 0.4),
+        ])
+
+        # k is deliberately not the binding constraint here -- only the
+        # cap is -- so a 0-based-counter-with-`>` bug (admits 4) is
+        # distinguishable from the fix (admits 3).
+        results = embed_index.search("query", k=10)
+
+        assert [r["citekey"] for r in results] == ["a2024", "a2024", "a2024"]
+
+    def test_untitled_duplicate_title_documents_are_capped_apart(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 1)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response([
+            ("a2024", "", "chunk a1", 0.1),
+            ("b2024", "", "chunk b1", 0.2),
+        ])
+
+        results = embed_index.search("query", k=10)
+
+        # A title-keyed cap (OpenScholar's bug) would bucket both under
+        # "" and drop the second even though they're different papers.
+        assert [r["citekey"] for r in results] == ["a2024", "b2024"]
+
+    def test_over_fetch_is_bounded_by_a_multiple_of_k_not_by_collection_size(
+        self, isolated_config, fake_enrich_deps
+    ):
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response([("a2024", "A", "chunk", 0.1)])
+
+        embed_index.search("query", k=5)
+
+        assert collection.last_n_results > 5
+        assert collection.last_n_results == 5 * embed_index._OVERFETCH_MULTIPLIER

@@ -158,6 +158,16 @@ same shape as BM25's, so callers do not change. Nothing in this repository
 fuses or re-ranks the two -- there is no hybrid search here. A skill uses
 one or the other.
 
+**Unlike BM25, this ranks chunks, not documents**, so without a check a
+single well-matched paper could fill every one of the `k` slots. `search`
+caps each citekey at `[enrich].embed_max_passages_per_source` (default
+3) chunks among the top `k`, applied to the over-fetched ranked list
+before it is truncated -- so dropping a dominant paper's excess chunks
+promotes another paper's chunk into the result, rather than merely
+shortening it (#305, [CONFIG.md](CONFIG.md#enrich----the-optional-enrichment-layer)).
+BM25's `search` needs no such cap: it is already one-per-citekey by
+construction.
+
 **When it earns its cost.** BM25 cannot match a paper that argues your
 point in different words. If your corpus is large, or written across
 communities that use different vocabulary for the same idea, semantic

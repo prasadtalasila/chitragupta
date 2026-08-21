@@ -363,6 +363,16 @@ good_score = 0.50
 #                       Default if absent: sentence-transformers/all-MiniLM-L6-v2
 embedding_model = "sentence-transformers/all-mpnet-base-v2"
 
+# The most chunks of one citekey embed_index.search() will return among
+# its top k (#305): a per-citekey cap applied to the ranked list before
+# it's truncated, so one thoroughly-matched paper can't fill every
+# slot. BM25's chitragupta.retrieval.search() needs no matching key --
+# it's already one-per-citekey by construction. Lower to 1 for maximal
+# source diversity per query; raise it where a single paper legitimately
+# deserves more of the result.
+#                                                             Default: 3
+embed_max_passages_per_source = 3
+
 # Whether the docling stage also extracts figure bitmaps, into
 # content/docling/<doc>_artifacts/, plus a <doc>.figures.json giving each
 # figure's page, caption, and the exact string to cite it by.

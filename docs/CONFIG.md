@@ -361,6 +361,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | Key | Env var | Accepts | Default in code | In `config.toml.example` |
 |---|---|---|---|---|
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
+| `embed_max_passages_per_source` | `EMBED_MAX_PASSAGES_PER_SOURCE` | integer | `3` | `3` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
@@ -380,6 +381,14 @@ MiniLM -- what you get if the key is absent. The shipped example sets the
 larger, more accurate mpnet, so anyone who copied `config.toml.example`
 is running mpnet. Check your own file rather than assuming either. See
 [Choosing an embedding model](#choosing-an-embedding-model).
+
+**`embed_max_passages_per_source`** caps how many chunks of one citekey
+`chitragupta.enrich.embed_index.search()` will return among its top `k`
+(#305) -- BM25's `chitragupta.retrieval.search()` is already one-per-citekey
+by construction and has no matching key. Raise it for a corpus where a
+single, unusually thorough paper legitimately deserves more of the
+result than three chunks; lower it (to `1`) to force maximal source
+diversity per query.
 
 ## How values are parsed
 

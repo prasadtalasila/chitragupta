@@ -762,6 +762,16 @@ EMBEDDING_MODEL = _get(
     default="sentence-transformers/all-MiniLM-L6-v2",
 )
 
+# The most chunks chitragupta/enrich/embed_index.py::search() will return from a
+# single citekey, applied to the over-fetched ranked list before it is
+# truncated to k -- see that function's docstring for why the ordering
+# matters. 3 leaves room for a paper's chunks to still dominate a small
+# k (e.g. k=5), while guaranteeing a second source a chance at the
+# result once at least two papers are relevant.
+EMBED_MAX_PASSAGES_PER_SOURCE = int(_get_float(
+    "EMBED_MAX_PASSAGES_PER_SOURCE", "enrich", "embed_max_passages_per_source", default=3,
+))
+
 
 # --------------------------------------------------------------------------
 # Path containment
