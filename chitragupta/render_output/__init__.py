@@ -323,10 +323,9 @@ def render(
         )
 
     # Everything from here on needs the real pandoc/pdflatex/TeX Live
-    # toolchain to exercise -- see docs/TECHNICAL-DEBT.md #3.6. Marked
-    # per-line rather than by extracting a helper, since there is no
-    # single enclosing block to tag and this trailing tail is otherwise
-    # ordinary sequential code.
+    # toolchain to exercise -- see #291. Marked per-line rather than by
+    # extracting a helper, since there is no single enclosing block to tag
+    # and this trailing tail is otherwise ordinary sequential code.
     _require("pandoc")  # pragma: no cover-windows
     if output_format == "pdf":  # pragma: no cover-windows
         _require("pdflatex")

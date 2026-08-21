@@ -1,6 +1,6 @@
 # Coverage config for CI's Windows leg only -- see pyproject.toml's
-# [tool.coverage.report] and docs/TECHNICAL-DEBT.md #3.6 for why this
-# exists rather than one shared config. Two kinds of line are marked
+# [tool.coverage.report], and #291 for why this exists rather than one
+# shared config. Two kinds of line are marked
 # `pragma: no cover-windows` in source and excluded only here, never in
 # pyproject.toml's own exclude_lines -- the Linux leg has what each needs
 # and keeps measuring those same lines for real:

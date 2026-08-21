@@ -134,7 +134,7 @@ Once an item is found, its collections come from a straight join:
 - **Blocks carrying no fields** are counted as `no_fields` and left alone
   (2 of 644). These are Zotero's contentless `@misc{key,}` stubs for an
   attachment with no metadata, which `bibtexparser` is right to drop --
-  [TECHNICAL-DEBT.md](TECHNICAL-DEBT.md)'s 4.2 documents the same two
+  #235 documents the same two
   blocks in this library. The bucket is named for what they are rather
   than for a failure, because reporting them as "dropped" on a healthy
   library is exactly the crying-wolf problem 4.2 is about. They are

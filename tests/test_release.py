@@ -147,7 +147,7 @@ class TestTrackedFiles:
 
     def test_excludes_coveragerc_windows_toml(self, repo):
         # Same category as the two above: config for CI's Windows leg
-        # (docs/TECHNICAL-DEBT.md #3.6), meaningful only alongside this
+        # (#291), meaningful only alongside this
         # repository's own test suite, which a release doesn't ship.
         paths = release.tracked_files()
         assert "coveragerc-windows.toml" not in paths

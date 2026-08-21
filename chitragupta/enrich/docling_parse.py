@@ -441,10 +441,10 @@ def _pdf_size(path: str | None) -> int:
 def _executor_for(workers: int) -> ProcessPoolExecutor:
     """This module's docling pool, built by the one place that knows how
     (pdf_text.docling_process_pool -- see its docstring for why the pool
-    itself moved there, off docs/TECHNICAL-DEBT.md #3.2). Kept as its own
-    named function, rather than calling that helper inline at the one
-    call site below, purely as the test seam `tests/test_enrich_docling_parse.py`
-    already monkeypatches.
+    itself moved there, in #290). Kept as its own named function, rather
+    than calling that helper inline at the one call site below, purely as
+    the test seam `tests/test_enrich_docling_parse.py` already
+    monkeypatches.
     """
     return pdf_text.docling_process_pool(
         workers, lambda msg: logging_setup.say(logger, msg, level=logging.WARNING)

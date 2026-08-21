@@ -769,6 +769,17 @@ Host: the multi-GPU machine (48 allowed CPUs, 251 GB RAM), bare
 `python3` 3.12.3, no GPU involved -- `chitragupta.dossier` is stdlib-only, so
 this needs no venv. Medians of 5 runs.
 
+**These numbers predate a bug in the harness, and are on the right side
+of it.** `bench_drift.py` narrows each row to `n` dossiers by overriding
+`all_dossiers`, and #224 (2026-08-17) moved the name that override has to
+reach when it split `chitragupta/dossier.py` into a package -- after
+which every row measured the whole set, and the "dossiers swept" column
+would have been fiction. This run is from 2026-08-08, nine days before
+that, which its own varying-by-count numbers below confirm: a run through
+the broken path prints the same figure three times. #294 fixed the
+override and added the `self_check()` that would have caught it. Anything
+measured with this script between those two dates should be re-run.
+
 ### The real corpus: 646 ledger rows, 47.4 MB of parsed text
 
 `bench/bench_drift.py --real` copies this host's own

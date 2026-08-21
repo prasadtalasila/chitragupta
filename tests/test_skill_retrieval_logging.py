@@ -39,8 +39,9 @@ _LOOKAHEAD_CHARS = 220
 # outside this scan at their real paths, and they are held here to a rule
 # written for drafting-protocol files. The finding is not about the docs
 # and not about old code: a glob scoped to `.claude/` simply cannot tell
-# a skill file from a nested checkout of everything. See
-# docs/TECHNICAL-DEBT.md §4.3; fixed in #236.
+# a skill file from a nested checkout of everything -- the same
+# worktree-scan bug `tests/test_removed_command_scan.py` excludes for,
+# fixed in #236.
 _WORKTREES = "worktrees"
 
 
@@ -103,7 +104,7 @@ def test_at_least_one_invocation_is_actually_found():
 
 def _worktree_fixture(claude_dir):
     """A skill file that passes, beside a nested checkout of a doc that
-    would fail -- the shape §4.3 actually reported, in miniature."""
+    would fail -- the shape that bug actually reported, in miniature."""
     (claude_dir / "skills" / "writer").mkdir(parents=True)
     (claude_dir / "skills" / "writer" / "SKILL.md").write_text(
         'python -m chitragupta.draft retrieve search "topic" --log\n', encoding="utf-8"

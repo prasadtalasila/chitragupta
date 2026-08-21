@@ -152,8 +152,8 @@ def connect() -> sqlite3.Connection:
 def connection() -> Iterator[sqlite3.Connection]:
     """`with ledger.connection() as con:` -- connect() plus the
     close()-in-a-finally every caller was already writing by hand at
-    eight call sites (docs/TECHNICAL-DEBT.md #3.8). Not a change to the
-    connection's lifecycle, just to who writes the boilerplate.
+    eight call sites (#292). Not a change to the connection's lifecycle,
+    just to who writes the boilerplate.
     """
     con = connect()
     try:

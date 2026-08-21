@@ -66,8 +66,8 @@ _ALLOWED = {
 # at a path `_ALLOWED` cannot name -- as new, unrefused code. The report
 # reads like stale code surviving a migration and is nothing of the kind.
 # Not hypothetical, and it accumulates rather than clearing: the host
-# docs/TECHNICAL-DEBT.md §4.3 was written on carried seven, all on
-# branches long since merged, and the same host carried 26 by the time
+# this was first measured on carried seven, all on branches long since
+# merged, and the same host carried 26 by the time
 # #236 fixed it. CI never sees any of it -- `actions/checkout` creates no
 # worktree -- so the red is local-only, which is exactly the kind of
 # failure a developer learns to scroll past.
@@ -192,7 +192,7 @@ class TestANestedWorktreeIsNotScanned:
         )
         # The same offence inside a worktree-shaped checkout, plus a copy
         # of the refusal machinery at a path `_ALLOWED`'s `chitragupta/sync.py`
-        # cannot match -- the shape §4.3 actually reported.
+        # cannot match -- the shape this actually reported.
         # A skill file at a real `.claude/` path, which must stay in
         # scope: dropping `.claude` from `roots` altogether would also
         # make the worktree assertions below pass, and would silently

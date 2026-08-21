@@ -415,9 +415,8 @@ will otherwise have to re-derive:
 
 - **The encoding sites went first.** Enabling pylint before fixing them
   would have closed the detector on the debt register's top item without
-  closing the item. All of
-  [3.1](docs/TECHNICAL-DEBT.md#31-text-io-on-the-locale-codec) is fixed,
-  not just the seven sites pylint could see.
+  closing the item. All of the locale-codec encoding item is fixed, not
+  just the seven sites pylint could see.
 - **Wrapping long lines grew ten registered files.** `line-too-long` and
   the C2 file-length ratchet pull against each other; C0301 won, and the
   counts in `tests/test_code_standards_scan.py` moved with it.

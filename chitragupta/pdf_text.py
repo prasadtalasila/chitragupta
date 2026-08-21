@@ -778,8 +778,8 @@ def init_worker(counter, lock, devices) -> None:
 def docling_process_pool(workers: int, warn: Callable[[str], None]) -> ProcessPoolExecutor:
     """The one docling ProcessPoolExecutor builder, shared by chitragupta/sync.py
     and chitragupta/enrich/docling_parse.py so the two cannot silently drift on
-    what `init_worker` is handed -- see docs/TECHNICAL-DEBT.md #3.2. Both
-    already import this module, so this costs no new dependency edge.
+    what `init_worker` is handed -- see #290. Both already import this
+    module, so this costs no new dependency edge.
 
     `warn` is a `str -> None` callback rather than a fixed logger, because
     the two callers report a complaint differently: chitragupta/sync.py logs it

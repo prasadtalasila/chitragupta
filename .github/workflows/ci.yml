@@ -58,7 +58,7 @@ jobs:
     # it now blocks like the Linux one rather than reporting success
     # whatever happens. It gets python-deps without os-deps (apt-only), so
     # ~30 render/pdf tests self-skip there -- but it holds the same 100%
-    # coverage bar as Linux regardless (docs/TECHNICAL-DEBT.md #3.6):
+    # coverage bar as Linux regardless (#291):
     # coveragerc-windows.toml excludes exactly the lines that are
     # genuinely untestable on this platform (missing toolchain, or no
     # forkserver/shebang support at all), rather than budgeting for the
@@ -189,7 +189,7 @@ jobs:
       # Python's Scripts/) via poetry.toml's virtualenvs.create = false
       # + VIRTUAL_ENV, instead of this workflow needing to know which
       # one .venv-full actually has.
-      # One floor now, not two (docs/TECHNICAL-DEBT.md #3.6). Windows gets
+      # One floor now, not two (#291). Windows gets
       # python-deps only (os-deps is apt-only: pandoc, TeX Live, poppler),
       # so ~30 render/pdf tests self-skip there -- but rather than budget
       # for that under a lower number, coveragerc-windows.toml excludes
@@ -259,7 +259,7 @@ jobs:
       # python-deps only, so ~30 render/pdf tests self-skip there and
       # chitragupta/render_output.py's/pdf_text.py's/hook_launchers.py's
       # platform-untestable lines are excluded by coveragerc-windows.toml
-      # rather than run at all (docs/TECHNICAL-DEBT.md #3.6) -- both hit
+      # rather than run at all (#291) -- both hit
       # 100%, of a different denominator. Two flags keep the two runs
       # distinguishable in Codecov's UI even though they now agree on the
       # headline number.
@@ -390,7 +390,7 @@ jobs:
         run: pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 
       # scripts/install_full_pipeline.sh is 333 lines with no static check
-      # (docs/TECHNICAL-DEBT.md 3.5), and CI now depends on a stage inside
+      # (added in 6.1.0), and CI now depends on a stage inside
       # it. A shell script CI calls deserves the bar the Python and the
       # Markdown already hold.
       - name: shellcheck
@@ -472,7 +472,7 @@ jobs:
   # a second place to keep in sync with the first. `workflow_dispatch` can
   # still aim this at a feature branch, which is what a manual dispatch is
   # for -- Sonar records that as a branch analysis, not as a PR.
-  # docs/TECHNICAL-DEBT.md #3.4: docker/Dockerfile had never been built by
+  # #237: docker/Dockerfile had never been built by
   # anything -- no workflow under .github/ builds it, so a broken change
   # to it or to scripts/install_full_pipeline.sh (which it wraps) would
   # ship silently, and scripts/release.py bundles the Dockerfile into
