@@ -270,6 +270,7 @@ ignored-modules=bertopic,
                 hdbscan,
                 numpy,
                 sentence_transformers,
+                sklearn,
                 torch,
                 umap
 
