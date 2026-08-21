@@ -46,9 +46,12 @@ jobs:
       # dependency in this repository -- DEVELOPER-AGENTS.md's "don't add
       # a second install path". `--only docs` rather than `--with docs`
       # because a docs build has no use for the enrich stack: this
-      # installs the seventeen packages of the mkdocs group and nothing
-      # else, so the job stays seconds rather than the minutes a torch
-      # download costs.
+      # installs only the mkdocs group's own packages and their
+      # dependencies (31 as of this writing -- count with `grep -c
+      # '"docs"' poetry.lock` rather than trusting a number here, since
+      # it grows with mkdocs-material's own dependencies and this comment
+      # will not track it), so the job stays seconds rather than the
+      # minutes a torch download costs.
       #
       # Not `scripts/install_full_pipeline.sh`: that script is the single
       # install path for the *pipeline* (host, Docker and the CI test job

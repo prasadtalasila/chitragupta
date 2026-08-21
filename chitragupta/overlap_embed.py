@@ -251,7 +251,7 @@ def _encoded_source(
 
 def report(alignments: list[SectionAlignment]) -> list[SectionAlignment]:
     """The alignments a report shows: strongest first, one per draft
-    span, capped at `REPORT_LIMIT`.
+    span, capped at `SECTION_LIMIT`.
 
     **A ranking, not a verdict**, which is the shape #134's own redesign
     asks for ("report a ranked top-N, always, with scores -- no cutoff to

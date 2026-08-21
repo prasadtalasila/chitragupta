@@ -371,7 +371,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `topic_exclude_author_names` | `TOPIC_EXCLUDE_AUTHOR_NAMES` | boolean | `true` | `true` |
 | `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
 | `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
-| `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `10` | `10` |
+| `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `5` | `5` |
 | `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
 | `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `8` | `8` |
 
@@ -932,7 +932,7 @@ rather than guessed.
 ### How many topics, and how deep
 
 `[enrich].topic_min_cluster_size` (3), `topic_min_samples` (2) and
-`topic_neighbors` (10) decide the granularity of the emergent topic
+`topic_neighbors` (5) decide the granularity of the emergent topic
 structure. They are settings rather than constants because the right
 depth is a property of a corpus and its owner, not of this code.
 

@@ -484,7 +484,7 @@ install_dev_deps() {
 
     echo
     echo "Installed. Run the test suite via:"
-    echo "  ${bin_dir}/python -m pytest --cov=src --cov=scripts --cov-report=term-missing"
+    echo "  ${bin_dir}/python -m pytest --cov --cov-report=term-missing"
 }
 
 STAGES=("$@")

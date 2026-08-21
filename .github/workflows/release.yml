@@ -122,12 +122,15 @@ jobs:
       # Publishing exchanges GitHub's OIDC token for a short-lived PyPI
       # one, so there is no long-lived credential to leak or rotate.
       #
-      # **This fails until the publisher is configured on PyPI**, and
-      # that is expected rather than a defect. It has to be registered
-      # there against this repository, this workflow filename and the
-      # `pypi` environment above -- PyPI cannot be told any of that from
-      # here. Until then the failure is confined to this job: the tag,
-      # the release and all three artefacts still land.
+      # The publisher is registered on PyPI against this repository, this
+      # workflow filename and the `pypi` environment above -- every tag
+      # since v6.7.0 has published cleanly (docs/PACKAGING.md). A failure
+      # here now is a real regression (a renamed environment, a changed
+      # OIDC trust relationship, a PyPI-side outage), not the expected
+      # state: it was only expected once, before that first tag, and this
+      # comment used to say so. If it fails, the tag and the GitHub
+      # Release still land -- this job runs after both, and a failure
+      # here is confined to it.
       #
       # The project is `chitragupta-cli`, not `chitragupta`: that name
       # belongs to an unrelated package on PyPI. docs/PACKAGING.md has

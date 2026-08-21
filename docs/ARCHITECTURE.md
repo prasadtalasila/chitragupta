@@ -152,9 +152,10 @@ successful read, `1` for a citekey the ledger doesn't hold.
 
 ## Layer 2: the drafting layer
 
-Seven Claude Code skills in `.claude/skills/`, one set of grounding rules
-between them: five that write a new draft, and two that change one that
-already exists.
+Nine Claude Code skills in `.claude/skills/`, one set of grounding rules
+between them: five that write a new draft, three that revise one that
+already exists, and `book-assembler` -- the only one that writes no
+prose -- which composes an already-drafted book from its accepted units.
 
 | Skill | Produces |
 |---|---|
@@ -165,14 +166,18 @@ already exists.
 | `deep-research` | a multi-perspective, corpus-grounded report -- heavier and slower than the others by design |
 | `draft-reviser` | a scoped edit to a draft that already exists, made from its dossier rather than the corpus -- including repairing citations after a sync moved the corpus |
 | `corpus-reviser` | the same edit discipline over a full retrieval pass, when you ask for the whole corpus to be re-searched |
+| `overlap-reviser` | a repaired draft after a verbatim-overlap scan found borrowed wording, one finding at a time |
+| `book-assembler` | a composed book from already-accepted units -- front matter, `\part`, `\chapter`, back matter |
 
 The two teaching genres are deliberately separate: a textbook chapter
-explains, a tutorial is verified to run. The two revision skills are
-separate for a different reason: `draft-reviser` contains no instructions
-for a wide search, so the cheap path cannot drift into the expensive one
--- see [GENRE.md](GENRE.md#revising-widely-corpus-reviser). The prose
-standards all seven share, and where in the technical-communication
-literature they come from, are in
+explains, a tutorial is verified to run. `draft-reviser` and
+`corpus-reviser` are separate for a different reason: `draft-reviser`
+contains no instructions for a wide search, so the cheap path cannot
+drift into the expensive one -- see
+[GENRE.md](GENRE.md#revising-widely-corpus-reviser). The prose standards
+all eight prose-writing skills share -- every one but `book-assembler`,
+which writes no prose of its own -- and where in the
+technical-communication literature they come from, are in
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md).
 
 Each skill retrieves from the corpus layer, drafts into
@@ -527,7 +532,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all six commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all nine commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -584,12 +589,15 @@ by that aid's own parser. The submodules inside `chitragupta/enrich/` and
 done nothing. That is a trap, but a silent and harmless one, and it is
 the price of there being exactly one `--help` per layer.
 
-The drafting layer's five commands carry the same trap without moving
+The drafting layer's nine commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier.py`, `references.py`,
-`render_output.py` and `retrieval.py` stayed flat in `chitragupta/`;
-`chitragupta/draft.py` beside them is what dropped their `__main__` blocks and
+`render_output.py`, `retrieval.py`, `style_check.py`, `spec.py`,
+`unit.py` and `registry.py` stayed flat in `chitragupta/` -- each a
+top-level module or package there, never gathered into a shared drafting
+subpackage the way `enrich/`'s stages are; `chitragupta/draft.py` beside
+them is what dropped their `__main__` blocks and
 gave the layer its one front door. So `python -m chitragupta.dossier`, or any of
-the other four, is the same silent no-op as the nested form above.
+the other eight, is the same silent no-op as the nested form above.
 
 **One module refuses instead: `chitragupta/sync.py`.** Silence is the right price
 everywhere above because nobody schedules those commands. A no-op is seen
