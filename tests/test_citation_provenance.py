@@ -571,6 +571,96 @@ class TestWriteReportAndCli:
         assert "d.provenance.md" in capsys.readouterr().out
 
 
+class TestJsonPayload:
+    """`--json` on `citation_provenance`, widening #127's plumbing from
+    `verbatim scan` to the rest of the review layer (#309)."""
+
+    def test_json_sibling_is_written_even_without_the_json_flag(self, isolated_config):
+        """Provenance already writes its Markdown unconditionally -- the
+        `.json` sibling follows the same policy, so `agenda` never finds
+        it missing just because nobody happened to pass `--json`."""
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("The hysteresis band matters [@a_2024].\n")
+
+        assert cp.main([str(path), "--formats", "md"]) == 0
+        assert (config.REVIEW_DIR / "d.provenance.json").is_file()
+
+    def test_json_flag_prints_the_envelope(self, isolated_config, capsys):
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("No citations here.\n")
+
+        assert cp.main([str(path), "--json", "--formats", "md"]) == 0
+        payload = json.loads(capsys.readouterr().out)
+
+        assert payload["aid"] == "provenance"
+        assert payload["draft"] == str(path)
+        assert "notice" in payload
+        assert payload["findings"] == []
+
+    def test_json_findings_match_the_markdown_report_one_for_one(self, isolated_config, capsys):
+        _add_item("a_2024", parsed_text="alpha content")
+        _add_item("b_2024", parsed_text="beta content")
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Alpha claim [@a_2024]. Beta claim [@b_2024].\n")
+        report = cp.build_report(path)
+
+        assert cp.main([str(path), "--json", "--formats", "md"]) == 0
+        payload = json.loads(capsys.readouterr().out)
+
+        assert [f["citekey"] for f in payload["findings"]] == [f.citekey for f in report.findings]
+        assert [f["line"] for f in payload["findings"]] == [f.line for f in report.findings]
+        assert [f["claim"] for f in payload["findings"]] == [f.claim for f in report.findings]
+
+    def test_finding_ids_are_stable_across_runs_and_distinct_from_each_other(
+        self, isolated_config, capsys
+    ):
+        _add_item("a_2024", parsed_text="alpha content")
+        _add_item("b_2024", parsed_text="beta content")
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Alpha claim [@a_2024]. Beta claim [@b_2024].\n")
+
+        cp.main([str(path), "--json", "--formats", "md"])
+        first_ids = [f["id"] for f in json.loads(capsys.readouterr().out)["findings"]]
+        cp.main([str(path), "--json", "--formats", "md"])
+        second_ids = [f["id"] for f in json.loads(capsys.readouterr().out)["findings"]]
+
+        assert first_ids == second_ids
+        assert len(set(first_ids)) == len(first_ids)
+
+    def test_two_runs_over_unchanged_input_write_byte_identical_json(self, isolated_config):
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("The hysteresis band matters [@a_2024].\n")
+
+        cp.main([str(path), "--formats", "md"])
+        first = (config.REVIEW_DIR / "d.provenance.json").read_bytes()
+        cp.main([str(path), "--formats", "md"])
+        second = (config.REVIEW_DIR / "d.provenance.json").read_bytes()
+
+        assert first == second
+
+    def test_json_flag_moves_the_written_summary_to_stderr(self, isolated_config, capsys):
+        """So `provenance --json > findings.json` stays a valid JSON file,
+        the same discipline `verbatim scan --json` already follows."""
+        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        path = config.CONTENT_DIR / "d.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("The hysteresis band matters [@a_2024].\n")
+
+        cp.main([str(path), "--json", "--formats", "md"])
+        out, err = capsys.readouterr()
+
+        json.loads(out)
+        assert "provenance.md" in err
+        assert "provenance.json" in err
+
+
 class TestBands:
     @pytest.mark.parametrize("score,expected", [
         (0.0, "no support found"), (0.19, "no support found"),

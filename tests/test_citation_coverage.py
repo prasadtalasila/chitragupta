@@ -1,6 +1,7 @@
 """chitragupta/review/citation_coverage.py: how much of retrieval's candidates actually
 made it into a draft's citations. Informational only, not a gate."""
 
+import json
 from pathlib import Path
 
 from chitragupta import config, ledger
@@ -253,6 +254,131 @@ class TestWrite:
         second = (config.REVIEW_DIR / "draft.coverage.md").read_bytes()
 
         assert first == second
+
+
+class TestJsonPayload:
+    """`--json`, widening #127's plumbing from `verbatim scan` to the rest
+    of the review layer (#309). Mirrors `verbatim scan`'s own contract:
+    printing stays the default, `--json` prints the payload instead, and
+    `--write` files it beside the Markdown whether or not `--json` was
+    also given."""
+
+    def test_json_flag_prints_the_payload_instead_of_text(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        rc = citation_coverage.main([str(draft), "--query", "digital twin composability", "--json"])
+
+        assert rc == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["aid"] == "coverage"
+        assert payload["coverage_pct"] == 100.0
+
+    def test_json_flag_alone_does_not_write_a_file(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        citation_coverage.main([str(draft), "--query", "digital twin composability", "--json"])
+
+        assert not config.REVIEW_DIR.exists()
+
+    def test_findings_match_the_printed_report_one_for_one(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation"))
+        draft = _draft()
+
+        citation_coverage.main([str(draft), "--query", "digital twin", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+
+        result = citation_coverage.compute_coverage(draft, ["digital twin"])
+        statuses = {f["citekey"]: f["status"] for f in payload["findings"]}
+        assert statuses == {
+            **{key: "uncited_candidate" for key in result.uncited_candidates},
+            **{key: "cited_outside_candidates" for key in result.cited_outside_candidates},
+        }
+
+    def test_uncited_candidates_carry_their_title(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation"))
+        draft = _draft()
+
+        citation_coverage.main([str(draft), "--query", "digital twin", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+
+        by_key = {f["citekey"]: f for f in payload["findings"]}
+        assert by_key["b2024"]["title"] == "Digital Twin Simulation"
+
+    def test_a_citekey_outside_the_candidates_is_still_a_finding_with_no_candidates_at_all(
+        self, ledger_con, isolated_config, capsys
+    ):
+        """The printed report only shows `coverage_pct` when there are
+        candidates, but a citation outside the (empty) candidate set is
+        still worth reporting -- pin that the payload doesn't inherit the
+        printed form's conditional."""
+        draft = _draft("Nothing relevant [@a2024].\n")
+
+        citation_coverage.main([str(draft), "--query", "completely unrelated nonsense query", "--json"])
+        payload = json.loads(capsys.readouterr().out)
+
+        assert payload["coverage_pct"] is None
+        assert {f["citekey"] for f in payload["findings"]} == {"a2024"}
+
+    def test_finding_ids_are_stable_across_runs_and_distinct_from_each_other(
+        self, ledger_con, isolated_config, capsys
+    ):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation"))
+        draft = _draft()
+        argv = [str(draft), "--query", "digital twin", "--json"]
+
+        citation_coverage.main(argv)
+        first_ids = [f["id"] for f in json.loads(capsys.readouterr().out)["findings"]]
+        citation_coverage.main(argv)
+        second_ids = [f["id"] for f in json.loads(capsys.readouterr().out)["findings"]]
+
+        assert first_ids == second_ids
+        assert len(set(first_ids)) == len(first_ids)
+
+    def test_write_files_the_json_sibling_regardless_of_the_json_flag(
+        self, ledger_con, isolated_config, capsys
+    ):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft(name="dt/survey.md")
+
+        rc = citation_coverage.main([
+            str(draft), "--query", "digital twin composability", "--write", "--formats", "md",
+        ])
+
+        assert rc == 0
+        assert (config.REVIEW_DIR / "dt" / "survey.coverage.json").is_file()
+
+    def test_two_runs_over_unchanged_input_write_byte_identical_json(
+        self, ledger_con, isolated_config, capsys
+    ):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+        argv = [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
+
+        citation_coverage.main(argv)
+        first = (config.REVIEW_DIR / "draft.coverage.json").read_bytes()
+        citation_coverage.main(argv)
+        second = (config.REVIEW_DIR / "draft.coverage.json").read_bytes()
+
+        assert first == second
+
+    def test_json_flag_moves_the_written_summary_to_stderr(self, ledger_con, isolated_config, capsys):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability"))
+        draft = _draft()
+
+        citation_coverage.main([
+            str(draft), "--query", "digital twin composability",
+            "--write", "--formats", "md", "--json",
+        ])
+        out, err = capsys.readouterr()
+
+        json.loads(out)
+        assert "coverage.md" in err
+        assert "coverage.json" in err
 
 
 class TestInputIsConfinedToContent:

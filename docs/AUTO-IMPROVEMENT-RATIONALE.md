@@ -70,19 +70,19 @@ point.
 | Signal | What it finds | What it emits | Who acts on it |
 |---|---|---|---|
 | `python -m chitragupta.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
-| `python -m chitragupta.review provenance` | a citation whose source does not visibly support it | Markdown report | human, by hand |
+| `python -m chitragupta.review provenance` | a citation whose source does not visibly support it | Markdown report, or `--json` | human, by hand |
 | `python -m chitragupta.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
-| `python -m chitragupta.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report | human, by hand |
+| `python -m chitragupta.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report, or `--json` | human, by hand |
 | *nothing* | a badly written sentence | -- | human, by hand |
 
-Two things stand out. **Most of the surface is still text only.** When
-this was written, `--json` on `dossier status --all` was the single
+Two things stand out. **Most of the surface was text only.** When this
+was written, `--json` on `dossier status --all` was the single
 machine-readable output in the whole quality surface; 5.4.0 added the
-second, on `verbatim scan` (#127), and `provenance` and `coverage` follow
-in their own issues. Until they do, three of the five signals above can
-only be consumed by parsing prose. And **prose quality has no signal at
-all**: `draft-reviser` is section-and-evidence-shaped, and #103 records
-that a copy-edit touching no evidence has no sanctioned path through it.
+second, on `verbatim scan` (#127), and 6.16.0 the other two, on
+`provenance` and `coverage` (#309). Four of the five signals above are
+machine-readable now. And **prose quality still has no signal at all**:
+`draft-reviser` is section-and-evidence-shaped, and #103 records that a
+copy-edit touching no evidence has no sanctioned path through it.
 
 ## Where the loop sits, and the cycle that decides it
 
