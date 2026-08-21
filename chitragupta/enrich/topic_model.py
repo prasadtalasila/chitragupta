@@ -110,59 +110,85 @@ def document_embeddings(doc_texts: dict, model) -> dict:
     return {citekey: cache[citekey]["embedding"] for citekey in doc_texts}
 
 
-def topic_memberships(topic_model, texts: list, citekeys: list, topics: list) -> "dict | None":
-    """Every topic each document belongs to, with its weight -- or None
-    when there is nothing to distribute over.
+def _soft_membership(clusterer):
+    """HDBSCAN's own per-point membership strength across every cluster.
+
+    Its own, and not a centroid distance of ours, because HDBSCAN is
+    density-based: a cluster may be elongated, curved or hollow, and its
+    centroid need not lie inside it. Measured on 497 real documents, a
+    centroid rule agreed with HDBSCAN's own assignment for only 30-45% of
+    them however the space was chosen -- a model mismatch no threshold
+    fixes. This function's own numbers agree 99%.
+
+    A seam of its own so tests can supply a matrix without a fitted
+    clusterer; it is one call and holds no logic.
+    """
+    import hdbscan
+    import numpy as np
+
+    return np.atleast_2d(np.asarray(hdbscan.all_points_membership_vectors(clusterer)))
+
+
+def topic_memberships(clusterer, citekeys: list, topics: list) -> "dict | None":
+    """Every emergent topic each document belongs to, with its strength --
+    or None when the question cannot be answered.
 
     `assignments` beside this holds what `fit_transform` returns: one
-    topic id per document, which cannot express a paper that is genuinely
-    about two things. Measured on a planted two-topic document, the
-    winning topic took 0.570 and the real second topic 0.319, and the
-    scalar discarded the second outright. This recovers it, so the
-    many-to-many claim the seed-topic artefact makes for phrases a person
-    wrote is also true of the topics BERTopic discovered on its own --
-    which are the ones an author cannot seed, because they do not know
-    them yet.
+    topic id per document, which cannot express a paper genuinely about
+    two things. Measured on this project's own corpus, 140 of 497
+    documents belong to more than one topic and the scalar discards every
+    one of those memberships.
 
-    Returns None rather than an empty dict for the three cases where the
-    question is not merely unanswered but meaningless, so a reader can
-    tell "no memberships" from "not computed":
+    Three mechanisms were measured before this one, and each failed for a
+    reason rather than for want of tuning:
 
-    - the feature is switched off (`[enrich].topic_distribution`);
-    - every document landed in the outlier topic, which is the *correct*
-      result on a small corpus (see this module's docstring) and leaves
-      approximate_distribution() with a zero-row c-TF-IDF matrix. It
-      raises `ValueError` from sklearn rather than returning empty, which
-      is checked here rather than caught: a guard that swallowed
-      ValueError would also swallow a real one.
+    - BERTopic's `approximate_distribution` scores c-TF-IDF over token
+      windows. On a single-domain corpus that separates almost nothing:
+      every document belonged to all 7 topics at a mean top-share of 0.16
+      against a uniform 0.14.
+    - Cosine to cluster centroids, in the embedding space or the reduced
+      one, centred or raw. Agreed with HDBSCAN's own assignment for 30-45%
+      of documents -- see `_soft_membership` for why that is structural.
+    - A Gaussian mixture over the reduced space returned near-certain
+      single assignments: hard clustering with extra steps.
+
+    **Returns None for a seeded run, and that is not a limitation to work
+    around.** With `zeroshot_topic_list` set, BERTopic replaces its
+    clustering model with a `BaseCluster` placeholder carrying no
+    `labels_`, so there is no fitted clusterer to ask. The two modes want
+    opposite things anyway: seeding is for topics the author already
+    knows, and this artefact is for the ones they do not -- which is the
+    question #192 asked and the reason to run the stage unseeded.
+
+    HDBSCAN's cluster ids are **not** BERTopic's topic ids: BERTopic
+    renumbers topics by size, so cluster 0 was topic 6 on the run this was
+    written against. The mapping is recovered from the documents
+    themselves rather than assumed, since every document carries both.
     """
     if not config.TOPIC_DISTRIBUTION:
         return None
-    # Excludes -1: the outlier topic is "no topic matched", not a topic a
-    # document can be partly about, and BERTopic's own c_tf_idf_ drops it
-    # before computing similarities.
-    if not {int(t) for t in topics} - {-1}:
+    # A seeded run's placeholder, which has no clusters to be soft about.
+    if not hasattr(clusterer, "labels_"):
         return None
 
-    # 0.0 here, not the ratio: this argument is an absolute cut inside
-    # BERTopic, and the selection below is relative to each document's own
-    # strongest topic, which cannot be expressed as one number for the
-    # whole corpus. Filtering twice on different scales would silently
-    # apply whichever happened to be stricter.
-    distributions, _tokens = topic_model.approximate_distribution(texts, min_similarity=0.0)
+    labels = [int(label) for label in clusterer.labels_]
+    columns = sorted(set(labels) - {-1})
+    if not columns:
+        return None
+    renumbered = {label: int(topic) for label, topic in zip(labels, topics)}
+
+    soft = _soft_membership(clusterer)
     memberships = {}
-    for citekey, row in zip(citekeys, distributions):
-        # Topic ids are the column index, per approximate_distribution's
-        # contract that column i is topic i with outliers already dropped.
-        ranked = sorted(((str(topic_id), round(float(weight), 6))
-                         for topic_id, weight in enumerate(row)),
+    for citekey, label, row in zip(citekeys, labels, soft):
+        ranked = sorted(((str(renumbered[column]), round(float(weight), 6))
+                         for column, weight in zip(columns, row) if weight > 0.0),
                         key=lambda item: (-item[1], item[0]))
-        best = ranked[0][1] if ranked else 0.0
-        if best <= 0.0:
+        if not ranked:
             continue
-        kept = [(tid, w) for tid, w in ranked
-                if w >= best * config.TOPIC_MEMBERSHIP_RATIO][:config.TOPIC_MEMBERSHIP_MAX]
-        memberships[citekey] = dict(kept)
+        best = ranked[0][1]
+        kept = [pair for pair in ranked
+                if pair[1] >= best * config.TOPIC_MEMBERSHIP_RATIO]
+        memberships[citekey] = dict(kept[:config.TOPIC_MEMBERSHIP_MAX])
     return memberships
 
 
@@ -273,7 +299,7 @@ def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
         "assignments": dict(zip(citekeys, [int(t) for t in topics])),
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
     }
-    memberships = topic_memberships(topic_model, texts, citekeys, topics)
+    memberships = topic_memberships(topic_model.hdbscan_model, citekeys, topics)
     if memberships is not None:
         result["memberships"] = memberships
     # Recorded only when there were seeds, so an unseeded run's

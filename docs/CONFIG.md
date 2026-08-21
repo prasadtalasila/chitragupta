@@ -808,5 +808,37 @@ own `min_samples` needs, and the stage died inside sklearn with `k must
 be less than or equal to the number of training points`. Unseeded runs
 were unaffected, which is exactly why a small-corpus test never found it.
 
+### Topics a paper belongs to, beyond the one it is assigned
+
+`content/topics.json` records `assignments` -- one topic id per document,
+which is all `fit_transform` has ever returned -- and, when
+`[enrich].topic_distribution` is on, a `memberships` map giving every
+topic each document belongs to with its strength. On this project's own
+corpus **140 of 497 papers belong to more than one topic**, and the
+scalar discards 222 such memberships.
+
+Those strengths come from HDBSCAN's own soft clustering. Three other
+mechanisms were measured first and each failed for a structural reason
+rather than for want of tuning: BERTopic's `approximate_distribution`
+separated almost nothing on a single-domain corpus (every paper in all 7
+topics, mean top-share 0.16 against a uniform 0.14); cosine to cluster
+centroids, in either space, agreed with HDBSCAN's own assignment for only
+30-45% of documents, because a density-based cluster can be elongated or
+hollow and its centroid need not lie inside it; and a Gaussian mixture
+returned near-certain single assignments, which is hard clustering again.
+HDBSCAN's own numbers agree with its own assignment for **100%** of
+documents.
+
+`topic_membership_ratio` (default `0.5`) is how strong a topic must be
+relative to that document's strongest, and `topic_membership_max`
+(default `3`) caps the list.
+
+**Memberships are recorded for an unseeded run only.** That is BERTopic's
+architecture rather than a gap: with `zeroshot_topic_list` set it swaps
+its clusterer for a placeholder carrying no labels, so there is nothing
+to ask. The two modes want opposite things anyway -- seeding is for
+topics you already know, and this is for the ones you do not, which is
+the question that wanted answering in the first place.
+
 None of these gate anything: no run fails on them and no draft is
 blocked by one (`docs/HOUSE-STYLE.md` R3).

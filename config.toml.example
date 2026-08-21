@@ -419,15 +419,20 @@ zeroshot_min_similarity = 0.55
 
 # Whether the bertopic stage also records which topics each document
 # belongs to, rather than only the single topic id BERTopic returns. A
-# paper genuinely about two things cannot be expressed by one id.
+# paper genuinely about two things cannot be expressed by one id: on a
+# real 497-document corpus, 140 papers belong to more than one topic.
+#
+# Applies to an unseeded run. With a seed list BERTopic swaps out its
+# clusterer and there is nothing left to ask for soft memberships -- run
+# the stage without seeds when the question is "what is in my corpus that
+# I have not named yet".
 #                                                            Default: true
 topic_distribution = true
 
 # How strong a topic must be relative to that document's own strongest to
 # count, and how many may be kept. Relative rather than absolute for the
-# same reason the seed ranking is: weights sum to about 1 across however
-# many topics were found, so a fixed floor means something different at 7
-# topics than at 70.
+# same reason the seed ranking is: a fixed floor means something entirely
+# different at 7 topics than at 70.
 #                                                       Defaults: 0.5 / 3
 topic_membership_ratio = 0.5
 topic_membership_max = 3

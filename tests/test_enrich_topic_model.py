@@ -46,12 +46,12 @@ class FakeBERTopic:
     # What fit_transform() hands back, so a test can put the model in the
     # all-outlier state approximate_distribution() cannot answer for.
     topics_returned = None
-    # Rows of per-topic weights, one per document; column i is topic i.
-    distribution = None
-    distribution_calls = []
 
     def __init__(self, **kwargs):
         FakeBERTopic.last_kwargs = kwargs
+        # Real BERTopic keeps the clusterer it was handed; topic_memberships
+        # reads it back off the fitted model to ask for soft memberships.
+        self.hdbscan_model = kwargs.get("hdbscan_model")
 
     def fit_transform(self, texts, embeddings):
         if FakeBERTopic.topics_returned is not None:
@@ -61,11 +61,6 @@ class FakeBERTopic:
     def get_topic_info(self):
         return FakeTopicInfo()
 
-    def approximate_distribution(self, texts, min_similarity=0.0):
-        FakeBERTopic.distribution_calls.append(min_similarity)
-        if FakeBERTopic.distribution is not None:
-            return list(FakeBERTopic.distribution), None
-        return [[0.0] for _ in texts], None
 
 
 class FakeArray(list):
@@ -87,8 +82,6 @@ def fake_bertopic_stack(monkeypatch):
     FakeHDBSCAN.last_kwargs = None
     FakeBERTopic.last_kwargs = None
     FakeBERTopic.topics_returned = None
-    FakeBERTopic.distribution = None
-    FakeBERTopic.distribution_calls = []
     FakeModel.encode_call_texts = []
 
     umap_module = types.ModuleType("umap")
@@ -354,108 +347,122 @@ class TestDocumentEmbeddingsSeam:
         assert FakeModel.encode_call_texts == []
 
 
+class FakeClusterer:
+    """Stands in for a fitted HDBSCAN. `labels_` are HDBSCAN's own cluster
+    ids, deliberately *not* BERTopic's topic ids -- BERTopic renumbers by
+    size, and conflating the two is the bug these tests exist to catch."""
+
+    def __init__(self, labels):
+        self.labels_ = labels
+
+
+class Placeholder:
+    """What BERTopic leaves in hdbscan_model on a zero-shot run: a
+    BaseCluster carrying no labels_ at all."""
+
+
 class TestTopicMemberships:
     """A document can belong to more than one topic BERTopic *discovered*,
-    not only to more than one phrase a person wrote. `assignments` gives
-    one id per document and always has; measured on a planted two-topic
-    document the winner took 0.570 and the real second topic 0.319, which
-    the scalar threw away."""
+    not only to more than one phrase a person wrote.
 
-    def test_a_document_carries_every_topic_it_belongs_to(self, isolated_config,
-                                                          fake_bertopic_stack, tmp_path):
+    The soft-membership matrix is supplied directly rather than computed,
+    so these pin the selection and the id translation. That the numbers
+    themselves are right is HDBSCAN's business, and was checked against
+    the real library on 497 documents: its own assignment appears in the
+    memberships it produces for 100% of them, against 30-45% for every
+    centroid rule tried first.
+    """
+
+    def soft(self, monkeypatch, matrix):
+        monkeypatch.setattr(topic_model, "_soft_membership", lambda clusterer: matrix)
+
+    def test_a_document_between_two_topics_belongs_to_both(self, isolated_config,
+                                                           monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.5, 0.5]])
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["solo", "spans"], [0, 1])
+        assert len(got["spans"]) == 2
+        assert list(got["solo"]) == ["0"]
+
+    def test_hdbscan_cluster_ids_are_translated_to_topic_ids(self, isolated_config,
+                                                             monkeypatch):
+        """BERTopic renumbers topics by size -- on the real corpus its
+        cluster 0 was topic 6. Reporting the cluster id would name the
+        wrong topic in every artefact."""
+        self.soft(monkeypatch, [[0.9, 0.1], [0.2, 0.8]])
+        got = topic_model.topic_memberships(
+            FakeClusterer([0, 1]), ["a", "b"], [6, 8])
+        assert list(got["a"])[0] == "6"
+        assert list(got["b"])[0] == "8"
+
+    def test_a_weaker_second_topic_is_dropped(self, isolated_config, monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
+        assert list(got["a"]) == ["0"]
+
+    def test_the_ratio_decides_how_weak_a_second_may_be(self, isolated_config, monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.05)
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
+        assert len(got["a"]) == 2
+
+    def test_the_cap_bounds_a_plural_document(self, isolated_config, monkeypatch):
+        self.soft(monkeypatch, [[0.4, 0.3, 0.3], [0.1, 0.9, 0.0], [0.0, 0.1, 0.9]])
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 2)
+        got = topic_model.topic_memberships(FakeClusterer([0, 1, 2]), ["a", "b", "c"],
+                                            [0, 1, 2])
+        assert len(got["a"]) == 2
+
+    def test_a_seeded_run_has_no_clusterer_to_ask(self, isolated_config):
+        """BERTopic swaps in a BaseCluster placeholder when
+        zeroshot_topic_list is set. None, not an empty dict: the question
+        is unanswerable, not answered with nothing."""
+        assert topic_model.topic_memberships(Placeholder(), ["a"], [0]) is None
+
+    def test_an_all_outlier_corpus_has_no_cluster_to_belong_to(self, isolated_config):
+        assert topic_model.topic_memberships(FakeClusterer([-1, -1]), ["a", "b"],
+                                             [-1, -1]) is None
+
+    def test_a_document_with_no_positive_strength_is_omitted(self, isolated_config,
+                                                             monkeypatch):
+        self.soft(monkeypatch, [[0.9, 0.1], [0.0, 0.0]])
+        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
+        assert "b" not in got
+
+    def test_switching_it_off_records_nothing(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", False)
+        assert topic_model.topic_memberships(FakeClusterer([0]), ["a"], [0]) is None
+
+    def test_it_reaches_the_artefact(self, isolated_config, fake_bertopic_stack,
+                                     tmp_path, monkeypatch):
+        """Wired into run_topic_model(), with the scalar surviving beside
+        it rather than being replaced."""
+        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
+        monkeypatch.setattr(FakeHDBSCAN, "labels_", [0, 1], raising=False)
         docs = make_docs_with_text(2, tmp_path)
         FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.57, 0.32], [0.10, 0.80]]
         result = topic_model.run_topic_model(docs)
-        assert result["memberships"]["doc0"] == {"0": 0.57, "1": 0.32}
-
-    def test_the_scalar_assignment_survives_beside_it(self, isolated_config,
-                                                      fake_bertopic_stack, tmp_path):
-        """Additive, not a replacement: a reader wanting the single best
-        topic still finds it where it always was."""
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.57, 0.32], [0.10, 0.80]]
-        result = topic_model.run_topic_model(docs)
+        assert result["memberships"]["doc0"] == {"0": 0.9}
         assert result["assignments"] == {"doc0": 0, "doc1": 1}
 
-    def test_memberships_are_ordered_strongest_first(self, isolated_config,
-                                                     fake_bertopic_stack, tmp_path):
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.40, 0.60], [0.10, 0.80]]
-        result = topic_model.run_topic_model(docs)
-        assert list(result["memberships"]["doc0"]) == ["1", "0"]
 
-    def test_a_weak_topic_is_dropped_relative_to_the_strongest(self, isolated_config,
-                                                               fake_bertopic_stack, tmp_path):
-        """Relative to the document's own best, not an absolute weight:
-        measured on 497 real documents an absolute 0.05 floor recorded
-        6.99 topics out of 7 for every paper -- the dense matrix a floor
-        was meant to prevent, because weights sum to ~1 over however many
-        topics were found and no fixed number survives that."""
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.57, 0.10], [0.10, 0.80]]
-        result = topic_model.run_topic_model(docs)
-        assert result["memberships"]["doc0"] == {"0": 0.57}
+class TestSoftMembershipSeam:
+    """The one place the real hdbscan library is exercised rather than
+    stubbed. Small and real on purpose: everything above it supplies a
+    matrix, so if `all_points_membership_vectors` ever changes shape or
+    name, this is what says so."""
 
-    def test_a_genuine_second_topic_survives(self, isolated_config,
-                                             fake_bertopic_stack, tmp_path):
-        """The planted two-topic document: 0.570 and 0.319. The second is
-        over half the first, so it is a real membership, not a tail."""
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.570, 0.319], [0.10, 0.80]]
-        result = topic_model.run_topic_model(docs)
-        assert result["memberships"]["doc0"] == {"0": 0.57, "1": 0.319}
+    def test_real_hdbscan_yields_a_row_per_point(self, isolated_config):
+        import hdbscan
+        import numpy as np
 
-    def test_a_diffuse_document_is_capped(self, isolated_config,
-                                          fake_bertopic_stack, tmp_path):
-        """Near-uniform weights mean BERTopic was not confident, not that
-        the paper is about all five topics."""
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.21, 0.20, 0.20, 0.20, 0.19], [0.10, 0.80]]
-        result = topic_model.run_topic_model(docs)
-        assert len(result["memberships"]["doc0"]) == 3
-
-    def test_the_ratio_and_cap_come_from_config(self, isolated_config, fake_bertopic_stack,
-                                                tmp_path, monkeypatch):
-        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.9)
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.57, 0.40], [0.10, 0.80]]
-        result = topic_model.run_topic_model(docs)
-        assert result["memberships"]["doc0"] == {"0": 0.57}
-
-    def test_a_document_belonging_nowhere_is_omitted(self, isolated_config,
-                                                    fake_bertopic_stack, tmp_path):
-        """All-zero weights mean the distribution has nothing to say about
-        this document -- recording it under its arbitrary best would be
-        inventing a membership."""
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        FakeBERTopic.distribution = [[0.57, 0.32], [0.0, 0.0]]
-        result = topic_model.run_topic_model(docs)
-        assert "doc1" not in result["memberships"]
-
-    def test_an_all_outlier_corpus_records_no_memberships(self, isolated_config,
-                                                          fake_bertopic_stack, tmp_path):
-        """The correct result on a small corpus, per this module's own
-        docstring -- and the state where approximate_distribution() raises
-        from sklearn on a zero-row matrix. Guarded, not caught."""
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [-1, -1]
-        result = topic_model.run_topic_model(docs)
-        assert "memberships" not in result
-        assert FakeBERTopic.distribution_calls == []
-
-    def test_switching_it_off_skips_the_extra_pass(self, isolated_config,
-                                                  fake_bertopic_stack, tmp_path, monkeypatch):
-        monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", False)
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
-        result = topic_model.run_topic_model(docs)
-        assert "memberships" not in result
-        assert FakeBERTopic.distribution_calls == []
+        # Two clearly separated blobs, min_cluster_size low enough that a
+        # handful of points is a legitimate cluster rather than noise.
+        points = np.array([[0.0, 0.0], [0.1, 0.1], [0.0, 0.2], [0.2, 0.0],
+                           [9.0, 9.0], [9.1, 9.1], [9.0, 9.2], [9.2, 9.0]])
+        clusterer = hdbscan.HDBSCAN(min_cluster_size=3, prediction_data=True).fit(points)
+        soft = topic_model._soft_membership(clusterer)
+        assert soft.shape[0] == len(points)
+        # Always 2-D, even for a single cluster -- topic_memberships zips
+        # each row against the column list and a 1-D return would zip the
+        # wrong axis silently.
+        assert soft.ndim == 2

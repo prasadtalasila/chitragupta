@@ -585,18 +585,23 @@ SEED_TOPIC_MAX_PAPERS = int(_get_float(
 ZEROSHOT_MIN_SIMILARITY = _get_float(
     "ZEROSHOT_MIN_SIMILARITY", "enrich", "zeroshot_min_similarity", default=0.55,
 )
-# Whether the bertopic stage also records, per document, how strongly it
-# belongs to *every* topic rather than only the one id fit_transform
-# returns. That scalar is what BERTopic has always given and it cannot
-# express a paper that is genuinely about two things -- measured on a
-# planted two-topic document, the winning topic took 0.570 and the real
-# second topic 0.319, which the scalar discarded outright.
+# Whether the bertopic stage also records, per document, every topic it
+# belongs to rather than only the one id fit_transform returns. That
+# scalar cannot express a paper genuinely about two things: on 497 real
+# documents, 140 belong to more than one topic and the scalar discards
+# 222 memberships outright.
 #
-# On by default because "a paper belongs to several topics" is the whole
-# premise of the seed-topic work beside it, and a corpus grouped by hand
-# demonstrates it: 497 real documents carried 1.94 seed topics each. Off
-# is here for a corpus large enough that the extra pass costs more than
-# the answer is worth.
+# Recorded from HDBSCAN's own soft clustering, which is the only
+# mechanism of four measured that agrees with the clustering it is
+# describing -- its assignment appears in the memberships it produces for
+# 100% of documents and leads for 99%, against 30-45% for every
+# centroid-distance rule. See chitragupta/enrich/topic_model.py.
+#
+# Applies to an *unseeded* run only, and that is a property of BERTopic
+# rather than a gap here: with zeroshot_topic_list set it replaces its
+# clusterer with a placeholder holding no labels, so there is nothing to
+# ask. The two modes want opposite things anyway -- seeding is for topics
+# you already know, this is for the ones you do not.
 TOPIC_DISTRIBUTION = _get_bool(
     "TOPIC_DISTRIBUTION", "enrich", "topic_distribution", default=True,
 )
