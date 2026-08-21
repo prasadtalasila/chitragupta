@@ -382,3 +382,77 @@ docling_images = false
 # read a figure back without storing print-resolution files.
 #                                                            Default: 2.0
 docling_image_scale = 2.0
+
+# --- Seed topics -------------------------------------------------------
+# Seed topics are phrases you write yourself in content/seed_topics.toml
+# (start from assets/style/topics.toml.example). `--stages seed-topics`
+# matches them against the corpus; `chitragupta corpus topics` prints the
+# result. With no such file nothing below applies: the bertopic stage
+# behaves exactly as it always has and the seed-topics stage is skipped.
+
+# How many papers one seed topic may list, best-scoring first.
+#
+# This is the selection rule. Each phrase is ranked against its *own*
+# scores, because measured over a real 497-document corpus every phrase
+# had its own scale -- "Standards" peaked at 0.295 corpus-wide while
+# "Digital Twin" had a median of 0.338, so one cutoff returned nothing for
+# the first and half the library for the second. Raise it when a topic is
+# genuinely broad and you want the tail; the report always says how many
+# papers were considered, so you can tell a truncated list from a short one.
+#                                                             Default: 25
+seed_topic_max_papers = 25
+
+# The noise floor beneath that ranking -- not the selection rule. It only
+# keeps a seed that means nothing (a person's name left in the list)
+# returning nothing rather than its 25 nearest neighbours.
+#                                                           Default: 0.15
+seed_topic_min_similarity = 0.15
+
+# Note there is no setting for how many seed topics you may write, and
+# no reason for one. Seeds never steer the clustering: they are matched
+# against the same document vectors afterwards, so a hundred seed phrases
+# cost exactly as many emergent topics as none -- zero. Routing them
+# through BERTopic's zero-shot mode did cost topics (81 down to 53 for
+# nine phrases, measured) and that path has been removed.
+
+# How fine the emergent topic structure is -- the depth knob, and the one
+# worth turning first. Measured on a real 497-document corpus, holding
+# everything else fixed:
+#
+#     topic_min_cluster_size = 10   13 topics, 27% outliers, median 19 papers
+#     topic_min_cluster_size = 5    25 topics, 19% outliers, median 13
+#     topic_min_cluster_size = 3    50 topics, 12% outliers, median 6
+#     ...with topic_min_samples = 2 75 topics, 10% outliers, median 5
+#
+# The outlier rate falls as topics get finer, so a coarse setting both
+# under-clusters and discards more of the corpus. Raise these two for
+# fewer, broader topics; lower them for more, sharper ones. Both are
+# clamped down automatically on a corpus too small to honour them.
+#                                                          Defaults: 3 / 2
+topic_min_cluster_size = 3
+topic_min_samples = 2
+
+# UMAP's neighbourhood size, the other half of granularity: smaller reads
+# more local structure and yields more, finer topics.
+#                                                             Default: 10
+topic_neighbors = 10
+
+# Whether the bertopic stage also records which topics each document
+# belongs to, rather than only the single topic id BERTopic returns. A
+# paper genuinely about two things cannot be expressed by one id: on a
+# real 497-document corpus, 140 papers belong to more than one topic.
+#
+# Applies to an unseeded run. With a seed list BERTopic swaps out its
+# clusterer and there is nothing left to ask for soft memberships -- run
+# the stage without seeds when the question is "what is in my corpus that
+# I have not named yet".
+#                                                            Default: true
+topic_distribution = true
+
+# How strong a topic must be relative to that document's own strongest to
+# count, and how many may be kept. Relative rather than absolute for the
+# same reason the seed ranking is: a fixed floor means something entirely
+# different at 7 topics than at 70.
+#                                                       Defaults: 0.5 / 3
+topic_membership_ratio = 0.5
+topic_membership_max = 3

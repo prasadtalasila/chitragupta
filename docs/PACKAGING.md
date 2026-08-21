@@ -103,6 +103,7 @@ command already has -- this is a front door, not a redesign.
 |---|---|
 | `chitragupta corpus sync` | `--reparse`, `--remove-stale` |
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
+| `chitragupta corpus topics` | `--topic` |
 
 ### `draft` -- work on one draft
 
@@ -130,10 +131,10 @@ command already has -- this is a front door, not a redesign.
 
 | Command | Flags |
 |---|---|
-| `chitragupta enrich` | `--stages docling,embed,bertopic`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
+| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
-That is 4 layers and 15 verbs and aids (2 + 9 + 3 + 1), plus 3
-package-level commands, giving **38 invocable leaf commands**: 3 + 2 +
+That is 4 layers and 16 verbs and aids (3 + 9 + 3 + 1), plus 3
+package-level commands, giving **39 invocable leaf commands**: 3 + 3 +
 (4 + 22) + (2 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; #267 pins them with a test that
 walks the live parsers, so a verb added without a row here fails the

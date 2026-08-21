@@ -23,6 +23,7 @@ short path; this is the full set.
   - [`chitragupta.corpus sync`](#python--m-chitraguptacorpus-sync)
   - [When `sync` re-parses a document it already parsed](#when-sync-re-parses-a-document-it-already-parsed)
   - [`chitragupta.corpus ledger`](#python--m-chitraguptacorpus-ledger)
+  - [`chitragupta.corpus topics`](#python--m-chitraguptacorpus-topics)
   - [`chitragupta.draft gate`](#python--m-chitraguptadraft-gate)
   - [`chitragupta.draft references`](#python--m-chitraguptadraft-references)
   - [`chitragupta.draft dossier`](#python--m-chitraguptadraft-dossier)
@@ -86,7 +87,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all three aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -187,6 +188,17 @@ chitragupta corpus ledger
 # chitragupta corpus ledger --list
 # chitragupta corpus ledger --status parse_failed
 # chitragupta corpus ledger --citekey talasila_composable_2025
+# chitragupta corpus ledger --collections    # your Zotero collection names, if the export kept them
+
+# 5b. Optional: name the topics you care about, in your own words, in
+#     content/seed_topics.toml (start from assets/style/topics.toml.example),
+#     match them against the corpus, and read which papers landed under
+#     each. A paper can appear under several topics at once; the report
+#     also names the papers no topic of yours describes. The matching
+#     needs the venv, reading the result does not.
+# chitragupta enrich --stages seed-topics
+chitragupta corpus topics
+# chitragupta corpus topics --topic "digital twin"
 
 # 6. Optional, and only when you want it: the enrichment layer.
 #    Layout-aware parsing, semantic search and topic clustering over the
@@ -422,6 +434,37 @@ nothing and says why. See
 [ZOTERO.md](ZOTERO.md#keeping-your-collections-optional). Asking for a
 parent collection selects everything beneath it, matching is
 case-insensitive, and it is per-segment rather than by substring.
+
+### `python -m chitragupta.corpus topics`
+
+Read-only view of which papers matched each of your seed topics.
+**Takes no lock and needs no venv**, though what it reads is written by a
+stage that needs both. With no flags it prints every topic.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `--topic PHRASE` | -- | Show only this seed topic's papers |
+
+```bash
+python -m chitragupta.corpus topics
+# python -m chitragupta.corpus topics --topic "digital twin"
+```
+
+Exits `1` when no report has been written yet, or when `--topic` names a
+phrase the report does not hold -- the same "you asked about something
+that isn't there" exit `ledger --citekey` already uses.
+
+Seed topics are phrases you write yourself in `content/seed_topics.toml`
+(start from `assets/style/topics.toml.example`), matched against the
+corpus by `python -m chitragupta.enrich --stages seed-topics`. **A phrase
+is one topic and is never split into words**, and a paper is listed under
+every topic it matched rather than only its closest -- so this report is
+many-to-many, unlike `content/topics.json`, where BERTopic gives each
+document exactly one topic id. The papers that matched no topic at all
+are listed too; that list is the point of the report when you are
+deciding what to draft next. See
+[CONFIG.md](CONFIG.md#seed-topics-organising-the-corpus-by-phrases-you-wrote).
 
 ### `python -m chitragupta.draft gate`
 
@@ -1368,7 +1411,7 @@ only duplication, which is what a machine can decide.
 ### `python -m chitragupta.enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
-BERTopic -> provenance -> render. **Needs the venv.** Each stage probes
+BERTopic -> seed topics. **Needs the venv.** Each stage probes
 its own prerequisites and reports a real per-stage status. A
 `skipped/missing-binary` result on a machine without TeX Live is
 therefore a correct answer rather than a bug.
@@ -1377,13 +1420,14 @@ therefore a correct answer rather than a bug.
 |---|---|---|
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
-| `--stages STAGES` | all three, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic` |
-| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed` or `bertopic` |
+| `--stages STAGES` | all four, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics` |
+| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic` or `seed-topics` |
 
 ```bash
 python -m chitragupta.enrich
 # python -m chitragupta.enrich --stages docling
 # python -m chitragupta.enrich --stages embed,bertopic
+# python -m chitragupta.enrich --stages seed-topics   # skipped with no content/seed_topics.toml
 # python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
 
 # A review report and a draft render are tier-1 commands, not stages --

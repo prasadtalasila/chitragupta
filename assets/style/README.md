@@ -49,3 +49,21 @@ is the other one: it compares a draft's own recorded glossary against
 reports when they've drifted apart. Neither check is this file's own
 job -- this vocabulary is the *input* side, what a genre skill drafts
 from, so both checks downstream have less to find.
+
+## The seed-topic list
+
+`topics.toml.example` is the other template here, and unlike
+`acronyms.toml.example` it has no vendored floor beside it -- there is no
+`topics.toml` in this directory and there should not be. An acronym like
+`PDF` is common to every reader this project has; a topic is the one
+thing that is never shared between two authors, so a default list would
+be wrong for everybody rather than merely incomplete.
+
+Copy it to `content/seed_topics.toml` (gitignored, per-host, the same
+footing as `content/acronyms.toml`), write your own phrases, then match
+them against the corpus with `chitragupta enrich --stages seed-topics`
+and read the result with `chitragupta corpus topics`. If your Zotero
+export carries collection labels, `chitragupta corpus ledger
+--collections` prints the candidates worth pasting in. See
+`docs/CONFIG.md` for `[enrich].seed_topic_min_similarity`, and
+`chitragupta/seed_topics.py` for why the file is TOML.

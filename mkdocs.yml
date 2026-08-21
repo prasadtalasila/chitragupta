@@ -154,6 +154,7 @@ nav:
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
       - Retrieval: docs/RETRIEVAL.md
+      - Topic modelling, the evidence: docs/TOPIC-MODELLING.md
   - Choosing settings:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
@@ -162,6 +163,7 @@ nav:
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
   - Working on it:
+      - Feature roadmap: docs/FEATURE-ROADMAP.md
       - Design constraints: docs/DESIGN.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Book-scale drafting: docs/BOOKS.md

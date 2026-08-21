@@ -28,6 +28,7 @@ this document can stay a reference rather than an argument.
 - [How values are parsed](#how-values-are-parsed)
 - [Notes on individual settings](#notes-on-individual-settings)
 - [Choosing an embedding model](#choosing-an-embedding-model)
+- [Seed topics: organising the corpus by phrases you wrote](#seed-topics-organising-the-corpus-by-phrases-you-wrote)
 
 ## How configuration is loaded
 
@@ -362,6 +363,14 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
+| `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
+| `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
+| `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
+| `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
+| `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
+| `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `10` | `10` |
+| `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
+| `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `3` | `3` |
 
 **The two `embedding_model` columns differ on purpose, and the
 distinction matters.** The code's fallback is the smaller, faster
@@ -621,6 +630,23 @@ re-parses the corpus from scratch. Costs in
 
 ## Choosing an embedding model
 
+### What is embedded, and what is thrown away first
+
+Documents are cleaned before they are chunked: the reference list is
+dropped, along with bare emails, URLs, DOIs, copyright lines and page
+numbers. Nothing else -- no stop-word removal, no lowercasing, no
+low-frequency filtering, all of which destroy the multiword domain terms
+a scientific corpus is discriminated by.
+
+A reference list is a paper's densest block of *other people's* names, so
+including it makes two papers similar for citing the same work rather
+than for being about the same thing. Before this, the ninth largest topic
+on this project's corpus was `werner kritzinger, fraunhofer austria` --
+an author cluster, formed by papers citing one famous digital-twin paper.
+A `References` heading is detectable in 451 of 497 documents (91%), and
+the text after it is a median 15% of the document. The other 9% keep
+their whole text rather than having a boundary guessed for them.
+
 `chitragupta/enrich/embed_index.py` calls
 `SentenceTransformer(config.EMBEDDING_MODEL).encode(...)`
 **symmetrically** -- the same call embeds a 200-word document chunk
@@ -687,3 +713,189 @@ python -m chitragupta.enrich --stages embed
 The model downloads on first use (needs network), and Chroma's existing
 collection is **not** re-embedded automatically -- switch only when you
 are prepared to rebuild the index.
+
+## Seed topics: organising the corpus by phrases you wrote
+
+`content/seed_topics.toml` is a list of topic phrases in your own words.
+It is optional and absent by default; with no such file the enrichment
+layer behaves exactly as it did before the feature existed -- the
+`bertopic` stage clusters without steering, and the `seed-topics` stage
+reports itself skipped rather than failing.
+
+```toml
+# content/seed_topics.toml -- start from assets/style/topics.toml.example
+topics = [
+    "digital twin",
+    "structural health monitoring",
+]
+```
+
+**A phrase is one topic and is never split into words.** "structural
+health monitoring" is embedded whole and compared as a single point
+against each document, rather than looked up as three separate terms in a
+bag-of-words vocabulary -- which is what would happen under BERTopic's
+older `seed_topic_list`, where "monitoring" alone would match every paper
+with a monitoring section. Write the phrase you mean.
+
+### Where the phrases come from
+
+Yours to write. If your Zotero export carries collection labels
+([ZOTERO.md](ZOTERO.md)), your own collection names are the best starting
+point, since they are groupings you already trust:
+
+```bash
+chitragupta corpus ledger --collections
+```
+
+Paste in the ones that read as topics and leave out the ones that read as
+shelves. "Digital twins" is a topic; "Reading list", "To read" and "2024
+submissions" are not, and nothing can tell them apart mechanically --
+which is why this file is written by hand rather than generated. That is
+[HOUSE-STYLE.md](HOUSE-STYLE.md)'s "it proposes; the human accepts",
+applied to the one decision a heuristic would get wrong.
+
+### Running it, and reading the result
+
+```bash
+chitragupta enrich --stages seed-topics   # needs the enrich group
+chitragupta corpus topics                 # stdlib only, no venv, no GPU
+chitragupta corpus topics --topic "digital twin"
+```
+
+The match report is written to `content/topic_seeds.json` and read back
+by `chitragupta corpus topics`, which needs neither the venv nor a GPU --
+the same split [#204](https://github.com/prasadtalasila/chitragupta/issues/204)
+made for collections, where matching is expensive and reading what it
+decided is not.
+
+**A paper appears under every topic it matched, not just its closest
+one.** That is deliberate and is the difference between this artefact and
+`content/topics.json`: BERTopic assigns each document exactly one topic
+id, but a library grouped by hand does not work that way -- a paper on
+digital twins in manufacturing genuinely belongs under both. Both
+artefacts are written, from the same embeddings, and neither replaces the
+other.
+
+The report also lists every document that matched **no** topic. That list
+is the useful half for planning a draft: it is the part of your own
+corpus your own topic list does not yet describe. Add a phrase, run it
+again, and watch it shrink.
+
+### How many papers a topic lists, and why it is a ranking
+
+`[enrich].seed_topic_max_papers` (default `25`) is the selection rule:
+each phrase is ranked against **its own** scores and the best N kept.
+`[enrich].seed_topic_min_similarity` (default `0.15`) is only a noise
+floor beneath that.
+
+That ordering was a correction, not the first design, and a real corpus
+forced it. Measured over 497 documents against 14 real Zotero collection
+names, every phrase had its own score scale:
+
+| phrase | corpus-wide max | median |
+|---|---|---|
+| `Standards` | 0.295 | 0.069 |
+| `Digital Twin` | 0.669 | 0.338 |
+
+Under a single absolute cutoff of `0.35`, `Standards` -- a genuine
+25-paper collection -- returned **nothing at all**, while `Digital Twin`
+returned 238 papers, half the corpus. Both are useless answers and no
+single number fixes both, because the two distributions barely overlap.
+Ranking each phrase against itself is immune to that.
+
+The report always prints how many papers were *considered*, so a
+truncated list ("25 of 340 papers") never reads like a short one.
+
+What the floor does and does not do: of four deliberately shelf-like
+collection names in that run, the two with no semantic content --
+`Others` and a person's name, `Karen Wilcox` -- peaked at 0.143 and
+0.112 and correctly returned nothing. The other two, `Reviews and
+Surveys` and `opinions`, clear the floor and do return papers. A shelf
+label that is *also* a description of a paper is not distinguishable
+from a topic by score, and this floor does not try to be. Which names go
+in your list stays your decision.
+
+### How many seed topics may I write?
+
+**As many as you like, and they cost nothing.** There is no setting for
+this and no limit in the code: matching is one cosine per phrase per
+document, so hundreds of phrases against a corpus of thousands is still
+arithmetic you would not notice.
+
+More importantly, seeds no longer compete with discovery. They are
+matched against the same document vectors *after* clustering, never fed
+into it, so naming a topic does not consume the documents an emergent
+topic would have been made of. That was not always true: routing seeds
+through BERTopic's `zeroshot_topic_list` took this corpus from 81
+emergent topics to 53 with only nine phrases -- roughly three discovered
+topics traded away per named one -- and enough seeds starved HDBSCAN of
+points entirely and killed the stage inside sklearn. That path is gone.
+
+The practical consequence is the one worth knowing: **write the topics you
+care about, then read what the corpus had that you did not name.** The
+`unmatched` list in `chitragupta corpus topics` and the emergent topics in
+`content/topics.json` are both answers to that question, and neither
+shrinks because your seed list grew.
+
+### How many topics, and how deep
+
+`[enrich].topic_min_cluster_size` (3), `topic_min_samples` (2) and
+`topic_neighbors` (10) decide the granularity of the emergent topic
+structure. They are settings rather than constants because the right
+depth is a property of a corpus and its owner, not of this code.
+
+The values they replaced were not a tuning choice but a **ceiling**:
+every clustering parameter saturated at `n_docs >= 20`, so a 497-paper
+corpus received the settings written for a 20-paper one, and a 5000-paper
+corpus would have received them too. Measured on this project's own
+corpus, holding everything else fixed:
+
+| `topic_min_cluster_size` | topics | outliers | median topic size |
+|---|---|---|---|
+| 10 (the old hardcoded value) | 13 | 27% | 19 |
+| 5 | 25 | 19% | 13 |
+| 3 | 50 | 12% | 6 |
+| 3, with `topic_min_samples = 2` | 75 | 10% | 5 |
+
+Note the outlier rate **falls** as the topics get finer: the coarse
+setting was both under-clustering and discarding more of the corpus, so
+this is a defect corrected rather than a preference expressed.
+
+The small-corpus clamps survive and only ever reduce these values --
+UMAP's spectral initialisation genuinely fails when `n_neighbors >=
+n_samples`, which is what the original formula existed for. What it never
+did was scale *up*.
+
+### Topics a paper belongs to, beyond the one it is assigned
+
+`content/topics.json` records `assignments` -- one topic id per document,
+which is all `fit_transform` has ever returned -- and, when
+`[enrich].topic_distribution` is on, a `memberships` map giving every
+topic each document belongs to with its strength. On this project's own
+corpus **140 of 497 papers belong to more than one topic**, and the
+scalar discards 222 such memberships.
+
+Those strengths come from HDBSCAN's own soft clustering. Three other
+mechanisms were measured first and each failed for a structural reason
+rather than for want of tuning: BERTopic's `approximate_distribution`
+separated almost nothing on a single-domain corpus (every paper in all 7
+topics, mean top-share 0.16 against a uniform 0.14); cosine to cluster
+centroids, in either space, agreed with HDBSCAN's own assignment for only
+30-45% of documents, because a density-based cluster can be elongated or
+hollow and its centroid need not lie inside it; and a Gaussian mixture
+returned near-certain single assignments, which is hard clustering again.
+HDBSCAN's own numbers agree with its own assignment for **100%** of
+documents.
+
+`topic_membership_ratio` (default `0.5`) is how strong a topic must be
+relative to that document's strongest, and `topic_membership_max`
+(default `3`) caps the list.
+
+**Memberships are recorded for every run.** They were once available only
+for an unseeded one, because BERTopic swaps its clusterer for a
+placeholder carrying no labels in zero-shot mode and there was then
+nothing to ask. Removing that mode -- so seeds no longer steer the
+clustering at all -- retired the restriction along with it.
+
+None of these gate anything: no run fails on them and no draft is
+blocked by one (`docs/HOUSE-STYLE.md` R3).

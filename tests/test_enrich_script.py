@@ -21,7 +21,7 @@ import pytest
 
 from chitragupta.enrich import __main__ as enrich_script
 from chitragupta import config
-from chitragupta.enrich import docling_parse, embed_index, topic_model
+from chitragupta.enrich import docling_parse, embed_index, topic_model, topic_seeding
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -54,15 +54,63 @@ class TestStageEmbed:
 
 
 class TestStageBertopic:
-    def test_ok_shapes_detail(self, monkeypatch):
+    def test_ok_shapes_detail(self, isolated_config, monkeypatch):
         monkeypatch.setattr(
             topic_model, "run_topic_model",
-            lambda docs: {"n_docs": 2, "assignments": {"a": -1, "b": -1}, "topic_info": [1, 2, 3]},
+            lambda docs: {"n_docs": 2, "assignments": {"a": -1, "b": -1},
+                          "topic_info": [1, 2, 3]},
         )
         result = enrich_script.stage_bertopic([], make_args())
         assert result["status"] == "ok"
         assert result["detail"] == {"n_docs": 2, "assignments": {"a": -1, "b": -1}}
         assert "topic_info" not in result["detail"]
+
+    def test_the_seed_list_never_reaches_the_clustering(self, isolated_config,
+                                                        monkeypatch):
+        """Seeds are the seed-topics stage's business. Routing them here
+        would trade emergent topics away for named ones -- 81 down to 53,
+        measured -- which is the whole reason the zero-shot path is gone."""
+        isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.SEED_TOPICS_PATH.write_text(
+            'topics = ["digital twin"]', encoding="utf-8")
+        seen = {}
+        monkeypatch.setattr(
+            topic_model, "run_topic_model",
+            lambda docs, **kw: seen.update(kw=kw) or {
+                "n_docs": 0, "assignments": {}, "topic_info": []},
+        )
+        enrich_script.stage_bertopic([], make_args())
+        assert seen["kw"] == {}
+
+
+class TestStageSeedTopics:
+    def test_skipped_when_the_author_wrote_no_seed_file(self, isolated_config):
+        """The ordinary state of this stage, not a failure: most libraries
+        have no seed file, the same way most have no Zotero collections."""
+        result = enrich_script.stage_seed_topics([], make_args())
+        assert result["status"] == "skipped"
+        assert "no seed topics" in result["detail"]["reason"]
+
+    def test_ok_shapes_detail_as_counts(self, isolated_config, monkeypatch):
+        """Per-phrase counts, not the matches themselves: the run report
+        is a summary and the artefact holds the papers."""
+        isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.SEED_TOPICS_PATH.write_text(
+            'topics = ["digital twin"]', encoding="utf-8")
+        monkeypatch.setattr(
+            topic_seeding, "run_topic_seeding",
+            lambda docs, phrases: {
+                "n_docs": 3,
+                "topics": [{"phrase": "digital twin",
+                            "matches": [{"citekey": "a", "score": 0.9},
+                                        {"citekey": "b", "score": 0.7}]}],
+                "unmatched": ["c"],
+            },
+        )
+        result = enrich_script.stage_seed_topics([], make_args())
+        assert result["status"] == "ok"
+        assert result["detail"] == {"n_docs": 3, "matched": {"digital twin": 2},
+                                    "unmatched": 1}
 
 
 class TestParseArgs:

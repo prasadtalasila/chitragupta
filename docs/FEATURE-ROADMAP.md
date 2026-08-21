@@ -50,6 +50,7 @@ everything below.
 - [Theme D: figure layout](#theme-d-figure-layout)
 - [Theme F: the auto-improvement loop](#theme-f-the-auto-improvement-loop)
 - [Theme E: nice to have](#theme-e-nice-to-have)
+- [Theme G: topic modelling](#theme-g-topic-modelling)
 - [Build order](#build-order)
 - [What is deliberately not proposed](#what-is-deliberately-not-proposed)
 
@@ -1082,6 +1083,54 @@ describing a paper that has since been re-parsed.
 
 Size: M. Depends on: nothing. Genuinely last -- it improves browsing,
 where everything above improves what gets published.
+
+## Theme G: topic modelling
+
+**The one theme here with shipped work in it**, which is why it reads
+differently from A-F above. Those propose; this one records what landed
+in [#287](https://github.com/prasadtalasila/chitragupta/pull/287) and
+what it left undone. The evidence -- which published finding argued for
+each decision, and which measurement on this project's own corpus
+confirmed or contradicted it -- is in
+[TOPIC-MODELLING.md](TOPIC-MODELLING.md); the numbers are in
+`bench/RESULTS.md` under 2026-08-21.
+
+It also breaks this document's "no ML dependency in the core" line only
+in appearance: every part of it lives in the optional enrichment layer,
+which has had `bertopic` and `sentence-transformers` since long before
+this.
+
+### Built
+
+| Feature | What it does |
+|---|---|
+| Seed topics | Hand-authored `content/seed_topics.toml`. A phrase is one topic and is never split -- `structural health monitoring` is embedded whole, not as three unigrams |
+| Unlimited seed lists | Seeds never enter the clustering, so naming topics costs no discovered ones. Routing nine phrases through BERTopic's zero-shot mode had cost 28 emergent topics (81 down to 53) |
+| Per-phrase ranking | Each phrase ranked against *its own* scores. `Standards` peaked at 0.295 corpus-wide while `Digital Twin` had a median of 0.338, so one absolute cutoff returned nothing for the first and half the corpus for the second |
+| Many-to-many matching | A paper is listed under every seed topic it matched, not only its closest |
+| Emergent memberships | Every topic a document belongs to, from HDBSCAN's own soft clustering -- the only one of five mechanisms measured that agrees with the clustering it describes |
+| Configurable depth | `topic_min_cluster_size`, `topic_min_samples`, `topic_neighbors`. Their hardcoded predecessors saturated at 20 documents, capping any corpus at ~13 topics |
+| Whole-document embedding | Chunk-and-pool rather than truncate: a 512 word-piece limit against 22,000-token papers was embedding ~2% of each |
+| Content preprocessing | Reference lists and boilerplate dropped before chunking. Nothing else -- no stop-word or low-frequency filtering, which would destroy the domain terms the corpus is discriminated by |
+| A reader | `chitragupta corpus topics`, tier 1: no venv, no GPU. Ends with the papers no seed matched |
+
+### Next
+
+| # | Item | Size | Why | Depends on |
+|---|---|---|---|---|
+| G1 | [#297](https://github.com/prasadtalasila/chitragupta/issues/297) domain-term topic labels | M | Labels are stopwords (`0_the_and_of_to`) or author names -- `werner kritzinger, fraunhofer austria` is a top-three topic. Dropping bibliographies did **not** fix it: the name is in 55 documents' body text. The cluster is right; only the label is wrong | -- |
+| G2 | [#298](https://github.com/prasadtalasila/chitragupta/issues/298) descriptor-based membership | M | 1.64 topics/paper and 25% plural, against 5.03 and 92% for the descriptor mechanism measured beside it. HDBSCAN soft membership answers "which density region", which is near-binary for core points | -- |
+| G3 | [#299](https://github.com/prasadtalasila/chitragupta/issues/299) converged topic set | M | Seed and emergent topics are two artefacts describing one corpus, joined by nobody | G2 |
+| G4 | [#300](https://github.com/prasadtalasila/chitragupta/issues/300) stability validation | M | Nothing measures whether a topic set reproduces. One swept setting moved from 13 topics to 5 across an upstream change, with `random_state=42` throughout | -- |
+| G5 | [#301](https://github.com/prasadtalasila/chitragupta/issues/301) DocBank-grade structure | L | Docling emits three labels where DocBank annotates twelve, so bibliographies are found by heading regex. **Parked**: needs a LayoutLM-class dependency, and G1 may make the case for it much weaker | G1 |
+
+### What Theme G is deliberately not doing
+
+| Not proposed | Why |
+|---|---|
+| Abstractive topic summaries | Abstractive models carry factual inconsistencies in up to 30% of outputs. A topic summary asserting a claim no paper made is the same failure class as a fabricated citekey ([SOUL.md](../SOUL.md)). Extractive first, behind a human gate |
+| An LLM transcribing document structure | Span *selection* (offsets to keep) is safe; span *transcription* is not, because a transcribed reference can be a fabricated one. See [#301](https://github.com/prasadtalasila/chitragupta/issues/301) |
+| Topic ids treated as stable | They are not, and the stage's own docstring says so. Anything downstream must key on labels or citekeys |
 
 ## Build order
 
