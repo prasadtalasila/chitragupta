@@ -315,9 +315,14 @@ candidate for the chapter.
    `.txt` contents in a fence on `--format md` and every other
    non-LaTeX format, and `--format tex`/`--format pdf` (step 13) get
    `\input{figures/<name>.tex}`, so the printed chapter a student reads
-   carries a real picture rather than monospace art. Four riders, each
+   carries a real picture rather than monospace art. Five riders, each
    of which §10 explains:
 
+   - **Commit to a layout metaphor before drawing, then check the
+     result against `docs/TIKZ-STYLE.md`'s pre-flight defect list**
+     (occlusion, chaotic routing, illegible type, non-rectangular
+     protrusion, an overlong node, literal copying) before keeping the
+     figure.
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.md`, move the draft and its dossier before
      adding a figure, or drop the figure. Figures under a flat draft

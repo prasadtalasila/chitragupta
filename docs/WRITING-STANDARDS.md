@@ -231,6 +231,15 @@ project's own `render_output.py` call, not a general pandoc claim. A
 diagram that renders one figure and breaks every other one downstream
 in the same draft is worse than no diagram.
 
+### TikZ layout and style
+
+[TIKZ-STYLE.md](TIKZ-STYLE.md) is the full guide to drawing a good TikZ
+figure: which layout metaphor to commit to before placing a node, the
+pre-flight defect checklist to check the result against, and the type
+and line-weight conventions that keep a figure consistent with the
+surrounding document. It is a checklist an author checks a figure
+against, not a gate -- nothing in it is enforced mechanically today.
+
 ### Every figure has two forms
 
 ASCII is what a Markdown reader should see; it is not what a thesis

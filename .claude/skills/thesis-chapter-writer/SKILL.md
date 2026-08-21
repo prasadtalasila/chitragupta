@@ -288,8 +288,13 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `pdflatex`. The renderer
    swaps that `\input` for the `.txt` contents when it builds the `.md`
    preview (step 11); `--format tex` and `--format pdf` get the TikZ.
-   Four things to hold onto, each of which §10 explains:
+   Five things to hold onto, each of which §10 explains:
 
+   - **Commit to a layout metaphor before drawing, then check the
+     result against `docs/TIKZ-STYLE.md`'s pre-flight defect list**
+     (occlusion, chaotic routing, illegible type, non-rectangular
+     protrusion, an overlong node, literal copying) before keeping the
+     figure.
    - **The marker is a comment, never a second `\input`.** The fragment
      on disk is what the user `\input`s into their own thesis, and
      `\input{figures/<name>.txt}` makes their `pdflatex` read ASCII art
