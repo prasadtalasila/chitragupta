@@ -215,14 +215,20 @@ def _fit(texts: list, embeddings, model, seed_phrases: tuple):
     # Spectral initialization needs n_components + 1 < n_samples (it solves
     # for n_components+1 eigenvectors of an n_samples x n_samples graph),
     # a tighter constraint than n_neighbors < n_samples alone.
+    # config supplies the desired granularity; these clamps only ever
+    # reduce it, and exist for the small-corpus correctness reason the
+    # comment above gives. The bug they replaced was a hardcoded ceiling
+    # that also clamped a large corpus -- min(15, ...) and min(10, ...)
+    # never rose above 15 and 10 however many documents there were.
     n_docs = len(texts)
     umap_model = UMAP(
-        n_neighbors=min(15, n_docs - 1),
+        n_neighbors=min(config.TOPIC_NEIGHBORS, n_docs - 1),
         n_components=min(5, max(2, n_docs - 2)),
         min_dist=0.0, metric="cosine", random_state=42,
     )
     hdbscan_model = HDBSCAN(
-        min_cluster_size=max(2, min(10, n_docs // 2)),
+        min_cluster_size=max(2, min(config.TOPIC_MIN_CLUSTER_SIZE, n_docs // 2)),
+        min_samples=max(1, min(config.TOPIC_MIN_SAMPLES, n_docs - 1)),
         metric="euclidean", cluster_selection_method="eom", prediction_data=True,
     )
 

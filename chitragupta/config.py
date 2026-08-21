@@ -564,6 +564,43 @@ SEED_TOPIC_MIN_SIMILARITY = _get_float(
 SEED_TOPIC_MAX_PAPERS = int(_get_float(
     "SEED_TOPIC_MAX_PAPERS", "enrich", "seed_topic_max_papers", default=25,
 ))
+# How fine the emergent topic structure is. The two knobs that decide it,
+# in config rather than hardcoded, because the right depth is a property
+# of the corpus and its owner rather than of this code.
+#
+# Defaults chosen by sweeping this project's own 497-document corpus,
+# where the previous hardcoded values (10 and unset) were not a tuning
+# choice but a ceiling: every clustering parameter saturated at n_docs>=20,
+# so a 497-paper corpus and a 5000-paper one both got the settings written
+# for a 20-paper one. Measured, holding everything else fixed:
+#
+#     min_cluster_size=10   13 topics, 27% outliers, median 19 papers
+#     min_cluster_size=5    25 topics, 19% outliers, median 13
+#     min_cluster_size=3    50 topics, 12% outliers, median 6
+#     =3 with min_samples=2 75 topics, 10% outliers, median 5
+#
+# Note the outlier rate *falls* as the topics get finer: the coarse
+# setting was both under-clustering and discarding more of the corpus,
+# which is why this is a defect being fixed rather than a preference.
+#
+# Still clamped down for a small corpus at the point of use -- UMAP's
+# spectral initialisation genuinely fails when n_neighbors >= n_samples,
+# which is what the original formula existed for. What it never did was
+# scale *up*.
+TOPIC_MIN_CLUSTER_SIZE = int(_get_float(
+    "TOPIC_MIN_CLUSTER_SIZE", "enrich", "topic_min_cluster_size", default=3,
+))
+# HDBSCAN's own default is min_cluster_size; lowering it makes the
+# clustering less conservative and leaves fewer documents as outliers.
+TOPIC_MIN_SAMPLES = int(_get_float(
+    "TOPIC_MIN_SAMPLES", "enrich", "topic_min_samples", default=2,
+))
+# UMAP's neighbourhood size, the other half of granularity: smaller
+# reads more local structure and yields more, finer topics.
+TOPIC_NEIGHBORS = int(_get_float(
+    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=10,
+))
+
 # The cosine a document must reach against a seed phrase for BERTopic to
 # assign it to that phrase's topic outright, skipping the clustering step.
 # A *decision*, unlike SEED_TOPIC_MIN_SIMILARITY above, which is why the

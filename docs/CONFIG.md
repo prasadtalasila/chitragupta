@@ -367,6 +367,9 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
 | `zeroshot_min_similarity` | `ZEROSHOT_MIN_SIMILARITY` | number, cosine similarity | `0.55` | `0.55` |
 | `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
+| `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
+| `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
+| `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `10` | `10` |
 | `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
 | `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `3` | `3` |
 
@@ -807,6 +810,35 @@ nearly the whole corpus, leaving HDBSCAN fewer remaining points than its
 own `min_samples` needs, and the stage died inside sklearn with `k must
 be less than or equal to the number of training points`. Unseeded runs
 were unaffected, which is exactly why a small-corpus test never found it.
+
+### How many topics, and how deep
+
+`[enrich].topic_min_cluster_size` (3), `topic_min_samples` (2) and
+`topic_neighbors` (10) decide the granularity of the emergent topic
+structure. They are settings rather than constants because the right
+depth is a property of a corpus and its owner, not of this code.
+
+The values they replaced were not a tuning choice but a **ceiling**:
+every clustering parameter saturated at `n_docs >= 20`, so a 497-paper
+corpus received the settings written for a 20-paper one, and a 5000-paper
+corpus would have received them too. Measured on this project's own
+corpus, holding everything else fixed:
+
+| `topic_min_cluster_size` | topics | outliers | median topic size |
+|---|---|---|---|
+| 10 (the old hardcoded value) | 13 | 27% | 19 |
+| 5 | 25 | 19% | 13 |
+| 3 | 50 | 12% | 6 |
+| 3, with `topic_min_samples = 2` | 75 | 10% | 5 |
+
+Note the outlier rate **falls** as the topics get finer: the coarse
+setting was both under-clustering and discarding more of the corpus, so
+this is a defect corrected rather than a preference expressed.
+
+The small-corpus clamps survive and only ever reduce these values --
+UMAP's spectral initialisation genuinely fails when `n_neighbors >=
+n_samples`, which is what the original formula existed for. What it never
+did was scale *up*.
 
 ### Topics a paper belongs to, beyond the one it is assigned
 

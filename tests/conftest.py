@@ -135,6 +135,12 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
     monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 25)
     monkeypatch.setattr(config, "ZEROSHOT_MIN_SIMILARITY", 0.55)
+    # Pinned to the values the scaling-arithmetic tests assert against,
+    # so a developer tuning topic depth in their own config.toml does not
+    # fail a suite that is checking the clamps rather than the defaults.
+    monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 3)
+    monkeypatch.setattr(config, "TOPIC_MIN_SAMPLES", 2)
+    monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 10)
     monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", True)
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.5)
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 3)

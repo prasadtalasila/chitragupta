@@ -157,15 +157,38 @@ class TestRunTopicModel:
         assert FakeUMAP.last_kwargs["n_components"] == expected_n_components
         assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == expected_min_cluster_size
 
-    def test_scaling_formula_for_large_corpus_caps_at_defaults(self, isolated_config, fake_bertopic_stack, tmp_path):
-        # n_docs=30: n_neighbors capped at 15, n_components capped at 5,
-        # min_cluster_size capped at 10.
+    def test_a_large_corpus_gets_the_configured_granularity(self, isolated_config,
+                                                            fake_bertopic_stack, tmp_path):
+        """The defect this replaced: every parameter saturated at n_docs>=20,
+        so a 497-document corpus got the settings written for a 20-document
+        one and could never yield more than ~13 topics however large it grew.
+        Past the small-corpus clamps, config decides."""
         docs = make_docs_with_text(30, tmp_path)
         topic_model.run_topic_model(docs)
 
+        assert FakeUMAP.last_kwargs["n_neighbors"] == config.TOPIC_NEIGHBORS
+        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == config.TOPIC_MIN_CLUSTER_SIZE
+        assert FakeHDBSCAN.last_kwargs["min_samples"] == config.TOPIC_MIN_SAMPLES
+
+    def test_depth_is_tunable_without_touching_code(self, isolated_config,
+                                                   fake_bertopic_stack, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 8)
+        monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 15)
+        topic_model.run_topic_model(make_docs_with_text(40, tmp_path))
+        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == 8
         assert FakeUMAP.last_kwargs["n_neighbors"] == 15
-        assert FakeUMAP.last_kwargs["n_components"] == 5
-        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == 10
+
+    def test_a_small_corpus_still_clamps_below_the_configured_value(self, isolated_config,
+                                                                   fake_bertopic_stack,
+                                                                   tmp_path, monkeypatch):
+        """The clamps only ever reduce. UMAP's spectral initialisation
+        genuinely fails when n_neighbors >= n_samples, which is what the
+        original formula existed for and what must survive the change."""
+        monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 50)
+        monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 50)
+        topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert FakeUMAP.last_kwargs["n_neighbors"] == 5
+        assert FakeHDBSCAN.last_kwargs["min_cluster_size"] == 3
 
     def test_writes_result_and_returns_assignments(self, isolated_config, fake_bertopic_stack, tmp_path):
         docs = make_docs_with_text(6, tmp_path)
