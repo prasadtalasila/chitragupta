@@ -51,7 +51,7 @@ duplicated encode is a known cost, not an oversight.
 import json
 
 from chitragupta import config
-from chitragupta.enrich import doc_vectors, embed_index
+from chitragupta.enrich import doc_vectors, embed_index, topic_labels
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -169,8 +169,14 @@ def _fit(texts: list, embeddings, model):
         metric="euclidean", cluster_selection_method="eom", prediction_data=True,
     )
 
+    # vectorizer_model decides only what a topic is *called*. Without one,
+    # BERTopic's default has no stop-word list and this corpus's topics
+    # came out named `0_the_and_of_to`; with the default's own vocabulary
+    # they came out named after the authors the papers discuss. See
+    # chitragupta/enrich/topic_labels.py.
     topic_model = BERTopic(
         embedding_model=model, umap_model=umap_model, hdbscan_model=hdbscan_model,
+        vectorizer_model=topic_labels.vectorizer(),
         calculate_probabilities=False, verbose=False,
     )
     return topic_model, topic_model.fit_transform(texts, embeddings)[0]

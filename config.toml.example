@@ -415,6 +415,20 @@ seed_topic_min_similarity = 0.15
 # through BERTopic's zero-shot mode did cost topics (81 down to 53 for
 # nine phrases, measured) and that path has been removed.
 
+# Whether the words a topic is *named* by exclude the corpus's own
+# authors -- read from your bibliography, not a name list. Names only:
+# this never changes which papers are grouped together, just how the
+# group is described.
+#
+# On because the failure was severe: `werner kritzinger, fraunhofer
+# austria` was a top-three topic, which is a person and an institution
+# rather than a subject. The cost, measured: of 1,277 surnames in this
+# corpus's bibliography, five are also ordinary words (black, brown, can,
+# park, wood) and leave the label vocabulary too. Turn this off for a
+# corpus where that trade is wrong.
+#                                                           Default: true
+topic_exclude_author_names = true
+
 # How fine the emergent topic structure is -- the depth knob, and the one
 # worth turning first. Measured on a real 497-document corpus, holding
 # everything else fixed:

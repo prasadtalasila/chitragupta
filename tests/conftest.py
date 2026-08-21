@@ -143,6 +143,7 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", True)
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.5)
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 3)
+    monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", True)
     return config
 
 
