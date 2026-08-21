@@ -153,6 +153,112 @@ class ResourceSampler:
         }
 
 
+def read_sync_output(out: str, err: str, workers: int) -> dict:
+    """What `sync` printed, read back as parsed/failed/resolved-workers.
+
+    Split out of `one_run` so `self_check` can put fabricated output
+    through the same three patterns the real run's numbers come out of.
+    Every one of them fails silently: a pattern that no longer matches
+    does not raise, it returns zero parsed, zero failed and a serial
+    worker count -- which is what a small clean run looks like.
+
+    `sync` prints per-document failures to *stderr* and the totals to
+    stdout. Counting only stdout reported every run as clean, which is
+    the exact failure mode this harness exists to catch -- so prefer the
+    authoritative summary line and fall back to counting across both
+    streams.
+    """
+    parsed = len(re.findall(r"^ {2}parsed ", out, flags=re.M))
+    summary = re.search(r"Sync complete: \d+ parsed, .*?, (\d+) failed", out)
+    # Unanchored on the left, because where that line comes from moved:
+    # since 3.4.0 a per-document failure is `logger.error("FAILED  %s: …")`
+    # through the stderr console handler, whose formatter is bare
+    # `%(message)s` -- no leading indent. The two-space form this looked
+    # for was the older `print("  FAILED  …")`, so the fallback had
+    # quietly counted nothing since. Kept tolerant of both rather than
+    # re-pinned to today's, since the count is a fallback either way.
+    failed = (int(summary.group(1)) if summary
+              else len(re.findall(r"^ *FAILED ", out + err, flags=re.M)))
+    pool = re.search(r"parsing \d+ document\(s\) with (\d+) workers", out)
+    if pool:
+        resolved = int(pool.group(1))
+    else:
+        # A serial run never prints the pool line; anything else is a
+        # run that died before dispatch, where the count is unknown.
+        resolved = 1 if workers == 1 else None
+    return {"parsed": parsed, "failed": failed, "workers_resolved": resolved}
+
+
+def self_check() -> None:
+    """Prove this harness can see a failure and a clamp before it reports
+    neither.
+
+    `bench/` sits outside CI's coverage targets (--cov=chitragupta
+    --cov=scripts), so nothing in the test suite will ever catch a
+    regression here. This runs on every invocation instead, following
+    `repro_check.py`'s convention (see `bench/README.md`), and it guards
+    the specific way this script goes quiet: every number it publishes is
+    read back out of `sync`'s printed output by a regex, and a regex that
+    stops matching does not raise. It returns "0 failed", "0 parsed", "1
+    worker" -- a clean serial run.
+
+    What that costs to check, and what it cannot check, are worth keeping
+    apart. The fixtures below are copied from `chitragupta/sync.py`'s
+    real lines (`_summary_line`, `_record_result`'s `  parsed  `, the
+    pool line, and the `FAILED  ` the stderr console handler emits), so
+    they prove the patterns can tell a lost document from a clean run
+    today. They are **constants in this file**, so they cannot notice
+    `sync` rewording those lines tomorrow: both would then agree with
+    each other and disagree with reality. Deriving them by importing
+    `chitragupta.sync` would close that, and would tie this harness to
+    the stack being importable in *its* interpreter rather than in
+    `--python`'s, which is the one thing `--python` exists to keep
+    separate. So this guards the reader, not the wording, and the wording
+    stays a thing to re-check by hand when `sync`'s output changes.
+
+    Three arms, because each publishes a different number:
+
+      the failure    -- a run with a failed document must not be read as
+                        clean. Counting only stdout once did exactly
+                        that, which is why the summary line is preferred
+                        and both streams are the fallback.
+      the clamp      -- the resolved worker count must come from what
+                        `sync` said it used, never from what was asked
+                        for. That clamp hid a measured 1.41x for a whole
+                        release.
+      the aggregation -- `--repeat > 1` reports a median, and a median
+                        that is silently the best run is a different,
+                        rosier benchmark.
+    """
+    clean = ("  parsing 2 document(s) with 12 workers\n"
+             "  parsed  alice_paper_2024\n"
+             "  parsed  bose_paper_2023\n"
+             "Sync complete: 2 parsed, 0 unchanged, 0 without a PDF attachment, "
+             "0 failed, 0 stale.\n")
+    good = read_sync_output(clean, "", 12)
+    assert good == {"parsed": 2, "failed": 0, "workers_resolved": 12}, good
+
+    # The same run with one document lost: the summary is the only place
+    # that says so on stdout, and the FAILED line is on stderr.
+    broke = read_sync_output(
+        clean.replace("2 parsed", "1 parsed").replace("0 failed", "1 failed"),
+        "FAILED  bose_paper_2023: docling returned PARTIAL_SUCCESS\n", 12)
+    assert broke["failed"] == 1, (
+        f"a run that lost a document reads as clean: {broke}")
+    # And with no summary at all -- a run that died before printing one,
+    # where the stderr count is all there is.
+    assert read_sync_output("", "FAILED  bose_paper_2023: boom\n", 12)["failed"] == 1, (
+        "the stderr fallback counts no failures, so a run that died mid-parse "
+        "reports the same 0 failed a clean one does")
+
+    clamped = read_sync_output(clean, "", 32)
+    assert clamped["workers_resolved"] == 12, (
+        f"32 workers were asked for and `sync` said it used 12: {clamped}")
+
+    runs = [{"seconds": 30.0}, {"seconds": 10.0}, {"seconds": 20.0}]
+    assert _median_run(runs)["seconds"] == 20.0, "_median_run reports the best run"
+
+
 def one_run(workers: int, gpus: int, ocr: bool, python: str,
             keep_output: bool = False) -> dict:
     """One full `chitragupta.corpus sync` over the whole corpus, from an empty ledger."""
@@ -198,23 +304,7 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
             proc.wait()
             reader.join(timeout=30)
             elapsed = time.perf_counter() - started
-        err = "".join(err_lines)
-        parsed = len(re.findall(r"^ {2}parsed ", out, flags=re.M))
-        # `sync` prints per-document failures to *stderr* and the totals to
-        # stdout. Counting only stdout reported every run as clean, which
-        # is the exact failure mode this harness exists to catch -- so
-        # prefer the authoritative summary line and fall back to counting
-        # across both streams.
-        summary = re.search(r"Sync complete: \d+ parsed, .*?, (\d+) failed", out)
-        failed = (int(summary.group(1)) if summary
-                  else len(re.findall(r"^ {2}FAILED ", out + err, flags=re.M)))
-        m = re.search(r"parsing \d+ document\(s\) with (\d+) workers", out)
-        if m:
-            resolved = int(m.group(1))
-        else:
-            # A serial run never prints the pool line; anything else is a
-            # run that died before dispatch, where the count is unknown.
-            resolved = 1 if workers == 1 else None
+        counts = read_sync_output(out, "".join(err_lines), workers)
         timeline = {}
         if completions:
             first, last = completions[0], completions[-1]
@@ -243,8 +333,9 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
             }
         return {
             "record": "run", "workers_requested": workers,
-            "workers_resolved": resolved, "gpus": gpus, "ocr": ocr,
-            "seconds": round(elapsed, 1), "parsed": parsed, "failed": failed,
+            "workers_resolved": counts["workers_resolved"], "gpus": gpus, "ocr": ocr,
+            "seconds": round(elapsed, 1), "parsed": counts["parsed"],
+            "failed": counts["failed"],
             "returncode": proc.returncode, **timeline, **sampler.summary(),
         }
     finally:
@@ -267,6 +358,10 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="print the plan and exit")
     args = ap.parse_args()
 
+    # Before the plan, so `--dry-run` exercises it too: a sweep is tens of
+    # minutes per configuration, and the one cheap way to run this script
+    # is the one that should still say whether its detectors work.
+    self_check()
     plan, gpus = _validated_plan(ap, args)
 
     print(f"{len(plan)} configuration(s) x {args.repeat} run(s); "
@@ -323,6 +418,17 @@ def _validated_plan(ap, args):
     return [(w, g, o) for o in ocrs for g in gpus for w in workers], gpus
 
 
+def _median_run(runs: list[dict]) -> dict:
+    """The median run of a configuration's repeats, by wall clock.
+
+    The upper of the two at an even `--repeat`, which is the pessimistic
+    half of the pair and the right way round for a benchmark: reporting
+    the faster of two runs as "the median" flatters whatever was
+    measured.
+    """
+    return sorted(runs, key=lambda r: r["seconds"])[len(runs) // 2]
+
+
 def _run_plan(plan, repeat, python, out_path):
     """Every configuration, every repeat, appended to `out_path` as it
     lands; the median run of each configuration is what is kept."""
@@ -337,8 +443,7 @@ def _run_plan(plan, repeat, python, out_path):
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
                 _print_run_line(w, g, o, rec)
-            runs.sort(key=lambda r: r["seconds"])
-            records.append(runs[len(runs) // 2])
+            records.append(_median_run(runs))
     return records
 
 

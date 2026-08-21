@@ -21,8 +21,8 @@ makes it binary and nothing else.
 ## What this deliberately does not check, and why
 
 **Not "every `chitragupta/*.py` token in the document."** That reading is
-unimplementable and would be wrong if it were not: 3.2 names
-`_executor_for` and 3.8 names `connect()`, both real open debts that are
+unimplementable and would be wrong if it were not: 3.2 named
+`_executor_for` and 3.8 named `connect()` -- both were real debts,
 legitimately *not* on C1/C2 and never claimed to be. The issue's own
 phrasing is "the register **it claims to belong to**", so the scope here
 is the two places where the document makes that claim -- a Tier 1
@@ -204,35 +204,41 @@ class TestTheDocumentDescribesTheRegisterCorrectly:
 
 
 class TestTheScanIsNotVacuous:
-    """Both checks above pass trivially on today's document -- every Tier 1
-    entry is resolved, so the membership check has nothing to look at.
+    """Both checks above pass trivially on today's document, and since
+    #294 they pass over *nothing*: the compaction moved all thirteen
+    closed items into a one-row-each "Resolved" index, so Tier 1 has no
+    subsections and "What to take first" has no `[Tier 1]` item left to
+    read. `_all_claims` returns an empty list.
 
-    That is the normal state and not a problem, but it means a parser that
-    quietly stopped matching anything (a reworded heading, a renumbered
-    list) would look identical to a clean run, forever. These pin that the
-    parser still finds the document's claims; the fixtures below pin that
-    finding one wrong actually fails.
+    That is the honest state of a register whose two named entries are
+    both closed, and the parsers still have to work for the next one that
+    opens. Three tests used to pin them against the real document -- that
+    a Tier 1 heading, a `[Tier 1]` item, and both resolved markers were
+    each still found. All three asserted the document carried claims it
+    no longer carries, so they went with the sections; keeping them would
+    have meant keeping a section purely to be parsed.
+
+    What replaces them is the fixture suite below, which was always the
+    stronger half: it pins that the parsers find a wrong claim and do not
+    find a right one, against documents written here rather than against
+    whatever the real one happens to say this month. The one thing a
+    fixture cannot see -- the real document's section headings moving out
+    from under `_section` -- is what the single test below covers.
     """
 
-    def test_the_tier_one_headings_are_still_parsed(self, debt_doc):
-        assert _tier_one_claims(debt_doc), (
-            "no register entry found in any Tier 1 subsection heading -- the "
-            "headings were reworded, or the section was renamed"
-        )
+    def test_the_two_sections_the_parsers_read_are_still_there(self, debt_doc):
+        """The shape check, and deliberately not a count.
 
-    def test_the_take_first_items_are_still_parsed(self, debt_doc):
-        assert _take_first_claims(debt_doc), (
-            "no register entry found in any '[Tier 1]' item of 'What to take "
-            "first' -- the tag or the list numbering changed"
-        )
-
-    def test_the_two_resolved_shapes_are_both_still_in_use(self, debt_doc):
-        """If nothing were marked resolved, `_missing_from_register` would
-        be checking every entry and the suite would be red -- so this
-        cannot fail silently. It is here to say which shape is load-bearing
-        where, since the two parsers read different markers."""
-        assert any(resolved for _, resolved in _tier_one_claims(debt_doc))
-        assert any(resolved for _, resolved in _take_first_claims(debt_doc))
+        `_section` asserts there is exactly one `## Tier 1` and one `##
+        What to take first`; renaming or duplicating either is the one
+        way the parsers stop working that no fixture below can see, since
+        the fixtures supply their own documents. Asserting *how many*
+        claims the real document holds would be worse than useless: it is
+        zero today, and the first person to open a legitimate Tier 1
+        entry would meet a red suite telling them the document is wrong.
+        """
+        assert _section(debt_doc, "Tier 1")
+        assert _section(debt_doc, "What to take first")
 
 
 _OPEN_HEADING_DOC = """\
@@ -317,10 +323,10 @@ class TestTheChecksActuallyFire:
         assert _missing_from_register(doc, *_REGISTERS) == ["chitragupta/gone.py"]
 
     def test_a_take_first_item_not_tagged_tier_one_is_ignored(self):
-        """3.2's `_executor_for` and 3.8's `connect()` are real open debts
-        that were never register entries. An item naming a `chitragupta/` path
-        without claiming C1/C2 membership must not be held to the
-        register."""
+        """3.3's `bench/` item is a real open debt that was never a
+        register entry, and 3.2's `_executor_for` was another. An item
+        naming a `chitragupta/` path without claiming C1/C2 membership
+        must not be held to the register."""
         doc = _OPEN_ITEM_DOC.replace("[Tier 1]", "[3.2]")
         assert _missing_from_register(doc, *_REGISTERS) == []
 

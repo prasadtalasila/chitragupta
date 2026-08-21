@@ -282,7 +282,7 @@ def populate(text: str, indexes: Indexes):
             # A block the parser did not return. Overwhelmingly this is
             # Zotero's contentless `@misc{key,\n}` stub for an attachment
             # with no metadata, which bibtexparser is right to drop --
-            # docs/TECHNICAL-DEBT.md's 4.2 documents the same two blocks
+            # #235 documents the same two blocks
             # in this library. A `@comment`/`@string` block lands here
             # too, being no entry at all.
             #

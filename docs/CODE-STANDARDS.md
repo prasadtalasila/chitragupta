@@ -244,7 +244,7 @@ excludes from the release archive, and its scripts are one-shot analysis
 code whose `main()` reads top to bottom on purpose. Stating that plainly
 is better than the alternative reading, which is that its long
 functions (a growing number, as `bench/` grows -- see
-[TECHNICAL-DEBT.md §3.3](TECHNICAL-DEBT.md#33-bench-is-outside-every-check-in-the-repository)
+[TECHNICAL-DEBT.md §3.1](TECHNICAL-DEBT.md#31-bench-is-outside-every-check-in-the-repository)
 for the current count) were quietly not counted.
 
 ### Cognitive complexity: the bar is 25, not SonarQube's default 15
@@ -477,14 +477,14 @@ different shape than proposed here -- see their own notes.
 1. ~~**A linter and formatter (`ruff`).**~~ **A linter landed, but as
    `pylint`, not `ruff`, and not a formatter.** `ci.yml`'s `lint` job runs
    `pylint --rcfile=.pylintrc src scripts .claude/hooks` at a binary
-   zero-messages bar (`docs/TECHNICAL-DEBT.md §5.2`), measured and
+   zero-messages bar (`docs/TECHNICAL-DEBT.md §5.1`), measured and
    enforced the way this item asked for -- a baseline first, a
    `.pylintrc` `disable=` register of the same shape this item wanted for
    `ruff`. It still subsumes what this rung was for: the Names rules,
    unused imports (`unused-import`), and `too-many-*` overlapping C1 from
    a different angle. What it does **not** cover, because `pylint` isn't
    `ruff`: line length is a hand-fixed 100-column wrap
-   (`docs/TECHNICAL-DEBT.md §5.2`'s "31 long lines"), not an enforced
+   (`docs/TECHNICAL-DEBT.md §5.1`'s "31 long lines"), not an enforced
    `E501`, and there is no formatter. Item 2 below still describes real,
    unclosed gaps.
 2. **A `# noqa`-free policy for the ratchet.** `pylint` landing did not

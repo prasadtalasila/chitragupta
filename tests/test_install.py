@@ -3,8 +3,9 @@ scripts/install_full_pipeline.sh's two host-only stages without ever
 actually invoking apt-get or reinstalling torch in this suite -- every
 subprocess call is mocked, so what is pinned here is the *dispatch*
 (which stage runs what, what gets refused, what environment a real
-invocation would see), not the shell script's own behaviour (which has
-no test of its own, per docs/TECHNICAL-DEBT.md 3.5)."""
+invocation would see), not the shell script's own behaviour, which has
+no test of its own -- `shellcheck scripts/*.sh` in `ci.yml`'s lint job,
+added in 6.1.0, is the whole of its automated checking."""
 
 import pytest
 

@@ -141,15 +141,98 @@ def build_dossiers(count: int, queries_each: int) -> None:
             )
 
 
-def _time(fn, repeats: int) -> dict:
+def _time(fn, repeats: int, clock=time.perf_counter) -> dict:
+    """`fn` timed `repeats` times, reported best/median/worst.
+
+    `clock` is injected for `self_check`'s benefit and for nothing else:
+    the median is the number every row of the published table is computed
+    from, and a fabricated clock is the only way to assert that it is the
+    median rather than, say, the best.
+    """
     times = []
     for _ in range(repeats):
-        start = time.perf_counter()
+        start = clock()
         fn()
-        times.append(time.perf_counter() - start)
+        times.append(clock() - start)
     times.sort()
     return {"best": times[0], "median": times[len(times) // 2], "worst": times[-1],
             "repeats": repeats}
+
+
+def _sweep_target():
+    """The module whose `all_dossiers` `dossier.drift_all()` actually calls.
+
+    Not the `chitragupta.dossier` package, which is the intuitive answer
+    and the wrong one. `_drift.py` binds the name into its own globals at
+    import time (`from chitragupta.dossier import ..., all_dossiers, ...`),
+    so `drift_all` never consults the package attribute. Patching the
+    package attribute is what this script did until #294, and it worked
+    until #224 split the module into a package on 2026-08-17 -- after
+    which the override reached nothing, every row of the sweep measured
+    the whole dossier set under a different count's name, and the table
+    would have printed a curve flat by construction that reads exactly
+    like "the scan costs the same however many dossiers there are".
+
+    Named here rather than inlined at the one call site because
+    `self_check` has to override exactly what `run`'s `sweep` overrides:
+    a probe against a different name would prove nothing about the sweep.
+    """
+    from chitragupta.dossier import _drift
+
+    return _drift
+
+
+class _Narrowed(Exception):
+    """Raised by `self_check`'s stand-in for `all_dossiers`, and by
+    nothing else -- catching it is how the probe knows `drift_all` got
+    that far."""
+
+
+def self_check() -> None:
+    """Prove the two things the published table is computed from, before
+    computing it.
+
+    `bench/` sits outside CI's coverage targets (--cov=chitragupta
+    --cov=scripts), so nothing in the test suite will ever catch a
+    regression here. This runs on every invocation instead, following
+    `repro_check.py`'s convention (see `bench/README.md`): it costs
+    microseconds, and it means the numbers below have been earned rather
+    than assumed. Two of them, so two guards:
+
+      the medians  -- `_time` must report the median of what it observed
+                      and not the best, or the cold/warm ratio is a
+                      comparison of two lucky runs.
+      the counts   -- each row claims to have swept `count` dossiers, and
+                      that only happens if the override in `run`'s
+                      `sweep` reaches `drift_all`. When it misses,
+                      nothing raises: every row measures the same whole
+                      set and the table prints a flat curve, which is not
+                      a null result but a finding, and a false one.
+    """
+    from chitragupta import dossier
+
+    ticks = iter((0.0, 3.0, 10.0, 11.0, 20.0, 22.0))
+    stats = _time(lambda: None, 3, clock=lambda: next(ticks))
+    assert stats == {"best": 1.0, "median": 2.0, "worst": 3.0, "repeats": 3}, (
+        f"_time does not report the median of 3s, 1s and 2s as 2s: {stats}")
+
+    def raise_marker():
+        raise _Narrowed
+
+    target = _sweep_target()
+    real_all_dossiers = target.all_dossiers
+    target.all_dossiers = raise_marker
+    try:
+        dossier.drift_all()
+        reached = False
+    except _Narrowed:
+        reached = True
+    finally:
+        target.all_dossiers = real_all_dossiers
+    assert reached, (
+        "drift_all() did not call the all_dossiers this script overrides, so "
+        "narrowing the sweep to a subset does nothing and every dossier count "
+        "below would measure the same whole set -- see _sweep_target")
 
 
 def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
@@ -210,15 +293,19 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
     }
 
     every = dossier.all_dossiers()
-    real_all_dossiers = dossier.all_dossiers
+    target = _sweep_target()
+    real_all_dossiers = target.all_dossiers
 
     def sweep(subset):
         # Measure `drift_all()` exactly as shipped rather than a
         # reimplementation of it: the thing being timed is its one ledger
         # read and one lazily built index, and a hand-rolled loop here
         # could accidentally not have them. Narrowing what it sweeps means
-        # patching its one input; `_measure` puts it back.
-        dossier.all_dossiers = lambda: subset
+        # patching its one input -- on the module that actually resolves
+        # the name, per `_sweep_target`, and `self_check` has proved the
+        # override lands before any of this runs. The `finally` below puts
+        # it back.
+        target.all_dossiers = lambda: subset
         return dossier.drift_all()
 
     try:
@@ -245,7 +332,7 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
         result["no_queries"][str(max(dossier_counts))] = _time(
             lambda: sweep(every), repeats)
     finally:
-        dossier.all_dossiers = real_all_dossiers
+        target.all_dossiers = real_all_dossiers
     return result
 
 
@@ -301,6 +388,12 @@ def main(argv: list[str] | None = None) -> int:
         setattr(config, name, value)
 
     try:
+        # After the redirect, not first thing in main() as `repro_check.py`
+        # runs its own: the narrowing probe calls the real `drift_all()`,
+        # and this script's whole claim is that it never touches the
+        # host's `content/`. Run against the ambient config it would read
+        # the host's real ledger and dossiers to check itself.
+        self_check()
         result = run(args.docs, sorted(args.dossiers), args.queries_each, args.repeats,
                      real_ledger)
     finally:

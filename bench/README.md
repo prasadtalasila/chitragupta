@@ -186,10 +186,46 @@ each run's output instead of discarding it, pins the CPU affinity mask
 with `taskset` so `worker_ceiling()` cannot drift between arms, and runs
 every configuration twice -- the same-configuration pair is the control
 that says whether a difference belongs to the varied axis or to the
-parser simply being unstable. It also self-checks its own detector on
-every invocation, because `bench/` sits outside CI's coverage targets and
-a comparison that silently compares nothing looks exactly like a clean
-result.
+parser simply being unstable.
+
+## `self_check()`: what a script here owes a number it publishes
+
+**A script in `bench/` that publishes a number runs a `self_check()` from
+its own `main()`, before it does any real work.** `repro_check.py`,
+`bench_drift.py` and `sweep_sync.py` have one; a new script that
+publishes a number is expected to follow, and one that only prints what
+it read back is not.
+
+The reason is the first line of every such function: `bench/` sits
+outside **all four** of the things that hold the rest of this tree --
+C1/C2, coverage (`source = ["src", "scripts"]`), the release archive, and
+the linter (`docs/TECHNICAL-DEBT.md` §3.1). Nothing in the test suite
+will ever catch a regression in these files, so the check runs on every
+invocation instead. It costs microseconds.
+
+What it asserts is narrow and specific, and it is not "the script works":
+
+> **Fabricate a difference this script's own comparison or aggregation
+> logic is supposed to see, and assert that it sees it.**
+
+Because the failure worth guarding against is never a crash. It is the
+zero that reads like a result: a detector that compares nothing prints
+what a perfectly stable run prints, a regex that stopped matching reports
+`0 failed` exactly as a clean run does, and a sweep whose narrowing
+silently missed prints a flat curve that reads as a finding rather than
+as an absence of one. Each of those has happened here, and the third was
+found by writing this convention down --
+`bench_drift.py`'s subset override had reached nothing since the
+`chitragupta/dossier/` split, so its three dossier counts were three
+measurements of the same whole set.
+
+Copy the shape, not the assertions: `repro_check.py`'s nine are about
+Docling sidecars and belong to it alone. `bench_drift.py` fabricates a
+clock and a dossier list, `sweep_sync.py` fabricates the output of a
+failed `sync`. And say in the docstring what the check *cannot* see --
+`sweep_sync.py`'s fixtures cannot notice `sync` rewording the lines they
+are copied from, and saying so is the difference between a guard and a
+false assurance.
 
 ## The two switches that matter
 

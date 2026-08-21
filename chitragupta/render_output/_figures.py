@@ -10,7 +10,7 @@ LaTeX, ASCII everywhere else.
 **One exception, and it is not about figures.** `thesis-chapter-writer`'s
 `.tex` fragment is `\\input`-ed directly into the user's own real thesis,
 never touched by this module again once it leaves `content/drafts/` --
-see `docs/TECHNICAL-DEBT.md` §3.9 and #230. So its TikZ form stays a real
+see #247 and #230. So its TikZ form stays a real
 inline `\\input{figures/<name>.tex}` rather than a marker: a marker-only
 draft would render fine through this pipeline's own `render()` but lose
 the figure the moment the user does the one thing this genre exists for.

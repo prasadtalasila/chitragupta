@@ -95,7 +95,7 @@ EXCLUDE_TOP_LEVEL = {
     # Same category again: the coverage config CI's Windows leg uses to
     # exclude the pandoc/pdflatex/pdftotext call sites its ~30
     # self-skipping tests would otherwise leave uncovered
-    # (docs/TECHNICAL-DEBT.md #3.6). Meaningful only alongside this
+    # (#291). Meaningful only alongside this
     # repository's own test suite, which a release doesn't ship either.
     "coveragerc-windows.toml",
 }
