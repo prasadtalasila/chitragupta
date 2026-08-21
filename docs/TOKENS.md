@@ -681,6 +681,16 @@ see [what the dossier actually recovers](#what-the-dossier-actually-recovers)),
 and the turn counts either side of the change. Those still want the
 before/after run in [#76](https://github.com/prasadtalasila/chitragupta/issues/76).
 
+**What A2 (#306) changes here.** This measurement predates the
+`claim:`/`quote:` split and was built from a `support:`-only dossier --
+each block a raw 600-character retrieval window
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)),
+exactly the material the split removes from a drafting step's own
+context. It says nothing about the payload's *size*: a `claim:` written
+in the drafter's own words is not reliably shorter than the window it
+replaced. What it removes is the raw source wording inside that payload,
+which this character count cannot see either way.
+
 ### The step 2a boundary, measured on real material
 
 The other subagent boundary this document argues for --
@@ -795,6 +805,14 @@ doesn't itself change with the boundary removed (plausible, since
 `survey-writer`'s numbered steps are unchanged either way, but unmeasured
 here) -- the last piece [#76](https://github.com/prasadtalasila/chitragupta/issues/76)
 still owns.
+
+**What A2 (#306) changes here.** Like the Phase 5 measurement above, this
+run judged evidence into `relevance:`/`support:` blocks, before the
+`claim:`/`quote:` split. The judged-packet character counts are the
+subagent boundary's own measurement and are unaffected by which fields
+the packet's blocks use; what would move under the new contract is the
+*content* of `support:`'s replacement, not the boundary this section
+measures.
 
 ## Measured, derived, and asserted
 

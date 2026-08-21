@@ -122,7 +122,11 @@ example you abandoned has already fallen out of your context.
 What the dossier is worth here is not what it is worth in the citation-dense
 genres. This chapter is mostly original worked examples and exercises, so
 `evidence.md` stays thin and may well be empty -- there is no long evidence
-table to build, and padding one out is not the job. The weight sits instead in
+table to build, and padding one out is not the job. On the rare occasion a
+source is worth recording, it gets the same `relevance:`/`claim:`/optional
+`quote:` block the citation-dense genres use -- `claim:` in your own words,
+`quote:` only where a quotation is genuinely warranted -- not a shortcut
+`support:` line. The weight sits instead in
 `scope.md` (the reader, the prior knowledge assumed, the covers /
 does-not-cover line, the glossary that keeps notation stable across a
 revision) and in `rejected.md`, which in this genre records **pedagogical**

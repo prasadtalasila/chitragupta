@@ -30,7 +30,8 @@ TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install"}
 DRAFT_SUBCOMMANDS = {
     "retrieve": {"search", "evidence"},
     "dossier": {"init", "status", "mark-revision", "sections", "brief",
-                "set-language", "acronyms-suggest", "list", "export", "restore"},
+                "set-language", "acronyms-suggest", "check-evidence", "list",
+                "export", "restore"},
     "spec": {"init", "show", "sign", "status"},
     "unit": {"contract", "accept", "status"},
     "registry": {"build", "check", "excerpt"},
@@ -133,7 +134,7 @@ class TestInstall:
 
 class TestStatedCounts:
     """The formula docs/PACKAGING.md states in prose: 4 layers, 16 verbs
-    and aids, 39 invocable leaf commands -- computed here from the same
+    and aids, 40 invocable leaf commands -- computed here from the same
     structures the tests above already verified against the live code,
     not retyped as a fresh set of literals."""
 
@@ -143,10 +144,10 @@ class TestStatedCounts:
         assert verbs_and_aids == 16
         assert "16 verbs and aids" in PACKAGING_TEXT
 
-    def test_thirty_nine_leaf_commands(self):
+    def test_forty_leaf_commands(self):
         draft_leaves = len(DRAFT_FLAT_VERBS) + sum(len(v) for v in DRAFT_SUBCOMMANDS.values())
         review_leaves = len(REVIEW_FLAT_AIDS) + sum(len(v) for v in REVIEW_SUBCOMMANDS.values())
         package_level = 3  # init, doctor, install -- each one atomic command
         total = package_level + len(CORPUS_VERBS) + draft_leaves + review_leaves + 1  # enrich
-        assert total == 39
-        assert "39 invocable leaf commands" in PACKAGING_TEXT
+        assert total == 40
+        assert "40 invocable leaf commands" in PACKAGING_TEXT

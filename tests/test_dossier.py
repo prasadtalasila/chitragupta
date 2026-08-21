@@ -21,8 +21,8 @@ import pytest
 
 from chitragupta import acronyms, config, dossier
 from chitragupta.dossier import (
-    _acronyms, _archive, _brief, _citekeys, _create, _drift, _retrieval, _sections,
-    _status,
+    _acronyms, _archive, _brief, _citekeys, _create, _drift, _evidence_check,
+    _retrieval, _sections, _status,
 )
 
 
@@ -2765,3 +2765,174 @@ class TestSectionsCitekeysCli:
         draft.write_text("Just prose.\n")
         assert dossier.main(["sections", str(draft), "--citekeys"]) == 1
         assert "No headings" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------
+# A2 (#306): evidence.md's claim:/quote: split, and its self-check
+# (chitragupta/dossier/_evidence_check.py, plans/a2-claim-quote-split.md).
+#
+# `evidence_blocks()` is unchanged by A2 -- it was already shape-agnostic
+# (its own docstring says so) -- so the two round-trip tests below are
+# characterization tests pinning that pre-existing coexistence guarantee,
+# not TDD red-then-green: they pass before this module exists too. What
+# is new is `_evidence_check`, tested below them.
+# ---------------------------------------------------------------------
+
+
+class TestEvidenceBlocksCoexistence:
+    def test_a_new_shape_block_round_trips(self, draft):
+        target = _fill_dossier(draft, evidence=(
+            "## `talasila_realising_2024`\n\n"
+            "- relevance: names the synchronization requirement\n"
+            "- claim: a digital twin must stay synchronized with its physical "
+            "counterpart to remain valid\n"
+            "- quote: \"a digital twin that drifts from its physical counterpart "
+            "is no longer trustworthy\"\n"
+        ))
+        block = _citekeys.evidence_blocks(target)["talasila_realising_2024"]
+        assert "claim:" in block
+        assert "quote:" in block
+
+    def test_a_legacy_support_only_block_still_round_trips(self, draft):
+        target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
+        blocks = _citekeys.evidence_blocks(target)
+        assert "support:" in blocks["ferko_architecting_2022"]
+
+
+class TestOverlapScore:
+    """chitragupta/dossier/_evidence_check.py::overlap_score -- the pure
+    stemmed-bigram comparison the self-check is built on. Fixture pairs
+    and their measured scores (n=2, this repo's own corpus tooling):
+
+    - a quote reworded (clauses swapped, no new words) scores 0.5-0.75
+    - a genuine restatement (same topic, different structure and words)
+      scores ~0.08
+    - a quote too short to form one bigram has nothing to compare
+
+    n=2 rather than overlap_skipgram's own DEFAULT_N=5: a claim/quote
+    pair is a sentence, not a document, and at n=5 a short pair never
+    reaches one gram at all. n=2 was checked against these same fixtures
+    before n=3 was ruled out: n=3 still separates the two long fixtures
+    but collapses the short reworded one to 0.33, under a threshold that
+    catches the long case -- n=2 is the one width that separates every
+    fixture tried.
+    """
+
+    QUOTE = ("digital twins for software engineers require continuous "
+             "synchronization between the physical system and its virtual "
+             "counterpart to remain valid")
+    REWORDED = ("continuous synchronization between the physical system and its "
+                "virtual counterpart is required for digital twins for software "
+                "engineers to remain valid")
+    RESTATED = ("the paper argues that a digital twin only stays useful if it is "
+                "kept in sync with the real system it mirrors")
+
+    def test_a_reworded_quote_scores_at_or_above_the_threshold(self):
+        score = _evidence_check.overlap_score(self.REWORDED, self.QUOTE)
+        assert score is not None
+        assert score >= _evidence_check._OVERLAP_THRESHOLD
+
+    def test_a_genuine_restatement_scores_below_the_threshold(self):
+        score = _evidence_check.overlap_score(self.RESTATED, self.QUOTE)
+        assert score is not None
+        assert score < _evidence_check._OVERLAP_THRESHOLD
+
+    def test_a_quote_shorter_than_one_bigram_has_nothing_to_compare(self):
+        assert _evidence_check.overlap_score("the twins compose from parts", "twins") is None
+
+    def test_a_short_quote_quantizes_to_whole_steps(self):
+        # Two stemmed content words is exactly one bigram, so the only
+        # scores possible are 0.0 and 1.0 -- never a fraction. A
+        # one-clause quote is a realistic input, not an edge case to
+        # special-case away.
+        assert _evidence_check.overlap_score(
+            "the twins compose from parts", "twins compose") == 1.0
+        assert _evidence_check.overlap_score(
+            "a reusable module design", "twins compose") == 0.0
+
+
+_REWORDED_BLOCK = (
+    "## `talasila_realising_2024`\n\n"
+    f"- relevance: names the synchronization requirement\n"
+    f"- claim: {TestOverlapScore.REWORDED}\n"
+    f"- quote: {TestOverlapScore.QUOTE}\n"
+)
+_RESTATED_BLOCK = (
+    "## `ferko_architecting_2022`\n\n"
+    f"- relevance: names the synchronization requirement\n"
+    f"- claim: {TestOverlapScore.RESTATED}\n"
+    f"- quote: {TestOverlapScore.QUOTE}\n"
+)
+_LEGACY_SUPPORT_ONLY_BLOCK = (
+    "## `talasila_composable_2025`\n\n"
+    "- relevance: the composition rule the section leans on\n"
+    "- support: \"twins compose from tool-agnostic parts\"\n"
+)
+_CLAIM_WITHOUT_QUOTE_BLOCK = (
+    "## `smith_x_2024`\n\n"
+    "- relevance: why this matters\n"
+    "- claim: a claim with no quote recorded\n"
+)
+
+
+class TestRewordedClaims:
+    def test_flags_a_reworded_quote(self, draft):
+        target = _fill_dossier(draft, evidence=_REWORDED_BLOCK)
+        assert "talasila_realising_2024" in _evidence_check.reworded_claims(target)
+
+    def test_stays_silent_on_a_genuine_restatement(self, draft):
+        target = _fill_dossier(draft, evidence=_RESTATED_BLOCK)
+        assert _evidence_check.reworded_claims(target) == {}
+
+    def test_a_legacy_support_only_block_has_nothing_to_check(self, draft):
+        """No `claim:` field means nothing to compare it against -- the
+        self-check only ever applies to a block the new contract wrote,
+        per the plan's migration rule."""
+        target = _fill_dossier(draft, evidence=_LEGACY_SUPPORT_ONLY_BLOCK)
+        assert _evidence_check.reworded_claims(target) == {}
+
+    def test_a_claim_with_no_recorded_quote_has_nothing_to_check(self, draft):
+        target = _fill_dossier(draft, evidence=_CLAIM_WITHOUT_QUOTE_BLOCK)
+        assert _evidence_check.reworded_claims(target) == {}
+
+    def test_a_field_typed_with_no_value_is_dropped_not_recorded_empty(self, draft):
+        """A blank `claim:` (nothing typed after the colon) is dropped
+        rather than kept as an empty string that happens to be falsy --
+        so a block with a blank claim: has nothing to compare its
+        quote: against, the same as a block with no claim: line at all."""
+        target = _fill_dossier(draft, evidence=(
+            "## `talasila_realising_2024`\n\n"
+            "- claim:\n"
+            f"- quote: {TestOverlapScore.QUOTE}\n"
+        ))
+        assert _evidence_check.reworded_claims(target) == {}
+
+    def test_no_evidence_file_flags_nothing(self, draft):
+        target = dossier.dossier_dir(draft)
+        target.mkdir(parents=True)
+        assert _evidence_check.reworded_claims(target) == {}
+
+
+class TestCheckEvidenceCommand:
+    def test_flags_a_reworded_quote_without_printing_a_score_by_default(self, draft, capsys):
+        _fill_dossier(draft, evidence=_REWORDED_BLOCK)
+        assert dossier.main(["check-evidence", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "talasila_realising_2024" in out
+        assert "%" not in out, "no score by default -- nothing to optimise against (R3)"
+
+    def test_the_score_flag_prints_the_number(self, draft, capsys):
+        _fill_dossier(draft, evidence=_REWORDED_BLOCK)
+        assert dossier.main(["check-evidence", str(draft), "--score"]) == 0
+        assert "%" in capsys.readouterr().out
+
+    def test_a_clean_dossier_says_so(self, draft, capsys):
+        _fill_dossier(draft, evidence=_RESTATED_BLOCK)
+        assert dossier.main(["check-evidence", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "ferko_architecting_2022" not in out
+        assert "reworded" in out
+
+    def test_missing_dossier_is_refused_not_crashed(self, draft, capsys):
+        assert dossier.main(["check-evidence", str(draft)]) == 1
+        assert "init" in capsys.readouterr().out

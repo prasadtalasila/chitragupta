@@ -231,9 +231,15 @@ collapse them for the sake of a cleaner narrative.
 
    **Record both outcomes in the dossier before you start drafting prose**,
    while the passages are still in front of you:
-   - what survives, into `evidence.md` -- one `## \`citekey\`` block with
-     a `relevance:` line (why it supports the claim) and a `support:` line
-     (the quote or paraphrase);
+   - what survives, into `evidence.md` -- one `## \`citekey\`` block with a
+     `relevance:` line (why it supports the claim), a `claim:` line -- what
+     the source establishes, written in your own words -- and, only when a
+     quotation is genuinely warranted, a `quote:` line (the verbatim span).
+     `claim:` is the only field you may draft prose from later; `quote:` is
+     usable in the draft solely inside quotation marks with an attribution.
+     Write `claim:` from what you now understand the source to say, not by
+     lightly editing the passage still on screen -- the two produce
+     different sentences, and only the first is yours;
    - what doesn't, into `rejected.md` -- one table row per candidate:
      citekey, the query that surfaced it, and a few words on why it was
      turned down ("shares vocabulary only", "wrong domain", "superseded by
@@ -243,6 +249,16 @@ collapse them for the sake of a cleaner narrative.
    skip. It is what stops the next revision retrieving and re-judging the
    same twelve papers you just turned down -- the single most expensive
    piece of repeated work in this pipeline.
+
+   Then run the advisory self-check, which flags a `claim:` that reads like
+   its own `quote:` with the words moved:
+
+   ```bash
+   python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md
+   ```
+
+   A warning means re-read whether that claim is really your own reading of
+   the source -- not a cue to keep rewording until the warning stops.
 2a. **On a broad topic, put steps 1-2 behind a subagent.** Dispatch one
    `general-purpose` subagent per sub-theme, all in one message, each told to
    run the retrieve-and-score loop above and return **only** the kept-evidence
