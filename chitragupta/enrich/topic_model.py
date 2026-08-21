@@ -133,8 +133,6 @@ def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None"
     landed in the outlier topic and so has no descriptor to measure
     against.
     """
-    import numpy as np
-
     if not config.TOPIC_DISTRIBUTION:
         return None
     ids, centred, descriptors = topic_descriptors(embeddings, topics)
