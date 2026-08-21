@@ -231,67 +231,14 @@ project's own `render_output.py` call, not a general pandoc claim. A
 diagram that renders one figure and breaks every other one downstream
 in the same draft is worse than no diagram.
 
-### Commit to a metaphor before you draw, then check the list
+### TikZ layout and style
 
-TikZ figures out of this pipeline sprawl when nothing asks for a plan
-before the first `\node` -- boxes placed near other boxes, arrows added
-as needed. Two steps fix that at the source, before drawing rather than
-after.
-
-**1. Commit to a layout metaphor.** One, chosen and stated before any
-node is placed, each with the TikZ idiom that actually draws it:
-
-| Metaphor | TikZ idiom |
-|---|---|
-| Pipeline | a chain, via the `positioning` library |
-| Map | `matrix` |
-| Layered stack | stacked `fit` layers |
-| Control loop | cyclic edges with `bend` |
-| Branching tree | `tree` |
-| Hub-and-spoke network | a star |
-
-Choosing one first turns "place these nine things" into a constrained
-problem, which is the single change most likely to fix sprawl at its
-source. (The metaphor list is PaperBanana's planner supplement, read
-and not copied -- [INSPIRATION.md](INSPIRATION.md) carries the credit.)
-
-**2. Check the drawn figure against this list before keeping it.**
-Concrete defects, not taste:
-
-- **Occlusion and overlap** -- no two nodes' boxes intersect.
-- **Chaotic routing** -- arrows should not cross unnecessarily or form
-  spaghetti loops. Left off the mechanical checks below; a bad
-  approximation of "does this route look chaotic" would be worse than
-  not checking it at all, so this one stays a human judgement.
-- **Illegible or inconsistent type, and low contrast** -- one font size
-  per role, held consistent across every node in the figure.
-- **Inefficient non-rectangular composition** -- LaTeX treats a figure
-  as a rectangular box, so anything protruding above the main block
-  forces the surrounding text to wrap around the highest point, wasting
-  vertical space. Keep the picture's bounding box close to the union of
-  its node boxes.
-- **Conciseness** -- a node whose text runs past 15 words is too long
-  for a box; cut it or split the node.
-- **Literal copying** -- a box-ified copy-paste of prose, with no
-  visual abstraction, is not a figure. This is the originality rule
-  above wearing a different hat, and it matters more than it looks: a
-  figure can launder borrowed wording past every detector in
-  [PLAGIARISM.md](PLAGIARISM.md), because a citekey is already kept out
-  of figure files (below) and the gate does not follow `\input`.
-
-Free once you are in TikZ and unavailable to a raster path: zone fills
-at 10-15% opacity via the `backgrounds` layer, dashed lines for
-auxiliary flow against solid for forward flow, sans-serif labels against
-serif-italic maths.
-
-This is a checklist an author checks a figure against, not a gate --
-nothing above is enforced mechanically yet. A future review-layer aid
-may check the binary items (overlap, protrusion, node length)
-deterministically by compiling the figure; see
-[`plans/d2-tikz-layout-check.md`](../plans/d2-tikz-layout-check.md) if
-that aid exists by the time you read this. Until then, checking the list
-is the author's job, the same as everything else in this section that
-"is not gated mechanically" below.
+[TIKZ-STYLE.md](TIKZ-STYLE.md) is the full guide to drawing a good TikZ
+figure: which layout metaphor to commit to before placing a node, the
+pre-flight defect checklist to check the result against, and the type
+and line-weight conventions that keep a figure consistent with the
+surrounding document. It is a checklist an author checks a figure
+against, not a gate -- nothing in it is enforced mechanically today.
 
 ### Every figure has two forms
 

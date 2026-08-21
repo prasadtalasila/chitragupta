@@ -362,9 +362,10 @@ the lesson design is the part worth keeping either way.
    explains:
 
    - **Commit to a layout metaphor before drawing, then check the
-     result against §10's pre-flight defect list** (occlusion, chaotic
-     routing, illegible type, non-rectangular protrusion, an
-     overlong node, literal copying) before keeping the figure.
+     result against `docs/TIKZ-STYLE.md`'s pre-flight defect list**
+     (occlusion, chaotic routing, illegible type, non-rectangular
+     protrusion, an overlong node, literal copying) before keeping the
+     figure.
    - **A topic directory is required.** If step 1 settled on a flat
      `content/drafts/<slug>.md`, move the draft and its dossier before
      adding a figure, or skip the figure. Figures under a flat draft

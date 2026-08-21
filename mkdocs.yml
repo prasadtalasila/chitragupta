@@ -162,6 +162,7 @@ nav:
       - Citation provenance: docs/CITATION-PROVENANCE.md
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
+      - TikZ figure style: docs/TIKZ-STYLE.md
   - Working on it:
       - Feature roadmap: docs/FEATURE-ROADMAP.md
       - Design constraints: docs/DESIGN.md
