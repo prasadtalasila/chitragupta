@@ -538,7 +538,7 @@ production, not just designed. As of v5.29.0:
 | Blocking `overlap_gate` | **Declined** (#130): measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |
 | Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built (#104, #107, #182-#186): `python -m chitragupta.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
 | Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent (#105, #106, #108: each fully designed, then closed "not a priority") |
-| Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Not built (#135-#139, tracked and labelled `parked`) -- current ceiling is chapter/paper/report scale, same as every commercial tool in §2.1 |
+| Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Built (#135-#139) -- see [BOOKS.md](BOOKS.md) |
 
 Competitive position in one sentence: **commercial tools (Paperguide,
 SciSpace, Jenni, ThesisAI, ...) remain feature supersets as products, but
@@ -549,15 +549,16 @@ measured, on-the-record decision about where a second blocking gate
 would and would not help, which none of the commercial tools publish
 enough to even ask about.
 
-### 5.2 What's left: book scale
+### 5.2 Book scale
 
-Everything that would raise the ceiling from chapter/report scale to
-book scale is scoped but not built, tracked under
+What raises the ceiling from chapter/report scale to book scale is
+built, tracked under
 [#135](https://github.com/prasadtalasila/chitragupta/issues/135) and
-labelled `parked` -- deliberately: it depends on none of the tracks
-above, but benefits from all of them, since every gate and every review
-aid built there applies per-unit at book scale, which is what makes a
-300-page grounded document tractable at all. In build order:
+described in full in [BOOKS.md](BOOKS.md). It depended on none of the
+tracks above, but benefits from all of them, since every gate and every
+review aid built there applies per-unit at book scale, which is what
+makes a 300-page grounded document tractable at all. In the order it was
+built:
 
 1. **[#136](https://github.com/prasadtalasila/chitragupta/issues/136) --
    a spec/outline artifact with human sign-off before any prose.** The
@@ -586,9 +587,8 @@ aid built there applies per-unit at book scale, which is what makes a
    enforcement machinery because everything it assembles has already
    passed every gate per-unit.
 
-None of these four is scheduled; `parked` means priority sits elsewhere
-right now, not that the design is unsettled -- each issue above already
-carries a complete plan.
+All four are closed, in the order listed above; [BOOKS.md](BOOKS.md) is
+the record of what each shipped as, not just what it was scoped to be.
 
 ---
 
