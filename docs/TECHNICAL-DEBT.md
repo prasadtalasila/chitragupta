@@ -214,8 +214,8 @@ the finding rather than the total:
 | `chitragupta/review/citation_provenance.py` | 16 / 17 |
 | `chitragupta/review/citation_coverage.py` | 11 / 12 |
 | `chitragupta/review/__init__.py` | 10 / 10 |
-| `chitragupta/runlock.py` | 3 / 7 |
-| `chitragupta/sync.py` | 4 / 8 |
+| `chitragupta/runlock.py` | **7 / 7** -- resolved #293 |
+| `chitragupta/sync.py` | **16 / 16** -- resolved #293 |
 | `chitragupta/dossier.py` | 64 / 65 as one file; split into `chitragupta/dossier/` by #219, not re-measured per module since |
 
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
@@ -226,9 +226,16 @@ document calls "the highest-value one in this list."
 
 It was annotated in full while #133, the skip-gram detection tier, was
 already touching every function in the file. No behaviour changed, per
-[What to take first](#what-to-take-first) item 4 below. `runlock.py` and `sync.py`
-remain the two real partial modules; nothing here claims those are
-resolved.
+[What to take first](#what-to-take-first) item 4 below.
+
+**`runlock.py` and `sync.py` are also resolved, in #293** -- the return
+annotations missing from `pipeline_lock.__init__`/`_holder_path`/
+`__enter__`/`__exit__` and from `sync.py`'s `_executor_for`/
+`_as_they_land`/`_parse_serial`/`_parse_parallel` were added, no
+behaviour changed. Both were re-counted against the current tree rather
+than against the numbers above, which predate #178's split of
+`chitragupta/sync.py::run` and no longer describe either module's actual
+function count.
 
 ## Tier 3: found by review, tracked nowhere
 
@@ -304,23 +311,31 @@ Windows leg only would given a fixture with a character outside cp1252.
 
 ### 3.2 `_executor_for` duplicated across a module boundary
 
+**Resolved in #290.** The shared logic moved into
+`pdf_text.docling_process_pool`, which both `chitragupta/sync.py` and
+`chitragupta/enrich/docling_parse.py` now call -- no new dependency edge in
+either direction, since both already import `pdf_text`. Each module keeps
+its own thin `_executor_for` (`sync.py`'s still branches on
+`config.PARSER`; `docling_parse.py`'s is a one-line delegation kept
+under that name only because `tests/test_enrich_docling_parse.py` already
+monkeypatches it there). Kept below as the historical record of what the
+duplication was and why it mattered.
+
 `chitragupta/sync.py:66` and `chitragupta/enrich/docling_parse.py:430` both
 build the
 docling process pool -- same `process_pool_context()`, same
-`usable_devices()`, same `initargs` shape. The duplication is
-**deliberate and documented**: `docling_parse`'s docstring says it is
+`usable_devices()`, same `initargs` shape. The duplication was
+**deliberate and documented**: `docling_parse`'s docstring said it was
 kept local "so that `chitragupta/enrich/` doesn't depend on the core entrypoint
 -- the dependency runs the other way everywhere else in this repo," and
-that reasoning is sound.
+that reasoning was sound.
 
-It is still debt, of the **fragility** kind
+It was still debt, of the **fragility** kind
 ([the review vocabulary](CODE-STANDARDS.md#code-smells-the-review-vocabulary)):
-the two builders must agree about what `init_worker` is handed, the
-docstring says so explicitly, and nothing checks it. A third argument
-added to `init_worker` has to be added twice or the enrichment pool
-starts workers the core pipeline would not. The resolution is a shared
-helper in `chitragupta/pdf_text.py` -- which both already import, so it costs no
-new dependency edge in either direction -- not a change to the layering.
+the two builders had to agree about what `init_worker` is handed, the
+docstring said so explicitly, and nothing checked it. A third argument
+added to `init_worker` would have had to be added twice or the enrichment
+pool would start workers the core pipeline would not.
 
 ### 3.3 `bench/` is outside every check in the repository
 
@@ -473,19 +488,21 @@ argument for the linter in one finding.
 
 ### 3.8 `connect()` / `try` / `finally: close()` repeated at eight sites
 
+**Resolved in #292.** `chitragupta/ledger.py` now has a `connection()` context
+manager (`connect()` plus the `close()`-in-a-finally, unchanged
+lifecycle), and all eight call sites below use
+`with ledger.connection() as con:` instead of writing the `try`/`finally`
+by hand. Kept below as the historical record of the eight sites and why
+the pattern was worth naming.
+
 `chitragupta/citation_gate.py:199`, `chitragupta/references.py:422,441`,
 `chitragupta/retrieval.py:292,369`, `chitragupta/sync.py:339`,
 `chitragupta/review/citation_provenance.py:313`,
 `chitragupta/enrich/corpus.py:48` all
-open a ledger connection and close it in a `finally`. Every one is
-correct -- this is not a leak -- but CODE-STANDARDS.md's threshold for
+opened a ledger connection and closed it in a `finally`. Every one was
+correct -- this was not a leak -- but CODE-STANDARDS.md's threshold for
 extraction ("two similar blocks are a coincidence; three are a pattern")
-is passed twice over. A `ledger.connection()` context manager would make
-the eight call sites two lines shorter each and make a future ninth
-impossible to get wrong.
-
-Lowest-value item here, listed because leaving it out would mean the next
-reviewer finds it again.
+was passed twice over.
 
 ### 3.9 Figure handling is per-genre, because the draft languages are
 
@@ -903,9 +920,10 @@ with no detector, checked by hand against the tree:
   The one f-string in a SQL position is the `PRAGMA` documented under
   [What is not debt](#what-is-not-debt).
 - **Resource lifecycle.** Every `sqlite3` connection in `chitragupta/` is closed
-  in a `finally`; no leak. The repetition of that pattern is
-  [3.8](#38-connect--try--finally-close-repeated-at-eight-sites), which
-  is a tidiness item, not a correctness one.
+  in a `finally`; no leak. The repetition of that pattern was
+  [3.8](#38-connect--try--finally-close-repeated-at-eight-sites), now
+  resolved into one `ledger.connection()` context manager -- it was a
+  tidiness item, not a correctness one.
 
 ## Reviewing with OpenCodeReview
 

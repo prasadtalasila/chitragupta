@@ -19,8 +19,9 @@ existing parse for a citekey instead of converting the PDF a second time.
 The dependency runs one way only, which is the way this package is
 allowed to depend: the enrichment layer reads the corpus layer's
 artefacts, and nothing in the corpus layer is shaped to make that
-possible (see `_executor_for`'s docstring for the same rule applied to
-imports).
+possible (see `pdf_text.docling_process_pool`'s docstring for the same
+rule applied to imports: this module builds its process pool through
+that shared helper rather than importing chitragupta.sync's).
 
 With config.DOCLING_IMAGES on, each doc also gets its figure bitmaps
 (in `<stem>_artifacts/`, written by Docling itself) and a
@@ -437,30 +438,16 @@ def _pdf_size(path: str | None) -> int:
         return 0
 
 
-def _executor_for(workers: int):
-    """Mirrors chitragupta/sync.py's: one GPU per worker, and whichever start
-    method pdf_text.process_pool_context picks.
-
-    Kept as its own function here rather than imported from sync so that
-    chitragupta/enrich/ doesn't depend on the core entrypoint -- the dependency
-    runs the other way everywhere else in this repo.
-
-    That duplication is the reason this takes `usable_devices()` rather
-    than a device count: the two builders have to agree about what
-    init_worker is handed, and a count here would skip the free-card
-    check that sync does -- which is the whole of what it is for.
+def _executor_for(workers: int) -> ProcessPoolExecutor:
+    """This module's docling pool, built by the one place that knows how
+    (pdf_text.docling_process_pool -- see its docstring for why the pool
+    itself moved there, off docs/TECHNICAL-DEBT.md #3.2). Kept as its own
+    named function, rather than calling that helper inline at the one
+    call site below, purely as the test seam `tests/test_enrich_docling_parse.py`
+    already monkeypatches.
     """
-    ctx, complaint = pdf_text.process_pool_context()
-    if complaint:
-        logging_setup.say(logger, complaint, level=logging.WARNING)
-    devices, gpu_complaint = pdf_text.usable_devices()
-    if gpu_complaint:
-        logging_setup.say(logger, gpu_complaint, level=logging.WARNING)
-    return ProcessPoolExecutor(
-        max_workers=workers,
-        mp_context=ctx,
-        initializer=pdf_text.init_worker,
-        initargs=(ctx.Value("i", 0), ctx.Lock(), devices),
+    return pdf_text.docling_process_pool(
+        workers, lambda msg: logging_setup.say(logger, msg, level=logging.WARNING)
     )
 
 
@@ -628,7 +615,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     all.
 
     One constraint that comes with the worker pool: every start method it
-    can pick (see _executor_for) re-imports the calling program's
+    can pick (see pdf_text.docling_process_pool) re-imports the calling program's
     __main__ in each worker -- forkserver preloads torch and docling in
     its server process, but the worker still runs spawn's preparation
     step. A script that calls this must therefore guard its top level

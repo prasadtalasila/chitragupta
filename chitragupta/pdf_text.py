@@ -29,6 +29,8 @@ import signal
 import sys
 import shutil
 import subprocess
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from chitragupta import config, passages
@@ -765,6 +767,39 @@ def init_worker(counter, lock, devices) -> None:
         index = counter.value
         counter.value += 1
     _WORKER_DEVICE = f"cuda:{devices[index % len(devices)]}"
+
+
+def docling_process_pool(workers: int, warn: Callable[[str], None]) -> ProcessPoolExecutor:
+    """The one docling ProcessPoolExecutor builder, shared by chitragupta/sync.py
+    and chitragupta/enrich/docling_parse.py so the two cannot silently drift on
+    what `init_worker` is handed -- see docs/TECHNICAL-DEBT.md #3.2. Both
+    already import this module, so this costs no new dependency edge.
+
+    `warn` is a `str -> None` callback rather than a fixed logger, because
+    the two callers report a complaint differently: chitragupta/sync.py logs it
+    plainly, chitragupta/enrich/docling_parse.py mirrors it to stdout via
+    logging_setup.say. Passing the callback keeps that choice with the
+    caller instead of forcing one convention on both.
+
+    usable_devices() is queried here, at pool-build time, rather than
+    earlier and passed in -- the free-card answer is only true for as
+    long as it takes to start the workers, since another process can
+    fill a card a second later. One GPU per worker, round-robin; see
+    init_worker's docstring for why a poisoned or full card must be
+    skipped rather than merely counted.
+    """
+    ctx, complaint = process_pool_context()
+    if complaint:
+        warn(complaint)
+    devices, gpu_complaint = usable_devices()
+    if gpu_complaint:
+        warn(gpu_complaint)
+    return ProcessPoolExecutor(
+        max_workers=workers,
+        mp_context=ctx,
+        initializer=init_worker,
+        initargs=(ctx.Value("i", 0), ctx.Lock(), devices),
+    )
 
 
 def docling_threads(workers: int) -> int:

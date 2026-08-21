@@ -306,8 +306,7 @@ def build_report(draft_path: Path) -> Report:
     # the file. It also makes the recorded command re-runnable, which
     # `survey.md` alone is not.
     report = Report(draft=Path(draft_path))
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         cache: dict[str, list[Passage]] = {}
         for line_no, citekey, claim in claims(text):
             if citekey not in cache:
@@ -321,8 +320,6 @@ def build_report(draft_path: Path) -> Report:
                 Finding(line=line_no, citekey=citekey, claim=claim,
                         score=score, passage=passage, note=note)
             )
-    finally:
-        con.close()
     # Worst first: the report should open on what deserves attention,
     # not make a reviewer read forty entries to find three.
     report.findings.sort(key=lambda f: (f.score, f.line))

@@ -299,11 +299,8 @@ def search(query: str, k: int = 5, snippet_chars: int = 500,
     if not terms:
         return []
 
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         items = ledger.all_items(con)
-    finally:
-        con.close()
 
     index = _load_index(items)
     scores = _bm25_scores(index, terms)
@@ -382,8 +379,7 @@ def evidence(
     # The citekey is checked before the query, so that naming a key the
     # ledger doesn't have is reported as the caller error it is even when
     # the query happens to tokenize to nothing.
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         # row_factory set and cleared around the read, matching
         # ledger.all_items: connect() leaves rows as tuples, and
         # _full_text addresses its columns by name.
@@ -392,8 +388,6 @@ def evidence(
             "SELECT title, parsed_path FROM items WHERE citekey = ?", (citekey,)
         ).fetchone()
         con.row_factory = None
-    finally:
-        con.close()
     if row is None:
         raise KeyError(f"{citekey} is not in the ledger")
     terms = set(_tokenize(query))

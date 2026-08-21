@@ -126,7 +126,7 @@ class pipeline_lock:
     this pattern fails.
     """
 
-    def __init__(self, path=None):
+    def __init__(self, path=None) -> None:
         self._path = Path(path) if path is not None else config.PIPELINE_LOCK_PATH
         self._con = None
 
@@ -155,10 +155,10 @@ class pipeline_lock:
         except OSError:
             pass
 
-    def _holder_path(self):
+    def _holder_path(self) -> Path:
         return self._path.with_name(self._path.name + ".holder")
 
-    def __enter__(self):
+    def __enter__(self) -> "pipeline_lock":
         self._path.parent.mkdir(parents=True, exist_ok=True)
         # timeout=0: fail immediately rather than sitting for sqlite's
         # default five seconds. Failing fast is right here because sync
@@ -193,7 +193,7 @@ class pipeline_lock:
         self._record_holder()
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info) -> bool:
         if self._con is not None:
             # ROLLBACK, not COMMIT: the transaction exists only to hold
             # the lock and has written nothing.

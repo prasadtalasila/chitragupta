@@ -210,11 +210,8 @@ def run(paths: list[str]) -> int:
               "draft -- see docs/HOOKS.md.",
               file=sys.stderr)
 
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         known = ledger.known_citekeys(con)
-    finally:
-        con.close()
 
     if not known:
         print(
