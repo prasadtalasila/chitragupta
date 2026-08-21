@@ -471,11 +471,8 @@ def write_numbered(path: Path, out_dir: Path, text: str | None = None) -> Path:
     """
     if text is None:
         text = path.read_text(encoding="utf-8")
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         rendered = numbered_markdown(text, con)
-    finally:
-        con.close()
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{path.stem}.md"
@@ -490,11 +487,8 @@ def apply(path: Path, heading: str = "References") -> str:
     if not keys:
         return f"{path}: no citekeys cited -- nothing to do"
 
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         section = build_section(keys, con, heading)
-    finally:
-        con.close()
 
     lines = text.splitlines(keepends=True)
     idx = section_start(lines)

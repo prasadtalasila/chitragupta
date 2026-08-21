@@ -1026,7 +1026,7 @@ class TestParallelHelpers:
 
         monkeypatch.setattr(
             pdf_text, "usable_devices", lambda: ([0, 1, 2, 3], None))
-        monkeypatch.setattr(docling_parse, "ProcessPoolExecutor", record)
+        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor", record)
         with docling_parse._executor_for(2):
             pass
 
@@ -1044,7 +1044,7 @@ class TestParallelHelpers:
         captured = {}
         monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([1, 2], "  WARNING"))
         monkeypatch.setattr(
-            docling_parse, "ProcessPoolExecutor",
+            pdf_text, "ProcessPoolExecutor",
             lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1060,7 +1060,7 @@ class TestParallelHelpers:
         captured = {}
         monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([2, 3], None))
         monkeypatch.setattr(
-            docling_parse, "ProcessPoolExecutor",
+            pdf_text, "ProcessPoolExecutor",
             lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1076,7 +1076,7 @@ class TestParallelHelpers:
         monkeypatch.setattr(
             pdf_text, "usable_devices",
             lambda: ([1], "  WARNING skipping cuda:0"))
-        monkeypatch.setattr(docling_parse, "ProcessPoolExecutor",
+        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor",
                             lambda **kwargs: contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1092,7 +1092,7 @@ class TestParallelHelpers:
         monkeypatch.setattr(
             pdf_text, "process_pool_context",
             lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"))
-        monkeypatch.setattr(docling_parse, "ProcessPoolExecutor",
+        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor",
                             lambda **kwargs: contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass

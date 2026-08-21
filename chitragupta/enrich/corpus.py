@@ -45,11 +45,8 @@ class CorpusDoc:
 
 def build_corpus() -> list[CorpusDoc]:
     """Every ledger item, as the enrichment stages consume them."""
-    con = ledger.connect()
-    try:
+    with ledger.connection() as con:
         rows = ledger.all_items(con)
-    finally:
-        con.close()
 
     return [
         CorpusDoc(

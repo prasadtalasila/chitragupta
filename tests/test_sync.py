@@ -927,7 +927,7 @@ class TestGpuAssignment:
             captured.update(kwargs)
             return contextlib.nullcontext()
 
-        monkeypatch.setattr(sync, "ProcessPoolExecutor", record)
+        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor", record)
         return captured
 
     def test_docling_pool_hands_each_worker_its_own_gpu(self, monkeypatch):

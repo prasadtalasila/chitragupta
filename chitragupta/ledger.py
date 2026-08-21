@@ -16,6 +16,8 @@ import hashlib
 import json
 import os
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -144,6 +146,20 @@ def connect() -> sqlite3.Connection:
     _migrate(con)
     con.commit()
     return con
+
+
+@contextmanager
+def connection() -> Iterator[sqlite3.Connection]:
+    """`with ledger.connection() as con:` -- connect() plus the
+    close()-in-a-finally every caller was already writing by hand at
+    eight call sites (docs/TECHNICAL-DEBT.md #3.8). Not a change to the
+    connection's lifecycle, just to who writes the boilerplate.
+    """
+    con = connect()
+    try:
+        yield con
+    finally:
+        con.close()
 
 
 def _hash_pdf(path: str) -> str:

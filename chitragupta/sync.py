@@ -27,8 +27,9 @@ import os
 import sys
 import time
 from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from concurrent.futures import (FIRST_COMPLETED, ProcessPoolExecutor,
+from concurrent.futures import (FIRST_COMPLETED, Future, ProcessPoolExecutor,
                                 ThreadPoolExecutor, wait)
 from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
@@ -63,8 +64,12 @@ _MAX_NAMED_TIMEOUTS = 10
 # docs/CLI.md publishes as `sync`'s API. See refuse_direct_invocation.
 EXIT_COMMAND_REMOVED = 64
 
+# The (citekey, out_path, exception) triple pdf_text.extract_one produces,
+# yielded back out by both _parse_serial and _parse_parallel.
+_ParseResult = tuple[str, str | None, Exception | None]
 
-def _executor_for(workers: int):
+
+def _executor_for(workers: int) -> ProcessPoolExecutor | ThreadPoolExecutor:
     """Processes for docling, threads for pdftotext.
 
     The two backends want opposite things, so this is deliberately
@@ -75,42 +80,17 @@ def _executor_for(workers: int):
     runs in-process and holds the GIL, so threads would serialise exactly
     the work we are trying to overlap.
 
-    The docling pool also claims one GPU per worker. Docling's
-    `AcceleratorDevice.AUTO` resolves to `cuda:0` in *every* process, so
-    without this every worker contends for one card while the rest of the
-    machine's GPUs idle -- measured at 12 workers: GPU 0 pinned at 100%,
-    GPUs 1-3 at 0%, and no faster than 4 workers. The index is handed out
-    by a shared counter under a lock, because a pool creates its workers
-    lazily and numbers none of them.
-
-    The start method is pdf_text.process_pool_context's to choose --
-    forkserver where it exists, so torch and docling are imported once
-    for the whole pool rather than once per worker, and spawn otherwise.
-    Never plain fork: this process holds the run lock and the ledger open
-    as live sqlite connections, which must not be inherited.
+    The docling pool itself is pdf_text.docling_process_pool -- shared with
+    chitragupta/enrich/docling_parse.py's own docling-only pool (see its
+    docstring for why the GPU/start-method reasoning lives there now
+    rather than duplicated here).
 
     Also the seam the tests substitute: a real ProcessPoolExecutor runs
     its work in a child interpreter, where the test process's
     monkeypatches don't exist.
     """
     if config.PARSER == "docling":
-        ctx, complaint = pdf_text.process_pool_context()
-        if complaint:
-            logger.warning(complaint)
-        # Asked here rather than passed in because this is the one place
-        # a docling pool is built, and because the answer is only true
-        # for as long as it takes to start the workers -- another process
-        # can fill a card a second later, which is what _demote_to_cpu is
-        # for.
-        devices, gpu_complaint = pdf_text.usable_devices()
-        if gpu_complaint:
-            logger.warning(gpu_complaint)
-        return ProcessPoolExecutor(
-            max_workers=workers,
-            mp_context=ctx,
-            initializer=pdf_text.init_worker,
-            initargs=(ctx.Value("i", 0), ctx.Lock(), devices),
-        )
+        return pdf_text.docling_process_pool(workers, logger.warning)
     return ThreadPoolExecutor(max_workers=workers)
 
 
@@ -128,7 +108,7 @@ def _pdf_size(path: str) -> int:
         return 0
 
 
-def _as_they_land(futures, executor, stalled):
+def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
     """Yield futures as they complete, giving up if the whole pool goes
     silent for config.PARSER_STALL_TIMEOUT.
 
@@ -190,7 +170,7 @@ def _as_they_land(futures, executor, stalled):
         yield from done
 
 
-def _parse_serial(refs):
+def _parse_serial(refs) -> Iterator[_ParseResult]:
     """The historical path, taken whenever [parser].workers resolves to 1.
 
     Deliberately not "a pool with one worker": no executor, no pickling,
@@ -204,7 +184,7 @@ def _parse_serial(refs):
             yield ref.citekey, None, exc
 
 
-def _parse_parallel(refs, workers: int, threads: int | None):
+def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseResult]:
     """Same triples as _parse_serial, produced by `workers` at once.
 
     Submitted biggest-file-first (the LPT heuristic). One 675-page
@@ -640,17 +620,14 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     _preflight_warnings(references)
 
     parser_available = _parser_available()
-    con = ledger.connect()
     tally = _Tally()
-    try:
+    with ledger.connection() as con:
         to_parse = _to_parse(con, references, reparse, parser_available, tally)
         _dispatch_and_apply(con, to_parse, tally)
         pruned, stale, suspicious = _report_stale(con, references, remove_stale)
         # Read while the connection is still open -- the summary below
         # runs after it is closed.
         kinds = ledger.failure_counts(con)
-    finally:
-        con.close()
 
     stale_count = len(pruned) if remove_stale else len(stale)
     stale_label = "pruned" if remove_stale else "stale (not removed)"
