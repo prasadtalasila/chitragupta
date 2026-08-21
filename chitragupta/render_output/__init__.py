@@ -146,7 +146,9 @@ def _copy_local_assets(input_path: Path, dest_dir: Path) -> None:
     _copy_local_tex_includes(input_path, dest_dir)
 
 
-def _render_csl(csl: str | Path | None, collapse_citations: bool | None, tmp_dir: Path) -> Path:
+def _render_csl(  # pragma: no cover-windows-toolchain
+    csl: str | Path | None, collapse_citations: bool | None, tmp_dir: Path
+) -> Path:
     """The CSL style this render actually hands pandoc.
 
     `MissingBinary` rather than a new exception type, even though a style
@@ -220,10 +222,10 @@ def _pandoc_command(
     # tikzpicture environment fails with "Environment tikzpicture
     # undefined" without it, but the package load itself is inert for a
     # draft that never draws one, so this stays conditional.
-    if figure_refs:
+    if figure_refs:  # pragma: no cover-windows-toolchain
         cmd += ["--variable", r"header-includes=\usepackage{tikz}"]
     env = None
-    if output_format == "pdf":
+    if output_format == "pdf":  # pragma: no cover-windows-toolchain
         cmd += ["--pdf-engine", "pdflatex"]
         # LaTeX's own \input/\include search path is separate from
         # --resource-path above (that's pandoc's, for images pandoc
@@ -320,18 +322,23 @@ def render(
             input_path, out_dir, _with_figures_for(draft_text, input_path, output_format),
         )
 
-    _require("pandoc")
-    if output_format == "pdf":
+    # Everything from here on needs the real pandoc/pdflatex/TeX Live
+    # toolchain to exercise -- see docs/TECHNICAL-DEBT.md #3.6. Marked
+    # per-line rather than by extracting a helper, since there is no
+    # single enclosing block to tag and this trailing tail is otherwise
+    # ordinary sequential code.
+    _require("pandoc")  # pragma: no cover-windows-toolchain
+    if output_format == "pdf":  # pragma: no cover-windows-toolchain
         _require("pdflatex")
-    figure_refs = _figure_refs(draft_text)
-    if figure_refs and output_format in _TEX_FORMATS:
+    figure_refs = _figure_refs(draft_text)  # pragma: no cover-windows-toolchain
+    if figure_refs and output_format in _TEX_FORMATS:  # pragma: no cover-windows-toolchain
         _require_tikz()
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    _copy_local_assets(input_path, out_dir)
-    out_path = out_dir / f"{input_path.stem}.{output_format}"
+    out_dir.mkdir(parents=True, exist_ok=True)  # pragma: no cover-windows-toolchain
+    _copy_local_assets(input_path, out_dir)  # pragma: no cover-windows-toolchain
+    out_path = out_dir / f"{input_path.stem}.{output_format}"  # pragma: no cover-windows-toolchain
 
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows-toolchain
         safe_md, safe_bib = _safe_render_inputs(
             input_path, config.BIB_FILE_PATH, Path(tmp),
             _with_figures_for(draft_text, input_path, output_format),
@@ -343,4 +350,4 @@ def render(
         )
         subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
 
-    return out_path
+    return out_path  # pragma: no cover-windows-toolchain

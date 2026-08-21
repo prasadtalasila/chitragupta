@@ -64,9 +64,9 @@ def _safe_render_inputs(
         # unsubstituted draft.
         if text == on_disk:
             return input_path, bib_path
-        safe_md = tmp_dir / input_path.name
-        safe_md.write_text(text, encoding="utf-8")
-        return safe_md, bib_path
+        safe_md = tmp_dir / input_path.name  # pragma: no cover-windows-toolchain
+        safe_md.write_text(text, encoding="utf-8")  # pragma: no cover-windows-toolchain
+        return safe_md, bib_path  # pragma: no cover-windows-toolchain
 
     bib_text = bib_path.read_text(encoding="utf-8")
     for key in bad_keys:

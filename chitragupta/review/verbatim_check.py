@@ -150,11 +150,11 @@ def pages(citekey: str) -> list[str]:
         # so a false "no match" can't be mistaken for a real absence.
         raw = parsed.read_text(encoding="utf-8", errors="replace")
         return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")
-    out = subprocess.run(
+    out = subprocess.run(  # pragma: no cover-windows-toolchain
         ["pdftotext", "-layout", str(p), "-"],
         capture_output=True, text=True, check=True,
     )
-    return out.stdout.split("\f")
+    return out.stdout.split("\f")  # pragma: no cover-windows-toolchain
 
 
 WORD = re.compile(r"[a-z0-9]+")

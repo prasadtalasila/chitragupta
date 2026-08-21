@@ -1,0 +1,29 @@
+# Coverage config for CI's Windows leg only -- see pyproject.toml's
+# [tool.coverage.report] and docs/TECHNICAL-DEBT.md #3.6 for why this
+# exists rather than one shared config. `os-deps` (pandoc, pdflatex,
+# poppler-utils) is apt-only, so this leg never has them; the lines they
+# gate are marked `pragma: no cover-windows-toolchain` in source and
+# excluded only here, never in pyproject.toml's own exclude_lines --
+# the Linux leg has the toolchain and keeps measuring those lines for
+# real. tests/test_coverage_configs_agree.py pins the two [run] sections
+# to the same source/branch/omit, so this file can only drift from
+# pyproject.toml's on the one axis it is meant to.
+
+[tool.coverage.run]
+source = ["chitragupta", "scripts", ".claude/hooks"]
+branch = true
+omit = [
+    "*/enrich/__init__.py",
+]
+
+[tool.coverage.report]
+# 100, matching the Linux leg, now that the toolchain-only lines below
+# are excluded rather than budgeted for under a lower floor -- see the
+# module docstring above.
+fail_under = 100
+precision = 2
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "pragma: no cover-windows-toolchain",
+]

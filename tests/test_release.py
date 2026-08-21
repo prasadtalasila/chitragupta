@@ -42,6 +42,9 @@ def make_repo(tmp_path):
     (repo / ".gitignore").write_text("content/parsed/\n")
     (repo / "sonar-project.properties").write_text("sonar.projectKey=x\n")
     (repo / "codecov.yml").write_text("codecov:\n  notify:\n    after_n_builds: 2\n")
+    (repo / "coveragerc-windows.toml").write_text(
+        "[tool.coverage.run]\nsource = [\"chitragupta\"]\n"
+    )
     (repo / "AGENTS.md").write_text("agent guidance")
     (repo / "DEVELOPER-AGENTS.md").write_text("agent guidance for developing this repo")
     (repo / "SOUL.md").write_text("why this exists")
@@ -141,6 +144,13 @@ class TestTrackedFiles:
         # comment warns about, exported to someone who never opted into it.
         paths = release.tracked_files()
         assert "codecov.yml" not in paths
+
+    def test_excludes_coveragerc_windows_toml(self, repo):
+        # Same category as the two above: config for CI's Windows leg
+        # (docs/TECHNICAL-DEBT.md #3.6), meaningful only alongside this
+        # repository's own test suite, which a release doesn't ship.
+        paths = release.tracked_files()
+        assert "coveragerc-windows.toml" not in paths
 
     def test_ships_all_three_agent_guidance_files(self, repo):
         # All three ship. .claude/ and its genre skills ship too, and they

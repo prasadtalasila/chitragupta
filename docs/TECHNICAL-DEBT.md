@@ -380,17 +380,27 @@ reviewer would be reminded of. `bench_drift.py` (336 lines) and
 
 ### 3.4 `docker/Dockerfile` has never been built
 
-DEVELOPER-AGENTS.md is explicit -- "It has still not been built or run in
-this environment (no Docker daemon here) -- treat it as a draft to
-validate, not a tested artifact." No workflow under `.github/` builds it
-either: `grep -r docker .github/workflows/` returns nothing.
+**Resolved in #237** (reopened after #248 built and verified the
+Dockerfile by hand but explicitly did not add the CI job).
+`.github/workflows/ci.yml` now has a `docker-build` job running
+`docker build -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu -t
+chitragupta:ci .` on every push and PR -- no path filter (this file's own
+5.1 entry is the reason: a trigger or filter that narrows what runs is
+invisible by construction), and `cpu`, not the `gpu` default, for the
+same "no GPU on a hosted runner" reasoning the `test` job's own
+`cpu-torch` swap already applies. Build only, no run and no test suite
+inside the container, matching the scope this entry named. Kept below as
+the historical record of the gap.
+
+DEVELOPER-AGENTS.md was explicit -- "It has still not been built or run
+in this environment (no Docker daemon here) -- treat it as a draft to
+validate, not a tested artifact." No workflow under `.github/` built it
+either: `grep -r docker .github/workflows/` returned nothing.
 
 So the documented answer for "hosts where the `os-deps` assumption
-doesn't hold (no root, or root deliberately withheld)" is 56 lines that
-have never executed anywhere, and [DOCKER.md](../DOCKER.md) is published
+doesn't hold (no root, or root deliberately withheld)" was 56 lines that
+had never executed anywhere, and [DOCKER.md](../DOCKER.md) was published
 documentation for it. Honest labelling is not the same as working code.
-The cheap fix is a `docker build` job in CI; it needs no daemon-in-daemon
-tricks and no registry push to be worth having.
 
 ### 3.5 `scripts/install_full_pipeline.sh` -- 333 lines, no static check
 
@@ -423,21 +433,32 @@ would silently reintroduce.
 
 ### 3.6 The Windows coverage floor is a 5-point blind spot
 
-`.github/workflows/ci.yml:110-111` holds Linux at `fail_under=100` and
-Windows at 95. The reason given is good and specific: Windows gets
-`python-deps` only, `os-deps` is apt-only, so ~30 render and pdf tests
-self-skip.
+**Resolved in #291.** `coveragerc-windows.toml` is a second, independent
+coverage config (needed in full: `--cov-config` replaces config discovery
+rather than merging with `pyproject.toml`) used only on the Windows leg,
+whose `[report].exclude_lines` adds one pattern,
+`pragma: no cover-windows-toolchain`, over `pyproject.toml`'s own two.
+Every `pandoc`/`pdflatex`/`pdftotext` call site the ~30 self-skipping
+tests would have covered is marked with it in source -- never in
+`pyproject.toml`'s own `exclude_lines`, so the Linux leg, which has the
+real toolchain, keeps measuring those same lines for real.
+`tests/test_coverage_configs_agree.py` pins the two configs' `[run]`
+sections identical and asserts the Windows `exclude_lines` is a strict
+superset of Linux's, so the one axis they are meant to differ on cannot
+silently become two. Both legs now hold `fail_under = 100`. Kept below as
+the historical record of the blind spot itself.
 
-The debt is that 95 is a *floor*, not a *target*: the 5 points are not
+`.github/workflows/ci.yml` held Linux at `fail_under=100` and Windows at
+95. The reason given was good and specific: Windows gets `python-deps`
+only, `os-deps` is apt-only, so ~30 render and pdf tests self-skip.
+
+The debt was that 95 was a *floor*, not a *target*: the 5 points were not
 attributed to the skipped tests, so Windows-only code that no test
-reaches is indistinguishable from a render test that self-skipped. This
+reaches was indistinguishable from a render test that self-skipped. This
 mattered precisely for [3.1](#31-text-io-on-the-locale-codec),
-whose failure mode was Windows-specific -- now resolved there, but the
-blind spot itself is general and would hide the next one the same way.
-Attributing the gap -- via
-`# pragma: no cover` on the toolchain-dependent branches, or a second
-`.coveragerc` for the Windows leg -- would turn a floor into the same
-100 the Linux leg holds.
+whose failure mode was Windows-specific -- resolved there independently,
+but the blind spot itself was general and would have hidden the next one
+the same way.
 
 ### 3.7 The BibTeX author-name grammar exists twice
 
@@ -1169,14 +1190,11 @@ list for them: it checks that a name marked resolved here is genuinely
 absent from the size register, which is a live check rather than a
 historical note.
 
-1. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
-   this list -- one workflow job against a Dockerfile currently verified
-   by nothing.
-2. ~~**[Tier 1] `chitragupta/sync.py::run`.** 117 statements, separable at six
+1. ~~**[Tier 1] `chitragupta/sync.py::run`.** 117 statements, separable at six
    named seams, and already the register's designated first job.~~
    **Done**, in #178 (2026-08-14): split along those same seams. See the
    `chitragupta/sync.py::run` subsection above, kept as the historical record.
-3. ~~**[Tier 1] Split `chitragupta/dossier.py`** along the four ranges above, and
+2. ~~**[Tier 1] Split `chitragupta/dossier.py`** along the four ranges above, and
    delist whatever comes back under C1 in the same PR.~~ **Done**, in
    #219: `chitragupta/dossier/`, each module under the 250-code-line cap.
    `main()` stayed on the register, since the split moved every `_cmd_*`
@@ -1184,7 +1202,13 @@ historical note.
    See the `chitragupta/dossier.py` subsection below, kept as the
    historical record of what the split was measured against.
 
-Everything below that is real but can wait. Each of the five is one PR:
-"several small, reviewable PRs over one large one" applies to this
-project's own housekeeping as much as to its features, which is the
-reason the register froze today's code rather than fixing it.
+Everything else this 2026-08-18 reconciliation found open -- §3.2, §3.4,
+§3.6, §3.8, and the `runlock.py`/`sync.py` half of Type annotations --
+is resolved as of #295's batch (#290, #292, #293, #237, #291). What is
+left open: [3.3] bench/'s self-check pattern of one (#294), and Tier 2's
+11 inert `# noqa: BLE001` markers, which stay open by deliberate choice
+-- the real fix needs `ruff` or an equivalent per-site suppression
+linter, the same scale of work as the pylint/markdownlint adoptions in
+[5.2](#52-pylint-a-measured-baseline)/[5.3](#53-markdownlint-a-measured-baseline),
+and that tooling decision was left for its own round rather than folded
+into this one.

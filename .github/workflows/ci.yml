@@ -56,11 +56,12 @@ jobs:
     # found and fixed one at a time. They have been: the leg has run clean
     # -- every step green, no failing test -- for ten consecutive runs, so
     # it now blocks like the Linux one rather than reporting success
-    # whatever happens. What it does *not* share is the coverage bar: it
-    # gets python-deps without os-deps (apt-only), so ~30 render/pdf tests
-    # self-skip there and the total lands near 99% against Linux's 100%.
-    # That difference is a missing toolchain, and the floor below is set
-    # for it rather than the leg being exempted from checking at all.
+    # whatever happens. It gets python-deps without os-deps (apt-only), so
+    # ~30 render/pdf tests self-skip there -- but it holds the same 100%
+    # coverage bar as Linux regardless (docs/TECHNICAL-DEBT.md #3.6):
+    # coveragerc-windows.toml excludes exactly the toolchain-only lines
+    # those tests would have covered, rather than budgeting for the gap
+    # under a lower floor.
     steps:
       - uses: actions/checkout@v4
 
@@ -187,25 +188,24 @@ jobs:
       # Python's Scripts/) via poetry.toml's virtualenvs.create = false
       # + VIRTUAL_ENV, instead of this workflow needing to know which
       # one .venv-full actually has.
-      # Two floors, because the two legs run different amounts of the suite.
-      # Linux installs os-deps and runs all of it, so it holds pyproject's
-      # [tool.coverage.report] fail_under = 100. Windows gets python-deps
-      # only (os-deps is apt-only: pandoc, TeX Live, poppler), so ~30
-      # render/pdf tests self-skip and chitragupta/render_output.py lands at ~76%,
-      # taking the total near 99%. 95 is a floor under that, not a target:
-      # it catches pure-Python coverage collapsing on a platform where the
-      # suite is partial, without re-tuning every time a pandoc-only line
-      # is added. Raise it only against a measured number -- `precision = 2`
-      # is set so the report prints one.
+      # One floor now, not two (docs/TECHNICAL-DEBT.md #3.6). Windows gets
+      # python-deps only (os-deps is apt-only: pandoc, TeX Live, poppler),
+      # so ~30 render/pdf tests self-skip there -- but rather than budget
+      # for that under a lower number, coveragerc-windows.toml excludes
+      # exactly the toolchain-only call sites those tests would have
+      # covered (`pragma: no cover-windows-toolchain` in source), so both
+      # legs hold pyproject's/that file's own fail_under = 100. A floor
+      # under 100 couldn't tell "a render test self-skipped" from
+      # "Windows-only code that nothing reaches at all"; this can.
       - name: Run test suite with coverage
         shell: bash
         run: |
           export VIRTUAL_ENV="$PWD/.venv-full"
           set -o pipefail
-          fail_under=100
-          [ "$RUNNER_OS" = "Linux" ] || fail_under=95
+          cov_config=()
+          [ "$RUNNER_OS" = "Linux" ] || cov_config=(--cov-config=coveragerc-windows.toml)
           poetry run python -m pytest --cov --cov-report=term-missing \
-            --cov-report=xml --cov-fail-under="$fail_under" -rf | tee pytest-output.txt
+            --cov-report=xml --cov-fail-under=100 "${cov_config[@]}" -rf | tee pytest-output.txt
 
       # Which test failed is the only actionable part of a red run.
       # This step mattered most while the Windows leg carried
@@ -256,15 +256,15 @@ jobs:
       # things and merging them silently would hide that: the Linux leg
       # installs os-deps and runs the whole suite, the Windows leg gets
       # python-deps only, so ~30 render/pdf tests self-skip there and
-      # chitragupta/render_output.py lands near 76%. Two flags keep those two
-      # numbers separable in Codecov's UI, the same reason the two legs
-      # hold two different --cov-fail-under floors here. They are not
-      # decorative: Codecov's flags API reports `ubuntu-latest: 100.0` and
-      # `windows-latest: 99.29` as separate figures today, and the PR
-      # comment renders both. Uploading only the Linux report would also
-      # have fixed the timing problem below, and was rejected for that --
-      # it would leave the Windows gap visible only as slack under a
-      # coarse 95 floor rather than as a measured number.
+      # chitragupta/render_output.py's toolchain-only lines are excluded by
+      # coveragerc-windows.toml rather than run at all
+      # (docs/TECHNICAL-DEBT.md #3.6) -- both hit 100%, of a different
+      # denominator. Two flags keep the two runs distinguishable in
+      # Codecov's UI even though they now agree on the headline number.
+      # Uploading only the Linux report would also have fixed the timing
+      # problem below, and was rejected for that -- it would leave the
+      # Windows leg's narrower measurement invisible rather than reported
+      # under its own flag.
       #
       # `if: ${{ !cancelled() }}` rather than the default: a run that went
       # red on the coverage floor is exactly the run whose report is worth
@@ -470,6 +470,37 @@ jobs:
   # a second place to keep in sync with the first. `workflow_dispatch` can
   # still aim this at a feature branch, which is what a manual dispatch is
   # for -- Sonar records that as a branch analysis, not as a PR.
+  # docs/TECHNICAL-DEBT.md #3.4: docker/Dockerfile had never been built by
+  # anything -- no workflow under .github/ builds it, so a broken change
+  # to it or to scripts/install_full_pipeline.sh (which it wraps) would
+  # ship silently, and scripts/release.py bundles the Dockerfile into
+  # every release archive regardless. This proves the image still builds,
+  # nothing more: no `docker run`, no test suite inside the container, no
+  # registry push -- the same "cheapest real coverage gain" scope the
+  # debt entry itself named.
+  #
+  # No `if:` path filter to `docker/`/`scripts/install_full_pipeline.sh`.
+  # A filter that narrows what runs is invisible by construction -- this
+  # file's own 5.1 entry is the worked example (`tags-ignore` silently
+  # stopped every push-triggered run for six weeks) -- and this job is
+  # cheap enough (a few minutes, no GPU) that the simpler, always-run
+  # form is worth more than the CI time it would save.
+  #
+  # TORCH_VARIANT=cpu, not the `gpu` default: this only proves the image
+  # builds, and the GPU variant is ~11.6GB against the CPU-only build's
+  # ~4.4GB (#248's own measurement) -- the same "no GPU on a hosted
+  # runner" reasoning the `test` job's cpu-torch swap above already
+  # applies, here avoiding a multi-GB pull for a variant nothing in CI
+  # can exercise anyway.
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker build -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .
+        run: docker build -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu -t chitragupta:ci .
+
   sonarqube:
     name: SonarQube
     # Waits on `test` (both matrix legs) so the coverage-download step

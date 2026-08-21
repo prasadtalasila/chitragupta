@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         # wrong.
         print(f"[error] {exc}")
         return 1
-    except subprocess.CalledProcessError as exc:
+    except subprocess.CalledProcessError as exc:  # pragma: no cover-windows-toolchain
         print(f"[error] pandoc failed: {exc.stderr or exc}{_figure_repair_hint(args.input)}")
         return 1
     except KeyError as exc:

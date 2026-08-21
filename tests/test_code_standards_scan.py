@@ -67,7 +67,7 @@ LEGACY_LONG_FUNCTIONS = {
     "chitragupta/enrich/docling_parse.py::parse_doc",  # 36
     "chitragupta/sync.py::_parse_parallel",  # 33
     "chitragupta/enrich/topic_model.py::run_topic_model",  # 32
-    "tests/test_release.py::make_repo",  # 31
+    "tests/test_release.py::make_repo",  # 32
     "chitragupta/retrieval.py::_windows",  # 28
     "chitragupta/overlap_index.py::build_corpus_index",  # 27
     "chitragupta/overlap_skipgram.py::build_corpus_index",  # 27
