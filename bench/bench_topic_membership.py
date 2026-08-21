@@ -14,11 +14,15 @@ artefact contradicting each other is worse than one field saying less.
 
     approximate_distribution  BERTopic's own, c-TF-IDF over token windows
     centroid-embed            cosine to cluster centroids, centred, in the
-                              embedding space
+                              embedding space -- **what the pipeline now
+                              ships**, as chitragupta/enrich/topic_model.py's
+                              topic_descriptors()
     centroid-umap             the same, in the reduced space the
                               clustering actually happened in
     gaussian-mixture          soft by construction, over the reduced space
-    hdbscan-soft              HDBSCAN's own all_points_membership_vectors
+    hdbscan-soft              HDBSCAN's own all_points_membership_vectors --
+                              what shipped before #298, kept as the row to
+                              beat
 
 Needs the "enrich" Poetry group and a synced corpus. Reuses the cached
 document vectors, so a warm content/topic_embed_cache.json makes this

@@ -139,10 +139,10 @@ def isolated_config(tmp_path, monkeypatch):
     # fail a suite that is checking the clamps rather than the defaults.
     monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 3)
     monkeypatch.setattr(config, "TOPIC_MIN_SAMPLES", 2)
-    monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 10)
+    monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 5)
     monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", True)
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.5)
-    monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 3)
+    monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 8)
     monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", True)
     return config
 

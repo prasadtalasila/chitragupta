@@ -448,8 +448,13 @@ topic_min_samples = 2
 
 # UMAP's neighbourhood size, the other half of granularity: smaller reads
 # more local structure and yields more, finer topics.
-#                                                             Default: 10
-topic_neighbors = 10
+#
+# 5 rather than 10 because it is better on three axes at once, measured:
+# 83 topics against 76, 9% of the corpus left out against 17%, and a
+# stability of 0.80 against 0.71 -- how well the same setting reproduces
+# under resampling. The pairing hardcoded before 6.9.0 scored 0.14 there.
+#                                                              Default: 5
+topic_neighbors = 5
 
 # Whether the bertopic stage also records which topics each document
 # belongs to, rather than only the single topic id BERTopic returns. A
@@ -467,6 +472,6 @@ topic_distribution = true
 # count, and how many may be kept. Relative rather than absolute for the
 # same reason the seed ranking is: a fixed floor means something entirely
 # different at 7 topics than at 70.
-#                                                       Defaults: 0.5 / 3
+#                                                       Defaults: 0.5 / 8
 topic_membership_ratio = 0.5
-topic_membership_max = 3
+topic_membership_max = 8

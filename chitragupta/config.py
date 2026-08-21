@@ -615,10 +615,26 @@ TOPIC_MIN_CLUSTER_SIZE = int(_get_float(
 TOPIC_MIN_SAMPLES = int(_get_float(
     "TOPIC_MIN_SAMPLES", "enrich", "topic_min_samples", default=2,
 ))
-# UMAP's neighbourhood size, the other half of granularity: smaller
-# reads more local structure and yields more, finer topics.
+# UMAP's neighbourhood size, the other half of granularity: smaller reads
+# more local structure and yields more, finer topics.
+#
+# 5, not the 10 it started at, and the third column is what decided it.
+# `bench/bench_topic_depth.py --repeats` scores how well a setting
+# reproduces under resampling (adjusted Rand index over the
+# document-to-topic assignment), and on this corpus:
+#
+#     n_neighbors=15, min_cluster_size=10    5 topics, 12% outliers, 0.14
+#     n_neighbors=10, min_cluster_size=10   16 topics, 28% outliers, 0.26
+#     n_neighbors=10, min_cluster_size=3     76 topics, 17% outliers, 0.71
+#     n_neighbors=5,  min_cluster_size=3     83 topics,  9% outliers, 0.80
+#
+# 5 is better on all three axes at once -- more topics, fewer documents
+# discarded, and a partition that actually reproduces. The old hardcoded
+# 15/10 pairing scoring 0.14 is the finding worth carrying: it was not
+# merely coarse, it was barely repeatable, which no amount of reading its
+# output would have revealed.
 TOPIC_NEIGHBORS = int(_get_float(
-    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=10,
+    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=5,
 ))
 
 # Whether the bertopic stage also records, per document, every topic it
@@ -658,11 +674,18 @@ TOPIC_DISTRIBUTION = _get_bool(
 TOPIC_MEMBERSHIP_RATIO = _get_float(
     "TOPIC_MEMBERSHIP_RATIO", "enrich", "topic_membership_ratio", default=0.5,
 )
-# The cap, for a document whose weights are near-uniform because BERTopic
-# was not confident about it at all: every topic then clears the ratio,
-# and "belongs to all 7" is noise wearing the shape of an answer.
+# The cap, for a document similar to almost everything: without one,
+# "belongs to all 76 topics" is noise wearing the shape of an answer.
+#
+# 8, not the 3 it started at. 3 was chosen when this corpus produced 7
+# topics and was plainly wrong once it produced 76: measured, 387 of 497
+# documents sat at exactly 3, so the cap rather than the similarity was
+# deciding what a paper is about, and the ratio never got to speak. At 8
+# the ratio binds for most documents and the cap catches only the
+# genuinely diffuse ones -- which is the division of labour the two
+# settings are for.
 TOPIC_MEMBERSHIP_MAX = int(_get_float(
-    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=3,
+    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=8,
 ))
 RENDERED_DIR = CONTENT_DIR / "rendered"
 

@@ -2558,6 +2558,86 @@ the first regime and not the second. Quote this table, not that figure.
   (`all-mpnet-base-v2`), same limitation as every section above.
 
 
+## 2026-08-21b: does a topic set reproduce, and what is a paper actually about?
+
+Two follow-ups to the section above, on the same corpus: whether a
+clustering setting is *stable*, and which mechanism should say a document
+belongs to more than one topic. Scripts `bench_topic_depth.py --repeats`
+and `bench_topic_membership.py`; raw output under
+`results/2026-08-21-topic-stability/`.
+
+### Stability: the old default was barely repeatable
+
+`--repeats` refits each setting on 90% bootstrap resamples and scores
+agreement with the full fit by adjusted Rand index over the
+document-to-topic assignment. 1.0 is an identical partition, 0.0 is
+chance. HDBSCAN is deterministic given identical input, so resampling
+rather than re-running is what makes the number mean anything.
+
+| n_neighbors | min_cluster_size | min_samples | topics | outliers | stability |
+|---|---|---|---|---|---|
+| 15 | 10 | -- | 5 | 12% | **0.14** |
+| 15 | 5 | -- | 29 | 30% | 0.72 |
+| 10 | 10 | -- | 16 | 28% | 0.26 |
+| 10 | 3 | -- | 51 | 18% | 0.79 |
+| 10 | 3 | 2 | 76 | 17% | 0.71 |
+| 5 | 5 | 3 | 46 | 12% | 0.66 |
+| **5** | **3** | **2** | **83** | **9%** | **0.80** |
+| 5 (n_components 10) | 3 | 2 | 83 | 9% | 0.82 |
+
+**The coarse settings are not merely coarse -- they are unstable.** The
+values hardcoded until 6.9.0 (`15`/`10`) score **0.14**: their partition
+of the corpus barely survives dropping a tenth of it. That is a third
+independent argument against them, after the topic count and the outlier
+share, and it is the one that no amount of reading their output would
+have revealed. A five-topic answer looks decisive; this says it is close
+to arbitrary.
+
+`topic_neighbors` moves from 10 to 5 on this table, which is better on
+all three axes at once: 83 topics against 76, 9% of the corpus discarded
+against 17%, stability 0.80 against 0.71.
+
+`n_components = 10` scores marginally better again (0.82) but is not
+configurable, and one run's 0.02 is not enough to justify making it so.
+
+### Membership: what a paper is about, versus where it landed
+
+Five mechanisms at 76 topics. **top-share** is the mean share of a
+document's weight taken by its strongest topic; the uniform baseline is
+**0.01**, and a mechanism near it is saying nothing.
+
+| mechanism | topics/doc | plural | top-share | agreement |
+|---|---|---|---|---|
+| `approximate_distribution` | 35.45 | 94% | 0.03 | 100% |
+| **centroid cosine, centred (now shipped)** | **5.03** | **92%** | **0.12** | 100% |
+| centroid cosine, reduced space | 9.55 | 99% | 0.04 | 100% |
+| Gaussian mixture | 1.00 | 0% | 1.00 | 0% |
+| HDBSCAN soft (shipped before #298) | 1.64 | 25% | 0.58 | 100% |
+
+The shipped choice changed from the last row to the second. HDBSCAN soft
+clustering is the most *confident* mechanism here and the least useful:
+it answers "which density region does this point occupy", and for a core
+point that is nearly binary. On a library where 637 of 642 papers carry
+hand-made Zotero collection labels across 95 collections, reporting 1.64
+topics per paper with 25% plural is describing a plural corpus as
+singular.
+
+In the shipped configuration -- ratio 0.5, cap 8 -- that becomes **4.64
+topics per paper with 92% plural**, and 1,809 memberships the single
+topic id discards. The cap moved from 3 to 8 because at 3 it, rather than
+the similarity, was deciding: 387 of 497 documents sat at exactly 3.
+
+### What this still does not measure
+
+- **Whether the topics are any good.** Every figure here is a shape or
+  agreement statistic. No coherence score, no topic-diversity measure,
+  and no human judging whether the topics are nameable.
+- **Stability across corpus states.** `--repeats` resamples one corpus at
+  one moment. The 2026-08-21 section records a setting moving from 13
+  topics to 5 when preprocessing changed upstream; nothing here would
+  have caught that.
+- **A second corpus or host.** One corpus, one host, one embedding model.
+
 ## 2026-08-16: retrieval quality with a ground truth no retrieval method built
 
 The two sections above both score against citekeys that reached
