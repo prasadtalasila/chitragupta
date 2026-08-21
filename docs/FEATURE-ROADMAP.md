@@ -852,6 +852,10 @@ path cannot enforce at all.
 Size: S. Depends on: nothing. **Do this first in the theme** -- it is
 prevention, where D2 is detection.
 
+**Shipped in 6.16.1 (#308).** This document's own status line above
+("Nothing below is built") is stale for D1 specifically; D2-D4 and every
+other theme remain unbuilt work.
+
 ### D2: deterministic TikZ layout check
 
 *Planned in detail: [`plans/d2-tikz-layout-check.md`](../plans/d2-tikz-layout-check.md).*

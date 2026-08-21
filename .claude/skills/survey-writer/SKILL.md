@@ -351,9 +351,13 @@ collapse them for the sake of a cleaner narrative.
    `.txt` contents in a fence on `--format md` (step 12) and every other
    non-LaTeX format, and for `\input{figures/<name>.tex}` on
    `--format tex`/`--format pdf`, which is what makes a survey figure
-   usable in the paper this draft feeds. Four riders, each of which §10
+   usable in the paper this draft feeds. Five riders, each of which §10
    explains:
 
+   - **Commit to a layout metaphor before drawing, then check the
+     result against §10's pre-flight defect list** (occlusion, chaotic
+     routing, illegible type, non-rectangular protrusion, an
+     overlong node, literal copying) before keeping the figure.
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.md`, move the draft and its dossier before
      adding a figure, or drop the figure -- and in this genre dropping

@@ -358,9 +358,13 @@ the lesson design is the part worth keeping either way.
    `.txt` contents in a fence on `--format md` and every other
    non-LaTeX format, and `--format tex`/`--format pdf` (step 14) get
    `\input{figures/<name>.tex}`, so a learner reading the PDF gets a
-   real picture instead of monospace art. Four riders, each of which §10
+   real picture instead of monospace art. Five riders, each of which §10
    explains:
 
+   - **Commit to a layout metaphor before drawing, then check the
+     result against §10's pre-flight defect list** (occlusion, chaotic
+     routing, illegible type, non-rectangular protrusion, an
+     overlong node, literal copying) before keeping the figure.
    - **A topic directory is required.** If step 1 settled on a flat
      `content/drafts/<slug>.md`, move the draft and its dossier before
      adding a figure, or skip the figure. Figures under a flat draft
