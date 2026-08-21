@@ -264,6 +264,17 @@ collapse them for the sake of a cleaner narrative.
    run the retrieve-and-score loop above and return **only** the kept-evidence
    packet plus the rejected list -- never the raw candidates.
 
+   **The packet itself is `claim:`/`quote:` shaped, not a paste of what the
+   subagent read.** Tell each subagent explicitly: write `claim:` in your own
+   words, after you've judged the source, not by lightly editing the snippet
+   or evidence window still on screen; capture `quote:` only where a
+   quotation is genuinely warranted. A subagent that returns a `relevance:`
+   line next to a pasted 500-character snippet or 600-character evidence
+   window has satisfied "never the raw candidates" in name only -- the raw
+   retrieval window still reaches your context, just wearing a `relevance:`
+   label. The rule is on the *content* of what comes back, not only on which
+   candidates are excluded.
+
    The reason is not parallelism. This is where the reliable token saving is:
    it costs nothing in retrieval quality, unlike trimming what you read.
    Anything you read yourself stays in
