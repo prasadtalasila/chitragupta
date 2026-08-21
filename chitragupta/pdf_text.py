@@ -640,7 +640,7 @@ def prestart_pool() -> None:
     ctx.set_forkserver_preload(preload_modules())  # pragma: no cover-windows
     try:  # pragma: no cover-windows
         forkserver.ensure_running()
-    except Exception:  # noqa: BLE001 -- the pool will start one itself
+    except Exception:  # noqa: BLE001 -- the pool will start one itself  # pragma: no cover-windows
         pass
 
 
