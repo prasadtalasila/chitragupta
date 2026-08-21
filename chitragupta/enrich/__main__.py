@@ -127,7 +127,7 @@ def stage_embed(docs, args):
 
 
 def stage_bertopic(docs, args):
-    result = topic_model.run_topic_model(docs, seed_topics.load())
+    result = topic_model.run_topic_model(docs)
     return {"status": "ok",
             "detail": {"n_docs": result["n_docs"],
                        "assignments": result["assignments"]}}

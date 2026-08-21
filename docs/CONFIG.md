@@ -365,7 +365,6 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
 | `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
-| `zeroshot_min_similarity` | `ZEROSHOT_MIN_SIMILARITY` | number, cosine similarity | `0.55` | `0.55` |
 | `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
 | `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
 | `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
@@ -631,6 +630,23 @@ re-parses the corpus from scratch. Costs in
 
 ## Choosing an embedding model
 
+### What is embedded, and what is thrown away first
+
+Documents are cleaned before they are chunked: the reference list is
+dropped, along with bare emails, URLs, DOIs, copyright lines and page
+numbers. Nothing else -- no stop-word removal, no lowercasing, no
+low-frequency filtering, all of which destroy the multiword domain terms
+a scientific corpus is discriminated by.
+
+A reference list is a paper's densest block of *other people's* names, so
+including it makes two papers similar for citing the same work rather
+than for being about the same thing. Before this, the ninth largest topic
+on this project's corpus was `werner kritzinger, fraunhofer austria` --
+an author cluster, formed by papers citing one famous digital-twin paper.
+A `References` heading is detectable in 451 of 497 documents (91%), and
+the text after it is a median 15% of the document. The other 9% keep
+their whole text rather than having a boundary guessed for them.
+
 `chitragupta/enrich/embed_index.py` calls
 `SentenceTransformer(config.EMBEDDING_MODEL).encode(...)`
 **symmetrically** -- the same call embeds a 200-word document chunk
@@ -799,17 +815,27 @@ label that is *also* a description of a paper is not distinguishable
 from a topic by score, and this floor does not try to be. Which names go
 in your list stays your decision.
 
-### The zero-shot bar is a separate key
+### How many seed topics may I write?
 
-`[enrich].zeroshot_min_similarity` (default `0.55`) is the cosine at
-which BERTopic assigns a document to a seed topic outright, skipping
-clustering. It is deliberately much higher than the report floor and
-**must stay a separate setting**: the two were one key until a real
-corpus showed what that cost. At `0.15`, zero-shot assignment swallowed
-nearly the whole corpus, leaving HDBSCAN fewer remaining points than its
-own `min_samples` needs, and the stage died inside sklearn with `k must
-be less than or equal to the number of training points`. Unseeded runs
-were unaffected, which is exactly why a small-corpus test never found it.
+**As many as you like, and they cost nothing.** There is no setting for
+this and no limit in the code: matching is one cosine per phrase per
+document, so hundreds of phrases against a corpus of thousands is still
+arithmetic you would not notice.
+
+More importantly, seeds no longer compete with discovery. They are
+matched against the same document vectors *after* clustering, never fed
+into it, so naming a topic does not consume the documents an emergent
+topic would have been made of. That was not always true: routing seeds
+through BERTopic's `zeroshot_topic_list` took this corpus from 81
+emergent topics to 53 with only nine phrases -- roughly three discovered
+topics traded away per named one -- and enough seeds starved HDBSCAN of
+points entirely and killed the stage inside sklearn. That path is gone.
+
+The practical consequence is the one worth knowing: **write the topics you
+care about, then read what the corpus had that you did not name.** The
+`unmatched` list in `chitragupta corpus topics` and the emergent topics in
+`content/topics.json` are both answers to that question, and neither
+shrinks because your seed list grew.
 
 ### How many topics, and how deep
 
@@ -865,12 +891,11 @@ documents.
 relative to that document's strongest, and `topic_membership_max`
 (default `3`) caps the list.
 
-**Memberships are recorded for an unseeded run only.** That is BERTopic's
-architecture rather than a gap: with `zeroshot_topic_list` set it swaps
-its clusterer for a placeholder carrying no labels, so there is nothing
-to ask. The two modes want opposite things anyway -- seeding is for
-topics you already know, and this is for the ones you do not, which is
-the question that wanted answering in the first place.
+**Memberships are recorded for every run.** They were once available only
+for an unseeded one, because BERTopic swaps its clusterer for a
+placeholder carrying no labels in zero-shot mode and there was then
+nothing to ask. Removing that mode -- so seeds no longer steer the
+clustering at all -- retired the restriction along with it.
 
 None of these gate anything: no run fails on them and no draft is
 blocked by one (`docs/HOUSE-STYLE.md` R3).

@@ -12,6 +12,7 @@ Needs the "enrich" Poetry group, like everything else in this package.
 """
 
 import json
+import re
 
 from chitragupta import config
 from chitragupta.enrich import embed_index
@@ -41,12 +42,69 @@ def corpus_texts(docs: list[CorpusDoc]) -> dict:
     return doc_texts
 
 
+# The headings that mean "the paper is over". Matched at the *last*
+# occurrence, not the first: a paper's own related-work section may say
+# "References" in prose, and an appendix can follow the bibliography.
+BACK_MATTER = re.compile(
+    r"(?im)^\s*#{1,6}\s*\**\s*(references|bibliography|works cited)\b")
+
+# Lines that carry no topical content at whatever depth they appear:
+# contact details, retrieval boilerplate, bare page numbers, and the
+# running heads a PDF extractor repeats on every page.
+NOISE_LINE = re.compile(
+    r"(?im)^\s*(?:"
+    r"\S+@\S+\.\S+"                       # an email address on its own
+    r"|(?:https?://|www\.|doi:|10\.\d{4}/)\S*"   # a bare URL or DOI
+    r"|(?:downloaded from|licensed under|all rights reserved|"
+    r"copyright|\(c\)\s*\d{4}|©).*"
+    r"|\d{1,4}"                             # a bare page number
+    r")\s*$")
+
+
+def content_text(text: str) -> str:
+    """A document with its back matter and boilerplate removed.
+
+    Preprocessing as a modelling step rather than a cleanup step, which is
+    the first best practice in Asta's *Topic Extraction and Document-Topic
+    Linking in Scientific and Domain-Specific Corpora*: "generic
+    preprocessing is often too destructive... in-domain datasets contain
+    abbreviations, identifiers, formulas, and rare phrases that carry most
+    of the meaning". This therefore removes only what is provably not
+    about the paper, and keeps every technical token -- no stop-word
+    stripping, no lowercasing, no low-frequency filtering, all of which
+    that survey warns destroy exactly the multiword domain terms a
+    scientific corpus is discriminated by.
+
+    **Why the reference list has to go.** It is a paper's densest block of
+    *other people's* names and titles, so pooling it in makes two papers
+    similar for citing the same work rather than for being about the same
+    thing. Measured on this corpus before this function existed, the ninth
+    largest topic was `werner kritzinger, fraunhofer austria` -- an author
+    cluster, formed because those papers cite one famous digital-twin
+    paper. A reference list is also large: a References heading is
+    detectable in 451 of 497 documents (91%), and the text after it is a
+    median 15% of the document and 26% at the 90th percentile.
+
+    A document with no detectable heading keeps its whole text. That is
+    the honest outcome for the remaining 9% rather than guessing at a
+    boundary, and it degrades to today's behaviour rather than to
+    something worse.
+    """
+    match = None
+    for match in BACK_MATTER.finditer(text):
+        pass  # the last one wins -- see BACK_MATTER
+    if match is not None:
+        text = text[:match.start()]
+    return "\n".join(line for line in text.splitlines()
+                      if not NOISE_LINE.match(line))
+
+
 # Bumped when the arithmetic that turns a document into one vector
 # changes, and stored beside every cached vector. Without it, switching
 # from the old prefix embedding to pooling would keep serving prefix
 # vectors for every unchanged document -- the text hash and the model id
 # are both identical across that change, so neither notices it.
-EMBED_METHOD = "chunk-mean-v1"
+EMBED_METHOD = "chunk-mean-content-v2"
 
 
 def pooled_embedding(text: str, model):
@@ -83,7 +141,7 @@ def pooled_embedding(text: str, model):
     """
     import numpy as np
 
-    chunks = embed_index.chunk_text(text)
+    chunks = embed_index.chunk_text(content_text(text))
     if not chunks:
         return None
     return np.asarray(model.encode(chunks, show_progress_bar=False)).mean(axis=0).tolist()

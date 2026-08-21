@@ -522,11 +522,12 @@ TOPIC_SEEDS_PATH = CONTENT_DIR / "topic_seeds.json"
 # corpus taught. Selection is per-phrase ranking (SEED_TOPIC_MAX_PAPERS
 # below); this only discards matches too weak to be worth ranking at all.
 #
-# It governs the seed-topic *report* only. BERTopic's own zero-shot bar is
-# ZEROSHOT_MIN_SIMILARITY below, and the two were one key until a real
-# corpus proved that wrong: they measure the same quantity but make
-# different decisions, so a floor loose enough to rank against is far too
-# loose to assign on. See that constant for what it cost.
+# It governs the seed-topic report, and nothing else. It briefly also
+# drove BERTopic's zero-shot assignment, which was wrong twice over: the
+# two measure the same quantity but make different decisions, and the
+# zero-shot path itself is gone -- seeds no longer steer the clustering at
+# all, so an author can name any number of them without costing a single
+# emergent topic. See chitragupta/enrich/topic_model.py.
 #
 # Measured over 497 real documents and 14 real Zotero collection names,
 # every phrase turned out to have its own score scale, so no single
@@ -601,27 +602,6 @@ TOPIC_NEIGHBORS = int(_get_float(
     "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=10,
 ))
 
-# The cosine a document must reach against a seed phrase for BERTopic to
-# assign it to that phrase's topic outright, skipping the clustering step.
-# A *decision*, unlike SEED_TOPIC_MIN_SIMILARITY above, which is why the
-# two are separate keys and this one is far higher.
-#
-# They were one key, and a real 497-document corpus showed what that cost:
-# at 0.15, zero-shot assignment swallowed nearly the whole corpus, leaving
-# HDBSCAN fewer remaining points than the `min_samples` its own KDTree
-# query needs -- so the stage died with "k must be less than or equal to
-# the number of training points" from inside sklearn. Unseeded runs were
-# unaffected, which is exactly why a small-corpus test did not find it.
-#
-# 0.55 rather than BERTopic's own 0.7 default: measured on that corpus,
-# genuine on-topic pairs reach roughly 0.45-0.67 against document-length
-# passages, so 0.7 would assign almost nothing and 0.55 assigns the
-# confident half. Verified to fit and cluster (7 topics over 497 docs);
-# a much lower value is what breaks, and this comment is the reason to
-# leave it alone.
-ZEROSHOT_MIN_SIMILARITY = _get_float(
-    "ZEROSHOT_MIN_SIMILARITY", "enrich", "zeroshot_min_similarity", default=0.55,
-)
 # Whether the bertopic stage also records, per document, every topic it
 # belongs to rather than only the one id fit_transform returns. That
 # scalar cannot express a paper genuinely about two things: on 497 real
@@ -634,11 +614,9 @@ ZEROSHOT_MIN_SIMILARITY = _get_float(
 # 100% of documents and leads for 99%, against 30-45% for every
 # centroid-distance rule. See chitragupta/enrich/topic_model.py.
 #
-# Applies to an *unseeded* run only, and that is a property of BERTopic
-# rather than a gap here: with zeroshot_topic_list set it replaces its
-# clusterer with a placeholder holding no labels, so there is nothing to
-# ask. The two modes want opposite things anyway -- seeding is for topics
-# you already know, this is for the ones you do not.
+# Recorded for every run since the zero-shot path was removed: BERTopic
+# only swaps its clusterer for a placeholder in that mode, so there is
+# always a real one to ask.
 TOPIC_DISTRIBUTION = _get_bool(
     "TOPIC_DISTRIBUTION", "enrich", "topic_distribution", default=True,
 )

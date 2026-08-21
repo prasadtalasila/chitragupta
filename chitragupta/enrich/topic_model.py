@@ -97,14 +97,6 @@ def topic_memberships(clusterer, citekeys: list, topics: list) -> "dict | None":
     - A Gaussian mixture over the reduced space returned near-certain
       single assignments: hard clustering with extra steps.
 
-    **Returns None for a seeded run, and that is not a limitation to work
-    around.** With `zeroshot_topic_list` set, BERTopic replaces its
-    clustering model with a `BaseCluster` placeholder carrying no
-    `labels_`, so there is no fitted clusterer to ask. The two modes want
-    opposite things anyway: seeding is for topics the author already
-    knows, and this artefact is for the ones they do not -- which is the
-    question #192 asked and the reason to run the stage unseeded.
-
     HDBSCAN's cluster ids are **not** BERTopic's topic ids: BERTopic
     renumbers topics by size, so cluster 0 was topic 6 on the run this was
     written against. The mapping is recovered from the documents
@@ -137,7 +129,7 @@ def topic_memberships(clusterer, citekeys: list, topics: list) -> "dict | None":
     return memberships
 
 
-def _fit(texts: list, embeddings, model, seed_phrases: tuple):
+def _fit(texts: list, embeddings, model):
     """Configure UMAP/HDBSCAN/BERTopic for a corpus of this size and fit.
 
     Split out of run_topic_model() to keep it under
@@ -177,55 +169,35 @@ def _fit(texts: list, embeddings, model, seed_phrases: tuple):
         metric="euclidean", cluster_selection_method="eom", prediction_data=True,
     )
 
-    # None, not [], when there are no seeds: BERTopic branches on this
-    # argument being falsy to decide whether to run zero-shot assignment
-    # at all, so a library with no seed file takes byte-for-byte the same
-    # path it took before this feature existed. That is the bar #206 set
-    # -- unchanged for the common case, not merely tolerant of it.
-    #
-    # The two *fully* degenerate outcomes are safe on bertopic 0.17.4,
-    # checked against the real library: every document clearing the
-    # threshold (nothing left for HDBSCAN at all) returns every document
-    # under its seed topic, and no document clearing it returns the same
-    # all-outlier result an unseeded small corpus already gives.
-    #
-    # The dangerous case is neither of those, and a 20-document check gave
-    # false confidence about it: when *nearly* every document is assigned,
-    # HDBSCAN is handed a remainder smaller than the `min_samples` its
-    # KDTree query needs and dies inside sklearn. min_cluster_size here is
-    # sized from the whole corpus because the remainder cannot be known
-    # before the zero-shot pass runs. config.ZEROSHOT_MIN_SIMILARITY is
-    # what keeps the remainder large enough, and why it is a separate,
-    # much higher key than the seed report's floor -- lowering it towards
-    # that floor is what reintroduces this.
-    zeroshot = list(seed_phrases) or None
-
     topic_model = BERTopic(
         embedding_model=model, umap_model=umap_model, hdbscan_model=hdbscan_model,
         calculate_probabilities=False, verbose=False,
-        zeroshot_topic_list=zeroshot,
-        zeroshot_min_similarity=config.ZEROSHOT_MIN_SIMILARITY,
     )
     return topic_model, topic_model.fit_transform(texts, embeddings)[0]
 
 
-def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
-    """Cluster the corpus, optionally steered by the author's own phrases.
+def run_topic_model(docs: list[CorpusDoc]) -> dict:
+    """Cluster the corpus into emergent topics.
 
-    `seed_phrases` non-empty turns on BERTopic's zero-shot mode: each
-    phrase is embedded whole and documents close enough to one are
-    assigned to it by name, with the remainder clustered as before. The
-    phrase reaches BERTopic as a single string, never a term list, which
-    is what keeps "structural health monitoring" one topic rather than
-    three -- `seed_topic_list`, the older mechanism, matches against a
-    bag-of-words vocabulary and would decompose it.
+    **Unseeded, always, and that is what lets a seed list be unlimited.**
+    BERTopic's `zeroshot_topic_list` used to steer this, and steering cost
+    discovery: every document a seed absorbed was one HDBSCAN never saw.
+    Measured on this corpus, nine seed phrases took the emergent topic
+    count from 81 to 53 -- twenty-eight topics traded away for nine the
+    author already knew about. Pushed further it does not merely trade,
+    it breaks: enough seeds leave HDBSCAN fewer points than its own
+    `min_samples` needs and the fit dies inside sklearn.
 
-    **This half assigns each document exactly one topic**, because
-    `fit_transform` returns one topic id per document and always has.
-    The many-to-many view -- a paper under every phrase it matched, which
-    is what a corpus grouped by hand in Zotero actually looks like --
-    is chitragupta/enrich/topic_seeding.py's artefact, not this one's.
-    Neither replaces the other and both read the same embeddings.
+    Seeds are therefore matched separately, against these same document
+    vectors, by chitragupta/enrich/topic_seeding.py. An author can now
+    name a hundred topics and still get every emergent one, because the
+    two answers are computed independently and joined afterwards rather
+    than competing for the same documents.
+
+    Keeping the clustering unseeded has a second effect worth naming:
+    BERTopic only swaps its clusterer for a placeholder in zero-shot mode,
+    so `topic_memberships` below now always has a real one to ask, and
+    memberships are recorded for every run rather than only unseeded ones.
     """
     import numpy as np
 
@@ -249,7 +221,7 @@ def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
     texts = [doc_texts[d] for d in citekeys]
     embeddings = np.array([cache[d] for d in citekeys])
 
-    topic_model, topics = _fit(texts, embeddings, model, seed_phrases)
+    topic_model, topics = _fit(texts, embeddings, model)
 
     result = {
         "n_docs": len(texts),
@@ -259,14 +231,6 @@ def run_topic_model(docs: list[CorpusDoc], seed_phrases: tuple = ()) -> dict:
     memberships = topic_memberships(topic_model.hdbscan_model, citekeys, topics)
     if memberships is not None:
         result["memberships"] = memberships
-    # Recorded only when there were seeds, so an unseeded run's
-    # content/topics.json is byte-identical to what this stage wrote
-    # before seeding existed. A reader that finds this key knows the
-    # topic names it is looking at were partly chosen by a person; one
-    # that does not find it is looking at the same emergent output as
-    # always, rather than at an empty list it has to interpret.
-    if seed_phrases:
-        result["seed_phrases"] = list(seed_phrases)
     config.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
     config.TOPICS_PATH.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result

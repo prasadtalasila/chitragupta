@@ -280,74 +280,32 @@ class TestEmbeddingCache:
         assert FakeModel.encode_call_texts[-1] == ["a brand new document"]
 
 
-class TestSeedPhrases:
-    """The zero-shot half of #206: BERTopic steered by phrases a person
-    wrote, and -- just as much the requirement -- left exactly as it was
-    for the libraries that have none."""
+class TestSeedsDoNotSteerTheClustering:
+    """Seeds are matched separately, never fed to BERTopic. That is what
+    makes the seed list unlimited: measured on the real corpus, routing
+    nine phrases through `zeroshot_topic_list` took the emergent topic
+    count from 81 to 53, so every named topic cost roughly three
+    discovered ones."""
 
-    def test_unseeded_run_passes_no_zeroshot_list(self, isolated_config,
-                                                  fake_bertopic_stack, tmp_path):
-        """None rather than [], because BERTopic branches on falsiness to
-        decide whether to run zero-shot assignment at all."""
+    def test_bertopic_is_never_given_a_zeroshot_list(self, isolated_config,
+                                                     fake_bertopic_stack, tmp_path):
         topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
-        assert FakeBERTopic.last_kwargs["zeroshot_topic_list"] is None
+        assert "zeroshot_topic_list" not in FakeBERTopic.last_kwargs
+        assert "zeroshot_min_similarity" not in FakeBERTopic.last_kwargs
 
-    def test_unseeded_output_carries_no_seed_key(self, isolated_config,
-                                                 fake_bertopic_stack, tmp_path):
-        """The "unchanged, not degraded" bar: a library with no seed file
-        gets the same content/topics.json shape it got before seeding
-        existed, with no empty list to interpret."""
-        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
-        assert "seed_phrases" not in result
-        assert "seed_phrases" not in json.loads(
-            isolated_config.TOPICS_PATH.read_text(encoding="utf-8"))
+    def test_the_run_takes_no_seed_argument_at_all(self, isolated_config,
+                                                   fake_bertopic_stack, tmp_path):
+        """A signature that cannot accept seeds is the strongest form of
+        "seeds do not steer this"."""
+        import inspect
 
-    def test_phrases_reach_bertopic_whole(self, isolated_config,
-                                          fake_bertopic_stack, tmp_path):
-        """A three-word seed arrives as one list element, never split into
-        terms -- the property `seed_topic_list` could not have given."""
-        topic_model.run_topic_model(make_docs_with_text(6, tmp_path),
-                                    ("structural health monitoring", "digital twin"))
-        assert FakeBERTopic.last_kwargs["zeroshot_topic_list"] == [
-            "structural health monitoring", "digital twin"]
-
-    def test_threshold_comes_from_its_own_config_key(self, isolated_config,
-                                                     fake_bertopic_stack, tmp_path,
-                                                     monkeypatch):
-        monkeypatch.setattr(config, "ZEROSHOT_MIN_SIMILARITY", 0.72)
-        topic_model.run_topic_model(make_docs_with_text(6, tmp_path), ("digital twin",))
-        assert FakeBERTopic.last_kwargs["zeroshot_min_similarity"] == 0.72
-
-    def test_the_assignment_bar_is_not_the_reports_floor(self, isolated_config,
-                                                         fake_bertopic_stack, tmp_path,
-                                                         monkeypatch):
-        """One key drove both until a 497-document corpus proved it wrong:
-        a floor loose enough to rank a report against assigns nearly the
-        whole corpus by zero-shot, starving HDBSCAN of the points its own
-        min_samples needs. They must not be able to drift back together."""
-        monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.15)
-        monkeypatch.setattr(config, "ZEROSHOT_MIN_SIMILARITY", 0.55)
-        topic_model.run_topic_model(make_docs_with_text(6, tmp_path), ("digital twin",))
-        assert FakeBERTopic.last_kwargs["zeroshot_min_similarity"] == 0.55
-
-    def test_seeded_output_records_the_phrases(self, isolated_config,
-                                               fake_bertopic_stack, tmp_path):
-        """So a reader can tell topic names a person chose from ones the
-        clustering invented."""
-        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path),
-                                             ("digital twin",))
-        assert result["seed_phrases"] == ["digital twin"]
+        assert list(inspect.signature(topic_model.run_topic_model).parameters) == ["docs"]
 
     def test_one_topic_per_document_is_still_all_bertopic_gives(self, isolated_config,
                                                                 fake_bertopic_stack, tmp_path):
-        """Stated as a test because it is the whole reason
-        chitragupta/enrich/topic_seeding.py exists: this artefact maps each
-        citekey to exactly one topic id and cannot express a paper that
-        belongs under two."""
-        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path),
-                                             ("digital twin", "lifecycle"))
-        assert all(isinstance(topic_id, int)
-                   for topic_id in result["assignments"].values())
+        """Why topic_memberships exists beside `assignments`."""
+        result = topic_model.run_topic_model(make_docs_with_text(6, tmp_path))
+        assert all(isinstance(v, int) for v in result["assignments"].values())
 
 
 class TestDocumentEmbeddingsSeam:
@@ -564,3 +522,57 @@ class TestWholeDocumentPooling:
         monkeypatch.setattr(doc_vectors, "EMBED_METHOD", "something-else-v2")
         topic_model.run_topic_model(docs)
         assert len(FakeModel.encode_call_texts) == 6
+
+
+class TestContentText:
+    """Preprocessing as a modelling step, per Asta's first best practice
+    for narrow scientific corpora. Removes only what is provably not about
+    the paper: no stop-word stripping, no lowercasing, no low-frequency
+    filtering, all of which that survey warns destroy the multiword domain
+    terms a scientific corpus is discriminated by."""
+
+    def test_the_reference_list_is_dropped(self):
+        """A paper's densest block of *other people's* names. Pooling it
+        made two papers similar for citing the same work rather than for
+        being about the same thing -- measured, an author cluster
+        (`werner kritzinger, fraunhofer austria`) was the ninth largest
+        topic on this corpus."""
+        kept = doc_vectors.content_text(
+            "## Method\nour approach\n\n## References\n[1] Kritzinger, W.\n")
+        assert "our approach" in kept
+        assert "Kritzinger" not in kept
+
+    def test_the_last_heading_wins(self):
+        """A related-work section can say "References" in prose and an
+        appendix can follow the bibliography."""
+        kept = doc_vectors.content_text(
+            "## Intro\nalpha\n## References\n[1] x\n## Appendix\nbeta\n## References\n[2] y")
+        assert "beta" in kept
+        assert "[2] y" not in kept
+
+    def test_a_document_without_one_keeps_all_its_text(self):
+        """The honest outcome for the 9% with no detectable heading:
+        degrade to today's behaviour, not to a guessed boundary."""
+        assert "everything" in doc_vectors.content_text("## Method\neverything here\n")
+
+    def test_boilerplate_lines_go_at_any_depth(self):
+        kept = doc_vectors.content_text(
+            "real content\nfoo@bar.ac.uk\nhttps://example.com\ndoi:10.1000/xyz\n"
+            "Downloaded from somewhere\n(c) 2024 Publisher\n17\nmore content")
+        assert "real content" in kept and "more content" in kept
+        for gone in ("foo@bar", "example.com", "doi:10", "Downloaded", "2024 Publisher"):
+            assert gone not in kept
+        assert "\n17\n" not in kept
+
+    def test_technical_tokens_survive(self):
+        """The failure mode Asta names: generic preprocessing removes the
+        abbreviations, identifiers and rare phrases that carry the meaning."""
+        kept = doc_vectors.content_text("IEC 62304 and MQTT v5 govern the DTaaS platform")
+        assert kept == "IEC 62304 and MQTT v5 govern the DTaaS platform"
+
+    def test_it_is_applied_before_chunking(self, isolated_config, monkeypatch):
+        seen = {}
+        monkeypatch.setattr(embed_index, "chunk_text",
+                            lambda text, **kw: seen.setdefault("text", text) and ["x"] or ["x"])
+        doc_vectors.pooled_embedding("keep me\n## References\n[1] drop me", FakeModel())
+        assert "drop me" not in seen["text"]

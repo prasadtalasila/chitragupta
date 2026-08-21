@@ -57,29 +57,30 @@ class TestStageBertopic:
     def test_ok_shapes_detail(self, isolated_config, monkeypatch):
         monkeypatch.setattr(
             topic_model, "run_topic_model",
-            lambda docs, seeds=(): {"n_docs": 2, "assignments": {"a": -1, "b": -1},
-                                    "topic_info": [1, 2, 3]},
+            lambda docs: {"n_docs": 2, "assignments": {"a": -1, "b": -1},
+                          "topic_info": [1, 2, 3]},
         )
         result = enrich_script.stage_bertopic([], make_args())
         assert result["status"] == "ok"
         assert result["detail"] == {"n_docs": 2, "assignments": {"a": -1, "b": -1}}
         assert "topic_info" not in result["detail"]
 
-    def test_seed_phrases_are_forwarded(self, isolated_config, monkeypatch):
-        """The author's file is what steers the clustering -- read here
-        rather than inside run_topic_model(), so the stage boundary is
-        where "is there a seed list" is answered exactly once."""
+    def test_the_seed_list_never_reaches_the_clustering(self, isolated_config,
+                                                        monkeypatch):
+        """Seeds are the seed-topics stage's business. Routing them here
+        would trade emergent topics away for named ones -- 81 down to 53,
+        measured -- which is the whole reason the zero-shot path is gone."""
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.SEED_TOPICS_PATH.write_text(
             'topics = ["digital twin"]', encoding="utf-8")
         seen = {}
         monkeypatch.setattr(
             topic_model, "run_topic_model",
-            lambda docs, seeds=(): seen.update(seeds=seeds) or {
+            lambda docs, **kw: seen.update(kw=kw) or {
                 "n_docs": 0, "assignments": {}, "topic_info": []},
         )
         enrich_script.stage_bertopic([], make_args())
-        assert seen["seeds"] == ("digital twin",)
+        assert seen["kw"] == {}
 
 
 class TestStageSeedTopics:

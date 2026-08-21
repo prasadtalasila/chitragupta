@@ -26,12 +26,22 @@
 #     chitragupta enrich --stages seed-topics
 #     chitragupta corpus topics
 #
+# Write as many as you like. There is no limit, and -- less obviously --
+# no cost: seed topics are matched against the corpus *after* the topic
+# model has clustered it, never fed into the clustering, so naming a
+# hundred topics still leaves every topic the corpus had of its own to be
+# discovered. (That was not always true. Routing seeds through BERTopic's
+# zero-shot mode traded roughly three discovered topics for every named
+# one; the emergent count fell from 81 to 53 on nine phrases.)
+#
+# So the useful habit is: name what you already care about, then read what
+# the corpus had that you did not name. `chitragupta corpus topics` ends
+# with the papers no seed of yours matched, and content/topics.json holds
+# the topics nobody seeded. Neither shrinks because your list grew.
+#
 # Nothing here is a commitment. A paper can appear under several of these
-# topics at once, or under none -- and the list of papers that matched
-# nothing is the useful part, since it is the part of your own library
-# your own topic list does not yet describe. Add a phrase and run it
-# again. See docs/CONFIG.md for the similarity threshold that decides how
-# long each topic's list is.
+# topics at once, or under none. See docs/CONFIG.md for the threshold and
+# the per-topic list length.
 
 topics = [
     "digital twin",

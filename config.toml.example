@@ -408,14 +408,12 @@ seed_topic_max_papers = 25
 #                                                           Default: 0.15
 seed_topic_min_similarity = 0.15
 
-# A different job, which is why it is a different key and much higher:
-# the cosine at which BERTopic assigns a document to a seed topic
-# outright, skipping clustering. Sharing one key with the floor above
-# broke the bertopic stage outright on a real corpus -- zero-shot swallowed
-# nearly every document and left HDBSCAN too few points to cluster. Lower
-# this towards the floor and that returns.
-#                                                           Default: 0.55
-zeroshot_min_similarity = 0.55
+# Note there is no setting for how many seed topics you may write, and
+# no reason for one. Seeds never steer the clustering: they are matched
+# against the same document vectors afterwards, so a hundred seed phrases
+# cost exactly as many emergent topics as none -- zero. Routing them
+# through BERTopic's zero-shot mode did cost topics (81 down to 53 for
+# nine phrases, measured) and that path has been removed.
 
 # How fine the emergent topic structure is -- the depth knob, and the one
 # worth turning first. Measured on a real 497-document corpus, holding
