@@ -806,20 +806,121 @@ doesn't itself change with the boundary removed (plausible, since
 here) -- the last piece [#76](https://github.com/prasadtalasila/chitragupta/issues/76)
 still owns.
 
-**What A2 (#306) changes here.** Like the Phase 5 measurement above, this
-run judged evidence into `relevance:`/`support:` blocks, before the
-`claim:`/`quote:` split. The judged-packet character counts are the
-subagent boundary's own measurement and are unaffected by which fields
-the packet's blocks use; what would move under the new contract is the
-*content* of `support:`'s replacement, not the boundary this section
-measures.
+**What A2 (#306) changed here, before it was remeasured.** Like the Phase
+5 measurement above, the run this section originally reported judged
+evidence into `relevance:`/`support:` blocks, before the `claim:`/`quote:`
+split. The judged-packet character counts are the subagent boundary's own
+measurement and are unaffected by which fields the packet's blocks use;
+what moves under the new contract is the *content* of `support:`'s
+replacement, not the boundary this section measures.
+
+### The step 2a boundary, remeasured under `claim:`/`quote:` (A3, #307)
+
+The "after" number [A3](FEATURE-ROADMAP.md#a3-extraction-at-the-retrieval-boundary)
+asks for -- but as a **controlled** rebuild rather than a second independent
+run, because two different judges on the same 45 candidates would confound
+the field contract with keep-rate and prose-length choices that have
+nothing to do with A2. One judge (this one), the same 42 distinct
+citekeys, the same 23 kept / 19 rejected split, the same `relevance:` line
+per kept citekey -- serialized twice, once as `relevance:`/`support:` and
+once as `relevance:`/`claim:`/`quote:`. `rejected.md` carries no `support:`
+or `claim:` field either way, so it is identical, unchanged, and shared
+between both arms rather than measured twice.
+
+Method: the identical three sub-themes, `--k 15` each, against the same
+501-paper corpus (a `ledger.sqlite` snapshot, so the BM25 index is
+unchanged) -- `retrieval.md` reproduced the same **22,280** raw characters
+byte-for-byte, confirming the corpus and the query set didn't drift. Every
+one of the 45 results read and judged by hand: kept into `claim:`/`quote:`
+form with a `quote:` line on three of them, where a specific phrase was
+worth quoting rather than paraphrasing (a fourth candidate quote -- a
+keyword list, not a sentence -- was dropped rather than kept, since nothing
+about a keyword list is usable "inside quotation marks with an
+attribution", which is the whole of what `quote:` is for); turned down into
+`rejected.md` with a reason. Three citekeys recurred across sub-themes
+(already kept or rejected earlier in the same run) and were judged once,
+matching what `evidence.md`'s "one block per citekey" rule already asks a
+real orchestrator to do regardless of which packet contract is in force.
+
+The `support:` arm reuses every `relevance:` line verbatim and replaces
+`claim:`/`quote:` with the **same underlying evidence** a subagent would
+have read to write them: `python -m chitragupta.draft retrieve evidence
+"<sub-theme>" --citekey <key>` at its documented defaults (`--chars 600
+--windows 2`) for all 23 kept citekeys -- the literal call
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)
+names as what `support:` held in practice.
+
+| | Characters |
+|---|---|
+| Raw candidate snippets, all 3 sub-themes | **22,280** |
+| `support:` kept side (23 blocks, `relevance:` + two 600-char evidence windows each) | **30,300** |
+| `claim:`/`quote:` kept side (same 23 blocks, `relevance:` + `claim:` + `quote:` where captured) | **8,383** |
+| Rejected side (19 rows, identical in both arms) | **2,801** |
+| `support:` judged packet (kept + rejected) | **33,101** |
+| `claim:`/`quote:` judged packet (kept + rejected) | **11,184** |
+
+**The kept side alone: `claim:`/`quote:` is 27.7% the size of `support:`
+for the identical 23 judgments.** That isolates the field contract's own
+effect, with keep-rate and judge held constant -- the controlled
+comparison ["The step 2a boundary, measured on real
+material"](#the-step-2a-boundary-measured-on-real-material) above could not
+run before a `claim:`/`quote:` dossier existed to rebuild against.
+
+**The raw:judged ratio moves in opposite directions across the two
+contracts, and the `support:` arm's own ratio is the sharper result.**
+`claim:`/`quote:` gives 22,280/11,184 = **1.99x**, in the same direction and
+close to the 2.45x the earlier `support:`-era run measured. Literal
+`support:`, rebuilt here at its documented default (two 600-character
+windows per kept citekey, not one), gives 22,280/33,101 = **0.67x** -- a
+judged packet *larger* than the raw candidates it was judged from, because
+`retrieve evidence` reads deeper per kept citekey than `retrieve search`'s
+500-character snippet does per candidate. Read plainly: serializing every
+kept citekey's full evidence windows costs more than the entire raw
+retrieval pass that surfaced them, kept and rejected together.
+
+**This does not fully reconcile with the original 9,084-character
+`support:` measurement, and that gap is left open rather than resolved by
+assumption.** The earlier run's Method paragraph describes "the same
+`chitragupta.draft retrieve evidence` call" this rebuild also used, but
+20 kept blocks alone would need to average under 454 characters apiece to
+fit inside a 9,084-character total that also holds 24 rejected rows --
+well short of even one 600-character window, let alone the two the default
+call returns. Two explanations are both consistent with what's on record
+and neither is verifiable after the fact, because that dossier was scratch
+and is gone: the earlier run may have used `--windows 1` or trimmed what it
+pasted, or its `support:` blocks may already have leaned toward paraphrase
+despite the field's name. Either way, the number this section now reports
+is the literal default-call reconstruction, stated as such, not a
+correction of the earlier figure.
+
+**What the boundary still removes, independent of any character count.**
+[A3](FEATURE-ROADMAP.md#a3-extraction-at-the-retrieval-boundary)'s point was
+never the packet's size on its own -- it is that the packet returned across
+the subagent boundary now carries no raw retrieval window at all, only
+`claim:` lines written in the judge's own words plus a `quote:` span where
+one was deliberately captured. *Asserted*, in ["Measured, derived, and
+asserted"](#measured-derived-and-asserted)'s sense: this run's own
+`claim:`/`quote:` blocks were written from memory before being typed, per
+[the contract](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306),
+but the scratch dossier they live in is gitignored and gone, so a later
+reader cannot re-open it to check -- only re-run the method and judge the
+new blocks independently. The 27.7%-of-`support:` figure above is
+measured; that the words are genuinely the judge's own is asserted.
+
+Reproduce it: run the three searches above with `--log` against a synced
+corpus, judge every result into `claim:`/`quote:` form the way
+`survey-writer` step 2 (as tightened by this issue) describes, then run
+`retrieve evidence` at its defaults for the same kept citekeys and
+serialize their `relevance:` lines a second time against the raw windows
+instead. Diff the two `evidence.md` bodies against each other and against
+`retrieval.md`'s totals. Nothing about it needs a full drafting run.
 
 ## Measured, derived, and asserted
 
 Kept separate on purpose, in a project where
 [PERFORMANCE.md](PERFORMANCE.md) means measured.
 
-**Measured** -- four figures now, in two different units. The 35 turns /
+**Measured** -- six figures now, in two different units. The 35 turns /
 1,991,974 input / 14,318 output above, from this session's own
 transcript, on the machine this was written on: it demonstrates the
 ratio, and is not a benchmark of a drafting run. The [199/268
@@ -830,12 +931,20 @@ subagent-file bug was fixed -- ordinary engineering work, not a drafting
 run either. The
 [15,660 against 901 characters](#the-dispatch-payload-measured-on-real-material)
 of Phase 5 dispatch payload, counted on the shipped example report
-against the real corpus: a payload size, not a run. And the [22,280
+against the real corpus: a payload size, not a run. The [22,280
 against 9,084 characters](#the-step-2a-boundary-measured-on-real-material)
-of the step 2a boundary, from a real 3-sub-theme, 45-candidate retrieval
-pass against the real corpus, judged by hand: also a payload size, not a
-run -- and the one figure here that corrects an earlier derived estimate
-(Example 1's implied ~61% saving) rather than only confirming one.
+of the step 2a boundary under `relevance:`/`support:`, from a real
+3-sub-theme, 45-candidate retrieval pass against the real corpus, judged
+by hand: also a payload size, not a run -- and the one figure here that
+corrects an earlier derived estimate (Example 1's implied ~61% saving)
+rather than only confirming one. And the pair
+[8,383 against 30,300 characters](#the-step-2a-boundary-remeasured-under-claimquote-a3-307)
+-- the same 23 kept judgments from the same judge, serialized once as
+`claim:`/`quote:` and once as `support:` at its documented default -- which
+is this document's one *controlled* payload comparison: `claim:`/`quote:`
+at 27.7% of `support:`'s size, contract held constant on one side of the
+comparison and field shape on the other, rather than two independent runs
+whose keep-rate and prose length could confound the result.
 
 **Derived** -- the turn counts (read off the skill files), the pricing
 multipliers (structural ratios of the Claude API, not prices), and every
