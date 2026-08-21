@@ -159,6 +159,22 @@ class TestSearch:
         results = retrieval.search("digital")
         assert isinstance(results[0].score, float)
 
+    def test_returns_at_most_one_result_per_citekey(self, ledger_con):
+        """Issue #305: a per-citekey cap is a no-op here because `scores`
+        is a dict keyed by citekey -- no matter how strongly a document
+        matches, it can contribute only one entry to `ranked`. Several
+        identical documents, so nothing about content or score is what
+        keeps them distinct in the result, only the citekey."""
+        for i in range(4):
+            ledger.upsert_reference(
+                ledger_con, make_reference(citekey=f"item{i}_2024", title="Digital Twin Digital Twin")
+            )
+
+        results = retrieval.search("digital twin", k=10)
+
+        citekeys = [r.citekey for r in results]
+        assert len(citekeys) == len(set(citekeys)) == 4
+
 
 class TestIndexCaching:
     """The scale fix: search() must not re-read and re-tokenize every

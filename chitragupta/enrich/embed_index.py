@@ -247,6 +247,17 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     return counts
 
 
+# How far past k to over-fetch before capping, so that dropping one
+# paper's excess chunks has room to promote another paper's chunk into
+# the top k rather than just shortening the list. A multiple of k, not
+# of the collection size: growing with the request keeps the fetch
+# bounded by what was asked for rather than by corpus size, and Chroma
+# itself returns min(n_results, chunk_count) rather than erroring when
+# n_results exceeds what the collection holds (verified against
+# chromadb 1.5.9), so there is no need to clamp against a count() call.
+_OVERFETCH_MULTIPLIER = 4
+
+
 def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     """`snippet_chars` defaults to enough context for a caller to judge
     relevance itself before citing, rather than trusting distance alone.
@@ -263,15 +274,33 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     metadata-only entry is still findable there; `build_index` skips any
     document `get_text` returns nothing for, because there is nothing to
     embed. A bib entry whose PDF is missing or failed to parse is
-    therefore searchable by title and not by meaning."""
+    therefore searchable by title and not by meaning.
+
+    At most `config.EMBED_MAX_PASSAGES_PER_SOURCE` of the k results come
+    from any one citekey (issue #305) -- unlike BM25's `search`, which is
+    one-per-citekey by construction, Chroma ranks by chunk and a single
+    well-matched paper can otherwise fill every slot. The cap is applied
+    to the over-fetched, distance-ranked list *before* truncating to k:
+    dropping a dominant paper's excess chunks promotes another paper's
+    chunk into the window, where capping an already-truncated top-k
+    would only shorten it. Keyed on `citekey`, not title, so two
+    untitled or same-titled documents are still capped apart.
+    """
     client, model = get_client_and_model()
     collection = client.get_or_create_collection(collection_name())
     query_embedding = model.encode([query], show_progress_bar=False).tolist()
-    raw = collection.query(query_embeddings=query_embedding, n_results=k)
+    raw = collection.query(query_embeddings=query_embedding, n_results=k * _OVERFETCH_MULTIPLIER)
 
     results = []
+    per_source = {}
     for doc_text, metadata, distance in zip(raw["documents"][0],
                                             raw["metadatas"][0],
                                             raw["distances"][0]):
+        citekey = metadata["citekey"]
+        if per_source.get(citekey, 0) >= config.EMBED_MAX_PASSAGES_PER_SOURCE:
+            continue
+        per_source[citekey] = per_source.get(citekey, 0) + 1
         results.append({**metadata, "snippet": doc_text[:snippet_chars], "distance": distance})
+        if len(results) == k:
+            break
     return results

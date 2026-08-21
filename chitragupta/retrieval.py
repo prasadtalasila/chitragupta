@@ -294,6 +294,15 @@ def search(query: str, k: int = 5, snippet_chars: int = 500,
     skill) to judge relevance itself before citing -- see the "Retrieve"
     step in the genre skills for why that judgment shouldn't just trust
     the score.
+
+    One `SearchResult` per citekey, by construction rather than by a cap
+    (issue #305): `scores` below is a dict keyed by citekey, so a
+    document cannot contribute two entries to `ranked` no matter how
+    many of its terms match. A per-citekey cap would be a no-op here --
+    it is `chitragupta.enrich.embed_index.search()`, ranking individual
+    chunks rather than whole documents, that needs one. Tested in
+    tests/test_retrieval.py so a future chunk-level BM25 index can't
+    silently lose this property.
     """
     terms = _tokenize(query)
     if not terms:

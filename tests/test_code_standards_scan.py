@@ -82,9 +82,9 @@ LEGACY_LONG_FILES = {
     "chitragupta/sync.py",  # 499
     "chitragupta/overlap_index.py",  # 492
     "chitragupta/ledger.py",  # 444
-    "chitragupta/retrieval.py",  # 393
+    "chitragupta/retrieval.py",  # 401
     "chitragupta/review/citation_provenance.py",  # 385
-    "chitragupta/config.py",  # 384
+    "chitragupta/config.py",  # 387
     "chitragupta/references.py",  # 370
     "chitragupta/overlap_skipgram.py",  # 315
 }
