@@ -55,77 +55,110 @@ from chitragupta.enrich import doc_vectors, embed_index, topic_labels
 from chitragupta.enrich.corpus import CorpusDoc
 
 
-def _soft_membership(clusterer):
-    """HDBSCAN's own per-point membership strength across every cluster.
-
-    Its own, and not a centroid distance of ours, because HDBSCAN is
-    density-based: a cluster may be elongated, curved or hollow, and its
-    centroid need not lie inside it. Measured on 497 real documents, a
-    centroid rule agreed with HDBSCAN's own assignment for only 30-45% of
-    them however the space was chosen -- a model mismatch no threshold
-    fixes. This function's own numbers agree 99%.
-
-    A seam of its own so tests can supply a matrix without a fitted
-    clusterer; it is one call and holds no logic.
-    """
-    import hdbscan
+def _unit(matrix):
+    """Rows scaled to unit length, so a dot product is a cosine. A zero
+    row is left alone rather than divided by zero: a document with no
+    direction matches nothing, which the caller reads as no membership."""
     import numpy as np
 
-    return np.atleast_2d(np.asarray(hdbscan.all_points_membership_vectors(clusterer)))
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    return np.divide(matrix, norms, out=np.zeros_like(matrix), where=norms > 0)
 
 
-def topic_memberships(clusterer, citekeys: list, topics: list) -> "dict | None":
-    """Every emergent topic each document belongs to, with its strength --
-    or None when the question cannot be answered.
+# Recorded in content/topics.json beside the memberships, so a reader can
+# tell which arithmetic produced the weights they are looking at. Bumped
+# when that arithmetic changes; HDBSCAN soft clustering was v1.
+MEMBERSHIP_MECHANISM = "centroid-cosine-centred-v2"
 
-    `assignments` beside this holds what `fit_transform` returns: one
-    topic id per document, which cannot express a paper genuinely about
-    two things. Measured on this project's own corpus, 140 of 497
-    documents belong to more than one topic and the scalar discards every
-    one of those memberships.
 
-    Three mechanisms were measured before this one, and each failed for a
-    reason rather than for want of tuning:
+def topic_descriptors(embeddings, topics: list):
+    """One vector per emergent topic: its members' centroid, in
+    mean-centred embedding space.
 
-    - BERTopic's `approximate_distribution` scores c-TF-IDF over token
-      windows. On a single-domain corpus that separates almost nothing:
-      every document belonged to all 7 topics at a mean top-share of 0.16
-      against a uniform 0.14.
-    - Cosine to cluster centroids, in the embedding space or the reduced
-      one, centred or raw. Agreed with HDBSCAN's own assignment for 30-45%
-      of documents -- see `_soft_membership` for why that is structural.
-    - A Gaussian mixture over the reduced space returned near-certain
-      single assignments: hard clustering with extra steps.
+    **Centring is load-bearing, not a flourish.** In a corpus that is all
+    about one subject, every document and every centroid share a large
+    common component, so raw cosines bunch together and the part that
+    distinguishes them is a thin residual. Measured over 76 topics on this
+    corpus, the raw version gave a mean top-share of 0.20 against a
+    uniform baseline of 0.01 -- barely a signal -- where the centred one
+    gives 0.60.
 
-    HDBSCAN's cluster ids are **not** BERTopic's topic ids: BERTopic
-    renumbers topics by size, so cluster 0 was topic 6 on the run this was
-    written against. The mapping is recovered from the documents
-    themselves rather than assumed, since every document carries both.
+    Returns `(ids, matrix)`, with row `i` the descriptor for topic
+    `ids[i]`. The outlier topic has no descriptor: -1 means "no topic
+    matched", not a thing to be partly about, and its members would drag
+    a centroid back towards the corpus mean that centring just removed.
     """
+    import numpy as np
+
+    assigned = np.asarray([int(t) for t in topics])
+    ids = sorted(set(assigned.tolist()) - {-1})
+    centred = np.asarray(embeddings, dtype=float)
+    centred = centred - centred.mean(axis=0)
+    descriptors = np.array([centred[assigned == topic_id].mean(axis=0)
+                            for topic_id in ids])
+    return ids, centred, descriptors
+
+
+def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None":
+    """Every emergent topic each document is *about*, with its strength.
+
+    Two fields in content/topics.json describe the same relation and are
+    not the same claim, which is the distinction this docstring exists to
+    hold:
+
+    - `assignments` is **which cluster a document was put in**. Density,
+      one id, whatever HDBSCAN decided.
+    - `memberships` is **what the paper is about**. Similarity to each
+      topic's descriptor, as many topics as clear the bar.
+
+    They can differ, and that is not a defect: a density-based cluster can
+    be elongated or hollow, so "the region this point sits in" and "the
+    subjects this paper is close to" are genuinely different questions.
+    What *would* be a defect is the artefact implying otherwise, so the
+    assigned topic is **always present** in a document's memberships even
+    when it does not clear the bar on its own. An earlier attempt left it
+    missing for 57% of documents, which read as the file contradicting
+    itself.
+
+    Why descriptors rather than HDBSCAN's own soft clustering, which this
+    replaces: soft clustering answers the density question, and for a core
+    point that answer is nearly binary. Measured on this corpus it gave
+    **1.64 topics per document with only 25% of papers plural**, against
+    5.03 and 92% here -- and 637 of the 642 papers in this library carry
+    hand-made Zotero collection labels across 95 collections, so a corpus
+    known to be plural was being reported as almost entirely singular.
+
+    Returns None where the question is meaningless rather than merely
+    unanswered: the feature switched off, or a corpus whose every document
+    landed in the outlier topic and so has no descriptor to measure
+    against.
+    """
+    import numpy as np
+
     if not config.TOPIC_DISTRIBUTION:
         return None
-    # A seeded run's placeholder, which has no clusters to be soft about.
-    if not hasattr(clusterer, "labels_"):
+    ids, centred, descriptors = topic_descriptors(embeddings, topics)
+    if not ids:
         return None
 
-    labels = [int(label) for label in clusterer.labels_]
-    columns = sorted(set(labels) - {-1})
-    if not columns:
-        return None
-    renumbered = {label: int(topic) for label, topic in zip(labels, topics)}
-
-    soft = _soft_membership(clusterer)
+    similarity = _unit(centred) @ _unit(descriptors).T
+    index = {topic_id: column for column, topic_id in enumerate(ids)}
     memberships = {}
-    for citekey, label, row in zip(citekeys, labels, soft):
-        ranked = sorted(((str(renumbered[column]), round(float(weight), 6))
-                         for column, weight in zip(columns, row) if weight > 0.0),
+    for citekey, assigned, row in zip(citekeys, (int(t) for t in topics), similarity):
+        ranked = sorted(((str(ids[column]), round(float(weight), 6))
+                         for column, weight in enumerate(row) if weight > 0.0),
                         key=lambda item: (-item[1], item[0]))
-        if not ranked:
-            continue
-        best = ranked[0][1]
+        best = ranked[0][1] if ranked else 0.0
         kept = [pair for pair in ranked
                 if pair[1] >= best * config.TOPIC_MEMBERSHIP_RATIO]
-        memberships[citekey] = dict(kept[:config.TOPIC_MEMBERSHIP_MAX])
+        kept = dict(kept[:config.TOPIC_MEMBERSHIP_MAX])
+        # The assigned topic is a membership by construction, whatever its
+        # similarity -- see this docstring on why the two fields must not
+        # be able to contradict each other.
+        if assigned != -1:
+            kept.setdefault(str(assigned), round(float(row[index[assigned]]), 6))
+        if kept:
+            memberships[citekey] = dict(sorted(kept.items(), key=lambda kv: -kv[1]))
     return memberships
 
 
@@ -234,9 +267,10 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
         "assignments": dict(zip(citekeys, [int(t) for t in topics])),
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
     }
-    memberships = topic_memberships(topic_model.hdbscan_model, citekeys, topics)
+    memberships = topic_memberships(embeddings, citekeys, topics)
     if memberships is not None:
         result["memberships"] = memberships
+        result["membership_mechanism"] = MEMBERSHIP_MECHANISM
     config.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
     config.TOPICS_PATH.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result

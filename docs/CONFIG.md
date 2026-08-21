@@ -371,7 +371,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
 | `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `10` | `10` |
 | `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
-| `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `3` | `3` |
+| `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `8` | `8` |
 
 **The two `embedding_model` columns differ on purpose, and the
 distinction matters.** The code's fallback is the smaller, faster
@@ -913,21 +913,45 @@ topic each document belongs to with its strength. On this project's own
 corpus **140 of 497 papers belong to more than one topic**, and the
 scalar discards 222 such memberships.
 
-Those strengths come from HDBSCAN's own soft clustering. Three other
-mechanisms were measured first and each failed for a structural reason
-rather than for want of tuning: BERTopic's `approximate_distribution`
-separated almost nothing on a single-domain corpus (every paper in all 7
-topics, mean top-share 0.16 against a uniform 0.14); cosine to cluster
-centroids, in either space, agreed with HDBSCAN's own assignment for only
-30-45% of documents, because a density-based cluster can be elongated or
-hollow and its centroid need not lie inside it; and a Gaussian mixture
-returned near-certain single assignments, which is hard clustering again.
-HDBSCAN's own numbers agree with its own assignment for **100%** of
-documents.
+**`assignments` and `memberships` are not the same claim**, and the file
+records which is which:
+
+- `assignments` is **which cluster a document was put in** -- density,
+  one id, whatever HDBSCAN decided.
+- `memberships` is **what the paper is about** -- similarity to each
+  topic's descriptor, as many topics as clear the bar.
+
+They can differ, and that is not a defect: a density cluster can be
+elongated or hollow, so "the region this point sits in" and "the subjects
+this paper is close to" are different questions. What would be a defect
+is the file implying otherwise, so **the assigned topic is always present
+in a document's memberships**, whatever its similarity.
+
+The strengths are cosine to each topic's descriptor -- its members'
+centroid, on mean-centred embeddings -- recorded as
+`membership_mechanism` in the artefact so a reader can tell which
+arithmetic produced them. Centring is load-bearing: in a corpus about one
+subject every document and centroid share a large common component, so
+raw cosines bunch together. Measured over 76 topics, raw gave a mean
+top-share of 0.20 against a uniform baseline of 0.01, where centred gives
+0.60.
+
+This replaced HDBSCAN's own soft clustering, which answered the *density*
+question and for a core point answers it nearly binarily: it reported
+1.64 topics per paper with 25% of papers plural, on a library where 637
+of 642 papers carry hand-made Zotero collection labels across 95
+collections. Two other mechanisms were measured and rejected: BERTopic's
+`approximate_distribution` separated almost nothing (top-share 0.03
+against a uniform 0.01), and a Gaussian mixture returned near-certain
+single assignments, which is hard clustering again. `bench/RESULTS.md`
+has the table.
 
 `topic_membership_ratio` (default `0.5`) is how strong a topic must be
 relative to that document's strongest, and `topic_membership_max`
-(default `3`) caps the list.
+(default `8`) caps the list. The cap exists for a document similar to
+almost everything; the ratio is meant to do the deciding for the rest. It
+was `3` until a corpus producing 76 topics put 387 of 497 documents at
+exactly that number -- the cap deciding, and the ratio never speaking.
 
 **Memberships are recorded for every run.** They were once available only
 for an unseeded one, because BERTopic swaps its clusterer for a

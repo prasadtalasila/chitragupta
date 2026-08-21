@@ -329,125 +329,118 @@ class TestDocumentEmbeddingsSeam:
         assert FakeModel.encode_call_texts == []
 
 
-class FakeClusterer:
-    """Stands in for a fitted HDBSCAN. `labels_` are HDBSCAN's own cluster
-    ids, deliberately *not* BERTopic's topic ids -- BERTopic renumbers by
-    size, and conflating the two is the bug these tests exist to catch."""
+# Three clusters on orthogonal axes, plus a document placed between two
+# of them. Three and not two, because centring makes exactly two
+# descriptors antipodal -- a document is then positively similar to at
+# most one, which is a property of the 2-topic case rather than of the
+# mechanism.
+THREE_CLUSTERS = [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0],
+                  [0.0, 1.0, 0.0], [0.0, 1.0, 0.0],
+                  [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]
+CLUSTER_KEYS = ["a1", "a2", "b1", "b2", "c1", "c2", "spans"]
+CLUSTER_TOPICS = [0, 0, 1, 1, 2, 2, -1]
 
-    def __init__(self, labels):
-        self.labels_ = labels
 
-
-class Placeholder:
-    """What BERTopic leaves in hdbscan_model on a zero-shot run: a
-    BaseCluster carrying no labels_ at all."""
+def memberships_for(spans, topics=None):
+    return topic_model.topic_memberships(
+        THREE_CLUSTERS + [spans], CLUSTER_KEYS, topics or CLUSTER_TOPICS)
 
 
 class TestTopicMemberships:
-    """A document can belong to more than one topic BERTopic *discovered*,
-    not only to more than one phrase a person wrote.
+    """What a paper is *about*, as against which cluster it was put in.
 
-    The soft-membership matrix is supplied directly rather than computed,
-    so these pin the selection and the id translation. That the numbers
-    themselves are right is HDBSCAN's business, and was checked against
-    the real library on 497 documents: its own assignment appears in the
-    memberships it produces for 100% of them, against 30-45% for every
-    centroid rule tried first.
+    The mechanism is similarity to each topic's descriptor, replacing
+    HDBSCAN's own soft clustering. That answered the density question, and
+    for a core point the answer is nearly binary: measured on the real
+    corpus it gave 1.64 topics per document with 25% of papers plural,
+    against 5.03 and 92% here.
     """
 
-    def soft(self, monkeypatch, matrix):
-        monkeypatch.setattr(topic_model, "_soft_membership", lambda clusterer: matrix)
+    def test_a_document_between_two_topics_is_about_both(self, isolated_config):
+        assert set(memberships_for([1.0, 1.0, 0.0])["spans"]) == {"0", "1"}
 
-    def test_a_document_between_two_topics_belongs_to_both(self, isolated_config,
-                                                           monkeypatch):
-        self.soft(monkeypatch, [[0.9, 0.1], [0.5, 0.5]])
-        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["solo", "spans"], [0, 1])
-        assert len(got["spans"]) == 2
-        assert list(got["solo"]) == ["0"]
+    def test_a_document_inside_one_cluster_is_about_one(self, isolated_config):
+        assert list(memberships_for([1.0, 1.0, 0.0])["a1"]) == ["0"]
 
-    def test_hdbscan_cluster_ids_are_translated_to_topic_ids(self, isolated_config,
-                                                             monkeypatch):
-        """BERTopic renumbers topics by size -- on the real corpus its
-        cluster 0 was topic 6. Reporting the cluster id would name the
-        wrong topic in every artefact."""
-        self.soft(monkeypatch, [[0.9, 0.1], [0.2, 0.8]])
-        got = topic_model.topic_memberships(
-            FakeClusterer([0, 1]), ["a", "b"], [6, 8])
-        assert list(got["a"])[0] == "6"
-        assert list(got["b"])[0] == "8"
+    def test_a_weaker_second_topic_is_dropped(self, isolated_config):
+        assert list(memberships_for([1.0, 0.7, 0.0])["spans"]) == ["0"]
 
-    def test_a_weaker_second_topic_is_dropped(self, isolated_config, monkeypatch):
-        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
-        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
-        assert list(got["a"]) == ["0"]
-
-    def test_the_ratio_decides_how_weak_a_second_may_be(self, isolated_config, monkeypatch):
-        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
-        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.05)
-        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
-        assert len(got["a"]) == 2
+    def test_the_ratio_decides_how_weak_a_second_may_be(self, isolated_config,
+                                                       monkeypatch):
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_RATIO", 0.01)
+        loosened = memberships_for([1.0, 0.7, 0.0])["spans"]
+        assert set(loosened) == {"0", "1"}
+        assert list(loosened)[0] == "0"
 
     def test_the_cap_bounds_a_plural_document(self, isolated_config, monkeypatch):
-        self.soft(monkeypatch, [[0.4, 0.3, 0.3], [0.1, 0.9, 0.0], [0.0, 0.1, 0.9]])
-        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 2)
-        got = topic_model.topic_memberships(FakeClusterer([0, 1, 2]), ["a", "b", "c"],
-                                            [0, 1, 2])
-        assert len(got["a"]) == 2
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 1)
+        assert len(memberships_for([1.0, 1.0, 0.0])["spans"]) == 1
 
-    def test_a_seeded_run_has_no_clusterer_to_ask(self, isolated_config):
-        """BERTopic swaps in a BaseCluster placeholder when
-        zeroshot_topic_list is set. None, not an empty dict: the question
-        is unanswerable, not answered with nothing."""
-        assert topic_model.topic_memberships(Placeholder(), ["a"], [0]) is None
+    def test_the_assigned_topic_is_always_a_membership(self, isolated_config,
+                                                      monkeypatch):
+        """The two fields must not be able to contradict each other. An
+        earlier attempt left the assigned topic missing from its own
+        memberships for 57% of documents, which read as content/topics.json
+        disagreeing with itself."""
+        monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 1)
+        # `odd` is assigned to topic 2 but sits nearest topic 0.
+        got = topic_model.topic_memberships(
+            THREE_CLUSTERS + [[1.0, 0.0, 0.0]],
+            CLUSTER_KEYS, [0, 0, 1, 1, 2, 2, 2])
+        assert "2" in got["spans"]
 
-    def test_an_all_outlier_corpus_has_no_cluster_to_belong_to(self, isolated_config):
-        assert topic_model.topic_memberships(FakeClusterer([-1, -1]), ["a", "b"],
+    def test_the_outlier_topic_is_never_a_membership(self, isolated_config):
+        every = memberships_for([1.0, 1.0, 0.0])
+        assert all("-1" not in row for row in every.values())
+
+    def test_an_all_outlier_corpus_has_no_descriptor_to_measure(self, isolated_config):
+        assert topic_model.topic_memberships([[1.0], [1.0]], ["a", "b"],
                                              [-1, -1]) is None
 
-    def test_a_document_with_no_positive_strength_is_omitted(self, isolated_config,
-                                                             monkeypatch):
-        self.soft(monkeypatch, [[0.9, 0.1], [0.0, 0.0]])
-        got = topic_model.topic_memberships(FakeClusterer([0, 1]), ["a", "b"], [0, 1])
-        assert "b" not in got
+    def test_a_document_at_the_corpus_mean_belongs_nowhere(self, isolated_config):
+        """Centring leaves it no direction at all, which is the honest
+        answer rather than an arbitrary nearest topic."""
+        assert "spans" not in memberships_for([1.0, 1.0, 1.0])
 
     def test_switching_it_off_records_nothing(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "TOPIC_DISTRIBUTION", False)
-        assert topic_model.topic_memberships(FakeClusterer([0]), ["a"], [0]) is None
+        assert topic_model.topic_memberships([[1.0], [1.0]], ["a", "b"],
+                                             [0, 0]) is None
 
-    def test_it_reaches_the_artefact(self, isolated_config, fake_bertopic_stack,
-                                     tmp_path, monkeypatch):
-        """Wired into run_topic_model(), with the scalar surviving beside
-        it rather than being replaced."""
-        self.soft(monkeypatch, [[0.9, 0.1], [0.1, 0.9]])
-        monkeypatch.setattr(FakeHDBSCAN, "labels_", [0, 1], raising=False)
-        docs = make_docs_with_text(2, tmp_path)
-        FakeBERTopic.topics_returned = [0, 1]
+    def test_it_reaches_the_artefact_with_its_mechanism_named(self, isolated_config,
+                                                              fake_bertopic_stack,
+                                                              tmp_path):
+        """A reader has to be able to tell which arithmetic produced the
+        weights, since the mechanism has already changed once."""
+        docs = []
+        for index, size in enumerate((10, 20, 30, 40)):
+            path = tmp_path / f"doc{index}.txt"
+            path.write_text("x" * size, encoding="utf-8")
+            docs.append(CorpusDoc(citekey=f"doc{index}", title=f"T{index}",
+                                  pdf_path=None, text_path=str(path)))
+        FakeBERTopic.topics_returned = [0, 0, 1, 1]
         result = topic_model.run_topic_model(docs)
-        assert result["memberships"]["doc0"] == {"0": 0.9}
-        assert result["assignments"] == {"doc0": 0, "doc1": 1}
+        assert result["memberships"]
+        assert result["membership_mechanism"] == topic_model.MEMBERSHIP_MECHANISM
+        assert result["assignments"] == {"doc0": 0, "doc1": 0, "doc2": 1, "doc3": 1}
 
 
-class TestSoftMembershipSeam:
-    """The one place the real hdbscan library is exercised rather than
-    stubbed. Small and real on purpose: everything above it supplies a
-    matrix, so if `all_points_membership_vectors` ever changes shape or
-    name, this is what says so."""
+class TestTopicDescriptors:
+    def test_the_outlier_topic_gets_no_descriptor(self, isolated_config):
+        ids, _centred, descriptors = topic_model.topic_descriptors(
+            THREE_CLUSTERS + [[1.0, 1.0, 0.0]], CLUSTER_TOPICS)
+        assert ids == [0, 1, 2]
+        assert len(descriptors) == 3
 
-    def test_real_hdbscan_yields_a_row_per_point(self, isolated_config):
-        import hdbscan
+    def test_descriptors_are_centred(self, isolated_config):
+        """Raw cosines bunch together in a single-domain corpus; measured,
+        the raw version gave a mean top-share of 0.20 against a uniform
+        0.01, where centring gives 0.60."""
         import numpy as np
 
-        # Two clearly separated blobs, min_cluster_size low enough that a
-        # handful of points is a legitimate cluster rather than noise.
-        points = np.array([[0.0, 0.0], [0.1, 0.1], [0.0, 0.2], [0.2, 0.0],
-                           [9.0, 9.0], [9.1, 9.1], [9.0, 9.2], [9.2, 9.0]])
-        clusterer = hdbscan.HDBSCAN(min_cluster_size=3, prediction_data=True).fit(points)
-        soft = topic_model._soft_membership(clusterer)
-        assert soft.shape[0] == len(points)
-        # Always 2-D, even for a single cluster -- topic_memberships zips
-        # each row against the column list and a 1-D return would zip the
-        # wrong axis silently.
-        assert soft.ndim == 2
+        _ids, centred, _d = topic_model.topic_descriptors(
+            THREE_CLUSTERS + [[1.0, 1.0, 0.0]], CLUSTER_TOPICS)
+        assert np.allclose(np.asarray(centred).mean(axis=0), 0.0)
 
 
 class TestWholeDocumentPooling:

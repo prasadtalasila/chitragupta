@@ -658,11 +658,18 @@ TOPIC_DISTRIBUTION = _get_bool(
 TOPIC_MEMBERSHIP_RATIO = _get_float(
     "TOPIC_MEMBERSHIP_RATIO", "enrich", "topic_membership_ratio", default=0.5,
 )
-# The cap, for a document whose weights are near-uniform because BERTopic
-# was not confident about it at all: every topic then clears the ratio,
-# and "belongs to all 7" is noise wearing the shape of an answer.
+# The cap, for a document similar to almost everything: without one,
+# "belongs to all 76 topics" is noise wearing the shape of an answer.
+#
+# 8, not the 3 it started at. 3 was chosen when this corpus produced 7
+# topics and was plainly wrong once it produced 76: measured, 387 of 497
+# documents sat at exactly 3, so the cap rather than the similarity was
+# deciding what a paper is about, and the ratio never got to speak. At 8
+# the ratio binds for most documents and the cap catches only the
+# genuinely diffuse ones -- which is the division of labour the two
+# settings are for.
 TOPIC_MEMBERSHIP_MAX = int(_get_float(
-    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=3,
+    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=8,
 ))
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
