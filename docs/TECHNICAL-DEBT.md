@@ -180,11 +180,19 @@ numbers it was written without.
 
 ### The 11 inert `# noqa: BLE001` markers
 
-`chitragupta/` and `scripts/` carry 11 `# noqa: BLE001` suppressions
-(`runlock.py`, `pdf_text.py` x5, `enrich/__main__.py`,
-`enrich/docling_parse.py` x3) and **no linter is configured** --
-`pyproject.toml` has no `ruff`, `flake8`, `pylint` or `mypy` section, and
-no workflow invokes one. BLE001 is a ruff rule code.
+`chitragupta/` and `scripts/` carry `# noqa: BLE001` suppressions
+(`runlock.py`, `pdf_text.py`, `enrich/__main__.py`,
+`enrich/docling_parse.py`, and since this was written
+`scripts/check_version_bump.py`) that **nothing reads**.
+
+When this was written the reason was that no linter was configured at
+all. That half is now false -- `.pylintrc` exists and `ci.yml`'s `lint`
+job invokes pylint at a binary bar. The debt survives for a narrower
+reason, and it is worth stating precisely: **BLE001 is a *ruff* rule
+code**, there is still no ruff, and pylint's own equivalent
+(`broad-exception-caught`) is in `.pylintrc`'s `disable=` list. So the
+markers remain inert -- they are addressed to a linter this repository
+does not run.
 
 The markers are not harmful; each sits beside a real *why*-comment
 explaining the broad catch, which is what CODE-STANDARDS.md's comment
@@ -747,7 +755,8 @@ a run happens where one is expected.
 ### 5.2 `pylint`: a measured baseline
 
 **Adopted and enforced in 5.8.0.** `ci.yml`'s `lint` job runs
-`pylint --rcfile=.pylintrc src scripts` at a binary zero-messages bar.
+`pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
+zero-messages bar.
 The residue below is fixed rather than suppressed, in this order: 3.1's
 encoding sites first -- the whole item, not pylint's visible seven --
 then the long lines, then the two context-manager names into `good-names`
@@ -1130,64 +1139,32 @@ worse.
 
 ## What to take first
 
-Ordered by what breaks if it is left, not by size:
+Ordered by what breaks if it is left, not by size.
 
-0. ~~**[Process] The three merge settings.** Not first because it is the
-   most important, but because it is the only item here that costs one
-   command, needs no review, and closes roughly 15 of the ~20 format
-   violations permanently. It needs admin rights, which is the only
-   reason it is not already done.~~ **Done**, in #238 (2026-08-18) --
-   though for fewer violations than predicted, and
-   [Process debt](#process-debt-the-formats-that-are-not-adhered-to) says
-   which half survived and why no setting reaches it.
-1. ~~**[3.1] `encoding="utf-8"` at 32 call sites.** The only item in this
-   document with a *demonstrated* crash on ordinary input -- a CJK or
-   Cyrillic author name, rendered on a cp1252 host.~~ **Done**, the same
-   day this document was written, per [5.2](#52-pylint-a-measured-baseline)'s
-   own "3.1's encoding sites first -- the whole item, not pylint's
-   visible seven." See [3.1](#31-text-io-on-the-locale-codec),
-   verified with a fresh AST scan: 0 text-I/O sites in `chitragupta/` now missing
-   `encoding=`.
+**Closed items are no longer listed here.** Each one is recorded, with
+its PR number and what it actually achieved, in its own section above --
+which is where the detail belongs and where the cross-references point.
+A to-do list carrying eight closed entries and one open one stops being
+read as a to-do list. Two closed items stay below because they are
+`[Tier 1]` entries and `tests/test_technical_debt_scan.py` reads this
+list for them: it checks that a name marked resolved here is genuinely
+absent from the size register, which is a live check rather than a
+historical note.
+
+1. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
+   this list -- one workflow job against a Dockerfile currently verified
+   by nothing.
 2. ~~**[Tier 1] `chitragupta/sync.py::run`.** 117 statements, separable at six
    named seams, and already the register's designated first job.~~
    **Done**, in #178 (2026-08-14): split along those same seams. See the
    `chitragupta/sync.py::run` subsection above, kept as the historical record.
-3. **[3.4] A `docker build` job in CI.** Cheapest real coverage gain in
-   this list -- one workflow job against 56 lines currently verified by
-   nothing.
-4. **[Tier 2] Annotate `chitragupta/review/verbatim_check.py`.** ~~47 functions,
-   no behaviour change, and it removes the tree's only zero.~~ **Done**,
-   in #133: 58/58 functions now annotated (the count grew from 47 to 53
-   while that PR was adding tier 2's finders, then to 58 when three of
-   them were split to bring cognitive complexity under SonarQube's
-   threshold). See [Type
-   annotations](#type-annotations-394-of-433).
-5. ~~**[Tier 1] Split `chitragupta/dossier.py`** along the four ranges above, and
+3. ~~**[Tier 1] Split `chitragupta/dossier.py`** along the four ranges above, and
    delist whatever comes back under C1 in the same PR.~~ **Done**, in
-   #219: `chitragupta/dossier/`, 12 modules each under the 250-code-line cap.
-   `main()` stayed on the register -- still 49 statements, since the
-   split moved every `_cmd_*` handler out but left its own argparse-tree
-   statements where they were. See the `chitragupta/dossier.py` subsection
-   below, kept as the historical record of what the split was measured
-   against.
-6. ~~**[5.2] Enable `pylint` at a binary bar**, once 3.1 and the 31 long
-   lines are done.~~ **Done**, the same day this section was written
-   (`840621c5`, 2026-08-13): `ci.yml`'s `lint` job runs `pylint
-   --rcfile=.pylintrc src scripts .claude/hooks` and `markdownlint-cli2`
-   at a binary zero-message bar, per [5.2](#52-pylint-a-measured-baseline)
-   and [5.3](#53-markdownlint-a-measured-baseline)'s own "Adopted and
-   enforced in 5.8.0" -- this numbered item just never got marked done to
-   match.
-7. ~~**[3.7] Move the BibTeX author-name grammar into one module.** Five
-   duplicated lines, no boundary to relax, and the failure it prevents is
-   two disagreeing spellings of the same author.~~ **Done**, in #234:
-   `chitragupta/bib_names.py`. See
-   [3.7](#37-the-bibtex-author-name-grammar-exists-twice).
-8. ~~**[4.2] Count only entries with fields** in `bib_reader`'s
-   dropped-entry warning, so it stops firing on every healthy Zotero
-   export. Small, and it restores a guard that currently reads as
-   noise.~~ **Done**, in #235. See
-   [4.2](#42-bib_readers-dropped-entry-warning-counts-contentless-stubs).
+   #219: `chitragupta/dossier/`, each module under the 250-code-line cap.
+   `main()` stayed on the register, since the split moved every `_cmd_*`
+   handler out but left its own argparse-tree statements where they were.
+   See the `chitragupta/dossier.py` subsection below, kept as the
+   historical record of what the split was measured against.
 
 Everything below that is real but can wait. Each of the five is one PR:
 "several small, reviewable PRs over one large one" applies to this

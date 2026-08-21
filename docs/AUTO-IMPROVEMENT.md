@@ -118,8 +118,11 @@ bucket within a class, then position in the draft.
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
 
-The `prose` class has no producer until #103 and #107 land; until then it
-is an empty list.
+The `prose` class had no producer when this was written. It has both a
+producer and a consumer now: #107 shipped the detector in 5.13.0 and
+its automatic invocation (#183) landed in 5.19.0, and `chitragupta/style_check.py`
+emits `--json` -- so build-order step 6 below is **done**, and this class
+is live rather than an empty list.
 
 ## 3. The `agenda-reviser` skill
 

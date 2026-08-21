@@ -21,6 +21,7 @@ came from.
 - [The drafting layer's method](#the-drafting-layers-method)
 - [Code standards](#code-standards)
 - [Harness engineering](#harness-engineering)
+- [The feature roadmap](#the-feature-roadmap)
 - [The rule on borrowing](#the-rule-on-borrowing)
 
 ## The drafting layer's method
@@ -115,6 +116,64 @@ came from.
   fail-silent by design, which is right for what they protect and would be
   a silently inert citation gate if copied across.
 
+## The feature roadmap
+
+Two upstreams behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md). Both are
+Apache-2.0, and **copying from both was offered and declined** -- the
+cost of declining was measured at roughly one PR, and that document's
+"borrowing posture" section has the working. Nothing is copied from
+either; where the roadmap quotes them it quotes them as evidence for a
+design claim, and every implementation is written here from scratch.
+Which makes this the ordinary case for this file, not an exception to
+it.
+
+- **[AkariAsai/OpenScholar](https://github.com/AkariAsai/OpenScholar)**
+  (Apache-2.0) -- "OpenScholar: Synthesizing Scientific Literature with
+  Retrieval-Augmented Language Models" (Asai, He, Shao, Shi, Singh,
+  Chang, Lo, Soldaini, et al.; arXiv:2411.14199). Four ideas behind the
+  roadmap's synthesis half:
+  - **Cap passages per source, then truncate** -- the ordering is what
+    produces source diversity, because dropping one paper's fourth-best
+    passage promotes another paper's into the window the drafter sees.
+  - **Instruct synthesis across sources explicitly**, rather than a
+    paper-by-paper summary, so a paragraph fuses several sources.
+  - **A feedback pass before the final artefact**, and the observation
+    that its safety guard has to be something other than a length ratio.
+  - **Post-hoc citation attribution as a repair pass** -- taken chiefly
+    as a *negative* result: it is a prompt, not a verifier, which is why
+    the roadmap plans a real entailment check as new work rather than a
+    port.
+
+  *Not taken:* its positional `[n]` citation numbering, which reorders
+  meaning whenever the passage list changes and is the opposite of a
+  citekey; its dead code paths; and its import graph, which pulls a GPU
+  stack unconditionally.
+
+- **[dwzhu-pku/PaperBanana](https://github.com/dwzhu-pku/PaperBanana)**
+  (Apache-2.0), and the Google Research project it forks,
+  [PaperVizAgent](https://github.com/google-research/papervizagent) --
+  a multi-agent framework for academic illustration. Three ideas behind
+  the roadmap's figure half:
+  - **Commit to a layout metaphor before drawing** -- pipeline, layered
+    stack, control loop, branching tree, hub-and-spoke -- which is the
+    idea most likely to fix figure sprawl at its source.
+  - **A defect catalogue is more useful than a style guide** for layout.
+    Its evaluation rubric, not its style guide, is where the concrete
+    layout defects are, and one of them is written for LaTeX
+    specifically.
+  - **A critique loop's shape**: bounded rounds, a structured payload,
+    an explicit "nothing to change" exit, and keeping the last good
+    render.
+
+  *Not taken:* image generation itself, and this is the substantive
+  refusal. Its own published comparison shows the image route inverting
+  a relationship between two series, duplicating a category, and drawing
+  a bar taller than its own gridline where the code route was correct
+  every time. A generator that draws a bar taller than its value is
+  fabricating data, which is the failure this project exists to prevent.
+  Its style guide's content is also raster-oriented and does not survive
+  translation to TikZ.
+
 ## The rule on borrowing
 
 Stated once, because it is the same rule the pipeline applies to drafts:
@@ -122,6 +181,9 @@ Stated once, because it is the same rule the pipeline applies to drafts:
 **Attribute the idea, and never copy the text.** Where an upstream is
 permissively licensed the adaptation is still written from scratch, and
 where it is not (`academic-research-skills`, CC-BY-NC 4.0) only the
-concept is taken and the entry above says so explicitly. That is
+concept is taken and the entry above says so explicitly. The rule held
+when it was tested: copying from two permissively-licensed upstreams was
+offered for the feature roadmap and declined, at a measured cost of
+about one PR. That is
 [SOUL.md](../SOUL.md)'s refusal to manufacture support, pointed at this
 project's own provenance rather than a draft's.
