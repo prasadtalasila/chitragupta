@@ -30,9 +30,9 @@ computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
 Markdown through `chitragupta/render_output.py`, and this is not a render of
-anything. `verbatim` is so far the only aid that emits one; the other two
-follow in their own issues, which is why docs/AUTO-IMPROVEMENT.md's
-`agenda` reads each aid's JSON as optional.
+anything. All three aids emit one now -- `verbatim scan` since #127,
+`provenance` and `coverage` since #309 -- which is why docs/AUTO-IMPROVEMENT.md's
+`agenda` reads each aid's JSON as optional rather than required.
 
 **No timestamp in a report.** The reason to write one at all is that it
 becomes reviewable later and diffable across revisions, and a wall-clock
