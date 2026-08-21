@@ -73,6 +73,14 @@ def overlap_score(claim: str, quote: str) -> "float | None":
     a zero would claim the pair was checked and found clean. A quote
     that short is common (a one-clause quotation), not a degenerate
     input to reject.
+
+    Normalised by `quote`'s own bigram count, so sensitivity runs one
+    direction only: a short, deliberate quotation restated in the same
+    clause scores high (fires), while a long pasted window condensed
+    into a short claim scores low (silent) -- most of the window's
+    bigrams simply have nowhere to land in a claim a fraction its
+    length. This catches "the quote with its words moved", which is
+    what it is named for; it does not catch paste-then-summarize.
     """
     quote_stems, _ = stem_filter(_norm(quote))
     if len(quote_stems) < _NGRAM:

@@ -174,8 +174,9 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
     What a dispatched subagent reads instead of being handed the same
     text pasted into its prompt. The block is returned verbatim, heading
     included, because what a genre skill puts under one varies (a
-    `relevance:`/`support:` pair, a claim list, a quotation) and this
-    module does not own that shape -- only the heading that addresses it.
+    `relevance:`/`claim:`/`quote:` set, a legacy `relevance:`/`support:`
+    pair a pre-A2 dossier still carries, a claim list) and this module
+    does not own that shape -- only the heading that addresses it.
 
     Keyed on the first citekey-shaped token in the heading, so
     ``## `smith_x_2024` -- kept for section 3`` is addressable as
