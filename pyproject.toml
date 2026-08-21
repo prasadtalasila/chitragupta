@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.11.0"
+version = "6.11.1"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -232,15 +232,22 @@ omit = [
 # It holds on a host with the full toolchain (pandoc, TeX Live, poppler)
 # installed -- without those binaries the render/pdf tests self-skip and
 # take chitragupta/render_output.py down to ~76%, which is a missing dependency
-# rather than a missing test. Pass --cov-fail-under=0 on such a host. CI's
-# Windows leg, where os-deps is apt-only, holds a 95 floor instead of the
-# full bar -- see .github/workflows/ci.yml for why that number.
+# rather than a missing test. Pass --cov-fail-under=0 on such a host.
+#
+# CI's Windows leg holds this same 100, not a lower floor: it uses
+# `coveragerc-windows.toml` instead of this section, which excludes
+# exactly the lines that are genuinely untestable there -- the
+# pandoc/pdflatex/pdftotext call sites `os-deps` never installs, and the
+# multiprocessing-forkserver/shebang-script branches that platform lacks
+# outright -- rather than budgeting for the gap under a lower number.
+# See docs/TECHNICAL-DEBT.md #3.6 for why a floor was the wrong shape and
+# tests/test_coverage_configs_agree.py for what pins the two configs
+# together.
 fail_under = 100
 # Two decimal places, because a rounded total is not a number you can set a
-# threshold from: CI's Windows leg prints "99%", which could be anything from
-# 98.5 to 99.4, and choosing a floor for it off that display would be guessing.
-# It also makes the strictness of `fail_under = 100` visible -- 99.97% is
-# reported as 99.97 and fails, rather than displaying as 100 and passing.
+# threshold from -- 99.97% would display as "100%" and pass a bare integer
+# floor. It also makes the strictness of `fail_under = 100` visible: 99.97
+# is reported as 99.97 and fails, rather than rounding away the gap.
 precision = 2
 exclude_lines = [
     "if __name__ == .__main__.:",

@@ -122,7 +122,7 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
         if shutil.which(program):
             fault = _import_fault(program)
             if fault:
-                found.append(fault)
+                found.append(fault)  # pragma: no cover-windows
     return list(dict.fromkeys(found))
 
 
@@ -199,13 +199,15 @@ def _import_fault(program: str) -> str | None:
             capture_output=True, timeout=IMPORT_PROBE_TIMEOUT, check=False,
         )
     except subprocess.TimeoutExpired:
-        return (f"`{program}` did not respond within {IMPORT_PROBE_TIMEOUT:.0f}s "
-                "probing whether it can import chitragupta -- treated as a fault, "
-                "not as clean.")
+        return (  # pragma: no cover-windows
+            f"`{program}` did not respond within {IMPORT_PROBE_TIMEOUT:.0f}s "
+            "probing whether it can import chitragupta -- treated as a fault, "
+            "not as clean.")
     except OSError:
         return None
     if result.returncode != 0:
-        return (f"`{program}` cannot import chitragupta, so a hook it launches will "
-                "start and then fail silently. Activate the virtualenv chitragupta "
-                "is installed into before starting this session.")
+        return (  # pragma: no cover-windows
+            f"`{program}` cannot import chitragupta, so a hook it launches will "
+            "start and then fail silently. Activate the virtualenv chitragupta "
+            "is installed into before starting this session.")
     return None

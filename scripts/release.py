@@ -92,6 +92,12 @@ EXCLUDE_TOP_LEVEL = {
     # that failure mode as the accepted cost here -- exporting it to
     # someone who never chose it is a different thing.
     "codecov.yml",
+    # Same category again: the coverage config CI's Windows leg uses to
+    # exclude the pandoc/pdflatex/pdftotext call sites its ~30
+    # self-skipping tests would otherwise leave uncovered
+    # (docs/TECHNICAL-DEBT.md #3.6). Meaningful only alongside this
+    # repository's own test suite, which a release doesn't ship either.
+    "coveragerc-windows.toml",
 }
 
 # Ships as an empty placeholder directory instead of its tracked contents
