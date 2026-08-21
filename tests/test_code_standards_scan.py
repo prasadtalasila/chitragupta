@@ -58,7 +58,7 @@ CODE_LINE_ROOTS = ("chitragupta", "scripts")
 # 5.8.x SonarCloud-debt series split the worst offenders and delisted
 # each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    "chitragupta/dossier/_cli.py::main",  # 50
+    "chitragupta/dossier/_cli.py::main",  # 54
     "chitragupta/enrich/embed_index.py::build_index",  # 40
     "chitragupta/enrich/docling_parse.py::parse_doc",  # 36
     "chitragupta/sync.py::_parse_parallel",  # 33

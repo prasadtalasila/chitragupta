@@ -85,12 +85,16 @@ than write a file. So anything of theirs worth keeping is yours to
 transcribe, in the phase that dispatched them, before you move on:
 
 - **After Phase 2**, each interviewer packet's kept claims and their
-  citekeys go into `evidence.md`, and the citekeys the packet lists as
-  *discarded during filtering* go into `rejected.md` -- one row each with
-  the query that surfaced it and a few words on why it was turned down.
-  That discarded list exists nowhere but the packet, and re-retrieving and
-  re-judging those same papers is the single most expensive thing a later
-  session repeats.
+  citekeys go into `evidence.md`, one ``## `citekey` `` block per source
+  with a `relevance:` line, a `claim:` line -- the packet's claim, in the
+  interviewer's own words, the only field a later phase may draft prose
+  from -- and, only where the packet genuinely singled out a passage worth
+  quoting, a `quote:` line (verbatim, quotation marks and attribution
+  only). The citekeys the packet lists as *discarded during filtering* go
+  into `rejected.md` -- one row each with the query that surfaced it and a
+  few words on why it was turned down. That discarded list exists nowhere
+  but the packet, and re-retrieving and re-judging those same papers is the
+  single most expensive thing a later session repeats.
 - **After Phase 3**, record the contradictions themselves -- the conflict,
   both sides, both citekeys -- next to the citekeys they concern in
   `evidence.md`, so a revision can see the disagreement without rebuilding
@@ -299,7 +303,11 @@ needs and what you would otherwise have to invent.
 kept claims and their citekeys into `evidence.md`, the packet's discarded
 citekeys into `rejected.md` with the query and the reason. The
 interviewers cannot do this for you, and six packets sitting in your
-context are not a record.
+context are not a record. Then run
+`python -m chitragupta.draft dossier check-evidence content/drafts/deep-research-<slug>.md`
+-- advisory, flags a `claim:` that reads like its own `quote:` reworded; a
+warning is a cue to re-read the transcription, not to keep rewording until
+it goes quiet.
 
 No web fallback: if a perspective's searches turn up nothing relevant after
 reasonable reformulation, that's a real "thin coverage" finding to report,
@@ -398,7 +406,9 @@ per-section reference list. A writer may re-search a thin subpoint -- only
 against this project's corpus, never inventing a citekey.
 
 When the writers return, copy each `### Sources added` block into
-`evidence.md` yourself, with why the writer kept it, and each
+`evidence.md` yourself, as a `relevance:`/`claim:` block per citekey (why
+the writer kept it, in the writer's own words -- add a `quote:` only if
+the writer's block singled out a passage worth quoting verbatim), and each
 `### Candidates discarded` block into `rejected.md`. These are citekeys
 that never passed through Phase 2, so nothing else in the run has them.
 

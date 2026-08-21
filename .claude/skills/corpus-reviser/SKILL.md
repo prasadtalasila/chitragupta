@@ -114,7 +114,9 @@ python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --lo
 for it when a snippet is not enough to decide on a source you are minded
 to cite. Score what you keep the way `survey-writer` step 2 describes,
 and record both outcomes: kept into `evidence.md`, turned down into
-`rejected.md`.
+`rejected.md`. A block from before this run that carries only `support:`
+is never rewritten to `claim:`/`quote:` -- read it as `quote:` (the
+conservative reading) and leave it exactly as it stands.
 
 ## What does not relax
 

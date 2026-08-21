@@ -298,9 +298,16 @@ the lesson design is the part worth keeping either way.
    result -- never a fabricated one.
    If you did search, record both outcomes in the dossier before you draft
    the section: what you keep into `evidence.md`, one ``## `citekey` `` block
-   with a `relevance:` line and a `support:` line; what you retrieved and
-   turned down into `rejected.md`'s citekey table, with the query that
-   surfaced it and a few words on why.
+   with a `relevance:` line, a `claim:` line -- what the source establishes,
+   in your own words, the only field you may draft prose from -- and, only
+   where a quotation is genuinely warranted, a `quote:` line (verbatim,
+   usable only inside quotation marks with an attribution); what you
+   retrieved and turned down into `rejected.md`'s citekey table, with the
+   query that surfaced it and a few words on why. Then run
+   `python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md`
+   -- advisory, flags a `claim:` that reads like its `quote:` reworded; a
+   warning is a cue to re-read your own judgment, not to reword until it
+   stops.
 
 7. **Budget the length.** A tutorial should be completable in one sitting.
    If the path is outgrowing that, split it into a sequence of tutorials with

@@ -645,6 +645,7 @@ material is gone rather than mislaid.
 | `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
+| `check-evidence <draft>` | Advisory: does any `claim:` in `evidence.md` read like its own `quote:` with the words moved? Never blocks -- prints and always exits 0 |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
 | `restore <archive>` | Unpack a bundle. **Dry run unless `--force`** |
@@ -659,6 +660,7 @@ material is gone rather than mislaid.
 | `--write` | `sections` | With `--citekeys`: write the table into the dossier's `sections.md`, replacing what is there. Refused without `--citekeys`, and refused when the dossier doesn't exist |
 | `--section NAME` | `brief` | Take the citekeys from that `sections.md` row. Matches without the section's numbering; an ambiguous name matches nothing rather than guessing |
 | `--check` | `brief` | Report what resolves, and what doesn't, without printing the blocks -- what an orchestrator runs before dispatching |
+| `--score` | `check-evidence` | Also print each warning's overlap score. Off by default, so there is nothing to reword against until it drops |
 | `--out FILE` | `export` | Archive path (default `drafts-<name>-<date>.tar.gz`) |
 | `--with-rendered` | `export` | Include `content/rendered/` too -- large, it holds the PDFs |
 | `--force` | `restore` | Actually write, overwriting what is already there |
@@ -683,6 +685,9 @@ python -m chitragupta.draft dossier brief content/drafts/survey.md --section "2.
 # What the writer itself runs
 python -m chitragupta.draft dossier brief content/drafts/survey.md --section "2. Failure modes"
 python -m chitragupta.draft dossier brief content/drafts/survey.md talasila_composable_2025
+
+# After writing evidence.md: does any claim: just restate its own quote:?
+python -m chitragupta.draft dossier check-evidence content/drafts/survey.md
 
 # After a sync: which drafts went stale, and what specifically
 python -m chitragupta.draft dossier status --all

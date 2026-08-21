@@ -25,6 +25,7 @@ from chitragupta.dossier._brief import _cmd_brief
 from chitragupta.dossier._acronyms import _cmd_acronyms_suggest
 from chitragupta.dossier import DossierError, _cmd_list
 from chitragupta.dossier._create import _cmd_init
+from chitragupta.dossier._evidence_check import _cmd_check_evidence
 from chitragupta.dossier._language import _cmd_set_language
 from chitragupta.dossier._retrieval import _cmd_mark_revision
 from chitragupta.dossier._sections import _cmd_sections
@@ -107,6 +108,16 @@ def main(argv: list[str] | None = None) -> int:
              "that key is unset -- see docs/CONFIG.md)",
     )
     p_suggest.set_defaults(func=_cmd_acronyms_suggest)
+
+    p_check_evidence = sub.add_parser(
+        "check-evidence",
+        help="Advisory: does any claim: read like its own quote: with the words moved")
+    p_check_evidence.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_check_evidence.add_argument(
+        "--score", action="store_true",
+        help="Also print the overlap score -- off by default so there is nothing "
+             "to reword against until it drops (see _evidence_check.py)")
+    p_check_evidence.set_defaults(func=_cmd_check_evidence)
 
     p_list = sub.add_parser("list", help="Every dossier on this machine")
     p_list.set_defaults(func=_cmd_list)

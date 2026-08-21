@@ -164,7 +164,10 @@ that mode, skip to it now rather than working through this step.
 
 Before any retrieval call:
 
-- Check `evidence.md` -- the supporting quote may already be recorded.
+- Check `evidence.md` -- the claim (or, in an older dossier, the
+  `support:` quote) may already be recorded. `support:`-only blocks are
+  never rewritten to the new shape -- read one as `quote:`, the
+  conservative reading, since that is usually what it is.
 - Check `rejected.md` -- if a candidate is listed there with a reason,
   **do not retrieve and re-judge it**. That list exists precisely to stop
   the most expensive repeated work in the pipeline.
@@ -210,7 +213,8 @@ pipeline exists to prevent.**
 
 Update only what actually changed:
 
-- `evidence.md` -- new kept citekeys, with relevance and support
+- `evidence.md` -- new kept citekeys, with `relevance:`, a `claim:` in your
+  own words, and `quote:` only where a quotation earns its place
 - `rejected.md` -- anything newly retrieved and turned down. Bear in mind
   that a later revision is told to trust this file rather than re-judge
   what is in it, so a reason worth reading later is worth writing now

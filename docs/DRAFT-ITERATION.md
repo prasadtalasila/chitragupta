@@ -124,7 +124,7 @@ renders at all: it matches them by their path relative to
 | File | What it holds | Status before this |
 |---|---|---|
 | `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
-| `evidence.md` | each kept citekey, why it was kept, supporting quote or paraphrase | **specified** (survey-writer step 2) but written as JSON |
+| `evidence.md` | each kept citekey, why it was kept, and its claim -- see below | **specified** (survey-writer step 2) but written as JSON |
 | `rejected.md` | candidates retrieved and turned down, with the reason | **nowhere** |
 | `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite | **specified** (survey-writer step 8) but written as JSON |
 | `steering.md` | what the user asked for in chat that the draft doesn't show | **nowhere** |
@@ -159,6 +159,51 @@ something it cannot verify exactly would train people to work around it.
 A malformed dossier makes the next revision less efficient. It cannot
 make a draft wrong, because the citation gate still stands between any
 draft and the user.
+
+### `evidence.md`'s `claim:`/`quote:` contract (A2, #306)
+
+One `## \`citekey\`` block carries three possible fields:
+
+```markdown
+## `talasila_realising_2024`
+
+relevance: why this source bears on the sub-theme
+claim: what the source establishes, in the drafter's own words
+quote: an optional verbatim span, quotable-only
+```
+
+- **`relevance:`** is unchanged from before this section existed.
+- **`claim:`** is required, and is **the only field a drafting step may
+  write prose from.** Written by whoever judged the evidence, at the
+  moment they judged it -- before any sentence of the draft exists. That
+  ordering is the whole mechanism: a claim written from memory, once the
+  passage is no longer the thing on screen, cannot be a lightly-edited
+  copy of it.
+- **`quote:`** is optional, verbatim, and usable in a draft **only**
+  inside quotation marks with an attribution. Absent by default -- a
+  captured quote is a quote in the drafter's context, which is the thing
+  this contract removes, so one is captured only when a quotation is
+  actually intended.
+
+**Migration.** This replaces a `support:` field that held, in practice, a
+raw retrieval window -- `EVIDENCE_CHARS = 600` in `chitragupta/retrieval.py`,
+handed straight to the drafter. `support:` is **read but never written**
+after this landed: existing dossiers keep it as-is, and nothing rewrites
+one to the new shape. `evidence_blocks()` already returns a block
+verbatim without owning its shape, so old and new coexist by
+construction. A skill meeting a `support:`-only block reads it as
+`quote:` -- the conservative reading, since that is usually what it is.
+
+**The self-check.** `python -m chitragupta.draft dossier check-evidence <draft>`
+compares each block's `claim:` against its own `quote:`
+(`chitragupta/dossier/_evidence_check.py`, reusing
+`chitragupta/overlap_skipgram.py`'s stemmed word stream) and warns when the
+claim reads like the quote with its words moved. **Advisory, printed,
+never blocking**, and deliberately silent about the score by default --
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 rules out a similarity
+number a drafting step could optimise against, so a bare warning is what
+prints; `--score` opts into the number for a human reading the output by
+hand.
 
 ### Why several files rather than one
 

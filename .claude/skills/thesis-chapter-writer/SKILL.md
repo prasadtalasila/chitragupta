@@ -214,15 +214,18 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    it can never be told that. This is
    keyword overlap, not embeddings -- read each 500-character snippet and
    judge relevance yourself; a high score is a proxy, not a verdict. Keep
-   only what actually supports part of the argument; write the kept set to
-   `content/dossiers/<draft path minus suffix>/evidence.json` (citekey + why
-   it's relevant + the supporting quote/paraphrase) before drafting prose.
-   Record the same
-   judgment in the dossier while the snippets are still in front of you --
-   the kept citekeys into `evidence.md`, and every candidate you turned
+   only what actually supports part of the argument. Record the judgment in
+   the dossier while the snippets are still in front of you, before drafting
+   prose: the kept citekeys into `evidence.md`, one ``## `citekey` `` block
+   per source with a `relevance:` line, a `claim:` line -- what the source
+   establishes, in your own words, the only field the chapter may draft from
+   -- and, only where a quotation earns its place, a `quote:` line (verbatim,
+   quotation marks and attribution only); every candidate you turned
    down into `rejected.md` with the query that surfaced it and a few words
    on why ("shares vocabulary only", "wrong domain", "superseded by X"),
-   so the next revision doesn't re-judge the same papers.
+   so the next revision doesn't re-judge the same papers. Then run
+   `python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.tex`
+   -- advisory, flags a `claim:` that reads like its `quote:` reworded.
 3. **Reformulate and re-search if a concept comes up thin.** Try synonyms
    or adjacent terms and search again before concluding the corpus doesn't
    cover something -- and if it genuinely doesn't after a real attempt, say
