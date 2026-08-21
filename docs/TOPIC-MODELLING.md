@@ -189,7 +189,7 @@ honest but thin, and it is the reason the depth settings are settings.
   in the first regime and not the second; concentration does both. Quote
   the committed script's numbers, not either of those.
 
-Both are recorded in [bench/RESULTS.md](../bench/RESULTS.md). Every
+Both are recorded in `bench/RESULTS.md`. Every
 figure quoted above is from this project's own 497-document corpus on one
 host, which is one corpus and one host -- the same limitation every
 section of `bench/RESULTS.md` carries.

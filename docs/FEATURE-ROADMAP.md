@@ -1093,7 +1093,7 @@ what it left undone. The evidence -- which published finding argued for
 each decision, and which measurement on this project's own corpus
 confirmed or contradicted it -- is in
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md); the numbers are in
-[bench/RESULTS.md](../bench/RESULTS.md) under 2026-08-21.
+`bench/RESULTS.md` under 2026-08-21.
 
 It also breaks this document's "no ML dependency in the core" line only
 in appearance: every part of it lives in the optional enrichment layer,
