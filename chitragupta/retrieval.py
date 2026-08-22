@@ -47,6 +47,7 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from chitragupta import bib_collections, config, ledger
 
@@ -430,7 +431,7 @@ def _print_results(results: list[SearchResult]) -> int:
     return chars
 
 
-def _build_parser() -> "argparse.ArgumentParser":
+def _build_parser() -> Any:
     import argparse
 
     parser = argparse.ArgumentParser(

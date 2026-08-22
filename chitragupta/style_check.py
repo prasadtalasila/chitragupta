@@ -50,6 +50,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from chitragupta import config, dossier
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
@@ -239,7 +240,7 @@ def check(draft: Path, override: str | None = None) -> dict:
             "findings": findings, "proposed_language": proposal}
 
 
-def build_parser() -> "argparse.ArgumentParser":
+def build_parser() -> Any:
     import argparse  # local, so importing this module stays cheap for the hook
 
     parser = argparse.ArgumentParser(
