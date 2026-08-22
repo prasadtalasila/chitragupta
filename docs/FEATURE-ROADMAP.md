@@ -1,7 +1,15 @@
 # Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Nothing below is
-built; no issue numbers are claimed yet.
+Status: **plan, partly built.** Written 2026-08-20, and **ten of the
+twenty-one items in [Build order](#build-order) have since shipped** -- the
+table there marks each one and names the PR. That line originally read
+"nothing below is built"; it stopped being true within days, which is
+the ordinary fate of a status line nobody has to update.
+
+**For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
+That is this document's counterpart: it describes the capability surface
+as built, and is pinned to the code by a test. This one describes what
+*would* be built and in what order, and is allowed to age.
 
 Drafts out of this pipeline carry too much of their sources' wording.
 This document says why that happens -- it is a property of how evidence
@@ -555,6 +563,15 @@ changing what a paragraph is required to be.
 
 ### B1: cap passages per source
 
+**Shipped in [#318](https://github.com/prasadtalasila/chitragupta/pull/318)**,
+against `chitragupta/enrich/embed_index.py` rather than
+`retrieval.search()`. The reason is worth keeping: BM25 retrieval already
+returns one result per citekey by construction, so a per-citekey cap
+there would have been a no-op -- `chitragupta/retrieval.py` says so at
+the function it would have been added to. The embedding index is where
+several passages from one source genuinely can crowd out the rest, so
+that is where the cap went.
+
 OpenScholar's `--max_per_paper` (`src/open_scholar.py:615-630`). Add a
 per-citekey cap to `retrieval.search()` so a single document cannot
 dominate a sub-theme's evidence set. Cheap, deterministic, stdlib-only,
@@ -838,6 +855,8 @@ never advertised as a style artefact.
 
 ### D1: the metaphor rule, and a layout checklist
 
+**Shipped in [#329](https://github.com/prasadtalasila/chitragupta/pull/329).**
+
 Two prompt-side changes into the five genre skills' TikZ instructions
 and [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10. No code, no
 dependencies, and between them they address the cause and give the
@@ -1040,6 +1059,8 @@ carries `--json` today. **Build-order step 6 has shipped.** Steps 3 and
 
 ### F1: `--json` on the other two review aids
 
+**Shipped in [#326](https://github.com/prasadtalasila/chitragupta/pull/326).**
+
 Step 2 (#127, widened). `verbatim scan` and `verbatim recheck` emit
 `--json` today; `citation_provenance` and `citation_coverage` do not.
 The layer-level plumbing they would reuse -- `review.envelope()` and
@@ -1193,29 +1214,35 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-| # | PR | Theme | Size | Depends on |
-|---|---|---|---|---|
-| 1 | [B1](#b1-cap-passages-per-source) per-source passage cap | B | S | -- |
-| 2 | [A2](#a2-split-support-into-claim-and-quote) `claim:` / `quote:` split | A | M | -- |
-| 3 | [A3](#a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
-| 4 | [D1](#d1-the-metaphor-rule-and-a-layout-checklist) metaphor rule + layout checklist | D | S | -- |
-| 5 | [F1](#f1---json-on-the-other-two-review-aids) `--json` on the other two aids | F | M | -- |
-| 6 | [B2](#b2-require-multi-source-paragraphs) multi-source paragraphs | B | M | B1 |
-| 7 | [C1](#c1-uncited-prose-report) uncited-prose report | C | M | F1 |
-| 8 | [A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201) mandatory verbatim scan | A | M | **shipped 6.20.1** |
-| 9 | [A4](#a4-the-evidence-appendix) Evidence appendix | A | M | A2 |
-| 10 | [D2](#d2-deterministic-tikz-layout-check) deterministic TikZ layout check | D | M-L | D1 |
-| 11 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 12 | [A0](#a0-record-the-attribution-done) borrowing position | A | XS | before any borrowing |
-| 13 | [B4](#b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 14 | [F2](#f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
-| 15 | [D3](#d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 |
-| 16 | [C3](#c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 17 | [F3](#f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
-| 18 | [B5](#b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
-| 19 | [C2](#c2-claim-support-checking) claim-support checking | C | L | C1 |
-| 20 | [E1](#e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- |
-| 21 | [D4](#d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+**Status is recorded here rather than only in each section**, because
+that is where someone picking up the next PR looks. Ten have shipped;
+each names the PR that closed it, and the section below carries the
+detail -- including where what shipped differs from what was planned,
+which is the part worth reading before starting the next one.
+
+| # | PR | Theme | Size | Depends on | Status |
+|---|---|---|---|---|---|
+| 1 | [B1](#b1-cap-passages-per-source) per-source passage cap | B | S | -- | shipped ([#318](https://github.com/prasadtalasila/chitragupta/pull/318)) |
+| 2 | [A2](#a2-split-support-into-claim-and-quote) `claim:` / `quote:` split | A | M | -- | shipped ([#306](https://github.com/prasadtalasila/chitragupta/issues/306)) |
+| 3 | [A3](#a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 | -- |
+| 4 | [D1](#d1-the-metaphor-rule-and-a-layout-checklist) metaphor rule + layout checklist | D | S | -- | shipped ([#329](https://github.com/prasadtalasila/chitragupta/pull/329)) |
+| 5 | [F1](#f1---json-on-the-other-two-review-aids) `--json` on the other two aids | F | M | -- | shipped ([#326](https://github.com/prasadtalasila/chitragupta/pull/326)) |
+| 6 | [B2](#b2-require-multi-source-paragraphs) multi-source paragraphs | B | M | B1 | shipped ([#341](https://github.com/prasadtalasila/chitragupta/pull/341)) |
+| 7 | [C1](#c1-uncited-prose-report) uncited-prose report | C | M | F1 | shipped ([#347](https://github.com/prasadtalasila/chitragupta/pull/347)) |
+| 8 | [A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201) mandatory verbatim scan | A | M | **amendment** | shipped ([#350](https://github.com/prasadtalasila/chitragupta/pull/350)) |
+| 9 | [A4](#a4-the-evidence-appendix) Evidence appendix | A | M | A2 | shipped ([#346](https://github.com/prasadtalasila/chitragupta/pull/346)) |
+| 10 | [D2](#d2-deterministic-tikz-layout-check) deterministic TikZ layout check | D | M-L | D1 | shipped ([#344](https://github.com/prasadtalasila/chitragupta/pull/344)) |
+| 11 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- | -- |
+| 12 | [A0](#a0-record-the-attribution-done) borrowing position | A | XS | before any borrowing | done |
+| 13 | [B4](#b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 | -- |
+| 14 | [F2](#f2-the-agenda-aid) the `agenda` aid | F | L | F1 | -- |
+| 15 | [D3](#d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 | -- |
+| 16 | [C3](#c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 | -- |
+| 17 | [F3](#f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 | -- |
+| 18 | [B5](#b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 | -- |
+| 19 | [C2](#c2-claim-support-checking) claim-support checking | C | L | C1 | -- |
+| 20 | [E1](#e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- | -- |
+| 21 | [D4](#d4-optional-vision-critique) vision critique | D | M | D1-D3 | -- |
 
 Withdrawn: [A1b](#a1b-auto-route-findings-into-overlap-reviser----declined).
 Already answered: [F4](#f4-the-gating-decision----already-answered).

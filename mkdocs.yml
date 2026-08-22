@@ -144,6 +144,7 @@ nav:
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
+      - What it does: docs/FEATURES.md
       - Which genre skill: docs/GENRE.md
       - Getting your library in: docs/ZOTERO.md
       - Commands: docs/CLI.md
@@ -174,7 +175,6 @@ nav:
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
       - Auto-improvement, what would be built: docs/AUTO-IMPROVEMENT.md
-      - Feature roadmap, what would be built: docs/FEATURE-ROADMAP.md
       - Auto-improvement, why: docs/AUTO-IMPROVEMENT-RATIONALE.md
       - House style: docs/HOUSE-STYLE.md
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
