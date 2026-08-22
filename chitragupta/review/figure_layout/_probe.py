@@ -1,0 +1,154 @@
+r"""Getting a figure's real geometry out of TeX.
+
+**Why a compile is needed at all**, since "just parse the source" is the
+obvious cheaper thought: a node's box depends on the font, the label's
+rendered width and TikZ's own layout, none of which exists until TeX has
+run. `\node (a) at (0,0) {A}` says where a node's *anchor* is, never how
+big it turned out.
+
+**And why the compile is instrumented**, since "just compile it and read
+the PDF" is the next one: a compiled figure's PDF retains no node names
+at all. Verified -- its content stream is anonymous drawing operators
+(`1 0 0 1 155.769 660.474 cm`, `[(A)]TJ`), because TikZ knows a name only
+while it is running and the PDF has already forgotten. A bare compile can
+answer "does this compile?" and nothing else. The `\typeout` below is
+what makes TeX write the name-to-box mapping down while it still knows
+it.
+
+The emitted document is `article`-based and reads coordinates through
+pgf's public `\pgfgetlastxy`; `scaffold()`'s own docstring has the
+reasoning for both, and both were arrived at by compiling rather than by
+reading documentation.
+"""
+
+import re
+import subprocess
+import tempfile
+from pathlib import Path
+
+from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
+
+# What the scaffold prints per node, and what this module parses back.
+# One node per line, `pt`-suffixed as TeX writes dimensions.
+_CGBOX_RE = re.compile(
+    r"^CGBOX (?P<name>.+?) "
+    r"(?P<x1>-?[\d.]+)pt (?P<y1>-?[\d.]+)pt "
+    r"(?P<x2>-?[\d.]+)pt (?P<y2>-?[\d.]+)pt\s*$",
+    re.MULTILINE,
+)
+
+# `\node[opts] (name) at (x,y) {label}`, for finding what to probe. The
+# same shape `_source.py` parses for its own checks; kept separate rather
+# than imported because the two want different things from it -- this one
+# only ever needs the name.
+_NODE_NAME_RE = re.compile(r"\\node\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
+
+class FigureCompileError(RuntimeError):
+    """One figure's own TikZ did not compile.
+
+    Distinct from `render_output.MissingBinary`, and the distinction is
+    the whole of this aid's failure policy. `MissingBinary` says *the
+    host* cannot compile any figure -- one fact, checked once, reported
+    once. This says *this figure* is broken while others may be fine, so
+    the caller catches it per figure and carries on checking the rest.
+    """
+
+
+def node_names(source: str) -> list[str]:
+    """Every node name the figure defines, in source order.
+
+    The scaffold needs these up front: `\\pgfpointanchor` is asked for
+    one named node at a time, so the probe has to know what to ask for
+    before it can ask.
+    """
+    return [match.group("name").strip() for match in _NODE_NAME_RE.finditer(source)]
+
+
+def scaffold(source: str, names: list[str]) -> str:
+    """A minimal document that compiles `source` and prints its geometry.
+
+    `article`, deliberately, not `standalone`: `standalone.cls` lives in
+    `texlive-latex-extra` while `tikz.sty` lives in `texlive-pictures`,
+    so building on it would add a toolchain dependency
+    `_require_tikz()` does not check -- reintroducing #226's bug in a new
+    place. This is also the same minimal wrapper
+    docs/WRITING-STANDARDS.md §10 already tells an author to verify a
+    figure with, so a figure that compiles here compiles there.
+
+    Coordinates come back through `\\pgfgetlastxy`, pgf's public
+    accessor, rather than the internal `\\pgf@x`/`\\pgf@y` registers.
+    Reading those directly needs `\\makeatletter`, and *without* it the
+    `\\typeout` silently degrades to the literal text `\\the \\pgf`
+    while pdflatex still exits 0 -- a wrong answer that looks like a
+    right one.
+
+    The picture's own extent is read the same way, from TikZ's
+    `current bounding box` pseudo-node, so protrusion and emptiness need
+    no second mechanism.
+    """
+    probes = "\n".join(
+        f"\\pgfpointanchor{{{name}}}{{south west}}\\pgfgetlastxy{{\\cgx}}{{\\cgy}}%\n"
+        f"\\pgfpointanchor{{{name}}}{{north east}}\\pgfgetlastxy{{\\cgxx}}{{\\cgyy}}%\n"
+        f"\\typeout{{CGBOX {name} \\cgx\\space\\cgy\\space\\cgxx\\space\\cgyy}}%"
+        for name in [*names, BBOX_NAME]
+    )
+    return (
+        "\\documentclass{article}\n"
+        "\\usepackage{tikz}\n"
+        "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
+        "\\begin{document}\n"
+        f"{source}\n"
+        "\\begin{tikzpicture}[remember picture, overlay]\n"
+        f"{probes}\n"
+        "\\end{tikzpicture}\n"
+        "\\end{document}\n"
+    )
+
+
+def parse_boxes(log: str) -> dict[str, Box]:
+    """`{node name: (x1, y1, x2, y2)}` from the scaffold's own output."""
+    return {
+        match.group("name"): (
+            float(match.group("x1")), float(match.group("y1")),
+            float(match.group("x2")), float(match.group("y2")),
+        )
+        for match in _CGBOX_RE.finditer(log)
+    }
+
+
+def node_boxes(figure_path: Path) -> dict[str, Box]:
+    """Compile `figure_path` in a temp directory and return its geometry.
+
+    **The compile is a side effect and must not litter.** Everything
+    pdflatex writes -- `.aux`, `.log`, `.pdf` -- lands in a
+    `TemporaryDirectory` and is gone when this returns, so running a
+    review aid never leaves build artefacts beside a user's draft.
+
+    Raises `FigureCompileError` if this figure does not compile. That is
+    a finding for the caller to report, not a crash: the draft's other
+    figures are still worth checking.
+    """
+    source = figure_path.read_text(encoding="utf-8")
+    with tempfile.TemporaryDirectory() as tmp:
+        probe = Path(tmp) / "probe.tex"
+        probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
+        result = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", probe.name],
+            cwd=tmp, capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            raise FigureCompileError(_compile_error_detail(result.stdout))
+        return parse_boxes(result.stdout)
+
+
+def _compile_error_detail(log: str) -> str:
+    """The first TeX error line from a failed run, for the report.
+
+    A whole pdflatex log is far too much to put in a review report, and
+    its first `!` line is the one a human would look at anyway.
+    """
+    for line in log.splitlines():
+        if line.startswith("!"):
+            return line.strip()
+    return "pdflatex failed without reporting an error line"
+

@@ -49,7 +49,25 @@ Usage:
 from pathlib import Path
 
 from chitragupta.render_output._figures import _figure_refs, _resolve_sibling
+from chitragupta.review.figure_layout._geometry import (
+    BBOX_NAME, Box, emptiness, overlaps, protrudes,
+)
+from chitragupta.review.figure_layout._probe import (
+    FigureCompileError, node_boxes, node_names, parse_boxes, scaffold,
+)
+from chitragupta.review.figure_layout._source import (
+    MAX_NODE_WORDS, edge_list, overlong_nodes,
+)
 
+# Re-exported so the aid is one import for a caller and one name in
+# `review.AIDS`, while the three modules behind it stay split by what
+# they need: `_source` compiles nothing, `_geometry` is arithmetic, and
+# only `_probe` shells out to pdflatex.
+__all__ = [
+    "BBOX_NAME", "Box", "FigureCompileError", "MAX_NODE_WORDS",
+    "edge_list", "emptiness", "figures_in", "node_boxes", "node_names",
+    "overlaps", "overlong_nodes", "parse_boxes", "protrudes", "scaffold",
+]
 
 def figures_in(draft_path: Path) -> list[Path]:
     """Every TikZ figure file `draft_path` references, as real paths.
@@ -69,3 +87,4 @@ def figures_in(draft_path: Path) -> list[Path]:
     text = draft_path.read_text(encoding="utf-8")
     resolved = (_resolve_sibling(draft_path.parent, ref) for ref in _figure_refs(text))
     return [path for path in resolved if path is not None]
+
