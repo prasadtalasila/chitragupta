@@ -70,7 +70,7 @@ class TestOsDeps:
 
 class TestGpuTorch:
     def test_targets_the_running_interpreters_own_venv(self, monkeypatch, tmp_path):
-        # tmp_path, not a hardcoded POSIX string: Path(...).resolve() on
+        # tmp_path, not a hardcoded POSIX string: a resolved path on
         # Windows turns "/opt/some-venv/bin/python" into a drive-letter
         # path, which a literal "/opt/..." assertion on the other side
         # can never match -- caught on the Windows CI leg.
@@ -82,7 +82,31 @@ class TestGpuTorch:
         assert install.main(["gpu-torch"]) == 0
         (command, kwargs), = recorded.calls
         assert command == ["bash", str(install.SCRIPT), "gpu-torch"]
-        bin_dir = fake_python.resolve().parent
+        bin_dir = fake_python.parent
+        assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
+        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
+
+    def test_stays_inside_the_venv_when_python_is_a_symlink(self, monkeypatch, tmp_path):
+        # `python3 -m venv` always makes bin/python a symlink to the base
+        # interpreter (tests/conftest.py's system_python fixture notes the
+        # same thing). Resolving that symlink walks straight out of the
+        # venv to the base interpreter's own directory -- issue #369: this
+        # is why `chitragupta install gpu-torch` reinstalled torch against
+        # the system pip (`error: externally-managed-environment`) instead
+        # of the venv chitragupta was actually installed into.
+        base_python = tmp_path / "usr" / "bin" / "python3.13"
+        base_python.parent.mkdir(parents=True)
+        base_python.touch()
+        venv_python = tmp_path / "some-venv" / "bin" / "python"
+        venv_python.parent.mkdir(parents=True)
+        venv_python.symlink_to(base_python)
+        monkeypatch.setattr(install.shutil, "which", lambda b: "/usr/bin/bash")
+        monkeypatch.setattr(install.sys, "executable", str(venv_python))
+        recorded = RecordedRun()
+        monkeypatch.setattr(install.subprocess, "run", recorded)
+        assert install.main(["gpu-torch"]) == 0
+        (_command, kwargs), = recorded.calls
+        bin_dir = venv_python.parent
         assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
         assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
 

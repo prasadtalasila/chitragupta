@@ -77,7 +77,11 @@ def _run_gpu_torch() -> int:
         print("gpu-torch needs bash. Reinstall by hand from "
               "https://pytorch.org/get-started/locally/.", file=sys.stderr)
         return 1
-    bin_dir = Path(sys.executable).resolve().parent
+    # Not .resolve(): a venv's bin/python is a symlink to the base
+    # interpreter, and resolving it walks straight out of the venv to the
+    # base interpreter's own directory -- sys.executable is already
+    # documented absolute, so nothing here needs normalizing (#369).
+    bin_dir = Path(sys.executable).parent
     env = {**os.environ,
            "CHITRAGUPTA_PIP": str(bin_dir / "pip"),
            "CHITRAGUPTA_PYTHON": str(bin_dir / "python")}
