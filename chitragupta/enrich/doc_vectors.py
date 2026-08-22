@@ -107,7 +107,7 @@ def content_text(text: str) -> str:
 EMBED_METHOD = "chunk-mean-content-v2"
 
 
-def pooled_embedding(text: str, model):
+def pooled_embedding(text: str, model) -> list[float] | None:
     """One vector for a whole document: the mean of its chunk vectors.
 
     **Not `model.encode(text)`, and the difference is most of the

@@ -27,6 +27,7 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from chitragupta import config, logging_setup
 from chitragupta.enrich.corpus import CorpusDoc
@@ -131,7 +132,7 @@ def chunk_text(text: str, chunk_words: int = 200, overlap_words: int = 40) -> li
     return [" ".join(words[i:i + chunk_words]) for i in range(0, len(words), step)]
 
 
-def get_client_and_model():
+def get_client_and_model() -> tuple[Any, Any]:
     import chromadb
     from sentence_transformers import SentenceTransformer
 

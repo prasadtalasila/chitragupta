@@ -23,17 +23,17 @@ from chitragupta.enrich import (docling_parse, embed_index, topic_converge,
 logger = logging.getLogger("chitragupta.enrich")
 
 
-def stage_docling(docs, args):
+def stage_docling(docs, args) -> dict:
     status = docling_parse.parse_corpus(docs)
     errors = {k: v for k, v in status.items() if v.startswith("error")}
     return {"status": "ok" if not errors else "partial", "detail": status}
 
 
-def stage_embed(docs, args):
+def stage_embed(docs, args) -> dict:
     return {"status": "ok", "detail": embed_index.build_index(docs)}
 
 
-def stage_bertopic(docs, args):
+def stage_bertopic(docs, args) -> dict:
     result = topic_model.run_topic_model(docs)
     return {"status": "ok",
             "detail": {"n_docs": result["n_docs"],
@@ -48,14 +48,14 @@ def stage_bertopic(docs, args):
 # stage is no reason to move. The seed list is read here, though, because
 # "is there a seed file" is the question that decides whether the stage
 # runs at all, and that is this file's decision to make.
-def stage_seed_topics(docs, args):
+def stage_seed_topics(docs, args) -> dict:
     return topic_seeding.run_stage(docs, seed_topics.load())
 
 
 # Last, and it must stay last: it joins what the two stages above wrote
 # and computes nothing itself. Running it earlier reads a stale
 # content/topics.json, or none.
-def stage_converge(docs, args):
+def stage_converge(docs, args) -> dict:
     return topic_converge.run_stage(docs, seed_topics.load())
 
 
