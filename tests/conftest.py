@@ -150,6 +150,12 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 8)
     monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", True)
     monkeypatch.setattr(config, "TOPIC_CONVERGE_SIMILARITY", 0.45)
+    # Pinned to the shipped defaults so a developer's own config.toml
+    # can't change whether a fixed input text's score clears the "good"
+    # band -- these two are read as incidental pass/fail scaffolding by
+    # tests that are asserting claim-splitting logic, not the threshold.
+    monkeypatch.setattr(config, "PROVENANCE_WEAK_SCORE", 0.20)
+    monkeypatch.setattr(config, "PROVENANCE_GOOD_SCORE", 0.50)
     return config
 
 
