@@ -159,21 +159,27 @@ suppressed set is the *right* set. Build-order item 2 anticipates exactly
 this ("the register above and ruff's ignore list are two debt lists; they
 should be one") -- it assumes ruff arrives first. It has not.
 
-### Type annotations: 394 of 433
+### Type annotations: 695 of 748
 
-Build-order item 3 says "`chitragupta/` is partly annotated." It is 91%
-(394 of 433 `def`s carry a return annotation), and the distribution is
-the finding rather than the total:
+Build-order item 3 says "`chitragupta/` is partly annotated." It is 93%
+(695 of 748 `def`s carry a return annotation), and the distribution is
+the finding rather than the total. Both numbers grew substantially since
+this section was last measured -- the tree has gone from 433 `def`s to
+748 as new modules landed (`spec/`, `unit/`, `registry/`,
+`review/synthesis.py` among them) -- so re-run the count directly
+(`ast`-walk every `def`, check `node.returns`) rather than trusting a
+stale figure here, the same caution this document asks of its own
+size-of-`bench/` claim in [3.1](#31-bench-is-outside-every-check-in-the-repository).
 
 | Module | Annotated |
 |---|---|
-| `chitragupta/review/verbatim_check.py` | **60 / 60** -- resolved #133 |
-| `chitragupta/review/citation_provenance.py` | 16 / 17 |
-| `chitragupta/review/citation_coverage.py` | 11 / 12 |
+| `chitragupta/review/verbatim_check.py` | **69 / 69** -- resolved #133 |
+| `chitragupta/review/citation_provenance.py` | 23 / 24 |
+| `chitragupta/review/citation_coverage.py` | 14 / 15 |
 | `chitragupta/review/__init__.py` | 10 / 10 |
 | `chitragupta/runlock.py` | **7 / 7** -- resolved #293 |
-| `chitragupta/sync.py` | **16 / 16** -- resolved #293 |
-| `chitragupta/dossier.py` | 64 / 65 as one file; split into `chitragupta/dossier/` by #219, not re-measured per module since |
+| `chitragupta/sync.py` | **16 / 16** -- resolved #293, see correction below |
+| `chitragupta/dossier/` | 88 / 90 -- `_drift.py::DriftIndex.__init__` and `_sections.py::_prose_lines` are the two gaps, split from the one-file 64/65 count by #219 and re-measured per module now rather than left unmeasured |
 
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
 the second-largest module in the repository with no annotations at all,
@@ -186,14 +192,15 @@ already touching every function in the file, and no behaviour changed --
 annotating a module nothing else in the change touches is how an
 annotation pass turns into a diff nobody can review.
 
-**`runlock.py` and `sync.py` are also resolved, in #293** -- the return
-annotations missing from `pipeline_lock.__init__`/`_holder_path`/
-`__enter__`/`__exit__` and from `sync.py`'s `_executor_for`/
-`_as_they_land`/`_parse_serial`/`_parse_parallel` were added, no
-behaviour changed. Both were re-counted against the current tree rather
-than against the numbers above, which predate #178's split of
-`chitragupta/sync.py::run` and no longer describe either module's actual
-function count.
+**`runlock.py` is resolved, in #293.** `sync.py`'s own claim of being
+resolved in the same issue was not true: #293 (PR #296) added the
+return annotations missing from `_executor_for`/`_as_they_land`/
+`_parse_serial`/`_parse_parallel`, but `_report_stale` -- present in the
+file since before #296 merged, not a later addition -- was missed,
+leaving the module at 15/16 despite the claim of completeness. Fixed
+here rather than left as a documented gap, the same one-line,
+zero-behaviour shape as the rest of this batch: `_report_stale` now
+carries its return annotation, and `sync.py` is genuinely 16/16.
 
 ## Tier 3: found by review, tracked nowhere
 
