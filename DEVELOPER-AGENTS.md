@@ -1,4 +1,4 @@
-# DEVELOPER-AGENTS.md
+# 🤖 DEVELOPER-AGENTS.md
 
 Guidance for coding agents (and anyone else) **working on this repository
 itself**, as opposed to using it to draft content. The user-facing half is
@@ -8,7 +8,7 @@ itself**, as opposed to using it to draft content. The user-facing half is
 may generate, guess or rewrite a citekey, and no new check may be promoted
 into a gate beside `chitragupta/citation_gate.py`.
 
-## Role
+## 🎭 Role
 
 This assistant manages most of the day-to-day development here: implementing
 features, writing tests first, running the full local check suite, opening
@@ -19,7 +19,7 @@ each step -- reserve pausing for decisions that are genuinely irreversible
 regenerable) or genuinely ambiguous (a requirement with more than one
 reasonable reading and no clear tie-breaker in this file or the code).
 
-## Behavioural rules: think before coding
+## 🤔 Behavioural rules: think before coding
 
 Four rules about *how to work*, as opposed to what the code should look
 like ([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)). They prioritise
@@ -36,7 +36,7 @@ caution over speed; for a genuinely trivial change, use judgement.
    cannot occur. Ask whether a reviewer would call it over-engineered; if
    yes, cut it. Note the one deliberate exception: the *comments* are not
    subject to this -- see
-   [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid).
+   [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid).
 3. **Surgical changes.** Each changed line should trace to the requested
    task. Do not refactor unrelated code, and match the local style of
    whatever you are editing. Remove imports and helpers *your* change
@@ -45,14 +45,14 @@ caution over speed; for a genuinely trivial change, use judgement.
    in the PR, not a licence to rewrite it while passing through. This is
    where the Boy Scout Rule lands here: cleanup happens, in its own PR
    and against the register, rather than inside an unrelated diff --
-   [why](docs/CODE-STANDARDS.md#the-boy-scout-rule-and-surgical-changes).
+   [why](docs/CODE-STANDARDS.md#-the-boy-scout-rule-and-surgical-changes).
 4. **Goal-driven execution.** Turn the task into a verifiable goal before
    starting: "fix the bug" becomes "write a test that reproduces it, then
    make it pass" -- which is the test-driven rule below, arrived at from
    the other direction. For a multi-step change, state the plan as steps
    with the check that verifies each.
 
-## Code standards
+## 📏 Code standards
 
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) is the standard the code
 itself is held to -- the code counterpart of `docs/WRITING-STANDARDS.md`.
@@ -69,7 +69,7 @@ Read it before a non-trivial change. In brief:
   aligned with the 25-statement rule, for the same anti-over-splitting
   reason. Do not split a function merely to satisfy an S3776 finding of
   25 or below; mark it *Accepted* in SonarCloud instead --
-  [why](docs/CODE-STANDARDS.md#cognitive-complexity-the-bar-is-25-not-sonarqubes-default-15).
+  [why](docs/CODE-STANDARDS.md#-cognitive-complexity-the-bar-is-25-not-sonarqubes-default-15).
 - Everything else in that document -- naming, one-thing-per-function, the
   code-smell vocabulary -- is a review standard with no detector,
   deliberately. A quality score is not a thing to drive to zero;
@@ -80,7 +80,7 @@ Read it before a non-trivial change. In brief:
   review / not-applicable. [docs/INSPIRATION.md](docs/INSPIRATION.md) has
   the provenance.
 
-## Module boundaries
+## 🧩 Module boundaries
 
 `chitragupta/references.py` formats an IEEE bibliography entry (authors, venue,
 volume, pages) from the ledger's `bib_fields` column, which `sync`
@@ -97,7 +97,7 @@ read the
 other way: it sits beside the two aids it belongs with, not in
 `scripts/`, which holds dev tooling and no layer entry point at all.
 
-## Environment constraints on this host
+## 🖥 Environment constraints on this host
 
 `pip install` outside a venv is blocked (PEP 668) -- unconditionally, on
 every host, regardless of root access. **This matters for the corpus
@@ -193,7 +193,7 @@ withheld). **It has still not been built or run in this environment** (no
 Docker daemon here) -- treat it as a draft to validate, not a tested
 artifact.
 
-## The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
+## 🧠 The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
 Implements Docling -> sentence-transformers/Chroma ->
 BERTopic -> Pandoc/LaTeX, one script for both host and Docker. Each stage
@@ -219,7 +219,7 @@ document and merged, never rewritten to match the run's own view of the
 corpus. `embed` and `bertopic` are refused rather than scoped, because
 each writes one whole-corpus artefact with no partial form -- allowing
 either needs the Chroma collection to record its own coverage first.
-[docs/LADDERS.md](docs/LADDERS.md#scoping-a-run-to-one-draft) owns that
+[docs/LADDERS.md](docs/LADDERS.md#-scoping-a-run-to-one-draft) owns that
 reasoning; keep it there rather than restating it.
 
 No stage in this pipeline calls out to an LLM or needs an API key --
@@ -235,7 +235,7 @@ index a document a draft would not be allowed to cite. If a paper is
 worth enriching, it belongs in the reference manager: catalogue it,
 re-export, and re-run `python -m chitragupta.corpus sync`.
 
-## Conventions a new stage has to follow
+## 🤝 Conventions a new stage has to follow
 
 Three, each learned from a bug rather than chosen:
 
@@ -272,7 +272,7 @@ Three, each learned from a bug rather than chosen:
   raise *before* anything is written, so nothing enters the incremental
   cache.
 
-## Development process: agile, test-driven
+## 🧪 Development process: agile, test-driven
 
 Work in small, independently-shippable increments -- prefer several small,
 reviewable PRs over one large one, and prefer a working, tested slice of a
@@ -291,7 +291,7 @@ something you can't first demonstrate is broken. Exception: exploratory
 spikes to understand a problem before committing to an approach don't
 need up-front tests, but the resulting real change does.
 
-### Recording a plan before you build
+### 🗺 Recording a plan before you build
 
 [docs/FEATURE-ROADMAP.md](docs/FEATURE-ROADMAP.md) holds what would be
 built and in what order. For an item whose design is genuinely
@@ -308,7 +308,7 @@ that a merged plan records which PR closed it.
 `EXCLUDE_TOP_LEVEL`, like `tests/` and `bench/`. It is linted, though --
 the markdownlint globs above include it.
 
-## Before claiming a task complete: run all local checks
+## ✅ Before claiming a task complete: run all local checks
 
 Never report a task as done on the strength of a plan or a code read alone.
 Before saying so, actually run, in this repo:
@@ -354,7 +354,7 @@ Before saying so, actually run, in this repo:
 
 Only once all of the above are green does a task count as complete.
 
-### Reading a red `codecov/project` on a branch you believe is 100%
+### 🐛 Reading a red `codecov/project` on a branch you believe is 100%
 
 Believe your local run first, and check the session count before you go
 looking for the coverage you lost -- because twice now there was none to
@@ -384,7 +384,7 @@ matrix. **One session** is the different problem -- a leg that never
 produced a `coverage.xml` -- and there the status will sit pending rather
 than post a wrong number.
 
-### The linters, which are enforced
+### 🧹 The linters, which are enforced
 
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
 [DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
@@ -409,7 +409,7 @@ CI on 2026-08-15.
 
 **All three are blocking, at a binary zero-messages bar** -- never a
 `fail-under` score, because
-[R3](docs/AUTO-IMPROVEMENT.md#the-requirements) rules out driving a
+[R3](docs/AUTO-IMPROVEMENT.md#-the-requirements) rules out driving a
 number, and a score can improve while the thing you cared about gets
 worse. There is no backlog left to avoid: the pylint/markdownlint
 adoption in 5.8.0 cleared both to zero first, and ruff's own adoption
@@ -442,7 +442,7 @@ no DTaaS config to inherit it from:
   broader) default.** `BLE` is the rule the adoption exists for; `E`/`F`
   are pyflakes/pycodestyle's core correctness checks plus the "keep
   lines short" review rule [CODE-STANDARDS.md's build
-  order](docs/CODE-STANDARDS.md#build-order) already named for ruff;
+  order](docs/CODE-STANDARDS.md#-build-order) already named for ruff;
   `RUF100` is what turns a `# noqa: BLE001` into a checked claim instead
   of a comment nothing reads.
 - **`per-file-ignores` covers `__init__.py`'s `F401`/`E402`** wholesale
@@ -464,7 +464,7 @@ no DTaaS config to inherit it from:
   `chitragupta/pdf_text.py`'s `_extract_docling` re-raises via `raise ...
   from exc`, which BLE001's own definition of "blind" exempts. `bench/`'s
   two markers were checked the same way and are genuine --
-  [Tier 3.1](docs/TECHNICAL-DEBT.md#31-bench-is-outside-every-check-in-the-repository)
+  [Tier 3.1](docs/TECHNICAL-DEBT.md#-31-bench-is-outside-every-check-in-the-repository)
   leaves `bench/` outside every check including this one, unchanged, so
   they stay inert in practice but correct on the evidence.
 - **`ruff`'s own version is pinned exactly**, not only for Sonar S8544:
@@ -478,10 +478,10 @@ runner: it normalises line endings so CI's Windows leg reads
 byte-identical files to the Linux leg, which matters because four tests
 here scan this repository's own source.
 
-## Reviewing before you push: the OpenCodeReview plugin
+## 🔍 Reviewing before you push: the OpenCodeReview plugin
 
 **This is a step in the cycle, not an optional extra.** Step 3 of
-[Shipping a code change](#shipping-a-code-change-the-full-cycle) is to run
+[Shipping a code change](#-shipping-a-code-change-the-full-cycle) is to run
 it on the branch and act on what it finds, before the PR is opened -- the
 same standing as the local check suite above it. It is the one review that
 happens while the change is still cheap to alter, which is the whole
@@ -534,7 +534,7 @@ Whichever runs, **say which one did.** "OCR reviewed the branch" and "I
 reviewed the branch against OCR's rules" are different claims, and only
 one of them is usually true.
 
-### What the plugin does and does not reach
+### 🚫 What the plugin does and does not reach
 
 `.opencodereview/rule.json` is what makes it worth running here. OCR's
 built-in rule is generic Python review, and is wrong about this tree in
@@ -574,7 +574,7 @@ Two traps, both of which have already caught someone:
   on a host where it is installed. Check that before concluding the tool
   is absent.
 
-### It is an aid, not a gate
+### ⚠ It is an aid, not a gate
 
 Same standing as the review layer ([SOUL.md](SOUL.md)): nothing here
 blocks on it, `python -m chitragupta.draft gate` remains the only gate, and a
@@ -585,7 +585,7 @@ failure mode that document's R3 is about. The plugin's `review` skill
 offers to apply fixes autonomously; the surgical-changes rule above still
 governs what may land in your diff.
 
-## Commit messages
+## 💬 Commit messages
 
 Title line: imperative mood, concise, describes the change's effect (not
 "updated files" or "misc fixes"). PRs are squash-merged (see "Pull
@@ -604,7 +604,7 @@ That rule used to carry an exception -- merging with an explicit
 number had to be written in. That exception is **gone**, and so is the
 older hazard beside it, that `COMMIT_OR_PR_TITLE` took a one-commit
 branch's *commit* title rather than the PR's, so a drifted commit title
-landed instead. Both were fixed by the settings in [Merging](#merging),
+landed instead. Both were fixed by the settings in [Merging](#-merging),
 applied 2026-08-18.
 
 Body: a blank line, then a bulleted list of the specific, concrete changes,
@@ -648,10 +648,10 @@ is no templating step between a PR description and a commit body for a
 setting to hook into.
 
 So the body is supplied at merge time, by `--body-file` -- see
-[Merging](#merging). Not a workaround for an unapplied setting any more;
+[Merging](#-merging). Not a workaround for an unapplied setting any more;
 the setting that would replace it does not exist.
 
-## Merging
+## 🔀 Merging
 
 Squash -- not by convention, by configuration: `allow_merge_commit` and
 `allow_rebase_merge` are both `false`, so it is the only method the
@@ -671,7 +671,7 @@ which means re-solving a problem that is now solved and getting `(#42)
 setting is `PR_BODY`, which lands the PR description verbatim -- review
 tick-boxes and all -- so without this flag `main`'s history gets
 `.github/pull_request_template.md` rather than a commit message. As
-["Commit messages"](#commit-messages) sets out, no value of
+["Commit messages"](#-commit-messages) sets out, no value of
 `squash_merge_commit_message` produces the documented shape, because none
 of them transforms the text. Write the file in the bulleted shape rather
 than piping raw branch commits into it, which just reproduces the old
@@ -682,9 +682,9 @@ something a command produces, not something a person has to remember at
 the end of a long session, in a browser, after CI has gone green. That is
 this project's standing answer to guidance that does not stick: the
 ratchet, the citation gate, and this are the same move
-([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#why-a-ratchet-suits-this-project-specifically)).
+([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-why-a-ratchet-suits-this-project-specifically)).
 
-### What the repository settings fixed, and what they could not
+### ⚙ What the repository settings fixed, and what they could not
 
 Applied 2026-08-18 (#238), after being recorded here undone for long
 enough to be worth saying which half each one closed:
@@ -719,7 +719,7 @@ are mechanical, so a setting finished them. A commit body is a piece of
 writing addressed to a different reader than a PR description, and no
 enum value writes it for you.
 
-## Issues and pull requests
+## 🎫 Issues and pull requests
 
 Templates live in `.github/`, where GitHub picks them up automatically --
 don't restate their section list here:
@@ -739,14 +739,14 @@ you intended to run.
 The template stays a review document and is not written to double as a
 commit message. That is a deliberate split, not an oversight: a reviewer
 needs the test plan and the checklist, and `main`'s history does not.
-[Merging](#merging)'s `--body-file` is what keeps them apart -- omit it
+[Merging](#-merging)'s `--body-file` is what keeps them apart -- omit it
 and the whole template, tick-boxes included, becomes the commit body.
 
 Merge method: squash, enforced by the repository rather than by this
-sentence -- see [Merging](#merging). Each PR becomes exactly one commit
+sentence -- see [Merging](#-merging). Each PR becomes exactly one commit
 on `main`.
 
-## Versioning and releases
+## 📦 Versioning and releases
 
 Semantic versioning (`pyproject.toml`'s `[tool.poetry].version`), bumped
 according to the most significant change in the release, not the number
@@ -769,7 +769,7 @@ Release notes go in the GitHub Release body, not the git tag message.
 pick that file up automatically, so copy from it by hand when drafting a
 release.
 
-## Shipping a code change: the full cycle
+## 🚢 Shipping a code change: the full cycle
 
 Any change that touches code (not a docs-only change) goes through the
 complete cycle, and isn't done until every step below has actually
@@ -780,7 +780,7 @@ succeeded -- not merely started:
    `pyproject.toml` as part of the same branch -- `release.yml` verifies
    the pushed tag against `pyproject.toml`'s version on `main`, so the
    bump has to land *before* the tag exists, i.e. in this PR, not after.
-3. Run the [OpenCodeReview plugin](#reviewing-before-you-push-the-opencodereview-plugin)
+3. Run the [OpenCodeReview plugin](#-reviewing-before-you-push-the-opencodereview-plugin)
    over the branch and act on what it finds. Nothing invokes it for you --
    it is not in CI and not a dependency -- so if this step is skipped it
    simply does not happen. Record in the PR's test plan which skill ran,

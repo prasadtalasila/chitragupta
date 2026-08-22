@@ -330,7 +330,7 @@ therefore a **named constant**, and re-measuring it is an acceptance
 criterion for whichever of #103/#107 lands second.
 
 **2. Should `missing-citekey` be acted on unattended at all?**
-[F2](../docs/FEATURE-ROADMAP.md#f2-the-agenda-aid) raises this and
+[F2](../docs/FEATURE-ROADMAP.md#-f2-the-agenda-aid) raises this and
 explicitly does not close it. The item-class table above inherits
 `AUTO-IMPROVEMENT.md`'s "yes", and that inheritance is an assumption
 rather than a decision -- flagged here so it is not mistaken for one. It

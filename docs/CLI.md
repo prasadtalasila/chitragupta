@@ -1,4 +1,4 @@
-# Command reference
+# ⌨ Command reference
 
 Status: **reference.** Written 2026-08-03.
 
@@ -14,38 +14,38 @@ Every command this repository provides, every flag it accepts, and which
 interpreter each one needs. [README.md](../README.md)'s Quickstart is the
 short path; this is the full set.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Installing](#installing)
-- [Which interpreter](#which-interpreter)
-- [The full first run, step by step](#the-full-first-run-step-by-step)
-- [Every command and flag](#every-command-and-flag)
-  - [`chitragupta.corpus sync`](#python--m-chitraguptacorpus-sync)
-  - [When `sync` re-parses a document it already parsed](#when-sync-re-parses-a-document-it-already-parsed)
-  - [`chitragupta.corpus ledger`](#python--m-chitraguptacorpus-ledger)
-  - [`chitragupta.corpus topics`](#python--m-chitraguptacorpus-topics)
-  - [`chitragupta.draft gate`](#python--m-chitraguptadraft-gate)
-  - [`chitragupta.draft references`](#python--m-chitraguptadraft-references)
-  - [`chitragupta.draft evidence`](#python--m-chitraguptadraft-evidence)
-  - [`chitragupta.draft dossier`](#python--m-chitraguptadraft-dossier)
-  - [`chitragupta.draft retrieve`](#python--m-chitraguptadraft-retrieve)
-  - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
-  - [`chitragupta.review figure`](#python--m-chitraguptareview-figure)
-  - [`chitragupta.review provenance`](#python--m-chitraguptareview-provenance)
-  - [`chitragupta.review synthesis`](#python--m-chitraguptareview-synthesis)
-  - [`chitragupta.review uncited`](#python--m-chitraguptareview-uncited)
-  - [`chitragupta.review verbatim`](#python--m-chitraguptareview-verbatim)
-  - [`chitragupta.draft render`](#python--m-chitraguptadraft-render)
-  - [`chitragupta.draft spec`](#python--m-chitraguptadraft-spec)
-  - [`chitragupta.draft unit`](#python--m-chitraguptadraft-unit)
-  - [`chitragupta.draft registry`](#python--m-chitraguptadraft-registry)
-  - [`chitragupta.enrich`](#python--m-chitraguptaenrich)
-  - [`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
-  - [`scripts/release.py`](#scriptsreleasepy)
-- [Running sync on a schedule](#running-sync-on-a-schedule)
-- [Environment variables](#environment-variables)
+- [Installing](#-installing)
+- [Which interpreter](#-which-interpreter)
+- [The full first run, step by step](#-the-full-first-run-step-by-step)
+- [Every command and flag](#-every-command-and-flag)
+  - [`chitragupta.corpus sync`](#-python--m-chitraguptacorpus-sync)
+  - [When `sync` re-parses a document it already parsed](#-when-sync-re-parses-a-document-it-already-parsed)
+  - [`chitragupta.corpus ledger`](#-python--m-chitraguptacorpus-ledger)
+  - [`chitragupta.corpus topics`](#-python--m-chitraguptacorpus-topics)
+  - [`chitragupta.draft gate`](#-python--m-chitraguptadraft-gate)
+  - [`chitragupta.draft references`](#-python--m-chitraguptadraft-references)
+  - [`chitragupta.draft evidence`](#-python--m-chitraguptadraft-evidence)
+  - [`chitragupta.draft dossier`](#-python--m-chitraguptadraft-dossier)
+  - [`chitragupta.draft retrieve`](#-python--m-chitraguptadraft-retrieve)
+  - [`chitragupta.review coverage`](#-python--m-chitraguptareview-coverage)
+  - [`chitragupta.review figure`](#-python--m-chitraguptareview-figure)
+  - [`chitragupta.review provenance`](#-python--m-chitraguptareview-provenance)
+  - [`chitragupta.review synthesis`](#-python--m-chitraguptareview-synthesis)
+  - [`chitragupta.review uncited`](#-python--m-chitraguptareview-uncited)
+  - [`chitragupta.review verbatim`](#-python--m-chitraguptareview-verbatim)
+  - [`chitragupta.draft render`](#-python--m-chitraguptadraft-render)
+  - [`chitragupta.draft spec`](#-python--m-chitraguptadraft-spec)
+  - [`chitragupta.draft unit`](#-python--m-chitraguptadraft-unit)
+  - [`chitragupta.draft registry`](#-python--m-chitraguptadraft-registry)
+  - [`chitragupta.enrich`](#-python--m-chitraguptaenrich)
+  - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
+  - [`scripts/release.py`](#-scriptsreleasepy)
+- [Running sync on a schedule](#-running-sync-on-a-schedule)
+- [Environment variables](#-environment-variables)
 
-## Installing
+## 🔧 Installing
 
 Two paths, both landing in a venv named `.venv-full`, and everything
 below this section is identical either way:
@@ -71,7 +71,7 @@ source .venv-full/bin/activate
 `.venv-full` is what keeps a bare `pip install` from hitting Debian/
 Ubuntu's PEP 668 `externally-managed-environment` error, and what keeps
 Claude Code's hooks -- which launch as bare `python` resolved from
-`PATH` ([HOOKS.md](HOOKS.md#the-launcher-contract)) -- able to import
+`PATH` ([HOOKS.md](HOOKS.md#-the-launcher-contract)) -- able to import
 `chitragupta`, for as long as `.venv-full` stays activated in whatever
 shell you launch Claude Code from. Nothing in the installed package
 special-cases that name; it's a plain `python3 -m venv` either way, and
@@ -82,11 +82,11 @@ the checkout path's own `install_full_pipeline.sh` already creates
 `chitragupta init DIR` writes the same project directory a checkout
 gives you -- `config.toml` from `config.toml.example`, `.claude/`,
 `papers/`, `content/{drafts,dossiers,specs,review,rendered}/` and the
-prose docs -- so everything from [step 1](#the-full-first-run-step-by-step)
+prose docs -- so everything from [step 1](#-the-full-first-run-step-by-step)
 onward reads the same regardless of which path got you here.
 
 **The base `pip install chitragupta-cli` above already covers tiers 1
-and 2** ([Which interpreter](#which-interpreter) below) -- everything
+and 2** ([Which interpreter](#-which-interpreter) below) -- everything
 except the enrichment layer. `chitragupta install <stage>` refuses
 three stage names by pointing at the pip command that actually reaches
 them, rather than running something with a different meaning than the
@@ -114,7 +114,7 @@ chitragupta install os-deps
 [NAME.md](NAME.md) has why the distribution is `chitragupta-cli` while
 the command stays `chitragupta` (`cg` for short).
 
-## Which interpreter
+## ⚖ Which interpreter
 
 Three tiers. Commands below are written with the interpreter they need.
 
@@ -128,7 +128,7 @@ against the project's venv for tiers 2 and 3.
 One place is not free to choose: `.claude/settings.json` launches the hooks
 by a name that has to resolve without a human present, and a name that does
 not resolve there fails silently. It says `python`, and
-[HOOKS.md](HOOKS.md#the-launcher-contract) records why.
+[HOOKS.md](HOOKS.md#-the-launcher-contract) records why.
 
 | Tier | Interpreter | Commands |
 |---|---|---|
@@ -142,7 +142,7 @@ rule -- `chitragupta.draft gate` -> `chitragupta.draft references` ->
 -- imports nothing outside the standard library. A broken, missing or
 wrong-Python virtual environment therefore cannot block it.
 `docs/ARCHITECTURE.md` has the
-[full reasoning](ARCHITECTURE.md#which-interpreter-and-why).
+[full reasoning](ARCHITECTURE.md#-which-interpreter-and-why).
 
 **For a `pip install`ed reader, there is one environment, not three**, and
 the tiers collapse to a different distinction: which commands need the
@@ -181,25 +181,25 @@ Using the wrong interpreter is the most likely first error you will hit:
 `python -m chitragupta.corpus sync` instead of `.venv-full/bin/python -m
 chitragupta.corpus sync`.
 
-## The full first run, step by step
+## 🚀 The full first run, step by step
 
 Every command this project exposes appears below at least once, in the
 order a first run reaches it. Flags are shown only where a first run
-would want one -- [Every command and flag](#every-command-and-flag) is
+would want one -- [Every command and flag](#-every-command-and-flag) is
 the exhaustive reference, and each command's own section links from the
 table of contents.
 
 Two parts, same sequence, same steps, differing only in which of the two
 equivalent forms invokes each command -- see [Which
-interpreter](#which-interpreter) for why both exist and when each one
+interpreter](#-which-interpreter) for why both exist and when each one
 resolves. Pick whichever you'll actually type; nothing else in this
 walkthrough depends on which you use, and the module form works either
 way if you switch mid-session.
 
-### As the `chitragupta` command
+### ⌨ As the `chitragupta` command
 
 Once the package is installed, with `.venv-full/bin/activate` sourced
-either way (see [Installing](#installing)).
+either way (see [Installing](#-installing)).
 
 ```bash
 # 1. Install, and get a project directory -- see Installing above for
@@ -313,7 +313,7 @@ python -m pytest                                 # the suite itself
 python3 scripts/release.py                       # bundles release/chitragupta-<version>.zip
 ```
 
-### As the module form (`python -m chitragupta.<layer>`)
+### 🐍 As the module form (`python -m chitragupta.<layer>`)
 
 The exact same eleven steps -- what's below explains nothing a second
 time; see the numbered comments above for that. This is what hooks and
@@ -379,7 +379,7 @@ python -m chitragupta.review figure content/drafts/<topic>/<slug>.md
 python -m chitragupta.review uncited content/drafts/<slug>.md
 ```
 
-### Migrating a checkout to `pip install`
+### 📦 Migrating a checkout to `pip install`
 
 Nothing about an existing checkout changes -- this only matters if
 you're switching from one path to the other, or explaining the
@@ -395,25 +395,25 @@ package now ships as a runnable command instead.
 | `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps` -- the same script, reached a different way (#265) |
 | `python-deps`'s `ensure_gpu_torch` reinstall step | `chitragupta install gpu-torch` |
 | Checking pandoc/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
-| `.venv-full/bin/python -m chitragupta.<layer> <verb>` | `chitragupta <layer> <verb>` -- the module form still works too, and is what hooks and skills keep using ([Which interpreter](#which-interpreter)) |
+| `.venv-full/bin/python -m chitragupta.<layer> <verb>` | `chitragupta <layer> <verb>` -- the module form still works too, and is what hooks and skills keep using ([Which interpreter](#-which-interpreter)) |
 | `python scripts/release.py` (build the zip) | Not needed -- `pip install` already gives you the wheel |
 
-## Every command and flag
+## ⌨ Every command and flag
 
 Defaults shown are the value used when the flag is omitted.
 
 **Examples below assume one interpreter is already on `PATH`** --
 `source .venv-full/bin/activate` once, either path (as in [the full
-first run](#the-full-first-run-step-by-step)). Every command is then
+first run](#-the-full-first-run-step-by-step)). Every command is then
 exactly `python -m chitragupta.<layer> <verb>`, or `chitragupta <layer>
 <verb>` if you installed the package -- see [Which
-interpreter](#which-interpreter) for which needs which. Two sections
-below this one -- [Running sync on a schedule](#running-sync-on-a-schedule)
-and [Environment variables](#environment-variables) -- spell out
+interpreter](#-which-interpreter) for which needs which. Two sections
+below this one -- [Running sync on a schedule](#-running-sync-on-a-schedule)
+and [Environment variables](#-environment-variables) -- spell out
 `.venv-full/bin/python` in full instead, because a cron job or a systemd
 unit has no shell to have activated anything in.
 
-### `python -m chitragupta.corpus sync`
+### 🔄 `python -m chitragupta.corpus sync`
 
 Bibliography -> ledger -> parsed text. **Needs the venv.** Takes the
 write lock, so only one run at a time; a second run exits **2** rather
@@ -435,7 +435,7 @@ python -m chitragupta.corpus sync
 #             2 = another run holds the lock.
 ```
 
-### When `sync` re-parses a document it already parsed
+### ♻ When `sync` re-parses a document it already parsed
 
 A PDF whose bytes haven't changed is not re-parsed -- that is what makes
 the second run nearly free. There is one exception, and it is deliberate:
@@ -454,7 +454,7 @@ them the way it reports any other parse. Nothing to do, in other words --
 but `python -m chitragupta.corpus sync --reparse` forces it all at once if you
 would rather not wait for the next run.
 
-### `python -m chitragupta.corpus ledger`
+### 🗄 `python -m chitragupta.corpus ledger`
 
 Read-only view of the corpus layer. **Takes no lock**, so it works while
 a sync is running. With no flags it prints a summary.
@@ -481,11 +481,11 @@ python -m chitragupta.corpus ledger
 Collections need a Better BibTeX export with JabRef fields enabled --
 Zotero's own exporter drops them, in which case `--collections` prints
 nothing and says why. See
-[ZOTERO.md](ZOTERO.md#keeping-your-collections-optional). Asking for a
+[ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional). Asking for a
 parent collection selects everything beneath it, matching is
 case-insensitive, and it is per-segment rather than by substring.
 
-### `python -m chitragupta.corpus topics`
+### 🏷 `python -m chitragupta.corpus topics`
 
 Read-only view of which papers matched each of your seed topics.
 **Takes no lock and needs no venv**, though what it reads is written by a
@@ -514,9 +514,9 @@ many-to-many, unlike `content/topics.json`, where BERTopic gives each
 document exactly one topic id. The papers that matched no topic at all
 are listed too; that list is the point of the report when you are
 deciding what to draft next. See
-[CONFIG.md](CONFIG.md#seed-topics-organising-the-corpus-by-phrases-you-wrote).
+[CONFIG.md](CONFIG.md#-seed-topics-organising-the-corpus-by-phrases-you-wrote).
 
-### `python -m chitragupta.draft gate`
+### ✅ `python -m chitragupta.draft gate`
 
 The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 **Takes no options** -- every argument is a file to check.
@@ -545,7 +545,7 @@ alongside the rest.
 **Check the spelling in any script or CI step that runs this.**
 `chitragupta/citation_gate.py` carries no `__main__` block -- the drafting layer
 has one entry point, and this is it (see
-[ARCHITECTURE.md](ARCHITECTURE.md#which-interpreter-and-why)). So
+[ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why)). So
 `python -m chitragupta.citation_gate <draft>` does not error: it imports the
 module and exits **0** with empty stdout. For every other command in this
 layer that trap is a harmless no-op, but for the gate it means an
@@ -553,7 +553,7 @@ automated caller gets a **silent, unconditional pass** on a draft nothing
 ever checked. `python -m chitragupta.draft` with no arguments prints the layer's
 usage and exits 0, which is the fastest way to confirm a spelling.
 
-### `python -m chitragupta.draft references`
+### 📚 `python -m chitragupta.draft references`
 
 Append or replace a `References` section built from a draft's own cited
 citekeys.
@@ -584,7 +584,7 @@ python -m chitragupta.draft references content/drafts/survey.md
 # python -m chitragupta.draft references content/drafts/thesis.md --heading "6. References"
 ```
 
-### `python -m chitragupta.draft evidence`
+### 🧾 `python -m chitragupta.draft evidence`
 
 Render the **evidence sidecar** beside a draft: each cited source, and
 the verbatim spans its dossier marked quotable, grouped by the section
@@ -645,7 +645,7 @@ python -m chitragupta.draft evidence content/drafts/dt/survey.md --format pdf
 # the sidecar's own source, and the only diffable form of it
 ```
 
-### `python -m chitragupta.draft dossier`
+### 🗂 `python -m chitragupta.draft dossier`
 
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
@@ -715,8 +715,8 @@ ledger is opened read-only and the BM25 index used for matching is built
 in memory and discarded, leaving `content/retrieval_index.json`
 untouched. A sweep costs about 2s cold and 0.2-0.4s warm on this
 project's own corpus, and 50 dossiers cost only 0.19s more than one --
-see [PERFORMANCE.md](PERFORMANCE.md#what-a-drift-sweep-costs) and
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md#drift-across-every-dossier).
+see [PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs) and
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-drift-across-every-dossier).
 
 `brief` is the one subcommand written for a *subagent* rather than a
 person. A skill that dispatches parallel section writers has to give each
@@ -726,7 +726,7 @@ the prompt points at instead: the writer runs it in its own context, and
 that context is discarded when it exits. It selects by citekey, or by a
 section named in `sections.md`, and refuses to dump the whole of
 `evidence.md` -- a caller reaching for it is trying not to read that.
-See [DRAFT-ITERATION.md](DRAFT-ITERATION.md#dispatching-from-the-dossier)
+See [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-dispatching-from-the-dossier)
 and [TOKENS.md](TOKENS.md).
 
 Its exit code is the contract, because a dispatch prompt cannot read a
@@ -823,7 +823,7 @@ pipeline copies). Restore refuses the whole archive -- rather than
 skipping a member -- if any entry is a link or device node, escapes the
 extraction directory, or sits outside those three directories.
 
-### `python -m chitragupta.draft retrieve`
+### 🔎 `python -m chitragupta.draft retrieve`
 
 BM25 retrieval over the synced corpus. Read-only, takes no lock, needs no
 venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
@@ -838,7 +838,7 @@ Zotero collection or one beneath it -- the curated-subset case from #195,
 where a chapter on modelling retrieves only from the modelling shelf.
 Scoring stays corpus-wide, so a filtered result carries the same score it
 would unfiltered; only the candidate set narrows. Needs the export
-described in [ZOTERO.md](ZOTERO.md#keeping-your-collections-optional).
+described in [ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional).
 Combined with `--log`, the collection is written to `retrieval.md` too,
 so a scoped call and a corpus-wide one no longer write identical rows.
 
@@ -873,7 +873,7 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
-### `python -m chitragupta.review figure`
+### 📐 `python -m chitragupta.review figure`
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate** -- it exits 0 whatever it finds -- and like
@@ -926,7 +926,7 @@ A figure that does not compile is a finding on that figure, not a crash:
 the draft's other figures are still checked, and the command still exits
 0.
 
-### `python -m chitragupta.review coverage`
+### 📊 `python -m chitragupta.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
 citations. **Informational, not a gate** -- unlike the gate, nothing it
@@ -964,7 +964,7 @@ set), and `status` (`uncited_candidates` or `cited_outside_candidates`).
 An additional serialisation of what `format_report` already prints,
 never a second computation.
 
-### `python -m chitragupta.review provenance`
+### 📖 `python -m chitragupta.review provenance`
 
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
@@ -1000,7 +1000,7 @@ unconditionally -- matching the `.md`'s own always-write policy -- and
 `--json` only decides whether it is *also* printed to stdout, with the
 written-files summary moving to stderr in that case.
 
-### `python -m chitragupta.review synthesis`
+### 🧩 `python -m chitragupta.review synthesis`
 
 How many sources each unit of a draft rests on, **at the unit that
 draft's genre binds at**. Prose required to fuse two or more sources
@@ -1072,11 +1072,11 @@ fenced code block is ignored.
 itemised -- `id`, `kind` (`single_source` or `single_key_run`), `line`,
 `unit`, `citekeys`, `declared` and `longest_run`.
 
-### `python -m chitragupta.review uncited`
+### 🔍 `python -m chitragupta.review uncited`
 
 Which sentences of a draft carry **no citation at all**. This is the
 prose-side question, and it is the one nothing answered before:
-[`coverage`](#python--m-chitraguptareview-coverage) looks like it
+[`coverage`](#-python--m-chitraguptareview-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
 finds**, and it blocks no draft. Alone among the six aids it reads
@@ -1139,7 +1139,7 @@ surfaced and never repaired unattended.
 `bare`, and one `findings` object per uncited sentence -- `id`, `line`,
 `sentence` and `block_cites`.
 
-### `python -m chitragupta.review verbatim`
+### 📋 `python -m chitragupta.review verbatim`
 
 Layer 4, the review layer, with four subcommands: verbatim overlap
 between a draft and one cited source, a whole-draft x whole-corpus scan,
@@ -1216,7 +1216,7 @@ caller that has to match display text is back where it started.
 
 `tier` names which detection tier produced the finding -- `exact`,
 `skip-gram` or `embedding` (see
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#where-this-sits-in-a-bigger-plan)).
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#-where-this-sits-in-a-bigger-plan)).
 `score` is the embedding tier's alignment strength, and `null` on the two
 deterministic tiers, which have no similarity to report. It ranks within
 a section. It is not a probability, and not comparable to anything the
@@ -1369,7 +1369,7 @@ is consumed by whoever asked for it and stale the next time the draft is
 touched.
 
 The `overlap-reviser` skill
-([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)) is the intended
+([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)) is the intended
 caller: it takes a baseline, repairs findings one at a time, and keeps a
 repair only when `recheck` and `python -m chitragupta.draft gate` both come back
 clean. Nothing obliges you to use it -- `recheck` is as free and as
@@ -1427,7 +1427,7 @@ its own tokenizer version, so the two tiers never cross-invalidate.
 **5.11.0 bumps that version.** The first `scan` after upgrading therefore
 re-fingerprints the corpus for tier 2, at roughly the same cost again as
 the tier-1 build above. It is paid once. See
-[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
+[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 `scan` groups a match by its `(citekey, diagonal)`. The diagonal is the
 source position minus the draft position, which holds constant across a
@@ -1461,19 +1461,19 @@ definitions and whole paragraphs its owner has decided are boilerplate,
 never a project-tracked file. A finding is dropped only when discounting
 its allowlisted words leaves less than `--min-run`; a short allowlisted
 phrase sitting inside a much longer, otherwise-unexplained lift is kept.
-See [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist) for the file
+See [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist) for the file
 format and the reasoning.
 
 `locate` reports page numbers by splitting on the form-feed characters
 between pages. Both backends emit them, so a page number here is a page
 you can turn to whichever one parsed the citekey -- see
-[CONFIG.md](CONFIG.md#backend-pdftotext-or-docling). One limit: `docling`
+[CONFIG.md](CONFIG.md#-backend-pdftotext-or-docling). One limit: `docling`
 writes a break between consecutive pages that carry text, so a page with
 no extracted items at all shifts the numbering after it. The passage
 sidecar records each item's own page and is not affected; where the two
 disagree, believe `python -m chitragupta.review provenance`.
 
-### `python -m chitragupta.draft render`
+### 📄 `python -m chitragupta.draft render`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
 for PDF) on `PATH`, but no Python package from the enrich group.
@@ -1501,7 +1501,7 @@ content/drafts/dt-for-engineers/survey.md
 ```
 
 This is the same mirroring rule `content/dossiers/` follows (see
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md#the-dossier)), so one topic
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-the-dossier)), so one topic
 directory names a draft, its dossier and its renders together -- which
 is what lets `dossier export <topic> --with-rendered` find them. A flat
 `content/drafts/<slug>.md` renders to `content/rendered/<slug>.*`, as it
@@ -1566,7 +1566,7 @@ python -m chitragupta.draft render content/drafts/survey.md --format pdf
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
-### `python -m chitragupta.draft style`
+### 🎨 `python -m chitragupta.draft style`
 
 Report where a draft's prose departs from
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers, §8's
@@ -1629,7 +1629,7 @@ leave out -- `licence`/`license` and `practice`/`practise` are decided by
 part of speech, `program`/`programme` by domain, and no string match
 settles any of them.
 
-#### Assembling a book: `--fragment` and `--output-dir`
+#### 📕 Assembling a book: `--fragment` and `--output-dir`
 
 ```bash
 python -m chitragupta.draft render content/drafts/<book>/<unit>.md \
@@ -1650,7 +1650,7 @@ fragment carries its own numbered reference list.
 command writes. [BOOKS.md](BOOKS.md) is the assembly procedure both exist
 for.
 
-### `python -m chitragupta.draft spec`
+### 🎯 `python -m chitragupta.draft spec`
 
 The outline a book is generated from, and the human sign-off on it --
 the book-scale track's first artefact ([BOOKS.md](BOOKS.md)). Stdlib
@@ -1680,10 +1680,10 @@ someone rewords a heading and orphans the units written against it.
 `status`'s exit code is **not a gate**. It reads back a record of a
 person's decision -- did a human approve this outline? -- rather than
 judging any draft's content, and nothing it says can refuse a write.
-[BOOKS.md](BOOKS.md#what-statuss-exit-code-is-and-is-not) has that
+[BOOKS.md](BOOKS.md#-what-statuss-exit-code-is-and-is-not) has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
-### `python -m chitragupta.draft unit`
+### 🧱 `python -m chitragupta.draft unit`
 
 One section's generation contract, and the record of its acceptance --
 the book-scale track's second artefact ([BOOKS.md](BOOKS.md)). Reads the
@@ -1710,7 +1710,7 @@ it can answer "does this need regenerating?".
 `accept` **invokes the citation gate, it does not replace it**: a unit
 the gate refuses cannot be accepted, and nothing here is a second gate.
 
-### `python -m chitragupta.draft registry`
+### 📇 `python -m chitragupta.draft registry`
 
 Terminology, claims and cross-references over a book's **accepted** units
 ([BOOKS.md](BOOKS.md)). Three registries, built by a deterministic pass
@@ -1733,7 +1733,7 @@ python -m chitragupta.draft registry excerpt content/drafts/<book> <unit-id>
 whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block --
-[BOOKS.md](BOOKS.md#why-registry-check-exits-0-when-the-two-status-commands-do-not)
+[BOOKS.md](BOOKS.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
 has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
 rule behind it.
 
@@ -1742,7 +1742,7 @@ skipped, because a registry over half a book is a different claim from
 one over all of it. Contradiction between claims is **not** detected --
 only duplication, which is what a machine can decide.
 
-### `python -m chitragupta.enrich`
+### 🧠 `python -m chitragupta.enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
 BERTopic -> seed topics. **Needs the venv.** Each stage probes
@@ -1770,7 +1770,7 @@ python -m chitragupta.enrich
 # python -m chitragupta.draft render content/drafts/survey.md --format pdf
 ```
 
-#### Enriching one draft's papers
+#### 📚 Enriching one draft's papers
 
 By default the unit of work is the corpus: every ledger item, whether a
 draft cites it or not. `--for-draft` narrows that to the papers one draft
@@ -1845,7 +1845,7 @@ meaning. Ctrl+C is safe: every chunk upserted before the interrupt is
 already in `content/chroma/`, the stage says how far it got, and re-running
 picks up from there.
 
-### `scripts/install_full_pipeline.sh`
+### 🔧 `scripts/install_full_pipeline.sh`
 
 One install path for both a bare machine and the Docker image. Takes
 **stage names as positional arguments**, not flags.
@@ -1853,7 +1853,7 @@ One install path for both a bare machine and the Docker image. Takes
 | Stage | What it does |
 |---|---|
 | `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[enrich]` (#265) |
-| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
+| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
 | `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[dev]` |
 | `cpu-torch` | Swaps torch to the CPU-only wheel index and removes the CUDA runtime the default wheel pulled in. Opt-in and never part of `all` -- it asserts a GPU is absent *for good* (a hosted CI runner, a CPU-only container), which the script cannot infer about a host that might grow one later |
 | `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON` rather than this script's own venv -- what `chitragupta install gpu-torch` (#265) reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
@@ -1885,7 +1885,7 @@ in the `os-deps` package list, so `all` covers it; if you run
 Each stage ends by printing the exact interpreter path to use afterwards,
 which is `.venv-full/bin/python` on a normal host.
 
-### `scripts/release.py`
+### 📦 `scripts/release.py`
 
 Builds the release archive under `release/`. A maintainer tool.
 
@@ -1900,7 +1900,7 @@ python3 scripts/release.py
 archive. Every prose document ships: `docs/`, `README.md`, `SOUL.md`,
 `AGENTS.md`, `DEVELOPER-AGENTS.md` and `DEVELOPER.md`, plus `.claude/`.
 
-## Running sync on a schedule
+## ⏰ Running sync on a schedule
 
 `python -m chitragupta.corpus sync` is deterministic, idempotent, and takes its
 own write lock (`chitragupta.runlock`), so it was already safe to run unattended.
@@ -1957,7 +1957,7 @@ nothing" must not read this as that. If a schedule of yours starts
 failing after upgrading, the message names the replacement. That is the
 whole fix.
 
-### cron
+### 🕰 cron
 
 ```bash
 # crontab -e -- runs hourly, on the hour. cd into the repo first: sync
@@ -1971,7 +1971,7 @@ and most hosts don't have one configured. `logs/pipeline.log` doesn't depend
 on any of that: it's a plain file, written every run regardless of mail
 setup.
 
-### systemd (service + timer)
+### 🐧 systemd (service + timer)
 
 Two unit files, not one -- systemd's usual split between "what" and
 "when":
@@ -2012,15 +2012,15 @@ journalctl -u chitragupta-sync.service   # systemd's own transcript,
 ```
 
 Both assume a host where `.venv-full/` is already built (see
-[`scripts/install_full_pipeline.sh`](#scriptsinstall_full_pipelinesh)
+[`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
 above) -- scheduling only runs what's already installed, it doesn't
 install anything itself.
 
-## Environment variables
+## ⚙ Environment variables
 
 Every `config.toml` setting has a matching environment variable that
 overrides it for one run. The full list, with accepted values, is in
-[CONFIG.md](CONFIG.md#every-setting). The ones that most often appear on
+[CONFIG.md](CONFIG.md#-every-setting). The ones that most often appear on
 a command line:
 
 ```bash

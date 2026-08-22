@@ -225,7 +225,7 @@ turn a wide pass into the re-run this skill exists to avoid.
 
 The prose standards this skill inherits are documented, with
 per-principle attribution, in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#sources-and-attribution).
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
 The reasoning for why the scoped default exists, and why the way out of
 it is a separate skill rather than a paragraph, is in
 [`docs/DRAFT-ITERATION.md`](../../../docs/DRAFT-ITERATION.md).

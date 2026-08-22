@@ -1,4 +1,4 @@
-# Why an auto-improvement loop, and where its line falls
+# 💡 Why an auto-improvement loop, and where its line falls
 
 Status: **reasoning document.** Written 2026-08-11.
 
@@ -7,7 +7,7 @@ must never repair, and the one documented rule that stands in the way.
 
 **Written for** someone deciding whether to accept the proposal -- and, in
 particular, whether to grant the amendment in
-[The amendment this needs](#the-amendment-this-needs), which is the only
+[The amendment this needs](#-the-amendment-this-needs), which is the only
 part of it the user has to settle personally.
 
 **Not covered here:** what would actually be built. That is
@@ -21,22 +21,22 @@ Assumes [ARCHITECTURE.md](ARCHITECTURE.md) for the four layers,
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) for the dossier and the drift
 sweep, and [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for the detection tiers.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The gap: detection is built, remediation is not](#the-gap-detection-is-built-remediation-is-not)
-- [Four signals, four dead ends](#four-signals-four-dead-ends)
-- [Where the loop sits, and the cycle that decides it](#where-the-loop-sits-and-the-cycle-that-decides-it)
-- [The method, in autoresearch's own terms](#the-method-in-autoresearchs-own-terms)
-- [Mapping the method onto this pipeline](#mapping-the-method-onto-this-pipeline)
-- [Why provenance is excluded](#why-provenance-is-excluded)
-- [Why only a person may start it](#why-only-a-person-may-start-it)
-- [The amendment this needs](#the-amendment-this-needs)
-- [The software half](#the-software-half)
-- [What it would cost](#what-it-would-cost)
-- [Open questions](#open-questions)
-- [Naming, and the register the review layer may not use](#naming-and-the-register-the-review-layer-may-not-use)
+- [The gap: detection is built, remediation is not](#-the-gap-detection-is-built-remediation-is-not)
+- [Four signals, four dead ends](#-four-signals-four-dead-ends)
+- [Where the loop sits, and the cycle that decides it](#-where-the-loop-sits-and-the-cycle-that-decides-it)
+- [The method, in autoresearch's own terms](#-the-method-in-autoresearchs-own-terms)
+- [Mapping the method onto this pipeline](#-mapping-the-method-onto-this-pipeline)
+- [Why provenance is excluded](#-why-provenance-is-excluded)
+- [Why only a person may start it](#-why-only-a-person-may-start-it)
+- [The amendment this needs](#-the-amendment-this-needs)
+- [The software half](#-the-software-half)
+- [What it would cost](#-what-it-would-cost)
+- [Open questions](#-open-questions)
+- [Naming, and the register the review layer may not use](#-naming-and-the-register-the-review-layer-may-not-use)
 
-## The gap: detection is built, remediation is not
+## 🔍 The gap: detection is built, remediation is not
 
 This repository is unusually good at noticing that a draft has a problem
 and unusually bad at doing anything about it. Every quality signal it
@@ -61,7 +61,7 @@ Issue #129 already scopes exactly this loop for one signal (verbatim
 runs). The proposal is that shape generalised to the other three, plus the
 class of improvement none of them cover.
 
-## Four signals, four dead ends
+## 📡 Four signals, four dead ends
 
 Four commands carry every quality signal this repository has, and each one
 is a dead end. The fifth row is not a signal at all -- its absence is the
@@ -84,14 +84,14 @@ machine-readable now. And **prose quality still has no signal at all**:
 `draft-reviser` is section-and-evidence-shaped, and #103 records that a
 copy-edit touching no evidence has no sanctioned path through it.
 
-## Where the loop sits, and the cycle that decides it
+## 🔄 Where the loop sits, and the cycle that decides it
 
 The obvious placement is a new drafting-layer verb -- `python -m chitragupta.draft
 agenda <draft>` -- reading the review reports and emitting a worklist.
 **That placement is wrong, and the reason is the one cycle this repository
 already removed.**
 
-[ARCHITECTURE.md](ARCHITECTURE.md#the-four-layers) states the dependency
+[ARCHITECTURE.md](ARCHITECTURE.md#-the-four-layers) states the dependency
 graph as acyclic and artefact-mediated, with exactly one edge into the
 review layer:
 
@@ -131,7 +131,7 @@ because that is what keeps the graph acyclic: a skill reading a review
 report is the same act as a human reading one, which the layer already
 expects.
 
-## The method, in autoresearch's own terms
+## 🔬 The method, in autoresearch's own terms
 
 [karpathy/autoresearch](https://github.com/karpathy/autoresearch) (MIT,
 per its README) is the nearest published thing to what this proposes, and
@@ -178,7 +178,7 @@ STOP"** -- once the loop has begun, do not ask the human whether to
 continue, because "the human might be asleep", and the loop runs "until
 the human interrupts you, period".
 
-## Mapping the method onto this pipeline
+## 🗺 Mapping the method onto this pipeline
 
 Component for component, the correspondence is close enough to be useful
 and different enough to be dangerous.
@@ -220,7 +220,7 @@ objective-class count strictly falls, to a hard maximum -- still terminates
 deterministically and is closer to advance-while-improving. It is declined
 for legibility, not safety, and could be revisited.
 
-## Why provenance is excluded
+## 🚫 Why provenance is excluded
 
 It is tempting to say a machine may not judge whether a source supports a
 sentence because SOUL.md forbids it. The stronger reason is that **the
@@ -246,7 +246,7 @@ remains the only place that decision is taken. If #138 lands as specified,
 the squaring is that a registry may block a *book assembly* without any
 review aid blocking a *draft*.
 
-## Why only a person may start it
+## 🔒 Why only a person may start it
 
 The specification says the aid may be run by anyone at any time, that the
 skill's only trigger is a person asking, and that no hook, schedule or
@@ -273,7 +273,7 @@ claim and writes again rather than "fixing" it.
 **Why not cron.** `sync` is safely scheduled because it is deterministic
 and idempotent. The skill is neither, and a scheduled reviser is the
 overnight posture
-[rejected above](#mapping-the-method-onto-this-pipeline).
+[rejected above](#-mapping-the-method-onto-this-pipeline).
 
 **Why R11 is a convention, not a mechanism.** Skills already hand off to
 one another in prose -- `draft-reviser` to `corpus-reviser` and back --
@@ -291,7 +291,7 @@ not been built also has no business in the file the assistant treats as
 its memory. If the loop ships, the sentence worth adding there is about
 the propose-and-accept asymmetry, not about the aid.
 
-## The amendment this needs
+## ✏ The amendment this needs
 
 **Settled: approved by the user on 2026-08-21**
 ([plans/f-auto-improvement-adoption.md](../plans/f-auto-improvement-adoption.md)
@@ -371,7 +371,7 @@ user. **It was the first thing to settle, before any code**, and it was.
 Had it been declined, the agenda aid could still have been written and
 run by hand, and only the skill's automation would have been lost.
 
-## The software half
+## 🧩 The software half
 
 Whether the same idea can improve the software rather than the drafts. It
 can, but it is the smaller half, and the honest verdict is that **the gap
@@ -404,7 +404,7 @@ What is missing is an objective signal an unattended agent could act on:
 Both are `bench/`, `.github/` and `.claude/` changes. Neither is a
 pipeline layer, and neither should acquire one.
 
-## What it would cost
+## ⚡ What it would cost
 
 - **Steps 1-2 of the build order are cheap and additive.** JSON
   serialisation of an existing findings list, plus one new stdlib-only aid
@@ -422,7 +422,7 @@ pipeline layer, and neither should acquire one.
   GPU-minutes, on hardware already owned, at a price fixed before the run
   starts. A wrong idea here is billed per token and scales with the draft.
   The rungs are in
-  [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#the-cost-ladder); the reason
+  [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-cost-ladder); the reason
   the first one matters most is easy to miss -- a deterministic check does
   not only *find* a problem for free, it **refuses a bad rewrite for
   free**. Without it, deciding whether an edit worked means paying a model
@@ -431,7 +431,7 @@ pipeline layer, and neither should acquire one.
   boilerplate verbatim hits gets ignored, which is why #128 precedes the
   aid rather than following it.
 
-## Open questions
+## ❓ Open questions
 
 - **Should `missing-citekey` be acted on unattended at all?** Removing a
   citation the corpus no longer supports is objective in the sense that
@@ -454,7 +454,7 @@ pipeline layer, and neither should acquire one.
   keys name an observed property of the draft, while this one names what
   to do next. It is also the first aid that reads other aids.
 
-## Naming, and the register the review layer may not use
+## 🏷 Naming, and the register the review layer may not use
 
 Recorded because settling it turned up a constraint that outlives this
 proposal.

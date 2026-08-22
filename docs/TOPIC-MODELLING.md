@@ -1,4 +1,4 @@
-# Topic modelling: what the literature said, and what this corpus said back
+# 🧠 Topic modelling: what the literature said, and what this corpus said back
 
 Status: **discussion**, not a specification. It records where the topic
 stage's current shape came from -- which published findings argued for
@@ -17,7 +17,7 @@ is the reference for the settings themselves.
 > library and synced, this document should be updated to cite them
 > properly rather than left as prose.
 
-## The problem, in one sentence
+## ❗ The problem, in one sentence
 
 `content/topics.json` existed for several releases with no consumer
 ([#192](https://github.com/prasadtalasila/chitragupta/issues/192)), and
@@ -25,9 +25,9 @@ the topic model had no way to know that the corpus's owner had already
 grouped the same papers by hand in Zotero
 ([#206](https://github.com/prasadtalasila/chitragupta/issues/206)).
 
-## What the sources argued, and what happened when it was tried
+## 📚 What the sources argued, and what happened when it was tried
 
-### 1. Seed the model, but do not let seeding replace discovery
+### 🌱 1. Seed the model, but do not let seeding replace discovery
 
 Asta's *Topic Extraction and Document-Topic Linking in Scientific and
 Domain-Specific Corpora* is unambiguous that a narrow corpus wants
@@ -52,7 +52,7 @@ against the same document vectors afterwards. A seed list is therefore
 unlimited and costs nothing, which is the property the survey asks for
 and the zero-shot path could not give.
 
-### 2. Preprocessing is a modelling step, not a cleanup step
+### 🧹 2. Preprocessing is a modelling step, not a cleanup step
 
 Asta's first best practice for narrow scientific domains, and its warning
 is specific: "generic preprocessing is often too destructive", because
@@ -84,7 +84,7 @@ the clustering is right and only the *label* is wrong. No amount of
 further preprocessing fixes that without deleting content that belongs to
 the topic. It is a labelling problem, and §3 is its answer.
 
-### 3. Label topics from recognised domain terms -- [#297](https://github.com/prasadtalasila/chitragupta/issues/297)
+### 🏷 3. Label topics from recognised domain terms -- [#297](https://github.com/prasadtalasila/chitragupta/issues/297)
 
 Asta's third best practice: "use domain term recognition as a backbone
 for both topics and labels", citing TLATR (Truica et al., 2021), which
@@ -99,7 +99,7 @@ BERTopic's own topic names, which on this corpus are stopwords
 configured. A person's name is not a domain term and would be excluded by
 construction.
 
-### 4. A prefix is the wrong part of a long document
+### 📄 4. A prefix is the wrong part of a long document
 
 Koh et al. (2022) measure the layout bias that makes truncation
 tolerable for short documents -- roughly 60% of salient sentences in the
@@ -122,7 +122,7 @@ iec 62304`. The cost is a higher outlier share (10% to 17%), which is
 expected: averaging 82 chunks pulls every vector toward the corpus
 centroid and reduces separation.
 
-### 5. Multi-document summarisation is the shape of a topic
+### 🔭 5. Multi-document summarisation is the shape of a topic
 
 Ma et al. (2022) define multi-document summarisation as generating a
 summary "from a cluster of topic-related documents", and name
@@ -139,7 +139,7 @@ content". A topic summary asserting a claim no paper made is the same
 failure class as a fabricated citekey, one level up. **Extractive first;
 abstractive only behind a human accept-gate, if at all.**
 
-### 6. Structural labels would let content be selected, if they existed
+### 🏗 6. Structural labels would let content be selected, if they existed
 
 DocBank (Li et al., 2020) annotates 500,000 document pages at token level
 with twelve semantic labels -- Abstract, Author, Caption, Date, Equation,
@@ -179,7 +179,7 @@ That proposal is itself unbuilt and argues a case for a *citation graph*,
 with structural extraction a by-product; it is the document to start
 from, not a queued piece of work.
 
-### 7. Validate stability, not just fit -- [#300](https://github.com/prasadtalasila/chitragupta/issues/300)
+### ✅ 7. Validate stability, not just fit -- [#300](https://github.com/prasadtalasila/chitragupta/issues/300)
 
 Asta again: hyperparameter choice in this family is usually driven by
 coherence alone, but "a model that looks good once can still be unstable
@@ -194,7 +194,7 @@ own docstring admits topic ids are not stable between runs, and the
 current defaults were chosen from a single sweep of one corpus. That is
 honest but thin, and it is the reason the depth settings are settings.
 
-## Where the numbers come from
+## 📊 Where the numbers come from
 
 - `bench/bench_topic_depth.py` -- the granularity sweep behind
   `topic_min_cluster_size` and its siblings.
@@ -217,7 +217,7 @@ figure quoted above is from this project's own 497-document corpus on one
 host, which is one corpus and one host -- the same limitation every
 section of `bench/RESULTS.md` carries.
 
-## References
+## 📖 References
 
 These are cited in full because none is in the ledger; see the note at
 the top.

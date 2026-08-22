@@ -1,8 +1,8 @@
-# The auto-improvement loop: what would be built
+# 🗺 The auto-improvement loop: what would be built
 
 Status: **specification of mostly unbuilt work.** Written 2026-08-11;
 step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, and step 5 built narrow
-(verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
+(verbatim runs only) in 5.7.0 -- see [Build order](#-build-order).
 
 `python -m chitragupta.review agenda` is not a command and no skill consumes
 anything below. Of the review aids, all six now emit JSON: `verbatim
@@ -30,22 +30,22 @@ detectors, its own persistence and its own roadmap --
 nothing specified below fetches a paper, writes `bibliography.bib`, or
 writes the ledger.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The shape](#the-shape)
-- [1. `--json` on every review aid](#1---json-on-every-review-aid)
-- [2. The `agenda` aid](#2-the-agenda-aid)
-- [3. The `agenda-reviser` skill](#3-the-agenda-reviser-skill)
-- [4. Acceptance and rollback](#4-acceptance-and-rollback)
-- [The requirements](#the-requirements)
-- [Who calls it, and when](#who-calls-it-and-when)
-- [How the loop is reached](#how-the-loop-is-reached)
-- [The cost ladder](#the-cost-ladder)
-- [What accumulates across drafts](#what-accumulates-across-drafts)
-- [Build order](#build-order)
-- [What this does not change](#what-this-does-not-change)
+- [The shape](#-the-shape)
+- [1. `--json` on every review aid](#-1---json-on-every-review-aid)
+- [2. The `agenda` aid](#-2-the-agenda-aid)
+- [3. The `agenda-reviser` skill](#-3-the-agenda-reviser-skill)
+- [4. Acceptance and rollback](#-4-acceptance-and-rollback)
+- [The requirements](#-the-requirements)
+- [Who calls it, and when](#-who-calls-it-and-when)
+- [How the loop is reached](#-how-the-loop-is-reached)
+- [The cost ladder](#-the-cost-ladder)
+- [What accumulates across drafts](#-what-accumulates-across-drafts)
+- [Build order](#-build-order)
+- [What this does not change](#-what-this-does-not-change)
 
-## The shape
+## 🏗 The shape
 
 Three sentences.
 
@@ -58,7 +58,7 @@ Three sentences.
 - The **human closes the loop**: they accept the diff, and no code path
   runs the skill automatically.
 
-## 1. `--json` on every review aid
+## ▶ 1. `--json` on every review aid
 
 **Built (5.4.0, 6.16.0).** `chitragupta/review/__init__.py` owns one output
 contract for the layer. Extend it with a JSON sibling beside the
@@ -86,7 +86,7 @@ draft -- not because an aid has yet to reuse the plumbing, but because
 that aid was never run against this draft, or `coverage` was run without
 `--write` -- which is the case step 2 already accounts for.
 
-## 2. The `agenda` aid
+## ▶ 2. The `agenda` aid
 
 `python -m chitragupta.review agenda <draft>` -- a fourth key in `review.AIDS`.
 Deterministic, stdlib-only, no LLM, tier 1, takes no lock, exits 0 whatever
@@ -114,7 +114,7 @@ finding is gone" and cross-aid dedup are both decidable across runs.
 **Order:** class order as the table below lists it, then #128's severity
 bucket within a class, then position in the draft.
 
-### Item classes
+### 🏷 Item classes
 
 | Class | Source | Kind | Unattended? |
 |---|---|---|---|
@@ -132,7 +132,7 @@ its automatic invocation (#183) landed in 5.19.0, and `chitragupta/style_check.p
 emits `--json` -- so build-order step 6 below is **done**, and this class
 is live rather than an empty list.
 
-## 3. The `agenda-reviser` skill
+## ▶ 3. The `agenda-reviser` skill
 
 A skill, not a `chitragupta/` module. Named for its input, like the two revisers
 it joins: `draft-reviser` works from the dossier, `corpus-reviser` from a
@@ -155,7 +155,7 @@ the item and the loop moves on. One agenda pass per invocation. The loop
 never adds a claim, and on the unattended classes only removes or rewords
 existing ones.
 
-## 4. Acceptance and rollback
+## ▶ 4. Acceptance and rollback
 
 Two levels.
 
@@ -170,10 +170,10 @@ A failed attempt is logged in `revisions.md` and **never** in
 The human is presented with a diff plus the `revisions.md` entries. The
 loop proposes and repairs; the human accepts.
 
-## The requirements
+## 🎯 The requirements
 
 Eleven obligations, each phrased so a reviewer can tell whether it has been
-met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#mapping-the-method-onto-this-pipeline)
+met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-mapping-the-method-onto-this-pipeline)
 says where each comes from.
 
 | | Requirement |
@@ -190,7 +190,7 @@ says where each comes from.
 | **R10** | The aid is registered in both `review.AIDS` and `__main__.AIDS`; the skill's `description` names its triggers; and both appear in AGENTS.md's layer bullets, CLI.md, the README tables and `mkdocs.yml`. |
 | **R11** | No hook, no scheduled job and no other skill invokes the `agenda-reviser` skill. Its only trigger is a person asking. |
 
-## Who calls it, and when
+## 👥 Who calls it, and when
 
 The two halves have different answers, and conflating them is how this
 design would go wrong.
@@ -214,7 +214,7 @@ fix here". Three occasions to name in that description:
 **Nothing else may call it** (R11): not a PostToolUse hook, not a
 scheduled job, not a genre skill at the end of its own run, and not
 `draft-reviser` on its own initiative.
-[Why each](AUTO-IMPROVEMENT-RATIONALE.md#why-only-a-person-may-start-it).
+[Why each](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it).
 
 **A stale input is reported, not merged.** Reports carry no timestamp --
 deliberately, so they diff cleanly -- so the check is file mtime. An aid
@@ -222,7 +222,7 @@ report older than the draft is named as stale in the agenda's header and
 its findings marked, rather than presented as current; the header says to
 re-run that aid.
 
-## How the loop is reached
+## 🪝 How the loop is reached
 
 Nothing here is discovered by scanning the filesystem. Each half is
 reached by a different mechanism, and a piece that is built but not
@@ -238,9 +238,9 @@ registered is dead code.
 
 The first two rows are load-bearing rather than administrative, and
 [SOUL.md](../SOUL.md) is deliberately absent from the list --
-[why](AUTO-IMPROVEMENT-RATIONALE.md#why-only-a-person-may-start-it).
+[why](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it).
 
-## The cost ladder
+## ⚡ The cost ladder
 
 Do the free thing first, and pay only for what it could not decide --
 [LADDERS.md](LADDERS.md)'s existing shape.
@@ -259,7 +259,7 @@ measurement behind it, both closed; what is left is applying that policy
 to whatever mechanical stages this loop adds, which is a question for the
 build rather than a blocker on it.
 
-## What accumulates across drafts
+## 🗄 What accumulates across drafts
 
 Instrumentation the loop would produce that outlives any one draft. None
 of it is built, and none of it is read today.
@@ -280,13 +280,13 @@ of it is built, and none of it is read today.
 The house-style counterpart -- standing preferences, the glossary, the
 allowlist -- is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
-## Build order
+## 🗺 Build order
 
 Issue #126 already fixes this order; the change is to its scope, not its
 sequence.
 
 1. **Settle the amendment.** Not a coding task --
-   [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs).
+   [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-the-amendment-this-needs).
    *Approved by the user on 2026-08-21 and applied in 6.20.1 by #312,
    which needed it to make the verbatim scan a required step in the genre
    skills. The surviving invariant is advisory-versus-blocking: a review
@@ -325,7 +325,7 @@ sequence.
 
 Steps 4 and 5 are the only new work; the rest are open issues.
 
-## What this does not change
+## 🚫 What this does not change
 
 - **No new gate.** `chitragupta.draft gate` remains the only one. #130 remains
   the only place that decision is taken.

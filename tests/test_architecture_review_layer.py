@@ -50,6 +50,15 @@ _NUMBER_WORDS = {
 
 _SECTION_HEADING = "## Layer 4: the review layer"
 
+# Headings carry an emoji prefix (`## 🔍 Layer 4: ...`), so the heading is
+# matched as `## ` + an optional run of non-ASCII + the text, rather than
+# as one literal. Written as a pattern, not as today's emoji, so changing
+# which emoji a heading wears is a docs edit and not a test edit.
+_SECTION_HEADING_RE = re.compile(
+    r"^## (?:[^\x00-\x7F]+ )?" + re.escape(_SECTION_HEADING.removeprefix("## ")),
+    re.MULTILINE,
+)
+
 REVIEW_MD = REPO_ROOT / "docs" / "REVIEW.md"
 REVIEW_TEXT = REVIEW_MD.read_text(encoding="utf-8")
 
@@ -63,9 +72,11 @@ def section() -> str:
     an assertion here.
     """
     text = ARCHITECTURE.read_text(encoding="utf-8")
-    start = text.index(_SECTION_HEADING)
-    following = re.search(r"^## ", text[start + len(_SECTION_HEADING):], re.MULTILINE)
-    end = start + len(_SECTION_HEADING) + following.start() if following else len(text)
+    match = _SECTION_HEADING_RE.search(text)
+    assert match, f"no heading matching {_SECTION_HEADING!r} in ARCHITECTURE.md"
+    start, after = match.start(), match.end()
+    following = re.search(r"^## ", text[after:], re.MULTILINE)
+    end = after + following.start() if following else len(text)
     body = text[start:end]
     assert len(body) > 500, "Layer 4 section came back suspiciously short -- did the heading move?"
     return body
@@ -80,7 +91,7 @@ class TestTheSectionIsNotVacuous:
 
     def test_the_heading_is_present_and_unique(self):
         text = ARCHITECTURE.read_text(encoding="utf-8")
-        assert text.count(_SECTION_HEADING) == 1
+        assert len(_SECTION_HEADING_RE.findall(text)) == 1
 
     def test_there_are_aids_to_check(self):
         assert len(review.AIDS) >= 3

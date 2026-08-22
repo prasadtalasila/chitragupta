@@ -1,4 +1,4 @@
-# Performance
+# ⚡ Performance
 
 Status: **measurements.** Written 2026-08-03.
 
@@ -23,7 +23,7 @@ Related reading:
   Developer-only: `bench/` is excluded from the release archive, so it is
   in the repository but not in a downloaded release.
 
-## Read the numbers with the machine in mind
+## 📊 Read the numbers with the machine in mind
 
 **Every figure below is one machine's, and yours will differ.** They are
 here to give you ratios and orders of magnitude -- "OCR roughly halves
@@ -32,7 +32,7 @@ times to plan against. Where a figure only makes sense against the
 hardware, the hardware is named.
 
 Two reference machines are used throughout. This is their full
-specification; [README.md](../README.md#hardware-requirements) has the
+specification; [README.md](../README.md#-hardware-requirements) has the
 sizing guidance that follows from it.
 
 | Name used below | What it is |
@@ -47,7 +47,7 @@ Python 3.12.3.
 
 Reproduce any of it with the harness in `bench/` -- see `bench/README.md`.
 
-## Install-time costs and traps
+## 🔧 Install-time costs and traps
 
 Two costs land before any setting below matters, and both are paid at
 install time. Neither is a knob you tune -- they are the two ways the
@@ -83,7 +83,7 @@ mismatch that runs CPU-only without complaining. If it still reports
 tag the script knows; that function's own comments have the manual
 fallback.
 
-## `[parser].backend` -- pdftotext or docling
+## ⚙ `[parser].backend` -- pdftotext or docling
 
 Measured on 5 real bibliography PDFs, cold (no caching -- `pdf_text.py`
 does not cache, so these are extraction times, not `sync`'s steady state,
@@ -107,7 +107,7 @@ comparison, including the two backends that were evaluated and removed.
 That ~42x figure is enough to choose a backend and useless for planning a
 run, which is what the rest of this document is for.
 
-## `[parser].ocr` -- the largest single lever, and a trade
+## 👁 `[parser].ocr` -- the largest single lever, and a trade
 
 **OCR's cost is not a single number.** It grows with worker count,
 because OCR is CPU-bound and therefore competes with the parallelism you
@@ -180,7 +180,7 @@ tables-as-images matter more than parse time. **The parse-quality guard
 will not catch a wrong choice here**: it looks for run-together words,
 not for content that never arrived.
 
-## GPU vs CPU -- it depends entirely on OCR
+## ⚖ GPU vs CPU -- it depends entirely on OCR
 
 **With OCR on, 1.79x:**
 
@@ -225,7 +225,7 @@ the numbers below are still why the parallelism work went after CPU-level
 document concurrency first. A GPU is worth having; it is not what makes
 a corpus parse fast.
 
-## `[parser].workers` -- document-level parallelism
+## ⚙ `[parser].workers` -- document-level parallelism
 
 **The largest lever on a multi-core machine, and the code currently caps
 it well below where the curve flattens.**
@@ -288,7 +288,7 @@ run-to-run point is worth about a percentage point, not a decimal.)
 > below rests on the *trend* across configurations, not the absolute
 > level.
 
-### What flattens the curve past ~24 workers
+### 📊 What flattens the curve past ~24 workers
 
 Timing each run's phases separates the candidates:
 
@@ -320,7 +320,7 @@ proportional to how much work there is to amortise it over. That is why
 the resolved count is also capped by the number of documents needing a
 parse.
 
-## Multi-GPU -- nothing to configure
+## 🖥 Multi-GPU -- nothing to configure
 
 With docling and more than one worker, each worker process claims one
 CUDA device round-robin. This is not automatic in docling: its
@@ -353,7 +353,7 @@ over a 60-document subset showed no difference at all (122.4s at 4
 workers, 123.0s at 12), with all four GPUs busy and the CPU ~85% idle.
 Per-worker startup dominates at that size.
 
-## `[parser].start_method` -- per-worker startup
+## ⚙ `[parser].start_method` -- per-worker startup
 
 A cold docling worker needs about **8.5s** before it produces its first
 page on the multi-GPU machine:
@@ -404,7 +404,7 @@ the full corpus.
 going to.** It helps the case where startup *is* the run: a handful of
 documents.
 
-## `[parser].document_timeout` -- what a safe value looks like
+## ⏱ `[parser].document_timeout` -- what a safe value looks like
 
 Not a performance knob so much as a knob whose value has to be *chosen
 from* performance. Any threshold has to clear the slowest document you
@@ -416,7 +416,7 @@ corpus with a longer document. Measure before setting it.
 on purpose: it is meant to catch a run that will never finish, not to
 police a slow one.
 
-## `[enrich].docling_images` -- disk, and a full re-parse
+## 💾 `[enrich].docling_images` -- disk, and a full re-parse
 
 Two costs, both worth knowing before turning it on:
 
@@ -427,14 +427,14 @@ Two costs, both worth knowing before turning it on:
   `docling_image_scale = 2.0` is roughly 144 DPI, enough to read a figure
   back without storing print-resolution files.
 
-## `[source_pdfs] dir` -- retired
+## 🗑 `[source_pdfs] dir` -- retired
 
 Nothing left to measure: the enrichment corpus is now the bibliography
 alone, so there is no second source to deduplicate against. A config file
 still naming the key is ignored. `chitragupta/enrich/corpus.py` has the reasoning,
 and the retired duplicate-check timings stand in `bench/RESULTS.md`.
 
-## Where it all ended up
+## 🏁 Where it all ended up
 
 Measured end to end on 2026-08-04, rather than extrapolated:
 
@@ -456,7 +456,7 @@ contribution.** The largest is a boolean.
 these numbers; `bench/RESULTS.md` carries the measurements themselves,
 including the conclusions later ones overturned.
 
-## What a drift sweep costs
+## ⚡ What a drift sweep costs
 
 Everything above is the corpus layer: `sync` and the enrichment stages,
 where a run is measured in minutes. `python -m chitragupta.draft dossier status
@@ -468,7 +468,7 @@ nicety.
 The sweep builds a BM25 index in memory and discards it, rather than
 calling `chitragupta.retrieval.search()` -- which would take a write connection
 to the ledger and rewrite `content/retrieval_index.json` every time an
-inspection ran. [DRAFT-ITERATION.md](DRAFT-ITERATION.md#why-the-new-papers-are-not-found-with-search)
+inspection ran. [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-why-the-new-papers-are-not-found-with-search)
 is the argument; this is the price.
 
 Multi-GPU machine, bare `python` (no venv -- `chitragupta.dossier` is
@@ -502,7 +502,7 @@ it does not grow with your drafts"**. `bench/RESULTS.md` has the full
 run, the synthetic scaling cross-check, and what the measurement
 excludes.
 
-## What raising the worker count costs in reproducibility
+## 🔁 What raising the worker count costs in reproducibility
 
 Worth pricing alongside the speedups above, because it is the one cost of
 parallelism not measured in seconds: **the more workers, the less
@@ -517,7 +517,7 @@ roughly a third of that rate. Serial parsing has not been observed to
 vary.
 
 **The full contract is
-[ARCHITECTURE.md's "What is reproducible, and what is not"](ARCHITECTURE.md#what-is-reproducible-and-what-is-not)**,
+[ARCHITECTURE.md's "What is reproducible, and what is not"](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)**,
 artifact by artifact, and `bench/RESULTS.md`'s 2026-08-07 section has the
 measurement. Both are stated once, there.
 

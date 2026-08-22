@@ -1,4 +1,4 @@
-# The review layer
+# 🔍 The review layer
 
 Status: **reference.** Written 2026-08-22, describing the six aids as
 they stand.
@@ -8,7 +8,7 @@ whether it is good enough to hand over. **Assumed:**
 [FEATURES.md](FEATURES.md) for where this sits among the pipeline's
 features. **Not covered here:** why a review aid may never become a gate,
 which is an architecture question and lives in
-[ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer); and how the
+[ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer); and how the
 verbatim detector works internally, which is
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
 
@@ -25,7 +25,7 @@ mirror the same draft path and are otherwise unalike:
 | If nobody reads it | the next revision pays twice | nothing happened; it was advisory |
 | Lives in | `content/dossiers/` | `content/review/` |
 
-## The one thing to understand first
+## 🔑 The one thing to understand first
 
 **None of these is a gate, and none may become one.** Each produces
 evidence for a human judgement, never a verdict, and each exits 0 whether
@@ -34,7 +34,7 @@ no draft is blocked by what one says.
 
 That is a design commitment rather than a current limitation --
 [SOUL.md](../SOUL.md) commits to it, and
-[ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer) has the
+[ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer) has the
 argument for why decidability is not what earns a check the right to
 block. What matters here is the consequence: **an aid that finds nothing
 is not a clean bill of health, and an aid that finds something is not an
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also **take no lock**, so any of them runs happily while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## The six aids
+## 🧩 The six aids
 
 **`review provenance` -- does the cited paper actually say this?** The
 gate answers "is this citekey real?" exactly, and that is all it can
@@ -98,7 +98,7 @@ which is why one always says *candidates* and the other always says
 *sentences*. It is also the only aid that reads no corpus, so it runs
 before you have parsed anything.
 
-## What every report looks like
+## 📋 What every report looks like
 
 One output contract, mirroring the draft's own path exactly as
 `content/rendered/` and `content/dossiers/` do -- so a draft, its
@@ -131,7 +131,7 @@ The `.json` beside a report is the same findings as data, for a caller
 that would otherwise parse the printed form. It is a sibling of the
 report, not a render of it -- `.tex`/`.pdf` are another document.
 
-## Two limits worth knowing
+## 🚫 Two limits worth knowing
 
 - **A clean verbatim scan is not a clean bill of health.** Detection runs
   in three tiers, and the third needs the optional enrichment layer. A
@@ -141,12 +141,12 @@ report, not a render of it -- `.tex`/`.pdf` are another document.
   source the draft should have used, or a query that was too broad. The
   report deliberately declines to decide which.
 
-## Where to go next
+## ➡ Where to go next
 
 - Reading a verbatim report: [PLAGIARISM.md](PLAGIARISM.md); how the
   detector works: [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
 - Reading a provenance report:
   [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 - Fixing what a verbatim scan found: the `overlap-reviser` skill
-  ([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)).
+  ([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)).
 - The commands and their flags: [CLI.md](CLI.md).

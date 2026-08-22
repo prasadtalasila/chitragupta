@@ -1,21 +1,21 @@
-# Developer guide
+# 🛠 Developer guide
 
 Material for working on this repository itself, as opposed to using it to
 draft content -- test running, the full source layout, and known gaps.
 See [README.md](README.md) for the user-facing Quickstart/Configuration/
 Architecture docs and [DOCKER.md](DOCKER.md) for the container build.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Running tests](#running-tests)
-- [Benchmarking the parser](#benchmarking-the-parser)
-- [Writing a script that drives the enrichment layer](#writing-a-script-that-drives-the-enrichment-layer)
-- [Repository layout](#repository-layout)
-- [Figures and copyright](#figures-and-copyright)
-- [Citation provenance](#citation-provenance)
-- [Open questions and unbuilt features](#open-questions-and-unbuilt-features)
+- [Running tests](#-running-tests)
+- [Benchmarking the parser](#-benchmarking-the-parser)
+- [Writing a script that drives the enrichment layer](#-writing-a-script-that-drives-the-enrichment-layer)
+- [Repository layout](#-repository-layout)
+- [Figures and copyright](#-figures-and-copyright)
+- [Citation provenance](#-citation-provenance)
+- [Open questions and unbuilt features](#-open-questions-and-unbuilt-features)
 
-## Running tests
+## 🧪 Running tests
 
 ```bash
 # Install pytest/pytest-cov into the same venv (run python-deps first)
@@ -43,7 +43,7 @@ classes elsewhere) run the real `pdftotext`/`pandoc`/`pdflatex` binaries
 end to end rather than mocking them, and skip automatically if those
 aren't on `PATH`.
 
-## Benchmarking the parser
+## ⚡ Benchmarking the parser
 
 `bench/` measures what a full `docling` parse of the bib corpus costs on
 a given machine, and is deliberately kept out of `tests/`: it takes a couple of
@@ -103,7 +103,7 @@ The headline, in the order it was found:
    different passage text, and -- correcting what this project had
    asserted twice -- that two runs of the **same** configuration are not
    exempt either. The artifact-by-artifact contract that came out of it
-   is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
+   is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 The lesson worth carrying: every one of those steps was measured, and
 seven intermediate conclusions were wrong until the next measurement
@@ -111,7 +111,7 @@ corrected them -- including two that sat in the code as stated fact, and
 one that had been written into three documents. `bench/` exists so that
 the next one is checked too.
 
-## Writing a script that drives the enrichment layer
+## 🧠 Writing a script that drives the enrichment layer
 
 `chitragupta.enrich.docling_parse.parse_corpus` and `python -m
 chitragupta.corpus sync` both use
@@ -130,7 +130,7 @@ with `BrokenProcessPool`. `chitragupta/enrich/__main__.py` and `chitragupta/sync
 are both guarded already; this only bites ad-hoc scripts, and it bites
 immediately rather than subtly.
 
-## Repository layout
+## 📁 Repository layout
 
 ```text
 README.md                 the user-facing overview: what this is, the Quickstart, hardware sizing
@@ -335,7 +335,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry) -- unverified end-to-end, see DOCKER.md
 ```
 
-## Figures and copyright
+## 📐 Figures and copyright
 
 With `[enrich].docling_images` on (off by default), the Docling stage writes
 each paper's figure bitmaps to `content/docling/<doc>_artifacts/` and an
@@ -391,7 +391,7 @@ A wholly original diagram -- not derived from any source paper's figure
 supported form and why it's plain ASCII rather than Unicode
 box-drawing.
 
-## Citation provenance
+## 📖 Citation provenance
 
 `python -m chitragupta.review provenance content/drafts/<slug>.md` reports, for
 every citation in a draft, what in the cited source supports it and where
@@ -422,14 +422,14 @@ excerpt would be a collage of two arguments.
 Full design rationale, including the measurements behind those choices:
 [docs/CITATION-PROVENANCE.md](docs/CITATION-PROVENANCE.md).
 
-## Open questions and unbuilt features
+## ❓ Open questions and unbuilt features
 
 Running this pipeline on a schedule was the long-standing goal here.
 **Most of it now exists**: a rotating `logs/pipeline.log`, shared by the
 corpus and enrichment layers (see `chitragupta/logging_setup.py`), a pages/s
 throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
-[docs/CLI.md](docs/CLI.md#running-sync-on-a-schedule) -- including the
+[docs/CLI.md](docs/CLI.md#-running-sync-on-a-schedule) -- including the
 absolute-interpreter-path detail that cron's minimal environment
 requires.
 
@@ -442,7 +442,7 @@ mtime does nothing until a human re-exports. Closing that properly means
 either a Zotero auto-export plugin (outside this repo) or accepting that
 the export stays a deliberate human step.
 
-### `content/topics.json` has no consumer
+### 🚫 `content/topics.json` has no consumer
 
 `chitragupta/enrich/topic_model.py` writes it and nothing reads it -- no module,
 no

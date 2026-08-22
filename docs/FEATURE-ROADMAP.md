@@ -1,4 +1,4 @@
-# Feature roadmap: what would be built, and in what order
+# 🗺 Feature roadmap: what would be built, and in what order
 
 Status: **plan for unbuilt work.** Written 2026-08-20. **Ten of the
 original twenty-one items have shipped and have been removed from this
@@ -29,7 +29,7 @@ for the figure half.
 
 That is a settled decision, not an open option: copying was offered and
 declined once the cost of declining had been measured at roughly one PR.
-[The borrowing posture](#the-borrowing-posture-inspiration-or-copy) has
+[The borrowing posture](#-the-borrowing-posture-inspiration-or-copy) has
 the working. Every item below is written to it -- where an upstream
 artefact is quoted in this document, it is quoted to say *what to learn
 from it*, never as text to paste.
@@ -45,25 +45,25 @@ already exist.
 track ([REQUIREMENTS.md](REQUIREMENTS.md) §5.2), which is independent of
 everything below.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The diagnosis](#the-diagnosis-where-a-sources-wording-actually-enters-a-draft)
-- [The baseline](#the-baseline-measured-before-proposing-anything)
-- [The borrowing posture](#the-borrowing-posture-inspiration-or-copy)
-- [The decision that gated part of this (taken)](#the-decision-that-gated-part-of-this-taken)
-- [What the OpenScholar sample demonstrates](#what-the-openscholar-sample-demonstrates)
-- [Four constraints every item respects](#four-constraints-every-item-respects)
-- [Theme A: close the leak](#theme-a-close-the-leak)
-- [Theme B: make synthesis structural](#theme-b-make-synthesis-structural)
-- [Theme C: verify faithful use](#theme-c-verify-faithful-use)
-- [Theme D: figure layout](#theme-d-figure-layout)
-- [Theme F: the auto-improvement loop](#theme-f-the-auto-improvement-loop)
-- [Theme E: nice to have](#theme-e-nice-to-have)
-- [Theme G: topic modelling](#theme-g-topic-modelling)
-- [Build order](#build-order)
-- [What is deliberately not proposed](#what-is-deliberately-not-proposed)
+- [The diagnosis](#-the-diagnosis-where-a-sources-wording-actually-enters-a-draft)
+- [The baseline](#-the-baseline-measured-before-proposing-anything)
+- [The borrowing posture](#-the-borrowing-posture-inspiration-or-copy)
+- [The decision that gated part of this (taken)](#-the-decision-that-gated-part-of-this-taken)
+- [What the OpenScholar sample demonstrates](#-what-the-openscholar-sample-demonstrates)
+- [Four constraints every item respects](#-four-constraints-every-item-respects)
+- [Theme A: close the leak](#-theme-a-close-the-leak)
+- [Theme B: make synthesis structural](#-theme-b-make-synthesis-structural)
+- [Theme C: verify faithful use](#-theme-c-verify-faithful-use)
+- [Theme D: figure layout](#-theme-d-figure-layout)
+- [Theme F: the auto-improvement loop](#-theme-f-the-auto-improvement-loop)
+- [Theme E: nice to have](#-theme-e-nice-to-have)
+- [Theme G: topic modelling](#-theme-g-topic-modelling)
+- [Build order](#-build-order)
+- [What is deliberately not proposed](#-what-is-deliberately-not-proposed)
 
-## The diagnosis: where a source's wording actually enters a draft
+## 🩺 The diagnosis: where a source's wording actually enters a draft
 
 The detectors are not the problem. The path evidence takes to the
 drafter is. Traced through the current code:
@@ -95,7 +95,7 @@ So the fix is upstream of detection: **the drafter must not be holding
 source wording at the moment it writes.** Everything in Theme A follows
 from that one sentence.
 
-## The baseline, measured before proposing anything
+## 📊 The baseline, measured before proposing anything
 
 The diagnosis above is read off the code. This is what the existing
 detector actually reports today, run against the four real drafts in
@@ -156,7 +156,7 @@ after the fact. It is a reason to build A2 and measure, not evidence
 that A2 is already validated. A1 should report this same table before
 and after, which costs one command.
 
-## What the OpenScholar sample demonstrates
+## 🔬 What the OpenScholar sample demonstrates
 
 The sample output supplied with this request (Asta, "Open Challenges in
 Verification and Validation of Digital Twin Systems") is worth reading
@@ -196,7 +196,7 @@ does supply is a prompt that demonstrably asks for property 1, which is
 why B2 can point at prior art for
 the behaviour it wants rather than arguing for it from scratch.
 
-## The borrowing posture: inspiration, or copy?
+## ⚖ The borrowing posture: inspiration, or copy?
 
 **Decided: inspiration only, nothing copied.** This section is kept
 because the decision was a measured one and the measurement is the
@@ -219,11 +219,11 @@ and an idea is inspiration by definition. Priced item by item:
 | A2 | Two prompt sentences | **~0.** They are generic ("summarize rather than copy"); house style differs anyway |
 | B1 | ~12 lines of dict-counting | **~0.** Already being rewritten -- keyed on citekey rather than title, and with the off-by-one fixed. Only the cap-then-truncate *ordering* has value, and that is an idea |
 | B2 | `prompts_w_references` | **Small.** Its citation mechanics are positional `[n]` against a flat blob, so a substantial rewrite was required regardless. What is lost is validated wording |
-| [B4](#b4-cross-encoder-reranking) | "reranking code" | **~0.** The shipped reranker is one `compute_score` library call. Everything around it is dead code this roadmap already declines |
+| [B4](#-b4-cross-encoder-reranking) | "reranking code" | **~0.** The shipped reranker is one `compute_score` library call. Everything around it is dead code this roadmap already declines |
 | D1 | Style guide + ~40 enumerated vetoes | **The whole delta.** ~1 PR |
-| [D4](#d4-optional-vision-critique) | Loop shape + calibration clause | **~0.** Loop shape is architecture; the clause is two sentences |
+| [D4](#-d4-optional-vision-critique) | Loop shape + calibration clause | **~0.** Loop shape is architecture; the clause is two sentences |
 
-### Why D1 carries all of it, and why that is acceptable
+### 💡 Why D1 carries all of it, and why that is acceptable
 
 The veto lists are the one substantial *text* asset, and rewriting them
 means producing our own catalogue of figure defects. Two routes were
@@ -244,7 +244,7 @@ considered:
   then needs a provenance line to avoid reading as hand-authored rules. Worth
   revisiting if (a)'s catalogue comes out thin.
 
-### The outcome
+### 🏁 The outcome
 
 **Inspiration only.** The delta is one PR, the licence surface goes to
 zero, and [SOUL.md](../SOUL.md)'s objection to manufacturing support is
@@ -260,7 +260,7 @@ is what they found worth saying -- and the implementation is written
 here from scratch. D1 is the one item where that costs real effort, and
 it says so.
 
-## The decision that gated part of this (taken)
+## ⚖ The decision that gated part of this (taken)
 
 **Approved by the user on 2026-08-21, applied in 6.20.1 by #312.** Kept
 because it is the one decision in this roadmap that was never an
@@ -287,7 +287,7 @@ makes `verbatim scan` run without a person asking, which is exactly the
 rule above -- so A1a's real dependency was a user decision, and its real
 cost included the wording sweep and three diagram re-renders rather than
 the "no Python" change this roadmap first estimated.
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs)
+[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-the-amendment-this-needs)
 has the sweep, and the lesson that outlived it: the count grew from
 twelve to twenty-two while the decision was pending, because three aids
 landed in between and each brought its own copy of the sentence.
@@ -298,7 +298,7 @@ all nine skills (#183). It did not transfer: `style_check` is
 `python -m chitragupta.draft style`, a **drafting-layer** command, and
 the never-automatic rule was stated only about layer 4.
 
-## Four constraints every item respects
+## 🔑 Four constraints every item respects
 
 Named up front because each one has already killed an obvious design.
 
@@ -306,7 +306,7 @@ Named up front because each one has already killed an obvious design.
 the corpus layer "has no LLM and no judgment calls"; the enrichment
 layer "reads the ledger and never writes it" and "nothing in it is
 generative". So extracted claims live in the **dossier**, and the
-per-citekey TL;DR ([E1](#e1-per-citekey-tldr)) gets an explicitly
+per-citekey TL;DR ([E1](#-e1-per-citekey-tldr)) gets an explicitly
 named home that is neither `corpus` nor `enrich`. Writing either into
 the ledger would break "same bibliography in, same citekeys out".
 
@@ -328,7 +328,7 @@ Copied OpenScholar code inherits that rule -- and cannot be copied as
 spaCy model at import that the module never uses, and reads
 `os.environ["S2_API_KEY"]` at module scope. Port the functions and the
 prompt strings; rewrite the imports. Of everything proposed here, only
-[B4](#b4-cross-encoder-reranking) genuinely needs the ML stack.
+[B4](#-b4-cross-encoder-reranking) genuinely needs the ML stack.
 
 **4. Attribution is owed for the idea, not for the text.** Nothing is
 copied, so Apache-2.0 §4's notice obligations never attach --
@@ -345,7 +345,7 @@ reach items in this roadmap and are easy to breach by accident:
   emit one.
 - **R3** -- *"An unattended item's check is **binary**. No continuous
   score is ever the thing being optimised."* This is the one most
-  likely to be broken here, and [B5](#b5-pre-gate-self-feedback-loop) broke
+  likely to be broken here, and [B5](#-b5-pre-gate-self-feedback-loop) broke
   it in the first draft of this document. Every aid below is therefore
   annotated **binary** (an agenda may consume it and a loop may act on
   it) or **continuous** (a human reads it; nothing acts on it
@@ -366,12 +366,12 @@ however well the name fits. `triage` is separately blocked --
 [REJECTION.md](REJECTION.md) records a retrieval stage of that name
 built and withdrawn.
 
-## Theme A: close the leak
+## 💧 Theme A: close the leak
 
 The highest-value theme, and the one the request is actually about.
 A1 is cheap and immediate; A2-A4 are the structural fix.
 
-### A1b: auto-route findings into `overlap-reviser` -- declined
+### 🚫 A1b: auto-route findings into `overlap-reviser` -- declined
 
 The first draft of this roadmap paired A1a with automatic routing of
 findings into the existing `overlap-reviser` skill. **That half is
@@ -397,7 +397,7 @@ and the person decides whether to invoke the repair loop. That is one
 extra deliberate act, and it is the act the whole design is built
 around.
 
-### A3: extraction at the retrieval boundary
+### 🔎 A3: extraction at the retrieval boundary
 
 `survey-writer` step 2a already dispatches one subagent per sub-theme
 and already tells it to return "**only** the kept-evidence packet…
@@ -415,12 +415,12 @@ number rather than an estimate.
 
 Size: S-M, mostly SKILL.md. Depends on: A2.
 
-## Theme B: make synthesis structural
+## 🧩 Theme B: make synthesis structural
 
 Theme A stops wording leaking. Theme B removes the *opportunity* by
 changing what a paragraph is required to be.
 
-### B3: section thesis with source count
+### ✍ B3: section thesis with source count
 
 The sample's property 3: each section opens with a one-sentence
 synthesised claim and the number of distinct sources behind it. Cheap,
@@ -430,7 +430,7 @@ verified rather than trusted.
 
 Size: S. Depends on: nothing.
 
-### B4: cross-encoder reranking
+### 🧠 B4: cross-encoder reranking
 
 OpenScholar's `--ranking_ce` / `--reranker`. `retrieval.py`'s own
 docstring already anticipates the swap, and
@@ -446,7 +446,7 @@ cross-encoder and wiring it to the existing `search(query, k)` shape.
 
 Size: M-L. Depends on: B1.
 
-### B5: pre-gate self-feedback loop
+### 🔁 B5: pre-gate self-feedback loop
 
 OpenScholar's `--feedback`: before running the citation gate, the skill
 critiques its own draft against the evidence packet and repairs gaps.
@@ -469,18 +469,18 @@ reverts"*, made deterministic by `verbatim recheck`, which shipped in
 gutting a draft, never as the thing being satisfied.
 
 This item is also self-marking in the sense
-[A1b](#a1b-auto-route-findings-into-overlap-reviser----declined) declines,
+[A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined) declines,
 and it needs the amendment. It sits late for both reasons rather than
 one.
 
 Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 
-## Theme C: verify faithful use
+## ✅ Theme C: verify faithful use
 
 Detection, after Theme A and B have reduced what there is to detect.
 All three are review-layer aids: advisory, exit 0, never gates.
 
-### C2: claim-support checking
+### 🔍 C2: claim-support checking
 
 Does the cited source actually support the sentence citing it? Closes
 [REQUIREMENTS.md](REQUIREMENTS.md) §1.2, which is on record as unbuilt.
@@ -525,7 +525,7 @@ Behind the `enrich` extra, and carrying R2 and R10 like any aid.
 
 Size: L. Depends on: C1 for the sentence-splitting it shares.
 
-### C3: quotation and page integrity
+### 📖 C3: quotation and page integrity
 
 Given A2's `quote:` and A4's appendix, verify each quoted span appears
 verbatim in the cited source at the cited page. Deterministic, and
@@ -538,7 +538,7 @@ candidate for an unattended class. Carries R2 and R10.
 
 Size: M. Depends on: A2, A4.
 
-## Theme D: figure layout
+## 📐 Theme D: figure layout
 
 The second thing the request asks for. PaperBanana generates **raster**
 images through image-generation APIs; this pipeline generates **TikZ
@@ -598,7 +598,7 @@ shapes, lines and typography. The layout material is instead in
 `prompts/diagram_eval_prompts.py`, the *evaluation* rubric, which was
 never advertised as a style artefact.
 
-### D3: known-good layout scaffolds
+### 🏗 D3: known-good layout scaffolds
 
 A small library of TikZ patterns, **one per metaphor in D1's list** --
 pipeline, layered stack, branching tree, hub-and-spoke, control loop --
@@ -616,7 +616,7 @@ pixels.
 
 Size: M. Depends on: D1, D2.
 
-### D4: optional vision critique
+### 👁 D4: optional vision critique
 
 Only for what D2 cannot judge: whether the figure communicates its
 point, and the arrow-routing veto D2 deliberately skips. Opt-in,
@@ -654,7 +654,7 @@ TikZ source that produced it.
 
 Size: M. Depends on: D1-D3, and evidence that they left a real gap.
 
-## Theme F: the auto-improvement loop
+## 🔄 Theme F: the auto-improvement loop
 
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) specifies a seven-step track
 that predates this roadmap and overlaps it at three points. Its items
@@ -669,7 +669,7 @@ its automatic invocation (#183) in 5.19.0, and `chitragupta/style_check.py`
 carries `--json` today. **Build-order step 6 has shipped.** Steps 3 and
 6 are done; 1, 2, 4, 5 and 7 are the live work.
 
-### F2: the `agenda` aid
+### 🗒 F2: the `agenda` aid
 
 Step 4, and the largest genuinely new piece of the track. A fourth key
 in `review.AIDS`: deterministic, stdlib-only, no LLM, takes no lock,
@@ -696,7 +696,7 @@ Size: L. Depends on: F1. Also wants #128's severity buckets, which
 shipped in 5.5.0 -- ordering is by class, then bucket, then position,
 and the stated risk is *"alarm fatigue, not correctness"*.
 
-### F3: widen `overlap-reviser` into `agenda-reviser`
+### 🤖 F3: widen `overlap-reviser` into `agenda-reviser`
 
 Step 5. `overlap-reviser` shipped in 5.7.0 as #129-as-filed: the
 `verbatim-run` class alone, consuming `verbatim scan --json` directly.
@@ -707,28 +707,28 @@ re-check and the person-only trigger are already what R1-R11 ask for.
 Two pieces landed with it that this work should reuse rather than
 rebuild: the scan payload's `id` (R2's stable identity) and
 `verbatim recheck` (R3's binary check and R4's count, made
-deterministic). [B5](#b5-pre-gate-self-feedback-loop) in particular should
+deterministic). [B5](#-b5-pre-gate-self-feedback-loop) in particular should
 take its acceptance test from here rather than from upstream.
 
 Size: L. Depends on: F2, and the amendment only for automation --
 person-triggered widening needs no amendment at all.
 
-### F4: the gating decision -- already answered
+### ⚖ F4: the gating decision -- already answered
 
 Step 7 (#130), and it is worth recording that this one is **closed, not
 pending**. It was measured against this project's own 178,000-word book
 and declined: no span-length threshold separated the one genuine
 violation from correctly-quoted passages several corpus papers share.
-[What is deliberately not proposed](#what-is-deliberately-not-proposed)
+[What is deliberately not proposed](#-what-is-deliberately-not-proposed)
 carries it. Revisitable only on new evidence -- a corpus of real rather
 than planted reuse, or a version-controlled seed allowlist.
 
 Size: none. Depends on: nothing. Listed so it is not re-opened by
 someone reading step 7 and assuming it is outstanding.
 
-## Theme E: nice to have
+## ✨ Theme E: nice to have
 
-### E1: per-citekey TL;DR
+### 🔭 E1: per-citekey TL;DR
 
 A one-paragraph summary per citekey, so skimming a large corpus does not
 mean opening every PDF.
@@ -749,7 +749,7 @@ describing a paper that has since been re-parsed.
 Size: M. Depends on: nothing. Genuinely last -- it improves browsing,
 where everything above improves what gets published.
 
-## Theme G: topic modelling
+## 🏷 Theme G: topic modelling
 
 **The one theme here with shipped work in it**, which is why it reads
 differently from A-F above. Those propose; this one records what landed
@@ -765,7 +765,7 @@ in appearance: every part of it lives in the optional enrichment layer,
 which has had `bertopic` and `sentence-transformers` since long before
 this.
 
-### Built
+### ✅ Built
 
 | Feature | What it does |
 |---|---|
@@ -779,7 +779,7 @@ this.
 | Content preprocessing | Reference lists and boilerplate dropped before chunking. Nothing else -- no stop-word or low-frequency filtering, which would destroy the domain terms the corpus is discriminated by |
 | A reader | `chitragupta corpus topics`, tier 1: no venv, no GPU. Ends with the papers no seed matched |
 
-### Next
+### ⏭ Next
 
 | # | Item | Size | Why | Depends on |
 |---|---|---|---|---|
@@ -788,7 +788,7 @@ this.
 | G3 | [#299](https://github.com/prasadtalasila/chitragupta/issues/299) converged topic set | M | Seed and emergent topics are two artefacts describing one corpus, joined by nobody | G2 |
 | G4 | [#300](https://github.com/prasadtalasila/chitragupta/issues/300) stability validation | M | Nothing measures whether a topic set reproduces. One swept setting moved from 13 topics to 5 across an upstream change, with `random_state=42` throughout | -- |
 
-### What Theme G is deliberately not doing
+### 🚫 What Theme G is deliberately not doing
 
 | Not proposed | Why |
 |---|---|
@@ -797,7 +797,7 @@ this.
 | Topic ids treated as stable | They are not, and the stage's own docstring says so. Anything downstream must key on labels or citekeys |
 | DocBank-grade structural extraction ([#301](https://github.com/prasadtalasila/chitragupta/issues/301), closed) | Filed because artefact clusters dominated the topic list; G1 removed all of them with no new dependency, which is what that issue said would retire it. If structural extraction is wanted later, [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md) is the better starting point -- purpose-built for the author block and reference list, structured records rather than token classes, and sequence labelling rather than layout inference |
 
-## Build order
+## ▶ Build order
 
 Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
@@ -812,20 +812,20 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 |---|---|---|---|---|
-| 1 | [A3](#a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
-| 2 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 3 | [B4](#b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 4 | [F2](#f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
-| 5 | [D3](#d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 |
-| 6 | [C3](#c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 7 | [F3](#f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
-| 8 | [B5](#b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
-| 9 | [C2](#c2-claim-support-checking) claim-support checking | C | L | C1 |
-| 10 | [E1](#e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- |
-| 11 | [D4](#d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
+| 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
+| 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
+| 4 | [F2](#-f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
+| 5 | [D3](#-d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 |
+| 6 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 7 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
+| 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
+| 9 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
+| 10 | [E1](#-e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- |
+| 11 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
-Withdrawn: [A1b](#a1b-auto-route-findings-into-overlap-reviser----declined).
-Already answered: [F4](#f4-the-gating-decision----already-answered).
+Withdrawn: [A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined).
+Already answered: [F4](#-f4-the-gating-decision----already-answered).
 
 **What changed from the first draft of this document, and why it
 matters.** A1 was PR #1 and "Depends on: nothing". Reading the
@@ -853,7 +853,7 @@ pipeline from detecting verbatim reuse afterwards to not producing it.
 B1 and A2 are the whole spine; A3 closes the context leak; D1 addresses
 the figure complaint at its source.
 
-## What is deliberately not proposed
+## 🚫 What is deliberately not proposed
 
 Recorded so each is not re-proposed as an oversight.
 
@@ -861,7 +861,7 @@ Recorded so each is not re-proposed as an oversight.
 |---|---|
 | A blocking overlap gate | Declined on measured evidence (#130), and a second meaning would blunt the gate's one meaning ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10) |
 | Claim extraction cached in the corpus or enrichment layer | LLM output on the corpus plane; breaks "same bibliography in, same citekeys out" ([SOUL.md](../SOUL.md)) |
-| TL;DR shown in `corpus ledger` output | Same, plus it inverts the layer order -- see [E1](#e1-per-citekey-tldr) |
+| TL;DR shown in `corpus ledger` output | Same, plus it inverts the layer order -- see [E1](#-e1-per-citekey-tldr) |
 | Image-generated figures | Non-deterministic, and cannot satisfy §10's two-form contract |
 | Any ML dependency in the core | `bibtexparser` as sole core dependency is a design decision in `pyproject.toml`, not an accident |
 | Fetching papers from arXiv or anywhere else | Admission is the reference manager's job alone ([AGENTS.md](../AGENTS.md)) |

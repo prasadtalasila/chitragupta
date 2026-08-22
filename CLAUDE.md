@@ -1,11 +1,11 @@
-# CLAUDE.md
+# 📘 CLAUDE.md
 
 **Router.** This file is deliberately short: it is loaded into every
 session in this repository, whichever task you are here for. It names the
 one rule that binds every task, then sends you to the file that governs
 yours.
 
-## Which file governs you
+## 🧭 Which file governs you
 
 Routed by **what you are about to do**, not by who you are. Someone who
 unzipped a release, someone who cloned the repository, and someone who
@@ -28,7 +28,7 @@ apply to `chitragupta/`.
 [SOUL.md](SOUL.md) is the one-page why behind all of it, and the
 tie-breaker when two files seem to disagree.
 
-## The one rule that binds every task
+## 🔑 The one rule that binds every task
 
 > **A citekey may be used only if it appears in the human's own `.bib`
 > export *and* was picked up into the ledger by a real parse of a real
@@ -40,7 +40,7 @@ references have reached real published papers; preventing that is what
 this project is for. [AGENTS.md](AGENTS.md) has the rule in operational
 terms, [SOUL.md](SOUL.md) has why it cannot bend.
 
-## Why this file is a router and not the guidance itself
+## 💡 Why this file is a router and not the guidance itself
 
 Three reasons, so the next person does not consolidate it back:
 

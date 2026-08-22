@@ -1,4 +1,4 @@
-# Rejection
+# 🚫 Rejection
 
 Status: **reasoning document.** Written 2026-08-07.
 
@@ -27,19 +27,19 @@ Related reading:
   belongs there: every token figure below is derived from file sizes and
   documented defaults, and is labelled an estimate each time it appears.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Why rejection and not selection](#why-rejection-and-not-selection)
-- [What the two-stage read costs](#what-the-two-stage-read-costs)
-- [The bug the split exposed](#the-bug-the-split-exposed)
-- [Why it does not generalise across genres](#why-it-does-not-generalise-across-genres)
-- [Was it worth building at all?](#was-it-worth-building-at-all)
-- [Recording how a rejection was made](#recording-how-a-rejection-was-made)
-- [Why deep-research keeps the boundary alone](#why-deep-research-keeps-the-boundary-alone)
-- [Should any of this be configurable?](#should-any-of-this-be-configurable)
-- [What was decided](#what-was-decided)
+- [Why rejection and not selection](#-why-rejection-and-not-selection)
+- [What the two-stage read costs](#-what-the-two-stage-read-costs)
+- [The bug the split exposed](#-the-bug-the-split-exposed)
+- [Why it does not generalise across genres](#-why-it-does-not-generalise-across-genres)
+- [Was it worth building at all?](#-was-it-worth-building-at-all)
+- [Recording how a rejection was made](#-recording-how-a-rejection-was-made)
+- [Why deep-research keeps the boundary alone](#-why-deep-research-keeps-the-boundary-alone)
+- [Should any of this be configurable?](#-should-any-of-this-be-configurable)
+- [What was decided](#-what-was-decided)
 
-## Why rejection and not selection
+## 💡 Why rejection and not selection
 
 A genre skill retrieves fifteen candidates per query and keeps about
 three. Almost all of its retrieval work is therefore *rejection*, and
@@ -65,7 +65,7 @@ sweep's `reconsider` list: a declined paper that the dossier's own
 queries still reach, carried with the reason it was declined. Even there
 it is shown rather than re-judged -- re-grounding weighs the recorded
 reason and re-opens the paper only if that reason has stopped holding
-([DRAFT-ITERATION.md](DRAFT-ITERATION.md#re-grounding-after-the-corpus-moves)).
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves)).
 The rule runs the other way too: a re-grounding pass may not write an
 unpursued candidate into `rejected.md` to make a drift report look tidy,
 because that would manufacture a permanent judgment out of a title.
@@ -81,7 +81,7 @@ So the question this document is really about is not "how do we retrieve
 more cheaply" but **"how much evidence should stand behind the one
 decision we never revisit?"**
 
-## What the two-stage read costs
+## ⚡ What the two-stage read costs
 
 As built, it split retrieval into `triage` (a short window, for ruling
 candidates out) and `evidence` (query-scored passages, for the survivors
@@ -123,7 +123,7 @@ boundary changes *which pool those bytes land in* -- and that is the
 larger and more certain effect, requires no retrieval change at all, and
 works identically for every genre.
 
-## The bug the split exposed
+## 🐛 The bug the split exposed
 
 `_snippet` used to anchor its window on the first occurrence of whichever
 query term came out of the term set first. `terms` is a Python `set`, and
@@ -157,7 +157,7 @@ Two lessons worth keeping, independent of two-stage:
   instinct is to spend care on the thing you keep. The thing you discard
   is where care is unrecoverable.
 
-## Why it does not generalise across genres
+## ⚠ Why it does not generalise across genres
 
 Two-stage was designed against `survey-writer`'s profile -- over-fetch at
 `k=15`, keep about three -- and its saving is conditional on exactly that
@@ -202,7 +202,7 @@ strengthens its argument by discarding friction.
 
 **`deep-research`** is covered in its own section below.
 
-## Was it worth building at all?
+## ❓ Was it worth building at all?
 
 The fair answer is: **the split was not, and most of what was built
 alongside it was.** Those are separable, and conflating them is what made
@@ -241,7 +241,7 @@ What is *not* carrying its weight:
 mode was considered and rejected in turn: an option nobody defaults to is
 an option nobody tests, its presence would keep inviting the
 "light/thorough" toggle that
-[the configuration section](#should-any-of-this-be-configurable) argues
+[the configuration section](#-should-any-of-this-be-configurable) argues
 against, and it is cheap to reinstate from this document if
 [#76](https://github.com/prasadtalasila/chitragupta/issues/76) ever
 measures a case for it. `search()` plus the subagent boundary is the
@@ -257,7 +257,7 @@ scenario and nobody had checked -- the check now lives in
 `tests/test_retrieval.py::TestTwoStageCost`, and it is why the claim
 cannot silently invert again.
 
-## Recording how a rejection was made
+## ✍ Recording how a rejection was made
 
 `rejected.md` currently records *that* a candidate was turned down and
 *why*, but not *on what evidence*. Those differ by nearly an order of
@@ -303,7 +303,7 @@ anyone having to label a stage. The stage column is still the better
 answer for an honest gap analysis, and still blocked on the same
 question of who writes it.
 
-## Why deep-research keeps the boundary alone
+## 🤖 Why deep-research keeps the boundary alone
 
 `deep-research` is the worst fit for the split, for reasons that are
 independent of each other.
@@ -347,11 +347,11 @@ retrieval inside Phase 2. That has since been done, with one correction to
 the diagnosis worth carrying back here -- the residency itself could not
 be undone from inside a run, so what the fix collects is the *re-emission*
 of those packets into four dispatch prompts, in the output pool. See
-[TOKENS.md](TOKENS.md#what-the-dossier-actually-recovers). It does not
+[TOKENS.md](TOKENS.md#-what-the-dossier-actually-recovers). It does not
 reopen the case for triage: the reads this section is about still happen
 inside subagents, where they are billed once.
 
-## Should any of this be configurable?
+## ⚙ Should any of this be configurable?
 
 There is precedent for judgment thresholds in `config.toml` --
 `PROVENANCE_WEAK_SCORE` and `PROVENANCE_GOOD_SCORE` are exactly that. So
@@ -373,7 +373,7 @@ choice *invisible*.
 **`config.toml` is gitignored per-host data.** A dossier's rejections
 would then depend on a setting recorded nowhere and differing per
 machine. This repository has become careful about precisely this --
-[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not)
+[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
 and the `bench/repro_check.py` work that found two runs of the *same*
 configuration are not exempt.
 
@@ -381,7 +381,7 @@ configuration are not exempt.
 genre-dependent. A single value every skill reads is one-size-fits-all
 again.
 
-### On switching regimes between runs
+### 🔀 On switching regimes between runs
 
 The two-stage read is gone, so this is no longer a live proposal. It is
 kept because the argument applies to *any* future setting that changes
@@ -408,7 +408,7 @@ re-judging. So a cheap run's decisions contaminate every careful run that
 follows. Rejections are sticky and acceptances are not, so the mixture
 does not average -- it degrades to the least careful setting ever used.
 
-That makes [recording the stage](#recording-how-a-rejection-was-made) a
+That makes [recording the stage](#-recording-how-a-rejection-was-made) a
 **prerequisite** for configurability rather than a companion feature. It
 also destroys the comparability `retrieval.md` exists to provide: if the
 regime varies per run and is not recorded, its totals cannot distinguish
@@ -423,7 +423,7 @@ regime produced each entry. Revisit once
 measured whether the window sizes matter on a real corpus. Tuning knobs
 on unmeasured defaults is premature.
 
-## What was decided
+## ⚖ What was decided
 
 - **The window chooser, the CLI, `evidence` and `--log` stay.** They are
   the durable value here and none of them depends on the split.

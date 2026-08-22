@@ -1,4 +1,4 @@
-# Packaging: the installable distribution and its command surface
+# 📦 Packaging: the installable distribution and its command surface
 
 Status: **reference.** Written 2026-08-19.
 
@@ -23,16 +23,16 @@ the naming, not the semantics.
 > Publishing on every tagged release (#269). [CLI.md](CLI.md) carries the
 > exhaustive per-flag reference; this table is the surface.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Three names, one of them registered](#three-names-one-of-them-registered)
-- [The command surface](#the-command-surface)
-- [The module form, and why it survives](#the-module-form-and-why-it-survives)
-- [What the decision answers](#what-the-decision-answers)
-- [Why the zip ships too](#why-the-zip-ships-too)
-- [What a shipped command name costs](#what-a-shipped-command-name-costs)
+- [Three names, one of them registered](#-three-names-one-of-them-registered)
+- [The command surface](#-the-command-surface)
+- [The module form, and why it survives](#-the-module-form-and-why-it-survives)
+- [What the decision answers](#-what-the-decision-answers)
+- [Why the zip ships too](#-why-the-zip-ships-too)
+- [What a shipped command name costs](#-what-a-shipped-command-name-costs)
 
-## Three names, one of them registered
+## 🏷 Three names, one of them registered
 
 They read as one name and are three unrelated things. Only the first is
 globally unique; the other two are directories any distribution may write
@@ -79,16 +79,16 @@ does not refuse -- is accepted, on one condition: `chitragupta doctor`
 detects the competing distribution and names it. An overwritten command is
 survivable; an *undetected* one running the wrong program under the right
 name is the failure class
-[HOOKS.md](HOOKS.md#the-launcher-contract) exists to prevent.
+[HOOKS.md](HOOKS.md#-the-launcher-contract) exists to prevent.
 
-## The command surface
+## ⌨ The command surface
 
 Four layers, unchanged from what `python -m chitragupta.<layer>` already exposes,
 plus four commands that only make sense once the code is installed rather
 than cloned. Every flag, exit code and subcommand name is the one that
 command already has -- this is a front door, not a redesign.
 
-### The package itself
+### 📦 The package itself
 
 | Command | What it does |
 |---|---|
@@ -97,7 +97,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta install os-deps\|gpu-torch` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do. Other stages are refused by name with the pip equivalent |
 | `chitragupta --version` | The installed distribution's version, from `importlib.metadata` |
 
-### `corpus` -- the deterministic run
+### 📚 `corpus` -- the deterministic run
 
 | Command | Flags |
 |---|---|
@@ -105,7 +105,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
 | `chitragupta corpus topics` | `--topic` |
 
-### `draft` -- work on one draft
+### ✍ `draft` -- work on one draft
 
 | Command | Subcommands / flags |
 |---|---|
@@ -120,7 +120,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta draft unit` | `contract`, `accept`, `status` |
 | `chitragupta draft registry` | `build`, `check`, `excerpt` |
 
-### `review` -- read-only aids, no gate
+### 🔍 `review` -- read-only aids, no gate
 
 | Command | Subcommands / flags |
 |---|---|
@@ -131,7 +131,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta review figure <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review uncited <draft>` | `--genre`, `--json`, `--write`, `--formats` |
 
-### `enrich` -- optional, whole-corpus
+### 🧠 `enrich` -- optional, whole-corpus
 
 | Command | Flags |
 |---|---|
@@ -156,7 +156,7 @@ paragraph deliberately does not spell that old invocation out --
 reader a command which no longer works, and it decides by path rather
 than by reading the surrounding sentence.
 
-## The module form, and why it survives
+## 💡 The module form, and why it survives
 
 Every row above has an exact equivalent:
 
@@ -170,7 +170,7 @@ Both are supported, deliberately, and they are for different callers:
 - **The module form is what `.claude/hooks/` and the genre skills use**,
   and that is not a style preference. A console script lives in one venv's
   `bin/`; the module form resolves from any interpreter that can import
-  the package. [CLI.md](CLI.md#which-interpreter) records why tier 1
+  the package. [CLI.md](CLI.md#-which-interpreter) records why tier 1
   exists at all -- the gate chain must not be blockable by a broken venv
   -- and `chitragupta/hook_launchers.py` records the measurement behind it: a hook
   launcher that does not resolve produces *nothing at all*, no error and
@@ -180,7 +180,7 @@ Both are supported, deliberately, and they are for different callers:
 
 So the two forms are not redundancy to be tidied away later. Keep both.
 
-## What the decision answers
+## ⚖ What the decision answers
 
 `pyproject.toml` used to say packaging was "a separate, larger decision
 this project explicitly isn't making", and pointed at a **packaging
@@ -196,13 +196,13 @@ than as a conclusion, because three of them survive.
 |---|---|---|
 | Needs renaming the `src` layout | `pyproject.toml` header | **Retired by doing it.** A top-level `src` in `site-packages` claims the most generic name on the index; it is unshippable at any price |
 | "Don't add a second install path" | [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) | **Survives as an invariant, not as a mechanism.** The goal was one place a dependency fact can be written. There are now two front doors to one `install_full_pipeline.sh` and one `pyproject.toml` |
-| Tier 1 must not be blockable by a broken venv | [CLI.md](CLI.md#which-interpreter) | **Retired by keeping the module form** -- see above. The hooks never move to the console script |
+| Tier 1 must not be blockable by a broken venv | [CLI.md](CLI.md#-which-interpreter) | **Retired by keeping the module form** -- see above. The hooks never move to the console script |
 | pip cannot pick a wheel index from the GPU driver | `pyproject.toml`'s torch note | **Survives, reduced.** `pip install …[enrich]` still lands CPU-only torch on a CUDA host. `chitragupta doctor` detects it and `chitragupta install gpu-torch` fixes it -- but neither is automatic |
-| Command names can be renamed freely because nothing external holds them | the PR closing #123 | **Survives, sharpened** -- see [the last section](#what-a-shipped-command-name-costs) |
+| Command names can be renamed freely because nothing external holds them | the PR closing #123 | **Survives, sharpened** -- see [the last section](#-what-a-shipped-command-name-costs) |
 | The deliverable is the docs and skills, not the code | `scripts/release.py`'s docstring | **Retired by `chitragupta init`.** This was the strongest objection and the reason a bare wheel would have been the wrong shape |
 | Everything is anchored to where the *code* lives | `chitragupta/config.py`'s `REPO_ROOT` | **Retired by splitting it** into a discovered project root and a package-data root |
 
-## Why the zip ships too
+## 🗜 Why the zip ships too
 
 The release archive does not go away. It is built by a **denylist** --
 `scripts/release.py` ships every git-tracked file except a named few, so
@@ -217,7 +217,7 @@ other by a test, with the deliberate differences -- `bench/`, `tests/`,
 `.github/`, and the CI config that is actively wrong outside this
 repository -- held in one named set that both sides read.
 
-## What a shipped command name costs
+## ⚡ What a shipped command name costs
 
 Worth stating where the next person renaming a verb will read it.
 

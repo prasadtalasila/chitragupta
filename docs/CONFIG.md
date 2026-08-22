@@ -1,4 +1,4 @@
-# Configuration
+# ⚙ Configuration
 
 Status: **reference.** Written 2026-08-03.
 
@@ -13,24 +13,24 @@ Every setting, what values it accepts, and what it defaults to.
 What each setting *costs* lives in [PERFORMANCE.md](PERFORMANCE.md), so
 this document can stay a reference rather than an argument.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [How configuration is loaded](#how-configuration-is-loaded)
-- [A minimal config.toml](#a-minimal-configtoml)
-- [Every setting](#every-setting)
-  - [Paths](#paths)
-  - [`[render]` -- citation style](#render----citation-style)
-  - [`[style]` -- prose conformance and the acronym vocabulary](#style----prose-conformance-and-the-acronym-vocabulary)
-  - [`[parser]` -- PDF text extraction](#parser----pdf-text-extraction)
-  - [`[logging]` -- the pipeline log file](#logging----the-pipeline-log-file)
-  - [`[provenance]` -- citation-support bands](#provenance----citation-support-bands)
-  - [`[enrich]` -- the optional enrichment layer](#enrich----the-optional-enrichment-layer)
-- [How values are parsed](#how-values-are-parsed)
-- [Notes on individual settings](#notes-on-individual-settings)
-- [Choosing an embedding model](#choosing-an-embedding-model)
-- [Seed topics: organising the corpus by phrases you wrote](#seed-topics-organising-the-corpus-by-phrases-you-wrote)
+- [How configuration is loaded](#-how-configuration-is-loaded)
+- [A minimal config.toml](#-a-minimal-configtoml)
+- [Every setting](#-every-setting)
+  - [Paths](#-paths)
+  - [`[render]` -- citation style](#-render----citation-style)
+  - [`[style]` -- prose conformance and the acronym vocabulary](#-style----prose-conformance-and-the-acronym-vocabulary)
+  - [`[parser]` -- PDF text extraction](#-parser----pdf-text-extraction)
+  - [`[logging]` -- the pipeline log file](#-logging----the-pipeline-log-file)
+  - [`[provenance]` -- citation-support bands](#-provenance----citation-support-bands)
+  - [`[enrich]` -- the optional enrichment layer](#-enrich----the-optional-enrichment-layer)
+- [How values are parsed](#-how-values-are-parsed)
+- [Notes on individual settings](#-notes-on-individual-settings)
+- [Choosing an embedding model](#-choosing-an-embedding-model)
+- [Seed topics: organising the corpus by phrases you wrote](#-seed-topics-organising-the-corpus-by-phrases-you-wrote)
 
-## How configuration is loaded
+## 📥 How configuration is loaded
 
 `config.toml` is not in the repository -- you create it, once:
 
@@ -71,7 +71,7 @@ worse failure than one that refuses to start.
 with longer commentary. This document is the authoritative list of
 accepted values.
 
-## A minimal config.toml
+## 📝 A minimal config.toml
 
 Because every key is optional, the smallest valid file is an **empty
 file** -- that runs the whole pipeline on defaults, expecting your
@@ -98,12 +98,12 @@ backend = "docling"   # "pdftotext" (default) or "docling"
 workers = "auto"      # as many as this machine can sustain
 ```
 
-## Every setting
+## 📋 Every setting
 
 Paths resolve **relative to the repository root**; an absolute path is
 used as given.
 
-### Paths
+### 📁 Paths
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
@@ -122,7 +122,7 @@ used as given.
   Better BibTeX writes under *Export JabRef-specific fields*. **Zotero's
   own BibTeX exporter drops collections**, so on a plain export the field
   is simply absent, nothing is in any collection, and no command changes
-  behaviour -- see [ZOTERO.md](ZOTERO.md#keeping-your-collections-optional)
+  behaviour -- see [ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional)
   for how to keep them and what that costs. Lower-cased on read, since
   BibTeX field names are case-insensitive.
 - **`[content] dir`** -- everything every layer writes: `sync`'s
@@ -132,7 +132,7 @@ used as given.
   One exception lives here too, hand-edited rather than pipeline-written:
   `verbatim_allowlist.toml`, the per-host boilerplate allowlist
   `chitragupta.review verbatim scan` consults -- see
-  [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist). Fixed at
+  [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist). Fixed at
   `<dir>/verbatim_allowlist.toml`, not independently configurable, same
   as the enrichment caches below it. It is also what every tier-1 command
   that takes a path will *accept*:
@@ -156,7 +156,7 @@ something a draft may cite. To add a paper, catalogue it in your
 reference manager, re-export, and re-run `sync` -- see
 [ZOTERO.md](ZOTERO.md).
 
-### `[render]` -- citation style
+### 📐 `[render]` -- citation style
 
 Used only by `chitragupta/render_output.py`, never by `sync` or the
 citation gate.
@@ -188,7 +188,7 @@ citation gate.
   unmodified. A style that already sets `collapse` itself is never
   overridden. See `assets/csl/README.md`.
 
-### `[style]` -- prose conformance and the acronym vocabulary
+### 🏷 `[style]` -- prose conformance and the acronym vocabulary
 
 `vale_config` and `language` are used only by `python -m chitragupta.draft
 style`, which is a **review aid**: it exits 0 whatever it finds, and
@@ -254,7 +254,7 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
   vocabulary (`docs/WRITING-STANDARDS.md` §9); `draft-reviser`'s
   acronym-realignment mode fixes what that reports.
 
-### `[parser]` -- PDF text extraction
+### 📄 `[parser]` -- PDF text extraction
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
@@ -273,13 +273,13 @@ The values in full:
 - **`backend`** -- `"pdftotext"` needs the `pdftotext` binary on `PATH`
   and no Python package; `"docling"` needs the `enrich` dependency group.
   Any other value is rejected, naming the valid ones. See
-  [notes](#backend-pdftotext-or-docling).
+  [notes](#-backend-pdftotext-or-docling).
 - **`ocr`** -- only `docling` has an OCR stage; `pdftotext` ignores this.
 - **`workers`** -- `1` takes a strictly serial path: no pool, no
   subprocesses, nothing about a run changes. An integer above 1, or
   `"auto"`, opts into a worker pool. The resolved count is **clamped**
   rather than obeyed blindly -- see
-  [notes](#workers-and-how-it-is-clamped). `0`, negative numbers, and
+  [notes](#-workers-and-how-it-is-clamped). `0`, negative numbers, and
   `true`/`false` are rejected at load.
 - **`start_method`** -- consulted only when `workers > 1` **and**
   `backend = "docling"`; nothing else here uses a process pool.
@@ -289,7 +289,7 @@ The values in full:
     worker is forked from it.
   - `"spawn"` -- a fresh interpreter per worker, importing everything
     itself.
-  - `"fork"` is **not** accepted -- see [notes](#why-fork-is-not-an-option).
+  - `"fork"` is **not** accepted -- see [notes](#-why-fork-is-not-an-option).
 - **`document_timeout`** / **`stall_timeout`** -- a positive number of
   seconds, or one of `"off"`, `"none"`, `"false"`, or an empty string,
   all meaning "no limit". `0` and negative numbers are **rejected**
@@ -302,7 +302,7 @@ The values in full:
   not enforced, so a value above 1.0 loads fine and disables the
   warning, since no document can exceed it.
 
-### `[logging]` -- the pipeline log file
+### 🪵 `[logging]` -- the pipeline log file
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
@@ -314,7 +314,7 @@ The values in full:
   Only affects the file: terminal output is the same regardless of this
   setting. This is the only `[logging]` key -- rotation size and backup
   count haven't needed to vary per host. See
-  [CLI.md's "Running sync on a schedule"](CLI.md#running-sync-on-a-schedule).
+  [CLI.md's "Running sync on a schedule"](CLI.md#-running-sync-on-a-schedule).
 
   **One file, shared.** Both `python -m chitragupta.corpus sync` and
   `chitragupta/enrich/__main__.py` write here, and each line names its source
@@ -333,7 +333,7 @@ The log file's own location, `logs/` beside the repo root, has no
 variable, the same escape hatch every path in this file gets, for a
 script (or a test) that needs it somewhere else.
 
-### `[provenance]` -- citation-support bands
+### 📖 `[provenance]` -- citation-support bands
 
 | Key | Env var | Accepts | Default |
 |---|---|---|---|
@@ -353,7 +353,7 @@ not a pass/fail line, so tuning them precisely would be false precision.
 Neither is range-checked, and nothing enforces
 `weak_score < good_score`.
 
-### `[enrich]` -- the optional enrichment layer
+### 🧠 `[enrich]` -- the optional enrichment layer
 
 Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 `sync` or the citation gate.
@@ -380,7 +380,7 @@ distinction matters.** The code's fallback is the smaller, faster
 MiniLM -- what you get if the key is absent. The shipped example sets the
 larger, more accurate mpnet, so anyone who copied `config.toml.example`
 is running mpnet. Check your own file rather than assuming either. See
-[Choosing an embedding model](#choosing-an-embedding-model).
+[Choosing an embedding model](#-choosing-an-embedding-model).
 
 **`embed_max_passages_per_source`** caps how many chunks of one citekey
 `chitragupta.enrich.embed_index.search()` will return among its top `k`
@@ -390,7 +390,7 @@ single, unusually thorough paper legitimately deserves more of the
 result than three chunks; lower it (to `1`) to force maximal source
 diversity per query.
 
-## How values are parsed
+## 🔤 How values are parsed
 
 Worth knowing, because two of these will surprise you.
 
@@ -413,9 +413,9 @@ immediately, naming the key, the environment variable, and what was
 expected -- rather than surfacing much later as a nonsense pool size or a
 strange timeout.
 
-## Notes on individual settings
+## 🗒 Notes on individual settings
 
-### `backend`: pdftotext or docling
+### ⚖ `backend`: pdftotext or docling
 
 `chitragupta/pdf_text.py` dispatches through a table, so adding a backend is one
 function plus one entry -- and two candidates were added and later
@@ -424,7 +424,7 @@ removed through that same seam.
 | Backend | Dependency | Page boundaries? | Quotable passages? | Speed |
 |---|---|---|---|---|
 | `pdftotext` (default) | `poppler-utils` on `PATH` | **Yes** -- form feeds between pages | No -- reading order is lost | Fastest |
-| `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#parserbackend----pdftotext-or-docling) |
+| `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#-parserbackend----pdftotext-or-docling) |
 
 **Page boundaries are not cosmetic, which is why both backends now keep
 them.** `chitragupta/review/verbatim_check.py` reports which PDF page a verbatim
@@ -444,9 +444,9 @@ therefore buys real quotable passages without running the enrichment
 layer at all.
 
 The mechanism is in
-[CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#what-the-corpus-layer-keeps-when-it-uses-docling),
+[CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#-what-the-corpus-layer-keeps-when-it-uses-docling),
 and the ladder it feeds is in
-[LADDERS.md](LADDERS.md#ladder-1-evidence-passages).
+[LADDERS.md](LADDERS.md#-ladder-1-evidence-passages).
 
 [PDF-PARSER.md](PDF-PARSER.md) has the full fidelity comparison.
 
@@ -481,7 +481,7 @@ layer read it. The dependency only ever runs that way round: the
 enrichment layer reads the corpus layer's files, and the corpus layer is
 not shaped by this at all.
 
-### `workers`, and how it is clamped
+### 👷 `workers`, and how it is clamped
 
 The resolved count is the smallest of three ceilings, never below 1:
 
@@ -508,7 +508,7 @@ support that. At 32 workers the CPU is only ~70% busy, and 32 workers run
 The honest reading is "much smaller than 4" rather than a specific
 replacement. Changing it is a behaviour change and has not been made --
 see
-[PERFORMANCE.md](PERFORMANCE.md#parserworkers----document-level-parallelism).
+[PERFORMANCE.md](PERFORMANCE.md#-parserworkers----document-level-parallelism).
 
 So a four-core desktop resolves to 2, and asking for 15 there still gets
 2 -- **clamped and said out loud on stderr**, rather than silently obeyed
@@ -526,7 +526,7 @@ process -- sqlite has a single writer -- and results are reported in
 bibliography order regardless of which worker finished first, so two
 identical runs still print identically.
 
-### Using more than one GPU
+### 🖥 Using more than one GPU
 
 Nothing to configure. With `docling` and more than one worker, each
 worker claims one CUDA device round-robin -- docling's own
@@ -535,7 +535,7 @@ without this every worker would pile onto card 0 while the rest idle.
 
 Restrict which cards are used with `CUDA_VISIBLE_DEVICES`; the pool only
 ever sees what that leaves visible. Figures in
-[PERFORMANCE.md](PERFORMANCE.md#multi-gpu----nothing-to-configure).
+[PERFORMANCE.md](PERFORMANCE.md#-multi-gpu----nothing-to-configure).
 
 **A card someone else is already using is skipped**, and the run says so
 on stderr:
@@ -558,7 +558,7 @@ Nothing to configure here either — but if you would rather wait for a
 card than parse on the CPU, the warning is your cue to stop and re-run
 later.
 
-### Why `fork` is not an option
+### 🚫 Why `fork` is not an option
 
 Not an oversight. By the time the pool is built, the process holds two
 live sqlite connections -- the run lock and the ledger -- and SQLite's
@@ -571,7 +571,7 @@ Both available start methods re-import the calling program's `__main__`
 in each worker, so a script of your own driving `sync` or `parse_corpus`
 must guard its top level with `if __name__ == "__main__":`.
 
-### The two timeouts are not the same guard
+### ⏱ The two timeouts are not the same guard
 
 - **`document_timeout`** bounds one document, and the two backends
   enforce it with unequal strength. For `pdftotext` it is a subprocess
@@ -607,9 +607,9 @@ blame different things:
   transient failures and come back next run.
 
 Choosing a safe value means knowing your slowest legitimate document; see
-[PERFORMANCE.md](PERFORMANCE.md#parserdocument_timeout----what-a-safe-value-looks-like).
+[PERFORMANCE.md](PERFORMANCE.md#-parserdocument_timeout----what-a-safe-value-looks-like).
 
-### The parse-quality guard
+### ⚠ The parse-quality guard
 
 `sync` warns when an implausible share of a freshly extracted document's
 words are unusually long -- the signature of a backend that has lost the
@@ -624,7 +624,7 @@ unusual corpus could trip it legitimately. It will not catch a bad `ocr`
 choice: it looks for run-together words, not for content that never
 arrived.
 
-### `docling_images`
+### 🖼 `docling_images`
 
 Extracts figure bitmaps into `content/docling/<doc>_artifacts/`, plus a
 `<doc>.figures.json` giving each figure's page, caption, and the exact
@@ -633,15 +633,15 @@ string to cite it by.
 Those images are a **reading aid** for checking a draft against its
 sources. They are never inserted into a draft: a figure's copyright is
 not the paper's citekey to grant. See
-[DEVELOPER.md](../DEVELOPER.md#figures-and-copyright).
+[DEVELOPER.md](../DEVELOPER.md#-figures-and-copyright).
 
 Changing this invalidates the whole docling cache, so the next run
 re-parses the corpus from scratch. Costs in
-[PERFORMANCE.md](PERFORMANCE.md#enrichdocling_images----disk-and-a-full-re-parse).
+[PERFORMANCE.md](PERFORMANCE.md#-enrichdocling_images----disk-and-a-full-re-parse).
 
-## Choosing an embedding model
+## 🧠 Choosing an embedding model
 
-### What is embedded, and what is thrown away first
+### 🧹 What is embedded, and what is thrown away first
 
 Documents are cleaned before they are chunked: the reference list is
 dropped, along with bare emails, URLs, DOIs, copyright lines and page
@@ -666,7 +666,7 @@ added on either side.
 
 That one fact decides which models are drop-in and which are not.
 
-### Drop-in
+### ✅ Drop-in
 
 | Model | Dimensions | Relative cost | Best for | Tradeoff |
 |---|---|---|---|---|
@@ -694,7 +694,7 @@ What each one is:
   match to a short query against a longer chunk, and it needs no prefix,
   so it stays a clean drop-in. Same cost profile as `all-mpnet-base-v2`.
 
-### Not without a code change first
+### 🚫 Not without a code change first
 
 - **`allenai/specter` / `specter2`** -- a SciBERT-based model trained on
   scientific title+abstract pairs using citation graphs as the signal. It
@@ -712,7 +712,7 @@ What each one is:
   failure mode of the set. Adopting one means pairing it with matching
   prefix-handling code, not a config-only swap.
 
-### Switching
+### 🔄 Switching
 
 Edit `[enrich].embedding_model`, or set `EMBEDDING_MODEL=...` for a single
 run, then rebuild the index:
@@ -725,7 +725,7 @@ The model downloads on first use (needs network), and Chroma's existing
 collection is **not** re-embedded automatically -- switch only when you
 are prepared to rebuild the index.
 
-## Seed topics: organising the corpus by phrases you wrote
+## 🌱 Seed topics: organising the corpus by phrases you wrote
 
 `content/seed_topics.toml` is a list of topic phrases in your own words.
 It is optional and absent by default; with no such file the enrichment
@@ -748,7 +748,7 @@ bag-of-words vocabulary -- which is what would happen under BERTopic's
 older `seed_topic_list`, where "monitoring" alone would match every paper
 with a monitoring section. Write the phrase you mean.
 
-### Where the phrases come from
+### ✍ Where the phrases come from
 
 Yours to write. If your Zotero export carries collection labels
 ([ZOTERO.md](ZOTERO.md)), your own collection names are the best starting
@@ -765,7 +765,7 @@ which is why this file is written by hand rather than generated. That is
 [HOUSE-STYLE.md](HOUSE-STYLE.md)'s "it proposes; the human accepts",
 applied to the one decision a heuristic would get wrong.
 
-### Running it, and reading the result
+### ▶ Running it, and reading the result
 
 ```bash
 chitragupta enrich --stages seed-topics   # needs the enrich group
@@ -792,7 +792,7 @@ is the useful half for planning a draft: it is the part of your own
 corpus your own topic list does not yet describe. Add a phrase, run it
 again, and watch it shrink.
 
-### How many papers a topic lists, and why it is a ranking
+### 📊 How many papers a topic lists, and why it is a ranking
 
 `[enrich].seed_topic_max_papers` (default `25`) is the selection rule:
 each phrase is ranked against **its own** scores and the best N kept.
@@ -826,7 +826,7 @@ label that is *also* a description of a paper is not distinguishable
 from a topic by score, and this floor does not try to be. Which names go
 in your list stays your decision.
 
-### How many seed topics may I write?
+### ❓ How many seed topics may I write?
 
 **As many as you like, and they cost nothing.** There is no setting for
 this and no limit in the code: matching is one cosine per phrase per
@@ -848,7 +848,7 @@ care about, then read what the corpus had that you did not name.** The
 `content/topics.json` are both answers to that question, and neither
 shrinks because your seed list grew.
 
-### One topic set, from your phrases and the corpus's own
+### 🔗 One topic set, from your phrases and the corpus's own
 
 `content/topic_set.json` is the join of the two topic answers, written by
 the `converge` stage. Until it existed, `content/topic_seeds.json` held
@@ -892,7 +892,7 @@ only the topic descriptors -- arithmetic over vectors already cached, no
 clustering -- and joins. Run it after `bertopic` and `seed-topics`; on
 its own it reports itself skipped rather than quietly clustering for you.
 
-### What a topic is called
+### 🏷 What a topic is called
 
 A topic's name comes from the terms BERTopic finds most distinguishing
 within it. Two things are excluded from that vocabulary, and neither
@@ -929,7 +929,7 @@ both survive for that reason. Widening it would mean inferring names from
 reference prose; the bibliography is the one place a name is asserted
 rather than guessed.
 
-### How many topics, and how deep
+### 🔬 How many topics, and how deep
 
 `[enrich].topic_min_cluster_size` (3), `topic_min_samples` (2) and
 `topic_neighbors` (5) decide the granularity of the emergent topic
@@ -958,7 +958,7 @@ UMAP's spectral initialisation genuinely fails when `n_neighbors >=
 n_samples`, which is what the original formula existed for. What it never
 did was scale *up*.
 
-### Topics a paper belongs to, beyond the one it is assigned
+### 🧩 Topics a paper belongs to, beyond the one it is assigned
 
 `content/topics.json` records `assignments` -- one topic id per document,
 which is all `fit_transform` has ever returned -- and, when

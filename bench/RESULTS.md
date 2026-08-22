@@ -40,7 +40,7 @@ if it is obvious which is which, so:
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
 contract is
-[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 ## The corpus
 
@@ -759,7 +759,7 @@ distinct failure modes, not as a frequency distribution over them.
 throws it away, rather than calling `chitragupta.retrieval.search()` -- which
 would take a write connection to the ledger and rewrite
 `content/retrieval_index.json` on every scan
-([docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md#why-the-new-papers-are-not-found-with-search)).
+([docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md#-why-the-new-papers-are-not-found-with-search)).
 That design was argued from the shape of the code and shipped with an
 unmeasured claim attached: that a warm cache makes the scan nearly free
 and a cold one costs one corpus tokenization *shared across every
@@ -1264,7 +1264,7 @@ classes rather than competing.
 - **A threshold.** The evidence supports "DF is the discriminating
   feature, at gram granularity" and does not support shipping a specific
   `D`. As with `_CPUS_PER_DOCLING_WORKER` in
-  [PARALLELISM.md](../docs/PARALLELISM.md#roadmap), the target is a
+  [PARALLELISM.md](../docs/PARALLELISM.md#-roadmap), the target is a
   region, measured on one corpus and one book.
 - **Recall, at any useful sample size.** One true positive, planted.
 - **Paraphrase.** Unchanged from the section above and still the largest

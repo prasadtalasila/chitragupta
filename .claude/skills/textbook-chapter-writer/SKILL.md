@@ -546,7 +546,7 @@ Beyond `docs/WRITING-STANDARDS.md` §4:
 
 The principles in this file are not original to this project. Full
 citations, licences and a per-principle attribution table are in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#sources-and-attribution).
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
 In short: the genre model is Procida's Diátaxis, the audience and
 clarity discipline is Google's Technical Writing courses and Last's
 *Technical Writing Essentials*. All three are openly licensed and require

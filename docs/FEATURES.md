@@ -1,4 +1,4 @@
-# Features
+# ✨ Features
 
 Status: **reference.** Written 2026-08-22, describing the pipeline as it
 stands at 6.20.2.
@@ -23,18 +23,18 @@ third occurrence, so every list and count here is pinned to the code by
 `tests/test_features_doc.py`. If you add a review aid or a genre skill
 and do not update this file, that test fails.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The guarantee everything else serves](#the-guarantee-everything-else-serves)
-- [The four layers](#the-four-layers)
-- [Corpus layer: turning a library into a ledger](#corpus-layer-turning-a-library-into-a-ledger)
-- [Drafting layer: writing something grounded](#drafting-layer-writing-something-grounded)
-- [Review layer: six advisory aids](#review-layer-six-advisory-aids)
-- [Enrichment layer: optional depth](#enrichment-layer-optional-depth)
-- [Cross-cutting features](#cross-cutting-features)
-- [What this deliberately does not do](#what-this-deliberately-does-not-do)
+- [The guarantee everything else serves](#-the-guarantee-everything-else-serves)
+- [The four layers](#-the-four-layers)
+- [Corpus layer: turning a library into a ledger](#-corpus-layer-turning-a-library-into-a-ledger)
+- [Drafting layer: writing something grounded](#-drafting-layer-writing-something-grounded)
+- [Review layer: six advisory aids](#-review-layer-six-advisory-aids)
+- [Enrichment layer: optional depth](#-enrichment-layer-optional-depth)
+- [Cross-cutting features](#-cross-cutting-features)
+- [What this deliberately does not do](#-what-this-deliberately-does-not-do)
 
-## The guarantee everything else serves
+## 🔑 The guarantee everything else serves
 
 Every feature in this document exists to support one sentence:
 
@@ -84,7 +84,7 @@ and writes again, so a gate failure is normally something you never see.
 You are involved only in the rarer case where the paper genuinely is not
 in the corpus yet.
 
-## The four layers
+## 🏗 The four layers
 
 Everything below is one of four layers. They are numbered by the order
 you meet them, not by dependency: layer 3 is optional and nothing needs
@@ -123,7 +123,7 @@ That last column is a feature, not an implementation detail: a review aid
 runs while a corpus rebuild is in progress, because an advisory
 read-only report has no reason to wait on one.
 
-## Corpus layer: turning a library into a ledger
+## 📚 Corpus layer: turning a library into a ledger
 
 Deterministic and safe to run unattended: no LLM, no judgement calls,
 same bibliography in, same citekeys out.
@@ -154,9 +154,9 @@ Four nuances worth knowing before you rely on it:
   so adding one document can renumber every other document's topic.
   Stable across a re-run, not across a corpus change.
 
-## Drafting layer: writing something grounded
+## ✍ Drafting layer: writing something grounded
 
-### Nine skills
+### 🤖 Nine skills
 
 Five write a new draft, three change one that already exists, and one
 assembles a book from units the others wrote. You never invoke them by
@@ -180,7 +180,7 @@ change a draft that exists. `draft-reviser` reads the dossier and edits
 the affected sections instead. [TOKENS.md](TOKENS.md) measures what the
 mistake costs.
 
-### The dossier: why a draft is revisable months later
+### 🗂 The dossier: why a draft is revisable months later
 
 Every drafting run writes `content/dossiers/<the draft's path minus its
 suffix>/` -- Markdown, seven files, readable by a human or a model with
@@ -233,7 +233,7 @@ it names the citekeys that appear nowhere in the dossier, neither kept
 nor rejected. That distinguishes "new papers exist" from "a paper this
 draft cites has left the corpus", which want opposite responses.
 
-### Evidence: `claim:` and `quote:`
+### 📖 Evidence: `claim:` and `quote:`
 
 Kept evidence records what a source establishes in the drafter's own
 words (`claim:`) separately from its exact wording (`quote:`, optional
@@ -246,11 +246,11 @@ draft exists cannot be a lightly-edited copy of the source.
 grouped by the section that leans on them -- so verbatim material has one
 legitimate home and the body prose has none. Four of the five genres emit
 one; `tutorial-writer` does not, and
-[GENRE.md](GENRE.md#the-evidence-sidecar-decided-per-genre) records why
+[GENRE.md](GENRE.md#-the-evidence-sidecar-decided-per-genre) records why
 for each. A sidecar is never committed: it carries wording from
 copyrighted sources.
 
-### Retrieval, references and rendering
+### 🔎 Retrieval, references and rendering
 
 | Feature | What it gives you | Detail |
 |---|---|---|
@@ -260,7 +260,7 @@ copyrighted sources.
 | `draft style` | prose checked against the house writing standards -- a review aid, never a gate | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) |
 | TikZ figures | figures drawn to a documented style, checked for layout defects | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
 
-### Book-scale drafting
+### 📕 Book-scale drafting
 
 `draft spec`, `draft unit` and `draft registry` turn the same machinery
 into a book: an outline you sign off, a per-section generation contract
@@ -268,7 +268,7 @@ with a recorded acceptance, and terminology/claim/cross-reference checks
 over the accepted units. Two human sign-offs, not one.
 [BOOKS.md](BOOKS.md) has the workflow.
 
-## Review layer: six advisory aids
+## 🔍 Review layer: six advisory aids
 
 Run by hand on a finished draft. **None of them gates anything, and none
 may be promoted to a gate** -- [SOUL.md](../SOUL.md) has why. Each
@@ -299,7 +299,7 @@ knowing before you trust one.
 Unlike the dossier, this half is written for **you**: a report is
 evidence you weigh once, near the end, not state a machine reloads.
 
-## Enrichment layer: optional depth
+## 🧠 Enrichment layer: optional depth
 
 Nothing above needs it, and it is never run on your behalf by a skill --
 it is expensive, and cost a skill may incur unasked is not a decision it
@@ -316,7 +316,7 @@ gets to make.
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) carries the evidence for the
 topic stages; [PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
 
-## Cross-cutting features
+## 🧩 Cross-cutting features
 
 | Feature | What it gives you | Detail |
 |---|---|---|
@@ -334,7 +334,7 @@ fails because an optional package is absent; it drops to the next rung
 and *says which rung it is on*. A run that silently reported less would
 be worse than one that refused.
 
-## What this deliberately does not do
+## 🚫 What this deliberately does not do
 
 Stated because each is a question people ask, and each answer is a
 decision rather than a gap:
@@ -346,11 +346,11 @@ decision rather than a gap:
 - **It does not promote a review aid to a gate.** Six advisory aids and
   one gate is the design; see [SOUL.md](../SOUL.md).
 - **It does not have a genre for everything.**
-  [GENRE.md](GENRE.md#genres-this-project-does-not-have) lists the ones
+  [GENRE.md](GENRE.md#-genres-this-project-does-not-have) lists the ones
   it declines and why.
 - **It does not revise a draft by re-running the skill that wrote it.**
 
-## Where to go next
+## 🗺 Where to go next
 
 - Never used it: [README.md](../README.md), then
   [ZOTERO.md](ZOTERO.md) to get your library in.
