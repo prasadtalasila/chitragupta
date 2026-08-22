@@ -8,6 +8,7 @@ legacy `support:` holds a raw 600-character retrieval window) and that a
 sidecar contributes zero citations to the gate.
 """
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -285,3 +286,195 @@ class TestQuoteFormatting:
 
         with pytest.raises(KeyError, match="ghost_x_2024"):
             evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+
+
+class TestSidecarPath:
+    def test_the_suffix_sits_between_the_stem_and_the_format(self, tmp_path):
+        # _archive.py's export matching and .gitignore both depend on this
+        # exact shape, which is why one function computes it.
+        draft = tmp_path / "survey.md"
+        assert evidence_appendix.sidecar_path(draft, tmp_path, "pdf") == \
+            tmp_path / "survey.evidence.pdf"
+
+    def test_it_defaults_to_markdown(self, tmp_path):
+        assert evidence_appendix.sidecar_path(tmp_path / "survey.md", tmp_path) == \
+            tmp_path / "survey.evidence.md"
+
+
+class TestWrite:
+    def test_it_writes_the_sidecar_and_leaves_the_draft_alone(self, isolated_config, tmp_path):
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        original = "Body [@doe_a_2024].\n"
+        draft.write_text(original)
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
+        out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
+
+        out_path = evidence_appendix.write(draft, out_dir)
+
+        assert out_path == out_dir / "survey.evidence.md"
+        assert '> "the span"' in out_path.read_text()
+        assert draft.read_text() == original, "the gated source must not be rewritten"
+
+    def test_nothing_to_show_writes_no_file(self, isolated_config):
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nclaim: no quote was captured\n")
+        out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
+
+        assert evidence_appendix.write(draft, out_dir) is None
+        assert not out_dir.exists(), "an empty sidecar must not even make its directory"
+
+    def test_a_text_override_is_used_instead_of_the_file_on_disk(self, isolated_config):
+        con = ledger.connect()
+        seed(con, "doe_a_2024", "roe_b_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@roe_b_2024].\n")
+        write_dossier(
+            draft, "## `doe_a_2024`\n\nquote: span A\n\n## `roe_b_2024`\n\nquote: span B\n")
+        out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
+
+        out_path = evidence_appendix.write(draft, out_dir, draft_text="Body [@doe_a_2024].\n")
+
+        assert "span A" in out_path.read_text()
+        assert "span B" not in out_path.read_text()
+
+
+class TestEmit:
+    def test_markdown_lands_in_the_mirrored_rendered_directory(self, isolated_config):
+        # The same mirror render_output._output_dir computes, so a
+        # sidecar sits beside the render it belongs to rather than flat.
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
+
+        out_path = evidence_appendix.emit(draft)
+
+        assert out_path == isolated_config.RENDERED_DIR / "topic" / "survey.evidence.md"
+        assert out_path.is_file()
+
+    def test_an_output_dir_overrides_the_mirror(self, isolated_config):
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
+        elsewhere = isolated_config.CONTENT_DIR / "somewhere"
+
+        assert evidence_appendix.emit(draft, out_dir=elsewhere) == \
+            elsewhere / "survey.evidence.md"
+
+    def test_nothing_to_show_returns_none_in_any_format(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
+        draft.write_text("A lesson with no citations.\n")
+
+        assert evidence_appendix.emit(draft, "pdf") is None
+
+    def test_a_draft_outside_the_content_directory_is_refused(self, isolated_config, tmp_path):
+        outside = tmp_path / "elsewhere" / "survey.md"
+        outside.parent.mkdir(parents=True)
+        outside.write_text("Body [@doe_a_2024].\n")
+
+        with pytest.raises(evidence_appendix.config.OutsideContentDir):
+            evidence_appendix.emit(outside)
+
+
+class TestMain:
+    def test_it_prints_the_written_path_and_returns_0(self, isolated_config, capsys):
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
+
+        assert evidence_appendix.main([str(draft)]) == 0
+        assert "survey.evidence.md" in capsys.readouterr().out
+
+    def test_nothing_to_show_says_so_and_still_returns_0(self, isolated_config, capsys):
+        # Exit 0 on purpose: a tutorial, or a dossier still carrying only
+        # legacy support: blocks, has nothing to show and that is the
+        # expected answer. A refusal would train a genre skill to work
+        # around a non-problem.
+        draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
+        draft.write_text("A lesson with no citations.\n")
+
+        assert evidence_appendix.main([str(draft)]) == 0
+        assert "no quoted evidence recorded" in capsys.readouterr().out
+
+    def test_a_citekey_missing_from_the_ledger_prints_an_error_and_returns_1(
+            self, isolated_config, capsys):
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@ghost_x_2024].\n")
+        write_dossier(draft, "## `ghost_x_2024`\n\nquote: the span\n")
+
+        assert evidence_appendix.main([str(draft)]) == 1
+        assert "ghost_x_2024" in capsys.readouterr().err
+
+    def test_a_draft_outside_the_content_directory_prints_an_error_and_returns_1(
+            self, isolated_config, tmp_path, capsys):
+        outside = tmp_path / "elsewhere" / "survey.md"
+        outside.parent.mkdir(parents=True)
+        outside.write_text("Body [@doe_a_2024].\n")
+
+        assert evidence_appendix.main([str(outside)]) == 1
+        assert "[error]" in capsys.readouterr().err
+
+
+class TestTheSidecarIsNeverCommitted:
+    """A sidecar carries verbatim spans from copyrighted sources.
+
+    `content/dossiers/` is gitignored for exactly that reason, but
+    `content/drafts/digital-twins-for-software-engineers/` and
+    `content/rendered/digital-twins-for-software-engineers/` are tracked
+    on purpose, so a generated file landing there would reach a public
+    commit. This is the mechanism that stops it.
+    """
+
+    @pytest.mark.parametrize("output_format", ["md", "tex", "pdf"])
+    def test_git_ignores_the_path_the_module_actually_chooses(self, output_format):
+        # Deliberately NOT a hardcoded string: asserting on
+        # `sidecar_path()`'s own answer couples the ignore pattern to the
+        # naming convention, so renaming `.evidence` fails here instead
+        # of quietly publishing a quote. A hardcoded copy of the pattern
+        # would only test .gitignore against itself.
+        repo = Path(__file__).resolve().parent.parent
+        rendered = repo / "content" / "rendered" / "digital-twins-for-software-engineers"
+        candidate = evidence_appendix.sidecar_path(
+            rendered / "survey.md", rendered, output_format)
+
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", str(candidate)],
+            cwd=repo, capture_output=True, check=False,
+        )
+        assert result.returncode == 0, (
+            f"{candidate.relative_to(repo)} is NOT ignored by git. An evidence "
+            "sidecar holds verbatim quoted spans from copyrighted sources; "
+            "publishing one is the failure chitragupta/evidence_appendix.py "
+            "exists to prevent. Fix .gitignore's content/rendered/**/*.evidence.* "
+            "rule to match evidence_appendix.SUFFIX."
+        )
+
+    def test_the_ordinary_render_beside_it_is_still_tracked(self):
+        # The carve-out must not swallow the renders the repository
+        # deliberately ships -- if it did, this suite would pass while
+        # silently un-tracking the worked examples.
+        repo = Path(__file__).resolve().parent.parent
+        ordinary = (repo / "content" / "rendered"
+                    / "digital-twins-for-software-engineers" / "survey.pdf")
+
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", str(ordinary)],
+            cwd=repo, capture_output=True, check=False,
+        )
+        assert result.returncode == 1, "the shipped example renders must stay tracked"
