@@ -1,6 +1,6 @@
 """The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
-Four aids, run by hand over a finished draft. None of them is a gate,
+Five aids, run by hand over a finished draft. None of them is a gate,
 none takes the write lock, and nothing invokes them automatically:
 
     python -m chitragupta.review provenance <draft>
@@ -17,6 +17,10 @@ none takes the write lock, and nothing invokes them automatically:
         how many sources each unit of the draft rests on, at the unit
         its genre binds at.
 
+    python -m chitragupta.review figure <draft>
+        what a TikZ figure's own geometry says -- overlapping nodes,
+        overlong labels, protruding content, and the edge list to confirm.
+
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
 so `python -m chitragupta.review.verbatim_check` imports a module and exits 0
@@ -27,7 +31,7 @@ docs/ARCHITECTURE.md states the invariant.
 The subcommand names are not invented here. They are the keys of
 `review.AIDS`, which are also the suffixes a written report is filed
 under (`survey.provenance.md`, `.verbatim.md`, `.coverage.md`,
-`.synthesis.md`) -- so the command a reader types and the file they get
+`.synthesis.md`, `.figure.md`) -- so the command a reader types and the file they get
 back share one vocabulary.
 
 Each aid declares its own flags in its own `build_parser(parser)` and
@@ -44,8 +48,8 @@ import argparse
 import sys
 
 from chitragupta import review
-from chitragupta.review import (citation_coverage, citation_provenance, synthesis,
-                                verbatim_check)
+from chitragupta.review import (citation_coverage, citation_provenance,
+                                figure_layout, synthesis, verbatim_check)
 from chitragupta.progname import prog_for
 
 # Keyed by review.AIDS, so a new aid cannot appear here without also
@@ -55,6 +59,7 @@ AIDS = {
     "verbatim": (verbatim_check, "verbatim overlap with one source, or with the whole corpus"),
     "coverage": (citation_coverage, "retrieval surfaced it -- did the draft cite it?"),
     "synthesis": (synthesis, "how many sources does each unit of the draft rest on?"),
+    "figure": (figure_layout, "what a TikZ figure's own geometry says about it"),
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this
@@ -72,7 +77,7 @@ if set(AIDS) != set(review.AIDS):
 # What `--help` prints, deliberately *not* this module's docstring (#152)
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
-DESCRIPTION = "The review layer: four read-only aids over a finished draft. No gate."
+DESCRIPTION = "The review layer: five read-only aids over a finished draft. No gate."
 
 
 def build_parser():

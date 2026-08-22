@@ -1,13 +1,15 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Four commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
-`chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check.py`
-and `chitragupta/review/synthesis.py`. Each reads a
-draft plus the corpus and produces evidence for a human judgement. None
-gates, none runs automatically, none takes the write lock, and all four
+Five commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
+`chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check.py`,
+`chitragupta/review/synthesis.py` and `chitragupta/review/figure_layout/`. Each
+reads a draft -- plus the corpus, or in `figure_layout`'s case the
+figures the draft references -- and produces evidence for a human
+judgement. None
+gates, none runs automatically, none takes the write lock, and all five
 are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4: the review
-layer" is the definition; this module is what makes the four obey one
-output contract instead of four.
+layer" is the definition; this module is what makes the five obey one
+output contract instead of five.
 
 **One directory, mirroring the draft's path**, the same rule
 `content/rendered/` and `content/dossiers/` already follow:
@@ -17,6 +19,7 @@ output contract instead of four.
          content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf)
          content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
          content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf)
+         content/review/<topic>/survey.figure.md       (+ .tex/.pdf)
 
 so a draft, its dossier, its renders and its review artefacts are all
 findable from the draft's own path. The `.tex`/`.pdf` land *beside* the
@@ -49,7 +52,7 @@ docs say so too, but a file found on disk months later is exactly the
 case the docs cannot reach.
 
 Stdlib-only, and imports `render_output` lazily so the md-only path
-doesn't pay for it -- same tier as the four commands it serves.
+doesn't pay for it -- same tier as the five commands it serves.
 """
 
 import json
@@ -68,6 +71,7 @@ AIDS = {
     "verbatim": "Verbatim scan",
     "coverage": "Citation coverage",
     "synthesis": "Multi-source synthesis",
+    "figure": "TikZ layout check",
 }
 
 # Deliberately names its sources rather than linking to them: this text

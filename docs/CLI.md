@@ -29,6 +29,7 @@ short path; this is the full set.
   - [`chitragupta.draft dossier`](#python--m-chitraguptadraft-dossier)
   - [`chitragupta.draft retrieve`](#python--m-chitraguptadraft-retrieve)
   - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
+  - [`chitragupta.review figure`](#python--m-chitraguptareview-figure)
   - [`chitragupta.review provenance`](#python--m-chitraguptareview-provenance)
   - [`chitragupta.review synthesis`](#python--m-chitraguptareview-synthesis)
   - [`chitragupta.review verbatim`](#python--m-chitraguptareview-verbatim)
@@ -250,7 +251,8 @@ chitragupta review verbatim overlap content/drafts/<slug>.md <citekey>  # wordin
 chitragupta review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
 chitragupta review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
 chitragupta review coverage content/drafts/<slug>.md --query "digital twin composability"
-# add --write to any of the three to file the report under content/review/,
+chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
+# add --write to any of the four to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
 
@@ -327,6 +329,7 @@ python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>
 python -m chitragupta.review verbatim scan content/drafts/<slug>.md
 python -m chitragupta.review verbatim locate <citekey> "a phrase to find"
 python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
+python -m chitragupta.review figure content/drafts/<topic>/<slug>.md
 ```
 
 ### Migrating a checkout to `pip install`
@@ -763,6 +766,59 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
+### `python -m chitragupta.review figure`
+
+What a draft's TikZ figures' own geometry says about them.
+**Informational, not a gate** -- it exits 0 whatever it finds -- and like
+the other three aids it never runs automatically.
+[TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
+reaches only the part of that checklist geometry can decide.
+
+| Check | Kind | Needs `pdflatex` |
+|---|---|---|
+| Node text over 15 words | binary | no |
+| Edge list, reported for confirmation | binary | no |
+| Node overlap | binary | yes |
+| Content protrusion | binary | yes |
+| Emptiness | **continuous, human-read only** | yes |
+
+Two things about that table are deliberate. **Emptiness is reported and
+consumed by nothing** -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3
+forbids a continuous score from being what anything unattended optimises,
+so it is labelled advisory everywhere it appears rather than left to be
+inferred. And the two static checks need no TeX at all, so on a host
+without `tikz.sty` this still reports them and says the geometry was
+skipped, rather than refusing to run.
+
+**Arrow crossings are not checked**, deliberately: not cheaply reachable
+from node geometry, and a bad approximation would be worse than its
+absence. That one stays a human judgement.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The draft whose figures to check |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report |
+
+```bash
+python -m chitragupta.review figure content/drafts/<topic>/survey.md
+# ... --write
+# ... --json > figure.json
+```
+
+**Read the edge list closely.** It is the one output here that no check
+over a rendered picture could produce: in TikZ an edge is
+`\draw (a) -- (b);`, so what the figure *claims* connects to what is
+recoverable from source. Nothing here knows which edges *should* exist,
+which is exactly why confirming them against the prose is the author's
+job and not the aid's.
+
+A figure that does not compile is a finding on that figure, not a crash:
+the draft's other figures are still checked, and the command still exits
+0.
+
 ### `python -m chitragupta.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
@@ -1067,7 +1123,7 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All four review aids emit one now (#309, #341) -- `provenance` and `coverage`
+All five review aids emit one now (#309, #341, #314) -- `provenance` and `coverage`
 follow the same envelope, above. [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
 planned `agenda` aid still treats each aid's JSON as optional, though: not
 every draft has had every aid run against it, and `coverage`'s sibling is
