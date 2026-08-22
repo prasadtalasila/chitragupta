@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-Turns a BibTeX bibliography into grounded survey papers, thesis chapters,
-undergraduate textbook chapters and hands-on tutorials, with every citation
+<b>Turns a BibTeX bibliography into grounded survey papers, thesis chapters,
+undergraduate textbook chapters and hands-on tutorials</b>, with every citation
 traceable back to a paper the bibliography actually holds.
 </p>
 
@@ -47,19 +47,21 @@ This pipeline is built to make that impossible rather than unlikely:
 
 ## How it works
 
-Five phases. You own phase 1, the **corpus layer** owns phase 2, the
-**drafting layer** owns 3 through 5, and nothing reaches phase 5 without
-passing phase 4.
+Five phases along the spine, and two layers beside it. You own phase 1;
+nothing reaches phase 5 without passing phase 4.
 
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
        alt="Five phases: curate in Zotero, sync the corpus, draft with a
-            genre skill, verify with the citation gate, publish. A failing
-            gate sends the draft back to be rewritten."
+            genre skill, verify with the citation gate, publish. Drafting,
+            the gate and the dossier are grouped as the part an LLM runs;
+            publishing and the advisory review aids are grouped as the
+            part the author runs on a finished draft. A failing gate sends
+            the draft back to be rewritten."
        width="100%">
 </p>
 
-Two properties of that picture do all the work:
+Two properties of the spine do all the work:
 
 - **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export. The pipeline never fetches a paper, never
@@ -67,28 +69,29 @@ Two properties of that picture do all the work:
 - **Phase 4 is the only exit.** `chitragupta.draft gate` sits on the single
   path between a draft and a rendered document. There is no arrow around
   it, and a `FAIL` is treated like a failing test rather than a lint
-  warning.
+  warning. The loop back goes to *drafting*, not to you.
 
-The loop back from a failed gate goes to *drafting*, not to you: the skill
-discards the unsupported claim and writes again. You only get involved in
-the rarer case where the paper genuinely isn't in the corpus yet -- the
-dotted arrow back to phase 1.
+The two layers beside it are where the pipeline keeps its memory and its
+conscience:
+
+- **The dossier** is written as a draft is written -- scope, kept
+  evidence, rejected candidates, a revision log -- and read back to
+  change it. That is why a draft is never revised by re-running the
+  skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
+- **The review layer** is six advisory aids for a finished draft:
+  provenance, verbatim, coverage, synthesis, figure layout and uncited
+  prose. None of them is a gate -- which is not the same as borrowed
+  wording being fine to leave once you have found it
+  ([docs/REVIEW.md](docs/REVIEW.md)).
 
 Nine skills sit behind phase 3, all obeying the same grounding rules:
-five that write a new draft -- survey, thesis chapter, undergraduate
-textbook chapter, tutorial, and a heavier multi-perspective deep-research
-mode -- and three that change one that already exists, because a draft is
-never revised by re-running the skill that produced it
-([docs/GENRE.md](docs/GENRE.md)). The third of those, `overlap-reviser`,
-repairs the verbatim overlap a scan found and re-verifies each repair
-before keeping it. Two more layers sit outside these
-phases. **Enrichment** deepens the same corpus with layout-aware parsing,
-semantic search and topic clustering, and nothing above needs it.
-**Review** is what you run afterwards on a finished draft -- provenance,
-verbatim, coverage, multi-source synthesis, TikZ-figure-layout and
-uncited-prose reports, all advisory, none of them a gate --
-advisory means nothing blocks you, not that borrowed wording is fine to
-leave once you've found it.
+five that write a draft (survey, thesis chapter, undergraduate textbook
+chapter, tutorial, and a heavier multi-perspective deep-research mode),
+three that change one that already exists, and one that assembles
+accepted units into a book ([docs/GENRE.md](docs/GENRE.md)).
+**Enrichment** is a separate optional pass that deepens the same corpus
+with layout-aware parsing, semantic search and topic clustering; nothing
+above needs it.
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
 by depth, by genre, and in time order -- and is where the figure above
@@ -117,20 +120,20 @@ Two ways to get a project directory, and everything from step 2 onward
 is identical either way. Pick whichever matches what you're doing:
 
 ```bash
-# pip install: for using the pipeline. chitragupta init writes the same
-# project directory a git checkout gives you -- config.toml, .claude/,
-# papers/, content/ and the prose docs -- into DIR (default: .).
+# pip install: for using the pipeline. The venv is what avoids Debian/
+# Ubuntu's PEP 668 error and keeps Claude Code's hooks able to import
+# chitragupta -- docs/CLI.md's Installing says why the name matters.
+mkdir my-project && cd my-project
+python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli
-chitragupta init my-project && cd my-project
+chitragupta init                      # config.toml, .claude/, papers/, content/, prose docs
+chitragupta install os-deps           # TeX Live, Pandoc, poppler. Debian/Ubuntu, needs root
+pip install chitragupta-cli[enrich]   # optional, several GB -- only step 4 uses it
 ```
 
 ```bash
-# git checkout: for working on the pipeline itself, or if you'd rather
-# have the source beside your project -- see DEVELOPER-AGENTS.md. Needs
-# root for os-deps (TeX Live, Pandoc, poppler); dev-deps is opt-in and
-# only needed to run the test suite. docs/CLI.md's "Which interpreter"
-# explains why the module form (python -m chitragupta.<layer>) still
-# works either way.
+# git checkout: for working on the pipeline itself -- see DEVELOPER-AGENTS.md.
+# Same .venv-full; the script creates it if absent, reuses it if not.
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
 pipx install poetry
 bash scripts/install_full_pipeline.sh all
@@ -138,55 +141,41 @@ source .venv-full/bin/activate
 ```
 
 ```bash
-# 1. Export Zotero's library: format BibTeX, tick "Export Files", and save
-#    it as `bibliography` inside papers/. Zotero writes the .bib plus a
-#    companion attachment folder beside it:
+# 1. Export Zotero's library: format BibTeX, tick "Export Files", save it
+#    as `bibliography` inside papers/. Each entry's file field is relative
+#    to the .bib, so don't rename or move the companion folder afterwards
+#    -- see docs/ZOTERO.md.
 #      papers/bibliography.bib
 #      papers/bibliography/files/<id>/<name>.pdf
-#    Each entry's file field is a path relative to the .bib, so don't
-#    rename or move that folder afterwards -- see docs/ZOTERO.md.
-#      Ex: file = {Full Text PDF:bibliography/files/16/paper-name.pdf:application/pdf}
 mkdir -p papers && cp -r /path/to/your/export/. papers/
 
-# config.toml already exists if you ran `chitragupta init` above -- it's
-# gitignored per-host data, so only a git checkout needs its own copy:
-# cp config.toml.example config.toml
-
-# ...and, only if your field has its own acronyms (DT, FMU, ...) beyond
-#    the PDF/CPU/URL/API/HTML every draft already gets: copy the template,
-#    point config.toml's [style].acronyms at your copy, and every genre
-#    skill drafts from it too. See assets/style/README.md.
+# ...only if your field has its own acronyms (DT, FMU, ...) beyond the
+#    PDF/CPU/URL/API/HTML every draft already gets. assets/style/README.md.
 # cp assets/style/acronyms.toml.example content/acronyms.toml
-# # then edit [style].acronyms in config.toml to content/acronyms.toml
+# # then point [style].acronyms in config.toml at it
 
 # 2. Sync the corpus layer from papers/bibliography.bib. A citekey that
-#    later drops out of the bib file (a paper removed from your reference
-#    manager) is only *reported* by default; re-run with --remove-stale
-#    to actually delete its ledger row once you've reviewed the reported
-#    list -- not needed on a first run. docs/ZOTERO.md has the full
-#    semantics and why the default is to report rather than delete.
+#    later drops out of the bib file is only *reported*; --remove-stale
+#    deletes the row once you've read that list. docs/ZOTERO.md has why
+#    the default is report rather than delete.
 chitragupta corpus sync            # or: python -m chitragupta.corpus sync
-
-# ...and only once you've read the stale list it prints, and agree with it:
 # chitragupta corpus sync --remove-stale
 
-# 3. Inspect what it found. Read-only, takes no lock (so it works while a
-#    sync is running).
+# 3. Inspect what it found. Read-only, takes no lock.
 chitragupta corpus ledger
 
-# 4. Optional, and only when you want it: the enrichment layer -- layout-aware
-#    parsing, semantic search and topic clustering over the whole corpus.
-#    Nothing else needs it and no skill builds it for you, so skip this on a
-#    first run. What it costs and which stage is worth it: "The enrichment
-#    layer" below, then docs/RETRIEVAL.md. Needs the enrich extra
-#    (pip install chitragupta-cli[enrich], or scripts/install_full_pipeline.sh
-#    python-deps from a checkout) -- chitragupta doctor says which you have.
+# 4. Optional: the enrichment layer -- layout-aware parsing, semantic
+#    search, topic clustering. No skill builds it for you, so skip it on a
+#    first run. Needs the enrich extra above; chitragupta doctor says
+#    whether you have it. "The enrichment layer" below, then
+#    docs/RETRIEVAL.md, say which stage is worth the cost.
 
 # 5. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
+#    "do deep research on fault injection for digital twin testbeds"
 # The matching skill in .claude/skills/ picks this up automatically,
 # including its own gate -> references -> render chain (chitragupta draft <verb>)
 ```

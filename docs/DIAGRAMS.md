@@ -53,45 +53,79 @@ work: phase 1 is the only entrance -- citekeys come from your BibTeX
 export and nowhere else -- and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#how-it-works).
 
-The `DISCARD DRAFT` box loops back to **drafting**, not to you. A failing
-gate is normally invisible: the skill rewrites the claim and runs the gate
-again. You only get involved in the rarer case where the paper genuinely
-isn't in the corpus yet.
+The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
+gate is normally invisible: the skill discards the unsupported claim,
+rewrites it and runs the gate again. You only get involved in the rarer
+case where the paper genuinely isn't in the corpus yet, and that means
+going back to phase 1 and adding it.
+
+It carries no commands and no file paths on purpose -- this is the diagram
+for someone who has not decided to install anything yet, and a reader who
+wants either has [CLI.md](CLI.md) for the commands and
+[the artifacts diagram](#4-everything-on-disk) for the paths.
+
+**Two enclosures carry the division of labour.** `LLM` holds drafting,
+the gate and the dossier: the part a model runs, loops over on its own,
+and keeps its working state in. `Author Proofs` holds publishing and
+review: the part you run once a draft is finished. Nothing crosses
+between them except a draft that has passed the gate.
+
+The two dashed boxes are stores and reports rather than steps.
+**`DOSSIER`** ([DOSSIER.md](DOSSIER.md)) is written while a draft is
+written and read back to change it -- the reason revision does not
+re-run the genre skill. **`REVIEW`** ([REVIEW.md](REVIEW.md)) is six
+advisory aids for a finished draft; its arrow back to drafting is dotted
+for the same reason the gate's is solid, namely that a review finding is
+yours to weigh rather than something that blocks the pipeline.
 
 ```mermaid
 flowchart LR
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><b>papers/bibliography.bib</b><br/><small>nothing else may invent a citekey</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files"]
 
-  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/><code>python -m chitragupta.corpus sync</code><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b><br/><small>idempotent · re-runs cost almost nothing</small>"]
+  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/>read bib → update ledger<br/>→ extract PDF text"]
 
-  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>only use text from<br/>the parsed corpus"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>chitragupta.draft gate</code><br/>Is every citekey<br/>in the ledger?"}}
+  P3{{"<b>4 · VERIFY</b><br/><i>machine-<br/>enforced</i><br/><br/>CITATION GATE"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>chitragupta.draft references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>chitragupta.draft render --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><i>as markdown, tex, pdf</i>"]
 
-  FIX["<b>DISCARD DRAFT</b><br/><br/>The skill throws the bad claim away<br/>and drafts again — you never see this.<br/><br/><small>“Fix and re-run until <code>OK</code>.”<br/>A FAIL is treated like a failing test,<br/>not a lint warning.</small>"]
+  DOSS[("<b>DOSSIER</b><br/><i>machine-facing working state</i>")]
 
-  P0 ==> P1 ==> P2 ==> P3
-  P3 == "PASS · exit 0" ==> P4
-  P3 -- "FAIL · exit 1" --> FIX
-  FIX == "re-draft · <b>loop until it passes</b>" ==> P2
-  FIX -. "or: the paper really is missing —<br/>add it in Zotero and re-sync" .-> P0
+  REV["<b>REVIEW</b><br/><i>author advisory"]
+
+  P0 e1@==> P1 e2@==> P2
+  e1@{ animate: true }
+  e2@{ animate: true }
+  P3 e3@== "CITATION GATE PASS" ==> P4
+  e3@{ animate: true }
+  subgraph LLM
+    direction TB
+    P2 ==> P3
+    P2 <-. "writes it, then reads it back" .-> DOSS
+    P3 -- "GATE FAIL · <b>loop until it passes</b>" --> P2
+  end
+
+  subgraph Author Proofs
+    P4 -. "run it on a finished draft" .-> REV
+    REV -. "a finding you act on —<br/>revise from the dossier, don't re-draft" .-> P2
+  end
 
   classDef you fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
   classDef det fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
   classDef gen fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#052e16
   classDef gate fill:#fef2f2,stroke:#dc2626,stroke-width:3px,color:#450a0a
   classDef out fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
-  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#450a0a
+  classDef side fill:#f8fafc,stroke:#475569,stroke-width:1.5px,stroke-dasharray:4 3,color:#0f172a
 
   class P0 you
   class P1 det
   class P2 gen
   class P3 gate
   class P4 out
-  class FIX bad
+  class DOSS side
+  class REV side
 ```
 
 ### 2. Your first run

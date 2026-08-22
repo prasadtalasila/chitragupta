@@ -372,10 +372,25 @@ ensure_gpu_torch() {
     fi
 
     echo "Warning: reinstalling torch from ${best_tag} didn't make the GPU" >&2
-    echo "visible. Restoring the default wheel via 'poetry install --with enrich'" >&2
-    echo "(CPU-only on this driver, but at least back to a known, lockfile-" >&2
-    echo "tracked state) ..." >&2
-    (cd "$REPO_ROOT" && poetry install --with enrich)
+    echo "visible. Restoring the default wheel ..." >&2
+    # `poetry install --with enrich` only makes sense from a checkout --
+    # REPO_ROOT is site-packages when this runs via `chitragupta install
+    # gpu-torch` (#265), which has no pyproject.toml and no poetry.lock to
+    # pin against. Fall back to reinstalling with $pip directly there --
+    # PyPI's current default wheel, not a lockfile-pinned one, so it's a
+    # restore to *a* CPU-only state, not necessarily the one that was
+    # installed before this function ran (#369: the previous unconditional
+    # `poetry install` failed outright in that case, with "Poetry could
+    # not find a pyproject.toml file").
+    if [[ -f "$REPO_ROOT/pyproject.toml" ]] && command -v poetry >/dev/null 2>&1; then
+        echo "Via 'poetry install --with enrich' (CPU-only on this driver," >&2
+        echo "but at least back to a known, lockfile-tracked state) ..." >&2
+        (cd "$REPO_ROOT" && poetry install --with enrich)
+    else
+        echo "Via '$pip install --force-reinstall torch torchvision' (CPU-only" >&2
+        echo "on this driver; no checkout/poetry.lock here to pin against) ..." >&2
+        "$pip" install --force-reinstall torch torchvision
+    fi
 }
 
 # The mirror of ensure_gpu_torch, and deliberately not a variant of it.
