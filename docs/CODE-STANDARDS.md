@@ -471,7 +471,7 @@ goal-driven execution. The third is the one
 ## Build order
 
 What would extend the enforced half, cheapest first, as proposed when
-this document was written. Items 1, 2 and 4 have since landed, each in a
+this document was written. All four items have since landed, each in a
 different shape than proposed here -- see their own notes.
 
 1. ~~**A linter and formatter (`ruff`).**~~ **A linter landed, but as
@@ -500,9 +500,17 @@ different shape than proposed here -- see their own notes.
    (`chitragupta/pdf_text.py`'s re-raising `except` -- BLE001's own
    definition exempts a block that ends in `raise`) and was removed;
    the rest were confirmed live, not assumed so.
-3. **Type annotations and a checker.** `chitragupta/` is partly annotated. A
-   checker over a 100%-covered stdlib codebase is worth having and is its
-   own project, not a step in this one.
+3. ~~**Type annotations and a checker.**~~ **Annotated in full, in #355 --
+   and the checker declined, not deferred.** Every `def` under
+   `chitragupta/` now carries a return annotation, and
+   `tests/test_annotation_scan.py` ratchets it the way C1/C2 are
+   ratcheted: today's zero gaps are frozen, and a new one fails the
+   suite. Its `ast`-walk is the count's own source of truth, not a figure
+   copied here to go stale. What stayed unbuilt is a real type checker --
+   `mypy` over a 100%-covered stdlib codebase is still worth having and
+   is still its own project, not a step in this one, which is the same
+   call this item made when it was written rather than a reopened
+   question.
 4. **A doc-drift detector.** **Half built, in #239** -- and the half
    that is worth naming is the half that was left, because it is not a
    matter of effort.

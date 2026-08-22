@@ -134,61 +134,14 @@ above already reflects it.
 ## Tier 2: the debt CODE-STANDARDS.md already named
 
 [Build order](CODE-STANDARDS.md#build-order) lists four things that would
-extend the enforced half. Two are built now -- item 1 as `pylint`, item 2
+extend the enforced half. All are built now -- item 1 as `pylint`, item 2
 as `ruff` (`docs/TECHNICAL-DEBT.md`'s ruff subsection under
-[Tier 5](#tier-5-continuous-integration-and-the-linters)) -- and the two
-below are not. They are debt rather than roadmap because each has a
-**cost already being paid**, measured below. The build order owns the
-sequencing; this section only supplies the numbers it was written
-without.
-
-### Type annotations: 763 of 829
-
-**Tracked in #355.**
-
-Build-order item 3 says "`chitragupta/` is partly annotated." It is 92%
-(763 of 829 `def`s carry a return annotation), and the distribution is
-the finding rather than the total. Both numbers grew substantially since
-this section was last measured -- the tree has gone from 433 `def`s to
-829 as new modules landed (`spec/`, `unit/`, `registry/`,
-`review/synthesis.py` among them) -- so re-run the count directly
-(`ast`-walk every `def`, check `node.returns`) rather than trusting a
-stale figure here, the same caution this document asks of its own
-size-of-`bench/` claim in [3.1](#31-bench-is-outside-every-check-in-the-repository).
-
-| Module | Annotated |
-|---|---|
-| `chitragupta/review/verbatim_check.py` | **69 / 69** -- resolved #133 |
-| `chitragupta/review/citation_provenance.py` | 17 / 18 -- was 23 / 24 before the block walk moved to `_blocks.py` (#311), which took six annotated `def`s with it |
-| `chitragupta/review/citation_coverage.py` | 14 / 15 |
-| `chitragupta/review/_blocks.py` | **6 / 6** |
-| `chitragupta/review/_claims.py` | **5 / 5** |
-| `chitragupta/review/uncited_prose.py` | 10 / 11 -- `build_parser`, which no aid annotates |
-| `chitragupta/review/__init__.py` | 10 / 10 |
-| `chitragupta/runlock.py` | **7 / 7** -- resolved #293 |
-| `chitragupta/sync.py` | **18 / 18** -- resolved #293, see correction below; grew by two (`_drain_pool`, `_account_for_unfinished`) in #366's split of `_parse_parallel`, both annotated |
-| `chitragupta/dossier/` | 89 / 102 -- the original two gaps (`_drift.py::DriftIndex.__init__`, `_sections.py::_prose_lines`) plus eleven new ones from #366's `_add_*_parser` split of `_cli.py::main`, none of which return a value, split from the one-file 64/65 count by #219 and re-measured per module now rather than left unmeasured |
-
-**`verbatim_check.py` no longer holds the tree's only zero.** It was
-the second-largest module in the repository with no annotations at all,
-against three siblings that were effectively complete. That breaks the
-[Be consistent](CODE-STANDARDS.md#understandability) rule, which that
-document calls "the highest-value one in this list."
-
-It was annotated in full while #133, the skip-gram detection tier, was
-already touching every function in the file, and no behaviour changed --
-annotating a module nothing else in the change touches is how an
-annotation pass turns into a diff nobody can review.
-
-**`runlock.py` is resolved, in #293.** `sync.py`'s own claim of being
-resolved in the same issue was not true: #293 (PR #296) added the
-return annotations missing from `_executor_for`/`_as_they_land`/
-`_parse_serial`/`_parse_parallel`, but `_report_stale` -- present in the
-file since before #296 merged, not a later addition -- was missed,
-leaving the module at 15/16 despite the claim of completeness. Fixed
-here rather than left as a documented gap, the same one-line,
-zero-behaviour shape as the rest of this batch: `_report_stale` now
-carries its return annotation, and `sync.py` is genuinely 16/16.
+[Tier 5](#tier-5-continuous-integration-and-the-linters)), item 3 (type
+annotations and a checker) in #355. **This tier holds no subsections at
+all**, the same shape [Tier 1](#tier-1-the-debt-the-ratchet-already-holds)
+is in once its own two named entries closed: nothing named by build order
+currently costs anything to leave, so there is nothing left to measure
+below.
 
 ## Tier 3: found by review, tracked nowhere
 
