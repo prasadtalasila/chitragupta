@@ -451,45 +451,14 @@ def _executor_for(workers: int) -> ProcessPoolExecutor:
     )
 
 
-def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path:
-    """cache, when passed explicitly (parse_corpus does this), is
-    mutated in place but NOT persisted by this call -- the caller owns
-    save timing. Call with cache=None (the default) for a one-off parse
-    that should persist its own result immediately.
-
-    converter follows the same injected-or-owned shape, for the same
-    reason cache does: parse_corpus builds one and hands it to every
-    document, because building one per document reloads every model per
-    document. A standalone call builds its own -- but note that a loop
-    of standalone parse_doc() calls pays that cost per document, which is
-    what parse_corpus exists to avoid."""
-    if not doc.pdf_path:
-        raise ValueError(f"{doc.citekey}: no PDF to parse")
-
-    owns_cache = cache is None
-    if owns_cache:
-        cache = _load_cache()
-
-    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
-    stem = doc.citekey
-    out_path = config.DOCLING_DIR / f"{stem}.md"
-
-    st = os.stat(doc.pdf_path)
-    fingerprint = [st.st_size, st.st_mtime_ns]
-    if cache.get(doc.citekey) == fingerprint and _outputs_present(stem):
-        return out_path
-
-    # Before the converter, for the same reason as the cache check above:
-    # a document the corpus layer has already parsed costs a file copy
-    # here instead of a second run of the slowest stage in the repository.
-    if _reuse_corpus_parse(doc, out_path, stem):
-        cache[doc.citekey] = fingerprint
-        if owns_cache:
-            _save_cache(cache)
-        return out_path
-
-    # Built here rather than above the cache check, so a fully-cached run
-    # never loads Docling's models at all.
+def _convert(doc: CorpusDoc, converter) -> "object":
+    """Converter selection plus the conversion itself: builds one only if
+    the caller didn't hand one in (a fully-cached run never reaches this
+    at all), then raises before anything is written if Docling's result
+    is partial rather than complete.
+    """
+    # Built here rather than in parse_doc, so a fully-cached run never
+    # loads Docling's models at all.
     if converter is None:
         converter = _build_converter()
     result = converter.convert(doc.pdf_path)
@@ -502,7 +471,13 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     # pass. Raised before anything is written, so the document stays
     # uncached and is retried next run.
     pdf_text.check_docling_status(result)
-    dl_doc = result.document
+    return result.document
+
+
+def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> None:
+    """The post-parse rewrite: the .md (plus figures.json with images on),
+    and the passages.json sidecar every doc gets regardless.
+    """
     if config.DOCLING_IMAGES:
         from docling_core.types.doc import ImageRefMode
 
@@ -530,6 +505,46 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     passages_path = config.DOCLING_DIR / f"{stem}.passages.json"
     passages_path.write_text(
         json.dumps(passages.passage_records(dl_doc), indent=2), encoding="utf-8")
+
+
+def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path:
+    """cache, when passed explicitly (parse_corpus does this), is
+    mutated in place but NOT persisted by this call -- the caller owns
+    save timing. Call with cache=None (the default) for a one-off parse
+    that should persist its own result immediately.
+
+    converter follows the same injected-or-owned shape, for the same
+    reason cache does: parse_corpus builds one and hands it to every
+    document, because building one per document reloads every model per
+    document. A standalone call builds its own -- but note that a loop
+    of standalone parse_doc() calls pays that cost per document, which is
+    what parse_corpus exists to avoid."""
+    if not doc.pdf_path:
+        raise ValueError(f"{doc.citekey}: no PDF to parse")
+
+    owns_cache = cache is None
+    if owns_cache:
+        cache = _load_cache()
+
+    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
+    stem = doc.citekey
+    out_path = config.DOCLING_DIR / f"{stem}.md"
+
+    fingerprint = _fingerprint(doc)
+    if cache.get(doc.citekey) == fingerprint and _outputs_present(stem):
+        return out_path
+
+    # Before the converter, for the same reason as the cache check above:
+    # a document the corpus layer has already parsed costs a file copy
+    # here instead of a second run of the slowest stage in the repository.
+    if _reuse_corpus_parse(doc, out_path, stem):
+        cache[doc.citekey] = fingerprint
+        if owns_cache:
+            _save_cache(cache)
+        return out_path
+
+    dl_doc = _convert(doc, converter)
+    _write_parse_outputs(doc, dl_doc, out_path, stem)
 
     cache[doc.citekey] = fingerprint
     if owns_cache:

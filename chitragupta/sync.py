@@ -184,35 +184,31 @@ def _parse_serial(refs) -> Iterator[_ParseResult]:
             yield ref.citekey, None, exc
 
 
-def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseResult]:
-    """Same triples as _parse_serial, produced by `workers` at once.
+def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
+    """The result-draining loop: submit every job and collect (out_path,
+    exc) per citekey as workers finish. Returns whatever was collected
+    before an early exit alongside the pool's break, if any -- the caller
+    reports both, rather than either being lost to an interrupt or a
+    broken pool.
 
-    Submitted biggest-file-first (the LPT heuristic). One 675-page
-    document in this project's own corpus is 5% of all its pages; picked
-    up last it would define the wall clock single-handedly. File size
-    rather than page count on purpose -- counting pages needs a PDF
-    library, and the corpus layer deliberately has no such dependency.
+    submit() plus _as_they_land() rather than map(): map yields in *input*
+    order, so a pool that breaks while the first (largest) job is still
+    running would raise before yielding the smaller jobs that had
+    already finished, throwing away real work and reporting parsed
+    documents as failures. _as_they_land records each result at the
+    moment it lands, so a broken pool costs only what was actually in
+    flight.
+
+    Not `with executor`: the context manager's __exit__ calls
+    shutdown(wait=True), and every job is submitted up front, so a
+    KeyboardInterrupt would drain the *entire* remaining queue before
+    exiting. Reported from real use on a 501-document corpus -- Ctrl+C
+    "took forever to exit" and emitted docling teardown tracebacks from
+    workers still being fed. Shutdown is therefore explicit below, with
+    cancel_futures on the interrupt path.
     """
-    jobs = [(r.pdf_path, r.citekey, threads)
-            for r in sorted(refs, key=lambda r: -_pdf_size(r.pdf_path))]
     results = {}
     broken = None
-    stalled = []
-    # submit() plus _as_they_land() rather than map(): map yields in *input*
-    # order, so a pool that breaks while the first (largest) job is still
-    # running would raise before yielding the smaller jobs that had
-    # already finished, throwing away real work and reporting parsed
-    # documents as failures. _as_they_land records each result at the
-    # moment it lands, so a broken pool costs only what was actually in
-    # flight.
-    # Not `with _executor_for(...)`: the context manager's __exit__ calls
-    # shutdown(wait=True), and every job is submitted up front, so a
-    # KeyboardInterrupt would drain the *entire* remaining queue before
-    # exiting. Reported from real use on a 501-document corpus -- Ctrl+C
-    # "took forever to exit" and emitted docling teardown tracebacks from
-    # workers still being fed. Shutdown is therefore explicit below, with
-    # cancel_futures on the interrupt path.
-    executor = _executor_for(workers)
     done = 0
     try:
         with pdf_text.interrupt_guard(
@@ -251,6 +247,18 @@ def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseR
         raise
     finally:
         executor.shutdown(wait=False)
+    return results, broken
+
+
+def _account_for_unfinished(refs, results: dict, broken, stalled) -> None:
+    """The failure accounting: warn on a broken pool, then fill in a
+    transient failure for every ref _drain_pool didn't land a result for.
+    Mutates `results` in place.
+
+    Marked transient: these documents were never given a fair attempt,
+    so they must come back next run. A failure the *backend* returned
+    for a specific PDF is deterministic and stays that way.
+    """
     if broken is not None:
         # A worker killed outright (the OOM killer is the realistic
         # cause) takes the whole pool with it, and every future still in
@@ -263,9 +271,6 @@ def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseR
             "[parser].workers is the usual fix.",
             broken,
         )
-    # Marked transient: these documents were never given a fair attempt,
-    # so they must come back next run. A failure the *backend* returned
-    # for a specific PDF is deterministic and stays that way.
     unfinished = ("gave up waiting: no document finished within "
                   f"{config.PARSER_STALL_TIMEOUT}s ([parser].stall_timeout)"
                   if stalled else
@@ -275,6 +280,23 @@ def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseR
             error = pdf_text.ExtractionError(unfinished)
             error.transient = True
             results[ref.citekey] = (None, error)
+
+
+def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseResult]:
+    """Same triples as _parse_serial, produced by `workers` at once.
+
+    Submitted biggest-file-first (the LPT heuristic). One 675-page
+    document in this project's own corpus is 5% of all its pages; picked
+    up last it would define the wall clock single-handedly. File size
+    rather than page count on purpose -- counting pages needs a PDF
+    library, and the corpus layer deliberately has no such dependency.
+    """
+    jobs = [(r.pdf_path, r.citekey, threads)
+            for r in sorted(refs, key=lambda r: -_pdf_size(r.pdf_path))]
+    stalled = []
+    executor = _executor_for(workers)
+    results, broken = _drain_pool(executor, jobs, stalled)
+    _account_for_unfinished(refs, results, broken, stalled)
     return ((ref.citekey, *results[ref.citekey]) for ref in refs)
 
 

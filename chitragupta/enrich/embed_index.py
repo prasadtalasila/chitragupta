@@ -141,17 +141,69 @@ def get_client_and_model():
     return client, model
 
 
+def _embed_doc(doc: CorpusDoc, position: int, total: int, collection, model) -> tuple[int, str]:
+    """One document's slice of build_index's loop: embed-or-skip it, upsert
+    if needed, and report the outcome on the line opened for it. Returns
+    (n_chunks, outcome), outcome one of "embedded"/"unchanged"/"no_text".
+    """
+    # Bare prints for this whole per-document block, not logging_setup.say():
+    # the citekey is written *before* the work and the outcome is appended
+    # to the same line after it, so "which document is it on right now" is
+    # visible while a slow embed is still running. A log record is a whole
+    # line by construction, so routing this through the logger would split
+    # each document across records and withhold the citekey until its work
+    # had already finished -- losing the one thing this line is for.
+    print(f"  [{position}/{total}] {doc.citekey}", end="", flush=True)
+
+    text = get_text(doc)
+    if not text:
+        print(" -- no text to embed", flush=True)
+        return 0, "no_text"
+
+    text_hash = hash_text(text)
+    # Queried by citekey, which every collection this code has ever written
+    # carries -- the retired `doc_id` key held the same value alongside it --
+    # so an index built before #57 keeps working without a rebuild.
+    existing = collection.get(where={"citekey": doc.citekey})
+    if existing["ids"] and all(m.get("text_hash") == text_hash
+                               for m in existing["metadatas"]):
+        print(f" -- unchanged, {len(existing['ids'])} chunk(s)", flush=True)
+        return len(existing["ids"]), "unchanged"
+    if existing["ids"]:
+        collection.delete(ids=existing["ids"])
+
+    chunks = chunk_text(text)
+    if not chunks:
+        # Whitespace-only text lands here rather than above. Reported the
+        # same way because it amounts to the same thing for a reader:
+        # nothing of this document is in the index, and no amount of
+        # waiting will change that.
+        print(" -- no text to embed", flush=True)
+        return 0, "no_text"
+
+    embeddings = model.encode(chunks, show_progress_bar=False).tolist()
+    ids = [f"{doc.citekey}::{i}" for i in range(len(chunks))]
+    metadatas = [
+        {"citekey": doc.citekey, "title": doc.title, "text_hash": text_hash}
+        for _ in chunks
+    ]
+    collection.upsert(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
+    print(f" -- embedded, {len(chunks)} chunk(s)", flush=True)
+    return len(chunks), "embedded"
+
+
 def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     """Embeds and upserts each doc's chunks, skipping docs whose text is
     unchanged since the last call. Returns {citekey: n_chunks}.
 
-    Reports each document as it is *reached*, not as it finishes: the
-    line is opened before `model.encode()` and closed by whatever the
-    document turned out to be. A stage that prints only on completion
-    still leaves the slowest document in the corpus looking like a hang
-    for as long as it takes -- and a stage that printed nothing at all
-    until it returned is how issue #50 came to be filed against a run
-    that was working fine, then Ctrl-C'd at 399 of 501 documents.
+    Reports each document as it is *reached*, not as it finishes -- see
+    _embed_doc, which opens the line before `model.encode()` and closes it
+    with whatever the document turned out to be. A stage that prints only
+    on completion still leaves the slowest document in the corpus looking
+    like a hang for as long as it takes -- and a stage that printed
+    nothing at all until it returned is how issue #50 came to be filed
+    against a run that was working fine, then Ctrl-C'd at 399 of 501
+    documents.
 
     Same `  [done/total] <citekey>` shape chitragupta/sync.py and
     docling_parse.py already use for their own per-document progress, and
@@ -163,68 +215,12 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     collection = client.get_or_create_collection(collection_name())
 
     counts = {}
-    n_embedded = n_unchanged = n_no_text = 0
+    tallies = {"embedded": 0, "unchanged": 0, "no_text": 0}
     try:
         for position, doc in enumerate(docs, start=1):
-            # Bare prints for this whole per-document block, not
-            # logging_setup.say(): the citekey is written *before* the
-            # work and the outcome is appended to the same line after
-            # it, so "which document is it on right now" is visible
-            # while a slow embed is still running. A log record is a
-            # whole line by construction, so routing this through the
-            # logger would split each document across records and
-            # withhold the citekey until its work had already finished
-            # -- losing the one thing this line is for. The summary
-            # below is line-complete and does reach logs/pipeline.log.
-            print(f"  [{position}/{len(docs)}] {doc.citekey}", end="", flush=True)
-
-            text = get_text(doc)
-            if not text:
-                counts[doc.citekey] = 0
-                n_no_text += 1
-                print(" -- no text to embed", flush=True)
-                continue
-
-            text_hash = hash_text(text)
-            # Queried by citekey, which every collection this code has
-            # ever written carries -- the retired `doc_id` key held the
-            # same value alongside it -- so an index built before #57
-            # keeps working without a rebuild.
-            existing = collection.get(where={"citekey": doc.citekey})
-            if existing["ids"] and all(m.get("text_hash") == text_hash
-                                       for m in existing["metadatas"]):
-                counts[doc.citekey] = len(existing["ids"])
-                n_unchanged += 1
-                print(f" -- unchanged, {len(existing['ids'])} chunk(s)", flush=True)
-                continue
-            if existing["ids"]:
-                collection.delete(ids=existing["ids"])
-
-            chunks = chunk_text(text)
-            if not chunks:
-                # Whitespace-only text lands here rather than above.
-                # Reported the same way because it amounts to the same
-                # thing for a reader: nothing of this document is in the
-                # index, and no amount of waiting will change that.
-                counts[doc.citekey] = 0
-                n_no_text += 1
-                print(" -- no text to embed", flush=True)
-                continue
-
-            embeddings = model.encode(chunks, show_progress_bar=False).tolist()
-            ids = [f"{doc.citekey}::{i}" for i in range(len(chunks))]
-            metadatas = [
-                {
-                    "citekey": doc.citekey,
-                    "title": doc.title,
-                    "text_hash": text_hash,
-                }
-                for _ in chunks
-            ]
-            collection.upsert(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
-            counts[doc.citekey] = len(chunks)
-            n_embedded += 1
-            print(f" -- embedded, {len(chunks)} chunk(s)", flush=True)
+            n_chunks, outcome = _embed_doc(doc, position, len(docs), collection, model)
+            counts[doc.citekey] = n_chunks
+            tallies[outcome] += 1
     except KeyboardInterrupt:
         # Chroma has already persisted every chunk upserted so far, and
         # the next run's text-hash check skips those documents -- so an
@@ -241,8 +237,9 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
 
     logging_setup.say(
         logger,
-        f"  {len(docs)} document(s): {n_embedded} embedded, {n_unchanged} unchanged, "
-        f"{n_no_text} with no text -- {sum(counts.values())} chunk(s) in the index",
+        f"  {len(docs)} document(s): {tallies['embedded']} embedded, "
+        f"{tallies['unchanged']} unchanged, {tallies['no_text']} with no text -- "
+        f"{sum(counts.values())} chunk(s) in the index",
     )
     return counts
 
