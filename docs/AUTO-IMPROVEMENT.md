@@ -5,8 +5,9 @@ step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, and step 5 built narrow
 (verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
 
 `python -m chitragupta.review agenda` is not a command and no skill consumes
-anything below. Of the review aids, all three now emit JSON: `verbatim
-scan` as of 5.4.0 (#127), `provenance` and `coverage` as of 6.16.0 (#309).
+anything below. Of the review aids, all four now emit JSON: `verbatim
+scan` as of 5.4.0 (#127), `provenance` and `coverage` as of 6.16.0 (#309),
+and `synthesis` from the day it landed (#341).
 This document states *what* would be built and *what it must satisfy*, in
 the order it would be built.
 
@@ -32,7 +33,7 @@ writes the ledger.
 ## Table of contents
 
 - [The shape](#the-shape)
-- [1. `--json` on all three review aids](#1---json-on-all-three-review-aids)
+- [1. `--json` on every review aid](#1---json-on-every-review-aid)
 - [2. The `agenda` aid](#2-the-agenda-aid)
 - [3. The `agenda-reviser` skill](#3-the-agenda-reviser-skill)
 - [4. Acceptance and rollback](#4-acceptance-and-rollback)
@@ -48,8 +49,8 @@ writes the ledger.
 
 Three sentences.
 
-- The **deterministic half** is a fourth review aid: it reads the other
-  three aids' findings plus the dossier's drift report and emits one
+- The **deterministic half** is a further review aid: it reads the other
+  four aids' findings plus the dossier's drift report and emits one
   ranked, deduplicated worklist.
 - The **generative half** is a skill: it consumes that worklist, repairs
   what may be repaired unattended, re-verifies each repair, and hands the
@@ -57,7 +58,7 @@ Three sentences.
 - The **human closes the loop**: they accept the diff, and no code path
   runs the skill automatically.
 
-## 1. `--json` on all three review aids
+## 1. `--json` on every review aid
 
 **Built (5.4.0, 6.16.0).** `chitragupta/review/__init__.py` owns one output
 contract for the layer. Extend it with a JSON sibling beside the
@@ -93,7 +94,7 @@ it finds.
 
 **Reads:**
 
-- the three aids' `.json` for this draft -- each optional, and skipped
+- the four aids' `.json` for this draft -- each optional, and skipped
   with a note when absent;
 - `chitragupta.dossier.status(draft)`, for missing citekeys and candidates;
 - `rejected.md` -- a candidate already turned down with a reason is never
@@ -196,7 +197,7 @@ design would go wrong.
 **The aid: anyone, at any time.** `python -m chitragupta.review agenda <draft>`
 is
 free, deterministic, read-only and exits 0. It has exactly the standing of
-the other three aids -- you run it because you want to know. No occasion is
+the other four aids -- you run it because you want to know. No occasion is
 privileged and none is required.
 
 **The skill: only a person, and only on a draft they consider finished.**
@@ -285,7 +286,7 @@ sequence.
 
 1. **Settle the amendment.** Not a coding task --
    [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs).
-2. **#127, widened** to all three aids. Hard prerequisite for everything
+2. **#127, widened** to every aid. Hard prerequisite for everything
    below. *Done for `verbatim scan` in 5.4.0, on layer-level plumbing the
    other two aids reuse; they are the remainder of this step.*
 3. **#128** -- severity buckets and the boilerplate allowlist. *Done in
@@ -293,7 +294,7 @@ sequence.
    `config.toml`), not version-controlled as first framed in
    [HOUSE-STYLE.md](HOUSE-STYLE.md); the constraints above (read-only to
    the loop, etc.) hold either way.*
-4. **`agenda`, the fourth aid.** New. Useful on its own the day it lands,
+4. **`agenda`, one aid further.** New. Useful on its own the day it lands,
    whether or not step 5 follows.
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect
    classes rather than verbatim runs alone. *Built narrow first, in
@@ -329,4 +330,4 @@ Steps 4 and 5 are the only new work; the rest are open issues.
 - **No new entry point.** `python -m chitragupta.review agenda <draft>` is one
   verb under an existing front door, at depth 1.
 - **The review layer still never blocks.** `agenda` exits 0 with a full
-  worklist, exactly as the other three aids do with findings.
+  worklist, exactly as the other four aids do with findings.

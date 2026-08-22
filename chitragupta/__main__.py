@@ -60,7 +60,7 @@ LAYERS = {
     "draft": ("chitragupta.draft",
               "work on one draft -- gate it, cite it, render it"),
     "review": ("chitragupta.review.__main__",
-               "three read-only aids over a finished draft; never a gate"),
+               "four read-only aids over a finished draft; never a gate"),
     "enrich": ("chitragupta.enrich.__main__",
                "Docling -> embeddings/Chroma -> BERTopic, over the whole corpus"),
 }

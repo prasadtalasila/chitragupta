@@ -238,6 +238,14 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    only from your scored-evidence file:
    - Section/subsection structure that builds an argument toward the RQ
    - Citations via `\citep{key}` / `\citet{key}` — never a bare invented key
+   - **Two or more citekeys per body paragraph wherever the evidence
+     allows.** A paragraph required to fuse several sources cannot be a
+     transcription of any one of them, which matters most in exactly the
+     chapter most exposed to it -- related work. Where one paper genuinely
+     is the only source for a point, keep it and mark it with
+     `% single-source: why` on the line above or below, no blank line
+     between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
+     chitragupta.review synthesis <draft>` reports it.
 6. **Never write a citekey you didn't get from `search()`.** If a citation
    would strengthen the argument but isn't in the synced library, tell the
    user in prose rather than inventing a key -- see AGENTS.md's citekey

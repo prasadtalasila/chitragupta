@@ -23,7 +23,7 @@ import sys
 from chitragupta.dossier._archive import _cmd_export, _cmd_restore
 from chitragupta.dossier._brief import _cmd_brief
 from chitragupta.dossier._acronyms import _cmd_acronyms_suggest
-from chitragupta.dossier import DossierError, _cmd_list
+from chitragupta.dossier import GENRES, DossierError, _cmd_list
 from chitragupta.dossier._create import _cmd_init
 from chitragupta.dossier._evidence_check import _cmd_check_evidence
 from chitragupta.dossier._language import _cmd_set_language
@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     p_init = sub.add_parser("init", help="Create a dossier skeleton for a draft")
     p_init.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_init.add_argument("--genre", required=True,
-                        help="survey, thesis-chapter, textbook-chapter, tutorial, deep-research")
+                        help=", ".join(GENRES))
     p_init.set_defaults(func=_cmd_init)
 
     p_status = sub.add_parser("status", help="What a dossier holds, and corpus drift since")

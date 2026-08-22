@@ -309,6 +309,16 @@ collapse them for the sake of a cleaner narrative.
    - A gap-analysis paragraph: what the retrieved corpus does *not* cover
      (including sub-themes that stayed thin after reformulation, and any
      cross-source disagreement from step 5)
+   - **Every body paragraph closes on two or more citekeys wherever the
+     evidence allows.** A paragraph fusing three papers cannot be a
+     transcription of any one of them -- that is the point, and it is a
+     stronger defence than paraphrasing harder. Organise a paragraph around
+     what its sources agree and disagree about, rather than summarising them
+     one after another. Where one paper genuinely is the only source for a
+     point, keep it and say so with
+     `<!-- single-source: why -->` on the line above or below, no blank line
+     between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
+     chitragupta.review synthesis <draft>` reports it.
 7. **Never write a citekey you didn't get from a retrieval result.** If you
    want to cite something you know about from general knowledge but that isn't
    in the ledger, say so in prose to the user instead ("X is commonly discussed
