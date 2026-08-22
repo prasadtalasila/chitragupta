@@ -439,7 +439,9 @@ def _record_result(con, citekey, out_path, exc, tally) -> None:
         logger.error("FAILED  %s: %s", citekey, exc)
 
 
-def _report_stale(con, references, remove_stale):
+def _report_stale(
+    con, references, remove_stale
+) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
     """Prune or report ledger rows the bib file no longer has.
 
     Returns (pruned, stale, suspicious). Only the ledger row is ever

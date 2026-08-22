@@ -237,6 +237,19 @@ def test_an_excerpt_leaves_out_the_units_own_definitions(book, capsys):
     assert "digital twin" not in capsys.readouterr().out
 
 
+def test_an_excerpt_carries_an_in_prose_label_no_xref_has_reached_yet(book, capsys):
+    """`excerpt()` reuses `build()`'s full anchor set -- outline ids plus
+    every in-prose label `_read_unit` folds in -- rather than recomputing
+    a narrower one that only counts labels some xref has already
+    resolved against. `docs/BOOKS.md`'s own measured example has zero
+    xrefs in the real book, so this is the common case, not an edge
+    one."""
+    accept(book, "sec-model", "A figure of the model {#fig-model}\n")
+    capsys.readouterr()
+    assert registry.main(["excerpt", str(book), "sec-data"]) == 0
+    assert "fig-model" in capsys.readouterr().out
+
+
 def test_a_book_with_no_outline_is_refused_by_name(isolated_config, capsys):
     assert registry.main(["build", str(isolated_config.DRAFTS_DIR / "unplanned")]) == 1
     assert "spec init" in capsys.readouterr().err

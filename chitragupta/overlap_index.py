@@ -78,6 +78,7 @@ from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from itertools import accumulate
 from pathlib import Path
+from typing import Callable, TypeVar
 
 from chitragupta import config
 
@@ -530,8 +531,23 @@ def _save_corpus_index(index: CorpusIndex, corpus_key: str) -> None:
     _atomic_write_json(_index_header_path(), header)
 
 
-def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
-    """The merged corpus-wide index over every parsed, on-disk ledger item.
+_IndexT = TypeVar("_IndexT")
+
+
+def _merge_corpus_index(
+    n: int,
+    load_cached: Callable[[int, str], "_IndexT | None"],
+    fingerprint_fn: Callable[[str, str, str, int], object],
+    index_cls: Callable[..., _IndexT],
+    save_fn: Callable[[_IndexT, str], None],
+) -> _IndexT:
+    """The merge-and-cache algorithm `overlap_index.build_corpus_index` and
+    `overlap_skipgram.build_corpus_index` share: same doc_keys/corpus_key
+    computation, same typed-array accumulation over every document's
+    postings, same permutation sort, same save call. Only the fingerprint
+    function, on-disk cache and index dataclass genuinely differ per
+    tier -- exactly the pieces a caller supplies here, rather than this
+    function reading them off a module global.
 
     A full cache hit (unchanged corpus) costs one JSON read and one binary
     read -- no fingerprinting at all. Otherwise, only documents whose own
@@ -540,11 +556,9 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
     index is re-merged from all of them.
     """
     items = _ledger_items()
-    doc_keys = [(citekey, _fingerprint_key(pdf_hash, parsed_path))
-                for citekey, pdf_hash, parsed_path in items]
-    corpus_key = _corpus_key(doc_keys)
-
-    cached = _load_corpus_index(n, corpus_key)
+    corpus_key = _corpus_key([(citekey, _fingerprint_key(pdf_hash, parsed_path))
+                              for citekey, pdf_hash, parsed_path in items])
+    cached = load_cached(n, corpus_key)
     if cached is not None:
         return cached
 
@@ -557,13 +571,11 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
     # tuples runs to the better part of a gigabyte, where the four
     # array('Q'/'I') columns together cost under 200MB -- close to the
     # issue's own "~100MB RAM" estimate for this index.
-    unsorted_grams: "array[int]" = array("Q")
-    unsorted_citekey_ids: "array[int]" = array("I")
-    unsorted_pages: "array[int]" = array("I")
-    unsorted_positions: "array[int]" = array("I")
+    unsorted_grams, unsorted_citekey_ids, unsorted_pages, unsorted_positions = (
+        array("Q"), array("I"), array("I"), array("I"))
     for citekey in citekeys_sorted:
         pdf_hash, parsed_path = by_citekey[citekey]
-        fp = fingerprint_document(citekey, pdf_hash, parsed_path, n)
+        fp = fingerprint_fn(citekey, pdf_hash, parsed_path, n)
         citekey_id = id_by_citekey[citekey]
         for gram_hash, page, position in fp.postings:
             unsorted_grams.append(gram_hash)
@@ -575,7 +587,7 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
     # rather than sorting tuples directly -- same reason as above.
     order = sorted(range(len(unsorted_grams)), key=unsorted_grams.__getitem__)
 
-    index = CorpusIndex(
+    index = index_cls(
         n=n,
         citekeys=citekeys_sorted,
         grams=array("Q", (unsorted_grams[i] for i in order)),
@@ -583,8 +595,18 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
         pages=array("I", (unsorted_pages[i] for i in order)),
         positions=array("I", (unsorted_positions[i] for i in order)),
     )
-    _save_corpus_index(index, corpus_key)
+    save_fn(index, corpus_key)
     return index
+
+
+def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
+    """The merged corpus-wide index over every parsed, on-disk ledger item.
+    See `_merge_corpus_index` for the algorithm shared with tier 2's own
+    `build_corpus_index`.
+    """
+    return _merge_corpus_index(
+        n, _load_corpus_index, fingerprint_document, CorpusIndex, _save_corpus_index
+    )
 
 
 def pages_for_gram(index: CorpusIndex, gram_hash: int, citekey: "str | None" = None) -> list[int]:

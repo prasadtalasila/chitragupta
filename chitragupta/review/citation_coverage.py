@@ -140,8 +140,8 @@ def _findings(result: CoverageResult) -> list[dict]:
     unlike `format_report`'s "retrieved but not cited" section: an empty
     candidate set still leaves a cited-outside finding to report."""
     findings = [
-        {"id": finding_id(key, "uncited_candidate"), "citekey": key,
-         "title": result.candidates[key], "status": "uncited_candidate"}
+        {"id": finding_id(key, "uncited_candidates"), "citekey": key,
+         "title": result.candidates[key], "status": "uncited_candidates"}
         for key in sorted(result.uncited_candidates)
     ]
     findings += [
