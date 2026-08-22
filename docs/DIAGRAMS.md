@@ -53,10 +53,15 @@ work: phase 1 is the only entrance -- citekeys come from your BibTeX
 export and nowhere else -- and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#how-it-works).
 
-The `DISCARD DRAFT` box loops back to **drafting**, not to you. A failing
-gate is normally invisible: the skill rewrites the claim and runs the gate
-again. You only get involved in the rarer case where the paper genuinely
-isn't in the corpus yet.
+The `FAIL` arrow loops back to **drafting**, not to you. A failing gate is
+normally invisible: the skill discards the unsupported claim, rewrites it
+and runs the gate again. You only get involved in the rarer case where the
+paper genuinely isn't in the corpus yet, which is a trip back to phase 1.
+
+It carries no commands and no file paths on purpose -- this is the diagram
+for someone who has not decided to install anything yet, and a reader who
+wants either has [CLI.md](CLI.md) for the commands and
+[the artifacts diagram](#4-everything-on-disk) for the paths.
 
 Two boxes sit off the spine, dashed because neither is a step you run in
 sequence. **The dossier** ([DOSSIER.md](DOSSIER.md)) is written while a
@@ -70,27 +75,23 @@ blocks the pipeline.
 ```mermaid
 flowchart LR
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><b>papers/bibliography.bib</b><br/><small>nothing else may invent a citekey</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><small>nothing else may invent a citekey</small>"]
 
-  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/><code>python -m chitragupta.corpus sync</code><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b><br/><small>idempotent · re-runs cost almost nothing</small>"]
+  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><small>idempotent · re-runs cost almost nothing</small>"]
 
-  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-enforced</i><br/><br/><code>chitragupta.draft gate</code><br/>Is every citekey<br/>in the ledger?"}}
+  P3{{"<b>4 · VERIFY</b><br/><i>machine-<br/>enforced</i><br/><br/>Is every citekey<br/>in the ledger?"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/><code>chitragupta.draft references</code><br/>IEEE list from exactly<br/>the citekeys cited<br/><br/><code>chitragupta.draft render --format pdf</code><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/>the reference list, then<br/>the rendered document"]
 
-  FIX["<b>DISCARD DRAFT</b><br/><br/>The skill throws the bad claim away<br/>and drafts again — you never see this.<br/><br/><small>“Fix and re-run until <code>OK</code>.”<br/>A FAIL is treated like a failing test,<br/>not a lint warning.</small>"]
+  DOSS[("<b>THE DOSSIER</b><br/><i>machine-facing working state</i><br/><br/>scope · kept evidence<br/>rejected candidates · revisions")]
 
-  DOSS[("<b>THE DOSSIER</b><br/><i>machine-facing working state</i><br/><br/>scope · kept evidence<br/>rejected candidates · revisions<br/><br/><b>content/dossiers/&lt;same path&gt;/</b><br/><small>written while drafting, read back to revise —<br/>so a draft is never revised by re-running<br/>the skill that produced it</small>")]
-
-  REV["<b>THE REVIEW LAYER</b><br/><i>advisory — never a gate</i><br/><br/><code>chitragupta.review …</code><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited<br/><br/><b>content/review/&lt;slug&gt;.&lt;aid&gt;.md</b><br/><small>nothing here blocks you — which is not<br/>the same as nothing here mattering</small>"]
+  REV["<b>THE REVIEW LAYER</b><br/><i>advisory — never a gate</i><br/><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited"]
 
   P0 ==> P1 ==> P2 ==> P3
   P3 == "PASS · exit 0" ==> P4
-  P3 -- "FAIL · exit 1" --> FIX
-  FIX == "re-draft · <b>loop until it passes</b>" ==> P2
-  FIX -. "or: the paper really is missing —<br/>add it in Zotero and re-sync" .-> P0
+  P3 -- "FAIL · exit 1 · <b>loop until it passes</b>" --> P2
 
   P2 <-. "writes it, then reads it back" .-> DOSS
   P4 -. "run it on a finished draft" .-> REV
@@ -101,7 +102,6 @@ flowchart LR
   classDef gen fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#052e16
   classDef gate fill:#fef2f2,stroke:#dc2626,stroke-width:3px,color:#450a0a
   classDef out fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
-  classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#450a0a
   classDef side fill:#f8fafc,stroke:#475569,stroke-width:1.5px,stroke-dasharray:4 3,color:#0f172a
 
   class P0 you
@@ -109,7 +109,6 @@ flowchart LR
   class P2 gen
   class P3 gate
   class P4 out
-  class FIX bad
   class DOSS side
   class REV side
 ```
