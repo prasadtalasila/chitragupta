@@ -405,6 +405,17 @@ Inline `[@citekey]` citations, neutral tone, every sentence grounded, no
 per-section reference list. A writer may re-search a thin subpoint -- only
 against this project's corpus, never inventing a citekey.
 
+Tell every writer the paragraph rule explicitly, since each one sees only
+its own brief: **a body paragraph closes on two or more citekeys wherever
+the packet allows**, organised around what its sources agree and disagree
+about rather than summarising them one at a time. A paragraph fusing
+several sources cannot be a transcription of any one of them. Where the
+packet genuinely holds one source for a point, keep it and mark it with
+`<!-- single-source: why -->` adjacent to the paragraph, no blank line
+between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
+chitragupta.review synthesis <draft>` reports it once the report is
+assembled.
+
 When the writers return, copy each `### Sources added` block into
 `evidence.md` yourself, as a `relevance:`/`claim:` block per citekey (why
 the writer kept it, in the writer's own words -- add a `quote:` only if

@@ -257,7 +257,21 @@ candidate for the chapter.
    search at all if you already have a good example. Anything you do cite
    still must be a real citekey from a `search()` result -- never a
    fabricated one.
-4. **Diversify sources within a section.** Citing at all stays optional
+4. **Diversify sources within a section -- the unit here is the section,
+   not the paragraph.** A multi-source *paragraph* is a distraction in a
+   chapter whose job is explanation, so don't write one. The floor sits one
+   level up: **a section that cites at all spans two or more citekeys, and
+   its consecutive paragraphs do not rest on the same single citekey.**
+   Spread alone is not enough -- three paragraphs on one paper followed by
+   three on the next spans two sources and fuses neither, and every
+   paragraph in it could still be a transcription. Interleave. Where one
+   paper genuinely is the only source for a sustained point, keep it and say
+   so with `<!-- single-source: why -->` on the line above or below, no blank
+   line between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
+   chitragupta.review synthesis <draft>` reports both the spread and the
+   longest single-source run.
+
+   The rest of this step is how you get there. Citing at all stays optional
    (step 3), but once a section ends up citing more than one paper, don't
    let a single citekey carry every paragraph in it just because it was the
    first good hit. When `search()` turns up more than one paper that

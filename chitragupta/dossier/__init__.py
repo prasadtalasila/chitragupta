@@ -30,6 +30,15 @@ from chitragupta import config
 SCOPE_MD = "scope.md"
 
 
+# The genres `dossier init --genre` names, one per genre skill. Not
+# validated against -- `init` takes the value it is given, because a
+# refusal here would block a draft over a label -- but named, so that
+# `review/_units.py`'s genre-to-unit table can be checked against the
+# same list instead of restating it. A sixth genre added without a unit
+# would otherwise be measured at the fallback in silence.
+GENRES = ("survey", "thesis-chapter", "textbook-chapter", "tutorial", "deep-research")
+
+
 EVIDENCE_MD = "evidence.md"
 
 

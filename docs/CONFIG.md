@@ -137,7 +137,7 @@ used as given.
   as the enrichment caches below it. It is also what every tier-1 command
   that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
-  that resolves outside it, and so do all three of `chitragupta.review`'s aids.
+  that resolves outside it, and so do all four of `chitragupta.review`'s aids.
   `ledger` is the one that takes no path argument at all -- its CLI only
   ever addresses rows by citekey or status -- so the rule applies to it
   vacuously rather than needing a check. This one

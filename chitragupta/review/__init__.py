@@ -1,12 +1,13 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Three commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
-`chitragupta/review/citation_coverage.py` and `chitragupta/review/verbatim_check.py`. Each reads a
+Four commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
+`chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check.py`
+and `chitragupta/review/synthesis.py`. Each reads a
 draft plus the corpus and produces evidence for a human judgement. None
-gates, none runs automatically, none takes the write lock, and all three
+gates, none runs automatically, none takes the write lock, and all four
 are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4: the review
-layer" is the definition; this module is what makes the three obey one
-output contract instead of three.
+layer" is the definition; this module is what makes the four obey one
+output contract instead of four.
 
 **One directory, mirroring the draft's path**, the same rule
 `content/rendered/` and `content/dossiers/` already follow:
@@ -15,6 +16,7 @@ output contract instead of three.
       -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
          content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf)
          content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
+         content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf)
 
 so a draft, its dossier, its renders and its review artefacts are all
 findable from the draft's own path. The `.tex`/`.pdf` land *beside* the
@@ -30,8 +32,9 @@ computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
 Markdown through `chitragupta/render_output.py`, and this is not a render of
-anything. All three aids emit one now -- `verbatim scan` since #127,
-`provenance` and `coverage` since #309 -- which is why docs/AUTO-IMPROVEMENT.md's
+anything. All four aids emit one now -- `verbatim scan` since #127,
+`provenance` and `coverage` since #309, `synthesis` from the day it
+landed -- which is why docs/AUTO-IMPROVEMENT.md's
 `agenda` reads each aid's JSON as optional rather than required.
 
 **No timestamp in a report.** The reason to write one at all is that it
@@ -46,7 +49,7 @@ docs say so too, but a file found on disk months later is exactly the
 case the docs cannot reach.
 
 Stdlib-only, and imports `render_output` lazily so the md-only path
-doesn't pay for it -- same tier as the three commands it serves.
+doesn't pay for it -- same tier as the four commands it serves.
 """
 
 import json
@@ -57,13 +60,14 @@ from typing import TextIO
 
 from chitragupta import config
 
-# One place per aid, so a caller cannot invent a fourth report kind by
+# One place per aid, so a caller cannot invent a report kind by
 # typo. The value is the suffix that goes between the draft's stem and
 # the extension: content/review/<topic>/survey.provenance.md.
 AIDS = {
     "provenance": "Citation provenance",
     "verbatim": "Verbatim scan",
     "coverage": "Citation coverage",
+    "synthesis": "Multi-source synthesis",
 }
 
 # Deliberately names its sources rather than linking to them: this text

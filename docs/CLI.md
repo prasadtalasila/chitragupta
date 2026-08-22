@@ -30,6 +30,7 @@ short path; this is the full set.
   - [`chitragupta.draft retrieve`](#python--m-chitraguptadraft-retrieve)
   - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
   - [`chitragupta.review provenance`](#python--m-chitraguptareview-provenance)
+  - [`chitragupta.review synthesis`](#python--m-chitraguptareview-synthesis)
   - [`chitragupta.review verbatim`](#python--m-chitraguptareview-verbatim)
   - [`chitragupta.draft render`](#python--m-chitraguptadraft-render)
   - [`chitragupta.draft spec`](#python--m-chitraguptadraft-spec)
@@ -87,7 +88,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 |---|---|---|
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all three aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all four aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -836,6 +837,78 @@ unconditionally -- matching the `.md`'s own always-write policy -- and
 `--json` only decides whether it is *also* printed to stdout, with the
 written-files summary moving to stderr in that case.
 
+### `python -m chitragupta.review synthesis`
+
+How many sources each unit of a draft rests on, **at the unit that
+draft's genre binds at**. Prose required to fuse two or more sources
+cannot be a transcription of any one of them; this is what makes that
+rule observable rather than merely written down. See
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 for the rule itself.
+**Advisory, exits 0 whatever it finds**, and nothing reads it back.
+
+The unit comes from the genre recorded in the draft's dossier
+`scope.md`, so the usual invocation takes no flags:
+
+| Genre | Unit |
+|---|---|
+| `survey`, `thesis-chapter`, `deep-research` | paragraph |
+| `textbook-chapter` | section -- its paragraphs are free to be single-source, its *consecutive* paragraphs are not free to be the same single source |
+| `tutorial` | document -- the body carries no citations by design, so the floor is on the lesson's derivation |
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The draft to check |
+| `--unit {paragraph,section,document}` | from `scope.md` | Measure at this unit instead. For a draft with no dossier, or to look at one deliberately at another scale |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+
+```bash
+python -m chitragupta.review synthesis content/drafts/survey.md
+# ... --unit section          # a draft whose dossier records no genre
+# ... --write --formats md
+# ... --json > synthesis.json
+```
+
+Two numbers, because one is not enough. **Spread** is how many distinct
+citekeys a unit cites. For a section, the report also gives the
+**longest run of consecutive paragraphs resting on the same single
+citekey** -- a section citing two papers by running one out before
+starting the next spans two sources and fuses neither, and spread alone
+cannot tell that apart from a section that interleaves them.
+
+**A thin corpus legitimately produces single-source units.** The report
+counts them and does not judge them: there is no threshold here, no
+target proportion, and no per-genre bar. A human reads it and nothing
+acts on it unattended, which is
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3. A unit citing *nothing*
+is counted but is never itemised -- original prose is three of the five
+genres working correctly.
+
+A single-source unit can be declared deliberate, in the draft, adjacent
+to the unit with no blank line between them:
+
+```markdown
+<!-- single-source: Foo2019 is the only paper in the corpus covering X -->
+```
+
+```latex
+% single-source: Foo2019 is the only paper in the corpus covering X
+```
+
+The report then counts declared and undeclared separately and lists the
+undeclared first. A marker separated from its unit by a blank line
+declares nothing -- it becomes a block of its own -- and one inside a
+fenced code block is ignored.
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`genre`, `unit`, `unit_source` (`scope.md`, `--unit` or `nothing`),
+`units_total`, `uncited`, `single_source`, `multi_source`, `declared`,
+`undeclared`, `single_source_pct`, and one `findings` object per unit
+itemised -- `id`, `kind` (`single_source` or `single_key_run`), `line`,
+`unit`, `citekeys`, `declared` and `longest_run`.
+
 ### `python -m chitragupta.review verbatim`
 
 Layer 4, the review layer, with four subcommands: verbatim overlap
@@ -994,7 +1067,7 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All three review aids emit one now (#309) -- `provenance` and `coverage`
+All four review aids emit one now (#309, #341) -- `provenance` and `coverage`
 follow the same envelope, above. [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
 planned `agenda` aid still treats each aid's JSON as optional, though: not
 every draft has had every aid run against it, and `coverage`'s sibling is

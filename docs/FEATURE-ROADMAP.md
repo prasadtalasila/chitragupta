@@ -558,6 +558,12 @@ Size: S. Depends on: nothing. Highest value-per-line in this document.
 
 ### B2: require multi-source paragraphs
 
+*Planned in detail: [`plans/b2-multi-source-synthesis.md`](../plans/b2-multi-source-synthesis.md),
+which settles the unit the rule binds at -- paragraph for a survey, a
+thesis chapter and a deep-research report; the section for a textbook
+chapter; the whole document for a tutorial, whose body carries no
+citations by design. The guarantee is the same in all five.*
+
 The sample's property 1, made into a rule: a body paragraph cites **two
 or more citekeys wherever the evidence set allows**, and a
 single-source paragraph is a deliberate choice the drafter states
@@ -1014,7 +1020,7 @@ small, unblocks four other things.
 
 Step 4, and the largest genuinely new piece of the track. A fourth key
 in `review.AIDS`: deterministic, stdlib-only, no LLM, takes no lock,
-exits 0 whatever it finds. It reads the other three aids' JSON plus the
+exits 0 whatever it finds. It reads the other four aids' JSON plus the
 dossier's drift report and emits **one ranked, deduplicated worklist**
 -- *"This cross-signal merge is the work no individual aid can do."*
 
@@ -1179,9 +1185,10 @@ here that makes something run automatically, or repairs a draft without
 being asked, is gated on the amendment or refused by the self-marking
 argument.** Check a new proposal against both before costing it.
 
-**Two items have written plans.** `plans/` holds the implementation
+**Three items have written plans.** `plans/` holds the implementation
 plan for a roadmap item whose design is genuinely underdetermined --
-[A2](#a2-split-support-into-claim-and-quote) and
+[A2](#a2-split-support-into-claim-and-quote),
+[B2](#b2-require-multi-source-paragraphs) and
 [D2](#d2-deterministic-tikz-layout-check) have one each, as worked
 examples of the convention. Most items do not need one: the entry above
 already names the files, the size and the dependencies, and for a
