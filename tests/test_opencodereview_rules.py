@@ -24,10 +24,10 @@ nothing, and disable that rule. Pinning the field names is what turns
 that into a failure.
 
 Deliberately does **not** invoke `ocr`: it is a developer tool installed
-per-host (`npm i -g @alibaba-group/open-code-review`), absent on CI, and
-a test that self-skips when it is missing would be green on the one host
-that never has it. Everything below is stdlib, so it runs everywhere the
-rest of the suite does.
+per-host (`npm i -g @alibaba-group/open-code-review@1.9.9`), absent on
+CI, and a test that self-skips when it is missing would be green on the
+one host that never has it. Everything below is stdlib, so it runs
+everywhere the rest of the suite does.
 """
 
 import glob
@@ -37,19 +37,24 @@ from pathlib import Path, PurePosixPath
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RULE_PATH = REPO_ROOT / ".opencodereview" / "rule.json"
 
-# The only two keys OCR's unmarshaller reads from an entry, established by
-# feeding it a wrong-typed value and reading which Go struct field it named
-# (`ProjectRuleEntry.rules.path of type string`). Kept here so a rename in
-# a future OCR release shows up as this test failing rather than as every
-# rule silently ceasing to match.
+# The only two keys OCR's unmarshaller reads from an entry, established
+# against open-code-review v1.9.9 by feeding it a wrong-typed value and
+# reading which Go struct field it named (`ProjectRuleEntry.rules.path of
+# type string`). This is the tripwire for a schema rename in a later OCR
+# release: the next person bumping the pinned version above should read a
+# red test here as the feature working, not as a bug in this file, and
+# re-probe before assuming these two names still hold.
 ENTRY_FIELDS = ("path", "rule")
 
 # Extensions OCR will actually open. It reviews only what it recognises as
 # code and drops the rest *before* rules are consulted, reporting
 # `exclude_reason: unsupported_ext` in `ocr delegate preview --format json`.
-# Probed against the installed binary rather than taken from documentation:
-# .py, .json, .yml/.yaml, .sh and .toml came back reviewable; .md, .txt,
-# .rst and .cfg came back excluded.
+# This *is* that command's answer, transcribed rather than shelled out to
+# at test time (see "Deliberately does not invoke `ocr`" above): run
+# against open-code-review v1.9.9, .py, .json, .yml/.yaml, .sh and .toml
+# came back reviewable; .md, .txt, .rst and .cfg came back excluded. A
+# later OCR release can widen or narrow this set silently; re-probe on
+# upgrade rather than assuming it still holds.
 #
 # This is the list that matters, and it is not the list `ocr rules check`
 # answers from -- that command is a rule *lookup* and will happily resolve
@@ -153,6 +158,35 @@ def test_no_rule_targets_an_extension_ocr_will_not_review():
         "these rules target extensions OCR reports as `unsupported_ext` and "
         f"never opens, so they can never fire: {unreviewable}. Verify with "
         "`ocr delegate preview --format json`, not `ocr rules check`."
+    )
+
+
+def test_every_rule_matches_at_least_one_file_ocr_will_actually_open():
+    """The reachability claim itself, per rule rather than pooled.
+
+    The two tests above are necessary but not sufficient together:
+    `test_the_globs_reach_every_tree_a_rule_claims` pools all five globs
+    before checking six hardcoded paths, so it cannot say *which* rule
+    covers a directory sweep like `scripts/**` or `.github/**`, and
+    `test_no_rule_targets_an_extension_ocr_will_not_review` only inspects
+    globs that literally name a suffix, so it says nothing about those
+    same two sweeps. Neither, alone or together, asserts "this specific
+    rule matches a reviewable file" for every entry -- which is the actual
+    claim `.opencodereview/rule.json` makes by existing. This test reads
+    `REVIEWABLE_EXTENSIONS`, i.e. `ocr delegate preview --format json`'s
+    own answer on the pinned v1.9.9 binary, never `ocr rules check`.
+    """
+    unreachable = [
+        entry["path"]
+        for entry in _rules()["rules"]
+        if not any(
+            PurePosixPath(match).suffix in REVIEWABLE_EXTENSIONS
+            for match in _matches(entry["path"])
+        )
+    ]
+    assert not unreachable, (
+        "these rules match no file OCR will actually open, so they can "
+        f"never fire despite passing `ocr rules check`: {unreachable}"
     )
 
 
