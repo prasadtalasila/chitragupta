@@ -16,7 +16,7 @@ import pytest
 from chitragupta import citation_gate, evidence_appendix, ledger, references
 from chitragupta.dossier import dossier_dir
 
-from tests.conftest import content_draft, make_reference
+from tests.conftest import content_draft, make_reference, pandoc_available
 
 
 def seed(con, *citekeys):
@@ -478,3 +478,72 @@ class TestTheSidecarIsNeverCommitted:
             cwd=repo, capture_output=True, check=False,
         )
         assert result.returncode == 1, "the shipped example renders must stay tracked"
+
+
+@pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+class TestNonMarkdownFormats:
+    """A non-Markdown sidecar is `render()`'s output, so these need pandoc.
+
+    Each writes an (empty) `bibliography.bib`, because `render()` always
+    passes `--citeproc --bibliography` and pandoc refuses a bibliography
+    path that is not there. The file stays empty on purpose: a sidecar
+    carries no citations, so citeproc has nothing to look up in it, and an
+    empty bib proves that rather than merely tolerating it.
+    """
+
+    def test_a_tex_sidecar_is_a_standalone_document(self, isolated_config):
+        # Standalone, with its own preamble -- which is the whole reason
+        # thesis-chapter-writer can have a sidecar even though #313
+        # expected it to decline. A sidecar is never \input into anyone's
+        # thesis, so the preamble-less-fragment objection does not apply.
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the quoted span\n")
+
+        out_path = evidence_appendix.emit(draft, "tex")
+
+        assert out_path == isolated_config.RENDERED_DIR / "topic" / "survey.evidence.tex"
+        body = out_path.read_text()
+        assert "\\documentclass" in body, "a sidecar must stand on its own"
+        assert "the quoted span" in body
+
+    def test_a_thesis_tex_fragment_gets_a_sidecar_from_its_citep_markers(
+            self, isolated_config):
+        # thesis-chapter-writer emits \citep{...}, not [@key].
+        # citation_gate.extract_citekeys reads both, so used_citekeys --
+        # and therefore the sidecar's universe -- works unchanged on a
+        # LaTeX fragment.
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "drafts/topic/chapter.tex")
+        draft.write_text("Body \\citep{doe_a_2024}.\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the quoted span\n")
+
+        out_path = evidence_appendix.emit(draft, "tex")
+
+        assert out_path.name == "chapter.evidence.tex"
+        assert "the quoted span" in out_path.read_text()
+
+    def test_the_sidecar_needs_no_bibliography_machinery(self, isolated_config):
+        # It carries no citations at all -- every citekey is in a code
+        # span -- so citeproc has nothing to resolve and no \bibliography
+        # is emitted. That is what keeps a sidecar renderable on a TeX
+        # stack without biblatex.
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the quoted span\n")
+
+        body = evidence_appendix.emit(draft, "tex").read_text()
+
+        assert "\\bibliography" not in body
+        assert "biblatex" not in body
