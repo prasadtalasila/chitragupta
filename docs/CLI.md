@@ -47,11 +47,14 @@ short path; this is the full set.
 
 ## Installing
 
-Two paths, and everything below this section is identical either way:
+Two paths, both landing in a venv named `.venv-full`, and everything
+below this section is identical either way:
 
 ```bash
+mkdir my-project && cd my-project
+python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli
-chitragupta init my-project && cd my-project
+chitragupta init
 ```
 
 or, from a git checkout (for working on the pipeline itself --
@@ -63,6 +66,18 @@ pipx install poetry
 bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
 ```
+
+**Same venv name on purpose, not just a checkout habit carried over.**
+`.venv-full` is what keeps a bare `pip install` from hitting Debian/
+Ubuntu's PEP 668 `externally-managed-environment` error, and what keeps
+Claude Code's hooks -- which launch as bare `python` resolved from
+`PATH` ([HOOKS.md](HOOKS.md#the-launcher-contract)) -- able to import
+`chitragupta`, for as long as `.venv-full` stays activated in whatever
+shell you launch Claude Code from. Nothing in the installed package
+special-cases that name; it's a plain `python3 -m venv` either way, and
+the checkout path's own `install_full_pipeline.sh` already creates
+`.venv-full` if it doesn't exist and reuses it unchanged if it does
+(`poetry.toml`'s `virtualenvs.create = false`).
 
 `chitragupta init DIR` writes the same project directory a checkout
 gives you -- `config.toml` from `config.toml.example`, `.claude/`,
@@ -157,8 +172,8 @@ way if you switch mid-session.
 
 ### As the `chitragupta` command
 
-Once the package is installed -- `pip install`, or a checkout with
-`source .venv-full/bin/activate` (see [Installing](#installing)).
+Once the package is installed, with `.venv-full/bin/activate` sourced
+either way (see [Installing](#installing)).
 
 ```bash
 # 1. Install, and get a project directory -- see Installing above for
@@ -361,17 +376,16 @@ package now ships as a runnable command instead.
 
 Defaults shown are the value used when the flag is omitted.
 
-**Examples below assume one interpreter is already on `PATH`** -- from a
-checkout, `source .venv-full/bin/activate` once (as in [the full first
-run](#the-full-first-run-step-by-step)); from a `pip install`, nothing
-more is needed. Every command is then exactly `python -m
-chitragupta.<layer> <verb>`, or `chitragupta <layer> <verb>` if you
-installed the package -- see [Which interpreter](#which-interpreter) for
-which needs which. Two sections below this one -- [Running sync on a
-schedule](#running-sync-on-a-schedule) and [Environment
-variables](#environment-variables) -- spell out `.venv-full/bin/python`
-in full instead, because a cron job or a systemd unit has no shell to
-have activated anything in.
+**Examples below assume one interpreter is already on `PATH`** --
+`source .venv-full/bin/activate` once, either path (as in [the full
+first run](#the-full-first-run-step-by-step)). Every command is then
+exactly `python -m chitragupta.<layer> <verb>`, or `chitragupta <layer>
+<verb>` if you installed the package -- see [Which
+interpreter](#which-interpreter) for which needs which. Two sections
+below this one -- [Running sync on a schedule](#running-sync-on-a-schedule)
+and [Environment variables](#environment-variables) -- spell out
+`.venv-full/bin/python` in full instead, because a cron job or a systemd
+unit has no shell to have activated anything in.
 
 ### `python -m chitragupta.corpus sync`
 

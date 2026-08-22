@@ -117,11 +117,20 @@ Two ways to get a project directory, and everything from step 2 onward
 is identical either way. Pick whichever matches what you're doing:
 
 ```bash
-# pip install: for using the pipeline. chitragupta init writes the same
-# project directory a git checkout gives you -- config.toml, .claude/,
-# papers/, content/ and the prose docs -- into DIR (default: .).
+# pip install: for using the pipeline. .venv-full is the same venv name
+# and the same activation habit the checkout path below uses -- not just
+# any name: it's what keeps a bare `pip install` from hitting Debian/
+# Ubuntu's PEP 668 externally-managed-environment error, and what keeps
+# Claude Code's hooks (which launch as bare `python` resolved from PATH,
+# see docs/HOOKS.md) able to import chitragupta, for as long as
+# .venv-full stays activated in whatever shell you launch Claude Code
+# from. chitragupta init writes the same project directory a git
+# checkout gives you -- config.toml, .claude/, papers/, content/ and the
+# prose docs -- into DIR (default: .).
+mkdir my-project && cd my-project
+python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli
-chitragupta init my-project && cd my-project
+chitragupta init
 ```
 
 ```bash
@@ -130,7 +139,8 @@ chitragupta init my-project && cd my-project
 # root for os-deps (TeX Live, Pandoc, poppler); dev-deps is opt-in and
 # only needed to run the test suite. docs/CLI.md's "Which interpreter"
 # explains why the module form (python -m chitragupta.<layer>) still
-# works either way.
+# works either way. Also .venv-full, same as above -- the script below
+# creates it if it doesn't already exist yet, and reuses it if it does.
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
 pipx install poetry
 bash scripts/install_full_pipeline.sh all
