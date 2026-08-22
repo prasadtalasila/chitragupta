@@ -60,13 +60,17 @@ def fields(block: str) -> dict[str, str]:
     on rather than about how a block is read.
     """
     matches = list(_FIELD.finditer(block))
-    fields: dict[str, str] = {}
+    # `found` rather than `fields`, which is what this held while the
+    # function was `_fields`: the accumulator would now shadow the
+    # function's own name inside its body. Matches the name
+    # `_citekeys.py` uses for the same role in every parser there.
+    found: dict[str, str] = {}
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(block)
         value = block[match.end():end].strip()
         if value:
-            fields.setdefault(match.group("field"), value)
-    return fields
+            found.setdefault(match.group("field"), value)
+    return found
 
 
 def overlap_score(claim: str, quote: str) -> "float | None":

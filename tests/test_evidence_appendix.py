@@ -48,7 +48,7 @@ class TestBuild:
     def test_a_quote_reaches_the_sidecar_quoted_and_attributed(self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, (
             "## `doe_a_2024`\n\n"
             "relevance: bears on the sub-theme\n"
@@ -56,7 +56,7 @@ class TestBuild:
             "quote: models drift apart without synchronisation\n"
         ))
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert '> "models drift apart without synchronisation"' in out
         # Attributed: the IEEE entry references.format_entry builds, and
@@ -67,14 +67,14 @@ class TestBuild:
     def test_a_block_with_no_quote_produces_no_stanza(self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, (
             "## `doe_a_2024`\n\n"
             "relevance: bears on the sub-theme\n"
             "claim: the source establishes a thing\n"
         ))
 
-        assert evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con) is None
+        assert evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con) is None
 
     def test_a_legacy_support_only_block_contributes_nothing(self, isolated_config, ledger_con):
         # THE copyright guard, and the test that must never be relaxed. A
@@ -85,28 +85,28 @@ class TestBuild:
         # publishes source wording this project exists to keep out.
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, (
             "## `doe_a_2024`\n\n"
             "relevance: bears on the sub-theme\n"
             "support: a six-hundred-character raw window of the source\n"
         ))
 
-        assert evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con) is None
+        assert evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con) is None
 
     def test_claim_is_never_printed(self, isolated_config, ledger_con):
         # `claim:` is the drafter's own words. Quoting it back would
         # attribute this project's prose to the source.
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, (
             "## `doe_a_2024`\n\n"
             "claim: a restatement in the drafter's own words\n"
             "quote: the verbatim span\n"
         ))
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "the verbatim span" in out
         assert "restatement in the drafter" not in out
@@ -116,13 +116,13 @@ class TestBuild:
         # a citekey that has not already passed the gate on the draft.
         seed(ledger_con, "doe_a_2024", "roe_b_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, (
             "## `doe_a_2024`\n\nquote: the cited span\n\n"
             "## `roe_b_2024`\n\nquote: the uncited span\n"
         ))
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "the cited span" in out
         assert "the uncited span" not in out
@@ -131,16 +131,16 @@ class TestBuild:
     def test_no_dossier_at_all_returns_none(self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
 
-        assert evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con) is None
+        assert evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con) is None
 
     def test_a_draft_citing_nothing_returns_none(self, isolated_config, ledger_con):
         draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
-        draft.write_text("A lesson with no citations.\n")
+        draft.write_text("A lesson with no citations.\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: an orphan span\n")
 
-        assert evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con) is None
+        assert evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con) is None
 
 
 class TestGrouping:
@@ -148,7 +148,7 @@ class TestGrouping:
             self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024", "roe_b_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("First [@roe_b_2024]. Then [@doe_a_2024].\n")
+        draft.write_text("First [@roe_b_2024]. Then [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(
             draft,
             "## `doe_a_2024`\n\nquote: span A\n\n## `roe_b_2024`\n\nquote: span B\n",
@@ -160,7 +160,7 @@ class TestGrouping:
             "| Fidelity | `roe_b_2024` |\n",
         )
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "## Synchronisation" in out
         assert "## Fidelity" in out
@@ -171,7 +171,7 @@ class TestGrouping:
             self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024", "roe_b_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("One [@doe_a_2024]. Two [@roe_b_2024].\n")
+        draft.write_text("One [@doe_a_2024]. Two [@roe_b_2024].\n", encoding="utf-8")
         write_dossier(
             draft,
             "## `doe_a_2024`\n\nquote: span A\n\n## `roe_b_2024`\n\nclaim: no quote here\n",
@@ -180,7 +180,7 @@ class TestGrouping:
             "| Fidelity | `roe_b_2024` |\n",
         )
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "## Synchronisation" in out
         assert "Fidelity" not in out, "an empty section must not leave its heading behind"
@@ -192,14 +192,14 @@ class TestGrouping:
         # contain it.
         seed(ledger_con, "doe_a_2024", "roe_b_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("One [@doe_a_2024]. Two [@roe_b_2024].\n")
+        draft.write_text("One [@doe_a_2024]. Two [@roe_b_2024].\n", encoding="utf-8")
         write_dossier(
             draft,
             "## `doe_a_2024`\n\nquote: span A\n\n## `roe_b_2024`\n\nquote: span B\n",
             "| Section | Citekeys |\n|---|---|\n| Synchronisation | `doe_a_2024` |\n",
         )
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "## Unassigned" in out
         assert out.index("## Synchronisation") < out.index("## Unassigned")
@@ -209,10 +209,10 @@ class TestGrouping:
             self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: span A\n")
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "## Unassigned" in out
         assert "span A" in out
@@ -226,10 +226,10 @@ class TestContributesNoCitations:
         # citation_gate._blank_code blanks before extraction.
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
         sidecar = tmp_path / "survey.evidence.md"
         sidecar.write_text(out, encoding="utf-8")
 
@@ -240,13 +240,13 @@ class TestContributesNoCitations:
     def test_the_drafts_own_numbering_is_unperturbed(self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024", "roe_b_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("First [@roe_b_2024]. Then [@doe_a_2024].\n")
+        draft.write_text("First [@roe_b_2024]. Then [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
 
-        before = references.used_citekeys(draft.read_text())
-        evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        before = references.used_citekeys(draft.read_text(encoding="utf-8"))
+        evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
-        assert references.used_citekeys(draft.read_text()) == before == \
+        assert references.used_citekeys(draft.read_text(encoding="utf-8")) == before == \
             ["roe_b_2024", "doe_a_2024"]
 
 
@@ -254,12 +254,12 @@ class TestQuoteFormatting:
     def test_a_multi_line_quote_becomes_one_blockquote(self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, (
             "## `doe_a_2024`\n\nquote: the first line\nand the second line\n"
         ))
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert "> \"the first line" in out
         assert "> and the second line\"" in out
@@ -268,10 +268,10 @@ class TestQuoteFormatting:
             self, isolated_config, ledger_con):
         seed(ledger_con, "doe_a_2024")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, '## `doe_a_2024`\n\nquote: "already quoted"\n')
 
-        out = evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+        out = evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
         assert '> "already quoted"' in out
         assert '""' not in out
@@ -281,11 +281,11 @@ class TestQuoteFormatting:
         # AGENTS.md's citekey invariant: a cited key with no ledger row is
         # never silently dropped. Same contract as references.build_section.
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@ghost_x_2024].\n")
+        draft.write_text("Body [@ghost_x_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `ghost_x_2024`\n\nquote: the span\n")
 
         with pytest.raises(KeyError, match="ghost_x_2024"):
-            evidence_appendix.build(draft.read_text(), dossier_dir(draft), ledger_con)
+            evidence_appendix.build(draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con)
 
 
 class TestSidecarPath:
@@ -308,22 +308,22 @@ class TestWrite:
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
         original = "Body [@doe_a_2024].\n"
-        draft.write_text(original)
+        draft.write_text(original, encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
         out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
 
         out_path = evidence_appendix.write(draft, out_dir)
 
         assert out_path == out_dir / "survey.evidence.md"
-        assert '> "the span"' in out_path.read_text()
-        assert draft.read_text() == original, "the gated source must not be rewritten"
+        assert '> "the span"' in out_path.read_text(encoding="utf-8")
+        assert draft.read_text(encoding="utf-8") == original, "the gated source must not be rewritten"
 
     def test_nothing_to_show_writes_no_file(self, isolated_config):
         con = ledger.connect()
         seed(con, "doe_a_2024")
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nclaim: no quote was captured\n")
         out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
 
@@ -335,15 +335,15 @@ class TestWrite:
         seed(con, "doe_a_2024", "roe_b_2024")
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@roe_b_2024].\n")
+        draft.write_text("Body [@roe_b_2024].\n", encoding="utf-8")
         write_dossier(
             draft, "## `doe_a_2024`\n\nquote: span A\n\n## `roe_b_2024`\n\nquote: span B\n")
         out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
 
         out_path = evidence_appendix.write(draft, out_dir, draft_text="Body [@doe_a_2024].\n")
 
-        assert "span A" in out_path.read_text()
-        assert "span B" not in out_path.read_text()
+        assert "span A" in out_path.read_text(encoding="utf-8")
+        assert "span B" not in out_path.read_text(encoding="utf-8")
 
 
 class TestEmit:
@@ -354,7 +354,7 @@ class TestEmit:
         seed(con, "doe_a_2024")
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
 
         out_path = evidence_appendix.emit(draft)
@@ -367,7 +367,7 @@ class TestEmit:
         seed(con, "doe_a_2024")
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
         elsewhere = isolated_config.CONTENT_DIR / "somewhere"
 
@@ -376,14 +376,14 @@ class TestEmit:
 
     def test_nothing_to_show_returns_none_in_any_format(self, isolated_config):
         draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
-        draft.write_text("A lesson with no citations.\n")
+        draft.write_text("A lesson with no citations.\n", encoding="utf-8")
 
         assert evidence_appendix.emit(draft, "pdf") is None
 
     def test_a_draft_outside_the_content_directory_is_refused(self, isolated_config, tmp_path):
         outside = tmp_path / "elsewhere" / "survey.md"
         outside.parent.mkdir(parents=True)
-        outside.write_text("Body [@doe_a_2024].\n")
+        outside.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
 
         with pytest.raises(evidence_appendix.config.OutsideContentDir):
             evidence_appendix.emit(outside)
@@ -395,7 +395,7 @@ class TestMain:
         seed(con, "doe_a_2024")
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
 
         assert evidence_appendix.main([str(draft)]) == 0
@@ -407,7 +407,7 @@ class TestMain:
         # expected answer. A refusal would train a genre skill to work
         # around a non-problem.
         draft = content_draft(isolated_config, "drafts/topic/tutorial.md")
-        draft.write_text("A lesson with no citations.\n")
+        draft.write_text("A lesson with no citations.\n", encoding="utf-8")
 
         assert evidence_appendix.main([str(draft)]) == 0
         assert "no quoted evidence recorded" in capsys.readouterr().out
@@ -415,7 +415,7 @@ class TestMain:
     def test_a_citekey_missing_from_the_ledger_prints_an_error_and_returns_1(
             self, isolated_config, capsys):
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@ghost_x_2024].\n")
+        draft.write_text("Body [@ghost_x_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `ghost_x_2024`\n\nquote: the span\n")
 
         assert evidence_appendix.main([str(draft)]) == 1
@@ -425,7 +425,7 @@ class TestMain:
             self, isolated_config, tmp_path, capsys):
         outside = tmp_path / "elsewhere" / "survey.md"
         outside.parent.mkdir(parents=True)
-        outside.write_text("Body [@doe_a_2024].\n")
+        outside.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
 
         assert evidence_appendix.main([str(outside)]) == 1
         assert "[error]" in capsys.readouterr().err
@@ -499,15 +499,15 @@ class TestNonMarkdownFormats:
         con = ledger.connect()
         seed(con, "doe_a_2024")
         con.close()
-        isolated_config.BIB_FILE_PATH.write_text("")
+        isolated_config.BIB_FILE_PATH.write_text("", encoding="utf-8")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the quoted span\n")
 
         out_path = evidence_appendix.emit(draft, "tex")
 
         assert out_path == isolated_config.RENDERED_DIR / "topic" / "survey.evidence.tex"
-        body = out_path.read_text()
+        body = out_path.read_text(encoding="utf-8")
         assert "\\documentclass" in body, "a sidecar must stand on its own"
         assert "the quoted span" in body
 
@@ -520,15 +520,15 @@ class TestNonMarkdownFormats:
         con = ledger.connect()
         seed(con, "doe_a_2024")
         con.close()
-        isolated_config.BIB_FILE_PATH.write_text("")
+        isolated_config.BIB_FILE_PATH.write_text("", encoding="utf-8")
         draft = content_draft(isolated_config, "drafts/topic/chapter.tex")
-        draft.write_text("Body \\citep{doe_a_2024}.\n")
+        draft.write_text("Body \\citep{doe_a_2024}.\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the quoted span\n")
 
         out_path = evidence_appendix.emit(draft, "tex")
 
         assert out_path.name == "chapter.evidence.tex"
-        assert "the quoted span" in out_path.read_text()
+        assert "the quoted span" in out_path.read_text(encoding="utf-8")
 
     def test_the_sidecar_needs_no_bibliography_machinery(self, isolated_config):
         # It carries no citations at all -- every citekey is in a code
@@ -538,12 +538,12 @@ class TestNonMarkdownFormats:
         con = ledger.connect()
         seed(con, "doe_a_2024")
         con.close()
-        isolated_config.BIB_FILE_PATH.write_text("")
+        isolated_config.BIB_FILE_PATH.write_text("", encoding="utf-8")
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the quoted span\n")
 
-        body = evidence_appendix.emit(draft, "tex").read_text()
+        body = evidence_appendix.emit(draft, "tex").read_text(encoding="utf-8")
 
         assert "\\bibliography" not in body
         assert "biblatex" not in body
@@ -561,7 +561,7 @@ class TestRenderFailuresAreReportedNotRaised:
         seed(con, "doe_a_2024")
         con.close()
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
-        draft.write_text("Body [@doe_a_2024].\n")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
         write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
         return draft
 
@@ -605,4 +605,38 @@ class TestRenderFailuresAreReportedNotRaised:
 
         sidecar = isolated_config.RENDERED_DIR / "topic" / "survey.evidence.md"
         assert sidecar.is_file()
-        assert '> "the span"' in sidecar.read_text()
+        assert '> "the span"' in sidecar.read_text(encoding="utf-8")
+
+
+class TestNonAsciiSourceWording:
+    """Quoted source wording is the text most likely to be non-ASCII.
+
+    An en dash in a page range, a typographic apostrophe, an accented
+    author name -- these are ordinary in the material this module exists
+    to carry, not edge cases. CI's Windows leg runs under cp1252, where a
+    read or write without `encoding="utf-8"` either raises or silently
+    returns mojibake, so the round trip is worth pinning rather than
+    assuming.
+    """
+
+    def test_a_quote_with_non_ascii_characters_survives_the_round_trip(
+            self, isolated_config):
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(
+            citekey="mueller_a_2024", title="Zwillinge und Modelle", year="2024",
+            fields={"author": "Müller, Jürgen", "journal": "Zeitschrift für Dinge"},
+        ))
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@mueller_a_2024].\n", encoding="utf-8")
+        write_dossier(draft, (
+            "## `mueller_a_2024`\n\n"
+            "quote: the model’s fidelity — judged 1–9 — is a claim about purpose\n"
+        ))
+        out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
+
+        out_path = evidence_appendix.write(draft, out_dir)
+        written = out_path.read_text(encoding="utf-8")
+
+        assert "the model’s fidelity — judged 1–9 — is a claim about purpose" in written
+        assert "Müller" in written, "an accented author name must survive attribution"
