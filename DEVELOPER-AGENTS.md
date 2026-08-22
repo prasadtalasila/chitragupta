@@ -524,8 +524,10 @@ much weaker claim on the first kind of branch than the second, and the
 test plan should carry the count so a reader can tell them apart.
 
 **Two things about installing it**, neither guessable and both hit on
-this host. `npm i -g @alibaba-group/open-code-review` puts the binary at
-`$(npm root -g)/../bin/ocr`, which is not on `PATH` by default; and npm's
+this host. `npm i -g @alibaba-group/open-code-review@1.9.9` puts the
+binary at `$(npm root -g)/../bin/ocr`, which is not on `PATH` by default
+-- pinned because the extension list and schema probed below are facts
+about this exact release, not about OCR in general; and npm's
 `allow-scripts` default blocks the package's postinstall, which is
 survivable -- the shipped binary still runs -- but prints a warning that
 reads like a failed install.
@@ -550,12 +552,21 @@ being sent to a third-party endpoint.
 **It cannot review Markdown, so it cannot review the documents that
 govern this project.** OCR opens only extensions it recognises as code
 and drops the rest *before* rules are consulted, reporting
-`exclude_reason: unsupported_ext`. Probed against the installed binary:
-`.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` are reviewed; `.md`,
-`.txt`, `.rst` and `.cfg` are not. So `AGENTS.md`, this file,
+`exclude_reason: unsupported_ext`. Probed against open-code-review
+v1.9.9: `.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` are reviewed;
+`.md`, `.txt`, `.rst` and `.cfg` are not. So `AGENTS.md`, this file,
 `docs/CODE-STANDARDS.md` and every skill in `.claude/` are outside it
-entirely -- a clean run says nothing about them, and doc drift stays a
-human's job.
+entirely -- a clean OCR run says nothing about them.
+
+What *does* cover Markdown, so "OCR came back clean" is never read as
+"the standing instructions were reviewed": `markdownlint-cli2 "*.md"
+"docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"` (see
+["The linters, which are enforced"](#the-linters-which-are-enforced)) for
+style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
+test, for the one class of factual claim that has a machine-readable
+source of truth to check against; and a human reading the diff for
+everything else -- content, argument, whether a stale sentence is still
+true -- which is the one check with no detector and stays that way.
 
 Two traps, both of which have already caught someone:
 
@@ -584,6 +595,11 @@ because a tool said so -- a change made only to silence a reviewer is the
 failure mode that document's R3 is about. The plugin's `review` skill
 offers to apply fixes autonomously; the surgical-changes rule above still
 governs what may land in your diff.
+
+The rules in `.opencodereview/rule.json` are themselves prose handed to a
+model, and nothing checks that they are obeyed -- a run that reports
+clean is not evidence of anything beyond what OCR could open in the
+first place.
 
 ## 💬 Commit messages
 
