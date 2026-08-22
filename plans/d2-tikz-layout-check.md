@@ -1,6 +1,6 @@
 # D2: deterministic TikZ layout check
 
-Status: **plan, in build.** Written 2026-08-20; the mechanism section
+Status: **plan, built.** Written 2026-08-20; the mechanism section
 revised 2026-08-22 after re-probing it on this host, which is what
 that section itself asked the implementer to do. D1 shipped in 6.16.2
 (#329) as [docs/TIKZ-STYLE.md](../docs/TIKZ-STYLE.md); this is D2.
@@ -80,11 +80,27 @@ what produced all three corrections above.
 
 | Check | Kind | From |
 |---|---|---|
-| Node overlap | **binary** | pairwise box intersection |
+| Node overlap | **binary** | pairwise box intersection, excluding containment |
 | Node text overload | **binary** | word count per node, ~15 words |
-| Content protrusion | **binary** | picture bbox against union of node boxes |
+| Content protrusion | **binary** | the largest empty horizontal band |
 | Edge list | **binary** | `\draw`/`\path` node-to-node pairs, reported for confirmation |
 | Corner emptiness | **continuous** | proportion of the bbox left empty |
+
+Two of those rows differ from what this plan first specified, and both
+changed because the original could not work:
+
+- **Protrusion is a band, not a bbox-versus-union comparison.** Where the
+  protruding element is itself a node -- the usual case, and the one the
+  veto describes -- the union already contains it, so the two agree
+  exactly and nothing is ever reported. The largest empty horizontal band
+  is what the defect actually is, and including the bounding box as a
+  band boundary makes one mechanism catch both a stranded node and
+  non-node content reaching past every node. Vertical only: the veto is
+  about vertical space, and horizontal gaps are what a pipeline and a
+  hub-and-spoke layout are *made* of.
+- **Overlap excludes containment.** A box wholly inside another is a zone
+  or grouping box, which is an idiom docs/TIKZ-STYLE.md recommends. See
+  the real-draft findings at the end of this document.
 
 The binary/continuous split is not cosmetic. The roadmap's R3
 constraint forbids a continuous score from being the thing optimised by
@@ -216,3 +232,37 @@ hand, and running the aid over the repository's own drafts reports
 something a human agrees is worth fixing. If it reports nothing on real
 figures, say so in the PR -- that is a result, and it would mean the
 layout complaint lives somewhere this check cannot see.
+
+## What the real-draft run found, and what it changed
+
+Running the finished aid over `content/drafts/` was not a formality: it
+found four defects the unit tests could not, because each needed a real
+figure written by someone who was not thinking about this checker.
+
+- **The picture's bounding box came back as TikZ's empty sentinel**
+  (16000pt, 16000pt, -16000pt, -16000pt) for every figure. Node anchors
+  survive into a later `tikzpicture`, so probing from an appended one
+  *looks* correct -- every node box was right -- but `current bounding
+  box` belongs to the picture being built, and a fresh empty picture has
+  none. The vast sentinel area made every real figure report "100%
+  empty". Fixed by splicing the probes in before the figure's own last
+  `\end{tikzpicture}`.
+- **`\foreach` bodies produced junk edges** like `\x,-0.12 -> \x,0.12`.
+  The coordinate filter tested for digits, and a macro-valued coordinate
+  has none. Fixed by keying on the comma, which a TikZ node name cannot
+  contain and a coordinate always has.
+- **A figure with no *named* nodes reported "100% empty"** about a
+  visibly full picture -- two of this repository's own figures are drawn
+  entirely from `\draw` paths. There is no node area to subtract, so the
+  arithmetic is meaningless rather than extreme; it now reports nothing.
+- **Zone nodes were reported as overlaps.** A two-zone architecture
+  figure produced eight, every one a labelled `CONTROL PLANE`/`DATA
+  PLANE` rectangle containing the nodes it exists to group. That idiom is
+  one docs/TIKZ-STYLE.md *recommends*, so the check was firing on the
+  standard's own advice. Fixed by excluding containment: a box wholly
+  inside another is a zone, not a collision.
+
+After those four, the same figure reports **two** overlaps, and both are
+real: `cmdexec` and `svc` extend about 13pt below the bottom edge of the
+`dp` zone that groups them, so they visibly hang outside it. That is the
+"something a human agrees is worth fixing" this section asks for.

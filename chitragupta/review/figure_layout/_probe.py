@@ -85,6 +85,16 @@ def scaffold(source: str, names: list[str]) -> str:
     The picture's own extent is read the same way, from TikZ's
     `current bounding box` pseudo-node, so protrusion and emptiness need
     no second mechanism.
+
+    **The probes are injected inside the figure's own `tikzpicture`, not
+    appended in a second one**, and this is not a stylistic preference.
+    A node's anchors survive into a later picture, so appending *looks*
+    like it works -- every node box comes back correct. `current bounding
+    box` does not: it is a property of the picture being built, so a
+    fresh empty picture reports TikZ's empty-box sentinel
+    (16000pt, 16000pt, -16000pt, -16000pt) instead of the figure's real
+    extent. That sentinel has a vast positive area, so emptiness came out
+    as "100% empty" for every real figure, which is how this was found.
     """
     probes = "\n".join(
         f"\\pgfpointanchor{{{name}}}{{south west}}\\pgfgetlastxy{{\\cgx}}{{\\cgy}}%\n"
@@ -97,12 +107,32 @@ def scaffold(source: str, names: list[str]) -> str:
         "\\usepackage{tikz}\n"
         "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
         "\\begin{document}\n"
-        f"{source}\n"
-        "\\begin{tikzpicture}[remember picture, overlay]\n"
-        f"{probes}\n"
-        "\\end{tikzpicture}\n"
+        f"{_with_probes_inside(source, probes)}\n"
         "\\end{document}\n"
     )
+
+
+# Where the probes go: immediately before the figure's last
+# `\end{tikzpicture}`, so they run while that picture is still open.
+_PICTURE_END_RE = re.compile(r"\\end\{tikzpicture\}")
+
+
+def _with_probes_inside(source: str, probes: str) -> str:
+    """`source` with `probes` spliced in before its final picture ends.
+
+    The *last* `\\end{tikzpicture}`, so a figure built from several
+    pictures is measured as the whole thing a reader sees rather than as
+    its first component.
+
+    A figure with no `tikzpicture` at all cannot be measured, and gets
+    the probes appended instead -- they will find nothing, which is the
+    honest answer for a figure file that draws no picture.
+    """
+    matches = list(_PICTURE_END_RE.finditer(source))
+    if not matches:
+        return f"{source}\n{probes}"
+    cut = matches[-1].start()
+    return f"{source[:cut]}{probes}\n{source[cut:]}"
 
 
 def parse_boxes(log: str) -> dict[str, Box]:
@@ -151,4 +181,3 @@ def _compile_error_detail(log: str) -> str:
         if line.startswith("!"):
             return line.strip()
     return "pdflatex failed without reporting an error line"
-

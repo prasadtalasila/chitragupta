@@ -33,7 +33,14 @@ _PAREN_TOKEN_RE = re.compile(r"\(([^)]*)\)")
 # `(2cm,0)`. `\draw (0,0) -- (2,0);` draws a line between two points and
 # claims nothing about what connects to what, so reporting it as an edge
 # would be noise in the one check that exists to be read closely.
-_COORDINATE_RE = re.compile(r"^\s*[-\d.]+\s*[a-z]{0,2}\s*,\s*[-\d.]+\s*[a-z]{0,2}\s*$")
+#
+# The comma is what identifies it: a TikZ node name cannot contain one,
+# and a coordinate always does. That is deliberately broader than a
+# numeric test, because a `\foreach` body writes coordinates like
+# `(\x,-0.12)` and `(\x,\y)` -- macro-valued, not numeric, and still not
+# an edge between two named things. A real drafted figure hit exactly
+# this and reported `\x,-0.12 -> \x,0.12` as an edge.
+_COORDINATE_RE = re.compile(r"^[^)]*,")
 
 # A LaTeX control sequence in a node label. Stripped before counting
 # words: `\textbf{alpha}` reads as one word, and counting the macro as a
@@ -90,4 +97,3 @@ def edge_list(source: str) -> list[tuple[str, str]]:
         ]
         edges += list(zip(names, names[1:]))
     return edges
-

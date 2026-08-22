@@ -306,6 +306,28 @@ class TestOverlap:
 
         assert figure_layout.overlaps(boxes) == []
 
+    def test_a_zone_node_containing_its_children_is_not_an_overlap(self):
+        """Found by running this over the repository's own drafts: a
+        two-zone architecture figure reported eight "overlaps", every one
+        a labelled zone containing the nodes it exists to group. Zones
+        via the `backgrounds` layer are what docs/TIKZ-STYLE.md
+        *recommends*, so reporting them would fire on the standard's own
+        advice."""
+        boxes = {
+            "control-plane": (0.0, 0.0, 300.0, 100.0),
+            "auth": (20.0, 20.0, 80.0, 60.0),
+            "registry": (120.0, 20.0, 180.0, 60.0),
+        }
+
+        assert figure_layout.overlaps(boxes) == []
+
+    def test_a_genuine_partial_collision_is_still_reported(self):
+        """The exclusion above must not swallow the real defect: two
+        boxes crossing each other, neither containing the other."""
+        boxes = {"a": (0.0, 0.0, 40.0, 20.0), "b": (20.0, 10.0, 60.0, 30.0)}
+
+        assert figure_layout.overlaps(boxes) == [("a", "b")]
+
     def test_the_picture_bounding_box_is_not_an_overlap_candidate(self):
         """It contains every node by construction, so including it would
         report an overlap against each one."""
@@ -386,6 +408,25 @@ class TestProtrusionAndEmptiness:
         """A figure with no drawn extent has no meaningful emptiness --
         reporting 0.0 would read as "perfectly packed"."""
         boxes = {figure_layout.BBOX_NAME: (0.0, 0.0, 0.0, 0.0)}
+
+        assert figure_layout.emptiness(boxes) is None
+
+    def test_a_zero_area_bounding_box_with_nodes_gives_no_proportion(self):
+        """A picture whose extent collapsed but which still defines
+        nodes -- the division would be by zero, so there is no
+        proportion to report."""
+        boxes = {"a": (0.0, 0.0, 10.0, 10.0),
+                 figure_layout.BBOX_NAME: (0.0, 0.0, 0.0, 0.0)}
+
+        assert figure_layout.emptiness(boxes) is None
+
+    def test_a_figure_with_no_named_nodes_gives_no_proportion(self):
+        """Found by running this over the repository's own drafts: a
+        figure drawn entirely from `\\draw` paths and `\\foreach` bodies
+        names no nodes, so the arithmetic called a visibly full picture
+        "100% empty". That is an artefact, and a percentage invites
+        someone to act on it."""
+        boxes = {figure_layout.BBOX_NAME: (0.0, 0.0, 100.0, 100.0)}
 
         assert figure_layout.emptiness(boxes) is None
 
@@ -634,6 +675,35 @@ class TestMarkdownReport:
 
         assert "overlap" in text
         assert "protrudes" in text
+
+    def test_a_figure_with_nothing_to_say_gets_no_empty_heading(self, tmp_path):
+        """Found running this over real drafts: a figure drawn from
+        `\\draw` paths alone has no nodes, no edges between named things
+        and no proportion, and printing a bare `path:` line for it was
+        most of the output while carrying none of the information."""
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "quiet.tex", boxes={},
+        )]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "quiet.tex" not in text
+        assert "No layout findings" in text
+
+    def test_the_markdown_still_names_a_figure_it_had_nothing_to_say_about(
+        self, tmp_path
+    ):
+        """The opposite rule to the text report's, deliberately: a filed
+        report is read as a record of what was checked, so a figure
+        silently absent reads as one never looked at."""
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "quiet.tex", boxes={},
+        )]
+
+        body = figure_layout.render_markdown(tmp_path / "s.md", results, "cmd")
+
+        assert "quiet.tex" in body
+        assert "Nothing to report" in body
 
     def test_a_clean_figure_says_it_is_not_a_verdict(self, tmp_path):
         """An aid reporting nothing must not read as a pass."""

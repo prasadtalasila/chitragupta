@@ -25,7 +25,7 @@ EMPTINESS_LABEL = "advisory, human-read only -- nothing consumes this"
 
 def _figure_lines(result: FigureResult) -> list[str]:
     """One figure's findings, as the report prints them."""
-    lines = [f"{result.path}:"]
+    lines = []
     if result.failed:
         lines.append(f"  - does not compile: {result.failed}")
     for name, count in result.overlong:
@@ -56,7 +56,13 @@ def format_report(draft_path: Path, results: list[FigureResult]) -> str:
         return f"No figures found in {draft_path} -- nothing to check."
     lines = [f"TikZ layout check for {draft_path}", ""]
     for result in results:
-        lines += _figure_lines(result)
+        # A figure with nothing to say is left out rather than given an
+        # empty heading. Over a chapter's worth of figures the bare
+        # `path:` lines were most of the output and carried none of the
+        # information.
+        said = _figure_lines(result)
+        if said:
+            lines += [f"{result.path}:", *said]
     if not any(result.has_findings for result in results):
         lines += ["", "No layout findings. This is not a verdict on the figure."]
     return "\n".join(lines)
@@ -86,8 +92,13 @@ def render_markdown(draft_path: Path, results: list[FigureResult], command: str)
         return "\n".join(lines)
     for result in results:
         lines += ["## " + str(result.path), ""]
-        lines += [f"- {line.strip().removeprefix('- ')}"
-                  for line in _figure_lines(result)[1:]]
+        said = [f"- {line.strip().removeprefix('- ')}"
+                for line in _figure_lines(result)]
+        # Unlike the text report, every figure keeps its heading here: a
+        # filed report is read as a record of what was checked, so a
+        # figure silently absent from it is indistinguishable from one
+        # that was never looked at.
+        lines += said or ["Nothing to report for this figure."]
         lines.append("")
     return "\n".join(lines)
 

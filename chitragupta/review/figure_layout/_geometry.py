@@ -43,18 +43,27 @@ def _without_bbox(boxes: dict[str, Box]) -> dict[str, Box]:
 
 
 def overlaps(boxes: dict[str, Box]) -> list[tuple[str, str]]:
-    """Every pair of nodes whose boxes intersect, in a stable order.
+    """Every pair of nodes whose boxes *partially* intersect.
 
-    Binary, and the one geometry check safe for anything to act on: two
-    boxes either intersect or they do not. Touching edge-to-edge is not
-    an overlap -- that is a layout decision, not a collision -- so the
-    comparison carries `_TOLERANCE_PT`.
+    Binary, and the one geometry check safe for anything to act on. Two
+    exclusions, both of them real layouts rather than tolerances:
+
+    - **Touching edge-to-edge is not a collision**, so the comparison
+      carries `_TOLERANCE_PT`.
+    - **Containment is not a collision either.** A node that wholly
+      contains another is a zone or a grouping box -- the
+      `backgrounds`-layer idiom docs/TIKZ-STYLE.md explicitly
+      recommends -- and its children sitting inside it is the point of
+      it, not a defect. Without this the check reports the layouts the
+      standard recommends: run over this repository's own drafts, a
+      two-zone architecture figure produced eight "overlaps", every one
+      of them a labelled zone containing the nodes it exists to group.
     """
     nodes = sorted(_without_bbox(boxes).items())
     found = []
     for index, (name, box) in enumerate(nodes):
         for other_name, other in nodes[index + 1:]:
-            if _intersects(box, other):
+            if _intersects(box, other) and not _either_contains(box, other):
                 found.append((name, other_name))
     return found
 
@@ -71,6 +80,20 @@ def _intersects(one: Box, other: Box) -> bool:
     x_overlap = min(ax2, bx2) - max(ax1, bx1)
     y_overlap = min(ay2, by2) - max(ay1, by1)
     return x_overlap > _TOLERANCE_PT and y_overlap > _TOLERANCE_PT
+
+
+def _either_contains(one: Box, other: Box) -> bool:
+    """Whether one box wholly encloses the other -- a zone, not a clash."""
+    return _contains(one, other) or _contains(other, one)
+
+
+def _contains(outer: Box, inner: Box) -> bool:
+    ox1, oy1, ox2, oy2 = outer
+    ix1, iy1, ix2, iy2 = inner
+    return (
+        ox1 - ix1 <= _TOLERANCE_PT and oy1 - iy1 <= _TOLERANCE_PT
+        and ix2 - ox2 <= _TOLERANCE_PT and iy2 - oy2 <= _TOLERANCE_PT
+    )
 
 
 def protrudes(boxes: dict[str, Box]) -> bool:
@@ -132,16 +155,27 @@ def emptiness(boxes: dict[str, Box]) -> float | None:
     enough to pass that check has no double-counted area left to distort
     this one.
 
-    `None` where the picture has no extent to be empty of -- reporting
-    0.0 there would read as "perfectly packed".
+    `None` in the two cases where the question has no answer, rather than
+    a number that reads like one:
+
+    - **The picture has no extent** to be empty of. Reporting 0.0 there
+      would read as "perfectly packed".
+    - **The figure names no nodes at all.** A figure drawn entirely from
+      `\\draw` paths and `\\foreach` bodies is a real and ordinary shape
+      -- two of this repository's own drafted figures are exactly that --
+      and it has no node area to subtract, so the arithmetic would say
+      "100% empty" about a picture that is visibly full. That is a
+      measurement artefact, not a finding, and printing it as a
+      percentage invites someone to act on it.
     """
     if BBOX_NAME not in boxes:
+        return None
+    nodes = _without_bbox(boxes)
+    if not nodes:
         return None
     bx1, by1, bx2, by2 = boxes[BBOX_NAME]
     bbox_area = (bx2 - bx1) * (by2 - by1)
     if bbox_area <= 0:
         return None
-    filled = sum(
-        (x2 - x1) * (y2 - y1) for x1, y1, x2, y2 in _without_bbox(boxes).values()
-    )
+    filled = sum((x2 - x1) * (y2 - y1) for x1, y1, x2, y2 in nodes.values())
     return max(0.0, 1.0 - filled / bbox_area)
