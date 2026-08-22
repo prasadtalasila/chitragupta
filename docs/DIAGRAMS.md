@@ -255,11 +255,12 @@ flowchart TB
   end
 
   %% ─────────────── AIDS (side branch) ───────────────
-  subgraph SA["<b>REVIEW AIDS</b> — you run these; none of them is a gate"]
+  subgraph SA["<b>REVIEW AIDS</b> — run these afterwards; none of them is a gate"]
     direction TB
     A1["<b>chitragupta.review provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>chitragupta.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page</small>"]
+    A2["<b>chitragupta.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
     A3["<b>chitragupta.review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
+    A4["<b>chitragupta.review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
   end
 
   %% ─────────────── SPINE ───────────────
@@ -295,7 +296,7 @@ flowchart TB
   class BLOCK bad
   class ITER loop
   class SKILLS gen
-  class A1,A2,A3,ADV aid
+  class A1,A2,A3,A4,ADV aid
   class H1,H2,H3,EMB heavy
 ```
 
@@ -647,7 +648,7 @@ flowchart LR
 
   P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta.draft references</code> → IEEE list<br/><code>chitragupta.draft render --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
-  AID["<b>LAYER 4 · REVIEW — afterwards, by you, never a gate</b><br/><code>chitragupta.review provenance</code> · <code>chitragupta.review verbatim</code><br/><code>chitragupta.review coverage</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
+  AID["<b>LAYER 4 · REVIEW — afterwards, never a gate</b><br/><code>chitragupta.review provenance</code> · <code>chitragupta.review verbatim</code><br/><code>chitragupta.review coverage</code> · <code>chitragupta.review synthesis</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 
   BERT["<b>bertopic</b> → content/topics.json<br/><small>no skill calls this. It is for <i>you</i>, deciding what<br/>the survey should even be about.</small>"]
 
@@ -902,7 +903,7 @@ sequenceDiagram
     Ren-->>You: content/rendered/<slug>.pdf
     end
 
-    Note over You,Ren: Layer 4, the review layer — optional afterwards, never a gate:<br/>chitragupta.review provenance · verbatim · coverage<br/>reports land in content/review/, mirroring the draft
+    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta.review provenance · verbatim · coverage · synthesis<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
 ```
 
 ### The life of a single citekey

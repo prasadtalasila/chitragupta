@@ -8,7 +8,7 @@ about the same rule."
 
 Prose agreement is not enforceable by asking people to remember, and this
 repository's standing answer to that is a pin rather than a policy --
-tests/test_skill_verbatim_scan_offer.py and test_code_standards_scan.py's
+tests/test_skill_verbatim_scan_step.py and test_code_standards_scan.py's
 register both exist for the same reason. §2 remains the normative source;
 this makes a divergence a failing build rather than a silent one.
 

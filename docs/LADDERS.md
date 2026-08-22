@@ -58,7 +58,7 @@ them and what they are allowed to do*.
 | **1. Corpus** | `python -m chitragupta.corpus sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
 | **3. Enrichment** | `python -m chitragupta.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
-| **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`. Advisory over a finished draft -- never automatic, never a gate. | When you ask, after a draft exists |
+| **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`, `synthesis`, `figure_layout`, `uncited_prose`. Advisory over a finished draft -- never a gate. | When you ask, and at the end of a drafting skill's run |
 
 The numbers are introduction order, not a dependency rank.
 

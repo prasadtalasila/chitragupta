@@ -257,21 +257,35 @@ verbatim finding, and anything that is not a verbatim finding is
 a gate -- it exits 0 whatever it finds, and a missing `vale` binary is a
 one-line warning that blocks nothing.
 
-### Offer the verbatim scan
+### Run the verbatim scan
 
-The baseline in step 2 is that scan, so it has already run. What still
-has to be said when you present is what it does **not** cover:
+The baseline in step 2 is that scan, so it has already run. Two things
+still have to happen before you present: rebuild the section map --
+which this skill has just invalidated, because rewording a finding is
+exactly what moves wording between citekeys -- and say what the scan
+does **not** cover.
 
 ```bash
+python -m chitragupta.draft dossier sections content/drafts/<path> --citekeys --write
 python -m chitragupta.review verbatim scan content/drafts/<path>
 ```
+
+Take the step-2 baseline the same way, so the baseline and the final
+scan are measured against the same table. If the first command exits 1
+for a missing dossier, say so and scan anyway.
 
 It reports verbatim and near-verbatim reuse against any parsed source, cited or
 not, and **genuine restatement is only detected where the embedding tier can
 run** -- these drafts are LLM-written and literal paraphrase is an LLM's normal
 failure mode -- so a clean scan, and a clean `recheck`, is not a clean bill of
 health (`docs/PLAGIARISM.md`). Say that plainly rather than letting a zero read
-as an all-clear. A review aid, not a gate: it exits 0 either way.
+as an all-clear. **Say what it did not check:** if `tiers_not_run` is not
+empty, quote each reason as the scan wrote it, and where the reason names a
+fix (`poetry install --with enrich`, `python -m chitragupta.enrich`) pass that
+on once -- on this skill above all, because a repair loop reporting "all
+findings fixed" from two tiers of three is the most misleading sentence in
+this pipeline. **A review aid, not a gate: it exits 0 either way, and it is
+never a condition of presenting.**
 
 ## Guardrails
 

@@ -46,7 +46,7 @@ _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 # read_text() uses the locale codec, which is cp1252 on the Windows CI
 # leg, and these sources contain non-ASCII punctuation -- so the check
 # died with a UnicodeDecodeError there while passing on Linux. Same
-# reason tests/test_skill_verbatim_scan_offer.py pins it.
+# reason tests/test_skill_verbatim_scan_step.py pins it.
 
 
 def _aid_sources(module: str) -> list[Path]:

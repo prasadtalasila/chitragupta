@@ -2,7 +2,7 @@
 fixes nothing.
 
 A text scan over `.claude/skills/`, in the shape of
-`tests/test_skill_verbatim_scan_offer.py` and for the same reason: what
+`tests/test_skill_verbatim_scan_step.py` and for the same reason: what
 the command does has its own tests. This pins only that the eight skills
 still tell anyone to run it, and still carry the two things that stop the
 result being misread.

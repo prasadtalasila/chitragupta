@@ -295,26 +295,45 @@ checked` means nobody ever recorded one, so a short list is not a clean
 draft. A review aid, not a gate -- it exits 0 whatever it finds, and a
 missing `vale` binary is a one-line warning that blocks nothing.
 
-### Offer the verbatim scan
+### Run the verbatim scan
 
-Before presenting, offer this -- don't run it silently, and never make it
-a condition of presenting:
+Before presenting, rebuild the section map and scan:
 
 ```bash
+python -m chitragupta.draft dossier sections content/drafts/<path> --citekeys --write
 python -m chitragupta.review verbatim scan content/drafts/<path>
 ```
 
+The first command matters more here than in any writing skill, and it is
+the one this skill never had: a revision is exactly what makes
+`sections.md` wrong. Moving a claim between sections, dropping a citation
+or adding one all change the heading-to-citekey relation, and the
+embedding tier compares each section against the citekeys that section's
+row records. Scanning against the pre-revision table checks the draft you
+started with. If it exits 1 for a missing dossier, say so and scan
+anyway.
+
 It reports wording the draft shares with **any** parsed source, cited or not.
-Worth offering after a revision specifically: text you rewrote to sit closer to
-a source is exactly the text most likely to have drifted into its wording, and
-a revision that moved a claim between sections can strand borrowed phrasing in
-a paragraph that no longer cites anything. A review aid, not a gate: it exits 0
-either way and cannot block the draft. Say what it misses when you offer it --
-it sees verbatim and near-verbatim reuse only, and **genuine restatement is
+It earns its place after a revision specifically: text you rewrote to sit
+closer to a source is exactly the text most likely to have drifted into its
+wording, and a revision that moved a claim between sections can strand
+borrowed phrasing in a paragraph that no longer cites anything. **A review
+aid, not a gate: it exits 0 either way, it cannot block the draft, and it is
+never a condition of presenting.** Show what it found rather than summarising
+it away, and lead with the `long` and `short` buckets -- a `quoted` run that
+also cites its source is a legitimate attributed quotation, so give those a
+count rather than a list.
+
+**Say what it did not check.** If `tiers_not_run` is not empty, quote each
+reason as the scan wrote it, and where the reason names a fix (`poetry install
+--with enrich`, `python -m chitragupta.enrich`) pass that on once. It sees
+verbatim and near-verbatim reuse only, and **genuine restatement is
 only detected where the embedding tier can run**, so a clean scan is not a
-clean bill of health (`docs/PLAGIARISM.md`). If the user wants the finding
-kept, add `--write`: the report goes to `content/review/`, mirroring the
-draft's path, beside any provenance and coverage reports for the same draft.
+clean bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
+`overlap-reviser`'s job, and only if the user asks. If the user wants the
+finding kept, add `--write`: the report goes to `content/review/`, mirroring
+the draft's path, beside any provenance and coverage reports for the same
+draft.
 
 ## Copy-edit mode
 

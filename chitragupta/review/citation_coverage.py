@@ -12,8 +12,8 @@ but worth showing so the report isn't misread as a gap-finder.
 
 One of the six commands in the **review layer**, named by the entry point
 rather than by a sibling list this module has no line budget to grow --
-run by hand on a finished draft, never automatically, never a gate, and
-never holding the write lock. Purely informational, unlike citation_gate.py.
+read over a finished draft, by a person or by a driver, never a gate,
+and never holding the write lock. Purely informational, unlike citation_gate.py.
 chitragupta/review/__init__.py owns where a written report goes
 (`content/review/<topic>/<stem>.coverage.md`, mirroring the draft's
 path) and what its header looks like.

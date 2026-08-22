@@ -1,7 +1,8 @@
 """The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
-Six aids, run by hand over a finished draft. None of them is a gate,
-none takes the write lock, and nothing invokes them automatically:
+Six aids, read over a finished draft -- by a person, or by a skill that
+runs one on your behalf. None of them is a gate, none takes the write
+lock, and none of them can block a draft:
 
     python -m chitragupta.review provenance <draft>
         what in each cited source supports the claim citing it.

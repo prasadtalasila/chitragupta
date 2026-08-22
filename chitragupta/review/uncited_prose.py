@@ -42,8 +42,8 @@ the failure class this project exists to prevent.
 
 One of the six commands in the **review layer**, beside
 citation_provenance.py, citation_coverage.py, verbatim_check.py,
-synthesis.py and figure_layout/ -- run by hand on a finished draft, never
-automatically, never a gate, and never holding the write lock. Alone
+synthesis.py and figure_layout/ -- read over a finished draft, by a person
+or by a driver, never a gate, and never holding the write lock. Alone
 among the six it reads nothing but the draft: no ledger, no corpus, no
 sync, no `enrich` extra, and not even the figures a draft references.
 

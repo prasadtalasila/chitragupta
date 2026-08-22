@@ -429,17 +429,31 @@ judgement, and the two must not be treated alike.
 missing binary prints a one-line warning and the `.md` draft is presented
 anyway.
 
-**The verbatim scan is offered, never run silently and never a gate.**
-Once the gate has passed and the renders are done, and before presenting,
-each skill offers `python -m chitragupta.review verbatim scan
-content/drafts/<path>`. That reports wording the draft shares with *any*
-parsed source, cited or not. It cannot block a draft, and no skill treats
-it as a condition of presenting. The offer carries its own
-caveat, in every skill, because the drafter is the one it is about. Two
-of the three detection tiers see wording only, so a genuine restatement
-is invisible to them. The third sees one, but runs only where the
-optional enrichment layer, the Docling sidecars and the draft's dossier
-are all present. So a clean scan is not a clean bill of health.
+**The verbatim scan is run, reported, and never a gate.** Once the gate
+has passed and the renders are done, and before presenting, each skill
+rebuilds the draft's section map and runs the scan:
+
+```bash
+python -m chitragupta.draft dossier sections content/drafts/<path> --citekeys --write
+python -m chitragupta.review verbatim scan content/drafts/<path>
+```
+
+That reports wording the draft shares with *any* parsed source, cited or
+not. **It cannot block a draft, and no skill treats it as a condition of
+presenting** -- what changed in #312 is who may invoke a review aid, not
+what one may do to a draft. `python -m chitragupta.draft gate` is still
+the only gate.
+
+The caveat travels with it, in every skill, because the drafter is the
+one it is about. Two of the three detection tiers see wording only, so a
+genuine restatement is invisible to them. The third sees one, but runs
+only where the optional enrichment layer, the Docling sidecars and the
+draft's dossier are all present -- which is why the first command above
+is not optional: rebuilding `sections.md` is the one of those four
+conditions a skill can satisfy for itself. Where a tier still could not
+run, the skill quotes the `tiers_not_run` reason the scan gave rather
+than presenting two tiers of three as a clean result. So a clean scan is
+not a clean bill of health.
 [PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that;
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
 it sees.
@@ -462,15 +476,17 @@ copy-edit mode, which reads the recorded dialect and logs one
 whatever it finds; [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why
 it may never become a gate.
 
-**Why one is offered and the other is run.** The scan can be read as an
-accusation, and `--write` files a report, so the skill offers it and the
-person decides. The prose check measures a draft against a preference
-that same person recorded, writes nothing, and proposes rather than sets
-a dialect -- so running it needs no permission, and only the reporting is
-a judgement. A `PostToolUse` hook reports the same command per write, to
-the agent, mid-loop; this step reports the finished draft once, to the
-human. [HOOKS.md](HOOKS.md) has that split: invocation is enforced,
-conformance is not.
+**Both are run, and neither writes without being asked.** The scan was
+offered rather than run until #312, on the reasoning that it can be read
+as an accusation and `--write` files a report. What that reasoning missed
+is that the only defence against verbatim reuse was then post-hoc *and*
+optional, so a draft could be presented having never been checked. Both
+steps now run; neither passes `--write` unless the person asks, so
+neither files anything, and neither can block a draft. A `PostToolUse`
+hook reports the prose check per write, to the agent, mid-loop; these
+steps report the finished draft once, to the human.
+[HOOKS.md](HOOKS.md) has that split: invocation is enforced, conformance
+is not.
 
 ## The boundaries, and why they are enforced
 

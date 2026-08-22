@@ -85,7 +85,7 @@ flowchart TB
     FULL --> OUT3
   end
 
-  subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never automatic, never a gate · <b>takes no lock</b>"]
+  subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never a gate · <b>takes no lock</b>"]
     direction TB
     A["<code>python -m chitragupta.review provenance</code><br/><code>python -m chitragupta.review coverage</code><br/><code>python -m chitragupta.review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
     OUT4[/"<b>content/review/&lt;topic&gt;/&lt;stem&gt;.{provenance,verbatim,coverage}.md</b>"/]
@@ -307,8 +307,8 @@ not. Reading an artefact is not calling a layer.
 
 ## Layer 4: the review layer
 
-Six aids behind one command, run by hand over a finished draft.
-Nothing invokes them automatically, and none of them gates anything:
+Six aids behind one command, read over a finished draft. A person or a
+skill may invoke them; none of them gates anything:
 
 | Command | Answers |
 |---|---|

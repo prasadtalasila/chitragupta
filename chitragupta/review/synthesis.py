@@ -13,8 +13,8 @@ the unit and where the unit came from -- so a tutorial's report, measured
 at the whole document, cannot be read as a paragraph-scale failure.
 
 **A thin corpus legitimately produces single-source units.** The report
-counts them; it does not judge them, and nothing in this pipeline reads
-it back. A proportion is exactly the shape docs/AUTO-IMPROVEMENT.md's R3
+counts them; it does not judge them, and no draft is blocked by what it
+says. A proportion is exactly the shape docs/AUTO-IMPROVEMENT.md's R3
 exists to keep out of an unattended loop, so there is no threshold here,
 no target, and no per-genre bar -- only counts, and a human to read them.
 
@@ -23,8 +23,8 @@ chitragupta/review/citation_provenance.py,
 chitragupta/review/citation_coverage.py,
 chitragupta/review/verbatim_check.py,
 chitragupta/review/figure_layout/ and
-chitragupta/review/uncited_prose.py -- run by hand on a finished draft,
-never automatically, never a gate, and never holding the write lock.
+chitragupta/review/uncited_prose.py -- read over a finished draft, by a
+person or by a driver, never a gate, and never holding the write lock.
 
 This aid owns its own units through `_units.py`. `verbatim_check` splits
 paragraphs its own way for its own purposes, and the two are **not**

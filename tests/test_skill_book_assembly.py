@@ -15,7 +15,7 @@ assembling agent to run the check and to report every finding before
 composing anything, and a hand edit that dropped either half would be
 the bug.
 
-Same shape and same reasoning as tests/test_skill_verbatim_scan_offer.py
+Same shape and same reasoning as tests/test_skill_verbatim_scan_step.py
 and tests/test_skill_style_check_step.py -- what the commands do has its
 own tests (tests/test_registry.py, tests/test_unit.py, tests/test_spec.py);
 this pins only that the skill still tells anyone to run them.

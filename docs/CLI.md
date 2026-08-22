@@ -246,8 +246,8 @@ chitragupta draft dossier sections content/drafts/<slug>.md --citekeys --write
 chitragupta draft dossier status --all --json
 chitragupta draft dossier export <slug>
 
-# 11. Check the draft against its sources. Review aids, not gates: none of
-#     these runs automatically, and none of them can block a draft.
+# 11. Check the draft against its sources. Review aids, not gates: a skill
+#     runs the verbatim scan for you, and none of them can block a draft.
 chitragupta review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
 chitragupta review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
 chitragupta review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
@@ -837,7 +837,7 @@ error.
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate** -- it exits 0 whatever it finds -- and like
-the other three aids it never runs automatically.
+the other five aids nothing it reports can block a draft.
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
 reaches only the part of that checklist geometry can decide.
 
@@ -889,8 +889,8 @@ the draft's other figures are still checked, and the command still exits
 ### `python -m chitragupta.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
-citations. **Informational, not a gate**, and unlike the gate it never
-runs automatically. Stdlib-only, like `citation_gate` and `references` --
+citations. **Informational, not a gate** -- unlike the gate, nothing it
+reports can block a draft. Stdlib-only, like `citation_gate` and `references` --
 it reuses `chitragupta.retrieval`, which is itself stdlib.
 
 | Flag | Default | What it does |
@@ -967,7 +967,7 @@ draft's genre binds at**. Prose required to fuse two or more sources
 cannot be a transcription of any one of them; this is what makes that
 rule observable rather than merely written down. See
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 for the rule itself.
-**Advisory, exits 0 whatever it finds**, and nothing reads it back.
+**Advisory, exits 0 whatever it finds**, and it blocks no draft.
 
 The unit comes from the genre recorded in the draft's dossier
 `scope.md`, so the usual invocation takes no flags:
@@ -1039,7 +1039,7 @@ prose-side question, and it is the one nothing answered before:
 [`coverage`](#python--m-chitraguptareview-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
-finds**, and nothing reads it back. Alone among the six aids it reads
+finds**, and it blocks no draft. Alone among the six aids it reads
 no corpus: no ledger, no sync, no `enrich` extra, only the draft.
 
 **Most of a draft carries no citation, and most of that is fine.** So

@@ -441,7 +441,7 @@ blank line declares nothing -- it becomes a block of its own.
 chitragupta.review synthesis <draft>` counts citekeys per unit, at the
 unit your genre binds at, and separates declared single-source units
 from undeclared ones. It is **advisory**: it exits 0 whatever it finds,
-nothing reads it back, and a thin corpus legitimately produces
+it blocks no draft, and a thin corpus legitimately produces
 single-source units. There is no target proportion to drive down --
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 is why, and it is not a
 technicality: a number a loop optimises stops measuring what it named.
