@@ -177,6 +177,7 @@ means they are checked only when someone remembers to.
 | Each paragraph leads with its point | §4 | heuristic only | no -- surfaced, never applied |
 | Hedging that carries no information | §4 | detectable | no -- the fix is a judgement |
 | Short sentences, one idea each | §4 | **no: this is a score** | no |
+| Citekeys per unit, and how many units rest on one source | §11 | yes | no -- it is a **proportion**, and a thin corpus legitimately produces single-source units. Counted and read, never acted on |
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A
@@ -390,6 +391,67 @@ and an ASCII diagram depict the same thing, so a revision that edits one
 and not the other leaves the pdf and the Markdown preview disagreeing,
 silently and indefinitely. `draft-reviser` carries the only defence
 there is -- touch a figure, touch both forms.
+
+## 11. Multi-source synthesis, at your genre's unit
+
+Prose that has to fuse two or more sources cannot be a transcription of
+any one of them. You cannot transcribe two sources simultaneously. That
+is a stronger mechanism than any instruction to paraphrase harder,
+because it does not ask for restraint -- it removes the opportunity.
+
+**The rule.** A unit cites **two or more citekeys wherever the evidence
+set allows**, and a single-source unit is a deliberate choice you state
+rather than a default.
+
+**The unit differs by genre. The rule does not.**
+
+| Genre | Unit | What that means |
+|---|---|---|
+| `survey`, `thesis-chapter`, `deep-research` | paragraph | A body paragraph closes on more than one citekey |
+| `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* -- see below. Individual paragraphs are free to be single-source; multi-source paragraphs are a distraction in a genre whose job is explanation |
+| `tutorial` | document | The body carries no citations at all, by design. The floor is on the lesson's derivation: it must not be a walkthrough of one source's procedure, and two or more distinct citekeys in "Where to go next" are the evidence that it is not |
+
+**For the section unit, spread is not enough.** A section that cites
+three papers by running one out before starting the next spans three
+sources and fuses none of them; every paragraph in it is still a
+candidate transcription. Interleave instead: don't let consecutive
+paragraphs rest on the same single citekey. This is the same instruction
+`textbook-chapter-writer` step 4 already gives, stated as a property of
+the finished section rather than as advice about searching.
+
+**Declaring a single-source unit.** Sometimes one paper genuinely is the
+only source in the corpus for a point. That is fine, and forcing a
+second citation where none fits is worse than the problem. Say so, in
+the draft, immediately above or below the unit with **no blank line**
+between them:
+
+```markdown
+<!-- single-source: Foo2019 is the only paper in the corpus covering X -->
+```
+
+```latex
+% single-source: Foo2019 is the only paper in the corpus covering X
+```
+
+Both are invisible when rendered. A marker separated from its unit by a
+blank line declares nothing -- it becomes a block of its own.
+
+**What checks this, and what it will not do.** `python -m
+chitragupta.review synthesis <draft>` counts citekeys per unit, at the
+unit your genre binds at, and separates declared single-source units
+from undeclared ones. It is **advisory**: it exits 0 whatever it finds,
+nothing reads it back, and a thin corpus legitimately produces
+single-source units. There is no target proportion to drive down --
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 is why, and it is not a
+technicality: a number a loop optimises stops measuring what it named.
+A human reads it and decides.
+
+The idea is adapted from [OpenScholar](https://github.com/AkariAsai/OpenScholar)'s
+own drafting instruction, credited in [INSPIRATION.md](INSPIRATION.md)
+and written here in our own words. Its *citation mechanics* are
+deliberately not adapted: upstream cites by positional index into a
+truncated list, so reordering that list silently changes what every
+citation means. This project has real citekeys and keeps using them.
 
 ## Sources and attribution
 

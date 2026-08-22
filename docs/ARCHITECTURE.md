@@ -340,10 +340,12 @@ content/drafts/<topic>/survey.md
   -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
      content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf, .json)
      content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
+     content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf, .json)
 ```
 
-`chitragupta.review provenance` writes by default. `verbatim scan` and `coverage`
-write under `--write`, since printing is the usual use for both.
+`chitragupta.review provenance` writes by default. `verbatim scan`,
+`coverage` and `synthesis` write under `--write`, since printing is the
+usual use for all three.
 
 Every report opens with a banner saying it is not a verdict, because a
 file found on disk months later is exactly the case the docs cannot
@@ -452,7 +454,7 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters -- see below |
 | `content/rendered/*.md`, `*.tex` | **Yes** -- byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
-| `content/review/*.md` -- the three review reports, and `*.verbatim.json` beside one of them | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
+| `content/review/*.md` -- the four review reports, and `*.verbatim.json` beside one of them | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input -- UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change -- two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
 | `content/overlap/` | A cache, not an output: `chitragupta/review/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
@@ -532,7 +534,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all nine commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all nine commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -635,7 +637,7 @@ satisfy it.
 
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
-`corpus`, and all three review aids share `chitragupta/review/__init__.py`'s
+`corpus`, and all four review aids share `chitragupta/review/__init__.py`'s
 output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 

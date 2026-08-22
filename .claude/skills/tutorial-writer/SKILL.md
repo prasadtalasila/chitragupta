@@ -296,6 +296,21 @@ the lesson design is the part worth keeping either way.
    optional; a tutorial with zero citations is the normal case, not a
    deficiency. Anything you do cite must be a real citekey from a `search()`
    result -- never a fabricated one.
+
+   **The multi-source floor here is the whole document, not the
+   paragraph.** A tutorial's body carries no citations by design, so the
+   thing that can go wrong is one level up: the lesson being a walkthrough
+   of a single source's procedure from end to end. That failure is
+   invisible at every scale below the document. So when you do cite, cite
+   more than one source -- two or more distinct citekeys in this section
+   are the evidence that the lesson was derived rather than transcribed.
+   Where the corpus genuinely holds one relevant paper, or none, that is
+   not a deficiency either; say so with `<!-- single-source: why -->`
+   adjacent to the section if you cited exactly one.
+   docs/WRITING-STANDARDS.md §11 is the rule; `python -m
+   chitragupta.review synthesis <draft>` reports it, and on a tutorial it
+   will say `unit: document` -- that is the measurement working, not a
+   missing paragraph-level check.
    If you did search, record both outcomes in the dossier before you draft
    the section: what you keep into `evidence.md`, one ``## `citekey` `` block
    with a `relevance:` line, a `claim:` line -- what the source establishes,

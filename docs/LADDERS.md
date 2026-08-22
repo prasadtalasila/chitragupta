@@ -458,7 +458,7 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 |---|---|---|
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all three aids), `chitragupta.passages` |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids), `chitragupta.passages` |
 | 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
 

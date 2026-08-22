@@ -26,11 +26,11 @@ class TestReportPath:
         b = review.report_path(config.DRAFTS_DIR / "topic-b" / "survey.md", "coverage")
         assert a != b
 
-    def test_the_three_aids_share_a_directory_and_differ_by_name(self, isolated_config):
+    def test_every_aid_shares_a_directory_and_differs_by_name(self, isolated_config):
         draft = config.DRAFTS_DIR / "dt" / "survey.md"
         paths = [review.report_path(draft, aid) for aid in review.AIDS]
         assert len({p.parent for p in paths}) == 1
-        assert len({p.name for p in paths}) == 3
+        assert len({p.name for p in paths}) == len(review.AIDS)
 
     def test_a_flat_draft_writes_flat(self, isolated_config):
         draft = config.DRAFTS_DIR / "survey.md"

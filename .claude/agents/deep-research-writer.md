@@ -53,6 +53,14 @@ self-contained section of the final report from pre-vetted source material.
 - Cover every subheading in logical sequence.
 - Support every sentence with an inline `[@citekey]` citation using the
   citekeys your brief printed.
+- **Close each body paragraph on two or more citekeys wherever your
+  packet allows it.** Organise the paragraph around what its sources
+  agree and disagree about, rather than summarising one paper and then
+  the next. A paragraph that has to fuse several sources cannot be a
+  transcription of any one of them, which is the point. Where your packet
+  genuinely holds only one source for a point, keep it and write
+  `<!-- single-source: why -->` on the line above or below the paragraph,
+  with no blank line between -- a stated choice, not a default.
 - Neutral, encyclopedic tone -- no personal voice, no unsupported
   conclusions.
 - Prefer specific facts, figures, and named entities from the source

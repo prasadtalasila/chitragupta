@@ -7,10 +7,10 @@ exactly: *does the cited paper actually say this?* A claim that drifted
 away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
-One of the three commands in the **review layer**, with
-chitragupta/review/citation_coverage.py and chitragupta/review/verbatim_check.py -- run by hand on
+One of the four commands in the **review layer**, beside
+citation_coverage.py, verbatim_check.py and synthesis.py -- run by hand on
 a finished draft, never automatically, never a gate, and never holding
-the write lock. chitragupta/review/__init__.py owns what the three have in common: where
+the write lock. chitragupta/review/__init__.py owns what the four have in common: where
 the report goes (`content/review/`, mirroring the draft's path) and what
 its header looks like.
 

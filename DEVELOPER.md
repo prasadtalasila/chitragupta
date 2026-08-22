@@ -284,10 +284,10 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           needed, which is why it sits here and not in chitragupta/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
-chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, three aids
+chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, four aids
   __init__.py               the layer's shared output contract -- report path (content/review/,
                           mirroring the draft), the "not a gate" banner, the header, and the
-                          write-md-then-render routine all three aids use. No timestamp, so a
+                          write-md-then-render routine all four aids use. No timestamp, so a
                           report diffs across revisions
   __main__.py               the layer's single entry point: one parser, three subcommands, each
                           wired to its aid's own build_parser()/run(). The aids below carry no
@@ -390,7 +390,7 @@ every citation in a draft, what in the cited source supports it and where
 under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
 (`config.mirrored_dir`), and `chitragupta/review/__init__.py` owns that contract
 for all
-three review-layer commands.
+four review-layer commands.
 
 Run it directly rather than wrapping it in an enrichment stage: that
 would have the enrichment layer importing the review layer, and would
