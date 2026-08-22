@@ -30,7 +30,7 @@ pipeline. Genre: {genre}.
 | `sections.md` | section heading -> the citekeys cited under it |
 | `steering.md` | what the user asked for in chat that the draft doesn't show |
 | `revisions.md` | append-only log of what changed and why |
-| `retrieval.md` | every retrieval call and the size of what it returned, plus a `mark-revision` boundary per revision pass |
+| `retrieval.md` | every retrieval call, its result size, and a `mark-revision` boundary per pass |
 
 This directory is gitignored, like the draft it describes. Back it up and
 restore it with:

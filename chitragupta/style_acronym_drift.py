@@ -44,7 +44,7 @@ def findings(draft: Path) -> list[dict]:
     """
     try:
         glossary = dossier.glossary_terms(draft)
-    except Exception:  # pylint: disable=broad-except
+    except dossier.DossierError:
         return []
     stale = acronyms.stale_expansions(glossary)
     return [

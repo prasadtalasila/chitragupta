@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.20.2"
+version = "6.20.3"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -253,6 +253,37 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
+
+
+# The per-site suppression check pylint's category-wide
+# `broad-exception-caught` disable can't be (docs/TECHNICAL-DEBT.md's
+# ruff subsection). `select` is deliberately narrower than ruff's own
+# (much broader) default: BLE is the rule this was adopted for, E/F are
+# pyflakes/pycodestyle's core correctness checks plus the "keep lines
+# short" review rule CODE-STANDARDS.md's build order already named for
+# ruff, and RUF100 is what makes a `# noqa: BLE001` a checked claim
+# instead of a comment nothing reads -- it fails a noqa that no longer
+# suppresses anything. ruff's version is pinned exactly in ci.yml for
+# this reason as much as for Sonar S8544: RUF100's verdict on a given
+# except block depends on ruff's own (undocumented, narrower-than-BLE001
+# looks) carve-outs, e.g. a block that ends in `raise`, and a version
+# bump can move that verdict without this project changing a line.
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "BLE", "RUF100"]
+
+# An `__init__.py` re-exporting a submodule's public name so `from
+# chitragupta import x` reaches it (registry/, spec/, unit/, dossier/,
+# render_output/, review/figure_layout/) is F401 by construction, and
+# four of those do it via a deliberately late import (E402) to dodge a
+# circular import at definition time -- both already explained inline
+# where DEVELOPER-AGENTS.md's comment rules require it. A blanket
+# ignore here, not a per-line noqa on each of the 52 sites, because
+# per-file-ignores is ruff's own register for exactly this shape.
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
 
 
 # Required now that this is a real distribution: without it `pip install`

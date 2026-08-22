@@ -471,7 +471,7 @@ goal-driven execution. The third is the one
 ## Build order
 
 What would extend the enforced half, cheapest first, as proposed when
-this document was written. Items 1 and 4 have since landed, each in a
+this document was written. Items 1, 2 and 4 have since landed, each in a
 different shape than proposed here -- see their own notes.
 
 1. ~~**A linter and formatter (`ruff`).**~~ **A linter landed, but as
@@ -485,17 +485,21 @@ different shape than proposed here -- see their own notes.
    a different angle. What it does **not** cover, because `pylint` isn't
    `ruff`: line length is a hand-fixed 100-column wrap
    (`docs/TECHNICAL-DEBT.md §5.1`'s "31 long lines"), not an enforced
-   `E501`, and there is no formatter. Item 2 below still describes real,
-   unclosed gaps.
-2. **A `# noqa`-free policy for the ratchet.** `pylint` landing did not
-   close this the way `ruff` would have: `pylint` disables
-   `broad-exception-caught` for the whole tree rather than requiring a
-   per-site suppression, so the 11 `# noqa: BLE001` markers
-   (`docs/TECHNICAL-DEBT.md`'s "the 11 inert `# noqa: BLE001` markers")
-   are still exactly that -- inert, for a linter that was never adopted.
-   Genuinely still open, and only `ruff` (or an equivalent per-site
-   suppression check) closes it; `pylint`'s category-level `disable=`
-   does not.
+   `E501`, and there is no formatter. Item 2, adopting `ruff` itself,
+   closed the line-length gap along with it -- see its own note.
+2. ~~**A `# noqa`-free policy for the ratchet.**~~ **Landed as `ruff`**
+   (`docs/TECHNICAL-DEBT.md`'s ruff subsection), at the same binary bar
+   pylint and markdownlint hold. `ci.yml`'s `lint` job runs
+   `ruff check chitragupta scripts .claude/hooks`, `pyproject.toml`'s
+   `[tool.ruff.lint]` selects `BLE` (this item's own reason for existing)
+   plus `E`/`F` (which subsumes item 1's remaining `E501` gap) and
+   `RUF100` -- the rule that makes a `# noqa: BLE001` a checked claim
+   rather than a comment nothing reads, which is what makes this a
+   `# noqa`-free *policy* rather than just a second linter. One of the 12
+   existing markers turned out to be unneeded on that evidence
+   (`chitragupta/pdf_text.py`'s re-raising `except` -- BLE001's own
+   definition exempts a block that ends in `raise`) and was removed;
+   the rest were confirmed live, not assumed so.
 3. **Type annotations and a checker.** `chitragupta/` is partly annotated. A
    checker over a 100%-covered stdlib codebase is worth having and is its
    own project, not a step in this one.

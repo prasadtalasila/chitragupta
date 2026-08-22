@@ -1164,9 +1164,11 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
         check_docling_status(result)
     except ExtractionError:
         raise
-    except Exception as exc:  # noqa: BLE001 -- docling has no narrower
-        # common exception type to catch (same reporting shape as
+    except Exception as exc:  # docling has no narrower common exception
+        # type to catch (same reporting shape as
         # chitragupta/enrich/docling_parse.py's own parse_corpus loop).
+        # Not ruff's BLE001: this block re-raises via `raise ... from exc`
+        # below, which the rule's own blind-except definition exempts.
         #
         # The converter is deliberately NOT discarded here: the failure
         # is in this one PDF, not in the models, and throwing it away

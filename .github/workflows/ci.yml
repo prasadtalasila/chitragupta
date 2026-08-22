@@ -367,6 +367,16 @@ jobs:
       - name: Install pylint and the runtime dependency
         run: python -m pip install pylint==4.0.7 bibtexparser==1.4.4
 
+      # Pinned exactly, not just for Sonar S8544: `[tool.ruff.lint]`'s
+      # `RUF100` verdict on a given `except` block depends on ruff's own
+      # carve-outs (a block that ends in `raise` isn't "blind"), which are
+      # undocumented and narrower than BLE001 looks -- an unpinned bump
+      # could move that verdict and redden this job on a rule this project
+      # never touched. Bump deliberately, by re-resolving "latest", the
+      # same discipline every other pin in this file follows.
+      - name: Install ruff
+        run: python -m pip install ruff==0.16.4
+
       # The bump is what release.yml verifies a tag against, and losing it
       # is silent: two branches picking the *same* number produce a
       # byte-identical line, which git merges without a conflict. #212 has
@@ -388,6 +398,16 @@ jobs:
 
       - name: pylint
         run: pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
+
+      # The per-site suppression check pylint's category-wide
+      # `broad-exception-caught` disable can't be (docs/TECHNICAL-DEBT.md's
+      # ruff subsection) -- `# noqa: BLE001` becomes a checked claim rather
+      # than a comment nothing reads. Same roots as pylint, deliberately:
+      # `bench/` stays outside every check in the repository (Tier 3.1),
+      # unchanged by this. Config lives in `pyproject.toml`'s `[tool.ruff]`,
+      # not a flag here, the same split pylint's own `--rcfile` makes.
+      - name: ruff
+        run: ruff check chitragupta scripts .claude/hooks
 
       # scripts/install_full_pipeline.sh is 333 lines with no static check
       # (added in 6.1.0), and CI now depends on a stage inside

@@ -63,6 +63,7 @@ construction.
 from __future__ import annotations
 
 import json
+from array import array
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from itertools import accumulate
