@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-Turns a BibTeX bibliography into grounded survey papers, thesis chapters,
-undergraduate textbook chapters and hands-on tutorials, with every citation
+<b>Turns a BibTeX bibliography into grounded survey papers, thesis chapters,
+undergraduate textbook chapters and hands-on tutorials</b>, with every citation
 traceable back to a paper the bibliography actually holds.
 </p>
 
@@ -57,7 +57,7 @@ nothing reaches phase 5 without passing phase 4.
             them, the dossier the drafting layer writes and reads back,
             and the advisory review layer run on a finished draft. A
             failing gate sends the draft back to be rewritten."
-       width="100%">
+       width="45%">
 </p>
 
 Two properties of the spine do all the work:

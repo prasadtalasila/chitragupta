@@ -73,7 +73,7 @@ namely that a review finding is yours to weigh rather than something that
 blocks the pipeline.
 
 ```mermaid
-flowchart LR
+flowchart TB
 
   P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><small>nothing else may invent a citekey</small>"]
 
@@ -85,9 +85,9 @@ flowchart LR
 
   P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/>the reference list, then<br/>the rendered document"]
 
-  DOSS[("<b>THE DOSSIER</b><br/><i>machine-facing working state</i><br/><br/>scope · kept evidence<br/>rejected candidates · revisions")]
+  DOSS[("<b>DOSSIER</b><br/><i>machine-facing working state</i><br/><br/>scope · kept evidence<br/>rejected candidates · revisions")]
 
-  REV["<b>THE REVIEW LAYER</b><br/><i>advisory — never a gate</i><br/><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited"]
+  REV["<b>REVIEW</b><br/><i>advisory — never a gate</i><br/><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited"]
 
   P0 ==> P1 ==> P2 ==> P3
   P3 == "PASS · exit 0" ==> P4

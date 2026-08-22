@@ -58,9 +58,3 @@ theme:
    actual supporting passage from each cited source is the same move:
    the record does not just establish *that* a source exists, it can
    produce *what in it* supports the claim.
-
-- **Effortless iconography.** Pen, inkpot, and ledger make a
-  distinctive, meaningful logo.
-
-**TODO**: As a CLI name, `chitragupta` is long but tab-completes;
-  `cg` is a plausible alias.
