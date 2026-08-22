@@ -105,8 +105,12 @@ class TestTheDocumentRoutesRatherThanRestates:
     """
 
     def test_it_links_to_the_documents_it_defers_to(self):
-        for owner in ("CLI.md", "ARCHITECTURE.md", "GENRE.md",
-                      "DRAFT-ITERATION.md", "DIAGRAMS.md", "SOUL.md"):
+        # DOSSIER.md and REVIEW.md are the two this file most has to
+        # defer to: they own the detail it used to carry inline, and a
+        # FEATURES.md that stopped pointing at them would be one that had
+        # started restating them again.
+        for owner in ("CLI.md", "ARCHITECTURE.md", "GENRE.md", "DOSSIER.md",
+                      "REVIEW.md", "DIAGRAMS.md", "SOUL.md"):
             assert f"({owner})" in FEATURES_TEXT or f"/{owner})" in FEATURES_TEXT, (
                 f"docs/FEATURES.md no longer links to {owner}."
             )

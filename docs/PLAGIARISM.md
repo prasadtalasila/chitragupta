@@ -95,11 +95,11 @@ thin result and a thorough one look identical.
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
 | Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after -- **but minutes rather than seconds wherever tier 3 runs**, since it embeds each shortlisted source's sentences. Measured: ~100s for one chapter of the 15-chapter book, dominated by that. See below |
 
-Both belong to the **review layer** and are advisory, not gates. A
-successful run exits 0 whether it found anything or not, and neither is
-wired into a hook or blocks a draft. A malformed invocation -- a bad
-flag, a missing argument -- exits 2, which is ordinary CLI-usage error
-handling rather than a verdict on the draft.
+Both belong to the **review layer**, so both are advisory and neither
+blocks -- [REVIEW.md](REVIEW.md) has what that guarantees, and what it
+does not. The one detail specific to these two: a malformed invocation --
+a bad flag, a missing argument -- exits 2, which is ordinary CLI-usage
+error handling rather than a verdict on the draft.
 
 Whether long verbatim runs should gate is a later and deliberately
 separate decision, issue #110's Phase 2. These tools only produce the

@@ -1,6 +1,14 @@
-"""docs/ARCHITECTURE.md's "Layer 4: the review layer" section, held to
+"""The two documents that describe the review layer, held to
 `chitragupta/review/__init__.py`'s `AIDS` rather than to a reader's
 memory (#345).
+
+**Which document owns what changed**, and this test moved with it.
+`docs/REVIEW.md` now owns the enumeration -- one entry per aid, and the
+output contract naming every report -- because that is reader-facing
+material. `docs/ARCHITECTURE.md`'s Layer 4 keeps only the boundary: the
+count, and what the layer may not do. So the per-aid checks below run
+against REVIEW.md, and ARCHITECTURE.md is checked for the count and for
+still pointing at REVIEW.md rather than re-listing them.
 
 That section drifted twice without anyone noticing: `synthesis` landed in
 #341 and `figure` in #344, and neither updated it. The drift was
@@ -42,6 +50,9 @@ _NUMBER_WORDS = {
 
 _SECTION_HEADING = "## Layer 4: the review layer"
 
+REVIEW_MD = REPO_ROOT / "docs" / "REVIEW.md"
+REVIEW_TEXT = REVIEW_MD.read_text(encoding="utf-8")
+
 
 @pytest.fixture(scope="module")
 def section() -> str:
@@ -74,8 +85,13 @@ class TestTheSectionIsNotVacuous:
     def test_there_are_aids_to_check(self):
         assert len(review.AIDS) >= 3
 
-    def test_the_section_names_the_review_command(self, section):
-        assert "chitragupta.review" in section
+    def test_the_section_is_about_the_review_layer(self, section):
+        # Non-vacuity only: a slice that silently came back as the wrong
+        # section would make every assertion below meaningless.
+        assert "chitragupta/review/" in section and "review layer" in section
+
+    def test_review_md_exists_and_has_content(self):
+        assert len(REVIEW_TEXT) > 2000
 
 
 class TestTheStatedCount:
@@ -100,20 +116,41 @@ class TestTheStatedCount:
 
 
 class TestEveryAidIsDocumented:
+    """Now against docs/REVIEW.md, which owns the enumeration."""
+
     @pytest.mark.parametrize("aid", sorted(review.AIDS))
-    def test_the_table_names_it(self, section, aid):
-        assert f"chitragupta.review {aid}" in section, (
-            f"docs/ARCHITECTURE.md's Layer 4 table has no row invoking "
-            f"`chitragupta.review {aid}`. It landed in AIDS without reaching this "
-            "section -- exactly the drift #345 was filed for."
+    def test_review_md_explains_it(self, aid):
+        assert f"review {aid}" in REVIEW_TEXT, (
+            f"docs/REVIEW.md does not cover `review {aid}`. It landed in AIDS "
+            "without reaching the page written for the person reading its "
+            "output -- exactly the drift #345 was filed for."
         )
 
     @pytest.mark.parametrize("aid", sorted(review.AIDS))
-    def test_the_output_contract_names_its_report(self, section, aid):
-        # The report filename, not the command: #341 updated this block
-        # and not the table, so the two are checked independently rather
-        # than one standing in for the other.
-        assert f"survey.{aid}.md" in section, (
-            f"Layer 4's output-contract block does not show `survey.{aid}.md`. "
-            "Every aid writes one, mirroring the draft's path."
+    def test_the_output_contract_names_its_report(self, aid):
+        # The report filename, not the command: #341 once updated one and
+        # not the other, so the two are checked independently rather than
+        # one standing in for the other.
+        assert f"survey.{aid}.md" in REVIEW_TEXT, (
+            f"docs/REVIEW.md's output-contract block does not show "
+            f"`survey.{aid}.md`. Every aid writes one, mirroring the draft's path."
+        )
+
+
+class TestArchitectureDefersRatherThanRestates:
+    """Layer 4 keeps the boundary and hands the detail to REVIEW.md.
+
+    If it grows the per-aid table back, the two drift apart again -- which
+    is the whole failure #345 recorded, one document over.
+    """
+
+    def test_it_points_at_the_review_page(self, section):
+        assert "REVIEW.md" in section
+
+    def test_it_does_not_re_list_every_aid(self, section):
+        listed = [aid for aid in review.AIDS if f"chitragupta.review {aid}" in section]
+        assert len(listed) < len(review.AIDS), (
+            "docs/ARCHITECTURE.md's Layer 4 has started enumerating the aids "
+            "again. That list lives in docs/REVIEW.md; two copies is how the "
+            "count went stale in the first place."
         )

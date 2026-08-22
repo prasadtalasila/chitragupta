@@ -2,7 +2,7 @@
 
 Status: **shipped in 6.20.1.** Written 2026-08-22 for
 [#312](https://github.com/prasadtalasila/chitragupta/issues/312) /
-[A1a](../docs/FEATURE-ROADMAP.md#a1a-make-the-verbatim-scan-a-required-step-shipped-6201),
+[A1a](https://github.com/prasadtalasila/chitragupta/pull/350),
 and implemented the same day.
 
 **What changed between planning and building**, recorded here rather than

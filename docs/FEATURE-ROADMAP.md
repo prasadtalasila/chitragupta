@@ -1,15 +1,16 @@
 # Feature roadmap: what would be built, and in what order
 
-Status: **plan, partly built.** Written 2026-08-20, and **ten of the
-twenty-one items in [Build order](#build-order) have since shipped** -- the
-table there marks each one and names the PR. That line originally read
-"nothing below is built"; it stopped being true within days, which is
-the ordinary fate of a status line nobody has to update.
+Status: **plan for unbuilt work.** Written 2026-08-20. **Ten of the
+original twenty-one items have shipped and have been removed from this
+document** rather than marked as done -- so everything below is still
+outstanding, which is what makes the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
-That is this document's counterpart: it describes the capability surface
-as built, and is pinned to the code by a test. This one describes what
-*would* be built and in what order, and is allowed to age.
+That is this document's counterpart: the capability surface as built,
+pinned to the code by a test. This one is what *would* be built, and is
+allowed to age. Where a `Depends on` entry below names an item that is no
+longer here -- A2, B1, D1 -- that dependency has shipped and is satisfied;
+FEATURES.md describes it and `plans/` has how it was built.
 
 Drafts out of this pipeline carry too much of their sources' wording.
 This document says why that happens -- it is a property of how evidence
@@ -132,7 +133,7 @@ restatement**, and that nothing currently measures it on these drafts.
 That does not weaken the case for Theme A -- claim-first drafting is
 the remedy for restatement specifically, more than for exact runs -- but
 it does change what "done" looks like, and it added a precondition:
-[A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201) had to
+A1a had to
 ensure the dossier is populated enough for tier 3 to run, or the
 mandatory scan would keep reporting two tiers of three and looking
 clean. **These four drafts turned out to have no dossier at all** -- the
@@ -145,7 +146,7 @@ records claims.** Its SKILL.md writes "kept claims and their citekeys"
 into `evidence.md`; `survey-writer` and `tutorial-writer` are the two
 that specify a `support:` line, and they are the two with the most
 findings. That is exactly the correlation
-[A2](#a2-split-support-into-claim-and-quote) predicts.
+A2 predicts.
 
 **Treat it as suggestive and not as proof.** It is four drafts on one
 topic; `deep-research` is also the shortest and cites the fewest
@@ -189,10 +190,10 @@ positional `[n]` markers and *actively strips* any reference list the
 model produces (`generate_response` splits on `"References:"`; `run()`
 splits again on `"\n### References"`), because its own generation prompt
 says *"you do not need to add Reference list by yourself"*. So
-[A4](#a4-the-evidence-appendix) is **our design, read off the sample
+A4 is **our design, read off the sample
 output** -- there is nothing upstream to port for it. What the repository
 does supply is a prompt that demonstrably asks for property 1, which is
-why [B2](#b2-require-multi-source-paragraphs) can point at prior art for
+why B2 can point at prior art for
 the behaviour it wants rather than arguing for it from scratch.
 
 ## The borrowing posture: inspiration, or copy?
@@ -214,12 +215,12 @@ and an idea is inspiration by definition. Priced item by item:
 
 | Item | What would be copied | Cost of writing it instead |
 |---|---|---|
-| [A0](#a0-record-the-attribution-done) | -- | **Negative.** No `NOTICE`, no per-file provenance headers; two INSPIRATION.md entries instead, in the pattern that file already uses for its CC-BY-NC precedent |
-| [A2](#a2-split-support-into-claim-and-quote) | Two prompt sentences | **~0.** They are generic ("summarize rather than copy"); house style differs anyway |
-| [B1](#b1-cap-passages-per-source) | ~12 lines of dict-counting | **~0.** Already being rewritten -- keyed on citekey rather than title, and with the off-by-one fixed. Only the cap-then-truncate *ordering* has value, and that is an idea |
-| [B2](#b2-require-multi-source-paragraphs) | `prompts_w_references` | **Small.** Its citation mechanics are positional `[n]` against a flat blob, so a substantial rewrite was required regardless. What is lost is validated wording |
+| A0 | -- | **Negative.** No `NOTICE`, no per-file provenance headers; two INSPIRATION.md entries instead, in the pattern that file already uses for its CC-BY-NC precedent |
+| A2 | Two prompt sentences | **~0.** They are generic ("summarize rather than copy"); house style differs anyway |
+| B1 | ~12 lines of dict-counting | **~0.** Already being rewritten -- keyed on citekey rather than title, and with the off-by-one fixed. Only the cap-then-truncate *ordering* has value, and that is an idea |
+| B2 | `prompts_w_references` | **Small.** Its citation mechanics are positional `[n]` against a flat blob, so a substantial rewrite was required regardless. What is lost is validated wording |
 | [B4](#b4-cross-encoder-reranking) | "reranking code" | **~0.** The shipped reranker is one `compute_score` library call. Everything around it is dead code this roadmap already declines |
-| [D1](#d1-the-metaphor-rule-and-a-layout-checklist) | Style guide + ~40 enumerated vetoes | **The whole delta.** ~1 PR |
+| D1 | Style guide + ~40 enumerated vetoes | **The whole delta.** ~1 PR |
 | [D4](#d4-optional-vision-critique) | Loop shape + calibration clause | **~0.** Loop shape is architecture; the clause is two sentences |
 
 ### Why D1 carries all of it, and why that is acceptable
@@ -281,7 +282,7 @@ that changed is stated only in the layer's implementation and in the
 documents describing it, never in the soul.
 `python -m chitragupta.draft gate` remains the only gate.
 
-**Why it landed here.** [A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201)
+**Why it landed here.** A1a
 makes `verbatim scan` run without a person asking, which is exactly the
 rule above -- so A1a's real dependency was a user decision, and its real
 cost included the wording sweep and three diagram re-renders rather than
@@ -370,58 +371,6 @@ built and withdrawn.
 The highest-value theme, and the one the request is actually about.
 A1 is cheap and immediate; A2-A4 are the structural fix.
 
-### A0: record the attribution (done)
-
-[INSPIRATION.md](INSPIRATION.md) carries both upstreams under its
-existing rule, in the same shape it already uses for its CC-BY-NC
-precedent: what was taken, and what was deliberately not.
-
-**No `NOTICE` file and no per-file provenance headers**, because nothing
-is copied -- Apache-2.0 §4's notice obligations attach to
-redistribution, and reading a repository and writing your own
-implementation is not that. That is the whole of what the
-inspiration-only decision saves here, and it is why this item shrank
-from a PR to two entries.
-
-Size: none, shipped with this document. Listed so the sequence still
-reads correctly, and so nobody re-adds a `NOTICE` on the assumption one
-was forgotten.
-
-### A1a: make the verbatim scan a required step (shipped 6.20.1)
-
-*Shipped in [#312](https://github.com/prasadtalasila/chitragupta/issues/312);
-planned in [`plans/a1a-mandatory-verbatim-scan.md`](../plans/a1a-mandatory-verbatim-scan.md),
-which records where this entry was wrong.*
-
-The step every genre skill carried -- *"**Offer the verbatim scan.**
-Before presenting, offer this -- don't run"* -- now runs the scan before
-a draft is presented. **Not** a new gate: it exits 0 regardless, nothing
-blocks, and every skill still says in as many words that it is never a
-condition of presenting. What changed is who may invoke a review aid,
-which is the rule
-[the amendment](#the-decision-that-gated-part-of-this-taken) governs.
-
-**Three things this entry got wrong**, each found by checking rather
-than by re-reading it:
-
-- **Eight edits, not nine.** `overlap-reviser` already ran the scan as
-  its step-2 baseline; what it needed was the rest of the contract.
-- **The wording sweep was twenty-two sites, not twelve.** Three aids
-  landed while the decision was pending, each carrying its own copy of
-  the sentence, and the published grep missed three more by being
-  line-based over hand-wrapped prose.
-- **`sections.md` was not the problem it looked like.** The four sample
-  drafts in [the baseline](#the-baseline-measured-before-proposing-anything)
-  have no dossier *at all*; the "records no citekeys" message names a
-  path that was never there. Every real dossier on the measuring host
-  carries citekeys. The fix is to regenerate the table immediately
-  before the scan, which five skills did mid-run and four did not at
-  all.
-
-Size: S for the skills, M once the documentation sweep is counted --
-which was right.
-Depended on: **the amendment.** Not on code.
-
 ### A1b: auto-route findings into `overlap-reviser` -- declined
 
 The first draft of this roadmap paired A1a with automatic routing of
@@ -448,63 +397,6 @@ and the person decides whether to invoke the repair loop. That is one
 extra deliberate act, and it is the act the whole design is built
 around.
 
-### A2: split `support:` into `claim:` and `quote:`
-
-*Planned in detail: [`plans/a2-claim-quote-split.md`](../plans/a2-claim-quote-split.md).*
-
-The core fix. One `evidence.md` block currently carries a `support:`
-line that is, in practice, raw source text. Replace it with two fields
-whose contract differs:
-
-- **`claim:`** -- what the source establishes, in the drafter's own
-  words. This is the only field the drafting step may write prose from.
-- **`quote:`** -- an optional verbatim span, explicitly marked as
-  quotable-only: usable in the draft *solely* inside quotation marks
-  with an attribution, never as raw material for prose.
-
-The drafter is then never in the position that produces copying,
-because the field it drafts from was written in its own words at a
-point where it was not yet composing sentences.
-
-**This is less invention than it looks, and one genre already does
-half of it.** `deep-research` records "kept claims and their citekeys"
-into `evidence.md` today; only `survey-writer` and `tutorial-writer`
-specify the `relevance:`/`support:` pair, and `textbook-chapter-writer`
-keeps `evidence.md` thin or empty by design. So A2 is better described
-as **making the existing best practice universal and naming the
-`quote:` contract** than as adding two new fields -- and per the
-baseline above, the genre that already does it is the one that scored
-zero.
-
-`chitragupta/dossier/_citekeys.py::evidence_blocks()` is already
-deliberately shape-agnostic -- its docstring says what a genre skill
-puts under a heading "varies… and this module does not own that shape"
--- so the code burden is small and the work is mostly skill
-instructions plus [DRAFT-ITERATION.md](DRAFT-ITERATION.md).
-
-Worth adding in the same PR: a deterministic self-check that `claim:`
-is not merely `quote:` with words moved, reusing
-`chitragupta/overlap_skipgram.py`, which already does stemmed
-near-match. Advisory, printed at dossier-write time.
-
-Upstream has two sentences worth lifting into the instruction for
-`claim:`, both from `src/instructions.py`:
-
-> avoid copying entire passages; instead, summarize the key information
-> from the suggested papers
->
-> Do not directly insert text from the relevant evidence.
-
-The second is the stronger of the two and sits in a prompt variant
-upstream defines but never wires up -- so it is available, unused, and
-exactly the instruction this project needs.
-
-Those two sentences are quoted here as evidence that the instruction
-is worth giving, and as a target to beat. Write this project's own, in
-its own register; do not paste theirs.
-
-Size: M. Depends on: nothing.
-
 ### A3: extraction at the retrieval boundary
 
 `survey-writer` step 2a already dispatches one subagent per sub-theme
@@ -523,125 +415,10 @@ number rather than an estimate.
 
 Size: S-M, mostly SKILL.md. Depends on: A2.
 
-### A4: the Evidence appendix
-
-**Built, as a sidecar rather than an appendix.** Planned in detail in
-[`plans/a4-evidence-appendix.md`](../plans/a4-evidence-appendix.md),
-which is the authoritative design and records why the shape changed.
-
-Adopt the sample's property 2: a rendered `Evidence` listing, per
-citekey, the title and the attributed quoted spans drawn from A2's
-`quote:` fields, so verbatim material has somewhere legitimate to live.
-
-**It is a separate document beside the render, not a section inside the
-draft** -- `content/rendered/<topic>/survey.evidence.pdf` next to
-`survey.pdf`. The reason is not in this document's original entry and is
-worth stating: `content/dossiers/` is gitignored precisely because
-`evidence.md` quotes copyrighted sources, but the example draft and
-render directories are *tracked*, so an appendix inside a draft would
-commit quoted spans from copyrighted PDFs to a public repository. A
-sidecar is excluded by pattern; a section in a tracked draft cannot be.
-
-This changes what a draft *looks like*, so it stays a genre decision per
-skill rather than one global switch -- and
-[GENRE.md](GENRE.md#the-evidence-sidecar-decided-per-genre) records all
-five answers. Two of them reverse what this entry expected.
-`tutorial-writer` declines, as anticipated. `thesis-chapter-writer` does
-**not**: the expected objection was that its `.tex` fragment is `\input`
-into someone else's document, and a sidecar is never `\input` -- it is
-standalone, with its own preamble, and an examiner reading adversarially
-is the ideal reader for one.
-
-Size: M. Depended on: A2. Landed in `chitragupta/evidence_appendix.py`
-(`python -m chitragupta.draft evidence`), the five genre skills, and a
-`.gitignore` rule that keeps a sidecar out of every commit.
-
 ## Theme B: make synthesis structural
 
 Theme A stops wording leaking. Theme B removes the *opportunity* by
 changing what a paragraph is required to be.
-
-### B1: cap passages per source
-
-**Shipped in [#318](https://github.com/prasadtalasila/chitragupta/pull/318)**,
-against `chitragupta/enrich/embed_index.py` rather than
-`retrieval.search()`. The reason is worth keeping: BM25 retrieval already
-returns one result per citekey by construction, so a per-citekey cap
-there would have been a no-op -- `chitragupta/retrieval.py` says so at
-the function it would have been added to. The embedding index is where
-several passages from one source genuinely can crowd out the rest, so
-that is where the cap went.
-
-OpenScholar's `--max_per_paper` (`src/open_scholar.py:615-630`). Add a
-per-citekey cap to `retrieval.search()` so a single document cannot
-dominate a sub-theme's evidence set. Cheap, deterministic, stdlib-only,
-no new dependency -- and it is the precondition that makes B2 achievable
-rather than aspirational, because a drafter cannot cite two sources per
-paragraph if retrieval handed it six passages from one paper.
-
-**The ordering is the whole trick, and it is the part worth learning.**
-Upstream applies the cap to the *full reranked list*, before truncating
-to the top *n*. Dropping paper A's 4th-best passage therefore *promotes*
-a passage from paper B into the window the drafter sees. Cap-then-truncate
-produces source diversity; truncate-then-cap merely produces a shorter
-list.
-
-**Two upstream defects to fix rather than inherit**, both found by
-reading the source:
-
-- Off-by-one: the counter is 0-based and the test is `>`, so
-  `--max_per_paper 3` admits **four** passages. Use `>=`.
-- The bucket key is the title string, defaulting to `""`, so every
-  untitled passage collapses into one bucket and is capped as though all
-  untitled passages were the same paper. Key on the citekey -- which
-  this project has and upstream does not.
-
-Size: S. Depends on: nothing. Highest value-per-line in this document.
-
-### B2: require multi-source paragraphs
-
-**Shipped in [#341](https://github.com/prasadtalasila/chitragupta/pull/341)
-(6.17.0)** as `python -m chitragupta.review synthesis`, plus the rule in
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 and in all five genre
-skills.
-
-*Planned in detail: [`plans/b2-multi-source-synthesis.md`](../plans/b2-multi-source-synthesis.md),
-which settles the unit the rule binds at -- paragraph for a survey, a
-thesis chapter and a deep-research report; the section for a textbook
-chapter; the whole document for a tutorial, whose body carries no
-citations by design. The guarantee is the same in all five.*
-
-The sample's property 1, made into a rule: a body paragraph cites **two
-or more citekeys wherever the evidence set allows**, and a
-single-source paragraph is a deliberate choice the drafter states
-rather than a default.
-
-Pair it with a deterministic report -- citekeys per paragraph, and the
-proportion of single-source paragraphs -- so the rule is observable
-instead of merely written down. **Continuous: a human reads this;
-nothing acts on it unattended** (R3). A proportion is exactly the shape
-R3 exists to keep out of a loop. Note honestly in the
-report that a thin corpus legitimately produces single-source
-paragraphs; this counts, it does not judge.
-
-**Prior art, quoted as evidence rather than as source.**
-`src/instructions.py::prompts_w_references` already instructs exactly
-this behaviour, and its key sentence shows the shape the instruction
-has to take:
-
-> Rather than simply summarizing multiple papers one by one, try to
-> organize your answers based on similarities and differences between
-> papers.
-
-together with *"Base your answer on multiple pieces of evidence and
-references, rather than relying on a single reference for a short
-response."* Adapt the citation mechanics, though: upstream cites by
-**positional index into a truncated list**, so reordering the list
-silently changes what every citation means. This project has real
-citekeys and must keep using them.
-
-Size: M. Depends on: B1 in practice. The prompt is written here, not
-lifted; [INSPIRATION.md](INSPIRATION.md) carries the credit.
 
 ### B3: section thesis with source count
 
@@ -702,38 +479,6 @@ Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 
 Detection, after Theme A and B have reduced what there is to detect.
 All three are review-layer aids: advisory, exit 0, never gates.
-
-### C1: uncited-prose report
-
-**Shipped in [#311](https://github.com/prasadtalasila/chitragupta/issues/311)
-(6.19.0)** as `python -m chitragupta.review uncited`.
-
-*Planned in detail: [`plans/c1-uncited-prose-report.md`](../plans/c1-uncited-prose-report.md),
-which records what the measurement changed.* Two things this entry asked
-for turned out not to need building: the shared sentence splitter is
-`chitragupta/sentences.py`, which has existed since tier 3 needed it,
-and the block walk moved into `chitragupta/review/_blocks.py` rather
-than being written a fourth time. What it did *not* anticipate is a
-**per-genre standing** -- a tutorial's body carries no citations by
-design, so reporting it floods -- and a measured exclusion list without
-which the naive reading flags 78% of a survey.
-
-Which sentences carry no citation at all. **Verified as a genuine gap:**
-`chitragupta/review/citation_coverage.py` answers a different question
-(which *surfaced* candidates got cited), not which prose is
-unsupported. This is the machinery behind the sample's property 4
-labels, and it is deterministic -- citation extraction already exists in
-`citation_gate.extract_citekeys_from_line`.
-
-**Binary** per finding (a sentence either carries a citation or does
-not), so an agenda may consume it -- but its findings are of
-*judgement* kind, so they are surfaced and never repaired unattended:
-the fix for an uncited claim is evidence, not wording. As a new aid it
-carries R2 (a stable finding `id`), `--json`, and R10's dual
-registration plus the AGENTS.md/CLI.md/README/`mkdocs.yml` sweep.
-
-Size: S for the detector, M with R10's registration sweep. Depends on:
-nothing. Best value in this theme.
 
 ### C2: claim-support checking
 
@@ -838,7 +583,7 @@ project's favour rather than merely a rejection. A wrong edge is
 invisible to any check over pixels, which is all PaperBanana has. In
 TikZ an edge is `\draw (a) -- (b);` -- **the edge list is recoverable
 from the source**, so it can be checked against what the author said the
-figure shows. [D2](#d2-deterministic-tikz-layout-check) should exploit
+figure shows. D2 should exploit
 that; it is the one thing generating source buys that generating images
 cannot.
 
@@ -852,139 +597,6 @@ section was silently dropped during synthesis; what shipped is colour,
 shapes, lines and typography. The layout material is instead in
 `prompts/diagram_eval_prompts.py`, the *evaluation* rubric, which was
 never advertised as a style artefact.
-
-### D1: the metaphor rule, and a layout checklist
-
-**Shipped in [#329](https://github.com/prasadtalasila/chitragupta/pull/329).**
-
-Two prompt-side changes into the five genre skills' TikZ instructions
-and [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10. No code, no
-dependencies, and between them they address the cause and give the
-author something to check against.
-
-**1. Commit to a layout metaphor before drawing.** PaperBanana's
-planner supplement asks for "a compact visual metaphor that can organize
-the diagram's layout and relationships, such as a pipeline, map, layered
-stack, control loop, branching tree, or hub-and-spoke network."
-
-This is the single instruction most likely to fix the reported problem
-at its source. Sprawl -- boxes placed near other boxes, arrows added as
-needed -- is what ad-hoc composition produces. Each metaphor in that
-list also maps onto a TikZ idiom the author should then actually use:
-chains with `positioning`, `matrix`, stacked `fit` layers, cyclic edges
-with `bend`, a tree, a star. Choosing one first converts "place these
-nine things" into a constrained problem.
-
-**2. Write a pre-flight defect checklist, informed by the rubric's
-readability vetoes.** **This is the one item the inspiration-only
-decision actually costs**, and the cost is the catalogue: upstream's
-vetoes are an enumerated list of concrete defects, and ours has to be
-enumerated too, in our own words and for LaTeX rather than for raster
-output. Much of theirs would not survive the translation anyway -- emoji
-iconography, "3D isometric cubes", fill-opacity expressed in image
-terms -- so the rewrite is a better artefact and not merely a safer one.
-
-Their vetoes are quoted below to show what the finished catalogue has to
-cover. They are concrete defects rather than taste:
-occlusion and overlap; "chaotic routing" (arrows forming spaghetti loops
-or crossing unnecessarily); illegible or inconsistently varying font
-sizes; low contrast; and -- the one worth quoting -- inefficient
-non-rectangular composition:
-
-> Since LaTeX treats figures as rectangular boxes, any element
-> protruding above the main block forces text to wrap around the highest
-> point, wasting vertical space in publications.
-
-That veto was written **for a LaTeX pipeline**, which is exactly the
-situation here and not the situation PaperBanana itself is in. It is
-also mechanically checkable, which is what [D2](#d2-deterministic-tikz-layout-check)
-does with it.
-
-Cover the *conciseness* vetoes in the same pass. One is a hard number --
-a node whose text runs past about fifteen words is flagged -- and one is
-"literal copying", a "box-ified copy-paste of the Method Section text
-with no visual abstraction". That second one is Theme A's problem
-wearing a different hat, and it is worth noticing that a figure can
-launder borrowed wording past every detector in
-[PLAGIARISM.md](PLAGIARISM.md), because §10 already keeps citekeys out
-of figure files and the gate does not follow `\input`.
-
-The colour/shape/typography guide is still worth reading, for what it
-teaches rather than for its words: it suggests a vocabulary of TikZ
-style keys (zone fills at 10-15% opacity via
-the `backgrounds` layer, dashed for auxiliary flow against solid for
-forward flow, sans-serif labels against serif-italic maths). The
-sans/serif split is free in LaTeX and is a rule PaperBanana's own raster
-path cannot enforce at all.
-
-Size: S. Depends on: nothing. **Do this first in the theme** -- it is
-prevention, where D2 is detection.
-
-**Shipped in 6.16.1 (#308), as [`TIKZ-STYLE.md`](TIKZ-STYLE.md) linked
-from [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10, rather than
-inline in §10 itself.** This document's own status line above ("Nothing
-below is built") is stale for D1 specifically; D2-D4 and every other
-theme remain unbuilt work.
-
-### D2: deterministic TikZ layout check
-
-*Planned in detail: [`plans/d2-tikz-layout-check.md`](../plans/d2-tikz-layout-check.md).*
-
-A new review-layer aid: compile the figure and report overlapping nodes,
-protruding content, over-long node text and page-width overflow.
-
-**This was probed on this host before being proposed, and it works.** A
-`standalone` + `tikz` document with `\pgfpointanchor` writing node corner
-coordinates through `\typeout` yields machine-readable geometry from an
-ordinary `pdflatex` run:
-
-```text
-CGBOX a -42.87912pt -7.97742pt 42.87912pt 7.97742pt
-CGBOX b -8.73592pt -6.94963pt 77.02232pt 6.94963pt
-CGBOX c -20.78996pt -63.85512pt 20.78996pt -49.95586pt
-```
-
-Nodes `a` and `b` overlap by 51.6pt horizontally and overlap vertically
-too -- a real collision, detected deterministically, with no model in the
-loop and no dependency beyond the TeX stack the pipeline already
-requires. `tikz.sty` and `standalone.cls` are both present on this host.
-
-From those coordinates, three of D1's vetoes become arithmetic:
-
-- **Occlusion** -- pairwise box intersection, as above.
-- **Inefficient composition** (veto 6) -- compare the picture's overall
-  bounding box against the union of node boxes, and report protrusion
-  and disproportionately empty corners as numbers.
-- **Text overload** -- word count per node, against the rubric's
-  fifteen-word line.
-
-Arrow crossings ("chaotic routing") are the one veto not cheaply
-reachable this way and should be left out rather than approximated
-badly.
-
-**Binary where it counts, continuous where it does not.** Node overlap
-and text-overload are binary and safe for a loop to act on; "corner
-emptiness" is a proportion and is **human-read only**, per R3. Report
-both, and label which is which -- an unlabelled mixture is how a
-continuous score ends up being optimised by something that should not
-be optimising anything.
-
-**Add one check that has no PaperBanana counterpart: the edge list.**
-Parse `\draw`/`\path` node-to-node connections out of the figure source
-and report them back to the author as a plain list -- *a -> b, b -> c* --
-for confirmation against the prose the figure illustrates. Every
-published PaperBanana diagram failure is of exactly this kind, and every
-one would be visible in such a list. It is also the cheapest possible
-implementation of the rubric's *faithfulness* dimension, needs no model,
-and is only available because this pipeline generates source.
-
-This is PaperBanana's Critic agent's *function* implemented in this
-project's own idiom -- determinism where it is possible
-([SOUL.md](../SOUL.md)) -- rather than a vision model asked for an
-opinion. It composes with `_figures.py`'s existing `_require_tikz()`
-probe, and it reports; it does not block.
-
-Size: M-L. Depends on: D1 for the thresholds to check against.
 
 ### D3: known-good layout scaffolds
 
@@ -1057,29 +669,6 @@ its automatic invocation (#183) in 5.19.0, and `chitragupta/style_check.py`
 carries `--json` today. **Build-order step 6 has shipped.** Steps 3 and
 6 are done; 1, 2, 4, 5 and 7 are the live work.
 
-### F1: `--json` on the other two review aids
-
-**Shipped in [#326](https://github.com/prasadtalasila/chitragupta/pull/326).**
-
-Step 2 (#127, widened). `verbatim scan` and `verbatim recheck` emit
-`--json` today; `citation_provenance` and `citation_coverage` do not.
-The layer-level plumbing they would reuse -- `review.envelope()` and
-`review.write_json()` -- already exists.
-
-A *"hard prerequisite for everything below"* in its own document, and a
-prerequisite for this roadmap's Theme C too: an aid that cannot emit
-JSON cannot feed an agenda, and C1's report is the fourth thing that
-would want to.
-
-The contract is worth restating because it is easy to get wrong: the
-JSON is *"an additional serialisation of the same findings list, never a
-second computation"*, the printed Markdown stays authoritative, and
-there is no timestamp, so two runs over unchanged input are
-byte-identical.
-
-Size: M. Depends on: nothing. **The best-value item in this theme** --
-small, unblocks four other things.
-
 ### F2: the `agenda` aid
 
 Step 4, and the largest genuinely new piece of the track. A fourth key
@@ -1099,7 +688,7 @@ whether `missing-citekey` should be acted on unattended at all, and how
 the agenda should behave on a draft with no dossier -- where *"refusing
 may be the right answer here even though no other aid refuses."*
 
-This roadmap adds a producer: [C1](#c1-uncited-prose-report) is either a
+This roadmap adds a producer: C1 is either a
 seventh class or folds into `unsupported-claim`. Either way it is
 surfaced, not unattended.
 
@@ -1214,35 +803,26 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Status is recorded here rather than only in each section**, because
-that is where someone picking up the next PR looks. Ten have shipped;
-each names the PR that closed it, and the section below carries the
-detail -- including where what shipped differs from what was planned,
-which is the part worth reading before starting the next one.
+**Only unbuilt work appears here.** Ten items have shipped and have been
+removed from this document rather than marked -- what they became is
+described in [FEATURES.md](FEATURES.md), and how each was built is in the
+PR that closed it and in `plans/`. A roadmap that accumulates its own
+history stops being a list of what to do next, which is the only thing it
+is for.
 
-| # | PR | Theme | Size | Depends on | Status |
-|---|---|---|---|---|---|
-| 1 | [B1](#b1-cap-passages-per-source) per-source passage cap | B | S | -- | shipped ([#318](https://github.com/prasadtalasila/chitragupta/pull/318)) |
-| 2 | [A2](#a2-split-support-into-claim-and-quote) `claim:` / `quote:` split | A | M | -- | shipped ([#306](https://github.com/prasadtalasila/chitragupta/issues/306)) |
-| 3 | [A3](#a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 | -- |
-| 4 | [D1](#d1-the-metaphor-rule-and-a-layout-checklist) metaphor rule + layout checklist | D | S | -- | shipped ([#329](https://github.com/prasadtalasila/chitragupta/pull/329)) |
-| 5 | [F1](#f1---json-on-the-other-two-review-aids) `--json` on the other two aids | F | M | -- | shipped ([#326](https://github.com/prasadtalasila/chitragupta/pull/326)) |
-| 6 | [B2](#b2-require-multi-source-paragraphs) multi-source paragraphs | B | M | B1 | shipped ([#341](https://github.com/prasadtalasila/chitragupta/pull/341)) |
-| 7 | [C1](#c1-uncited-prose-report) uncited-prose report | C | M | F1 | shipped ([#347](https://github.com/prasadtalasila/chitragupta/pull/347)) |
-| 8 | [A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201) mandatory verbatim scan | A | M | **amendment** | shipped ([#350](https://github.com/prasadtalasila/chitragupta/pull/350)) |
-| 9 | [A4](#a4-the-evidence-appendix) Evidence appendix | A | M | A2 | shipped ([#346](https://github.com/prasadtalasila/chitragupta/pull/346)) |
-| 10 | [D2](#d2-deterministic-tikz-layout-check) deterministic TikZ layout check | D | M-L | D1 | shipped ([#344](https://github.com/prasadtalasila/chitragupta/pull/344)) |
-| 11 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- | -- |
-| 12 | [A0](#a0-record-the-attribution-done) borrowing position | A | XS | before any borrowing | done |
-| 13 | [B4](#b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 | -- |
-| 14 | [F2](#f2-the-agenda-aid) the `agenda` aid | F | L | F1 | -- |
-| 15 | [D3](#d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 | -- |
-| 16 | [C3](#c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 | -- |
-| 17 | [F3](#f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 | -- |
-| 18 | [B5](#b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 | -- |
-| 19 | [C2](#c2-claim-support-checking) claim-support checking | C | L | C1 | -- |
-| 20 | [E1](#e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- | -- |
-| 21 | [D4](#d4-optional-vision-critique) vision critique | D | M | D1-D3 | -- |
+| # | PR | Theme | Size | Depends on |
+|---|---|---|---|---|
+| 1 | [A3](#a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
+| 2 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
+| 3 | [B4](#b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
+| 4 | [F2](#f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
+| 5 | [D3](#d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 |
+| 6 | [C3](#c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 7 | [F3](#f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
+| 8 | [B5](#b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
+| 9 | [C2](#c2-claim-support-checking) claim-support checking | C | L | C1 |
+| 10 | [E1](#e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- |
+| 11 | [D4](#d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#a1b-auto-route-findings-into-overlap-reviser----declined).
 Already answered: [F4](#f4-the-gating-decision----already-answered).
@@ -1257,10 +837,10 @@ argument.** Check a new proposal against both before costing it.
 
 **Four items have written plans.** `plans/` holds the implementation
 plan for a roadmap item whose design is genuinely underdetermined --
-[A2](#a2-split-support-into-claim-and-quote),
-[B2](#b2-require-multi-source-paragraphs),
-[C1](#c1-uncited-prose-report) and
-[D2](#d2-deterministic-tikz-layout-check) have one each, as worked
+A2,
+B2,
+C1 and
+D2 have one each, as worked
 examples of the convention. Most items do not need one: the entry above
 already names the files, the size and the dependencies, and for a
 mechanical change that is the whole plan.

@@ -307,75 +307,35 @@ not. Reading an artefact is not calling a layer.
 
 ## Layer 4: the review layer
 
-Six aids behind one command, read over a finished draft. A person or a
-skill may invoke them; none of them gates anything:
+Six aids behind one command, run over a finished draft. **What each one
+answers, what a report looks like, and how to read one is
+[REVIEW.md](REVIEW.md)** -- this section is only the layer's boundary:
+where it sits, and what it may not do.
 
-| Command | Answers |
-|---|---|
-| `python -m chitragupta.review provenance <draft>` | what in each cited source actually supports the claim citing it, quoting a real passage |
-| `python -m chitragupta.review verbatim overlap\|locate …` | how much wording a draft shares with one cited source, and which page a phrase is on |
-| `python -m chitragupta.review verbatim scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
-| `python -m chitragupta.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
-| `python -m chitragupta.review synthesis <draft>` | how many sources each unit of the draft rests on, at the unit its genre binds at |
-| `python -m chitragupta.review figure <draft>` | what a TikZ figure's own geometry says -- overlapping nodes, overlong labels, protruding content, and the edge list to confirm |
-| `python -m chitragupta.review uncited <draft>` | which sentences carry no citation at all -- the prose-side question `coverage` does not answer. The one aid that reads no corpus |
+Three boundary facts, and each is load-bearing:
 
-Six aids, seven rows: `verbatim` is one aid with two shapes of question,
-and they are listed separately because a reader looking for one of them
-would not find it under the other. `chitragupta/review/__init__.py`'s
-`AIDS` is what "six" counts, and
-`tests/test_architecture_review_layer.py` holds this section to it.
+- **Nothing invokes them as part of producing a draft**, with one
+  amended exception: a genre skill runs `verbatim scan` on its own
+  output before presenting. The rest are yours to run.
+- **They take no lock.** Read-only over the corpus, so they keep working
+  during a `sync`, like `chitragupta corpus ledger` and retrieval. That
+  is also why no enrichment stage wraps one: a `--stages provenance`
+  would run a review aid while holding sync's write lock, making an
+  advisory read-only report wait on a corpus rebuild for no reason.
+- **None of them gates anything, and none may be promoted to one.**
 
 **Advisory, not a gate**, and named accordingly. *Review* rather than
-*verification*, because `chitragupta.draft gate` is the verification: it lives in
-the drafting layer and is that layer's only exit. A "verification layer"
-that excluded the gate would split the concept across two layers. The
-contrast is the point, not a competition.
+*verification*, because `chitragupta.draft gate` is the verification: it
+lives in the drafting layer and is that layer's only exit. A
+"verification layer" that excluded the gate would split the concept
+across two layers. The contrast is the point, not a competition.
 
-**It takes no lock.** These are read-only over the corpus and must keep
-working during a `sync`, like `python -m chitragupta.corpus ledger` and
-retrieval. That is also why no enrichment stage wraps one: a
-`--stages provenance` would run a review aid while holding sync's write
-lock, making an advisory read-only report wait on a corpus rebuild for
-no reason.
-
-**One output contract**, mirroring the draft's path exactly as
-`content/rendered/` and `content/dossiers/` do, so a draft, its dossier,
-its renders and its review artefacts are all findable from the draft's
-own path:
-
-```text
-content/drafts/<topic>/survey.md
-  -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
-     content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf, .json)
-     content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
-     content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf, .json)
-     content/review/<topic>/survey.figure.md       (+ .tex/.pdf, .json)
-     content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)
-```
-
-`chitragupta.review provenance` writes by default. `verbatim scan`,
-`coverage`, `synthesis`, `figure` and `uncited` write under `--write`,
-since printing is the usual use for all five.
-
-Every report opens with a banner saying it is not a verdict, because a
-file found on disk months later is exactly the case the docs cannot
-reach. Every report also **carries no timestamp**, so that it diffs
-cleanly against the next revision's.
-
-The `.json` beside `survey.verbatim.md` is that report's findings as
-data, for a caller that would otherwise parse the printed form (#127). A
-sibling of the report, not a render of it: `.tex`/`.pdf` go through
-`chitragupta/render_output.py` and are another document, this is the same
-findings list serialised. It obeys both rules above -- it leads with the
-same not-a-verdict notice, and it carries no timestamp. Only `verbatim`
-emits one so far; the other two aids follow in their own issues, which is
-why [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s planned `agenda` aid
-reads each aid's JSON as optional. `chitragupta/review/__init__.py` owns
-all of that. A draft under `content/` but not under `content/drafts/`
-writes flat, matching `render_output._output_dir`; a draft resolving
-outside `content/` is refused, the same tier-1 rule the gate chain
-follows.
+Output lands in `content/review/`, mirroring the draft's path exactly as
+`content/rendered/` and `content/dossiers/` do, with
+`chitragupta/review/__init__.py` owning that contract. A draft under
+`content/` but not under `content/drafts/` writes flat, matching
+`render_output._output_dir`; a draft resolving outside `content/` is
+refused, the same tier-1 rule the gate chain follows.
 
 That they are *not* gates is the design, not an omission. The gate answers
 a question with one correct answer -- is this citekey in the ledger? --

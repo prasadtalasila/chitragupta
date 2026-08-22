@@ -35,9 +35,10 @@ absent from the ledger. That is a *gate* -- drafting is blocked until it
 passes.
 
 Some tools in the repo are gates. Others are **advisory**: they report
-something for a human to judge, and never block. Those three are a named
-layer -- the **review layer**, layer 4 -- rather than a group defined by
-what it is not. The distinction from the gate matters a lot below.
+something for a human to judge, and never block. Those are a named layer
+-- the **review layer**, layer 4 -- rather than a group defined by what
+it is not, and [REVIEW.md](REVIEW.md) is the page for it. The
+distinction from the gate matters a lot below.
 
 Two other terms used here:
 

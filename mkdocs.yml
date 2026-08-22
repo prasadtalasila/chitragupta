@@ -152,6 +152,7 @@ nav:
       - Settings: docs/CONFIG.md
   - Understanding the system:
       - Architecture: docs/ARCHITECTURE.md
+      - The dossier (machine-facing): docs/DOSSIER.md
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
       - Retrieval: docs/RETRIEVAL.md
@@ -160,6 +161,7 @@ nav:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
   - Reading the output:
+      - The review layer: docs/REVIEW.md
       - Citation provenance: docs/CITATION-PROVENANCE.md
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
