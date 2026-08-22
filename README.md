@@ -47,19 +47,20 @@ This pipeline is built to make that impossible rather than unlikely:
 
 ## How it works
 
-Five phases. You own phase 1, the **corpus layer** owns phase 2, the
-**drafting layer** owns 3 through 5, and nothing reaches phase 5 without
-passing phase 4.
+Five phases along the spine, and two layers beside it. You own phase 1;
+nothing reaches phase 5 without passing phase 4.
 
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
        alt="Five phases: curate in Zotero, sync the corpus, draft with a
-            genre skill, verify with the citation gate, publish. A failing
-            gate sends the draft back to be rewritten."
+            genre skill, verify with the citation gate, publish. Beside
+            them, the dossier the drafting layer writes and reads back,
+            and the advisory review layer run on a finished draft. A
+            failing gate sends the draft back to be rewritten."
        width="100%">
 </p>
 
-Two properties of that picture do all the work:
+Two properties of the spine do all the work:
 
 - **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export. The pipeline never fetches a paper, never
@@ -67,28 +68,29 @@ Two properties of that picture do all the work:
 - **Phase 4 is the only exit.** `chitragupta.draft gate` sits on the single
   path between a draft and a rendered document. There is no arrow around
   it, and a `FAIL` is treated like a failing test rather than a lint
-  warning.
+  warning. The loop back goes to *drafting*, not to you.
 
-The loop back from a failed gate goes to *drafting*, not to you: the skill
-discards the unsupported claim and writes again. You only get involved in
-the rarer case where the paper genuinely isn't in the corpus yet -- the
-dotted arrow back to phase 1.
+The two layers beside it are where the pipeline keeps its memory and its
+conscience:
+
+- **The dossier** is written as a draft is written -- scope, kept
+  evidence, rejected candidates, a revision log -- and read back to
+  change it. That is why a draft is never revised by re-running the
+  skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
+- **The review layer** is six advisory aids for a finished draft:
+  provenance, verbatim, coverage, synthesis, figure layout and uncited
+  prose. None of them is a gate -- which is not the same as borrowed
+  wording being fine to leave once you have found it
+  ([docs/REVIEW.md](docs/REVIEW.md)).
 
 Nine skills sit behind phase 3, all obeying the same grounding rules:
-five that write a new draft -- survey, thesis chapter, undergraduate
-textbook chapter, tutorial, and a heavier multi-perspective deep-research
-mode -- and three that change one that already exists, because a draft is
-never revised by re-running the skill that produced it
-([docs/GENRE.md](docs/GENRE.md)). The third of those, `overlap-reviser`,
-repairs the verbatim overlap a scan found and re-verifies each repair
-before keeping it. Two more layers sit outside these
-phases. **Enrichment** deepens the same corpus with layout-aware parsing,
-semantic search and topic clustering, and nothing above needs it.
-**Review** is what you run afterwards on a finished draft -- provenance,
-verbatim, coverage, multi-source synthesis, TikZ-figure-layout and
-uncited-prose reports, all advisory, none of them a gate --
-advisory means nothing blocks you, not that borrowed wording is fine to
-leave once you've found it.
+five that write a draft (survey, thesis chapter, undergraduate textbook
+chapter, tutorial, and a heavier multi-perspective deep-research mode),
+three that change one that already exists, and one that assembles
+accepted units into a book ([docs/GENRE.md](docs/GENRE.md)).
+**Enrichment** is a separate optional pass that deepens the same corpus
+with layout-aware parsing, semantic search and topic clustering; nothing
+above needs it.
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
 by depth, by genre, and in time order -- and is where the figure above

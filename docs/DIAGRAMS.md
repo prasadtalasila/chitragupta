@@ -58,6 +58,15 @@ gate is normally invisible: the skill rewrites the claim and runs the gate
 again. You only get involved in the rarer case where the paper genuinely
 isn't in the corpus yet.
 
+Two boxes sit off the spine, dashed because neither is a step you run in
+sequence. **The dossier** ([DOSSIER.md](DOSSIER.md)) is written while a
+draft is written and read back to change it -- the reason revision does
+not re-run the genre skill. **The review layer**
+([REVIEW.md](REVIEW.md)) is six advisory aids for a finished draft; its
+arrow back to drafting is dashed for the same reason the gate's is solid,
+namely that a review finding is yours to weigh rather than something that
+blocks the pipeline.
+
 ```mermaid
 flowchart LR
 
@@ -73,11 +82,19 @@ flowchart LR
 
   FIX["<b>DISCARD DRAFT</b><br/><br/>The skill throws the bad claim away<br/>and drafts again — you never see this.<br/><br/><small>“Fix and re-run until <code>OK</code>.”<br/>A FAIL is treated like a failing test,<br/>not a lint warning.</small>"]
 
+  DOSS[("<b>THE DOSSIER</b><br/><i>machine-facing working state</i><br/><br/>scope · kept evidence<br/>rejected candidates · revisions<br/><br/><b>content/dossiers/&lt;same path&gt;/</b><br/><small>written while drafting, read back to revise —<br/>so a draft is never revised by re-running<br/>the skill that produced it</small>")]
+
+  REV["<b>THE REVIEW LAYER</b><br/><i>advisory — never a gate</i><br/><br/><code>chitragupta.review …</code><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited<br/><br/><b>content/review/&lt;slug&gt;.&lt;aid&gt;.md</b><br/><small>nothing here blocks you — which is not<br/>the same as nothing here mattering</small>"]
+
   P0 ==> P1 ==> P2 ==> P3
   P3 == "PASS · exit 0" ==> P4
   P3 -- "FAIL · exit 1" --> FIX
   FIX == "re-draft · <b>loop until it passes</b>" ==> P2
   FIX -. "or: the paper really is missing —<br/>add it in Zotero and re-sync" .-> P0
+
+  P2 <-. "writes it, then reads it back" .-> DOSS
+  P4 -. "run it on a finished draft" .-> REV
+  REV -. "a finding you act on —<br/>revise from the dossier, don't re-draft" .-> P2
 
   classDef you fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
   classDef det fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
@@ -85,6 +102,7 @@ flowchart LR
   classDef gate fill:#fef2f2,stroke:#dc2626,stroke-width:3px,color:#450a0a
   classDef out fill:#faf5ff,stroke:#9333ea,stroke-width:1.5px,color:#3b0764
   classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#450a0a
+  classDef side fill:#f8fafc,stroke:#475569,stroke-width:1.5px,stroke-dasharray:4 3,color:#0f172a
 
   class P0 you
   class P1 det
@@ -92,6 +110,8 @@ flowchart LR
   class P3 gate
   class P4 out
   class FIX bad
+  class DOSS side
+  class REV side
 ```
 
 ### 2. Your first run
