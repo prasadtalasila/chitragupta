@@ -29,9 +29,10 @@ import signal
 import sys
 import shutil
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from typing import Any, NoReturn
 
 from chitragupta import config, passages
 
@@ -220,12 +221,12 @@ class interrupt_guard:
     that installed its own gets it back.
     """
 
-    def __init__(self, executor, describe):
+    def __init__(self, executor, describe) -> None:
         self._executor = executor
         self._describe = describe
         self._previous = None
 
-    def __enter__(self):
+    def __enter__(self) -> "interrupt_guard":
         try:
             self._previous = signal.signal(signal.SIGINT, self._on_sigint)
         except ValueError:
@@ -234,12 +235,12 @@ class interrupt_guard:
             self._previous = None
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(self, *exc_info) -> bool:
         if self._previous is not None:
             signal.signal(signal.SIGINT, self._previous)
         return False
 
-    def _on_sigint(self, _signum, _frame):
+    def _on_sigint(self, _signum, _frame) -> NoReturn:
         # Deliberately still a bare print, not chitragupta.sync's logger: this
         # runs inside a signal handler a couple of lines before
         # os._exit(130), and print(..., flush=True) is a call this
@@ -702,7 +703,7 @@ def drop_stdlib_shadowing_path_entries() -> list[str]:
     return removed
 
 
-def process_pool_context():
+def process_pool_context() -> tuple[multiprocessing.context.BaseContext, str | None]:
     """The mp context to build the docling pool on, plus any complaint
     about how it was chosen.
 
@@ -950,7 +951,7 @@ def _reset_docling_converter() -> None:
     _DOCLING_CONVERTER_KEY = None
 
 
-def _docling_converter(threads: int | None = None):
+def _docling_converter(threads: int | None = None) -> Any:
     global _DOCLING_CONVERTER, _DOCLING_CONVERTER_KEY
 
     key = (config.PARSER_OCR, threads, _WORKER_DEVICE, config.PARSER_DOCUMENT_TIMEOUT)
@@ -1237,7 +1238,7 @@ class _AnnotatedStream:
     its formatting.
     """
 
-    def __init__(self, stream):
+    def __init__(self, stream) -> None:
         self._stream = stream
         self._at_line_start = True
 
@@ -1263,11 +1264,11 @@ class _AnnotatedStream:
         self._stream.write("".join(pieces))
         return len(text)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name) -> Any:
         return getattr(self._stream, name)
 
 
-def _wrapped(stream):
+def _wrapped(stream) -> Any:
     """`stream`, annotated -- or `stream` itself if it already is.
 
     Wrapping twice would print the citekey twice on one line, and a line
@@ -1277,7 +1278,7 @@ def _wrapped(stream):
 
 
 @contextlib.contextmanager
-def annotated_output(citekey: str):
+def annotated_output(citekey: str) -> Iterator[None]:
     """Attribute everything a parser backend says to `citekey` (#154).
 
     With `[parser].ocr` on, RapidOCR reports a page it could not read
