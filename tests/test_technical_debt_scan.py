@@ -360,13 +360,17 @@ class TestTheChecksActuallyFire:
 # than a frozen record of a past baseline -- the same shape
 # `_stated_sizes` above already pins for the C1/C2 register sizes.
 # `_regex_pin` is that shape made generic, so #348 (PACKAGING.md) and
-# #345 (ARCHITECTURE.md) can reuse it instead of reinventing it. The
-# noqa-marker count the issue also named is not pinned here: #354
-# closed that debt outright (adopted `ruff`, deleted the "inert
-# markers" section) while this PR was in flight, and `ruff`'s own
+# #345 (ARCHITECTURE.md) can reuse it instead of reinventing it. Two of
+# the claims the issue named are not pinned here, both for the same
+# reason: the debt was closed outright rather than merely re-measured,
+# so there is no longer a prose figure to drift. The noqa-marker count
+# is #354's (adopted `ruff`, deleted the "inert markers" section --
 # `RUF100` is now the mechanism that checks the suppressed set is the
-# right one -- a second, weaker prose pin here would be exactly the
-# two-debt-lists problem the register warns against.
+# right one). The annotation ratio is #355's (annotated every gap,
+# deleted the "Type annotations" section -- `tests/test_annotation_scan.py`
+# ratchets the count directly against the tree instead). A second,
+# weaker prose pin for either here would be exactly the two-debt-lists
+# problem the register warns against.
 
 
 def _regex_pin(pattern: re.Pattern, text: str, what: str) -> tuple[str, ...]:
@@ -384,23 +388,6 @@ def _regex_pin(pattern: re.Pattern, text: str, what: str) -> tuple[str, ...]:
     )
     return match.groups()
 
-
-def _annotation_ratio() -> tuple[int, int]:
-    """(annotated, total) return-annotated `def`s under `chitragupta/`,
-    ast-walked rather than typed -- `node.returns is None`, the same
-    measure #353's own re-measurement used."""
-    annotated = total = 0
-    for path in sorted((REPO_ROOT / "chitragupta").rglob("*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                total += 1
-                if node.returns is not None:
-                    annotated += 1
-    return annotated, total
-
-
-_ANNOTATION_RE = re.compile(r"\((\d+) of (\d+) `def`s carry a return annotation\)")
 
 _LINT_TARGET_QUOTE_RE = re.compile(r"pylint --rcfile=\.pylintrc ([^`]+)`")
 
@@ -472,19 +459,10 @@ def _assert_coverage_source_matches(doc_name: str, text: str, pyproject_source: 
 
 
 class TestTheOtherDriftProneClaimsArePinned:
-    """Three of the four claims #353's own "What to build" list named,
-    each checked against the real document -- the fourth (the noqa
-    marker count) is #354's now, not this file's; see the comment
-    above."""
-
-    def test_the_annotation_ratio_matches_the_tree(self, debt_doc):
-        groups = _regex_pin(_ANNOTATION_RE, debt_doc, "docs/TECHNICAL-DEBT.md")
-        stated = tuple(int(n) for n in groups)
-        assert stated == _annotation_ratio(), (
-            "docs/TECHNICAL-DEBT.md's Tier 2 annotation ratio no longer "
-            "matches an ast-walk of chitragupta/ (node.returns is None). "
-            "Re-measure rather than editing the figure by hand."
-        )
+    """Two of the four claims #353's own "What to build" list named,
+    each checked against the real document -- the other two (the
+    annotation ratio and the noqa marker count) are #355's and #354's
+    now, not this file's; see the comment above."""
 
     def test_the_quoted_lint_target_matches_ci_everywhere_it_appears(
         self, debt_doc, code_standards_doc
@@ -512,10 +490,6 @@ class TestTheNewPinsFailLoudlyWhenReworded:
     `test_a_reworded_size_sentence_fails_loudly_rather_than_silently`
     pins for `_stated_sizes`, extended to the new patterns above: a pin
     that silently stops matching is worse than no pin."""
-
-    def test_a_reworded_annotation_sentence_fails_loudly(self):
-        with pytest.raises(AssertionError, match="no longer states this fact"):
-            _regex_pin(_ANNOTATION_RE, "chitragupta/ is 93% annotated now.", "the doc")
 
     def test_a_reworded_bench_self_check_sentence_fails_loudly(self):
         with pytest.raises(AssertionError, match="no longer states this fact"):
