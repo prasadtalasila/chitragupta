@@ -41,7 +41,7 @@ everything below.
 - [The diagnosis](#the-diagnosis-where-a-sources-wording-actually-enters-a-draft)
 - [The baseline](#the-baseline-measured-before-proposing-anything)
 - [The borrowing posture](#the-borrowing-posture-inspiration-or-copy)
-- [The decision that gates part of this](#the-decision-that-gates-part-of-this)
+- [The decision that gated part of this (taken)](#the-decision-that-gated-part-of-this-taken)
 - [What the OpenScholar sample demonstrates](#what-the-openscholar-sample-demonstrates)
 - [Four constraints every item respects](#four-constraints-every-item-respects)
 - [Theme A: close the leak](#theme-a-close-the-leak)
@@ -123,10 +123,14 @@ So the most likely reading is that the reported copying **is
 restatement**, and that nothing currently measures it on these drafts.
 That does not weaken the case for Theme A -- claim-first drafting is
 the remedy for restatement specifically, more than for exact runs -- but
-it does change what "done" looks like, and it adds a precondition:
-[A1a](#a1a-make-the-verbatim-scan-a-required-step) must
-also ensure the dossier is populated enough for tier 3 to run, or the
-mandatory scan will keep reporting two tiers of three and looking clean.
+it does change what "done" looks like, and it added a precondition:
+[A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201) had to
+ensure the dossier is populated enough for tier 3 to run, or the
+mandatory scan would keep reporting two tiers of three and looking
+clean. **These four drafts turned out to have no dossier at all** -- the
+skipped-tier message names a `sections.md` that was never there -- so
+what A1a actually built is a regeneration of the table immediately
+before the scan, in every skill.
 
 **3. `deep-research` scored zero, and it is the one genre that already
 records claims.** Its SKILL.md writes "kept claims and their citekeys"
@@ -247,50 +251,43 @@ is what they found worth saying -- and the implementation is written
 here from scratch. D1 is the one item where that costs real effort, and
 it says so.
 
-## The decision that gates part of this
+## The decision that gated part of this (taken)
 
-One item cannot be built until a person decides something, and it is the
-item this roadmap otherwise wanted to do first.
+**Approved by the user on 2026-08-21, applied in 6.20.1 by #312.** Kept
+because it is the one decision in this roadmap that was never an
+engineering call, and the next person to propose driving a review aid
+should find the reasoning rather than re-open it.
 
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s build order opens with a
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s build order opened with a
 step that is *"Not a coding task"*: an amendment to the review layer's
-stated posture. Today that layer is documented as **manual** as well as
-advisory -- *"run by hand on a finished draft, never invoked
-automatically"* -- and
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md) counts
-where that claim is written: **twelve places** across the aid docstrings,
-`review/__init__.py`'s banner, [AGENTS.md](../AGENTS.md),
-[ARCHITECTURE.md](ARCHITECTURE.md), [LADDERS.md](LADDERS.md) and
-[CLI.md](CLI.md), plus **three diagrams** whose committed SVGs would need
-re-rendering.
-
-The proposed replacement invariant:
+stated posture, which was documented as **manual** as well as advisory --
+*"run by hand on a finished draft, never invoked automatically"*. The
+surviving invariant:
 
 > a review finding may be read, may be invoked by a driver, and may never
 > block a draft.
 
 -- advisory versus blocking, rather than manual versus automatic.
 [SOUL.md](../SOUL.md) is deliberately *not* amended, because the rule
-that changes is stated only in the layer's implementation and in the
+that changed is stated only in the layer's implementation and in the
 documents describing it, never in the soul.
+`python -m chitragupta.draft gate` remains the only gate.
 
-**Why it lands here.** [A1](#a1a-make-the-verbatim-scan-a-required-step)
-makes `verbatim scan` run without a person asking. That is exactly the
-rule above. So A1's real dependency is a user decision, and its real cost
-includes those twelve sites and three re-renders -- not the "no Python"
-change this roadmap first estimated. The rationale is explicit that this
-call is the user's and comes first: *"It is the first thing to settle,
-before any code."*
+**Why it landed here.** [A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201)
+makes `verbatim scan` run without a person asking, which is exactly the
+rule above -- so A1a's real dependency was a user decision, and its real
+cost included the wording sweep and three diagram re-renders rather than
+the "no Python" change this roadmap first estimated.
+[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs)
+has the sweep, and the lesson that outlived it: the count grew from
+twelve to twenty-two while the decision was pending, because three aids
+landed in between and each brought its own copy of the sentence.
 
-**If the amendment is declined**, nothing here dies. The scan stays
-offered rather than run, [F2](#f2-the-agenda-aid)'s agenda aid is still
-written and still useful by hand, and only the automation is lost.
-
-**One counter-precedent, pre-empted.** `style_check` already runs
-automatically -- a PostToolUse hook per write, and a step in all nine
-skills (#183). It does not transfer: `style_check` is
+**One counter-precedent, pre-empted.** `style_check` already ran
+automatically before this -- a PostToolUse hook per write, and a step in
+all nine skills (#183). It did not transfer: `style_check` is
 `python -m chitragupta.draft style`, a **drafting-layer** command, and
-the never-automatic rule is stated only about layer 4.
+the never-automatic rule was stated only about layer 4.
 
 ## Four constraints every item respects
 
@@ -382,29 +379,40 @@ Size: none, shipped with this document. Listed so the sequence still
 reads correctly, and so nobody re-adds a `NOTICE` on the assumption one
 was forgotten.
 
-### A1a: make the verbatim scan a required step
+### A1a: make the verbatim scan a required step (shipped 6.20.1)
 
-Flip the step every genre skill already carries -- *"**Offer the
-verbatim scan.** Before presenting, offer this -- don't run"* -- so the
-scan actually runs before a draft is presented.
+*Shipped in [#312](https://github.com/prasadtalasila/chitragupta/issues/312);
+planned in [`plans/a1a-mandatory-verbatim-scan.md`](../plans/a1a-mandatory-verbatim-scan.md),
+which records where this entry was wrong.*
 
-**Verified scope:** all **nine** skills carry that step, eight in
-near-identical words (`book-assembler` phrases it per unit). One
-mechanical edit repeated nine times, not nine judgement calls.
+The step every genre skill carried -- *"**Offer the verbatim scan.**
+Before presenting, offer this -- don't run"* -- now runs the scan before
+a draft is presented. **Not** a new gate: it exits 0 regardless, nothing
+blocks, and every skill still says in as many words that it is never a
+condition of presenting. What changed is who may invoke a review aid,
+which is the rule
+[the amendment](#the-decision-that-gated-part-of-this-taken) governs.
 
-This is **not** a new gate: the scan exits 0 regardless, and nothing
-blocks. But it *is* a review aid running without a person asking, which
-is the rule [the amendment](#the-decision-that-gates-part-of-this)
-governs. So the honest cost is nine SKILL.md edits **plus** the twelve
-documentation sites and three diagram re-renders that carry the
-never-automatic wording.
+**Three things this entry got wrong**, each found by checking rather
+than by re-reading it:
 
-Should also populate the dossier's `sections.md` well enough for tier 3
-to run -- per [the baseline](#the-baseline-measured-before-proposing-anything),
-it currently never does -- and report the before/after table.
+- **Eight edits, not nine.** `overlap-reviser` already ran the scan as
+  its step-2 baseline; what it needed was the rest of the contract.
+- **The wording sweep was twenty-two sites, not twelve.** Three aids
+  landed while the decision was pending, each carrying its own copy of
+  the sentence, and the published grep missed three more by being
+  line-based over hand-wrapped prose.
+- **`sections.md` was not the problem it looked like.** The four sample
+  drafts in [the baseline](#the-baseline-measured-before-proposing-anything)
+  have no dossier *at all*; the "records no citekeys" message names a
+  path that was never there. Every real dossier on the measuring host
+  carries citekeys. The fix is to regenerate the table immediately
+  before the scan, which five skills did mid-run and four did not at
+  all.
 
-Size: S for the skills, M once the documentation sweep is counted.
-Depends on: **the amendment.** Not on code.
+Size: S for the skills, M once the documentation sweep is counted --
+which was right.
+Depended on: **the amendment.** Not on code.
 
 ### A1b: auto-route findings into `overlap-reviser` -- declined
 
@@ -1194,7 +1202,7 @@ are marked.
 | 5 | [F1](#f1---json-on-the-other-two-review-aids) `--json` on the other two aids | F | M | -- |
 | 6 | [B2](#b2-require-multi-source-paragraphs) multi-source paragraphs | B | M | B1 |
 | 7 | [C1](#c1-uncited-prose-report) uncited-prose report | C | M | F1 |
-| 8 | [A1a](#a1a-make-the-verbatim-scan-a-required-step) mandatory verbatim scan | A | M | **amendment** |
+| 8 | [A1a](#a1a-make-the-verbatim-scan-a-required-step-shipped-6201) mandatory verbatim scan | A | M | **shipped 6.20.1** |
 | 9 | [A4](#a4-the-evidence-appendix) Evidence appendix | A | M | A2 |
 | 10 | [D2](#d2-deterministic-tikz-layout-check) deterministic TikZ layout check | D | M-L | D1 |
 | 11 | [B3](#b3-section-thesis-with-source-count) section thesis + count | B | S | -- |

@@ -45,8 +45,8 @@ def _how_to_read(report) -> list[str]:
         "why the unit differs by genre -- see docs/WRITING-STANDARDS.md, §11.",
         "",
         "A **thin corpus legitimately produces single-source units.** This",
-        "report counts them; it does not judge them. Nothing in this pipeline",
-        "reads it back, no draft is blocked by it, and there is no target",
+        "report counts them; it does not judge them. A driver may read it",
+        "back, no draft is blocked by it, and there is no target",
         "proportion here to drive down.",
         "",
     ]

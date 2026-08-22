@@ -9,8 +9,8 @@ flags four fifths of a survey, so these tests hold the aid to its
 exclusions as tightly as to its findings: a report nobody opens twice
 has failed, whatever it got right.
 
-Advisory like the other four -- exit 0 whatever it finds, no lock,
-nothing reads it back.
+Advisory like the other five -- exit 0 whatever it finds, no lock, and
+no draft blocked by any of it.
 """
 
 import json

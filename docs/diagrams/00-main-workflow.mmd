@@ -69,11 +69,12 @@ flowchart TB
   end
 
   %% ─────────────── AIDS (side branch) ───────────────
-  subgraph SA["<b>REVIEW AIDS</b> — you run these; none of them is a gate"]
+  subgraph SA["<b>REVIEW AIDS</b> — run these afterwards; none of them is a gate"]
     direction TB
     A1["<b>chitragupta.review provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>chitragupta.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page</small>"]
+    A2["<b>chitragupta.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
     A3["<b>chitragupta.review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
+    A4["<b>chitragupta.review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
   end
 
   %% ─────────────── SPINE ───────────────
@@ -109,5 +110,5 @@ flowchart TB
   class BLOCK bad
   class ITER loop
   class SKILLS gen
-  class A1,A2,A3,ADV aid
+  class A1,A2,A3,A4,ADV aid
   class H1,H2,H3,EMB heavy

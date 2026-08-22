@@ -2,7 +2,7 @@
 
 One of the six aids in the **review layer**, beside
 citation_provenance.py, citation_coverage.py, synthesis.py, figure_layout/
-and uncited_prose.py -- run by hand on a finished draft, never automatically, never a gate, and
+and uncited_prose.py -- read over a finished draft, by a person or by a driver, never a gate, and
 never holding the write lock. chitragupta/review/__init__.py owns where a written
 report goes (`content/review/<topic>/<stem>.verbatim.md`, mirroring the
 draft's path) and what its header looks like.
@@ -1712,7 +1712,7 @@ def _completeness_paragraph(not_run: list[dict]) -> list[str]:
     Two different sentences, because "the paraphrase tier ran and found
     nothing here" and "the paraphrase tier never ran" are two different
     states of knowledge and only one of them is about the draft.
-    `tests/test_skill_verbatim_scan_offer.py` holds every skill's offer
+    `tests/test_skill_verbatim_scan_step.py` holds every skill's run
     of this scan to the same standard -- say what it cannot see -- and
     this is where the report itself keeps that promise.
     """

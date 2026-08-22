@@ -293,68 +293,83 @@ the propose-and-accept asymmetry, not about the aid.
 
 ## The amendment this needs
 
-One documented rule this cannot satisfy. It is about *who may invoke* a
-review aid, and the loop's driver invokes them. This sweep surfaces the
-candidates:
+**Settled: approved by the user on 2026-08-21**
+([plans/f-auto-improvement-adoption.md](../plans/f-auto-improvement-adoption.md)
+§"Decision 1"), and applied in 6.20.1 by #312, which needed it before the
+verbatim scan could become a required step in the genre skills. The
+argument below is kept because it is why the decision went the way it
+did; the sweep is kept because the next rule-wide sweep will want its
+method rather than its counts.
+
+One documented rule the loop could not satisfy. It is about *who may
+invoke* a review aid, and the loop's driver invokes them. This sweep
+surfaces the candidates:
 
 ```bash
-grep -rniE "never automatic|never invoked|invokes them automatically|reads it back|runs automatically" \
+grep -rniE "never automatic|never invoked|invokes them automatically|reads it back|runs automatically|offered, never run" \
   --include='*.md' --include='*.mmd' --include='*.py' .
 ```
 
-It is a starting point rather than the answer. It hits two phrases with
-nothing to do with the review layer -- `AGENTS.md`'s "reads it back out of
-the ledger" and a `tests/test_sync.py` docstring's "never invoked" -- and
-it hits these documents. **Twelve** of its matches are real statements of
-the rule:
+**Do not trust it to be complete, and #312 is why.** It is line-based,
+and every one of these files is hand-wrapped to about 72 columns, so a
+statement of the rule that happens to break across a line -- "never\\n
+automatically" -- is invisible to it. Two real sites were missed exactly
+that way (`uncited_prose.py` and `figure_layout/__init__.py`), and a
+third (`GENRE.md`, which states the rule for all nine skills at once) was
+missed because the original pattern had no term for *offered*. A sweep
+that has to be right normalises whitespace per file first and then
+matches; the grep above is for finding where to look.
 
-| Site | Wording |
-|---|---|
-| `chitragupta/review/__init__.py`, `BANNER` | "Nothing in this pipeline reads it back" |
-| `chitragupta/review/__init__.py`, docstring | "None gates, none runs automatically" |
-| `chitragupta/review/__main__.py`, docstring | "nothing invokes them automatically" |
-| `chitragupta/review/citation_provenance.py`, docstring | "never automatically, never a gate" |
-| `chitragupta/review/citation_coverage.py`, docstring | "never automatically, never a gate" |
-| `chitragupta/review/verbatim_check.py`, docstring | "never automatically, never a gate" |
-| [AGENTS.md](../AGENTS.md), Layer 4 | "run by hand on a finished draft, never invoked automatically" |
-| [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer), §Layer 4 | "Nothing invokes them automatically" |
-| [ARCHITECTURE.md](ARCHITECTURE.md), inline mermaid label | "advisory, never automatic, never a gate" |
-| [LADDERS.md](LADDERS.md), the layer table | "never automatic, never a gate" |
-| [CLI.md](CLI.md), the first-run walkthrough | "these runs automatically, and none of them can block a draft" |
-| [CLI.md](CLI.md), §coverage | "unlike the gate it never runs automatically" |
+It also hits phrases with nothing to do with the review layer --
+`AGENTS.md`'s "reads it back out of the ledger", a `tests/test_sync.py`
+docstring's "never invoked", `chitragupta/dossier/_acronyms.py`'s "still
+never automatic" (a **drafting**-layer rule about `acronyms-suggest
+--apply`, and untouched by this) -- and it hits these documents.
 
-**Three diagrams are borderline, and the honest answer is that they are
-in scope.** No `.mmd` source states the rule outright -- the one label
-that says "never automatic" is inline in ARCHITECTURE.md, so it is a text
-edit like the rest. But `00-main-workflow.mmd`'s "REVIEW AIDS -- you run
-these", `g1-corpus-led.mmd`'s "afterwards, **by you**" and
+**Twelve** of its matches were real statements of the rule when this was
+written on 2026-08-11. By the time the amendment was applied it was
+**twenty-two**, in two families: the review layer gained three aids in
+between (`synthesis` #341, `figure` #344, `uncited` #347), and each
+arrived carrying its own copy of the sentence. The count is recorded as a
+range rather than a number for that reason -- it tracks how many aids
+exist, so it is stale the day a seventh lands.
+
+| Family | Sites | Wording |
+|---|---|---|
+| never automatic | 16 | six aid docstrings, `review/__init__.py`, `review/__main__.py`, AGENTS.md, ARCHITECTURE.md ×2, LADDERS.md, CLI.md ×3, GENRE.md |
+| nothing reads it back | 6 | `BANNER`, `_synthesis_render.py`, `synthesis.py`, CLI.md ×2, WRITING-STANDARDS.md |
+
+**Three diagrams were borderline, and the honest answer was that they
+were in scope.** No `.mmd` source stated the rule outright -- the one
+label that said "never automatic" was inline in ARCHITECTURE.md, so it
+was a text edit like the rest. But `00-main-workflow.mmd`'s "REVIEW AIDS
+-- you run these", `g1-corpus-led.mmd`'s "afterwards, **by you**" and
 `extra-sequence.mmd`'s "optional afterwards", which draws *You* invoking
-the aids, are manual-invocation claims on exactly the axis the amendment
-abolishes. They are the cheapest
-possible fix ("run these afterwards"), and each costs a re-render of its
-committed SVG under `docs/diagrams/svg/`. The "never a gate" text in both
-stays true and untouched.
+the aids, were manual-invocation claims on exactly the axis the amendment
+abolishes. Each cost a re-render of its committed SVG under
+`docs/diagrams/svg/`. The "never a gate" text in all three stayed true
+and untouched.
 
 The surviving invariant is the one that was always doing the work, and it
-is narrower than the current wording: **a review finding may be read, may
+is narrower than the old wording: **a review finding may be read, may
 be invoked by a driver, and may never block a draft.** Advisory versus
 blocking, not manual versus automatic. `chitragupta.draft gate` remains the only
 gate.
 
-**[SOUL.md](../SOUL.md) does not need amending, and that is the point.**
+**[SOUL.md](../SOUL.md) did not need amending, and that is the point.**
 Its review bullet says the layer "never blocks, and must not be made to" --
 no claim about who invokes it -- and its "let a machine outrank a human on
 a judgment call" prohibition is satisfied by the three surfaced item
-classes. The rule that has to change is stated only in the layer's
+classes. The rule that changed is stated only in the layer's
 implementation and in the documents describing it, never in the soul. That
-is what makes the amendment approvable rather than a rewrite of the
+is what made the amendment approvable rather than a rewrite of the
 project's premises.
 
-It is still a change to the review layer's stated posture in the
+It was still a change to the review layer's stated posture in the
 user-facing rules file, and SOUL.md reserves that kind of call for the
-user. **It is the first thing to settle, before any code.** If it is
-declined, the agenda aid can still be written and run by hand, and only
-the skill's automation is lost.
+user. **It was the first thing to settle, before any code**, and it was.
+Had it been declined, the agenda aid could still have been written and
+run by hand, and only the skill's automation would have been lost.
 
 ## The software half
 

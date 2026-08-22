@@ -1,8 +1,8 @@
 """chitragupta/review/synthesis.py: how many sources each unit of a draft
 rests on, at the unit its genre binds at.
 
-The fourth review aid. Advisory like the other three -- it exits 0
-whatever it finds, takes no lock, and nothing reads it back. What these
+One of the six review aids. Advisory like the rest -- it exits 0 whatever
+it finds, takes no lock, and blocks no draft. What these
 tests hold it to is that the numbers are honest about *what* was
 measured: a tutorial reporting no multi-source paragraphs has not failed,
 it was never measured at paragraph scale, and the report has to say so on

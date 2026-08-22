@@ -40,7 +40,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # leg, and these files are full of em dashes and curly quotes -- so the
 # check would die with a UnicodeDecodeError there while passing on
 # Linux. Same reason tests/test_review_entrypoint.py and
-# tests/test_skill_verbatim_scan_offer.py pin it.
+# tests/test_skill_verbatim_scan_step.py pin it.
 
 # A nested invocation: `src` plus *two or more* dotted segments. `-m`
 # with any whitespace after it, because these files are hand-wrapped and

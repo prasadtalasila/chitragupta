@@ -6,8 +6,8 @@ Six commands make up the review layer -- `chitragupta/review/citation_provenance
 `chitragupta/review/uncited_prose.py`. Each reads a draft -- plus the
 corpus, or in `figure_layout`'s case the figures the draft references,
 or in `uncited_prose`'s case nothing else at all -- and produces
-evidence for a human judgement. None gates, none runs automatically,
-none takes the write lock, and all six are interpreter tier 1.
+evidence for a human judgement. None gates, none blocks a draft, none
+takes the write lock, and all six are interpreter tier 1.
 docs/ARCHITECTURE.md's "Layer 4: the review layer" is the definition;
 this module is what makes the six obey one output contract instead of
 six.
@@ -84,8 +84,8 @@ AIDS = {
 # and broken for the next.
 BANNER = (
     "> **Review aid, not a gate.** This report is evidence for a human "
-    "judgement, never a verdict. Nothing in this pipeline reads it back, and "
-    "no draft is blocked by what it says. See SOUL.md, and "
+    "judgement, never a verdict. A driver may read it back; no draft is "
+    "blocked by what it says. See SOUL.md, and "
     "docs/ARCHITECTURE.md's \"Layer 4: the review layer\"."
 )
 

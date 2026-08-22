@@ -287,6 +287,11 @@ sequence.
 
 1. **Settle the amendment.** Not a coding task --
    [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#the-amendment-this-needs).
+   *Approved by the user on 2026-08-21 and applied in 6.20.1 by #312,
+   which needed it to make the verbatim scan a required step in the genre
+   skills. The surviving invariant is advisory-versus-blocking: a review
+   finding may be read, may be invoked by a driver, and may never block a
+   draft.*
 2. **#127, widened** to every aid. Hard prerequisite for everything
    below. *Done for `verbatim scan` in 5.4.0, on layer-level plumbing the
    other two aids reuse; they are the remainder of this step.*
