@@ -35,6 +35,7 @@ whatever it finds.
 """
 
 import re
+from pathlib import Path
 
 from chitragupta import spec, unit
 # Three conventions borrowed rather than re-derived. Each is private to
@@ -69,7 +70,7 @@ _TEX_LABEL = re.compile(r"\\label\{([^}]+)\}")
 _NOT_WORD = re.compile(r"[^a-z0-9]+")
 
 
-def registry_dir(book):
+def registry_dir(book) -> Path:
     """Where a book's three registries are written."""
     return spec.spec_dir(book) / "registries"
 

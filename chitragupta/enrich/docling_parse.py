@@ -63,6 +63,7 @@ import os
 import re
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from typing import Any
 
 from chitragupta import config, logging_setup, passages, pdf_text
 from chitragupta.enrich.corpus import CorpusDoc
@@ -165,7 +166,7 @@ _CAPTION_LABEL_RE = re.compile(
 )
 
 
-def _build_converter(threads: int | None = None):
+def _build_converter(threads: int | None = None) -> Any:
     """Always configured, never bare: `do_ocr` has to be set explicitly
     because Docling's own default is True and this project's is False
     (see config.toml's [parser].ocr for the measurement behind that).
@@ -228,7 +229,7 @@ def _relativise_image_refs(md_path: Path) -> list[str]:
     base = md_path.parent
     names: list[str] = []
 
-    def rewrite(match):
+    def rewrite(match) -> str:
         target = match.group(2)
         path = Path(target)
         if path.is_absolute():
@@ -563,10 +564,10 @@ class _LazyConverter:
     them at all.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._converter = None
 
-    def convert(self, pdf_path):
+    def convert(self, pdf_path) -> Any:
         if self._converter is None:
             self._converter = _build_converter()
         return self._converter.convert(pdf_path)
@@ -583,7 +584,7 @@ _WORKER_CONVERTER = None
 _WORKER_CONVERTER_KEY = None
 
 
-def _worker_converter(threads: int | None):
+def _worker_converter(threads: int | None) -> Any:
     global _WORKER_CONVERTER, _WORKER_CONVERTER_KEY
 
     key = (threads, pdf_text.worker_device(), config.PARSER_OCR,

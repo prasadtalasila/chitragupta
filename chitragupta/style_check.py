@@ -50,6 +50,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from chitragupta import config, dossier
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
@@ -239,7 +240,7 @@ def check(draft: Path, override: str | None = None) -> dict:
             "findings": findings, "proposed_language": proposal}
 
 
-def build_parser():
+def build_parser() -> Any:
     import argparse  # local, so importing this module stays cheap for the hook
 
     parser = argparse.ArgumentParser(
@@ -256,7 +257,7 @@ def build_parser():
     return parser
 
 
-def main(argv=None):
+def main(argv=None) -> int:
     """Always 0. The one exception is a usage error, which argparse owns
     and which is a mistake by the caller rather than a finding about the
     draft."""

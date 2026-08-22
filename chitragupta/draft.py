@@ -104,7 +104,7 @@ VERBS = {
 DESCRIPTION = "The drafting layer: work on one draft -- gate it, cite it, render it."
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog_for("draft"),
         description=DESCRIPTION,
@@ -120,7 +120,7 @@ def build_parser():
     return parser
 
 
-def main(argv=None):
+def main(argv=None) -> int:
     """No verb at all prints the usage and exits 0 -- the same "tell me
     how to use this" request as `--help`, not an error. The same rule
     `chitragupta/review/__main__.py` already applies to a missing aid."""

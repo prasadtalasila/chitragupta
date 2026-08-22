@@ -62,6 +62,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from chitragupta import config
 
@@ -193,7 +194,7 @@ def _page_number(raw) -> int | None:
     return raw
 
 
-def _ledger_row(con, citekey: str):
+def _ledger_row(con, citekey: str) -> Any:
     row = con.execute(
         "SELECT parsed_path, pdf_path, title FROM items WHERE citekey = ?", (citekey,)
     ).fetchone()

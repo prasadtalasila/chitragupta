@@ -11,6 +11,7 @@ is exactly what the `dossier sections` command is.
 import argparse
 import re
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -133,7 +134,7 @@ def _braced(text: str) -> str:
     return "".join(out)
 
 
-def _prose_lines(lines: list[str]):
+def _prose_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
     """(line number, line) for every line outside fenced code blocks and
     LaTeX verbatim environments -- the fence tracking `sections()`'s
     docstring says is not a nicety, shared so no caller re-derives it."""

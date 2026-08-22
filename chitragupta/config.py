@@ -10,6 +10,7 @@ import math
 import os
 import tomllib
 from pathlib import Path
+from typing import Any
 
 # Two roots, because `REPO_ROOT` was doing two unrelated jobs under one
 # name and they stop being the same directory the moment this code is
@@ -185,7 +186,7 @@ def _get_optional_float(env_var: str, *toml_path: str,
     return seconds
 
 
-def _raw_setting(env_var: str, toml_path: tuple[str, ...]):
+def _raw_setting(env_var: str, toml_path: tuple[str, ...]) -> Any:
     """The unparsed value of one setting: the env var if set, else the
     TOML node at `toml_path`, else None. Shared lookup for the getters
     that need to distinguish "absent" from every real value."""

@@ -87,7 +87,7 @@ if set(AIDS) != set(review.AIDS):
 DESCRIPTION = "The review layer: six read-only aids over a finished draft. No gate."
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog_for("review"),
         description=DESCRIPTION,
@@ -98,7 +98,7 @@ def build_parser():
     return parser
 
 
-def main(argv=None):
+def main(argv=None) -> int:
     """No aid at all prints the usage and exits 0 -- the same "tell me how
     to use this" request as `--help`, not an error. The same rule each aid
     already applies to a missing mode."""
