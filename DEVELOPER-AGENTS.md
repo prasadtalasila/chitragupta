@@ -329,13 +329,14 @@ Before saying so, actually run, in this repo:
   Windows leg -- which installs no `os-deps` and so self-skips the render
   and pdf tests -- holds 95, low enough not to need re-tuning whenever
   toolchain-only code is added and high enough to catch a real collapse.
-- **Both linters, at their full paths** (see "The linters, which are
-  enforced" below). They are not optional and not CI's job alone --
+- **All three linters, at their full paths** (see "The linters, which
+  are enforced" below). They are not optional and not CI's job alone --
   `markdownlint` in particular fails on prose that no test touches, so a
   green suite says nothing about it:
 
   ```bash
   pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
+  ruff check chitragupta scripts .claude/hooks
   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
   ```
 
@@ -388,12 +389,16 @@ than post a wrong number.
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
 [DTaaS](https://github.com/INTO-CPS-Association/DTaaS) -- the same source
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
-from. Run both before you push; `ci.yml`'s `lint` job runs exactly these,
-and the paths are part of the command rather than a detail -- a narrower
-glob is how a tree stops being checked without anyone deciding it should:
+from. `pyproject.toml`'s `[tool.ruff]` is not: DTaaS carries no ruff
+config to inherit, so its `select` and `per-file-ignores` were decided
+fresh, the way the paragraph below states. Run all three before you push;
+`ci.yml`'s `lint` job runs exactly these, and the paths are part of the
+command rather than a detail -- a narrower glob is how a tree stops being
+checked without anyone deciding it should:
 
 ```bash
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
+ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
 markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"   # npm i -g markdownlint-cli2
 ```
 
@@ -402,13 +407,14 @@ reports `tail`'s status, so a real finding passes for a clean run. That is
 not hypothetical: it put a `line-too-long` through a local check and into
 CI on 2026-08-15.
 
-**Both are blocking, at a binary zero-messages bar** -- never a
+**All three are blocking, at a binary zero-messages bar** -- never a
 `fail-under` score, because
 [R3](docs/AUTO-IMPROVEMENT.md#the-requirements) rules out driving a
 number, and a score can improve while the thing you cared about gets
-worse. There is no backlog left to avoid: the adoption in 5.8.0 cleared
-both to zero first, which is this file's own rule that **a check that has
-not been made to pass must not ship.**
+worse. There is no backlog left to avoid: the pylint/markdownlint
+adoption in 5.8.0 cleared both to zero first, and ruff's own adoption
+did the same, which is this file's own rule that **a check that has not
+been made to pass must not ship.**
 
 What that adoption had to settle, since each is a decision a later reader
 will otherwise have to re-derive:
@@ -428,6 +434,44 @@ will otherwise have to re-derive:
   them; pylint resolves imports statically wherever they sit, so without
   that list a lint job that does not download torch reports `import-error`
   against all of them.
+
+**What ruff's adoption had to settle**, the same shape of decision, with
+no DTaaS config to inherit it from:
+
+- **`select` is `["E", "F", "BLE", "RUF100"]`, not ruff's own (much
+  broader) default.** `BLE` is the rule the adoption exists for; `E`/`F`
+  are pyflakes/pycodestyle's core correctness checks plus the "keep
+  lines short" review rule [CODE-STANDARDS.md's build
+  order](docs/CODE-STANDARDS.md#build-order) already named for ruff;
+  `RUF100` is what turns a `# noqa: BLE001` into a checked claim instead
+  of a comment nothing reads.
+- **`per-file-ignores` covers `__init__.py`'s `F401`/`E402`** wholesale
+  (`registry/`, `spec/`, `unit/`, `dossier/`, `render_output/`,
+  `review/figure_layout/`) rather than 52 per-line `noqa`s: each
+  re-exports a submodule's public name so `from chitragupta import x`
+  reaches it, four of them via a deliberately late import to dodge a
+  circular import at definition time, both already explained inline
+  where the comment rules require it.
+- **The measurement found two real gaps**, not just inert markers:
+  `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated
+  three fields `"array[int]"` with no `array` import in the module (F821
+  -- fixed by adding it), and `style_check.language_of`/
+  `style_acronym_drift.findings` each caught a blind `Exception` that
+  `dossier.dossier_dir` only ever raises as `dossier.DossierError`
+  (BLE001 -- fixed by narrowing, not suppressing).
+- **One of the 12 existing `# noqa: BLE001` markers was already
+  unneeded**, and `RUF100` is what proved it:
+  `chitragupta/pdf_text.py`'s `_extract_docling` re-raises via `raise ...
+  from exc`, which BLE001's own definition of "blind" exempts. `bench/`'s
+  two markers were checked the same way and are genuine --
+  [Tier 3.1](docs/TECHNICAL-DEBT.md#31-bench-is-outside-every-check-in-the-repository)
+  leaves `bench/` outside every check including this one, unchanged, so
+  they stay inert in practice but correct on the evidence.
+- **`ruff`'s own version is pinned exactly**, not only for Sonar S8544:
+  `RUF100`'s verdict on a given `except` block depends on carve-outs
+  (like the re-raise one above) that are undocumented and narrower than
+  `BLE001` looks, so an unpinned bump could move that verdict and redden
+  the job on a rule this project never touched.
 
 `.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
 runner: it normalises line endings so CI's Windows leg reads

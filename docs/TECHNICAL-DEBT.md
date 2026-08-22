@@ -130,34 +130,13 @@ and what each was measured against is in the pull request that split it.
 ## Tier 2: the debt CODE-STANDARDS.md already named
 
 [Build order](CODE-STANDARDS.md#build-order) lists four things that would
-extend the enforced half, none of them built. They are debt rather than
-roadmap because each has a **cost already being paid**, measured below.
-The build order owns the sequencing; this section only supplies the
-numbers it was written without.
-
-### The 11 inert `# noqa: BLE001` markers
-
-`chitragupta/` and `scripts/` carry `# noqa: BLE001` suppressions
-(`runlock.py`, `pdf_text.py`, `enrich/__main__.py`,
-`enrich/docling_parse.py`, and since this was written
-`scripts/check_version_bump.py`) that **nothing reads**.
-
-When this was written the reason was that no linter was configured at
-all. That half is now false -- `.pylintrc` exists and `ci.yml`'s `lint`
-job invokes pylint at a binary bar. The debt survives for a narrower
-reason, and it is worth stating precisely: **BLE001 is a *ruff* rule
-code**, there is still no ruff, and pylint's own equivalent
-(`broad-exception-caught`) is in `.pylintrc`'s `disable=` list. So the
-markers remain inert -- they are addressed to a linter this repository
-does not run.
-
-The markers are not harmful; each sits beside a real *why*-comment
-explaining the broad catch, which is what CODE-STANDARDS.md's comment
-rules actually require. But they are a suppression list for a tool that
-cannot read them, which means it has never been checked that the
-suppressed set is the *right* set. Build-order item 2 anticipates exactly
-this ("the register above and ruff's ignore list are two debt lists; they
-should be one") -- it assumes ruff arrives first. It has not.
+extend the enforced half. Two are built now -- item 1 as `pylint`, item 2
+as `ruff` (`docs/TECHNICAL-DEBT.md`'s ruff subsection under
+[Tier 5](#tier-5-continuous-integration-and-the-linters)) -- and the two
+below are not. They are debt rather than roadmap because each has a
+**cost already being paid**, measured below. The build order owns the
+sequencing; this section only supplies the numbers it was written
+without.
 
 ### Type annotations: 695 of 748
 
@@ -219,8 +198,9 @@ from all four things that hold the rest of the tree:
 - C1 and C2 (`STATEMENT_ROOTS`/`CODE_LINE_ROOTS` in the scan test)
 - coverage (`source = ["src", "scripts"]` in `pyproject.toml`)
 - the release archive (`scripts/release.py`)
-- the linter -- `pylint` runs against `src scripts .claude/hooks`
-  ([5.1](#51-pylint-a-measured-baseline)), never `bench/`
+- the linters -- `pylint` and `ruff` both run against
+  `src scripts .claude/hooks`
+  ([5.1](#51-pylint-a-measured-baseline)/ruff subsection), never `bench/`
 
 Measured against the ratchet it does not face, with the ratchet's own
 `long_functions`/`long_files` from `tests/test_code_standards_scan.py`
@@ -388,20 +368,20 @@ score, because [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out
 driving a number. That sequence is what 5.8.0 carried out, in that order.
 
 **Neither of the two side effects this paragraph predicted actually
-happened, and `.pylintrc` says why:** both `broad-exception-caught` and
-`duplicate-code` are in its `disable=` list, category-wide, the same as
-every other row this section's own residue table calls a "decision
-rather than an oversight." So the 11 `# noqa: BLE001` markers
-([Tier 2](#the-11-inert--noqa-ble001-markers)) are still exactly that --
-`pylint` never asks for a `# pylint: disable=broad-exception-caught` at
-any of them, because the category itself never fires. And
+happened at the time, and `.pylintrc` said why:** both
+`broad-exception-caught` and `duplicate-code` are in its `disable=` list,
+category-wide, the same as every other row this section's own residue
+table calls a "decision rather than an oversight." So the `# noqa:
+BLE001` markers stayed exactly that -- `pylint` never asked for a
+`# pylint: disable=broad-exception-caught` at any of them, because the
+category itself never fired. **That half is closed now**, by
+[5.4](#54-ruff-a-measured-baseline): `ruff`'s `BLE001` reads the markers
+`pylint` couldn't. The other half is not --
 `duplicate-code` found the four instances the baseline measurement used
 to surface the duplicated author-name grammar, then
 was turned off rather than kept running, so a fifth duplication
-introduced today would not be caught by it. [Build
-order](CODE-STANDARDS.md#build-order) item 2 still names the actual
-fix -- it needs `ruff`, or an equivalent per-site suppression check,
-neither of which this project has.
+introduced today would still not be caught by anything. No tool this
+project runs re-implements it; that remains open.
 
 ### 5.2 `markdownlint`: a measured baseline
 
@@ -471,6 +451,76 @@ with no detector, checked by hand against the tree:
   the repeated `connect()`/`finally: close()` block, now
   resolved into one `ledger.connection()` context manager -- it was a
   tidiness item, not a correctness one.
+
+### 5.4 `ruff`: a measured baseline
+
+**Adopted and enforced.** `ci.yml`'s `lint` job runs
+`ruff check chitragupta scripts .claude/hooks` at the same binary
+zero-messages bar as pylint and markdownlint, closing
+[build order item 2](CODE-STANDARDS.md#build-order) -- the `# noqa`-free
+policy [5.1](#51-pylint-a-measured-baseline) named as still open, because
+`pylint` disables `broad-exception-caught` category-wide rather than
+requiring a per-site suppression.
+
+Unlike `.pylintrc` and `.markdownlint.yaml`, there was no DTaaS config to
+inherit: `pyproject.toml`'s `[tool.ruff.lint]` `select` was decided
+fresh, and deliberately narrower than ruff's own (much broader) default
+-- `["E", "F", "BLE", "RUF100"]`, not the ~400-rule catalogue a bare
+`ruff check` enables with no config at all. `BLE` is the rule this
+adoption exists for; `E`/`F` are pyflakes/pycodestyle's core correctness
+checks plus the "keep lines short" review rule build order already named
+for `ruff` (`E501`, closing the gap [5.1](#51-pylint-a-measured-baseline)
+left: line length was a hand-fixed wrap, not an enforced check); `RUF100`
+is what makes a `# noqa: BLE001` a checked claim instead of a comment
+nothing reads -- the actual mechanism that turns the suppression list and
+the register into one list, which is what build order item 2 asked for.
+
+**Baseline, that selection, no `per-file-ignores`: 60 findings across
+`chitragupta/` and `scripts/`.**
+
+| Rule | Count | Disposition |
+|---|---|---|
+| `F401` unused-import | 41 | All in six `__init__.py` re-exports (`registry/`, `spec/`, `unit/`, `dossier/`, `render_output/`, `review/figure_layout/`) -- `per-file-ignores` |
+| `E402` module-import-not-at-top | 11 | Same four of those six `__init__.py` files, importing late on purpose to dodge a circular import -- `per-file-ignores` |
+| `F821` undefined-name | 4 | `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated three fields `"array[int]"` with no `array` import in the module -- real, fixed by adding it |
+| `BLE001` blind-except | 2 | `style_check.language_of`/`style_acronym_drift.findings`, each catching a blind `Exception` where `dossier.dossier_dir` only ever raises `dossier.DossierError` -- real, fixed by narrowing rather than suppressing |
+| `E501` line-too-long | 1 | `chitragupta/dossier/_create.py:33`, a 125-column Markdown table row inside an f-string template -- real, and pylint's own blind spot: `unspecified-encoding`'s checker does not see inside a multi-line string literal, so a 10.00/10 `pylint` run says nothing about it |
+| `RUF100` unused-noqa | 1 | `chitragupta/pdf_text.py`'s `_extract_docling` -- fixed by removing the marker |
+
+The `per-file-ignores` entry is `"__init__.py" = ["F401", "E402"]`,
+wholesale rather than 52 per-line `noqa`s, because that pattern is
+identical at all six sites and ruff's own per-file-ignores mechanism is
+built for exactly this shape.
+
+**The 12 `chitragupta`/`scripts` markers this adoption exists for
+(`docs/TECHNICAL-DEBT.md`'s former "11 inert" count, plus
+`scripts/check_version_bump.py`'s, added after that count was taken)
+turned out to split 11/1.** Eleven are confirmed live: `ruff` would
+report `BLE001` at each without its `# noqa`, checked directly rather
+than assumed. The twelfth, `pdf_text.py`'s, was not -- `_extract_docling`
+re-raises via `raise ... from exc`, which `BLE001`'s own definition of
+"blind" exempts, so the marker suppressed nothing and was removed (the
+*why*-comment beside it stayed; only the `noqa:` tag was dead weight).
+That is `RUF100` doing the job build order item 2 asked for: proving the
+suppressed set was the *right* set, rather than leaving it asserted.
+
+**`bench/`'s two markers were checked the same way and are genuine.**
+`bench/make_corpus.py` and `bench/bench_docling.py` would both report
+`BLE001` without their `# noqa`, verified directly (neither except block
+re-raises). They stay exactly as written. `bench/` itself is not in
+`ci.yml`'s `ruff` invocation -- [Tier 3.1](#31-bench-is-outside-every-check-in-the-repository)
+excludes it from every check in the repository, unchanged by this
+adoption, so the tag is inert in practice (nothing runs `ruff` over
+`bench/`) but correct on the evidence, which is the more honest state
+than stripping a suppression a real check would still need.
+
+**`ruff`'s pin is exact for a reason beyond Sonar S8544.** `RUF100`'s
+verdict on a given `except` block depends on carve-outs like the
+re-raise one above, which are undocumented and narrower than `BLE001`
+looks on its own -- an unpinned bump could move that verdict and redden
+`ci.yml` on a rule this project never touched. `.pylintrc` and
+`.markdownlint.yaml` don't carry this risk the same way; `ruff`'s pin in
+`ci.yml` is where the next reader bumping it will meet the reason.
 
 ## Reviewing with OpenCodeReview
 
@@ -691,7 +741,7 @@ worse.
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
 | `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:128`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval.py` and `enrich/docling_parse.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |
-| 11 broad `except Exception` handlers | Each has a stated cause and a `# noqa` marker. See [Tier 2](#the-11-inert--noqa-ble001-markers) -- the debt is the absent linter, not the handlers |
+| 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#54-ruff-a-measured-baseline) -- confirmed live, not assumed so |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
 | C2 permits a registered module to grow | [Deliberate](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register). Pinning each to today's size fails on every ordinary edit and gets the rule turned off |
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
@@ -714,12 +764,6 @@ convention down in `bench/README.md`.
 
 1. **[3.1] The rest of `bench/`.** 19 of its 22 scripts still carry no
    self-check, and the directory remains outside C1/C2, coverage, the
-   release archive and the linter. Open and accepted rather than
+   release archive and the linters. Open and accepted rather than
    scheduled: the convention is a floor for a script that publishes a
    number, not a plan to bring `bench/` under the ratchet.
-2. **[Tier 2] The 11 inert `# noqa: BLE001` markers.** Open by
-   deliberate choice -- the real fix needs `ruff` or an equivalent
-   per-site suppression linter, the same scale of work as the
-   pylint/markdownlint adoptions in
-   [5.1](#51-pylint-a-measured-baseline)/[5.2](#52-markdownlint-a-measured-baseline),
-   and that tooling decision was left for its own round.

@@ -75,7 +75,7 @@ def language_of(draft: Path) -> str | None:
     """
     try:
         scope = dossier.dossier_dir(draft) / dossier.SCOPE_MD
-    except Exception:  # pylint: disable=broad-except
+    except dossier.DossierError:
         return None  # a draft outside content/ has no dossier path to compute
     if not scope.is_file():
         return None
