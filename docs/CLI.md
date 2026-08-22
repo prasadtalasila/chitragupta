@@ -26,6 +26,7 @@ short path; this is the full set.
   - [`chitragupta.corpus topics`](#python--m-chitraguptacorpus-topics)
   - [`chitragupta.draft gate`](#python--m-chitraguptadraft-gate)
   - [`chitragupta.draft references`](#python--m-chitraguptadraft-references)
+  - [`chitragupta.draft evidence`](#python--m-chitraguptadraft-evidence)
   - [`chitragupta.draft dossier`](#python--m-chitraguptadraft-dossier)
   - [`chitragupta.draft retrieve`](#python--m-chitraguptadraft-retrieve)
   - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
@@ -536,6 +537,67 @@ title and year until the next `python -m chitragupta.corpus sync`.
 ```bash
 python -m chitragupta.draft references content/drafts/survey.md
 # python -m chitragupta.draft references content/drafts/thesis.md --heading "6. References"
+```
+
+### `python -m chitragupta.draft evidence`
+
+Render the **evidence sidecar** beside a draft: each cited source, and
+the verbatim spans its dossier marked quotable, grouped by the section
+that leans on them.
+
+```text
+## Approaches to model synchronisation
+
+### J. Doe and R. Roe, "A Paper," *IEEE Trans. Testing*, 2024. `doe_paper_2024`
+
+> "the verbatim span, exactly as evidence.md's quote: field holds it"
+```
+
+It lands beside the render rather than inside the draft:
+`content/drafts/dt/survey.md` produces
+`content/rendered/dt/survey.evidence.{md,tex,pdf}`, next to
+`survey.{md,tex,pdf}`. A sidecar is **never committed** --
+`.gitignore` excludes `content/rendered/**/*.evidence.*` even under the
+example topic whose renders are otherwise tracked, because a sidecar
+carries verbatim wording from copyrighted sources.
+
+Four things it will not do, each of them structural rather than checked:
+
+- **It prints only `quote:`.** Not `claim:`, which is the drafter's own
+  words, and above all not a legacy `support:`, which in practice holds a
+  raw 600-character retrieval window. A skill meeting a `support:`-only
+  block reads it as a quote (see
+  [DRAFT-ITERATION.md](DRAFT-ITERATION.md)); a command that *prints* the
+  field deliberately does not.
+- **It cannot introduce a citekey.** Its universe is the draft's own
+  citations, so a source the dossier holds but the draft never cites is
+  dropped -- the same rule `references` follows.
+- **It adds no citations to anything.** Every citekey it prints sits in a
+  code span, which the gate blanks, so
+  `python -m chitragupta.draft gate` over a sidecar reports
+  `0 citations ... OK` and the draft's own `[1]`, `[2]` numbering is
+  untouched.
+- **It writes nothing when there is nothing to show.** No dossier, or no
+  `quote:` anywhere in it, and it prints `no quoted evidence recorded`
+  and exits **0**. That is the expected answer for a tutorial, and for
+  any dossier still carrying only pre-A2 blocks -- not a failure.
+
+Reading both `[@citekey]` and `\citep{...}`, so a `thesis-chapter-writer`
+`.tex` fragment gets a sidecar too. The sidecar is a standalone document
+with its own preamble, never something a thesis `\input`s, which is why
+that genre emits one rather than declining.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `<input>` | required | The draft file (Markdown or LaTeX) |
+| `--format FORMAT` | `md` | Output format, passed to `render` for anything but `md` |
+| `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`; confined to `content/` |
+
+```bash
+python -m chitragupta.draft evidence content/drafts/dt/survey.md --format pdf
+# leaves survey.evidence.md beside survey.evidence.pdf -- the Markdown is
+# the sidecar's own source, and the only diffable form of it
 ```
 
 ### `python -m chitragupta.draft dossier`

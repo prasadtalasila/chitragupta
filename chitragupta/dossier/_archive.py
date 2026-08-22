@@ -51,6 +51,38 @@ def _strip_aid_suffix(relative: PurePosixPath) -> PurePosixPath:
     return stem
 
 
+def _strip_sidecar_suffix(relative: PurePosixPath) -> PurePosixPath:
+    """`survey.evidence.pdf` -> `survey`, for matching a draft's evidence
+    sidecar against the draft it belongs to.
+
+    The same problem `_strip_aid_suffix` solves one root over, and found
+    the same way: `_matches` compares `with_suffix("")`, so without this
+    a sidecar reduces to `topic/survey.evidence` and a bundle named for
+    `topic/survey` silently leaves out the evidence for the draft it was
+    asked to archive. A `dossier export` is meant to be the whole record;
+    a quiet omission there is worse than a loud failure.
+
+    Exactly `.evidence` and nothing else, for the reason `_strip_aid_suffix`
+    gives: a draft named `survey.v2.md` renders to `survey.v2.pdf` and
+    must go on matching `topic/survey.v2` rather than being
+    double-stripped down to `topic/survey`.
+    """
+    # Deferred, and it has to be: `chitragupta/evidence_appendix.py` reads
+    # the dossier, so it imports this package -- importing it back at
+    # module scope makes the two import each other on the way up, which
+    # is a genuine failure rather than a style choice. The alternative,
+    # spelling "evidence" again here, would put the naming convention in
+    # two places when the whole point of naming it once is that the
+    # writer, this matcher and .gitignore cannot drift apart.
+    # chitragupta/render_output/_cli.py defers for the same reason.
+    from chitragupta import evidence_appendix
+
+    stem = relative.with_suffix("")
+    if stem.suffix.lstrip(".") == evidence_appendix.SUFFIX:
+        return stem.with_suffix("")
+    return relative
+
+
 def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, str]]:
     """(file on disk, name inside the archive) for everything to back up.
 
@@ -110,11 +142,19 @@ def _match_target(label: str, relative: PurePosixPath) -> PurePosixPath:
     `topic/survey`. Exactly that, not "two suffixes": a draft
     named `survey.v2.md` would otherwise have its reports
     double-stripped to `survey` and stop matching the draft.
+
+    A render mirrors the draft's path too, and almost always needs
+    no adjustment either -- `survey.pdf` already matches
+    `topic/survey` once `_matches` drops the format suffix. The
+    exception is the evidence sidecar, whose name carries
+    `.evidence` in the same position a report carries its aid.
     """
     if label == "dossiers":
         return relative.parent
     if label == "review":
         return _strip_aid_suffix(relative)
+    if label == "rendered":
+        return _strip_sidecar_suffix(relative)
     return relative
 
 

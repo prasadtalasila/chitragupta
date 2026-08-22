@@ -119,6 +119,20 @@ enrichment layer is optional and nothing above it needs it.
   and keeps no repair that `python -m chitragupta.draft gate` and `python -m
   chitragupta.review verbatim recheck` do not both accept. Never re-run a genre
   skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
+
+  **Verbatim source wording has one legitimate home, and it is not the
+  draft.** The dossier's `evidence.md` records it in a `quote:` field --
+  optional, captured only when a quotation is actually intended, and
+  never the residue of retrieval. `python -m chitragupta.draft evidence`
+  then renders those spans into an **evidence sidecar** beside the draft's
+  render (`content/rendered/<topic>/<name>.evidence.pdf`), attributed and
+  in quotation marks. Four of the five genres emit one;
+  `tutorial-writer` does not, and docs/GENRE.md records why for each. A
+  sidecar is never committed and never shipped -- `.gitignore` excludes
+  it, and `scripts/release.py` archives only git-tracked paths -- because
+  it carries wording from copyrighted sources. Never add a `quote:` after
+  the fact to make one appear, and never copy a span out of one back into
+  body prose.
 - **Layer 3, the enrichment layer -- optional** (`python -m chitragupta.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is

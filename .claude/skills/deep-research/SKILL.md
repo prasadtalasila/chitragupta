@@ -536,6 +536,29 @@ group required. If either command reports `[missing-binary]` or `[error]`,
 print a one-line warning in chat with that message and continue anyway —
 a rendering failure never blocks presenting the `.md` report.
 
+**Then render the evidence sidecar**, in the same formats:
+
+```bash
+python -m chitragupta.draft evidence content/drafts/deep-research-<slug>.md --format pdf
+python -m chitragupta.draft evidence content/drafts/deep-research-<slug>.md --format md
+```
+
+**Deep research emits one, and has the strongest claim to it of the five
+genres:** showing its work *is* the product here. A report that reconciles
+several perspectives and names where the corpus disagrees with itself is
+read by someone who wants to check a contradiction against what each
+source actually said, and the sidecar is where they do that. It lands as
+`content/rendered/<topic>/<name>.evidence.{pdf,md}` beside the render,
+grouping each source's `quote:` spans under the section that leans on
+them.
+
+It is built from `evidence.md` and can only name citekeys the report
+already cites, so it cannot introduce a source or a claim. A report whose
+blocks carry no `quote:` produces no sidecar and says
+`no quoted evidence recorded`; that is the expected answer when no
+quotation was deliberately captured, and it is never a reason to go back
+and add one.
+
 **(e) Close the dossier.** Two things are still only in this conversation:
 
 - **The section map.** Reconcile `sections.md` against the finished

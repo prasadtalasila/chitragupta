@@ -194,6 +194,28 @@ verbatim without owning its shape, so old and new coexist by
 construction. A skill meeting a `support:`-only block reads it as
 `quote:` -- the conservative reading, since that is usually what it is.
 
+**That rule is about what a drafter *may quote from*, and it does not
+extend to anything that *prints* the field.** The two are different
+questions with opposite safe answers, and conflating them would publish
+source wording:
+
+| | Reads a `support:`-only block as... | Why |
+|---|---|---|
+| A drafting or revising skill | `quote:` | It is deciding whether the block may be quoted at all. Treating unknown provenance as quotable-only is the cautious answer -- it *restricts* what the skill may do with it |
+| `chitragupta/evidence_appendix.py` | nothing at all | It is deciding what to put in a rendered document. A legacy `support:` holds a raw 600-character retrieval window (`EVIDENCE_CHARS`), and printing one as an attributed quotation would publish it |
+
+So the evidence sidecar
+([CLI.md](CLI.md#python--m-chitraguptadraft-evidence)) reads `quote:` and
+only `quote:`. A pre-A2 dossier therefore renders no sidecar, which is
+correct rather than a gap: nobody ever decided those windows were worth
+quoting. `claim:` is excluded from it for the mirror-image reason -- it is
+the drafter's own words, so quoting it back would attribute this
+project's prose to the source.
+
+If you are changing that module and this looks like an oversight against
+the rule above, it is not; `plans/a4-evidence-appendix.md` records the
+decision and `tests/test_evidence_appendix.py` pins it.
+
 **The self-check.** `python -m chitragupta.draft dossier check-evidence <draft>`
 compares each block's `claim:` against its own `quote:`
 (`chitragupta/dossier/_evidence_check.py`, reusing

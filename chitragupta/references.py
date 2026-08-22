@@ -287,16 +287,19 @@ def _join(parts: list[str]) -> str:
     return out
 
 
-def build_section(citekeys: list[str], con, heading: str = "References",
-                  label_citekeys: bool = True) -> str:
-    """The References section for `citekeys`, numbered in the given order.
+def entries(citekeys: list[str], con) -> dict[str, str]:
+    """citekey -> its IEEE entry, without a number, for every key given.
 
-    `label_citekeys` appends each entry's key in a code span. On by
-    default, because in the *draft* the inline markers are `[@citekey]`
-    and the label is what ties one to its entry. The numbered copy
-    (`numbered_markdown`) turns it off: there the inline markers are
-    numbers, the numbers already index this list, and a trailing key
-    would just be noise to a reader.
+    The one place this project turns a set of citekeys into formatted
+    bibliography entries, and the one place a cited key with no ledger
+    row is refused. `build_section` numbers what this returns;
+    `chitragupta/evidence_appendix.py` uses the same entries as the
+    attribution line above each quoted span, so a reference list and an
+    evidence sidecar built from the same draft name their sources
+    identically rather than in two spellings that could drift.
+
+    A missing row is a hard error (AGENTS.md's citekey invariant), never
+    a silently dropped entry.
     """
     placeholders = ",".join("?" * len(citekeys))
     rows = {
@@ -315,8 +318,8 @@ def build_section(citekeys: list[str], con, heading: str = "References",
             f"was run and passed first: {', '.join(missing)}"
         )
 
-    lines = [f"## {heading}", ""]
-    for number, key in enumerate(citekeys, start=1):
+    built = {}
+    for key in citekeys:
         title, year, bib_fields = rows[key]
         # A row written before the bib_fields column existed stores NULL;
         # a value that isn't valid JSON would mean a hand-edited ledger.
@@ -326,7 +329,25 @@ def build_section(citekeys: list[str], con, heading: str = "References",
             fields = json.loads(bib_fields) if bib_fields else {}
         except (TypeError, ValueError):
             fields = {}
-        entry = format_entry(key, title, year, fields)
+        built[key] = format_entry(key, title, year, fields)
+    return built
+
+
+def build_section(citekeys: list[str], con, heading: str = "References",
+                  label_citekeys: bool = True) -> str:
+    """The References section for `citekeys`, numbered in the given order.
+
+    `label_citekeys` appends each entry's key in a code span. On by
+    default, because in the *draft* the inline markers are `[@citekey]`
+    and the label is what ties one to its entry. The numbered copy
+    (`numbered_markdown`) turns it off: there the inline markers are
+    numbers, the numbers already index this list, and a trailing key
+    would just be noise to a reader.
+    """
+    built = entries(citekeys, con)
+    lines = [f"## {heading}", ""]
+    for number, key in enumerate(citekeys, start=1):
+        entry = built[key]
         lines.append(f"[{number}] {entry} `{key}`" if label_citekeys else f"[{number}] {entry}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"

@@ -76,8 +76,8 @@ before it had a shared front door.
 import argparse
 import sys
 
-from chitragupta import (citation_gate, dossier, references, registry, render_output, retrieval,
-                         spec, style_check, unit)
+from chitragupta import (citation_gate, dossier, evidence_appendix, references, registry,
+                         render_output, retrieval, spec, style_check, unit)
 from chitragupta.progname import prog_for
 
 VERBS = {
@@ -86,6 +86,8 @@ VERBS = {
                          "inspect it, back it up, restore it"),
     "retrieve": (retrieval, "BM25 retrieval over the synced corpus"),
     "references": (references, "an IEEE reference list built from a draft's own cited citekeys"),
+    "evidence": (evidence_appendix, "the evidence sidecar rendered beside a draft: each "
+                                    "cited source and the spans its dossier marked quotable"),
     "render": (render_output, "render a Pandoc-markdown or LaTeX draft to tex/pdf/docx"),
     "style": (style_check, "check a draft's prose against docs/WRITING-STANDARDS.md "
                            "-- a review aid, never a gate"),
