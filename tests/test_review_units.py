@@ -215,6 +215,12 @@ class TestSectionUnits:
         text = "Preamble [@A].\n\n## One\n\nText [@B].\n"
         assert [u.citekeys for u in _units.units(text, "section")] == [("A",), ("B",)]
 
+    def test_blank_lines_before_the_first_heading_open_no_section(self, isolated_config):
+        """Otherwise a draft that happens to start with a blank line
+        reports one more unit than it has, and that unit cites nothing."""
+        assert [u.line for u in _units.units("\n\n## One\n\nText [@A].\n", "section")] \
+            == [3]
+
     def test_a_draft_with_no_headings_is_one_section(self, isolated_config):
         text = "One [@A].\n\nTwo [@B].\n"
         assert [u.citekeys for u in _units.units(text, "section")] == [("A", "B")]

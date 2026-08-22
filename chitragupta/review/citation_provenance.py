@@ -45,6 +45,7 @@ from pathlib import Path
 
 from chitragupta import citation_gate, config, ledger, review, sentences
 from chitragupta.passages import Passage, distinctive, source_passages
+from chitragupta.review import _units
 
 
 @dataclass
@@ -65,19 +66,17 @@ class Report:
 
 
 def _paragraph_spans(lines: list[str]) -> list[tuple[int, int, str]]:
-    """(first line, last line, joined text) per blank-line-separated block."""
-    spans, start, buf = [], None, []
-    for index, line in enumerate(lines, 1):
-        if line.strip():
-            if start is None:
-                start = index
-            buf.append(line.strip())
-        elif start is not None:
-            spans.append((start, index - 1, " ".join(buf)))
-            start, buf = None, []
-    if start is not None:
-        spans.append((start, len(lines), " ".join(buf)))
-    return spans
+    """(first line, last line, joined text) per blank-line-separated block.
+
+    The joined view of `_units.blocks`, which does the same walk but
+    returns raw lines -- `synthesis` has to find a declaration marker
+    among them before they are joined. `verbatim_check._paragraphs` is a
+    third copy and deliberately stays one: 1880 code lines and frozen in
+    the size register, so migrating it is churn out of proportion.
+    """
+    return [(start, start + len(block) - 1,
+             " ".join(line.strip() for line in block))
+            for start, block in _units.blocks(lines)]
 
 
 # Markdown block openers. A table row and a heading are each complete in

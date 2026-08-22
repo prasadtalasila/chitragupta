@@ -151,8 +151,14 @@ def _citekeys(prose: str) -> tuple[str, ...]:
     return tuple(sorted({key for _, key in citation_gate.extract_citekeys(prose)}))
 
 
-def _blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
-    """(first line number, the block's lines) per blank-line-separated block."""
+def blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
+    """(first line number, the block's lines) per blank-line-separated block.
+
+    Public because `citation_provenance._paragraph_spans` is the joined
+    view of this same walk. Raw lines rather than joined text, because
+    `synthesis` has to find a declaration marker among them before they
+    are joined -- and joining is the cheaper of the two to add on top.
+    """
     blocks: list[tuple[int, list[str]]] = []
     start, buffer = None, []
     for index, line in enumerate(lines, offset):
@@ -214,9 +220,14 @@ def _sections(lines: list[str]) -> list[tuple[int, list[str]]]:
         if _HEADING_RE.match(line) and buffer:
             sections.append((start, buffer))
             start, buffer = index, [line]
-        else:
-            start = index if not buffer else start
+        elif buffer:
             buffer.append(line)
+        elif line.strip():
+            # Blank lines before the first section open nothing. Counting
+            # them as a section of their own would file a draft that
+            # happens to start with a blank line as having one more unit
+            # than it has, every one of them uncited.
+            start, buffer = index, [line]
     if buffer:
         sections.append((start, buffer))
     return sections
@@ -224,7 +235,7 @@ def _sections(lines: list[str]) -> list[tuple[int, list[str]]]:
 
 def _section(start: int, lines: list[str]) -> Unit:
     paragraphs = [p for p in
-                  (_paragraph(at, block) for at, block in _blocks(lines, start))
+                  (_paragraph(at, block) for at, block in blocks(lines, start))
                   if p is not None]
     prose = _prose(lines)
     return Unit("section", start, prose, _citekeys(prose),
@@ -248,6 +259,6 @@ def units(text: str, kind: str) -> list[Unit]:
         prose = _prose(lines)
         return [Unit("document", 1, prose, _citekeys(prose), _declaration(lines), 0)]
     if kind == "paragraph":
-        found = (_paragraph(at, block) for at, block in _blocks(lines))
+        found = (_paragraph(at, block) for at, block in blocks(lines))
         return [unit for unit in found if unit is not None]
     return [_section(at, block) for at, block in _sections(lines)]
