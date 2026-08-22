@@ -1,9 +1,62 @@
 # B2: multi-source synthesis, at the unit each genre can carry
 
-Status: **plan, unbuilt.** Written 2026-08-21. Implements
-[docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s B2 and
-[#310](https://github.com/prasadtalasila/chitragupta/issues/310), build
-order item 6.
+Status: **built.** Written 2026-08-21, shipped in
+[#341](https://github.com/prasadtalasila/chitragupta/pull/341) (6.17.0),
+which closed
+[#310](https://github.com/prasadtalasila/chitragupta/issues/310) --
+[docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s B2, build order
+item 6.
+
+## What changed on the way
+
+Per [plans/README.md](README.md): a plan that no longer matches what
+shipped is worse than no plan. Nine differences, and the first is the
+one a reader is most likely to trip over.
+
+1. **Three modules, not two.** `synthesis.py` came out at 298 code
+   lines against C2's 250, so the rendering split off into
+   `_synthesis_render.py`. The plan predicted the cap would bite and
+   planned one split; it needed two. The boundary is honest -- what the
+   numbers *are* against how they read -- but it was found by the
+   ratchet, not by design.
+2. **The renderers take the findings list as an argument.** The first
+   cut had `_synthesis_render` importing `synthesis` for `Report` and
+   `findings()`, which is a cycle; it was papered over with a deferred
+   import and a `pylint: disable`. Passing `found` in removes the cycle,
+   the disable, and a second `findings()` computation per render.
+3. **`_units.blocks` is public, and `citation_provenance` uses it.** The
+   plan said `_paragraph_spans` would migrate. The first commit did not
+   do it and wrote a third copy of the walk instead; the pre-push review
+   caught that, and the second commit did the migration properly. The
+   register entry shrank 459 -> 457.
+4. **`dossier.GENRES` is new.** The genre-to-unit table needed something
+   to be checked against, or a sixth genre would arrive as a silent
+   fallback to the paragraph. `dossier init --genre`'s help string is
+   now built from it rather than restating it.
+5. **A unit raises at most one finding.** A single-source section has a
+   run as long as it has paragraphs, so reporting `single_key_run`
+   beside `single_source` said the same thing twice. The run finding is
+   suppressed when spread is 1.
+6. **`RUN_REPORTED_AT = 3`**, taken from `textbook-chapter-writer` step
+   4's own "before reusing the same citekey a third time". Every
+   section's run is reported whatever its length; the constant only
+   decides which get their own line, so it is not a threshold anything
+   is scored against.
+7. **A phantom section, found and fixed.** Blank lines before the first
+   heading opened a section on the blank line, so a draft starting with
+   one reported an extra uncited unit. Not in the plan's test list; it
+   is now the eleventh test.
+8. **`§11` was appended, exactly as the plan required** -- verified
+   against the callers that cite `WRITING-STANDARDS.md` sections by
+   number, one of which is a test assertion.
+9. **`mkdocs.yml` needed nothing**, as predicted: this aid has no
+   dedicated doc page, so `docs/CLI.md` carries it like `coverage` and
+   `verbatim`.
+
+The tutorial question the plan left open under "Open, deliberately" was
+closed before the build, on the human's instruction that the guarantee
+is needed in every genre. It is recorded below as a settled decision --
+"Why a tutorial's unit is the document" -- rather than as a doubt.
 
 **Written for** whoever builds it. **Assumed:**
 [docs/GENRE.md](../docs/GENRE.md) for what each genre owes its reader,

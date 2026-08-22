@@ -558,6 +558,11 @@ Size: S. Depends on: nothing. Highest value-per-line in this document.
 
 ### B2: require multi-source paragraphs
 
+**Shipped in [#341](https://github.com/prasadtalasila/chitragupta/pull/341)
+(6.17.0)** as `python -m chitragupta.review synthesis`, plus the rule in
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 and in all five genre
+skills.
+
 *Planned in detail: [`plans/b2-multi-source-synthesis.md`](../plans/b2-multi-source-synthesis.md),
 which settles the unit the rule binds at -- paragraph for a survey, a
 thesis chapter and a deep-research report; the section for a textbook
