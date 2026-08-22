@@ -54,6 +54,8 @@ described by change.
 
 import json
 import re
+from collections.abc import Iterator
+from typing import Any
 
 from chitragupta import config, ledger
 
@@ -79,7 +81,7 @@ CITATION_NOISE = frozenset({
 MIN_NAME_LENGTH = 3
 
 
-def _tokens(person: str):
+def _tokens(person: str) -> Iterator[str]:
     """The name-like words in one BibTeX author entry, lowercased.
 
     Yields given names and surname alike. A first name is no more a
@@ -131,7 +133,7 @@ def stop_words(con=None) -> list:
     return sorted(ENGLISH_STOP_WORDS | CITATION_NOISE | names)
 
 
-def vectorizer(con=None):
+def vectorizer(con=None) -> Any:
     """The `vectorizer_model` BERTopic should build its labels from.
 
     `ngram_range=(1, 2)` because the terms that name a topic in this
