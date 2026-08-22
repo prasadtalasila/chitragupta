@@ -778,6 +778,40 @@ class TestExport:
         }
         assert "rendered/dt-for-engineers/survey.pdf" in names
 
+    def test_a_name_selects_a_drafts_evidence_sidecar(self, draft):
+        # `survey.evidence.pdf` reduces to `dt-for-engineers/survey.evidence`
+        # under _matches' with_suffix(""), which does not equal the draft
+        # name `dt-for-engineers/survey` -- so without the aid-suffix
+        # strip this file is silently absent from an archive whose whole
+        # purpose is to be the complete record. Exactly the problem
+        # `survey.provenance.md` had first.
+        rendered = config.RENDERED_DIR / "dt-for-engineers"
+        rendered.mkdir(parents=True)
+        (rendered / "survey.evidence.pdf").write_bytes(b"%PDF")
+        (rendered / "survey.evidence.md").write_text("# Evidence\n")
+        names = {
+            name
+            for _, name in _archive.bundle_members(["dt-for-engineers/survey"],
+                                                   with_rendered=True)
+        }
+        assert "rendered/dt-for-engineers/survey.evidence.pdf" in names
+        assert "rendered/dt-for-engineers/survey.evidence.md" in names
+
+    def test_a_rendered_draft_whose_stem_merely_contains_a_dot_still_matches_itself(self, draft):
+        # The strip is exactly `.evidence`, not "one more suffix": a draft
+        # named `survey.v2.md` renders to `survey.v2.pdf` and must go on
+        # matching `dt-for-engineers/survey.v2`, not be double-stripped to
+        # `dt-for-engineers/survey`.
+        rendered = config.RENDERED_DIR / "dt-for-engineers"
+        rendered.mkdir(parents=True)
+        (rendered / "survey.v2.pdf").write_bytes(b"%PDF")
+        names = {
+            name
+            for _, name in _archive.bundle_members(["dt-for-engineers/survey.v2"],
+                                                   with_rendered=True)
+        }
+        assert "rendered/dt-for-engineers/survey.v2.pdf" in names
+
     def test_a_name_selects_one_topic_directory(self, draft, isolated_config):
         other = config.DRAFTS_DIR / "unrelated.md"
         other.write_text("# other\n")

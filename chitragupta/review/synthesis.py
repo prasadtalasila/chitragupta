@@ -18,10 +18,11 @@ it back. A proportion is exactly the shape docs/AUTO-IMPROVEMENT.md's R3
 exists to keep out of an unattended loop, so there is no threshold here,
 no target, and no per-genre bar -- only counts, and a human to read them.
 
-One of the five commands in the **review layer**, with
+One of the six commands in the **review layer**, with
 chitragupta/review/citation_provenance.py,
 chitragupta/review/citation_coverage.py,
-chitragupta/review/verbatim_check.py and
+chitragupta/review/verbatim_check.py,
+chitragupta/review/figure_layout/ and
 chitragupta/review/uncited_prose.py -- run by hand on a finished draft,
 never automatically, never a gate, and never holding the write lock.
 

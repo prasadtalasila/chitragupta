@@ -111,6 +111,7 @@ command already has -- this is a front door, not a redesign.
 |---|---|
 | `chitragupta draft gate <file>...` | -- (takes no options; this is the hard gate) |
 | `chitragupta draft references <file>` | `--heading` |
+| `chitragupta draft evidence <file>` | `--format`, `--output-dir` |
 | `chitragupta draft render <file>` | `--format`, `--documentclass`, `--fontsize`, `--papersize`, `--margin`, `--csl`, `--output-dir`, `--fragment`, `--no-collapse-citations` |
 | `chitragupta draft style <draft>...` | `--language`, `--json` |
 | `chitragupta draft retrieve` | `search`, `evidence` |
@@ -127,6 +128,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta review verbatim` | `overlap`, `scan`, `recheck`, `locate` |
 | `chitragupta review coverage <draft>` | `--query` (required, repeatable), `--k`, `--write`, `--formats` |
 | `chitragupta review synthesis <draft>` | `--unit`, `--json`, `--write`, `--formats` |
+| `chitragupta review figure <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review uncited <draft>` | `--genre`, `--json`, `--write`, `--formats` |
 
 ### `enrich` -- optional, whole-corpus
@@ -135,9 +137,9 @@ command already has -- this is a front door, not a redesign.
 |---|---|
 | `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
-That is 4 layers and 18 verbs and aids (3 + 9 + 5 + 1), plus 3
-package-level commands, giving **42 invocable leaf commands**: 3 + 3 +
-(4 + 23) + (4 + 4) + 1. The counts are stated because a table is easy to
+That is 4 layers and 20 verbs and aids (3 + 10 + 6 + 1), plus 3
+package-level commands, giving **44 invocable leaf commands**: 3 + 3 +
+(5 + 23) + (5 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; #267 pins them with a test that
 walks the live parsers, so a verb added without a row here fails the
 suite.

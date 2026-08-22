@@ -32,7 +32,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Every module under chitragupta/review/ that is an aid rather than the entry
 # point or the shared helper.
-AID_MODULES = ["citation_provenance", "citation_coverage", "verbatim_check"]
+AID_MODULES = ["citation_provenance", "citation_coverage", "verbatim_check",
+               "synthesis", "figure_layout"]
 
 # A real top-level entry-point block, anchored at column 0 -- not the
 # string wherever it appears. chitragupta/enrich/docling_parse.py discusses
@@ -46,6 +47,19 @@ _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 # leg, and these sources contain non-ASCII punctuation -- so the check
 # died with a UnicodeDecodeError there while passing on Linux. Same
 # reason tests/test_skill_verbatim_scan_offer.py pins it.
+
+
+def _aid_sources(module: str) -> list[Path]:
+    """Every source file making up one aid, whichever shape it takes.
+
+    An aid is usually one `.py`; `figure_layout` is a package, because
+    its three parts need different things (source parsing, arithmetic,
+    and the one that shells out to pdflatex) and the whole would cross
+    the 250-code-line limit. Both shapes are one subcommand, which is
+    what the invariant is actually about.
+    """
+    base = REPO_ROOT / "chitragupta" / "review" / module
+    return sorted(base.glob("*.py")) if base.is_dir() else [base.with_suffix(".py")]
 
 
 def _run(*argv):
@@ -116,16 +130,36 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         module and exits 0 having done nothing -- which is a trap, but a
         silent and harmless one, and the same one `chitragupta/enrich/`'s stage
         modules carry by design (docs/ARCHITECTURE.md). With one, the
-        layer would have four entry points and no single --help."""
-        source = (REPO_ROOT / "chitragupta" / "review" / f"{module}.py").read_text(encoding="utf-8")
-        assert not _MAIN_BLOCK.search(source)
+        layer would have five entry points and no single --help.
+
+        An aid may be a module or a package -- `figure_layout` is a
+        package, split by what each part needs -- so every source file
+        under it is checked, not just its `__init__.py`. A `__main__.py`
+        inside the package would be the same defect wearing a different
+        filename.
+        """
+        for source in _aid_sources(module):
+            assert not _MAIN_BLOCK.search(source.read_text(encoding="utf-8")), source
 
     @pytest.mark.parametrize("module", AID_MODULES)
     def test_running_an_aid_module_directly_does_nothing(self, module):
-        """The observable half of the assertion above."""
+        """The observable half of the assertion above.
+
+        The two shapes fail differently and both are correct. A module
+        imports and exits 0 in silence. A *package* cannot be run with
+        `-m` at all -- Python refuses it outright, exit 1, because there
+        is no `__main__.py` -- which serves this invariant more strongly
+        than the silent version does: the trap the docstring above calls
+        "silent and harmless" is not even reachable.
+        """
         result = _run("-m", f"chitragupta.review.{module}")
-        assert result.returncode == 0
+
         assert result.stdout == ""
+        if (REPO_ROOT / "chitragupta" / "review" / module).is_dir():
+            assert result.returncode == 1
+            assert "cannot be directly executed" in result.stderr
+        else:
+            assert result.returncode == 0
 
     def test_the_enrichment_layer_keeps_the_same_shape(self):
         """Not this layer, but the same invariant, and the precedent this

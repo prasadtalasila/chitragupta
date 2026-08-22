@@ -24,6 +24,22 @@ content/drafts/*
 content/rendered/*
 !content/rendered/digital-twins-for-software-engineers/
 
+# ...with one carve-out from those exceptions: an evidence sidecar
+# (chitragupta/evidence_appendix.py) is never tracked, in the example
+# topic or anywhere else. It exists to carry verbatim quoted spans from
+# the sources a draft cites, which is exactly why content/dossiers/ is
+# ignored above -- and the two directories re-included here are the only
+# places under content/ where a generated file could otherwise reach a
+# public commit. Last matching rule wins in git, so this line has to
+# follow the re-inclusions rather than precede them.
+#
+# The `.evidence` infix is `evidence_appendix.SUFFIX`, and
+# tests/test_evidence_appendix.py asserts git ignores the path that
+# module actually chooses rather than a copy of this pattern -- so
+# renaming the convention fails a test instead of quietly publishing a
+# quote.
+content/rendered/**/*.evidence.*
+
 # The pipeline's rotated log file (see config.toml's [logging]
 # section) -- written by python -m chitragupta.corpus sync and scripts/enrich.py alike,
 # per-host, and the whole directory rather than *.log below,

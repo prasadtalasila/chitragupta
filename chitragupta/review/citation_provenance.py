@@ -7,12 +7,12 @@ exactly: *does the cited paper actually say this?* A claim that drifted
 away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
-One of the five commands in the **review layer**, beside
-citation_coverage.py, verbatim_check.py and synthesis.py -- run by hand on
-a finished draft, never automatically, never a gate, and never holding
-the write lock. chitragupta/review/__init__.py owns what the five have in common: where
-the report goes (`content/review/`, mirroring the draft's path) and what
-its header looks like.
+One of the six commands in the **review layer**, beside
+citation_coverage.py, verbatim_check.py, synthesis.py, figure_layout/ and
+uncited_prose.py -- run by hand on a finished draft, never automatically,
+never a gate, and never holding the write lock.
+chitragupta/review/__init__.py owns what the six have in common: where
+the report goes (`content/review/`, mirroring the draft's path) and what its header looks like.
 
 Not a gate, and for a concrete reason. Matching is lexical, so it cannot separate "the source
 doesn't say this" from "the source says it in words I didn't recognise".

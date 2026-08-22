@@ -509,19 +509,36 @@ Size: S-M, mostly SKILL.md. Depends on: A2.
 
 ### A4: the Evidence appendix
 
-Adopt the sample's property 2: a rendered `Evidence` section listing,
-per citekey, the title and the attributed quoted spans drawn from A2's
-`quote:` fields. Body prose then holds no verbatim material at all,
-because it has somewhere legitimate to live.
+**Built, as a sidecar rather than an appendix.** Planned in detail in
+[`plans/a4-evidence-appendix.md`](../plans/a4-evidence-appendix.md),
+which is the authoritative design and records why the shape changed.
 
-This changes what a draft *looks like*, so it is a genre decision per
-skill rather than one global switch -- a survey and a tutorial should
-not answer it identically, and `thesis-chapter-writer`'s `.tex`
-fragment is `\input` into someone else's document and may need to
-decline entirely.
+Adopt the sample's property 2: a rendered `Evidence` listing, per
+citekey, the title and the attributed quoted spans drawn from A2's
+`quote:` fields, so verbatim material has somewhere legitimate to live.
 
-Size: M. Depends on: A2. Touches the genre skills and
-`chitragupta/references.py`'s neighbourhood.
+**It is a separate document beside the render, not a section inside the
+draft** -- `content/rendered/<topic>/survey.evidence.pdf` next to
+`survey.pdf`. The reason is not in this document's original entry and is
+worth stating: `content/dossiers/` is gitignored precisely because
+`evidence.md` quotes copyrighted sources, but the example draft and
+render directories are *tracked*, so an appendix inside a draft would
+commit quoted spans from copyrighted PDFs to a public repository. A
+sidecar is excluded by pattern; a section in a tracked draft cannot be.
+
+This changes what a draft *looks like*, so it stays a genre decision per
+skill rather than one global switch -- and
+[GENRE.md](GENRE.md#the-evidence-sidecar-decided-per-genre) records all
+five answers. Two of them reverse what this entry expected.
+`tutorial-writer` declines, as anticipated. `thesis-chapter-writer` does
+**not**: the expected objection was that its `.tex` fragment is `\input`
+into someone else's document, and a sidecar is never `\input` -- it is
+standalone, with its own preamble, and an examiner reading adversarially
+is the ideal reader for one.
+
+Size: M. Depended on: A2. Landed in `chitragupta/evidence_appendix.py`
+(`python -m chitragupta.draft evidence`), the five genre skills, and a
+`.gitignore` rule that keeps a sidecar out of every commit.
 
 ## Theme B: make synthesis structural
 

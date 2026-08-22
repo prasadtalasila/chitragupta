@@ -307,7 +307,7 @@ not. Reading an artefact is not calling a layer.
 
 ## Layer 4: the review layer
 
-Five aids behind one command, run by hand over a finished draft.
+Six aids behind one command, run by hand over a finished draft.
 Nothing invokes them automatically, and none of them gates anything:
 
 | Command | Answers |

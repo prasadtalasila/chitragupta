@@ -364,6 +364,34 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     user's thesis either, so repair the figure or drop it, rather than
     handing over a chapter that cannot be typeset.
 
+    **Then render the evidence sidecar:**
+
+    ```bash
+    python -m chitragupta.draft evidence content/drafts/<slug>.tex --format pdf
+    ```
+
+    **This chapter emits one, and the reason it is safe to is the same
+    reason the References section below is not.** A sidecar is a
+    *separate, standalone document* -- `content/rendered/<topic>/
+    <name>.evidence.pdf`, with its own preamble -- never something your
+    thesis `\input`s. So none of the objections that keep a References
+    section out of the fragment apply to it: nothing lands mid-chapter,
+    nothing competes with the thesis-wide bibliography, and the fragment
+    you hand over is byte-for-byte what it was.
+
+    It is also the genre that most wants one. Your reader is an examiner
+    reading adversarially for the claim that outruns its evidence, and a
+    sidecar is exactly the artefact that lets them check a claim against
+    what the source actually said. It carries no `\bibliography` of its
+    own -- every citekey in it sits in a code span, so there is nothing
+    for citeproc to resolve.
+
+    `\citep{...}`/`\citet{...}` markers are read the same as `[@key]`
+    here, so the sidecar's contents come from this fragment's own
+    citations. A chapter whose `evidence.md` blocks carry no `quote:`
+    produces no sidecar and says `no quoted evidence recorded`; that is
+    the expected answer, not a failure.
+
     Unlike the Markdown-native genre skills, don't run `python -m
     chitragupta.draft references` on this fragment and don't add a manual References
     section to it -- the fragment is designed to inherit the thesis's own

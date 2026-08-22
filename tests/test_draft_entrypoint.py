@@ -31,6 +31,7 @@ BACKING_MODULES = {
     "dossier": "dossier",
     "retrieve": "retrieval",
     "references": "references",
+    "evidence": "evidence_appendix",
     "render": "render_output",
     "style": "style_check",
     "spec": "spec",

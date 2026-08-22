@@ -5,7 +5,7 @@ step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, and step 5 built narrow
 (verbatim runs only) in 5.7.0 -- see [Build order](#build-order).
 
 `python -m chitragupta.review agenda` is not a command and no skill consumes
-anything below. Of the review aids, all five now emit JSON: `verbatim
+anything below. Of the review aids, all six now emit JSON: `verbatim
 scan` as of 5.4.0 (#127), `provenance` and `coverage` as of 6.16.0 (#309),
 and `synthesis` and `uncited` from the day each landed (#341, #311).
 This document states *what* would be built and *what it must satisfy*, in
@@ -50,7 +50,7 @@ writes the ledger.
 Three sentences.
 
 - The **deterministic half** is a further review aid: it reads the other
-  five aids' findings plus the dossier's drift report and emits one
+  six aids' findings plus the dossier's drift report and emits one
   ranked, deduplicated worklist.
 - The **generative half** is a skill: it consumes that worklist, repairs
   what may be repaired unattended, re-verifies each repair, and hands the
@@ -94,7 +94,7 @@ it finds.
 
 **Reads:**
 
-- the five aids' `.json` for this draft -- each optional, and skipped
+- the six aids' `.json` for this draft -- each optional, and skipped
   with a note when absent;
 - `chitragupta.dossier.status(draft)`, for missing citekeys and candidates;
 - `rejected.md` -- a candidate already turned down with a reason is never
@@ -198,7 +198,7 @@ design would go wrong.
 **The aid: anyone, at any time.** `python -m chitragupta.review agenda <draft>`
 is
 free, deterministic, read-only and exits 0. It has exactly the standing of
-the other five aids -- you run it because you want to know. No occasion is
+the other six aids -- you run it because you want to know. No occasion is
 privileged and none is required.
 
 **The skill: only a person, and only on a draft they consider finished.**
@@ -331,4 +331,4 @@ Steps 4 and 5 are the only new work; the rest are open issues.
 - **No new entry point.** `python -m chitragupta.review agenda <draft>` is one
   verb under an existing front door, at depth 1.
 - **The review layer still never blocks.** `agenda` exits 0 with a full
-  worklist, exactly as the other five aids do with findings.
+  worklist, exactly as the other six aids do with findings.

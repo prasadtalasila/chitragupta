@@ -483,6 +483,24 @@ the lesson design is the part worth keeping either way.
     in chat with that message and continue anyway; a rendering failure never
     blocks presenting the `.md` draft.
 
+    **Do not render an evidence sidecar, and this is a recorded answer
+    rather than an omission.** The other four genres run
+    `python -m chitragupta.draft evidence` here; a tutorial does not, and
+    would produce nothing if it did.
+
+    The reason is what a tutorial *is*. It cites only in the closing
+    "Where to go next" section and never mid-lesson, so there is almost
+    nothing for a sidecar to be about. More to the point, a quotation has
+    no use in this genre: a learner at a keyboard needs the next command,
+    not what a paper said about the idea behind it, and pausing a lesson
+    to attribute a sentence to a source is precisely the digression this
+    skill exists to refuse. So no `quote:` is captured, and a sidecar
+    built from no quotes is no sidecar.
+
+    If you find yourself wanting one, that is a signal you have written a
+    textbook chapter -- see `textbook-chapter-writer`, whose reader is
+    studying rather than doing.
+
 15. **Record any steering.** If the user shaped this lesson in chat -- "use
     FastAPI, not Flask", "no Docker", "keep it under twenty minutes", "assume
     they've never opened a terminal" -- append it to the dossier's

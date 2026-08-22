@@ -48,19 +48,29 @@ _OVERLAP_THRESHOLD = 0.5
 _FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):\s*", re.MULTILINE)
 
 
-def _fields(block: str) -> dict[str, str]:
+def fields(block: str) -> dict[str, str]:
     """`block`'s `field: value` lines, keyed by field name -- the same
     match-then-slice-to-the-next-match reading `_citekeys._GLOSSARY_TERM`
     uses, over this module's own field set instead of glossary bullets.
+
+    Public because `chitragupta/evidence_appendix.py` reads the same four
+    fields out of the same file. `evidence.md` has one field parser and
+    this is it: a second one would be a second place for the field set to
+    drift, and the two callers disagree about *which* fields they may act
+    on rather than about how a block is read.
     """
     matches = list(_FIELD.finditer(block))
-    fields: dict[str, str] = {}
+    # `found` rather than `fields`, which is what this held while the
+    # function was `_fields`: the accumulator would now shadow the
+    # function's own name inside its body. Matches the name
+    # `_citekeys.py` uses for the same role in every parser there.
+    found: dict[str, str] = {}
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(block)
         value = block[match.end():end].strip()
         if value:
-            fields.setdefault(match.group("field"), value)
-    return fields
+            found.setdefault(match.group("field"), value)
+    return found
 
 
 def overlap_score(claim: str, quote: str) -> "float | None":
@@ -99,8 +109,8 @@ def reworded_claims(dossier: Path) -> dict[str, float]:
     """
     found: dict[str, float] = {}
     for citekey, block in evidence_blocks(dossier).items():
-        fields = _fields(block)
-        claim, quote = fields.get("claim"), fields.get("quote")
+        block_fields = fields(block)
+        claim, quote = block_fields.get("claim"), block_fields.get("quote")
         if not claim or not quote:
             continue
         score = overlap_score(claim, quote)

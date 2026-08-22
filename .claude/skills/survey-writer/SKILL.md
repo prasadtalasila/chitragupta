@@ -442,6 +442,29 @@ collapse them for the sake of a cleaner narrative.
     `[error]`, print a one-line warning in chat with that message and
     continue anyway — a rendering failure never blocks presenting the
     `.md` draft.
+
+    **Then render the evidence sidecar**, in the same formats:
+
+    ```bash
+    python -m chitragupta.draft evidence content/drafts/<slug>.md --format pdf
+    python -m chitragupta.draft evidence content/drafts/<slug>.md --format md
+    ```
+
+    **A survey emits one.** This genre is the natural fit: it is
+    citation-dense, and its reader is mapping a field and wants to see
+    what the sources actually said. The sidecar lands as
+    `content/rendered/<topic>/<name>.evidence.{pdf,md}`, beside the
+    render, and lists each cited source with the verbatim spans your
+    step-2 `quote:` fields recorded, grouped by the section that leans on
+    them.
+
+    You do not write it and you cannot add to it: it is built from
+    `evidence.md`, and it can only name citekeys the draft already cites.
+    A draft whose blocks carry no `quote:` produces no sidecar and prints
+    `no quoted evidence recorded` — that is the expected answer, not a
+    failure, and it means you captured no quotation you meant to use.
+    Never add a `quote:` after the fact to populate it; a quote is
+    captured when the evidence is judged or not at all.
 13. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
     specifically for: terms used before they're defined, a theme heading that
     doesn't match what the subsection actually argues, a comparison-table row

@@ -119,6 +119,20 @@ enrichment layer is optional and nothing above it needs it.
   and keeps no repair that `python -m chitragupta.draft gate` and `python -m
   chitragupta.review verbatim recheck` do not both accept. Never re-run a genre
   skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
+
+  **Verbatim source wording has one legitimate home, and it is not the
+  draft.** The dossier's `evidence.md` records it in a `quote:` field --
+  optional, captured only when a quotation is actually intended, and
+  never the residue of retrieval. `python -m chitragupta.draft evidence`
+  then renders those spans into an **evidence sidecar** beside the draft's
+  render (`content/rendered/<topic>/<name>.evidence.pdf`), attributed and
+  in quotation marks. Four of the five genres emit one;
+  `tutorial-writer` does not, and docs/GENRE.md records why for each. A
+  sidecar is never committed and never shipped -- `.gitignore` excludes
+  it, and `scripts/release.py` archives only git-tracked paths -- because
+  it carries wording from copyrighted sources. Never add a `quote:` after
+  the fact to make one appear, and never copy a span out of one back into
+  body prose.
 - **Layer 3, the enrichment layer -- optional** (`python -m chitragupta.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
@@ -131,12 +145,14 @@ enrichment layer is optional and nothing above it needs it.
   `chitragupta/review/verbatim_check.py`,
   `chitragupta/review/citation_coverage.py`,
   `chitragupta/review/synthesis.py`,
+  `chitragupta/review/figure_layout/`,
   `chitragupta/review/uncited_prose.py`): run by
   hand on
-  a finished draft, never invoked automatically. Each reads a draft --
-  and all but `uncited_prose.py` also the corpus -- and produces
-  **evidence for a human judgement, never a verdict** -- every one exits
-  0 whether it finds something or not, and
+  a finished draft, never invoked automatically. Each reads a draft plus
+  the corpus -- or, for `figure_layout`, the figures the draft
+  references, and for `uncited_prose`, nothing beyond the draft itself --
+  and produces **evidence for a human judgement, never a
+  verdict** -- every one exits 0 whether it finds something or not, and
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
   corpus, so it keeps working during a `sync`, like `python -m

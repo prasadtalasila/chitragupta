@@ -40,12 +40,12 @@ uncited claim is evidence, not wording. An unattended reviser rewording
 one would make it look supported without making it supported, which is
 the failure class this project exists to prevent.
 
-One of the five commands in the **review layer**, beside
-citation_provenance.py, citation_coverage.py, verbatim_check.py and
-synthesis.py -- run by hand on a finished draft, never automatically,
-never a gate, and never holding the write lock. Alone among the five it
-reads no corpus: it needs no ledger, no sync and no `enrich` extra, only
-the draft.
+One of the six commands in the **review layer**, beside
+citation_provenance.py, citation_coverage.py, verbatim_check.py,
+synthesis.py and figure_layout/ -- run by hand on a finished draft, never
+automatically, never a gate, and never holding the write lock. Alone
+among the six it reads nothing but the draft: no ledger, no corpus, no
+sync, no `enrich` extra, and not even the figures a draft references.
 
 Usage:
     python -m chitragupta.review uncited <draft.md>

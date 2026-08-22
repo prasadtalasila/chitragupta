@@ -26,9 +26,11 @@ short path; this is the full set.
   - [`chitragupta.corpus topics`](#python--m-chitraguptacorpus-topics)
   - [`chitragupta.draft gate`](#python--m-chitraguptadraft-gate)
   - [`chitragupta.draft references`](#python--m-chitraguptadraft-references)
+  - [`chitragupta.draft evidence`](#python--m-chitraguptadraft-evidence)
   - [`chitragupta.draft dossier`](#python--m-chitraguptadraft-dossier)
   - [`chitragupta.draft retrieve`](#python--m-chitraguptadraft-retrieve)
   - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
+  - [`chitragupta.review figure`](#python--m-chitraguptareview-figure)
   - [`chitragupta.review provenance`](#python--m-chitraguptareview-provenance)
   - [`chitragupta.review synthesis`](#python--m-chitraguptareview-synthesis)
   - [`chitragupta.review uncited`](#python--m-chitraguptareview-uncited)
@@ -252,6 +254,7 @@ chitragupta review verbatim scan content/drafts/<slug>.md        # ...with *any*
 chitragupta review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
 chitragupta review coverage content/drafts/<slug>.md --query "digital twin composability"
 chitragupta review synthesis content/drafts/<slug>.md            # how many sources each unit rests on
+chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
@@ -331,6 +334,7 @@ python -m chitragupta.review verbatim scan content/drafts/<slug>.md
 python -m chitragupta.review verbatim locate <citekey> "a phrase to find"
 python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
 python -m chitragupta.review synthesis content/drafts/<slug>.md
+python -m chitragupta.review figure content/drafts/<topic>/<slug>.md
 python -m chitragupta.review uncited content/drafts/<slug>.md
 ```
 
@@ -538,6 +542,67 @@ title and year until the next `python -m chitragupta.corpus sync`.
 ```bash
 python -m chitragupta.draft references content/drafts/survey.md
 # python -m chitragupta.draft references content/drafts/thesis.md --heading "6. References"
+```
+
+### `python -m chitragupta.draft evidence`
+
+Render the **evidence sidecar** beside a draft: each cited source, and
+the verbatim spans its dossier marked quotable, grouped by the section
+that leans on them.
+
+```text
+## Approaches to model synchronisation
+
+### J. Doe and R. Roe, "A Paper," *IEEE Trans. Testing*, 2024. `doe_paper_2024`
+
+> "the verbatim span, exactly as evidence.md's quote: field holds it"
+```
+
+It lands beside the render rather than inside the draft:
+`content/drafts/dt/survey.md` produces
+`content/rendered/dt/survey.evidence.{md,tex,pdf}`, next to
+`survey.{md,tex,pdf}`. A sidecar is **never committed** --
+`.gitignore` excludes `content/rendered/**/*.evidence.*` even under the
+example topic whose renders are otherwise tracked, because a sidecar
+carries verbatim wording from copyrighted sources.
+
+Four things it will not do, each of them structural rather than checked:
+
+- **It prints only `quote:`.** Not `claim:`, which is the drafter's own
+  words, and above all not a legacy `support:`, which in practice holds a
+  raw 600-character retrieval window. A skill meeting a `support:`-only
+  block reads it as a quote (see
+  [DRAFT-ITERATION.md](DRAFT-ITERATION.md)); a command that *prints* the
+  field deliberately does not.
+- **It cannot introduce a citekey.** Its universe is the draft's own
+  citations, so a source the dossier holds but the draft never cites is
+  dropped -- the same rule `references` follows.
+- **It adds no citations to anything.** Every citekey it prints sits in a
+  code span, which the gate blanks, so
+  `python -m chitragupta.draft gate` over a sidecar reports
+  `0 citations ... OK` and the draft's own `[1]`, `[2]` numbering is
+  untouched.
+- **It writes nothing when there is nothing to show.** No dossier, or no
+  `quote:` anywhere in it, and it prints `no quoted evidence recorded`
+  and exits **0**. That is the expected answer for a tutorial, and for
+  any dossier still carrying only pre-A2 blocks -- not a failure.
+
+Reading both `[@citekey]` and `\citep{...}`, so a `thesis-chapter-writer`
+`.tex` fragment gets a sidecar too. The sidecar is a standalone document
+with its own preamble, never something a thesis `\input`s, which is why
+that genre emits one rather than declining.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `<input>` | required | The draft file (Markdown or LaTeX) |
+| `--format FORMAT` | `md` | Output format, passed to `render` for anything but `md` |
+| `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`; confined to `content/` |
+
+```bash
+python -m chitragupta.draft evidence content/drafts/dt/survey.md --format pdf
+# leaves survey.evidence.md beside survey.evidence.pdf -- the Markdown is
+# the sidecar's own source, and the only diffable form of it
 ```
 
 ### `python -m chitragupta.draft dossier`
@@ -768,6 +833,59 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
+### `python -m chitragupta.review figure`
+
+What a draft's TikZ figures' own geometry says about them.
+**Informational, not a gate** -- it exits 0 whatever it finds -- and like
+the other three aids it never runs automatically.
+[TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
+reaches only the part of that checklist geometry can decide.
+
+| Check | Kind | Needs `pdflatex` |
+|---|---|---|
+| Node text over 15 words | binary | no |
+| Edge list, reported for confirmation | binary | no |
+| Node overlap | binary | yes |
+| Content protrusion | binary | yes |
+| Emptiness | **continuous, human-read only** | yes |
+
+Two things about that table are deliberate. **Emptiness is reported and
+consumed by nothing** -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3
+forbids a continuous score from being what anything unattended optimises,
+so it is labelled advisory everywhere it appears rather than left to be
+inferred. And the two static checks need no TeX at all, so on a host
+without `tikz.sty` this still reports them and says the geometry was
+skipped, rather than refusing to run.
+
+**Arrow crossings are not checked**, deliberately: not cheaply reachable
+from node geometry, and a bad approximation would be worse than its
+absence. That one stays a human judgement.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The draft whose figures to check |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report |
+
+```bash
+python -m chitragupta.review figure content/drafts/<topic>/survey.md
+# ... --write
+# ... --json > figure.json
+```
+
+**Read the edge list closely.** It is the one output here that no check
+over a rendered picture could produce: in TikZ an edge is
+`\draw (a) -- (b);`, so what the figure *claims* connects to what is
+recoverable from source. Nothing here knows which edges *should* exist,
+which is exactly why confirming them against the prose is the author's
+job and not the aid's.
+
+A figure that does not compile is a finding on that figure, not a crash:
+the draft's other figures are still checked, and the command still exits
+0.
+
 ### `python -m chitragupta.review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
@@ -921,7 +1039,7 @@ prose-side question, and it is the one nothing answered before:
 [`coverage`](#python--m-chitraguptareview-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
-finds**, and nothing reads it back. Alone among the five aids it reads
+finds**, and nothing reads it back. Alone among the six aids it reads
 no corpus: no ledger, no sync, no `enrich` extra, only the draft.
 
 **Most of a draft carries no citation, and most of that is fine.** So
@@ -1139,7 +1257,7 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All four review aids emit one now (#309, #341) -- `provenance` and `coverage`
+All six review aids emit one now (#309, #341, #314, #311) -- `provenance` and `coverage`
 follow the same envelope, above. [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
 planned `agenda` aid still treats each aid's JSON as optional, though: not
 every draft has had every aid run against it, and `coverage`'s sibling is
