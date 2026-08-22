@@ -27,7 +27,14 @@ shipped is worse than no plan. Four differences.
    whitespace-only sentences, which `sentences.split` cannot produce
    once the block is known non-empty. It cost a branch nothing could
    cover, which is how it was found.
-4. **The sweep was wider than the section below predicted**, and in one
+4. **The LaTeX table header row was missed on the first pass.** Every
+   other exclusion handled both markups; that one keyed on markdown's
+   `|` row and separator alone, so a `thesis-chapter` -- which emits
+   `.tex` *and* is one of the three genres where uncited prose is
+   exceptional -- would have had its column names reported as a claim.
+   The two markups mark the header from opposite sides, which is why
+   one lookahead was not enough. Found in review, not by a test.
+5. **The sweep was wider than the section below predicted**, and in one
    direction it did not predict at all: `docs/PACKAGING.md` counts the
    CLI's leaf commands in prose (`17 verbs and aids`, `41 invocable leaf
    commands`) and `tests/test_packaging_command_table.py` pins both
@@ -152,7 +159,7 @@ A sentence is not a claim, and raises no finding, when it is:
 | **The reference list** -- everything from a heading titled `References` / `Bibliography` / `Works Cited` to the end of the draft | 40 of `survey.md`'s 87 naive findings. A bibliography entry is uncited prose by construction. The heading match must tolerate a section number: the real drafts write `## 7. References` |
 | **Headings**, Markdown and LaTeX | Also a splitter artefact: `## 1. The connection is the twin` splits into `1.` and the title, so a heading costs two findings, not one |
 | **Captions** -- `\caption{...}`, `![alt](...)`, and a block opening `Figure N.` / `Table N:` / `Listing N.` | Named in the issue |
-| **The table header row** -- the row immediately above the `\|---\|` separator | Column names, not a claim. The separator row itself already flattens to nothing through `_cells_prose` |
+| **The table header row** -- in Markdown the row above the `\|---\|` separator, in LaTeX the row below booktabs' `\toprule` | Column names, not a claim. The separator row itself already flattens to nothing through `_cells_prose`. An `\hline`-ruled table's header is **not** detected and is reported: `\hline` separates every row from every other, and the genre skills emit booktabs |
 | **Comment-only blocks** -- `<!-- ... -->` and a LaTeX `%` line | Includes §11's `<!-- single-source: ... -->` marker, which must not be read as an uncited claim about the world |
 | **Fenced code and LaTeX verbatim** | Already blanked by `citation_gate._blank_code`, which this aid calls first, like `_units.units` does |
 | **Anything that flattens to nothing** | A bare `\item`, a `\begin{itemize}` -- the list scaffolding the issue names. `_block_text` already strips the markers; what is left is empty and is skipped |

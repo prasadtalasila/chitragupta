@@ -162,6 +162,37 @@ class TestTheExclusions:
         )
         assert found_text(draft) == ["Pattern catalog -- Patterns to instantiate"]
 
+    def test_a_latex_table_header_row_is_excluded_and_the_body_rows_are_not(
+            self, isolated_config):
+        """The two markups mark the header from opposite sides: markdown's
+        separator follows it, booktabs' `\\toprule` precedes it. Missing
+        this fired in production -- `thesis-chapter` emits `.tex` and is
+        one of the three genres where uncited prose is exceptional."""
+        draft = a_draft(
+            "\\begin{tabular}{lll}\n"
+            "\\toprule\n"
+            "Approach & Core idea & Limitation \\\\\n"
+            "\\midrule\n"
+            "Patterns & Instantiate them & Structure only \\\\\n"
+            "\\bottomrule\n"
+            "\\end{tabular}\n",
+            name="thesis.tex")
+        assert found_text(draft) == ["Patterns -- Instantiate them -- Structure only"]
+
+    def test_an_hline_ruled_header_row_is_a_known_gap(self, isolated_config):
+        """Pinned rather than fixed. `\\hline` separates every row from
+        every other, so nothing in it distinguishes the header -- and the
+        genre skills emit booktabs. Stated in `_claims.py` as a limit."""
+        draft = a_draft(
+            "\\begin{tabular}{ll}\n"
+            "\\hline\n"
+            "Approach & Core idea \\\\\n"
+            "\\hline\n"
+            "Patterns & Instantiate them \\\\\n"
+            "\\end{tabular}\n",
+            name="thesis.tex")
+        assert "Approach -- Core idea" in found_text(draft)
+
     def test_a_comment_only_block_is_excluded(self, isolated_config):
         """Including WRITING-STANDARDS.md §11's own single-source marker,
         which must not be read as an uncited claim about the world."""

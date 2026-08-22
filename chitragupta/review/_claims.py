@@ -70,6 +70,17 @@ CAPTION = re.compile(
 # not making an assertion.
 COMMENT = re.compile(r"^\s*(?:<!--|%)")
 
+# The rule booktabs draws *above* a LaTeX table's header row, and so the
+# only marker that tells that row apart from a body row. It is the
+# counterpart of markdown's `|---|` separator, which sits below its
+# header instead -- hence one lookahead and one look-at-the-block.
+#
+# **A `\hline`-ruled table's header is not detected and is reported as a
+# claim.** `\hline` separates every row from every other, so there is
+# nothing in it to distinguish the header; the genre skills emit
+# booktabs, which is why this is a stated limit rather than a guess.
+TEX_HEADER_RULE = re.compile(r"\\toprule\b")
+
 
 @dataclass(frozen=True)
 class Sentence:
@@ -100,20 +111,24 @@ def _opens_the_reference_list(line: str) -> bool:
     return _is_heading(line) and bool(REFERENCE_TITLE.match(_blocks.text_of([line])))
 
 
-def _excluded(first_line: str, next_line: str) -> bool:
-    """Whether the block opening at `first_line` carries no claim.
+def _excluded(block: list[str], next_line: str) -> bool:
+    """Whether `block` carries no claim. Column names are scaffolding;
+    the rows beneath them are claims.
 
-    `next_line` is the line after the block, and is needed for exactly
-    one case: a markdown table's header row, which is a row like any
-    other except that a separator row follows it. The column names are
-    scaffolding; the rows beneath them are claims.
+    A table's header row is the one case needing more than the block's
+    own first line, and the two markups put their marker on opposite
+    sides of it: markdown's `|---|` separator follows the header, so
+    `next_line` is what settles it, while booktabs' `\\toprule` precedes
+    it and lands inside the header row's own block.
     """
+    first_line = block[0]
     if _is_heading(first_line):
         return True
     if CAPTION.match(first_line) or COMMENT.match(first_line):
         return True
-    return bool(_blocks.TABLE_ROW.match(first_line)
-                and _blocks.SEPARATOR_ROW.match(next_line))
+    if _blocks.TABLE_ROW.match(first_line) and _blocks.SEPARATOR_ROW.match(next_line):
+        return True
+    return any(TEX_HEADER_RULE.search(line) for line in block)
 
 
 def _body(text: str) -> list[str]:
@@ -150,7 +165,7 @@ def claim_sentences(text: str) -> list[Sentence]:
     found = []
     for start, end, block in _blocks.spans(lines):
         after = lines[end] if end < len(lines) else ""
-        if not block.strip() or _excluded(lines[start - 1], after):
+        if not block.strip() or _excluded(lines[start - 1:end], after):
             continue
         block_cites = bool(citation_gate.extract_citekeys_from_line(block))
         # No empty-sentence guard: `sentences.split` strips first and only
