@@ -1,9 +1,9 @@
-# Code standards: what is binary, what is judgement, and the ratchet
+# 🤝 Code standards: what is binary, what is judgement, and the ratchet
 
 Status: **standard, partly enforced.** Written 2026-08-13. The two
 size rules below are enforced by `tests/test_code_standards_scan.py`;
-everything under [The rest of the checklist](#the-rest-of-the-checklist)
-is a review standard with no detector, and [Build order](#build-order)
+everything under [The rest of the checklist](#-the-rest-of-the-checklist)
+is a review standard with no detector, and [Build order](#-build-order)
 says which detectors would come next.
 
 This is the code counterpart of
@@ -24,29 +24,29 @@ which layer owns what ([ARCHITECTURE.md](ARCHITECTURE.md), and
 and the drafting loop this document borrows its shape from
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Where these rules come from](#where-these-rules-come-from)
-- [The rule that decides everything](#the-rule-that-decides-everything)
-- [The comment rules, and the misreading to avoid](#the-comment-rules-and-the-misreading-to-avoid)
-- [Why statements, not lines](#why-statements-not-lines)
-- [The Boy Scout Rule, and surgical changes](#the-boy-scout-rule-and-surgical-changes)
-- [The binary rules](#the-binary-rules)
-- [What a ratchet is, and the debt register](#what-a-ratchet-is-and-the-debt-register)
-- [The rest of the checklist](#the-rest-of-the-checklist)
-- [Code smells: the review vocabulary](#code-smells-the-review-vocabulary)
-- [Behaviour before code](#behaviour-before-code)
-- [Build order](#build-order)
-- [What this does not change](#what-this-does-not-change)
+- [Where these rules come from](#-where-these-rules-come-from)
+- [The rule that decides everything](#-the-rule-that-decides-everything)
+- [The comment rules, and the misreading to avoid](#-the-comment-rules-and-the-misreading-to-avoid)
+- [Why statements, not lines](#-why-statements-not-lines)
+- [The Boy Scout Rule, and surgical changes](#-the-boy-scout-rule-and-surgical-changes)
+- [The binary rules](#-the-binary-rules)
+- [What a ratchet is, and the debt register](#-what-a-ratchet-is-and-the-debt-register)
+- [The rest of the checklist](#-the-rest-of-the-checklist)
+- [Code smells: the review vocabulary](#-code-smells-the-review-vocabulary)
+- [Behaviour before code](#-behaviour-before-code)
+- [Build order](#-build-order)
+- [What this does not change](#-what-this-does-not-change)
 
-## Where these rules come from
+## 💡 Where these rules come from
 
 The source standard is the widely-circulated
 [clean-code summary](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29)
 of Robert C. Martin's *Clean Code* (Prentice Hall, 2008) --
-[INSPIRATION.md](INSPIRATION.md#code-standards) records the provenance.
+[INSPIRATION.md](INSPIRATION.md#-code-standards) records the provenance.
 Its nine sections are the checklist this document is written against, and
-[The rest of the checklist](#the-rest-of-the-checklist) maps every rule in
+[The rest of the checklist](#-the-rest-of-the-checklist) maps every rule in
 it to one of four fates: **enforced**, **already here** under another
 name, **review standard**, or **not applicable** with the reason.
 
@@ -63,12 +63,12 @@ Rule -- and both get their own section below rather than a row in a table.
 A checklist applied without noticing where it collides with the codebase
 is how a standard produces worse code than none.
 
-## The rule that decides everything
+## 🔑 The rule that decides everything
 
 > **R3:** "An unattended item's check is **binary**. No continuous score
 > is ever the thing being optimised."
 >
-> -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#the-requirements), which
+> -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-requirements), which
 > owns the wording
 
 That rule was written for drafts. It applies here unchanged, and it is
@@ -76,7 +76,7 @@ why this document is split the way it is. "No function exceeds 25
 statements" is binary and is enforced. "This code is clean" is a score.
 
 A score invites the same Goodhart failure
-[HOUSE-STYLE.md](HOUSE-STYLE.md#why-a-readability-index-is-a-trap)
+[HOUSE-STYLE.md](HOUSE-STYLE.md#-why-a-readability-index-is-a-trap)
 describes for readability indices. A maintainability metric is minimised
 by splitting functions past the point where the logic survives the break
 -- and every one of those edits passes its own re-check.
@@ -88,11 +88,11 @@ machine may drive to zero.
 
 **The loop stays open.** This document borrows AUTO-IMPROVEMENT.md's
 shape, not its automation. Nothing here proposes a code-fixing loop;
-[R11](AUTO-IMPROVEMENT.md#the-requirements) -- "its only trigger is a
+[R11](AUTO-IMPROVEMENT.md#-the-requirements) -- "its only trigger is a
 person asking" -- is the reason, and it applies with more force to code
 than to prose.
 
-## The comment rules, and the misreading to avoid
+## 💬 The comment rules, and the misreading to avoid
 
 The clean-code comment rules are eight, and they split cleanly in two:
 
@@ -139,7 +139,7 @@ conflict.
 **This is also why the size rules count statements** -- a physical-line
 limit taxes exactly the thing this section requires.
 
-## Why statements, not lines
+## 💡 Why statements, not lines
 
 "Functions should be small" is the rule; a line count is the usual proxy.
 Here that proxy mostly measures comment discipline:
@@ -182,7 +182,7 @@ it was. (It has since been split back under the limit and delisted -- the
 ratchet doing its job -- but the measurement is what justified counting
 statements, so it stays.)
 
-## The Boy Scout Rule, and surgical changes
+## 🧹 The Boy Scout Rule, and surgical changes
 
 The clean-code general rules include:
 
@@ -192,7 +192,7 @@ Read as an instruction to each edit, that contradicts this project's
 process rule, which is that a change should be **surgical**: don't
 refactor unrelated code, match the local style, report pre-existing dead
 code rather than deleting it in the same diff
-([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#behavioural-rules-think-before-coding)).
+([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-behavioural-rules-think-before-coding)).
 Both cannot be followed at the level of a single edit.
 
 They are reconciled by moving the Boy Scout Rule up one level. **The
@@ -216,7 +216,7 @@ The one case where the rule applies to your own edit unchanged is the
 orphan you created: an import, variable or helper that *your* change made
 unused is yours to remove.
 
-## The binary rules
+## ✅ The binary rules
 
 Two rules. Both are enforced by `tests/test_code_standards_scan.py`,
 which rides the existing `pytest --cov` run rather than adding a second
@@ -244,10 +244,10 @@ excludes from the release archive, and its scripts are one-shot analysis
 code whose `main()` reads top to bottom on purpose. Stating that plainly
 is better than the alternative reading, which is that its long
 functions (a growing number, as `bench/` grows -- see
-[TECHNICAL-DEBT.md §3.1](TECHNICAL-DEBT.md#31-bench-is-outside-every-check-in-the-repository)
+[TECHNICAL-DEBT.md §3.1](TECHNICAL-DEBT.md#-31-bench-is-outside-every-check-in-the-repository)
 for the current count) were quietly not counted.
 
-### Cognitive complexity: the bar is 25, not SonarQube's default 15
+### 📊 Cognitive complexity: the bar is 25, not SonarQube's default 15
 
 SonarQube's Python analysis ships S3776 -- "Cognitive Complexity of
 functions should not be too high" -- with a default threshold of **15**.
@@ -258,7 +258,7 @@ control flow is to *follow* -- but they draw the line at the same
 altitude.
 
 A complexity bar lower than the statement bar would drive exactly the
-over-splitting [R3](#the-rule-that-decides-everything) warns about:
+over-splitting [R3](#-the-rule-that-decides-everything) warns about:
 functions cut past the point where the logic survives the break, with
 every cut passing its own re-check.
 
@@ -276,7 +276,7 @@ Operationally:
   `sonar-project.properties`, so this section is the durable record of
   the decision, and the profile is what has to match it.
 
-## What a ratchet is, and the debt register
+## 🗄 What a ratchet is, and the debt register
 
 A **ratchet** is a mechanical pawl that lets a wheel turn one way and
 blocks it turning back. As a software check it means: measure something,
@@ -311,7 +311,7 @@ The ratchet takes the useful half of each. Concretely, here:
   register also answers "which debt is biggest" rather than only "which
   debts exist".
 
-### Why a ratchet suits this project specifically
+### 💡 Why a ratchet suits this project specifically
 
 Three reasons beyond the general argument.
 
@@ -345,23 +345,23 @@ without failing. Capping each at today's exact size would fail on every
 ordinary edit and would be turned off within a week; the growth of a
 registered file is caught by C1 on its functions and by review.
 
-## The rest of the checklist
+## 📋 The rest of the checklist
 
 Every remaining rule from the source, and where it lands. **Review** means
 a human or Copilot looks for it in a PR; there is no detector, and
-[the rule above](#the-rule-that-decides-everything) says why most of these
+[the rule above](#-the-rule-that-decides-everything) says why most of these
 should not get one.
 
-### General rules
+### 📜 General rules
 
 | Rule | Fate |
 |---|---|
 | Follow standard conventions | Already here: DEVELOPER-AGENTS.md's "Conventions a new stage has to follow" |
 | Keep it simple; reduce complexity | Already here: the "Simplicity first" behavioural rule |
-| Boy scout rule | [Reconciled above](#the-boy-scout-rule-and-surgical-changes) -- the ratchet is this project's form of it |
+| Boy scout rule | [Reconciled above](#-the-boy-scout-rule-and-surgical-changes) -- the ratchet is this project's form of it |
 | Always find root cause | Already here, in a sharp form: "Classify a failure by cause on the exception, not by matching its message." Adding a cause means adding a mark, not a string match |
 
-### Design rules
+### 🏗 Design rules
 
 | Rule | Fate |
 |---|---|
@@ -378,7 +378,7 @@ already appear above under the names this project uses: single
 responsibility is "do one thing" plus module boundaries, and dependency
 inversion is the probe pattern.
 
-### Understandability
+### 👓 Understandability
 
 | Rule | Fate |
 |---|---|
@@ -389,7 +389,7 @@ inversion is the probe pattern.
 | Avoid logical dependency | Review |
 | Avoid negative conditionals | Review |
 
-### Names
+### 🏷 Names
 
 All six -- descriptive and unambiguous, meaningful distinction,
 pronounceable, searchable, named constants instead of magic numbers, no
@@ -398,7 +398,7 @@ example is `unguarded(text)` in `test_command_depth_scan.py`: it says what
 the thing is for, not what type it returns. `MAX_STATEMENTS` and
 `_GUARD_WINDOW` are the magic-number rule as practised.
 
-### Functions
+### 🧩 Functions
 
 | Rule | Fate |
 |---|---|
@@ -409,7 +409,7 @@ the thing is for, not what type it returns. `MAX_STATEMENTS` and
 | Have no side effects | Review. Note the deliberate exception: the corpus layer's whole job is a side effect, and it is confined to the one layer that takes the write lock |
 | Don't use flag arguments | Review, with a live precedent: `--target host\|docker` is documented as informational only, because the probes decide and nothing branches on it |
 
-### Source code structure
+### 📁 Source code structure
 
 All **review** standards, adopted as written: vertical separation of
 concepts, related code dense, variables declared near use, dependent and
@@ -418,10 +418,10 @@ lines, no horizontal alignment, whitespace to group, consistent
 indentation.
 
 "Keep lines short" is the one that could cheaply become a detector.
-[Build order](#build-order) puts it with `ruff`, which enforces it as
+[Build order](#-build-order) puts it with `ruff`, which enforces it as
 `E501` rather than needing its own scanner.
 
-### Objects and data structures
+### 🧱 Objects and data structures
 
 Largely **N/A**, and the reason is worth stating rather than leaving as
 an omission. `chitragupta/` has almost no classes, and the few it has --
@@ -434,7 +434,7 @@ and `sqlite3` rows. "Should be small", "do one thing" and "small number
 of instance variables" apply to any class that does appear, and C1
 already covers its methods.
 
-### Tests
+### 🧪 Tests
 
 | Rule | Fate |
 |---|---|
@@ -444,7 +444,7 @@ already covers its methods.
 | Independent | Already held, and load-bearing: `tests/conftest.py` isolates per-test state |
 | Repeatable | Already held, and it is a *product* rule here too -- the review layer's reports carry no timestamp, so two runs over unchanged input produce byte-identical output |
 
-## Code smells: the review vocabulary
+## 🔍 Code smells: the review vocabulary
 
 The six smells are adopted as the vocabulary for a review finding, because
 naming the smell is what turns "this feels wrong" into a claim someone can
@@ -459,16 +459,16 @@ agree or disagree with.
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |
 | **Opacity** -- hard to understand | Usually a missing *why*-comment rather than bad code |
 
-## Behaviour before code
+## 🎯 Behaviour before code
 
 Four rules about how an agent should *work* rather than what the code
 should look like. They live with the process rules in
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#behavioural-rules-think-before-coding)
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-behavioural-rules-think-before-coding)
 rather than here: think before coding, simplicity first, surgical changes,
 goal-driven execution. The third is the one
-[reconciled above](#the-boy-scout-rule-and-surgical-changes).
+[reconciled above](#-the-boy-scout-rule-and-surgical-changes).
 
-## Build order
+## ▶ Build order
 
 What would extend the enforced half, cheapest first, as proposed when
 this document was written. Items 1, 2 and 4 have since landed, each in a
@@ -523,7 +523,7 @@ different shape than proposed here -- see their own notes.
    staleness this document's own PR fixed, found by reading. That is a
    free-standing factual claim with no register behind it, so there is
    nothing binary to check it against, and
-   [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out reaching for a
+   [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out reaching for a
    prose-accuracy *score* instead. A claim becomes checkable when
    something machine-readable becomes its source of truth, not when
    someone writes a cleverer scanner.
@@ -534,7 +534,7 @@ different shape than proposed here -- see their own notes.
    `tests/test_code_standards_scan.py`'s docstring; a refactor that moves
    those numbers leaves two copies to update by hand.
 
-## What this does not change
+## 🚫 What this does not change
 
 - **No new gate.** `python -m chitragupta.draft gate` remains the only gate in
   the project. C1 and C2 are a test, and a test is not a gate on a

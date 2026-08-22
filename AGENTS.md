@@ -1,4 +1,4 @@
-# AGENTS.md
+# 🤖 AGENTS.md
 
 Guidance for coding agents (and anyone else) **using this pipeline to
 draft content**.
@@ -14,7 +14,7 @@ draft content**.
 [SOUL.md](SOUL.md) is the one-page why behind everything below. When this
 file and that one seem to disagree, that one is the tie-breaker.
 
-## The hard invariant: never fabricate a citekey
+## 🔑 The hard invariant: never fabricate a citekey
 
 Fabricated placeholder references have made it into real papers before --
 that is the failure mode this pipeline is built to prevent, and it is why
@@ -46,7 +46,7 @@ of defense -- but still run the gate by hand before calling a draft done,
 since the hook only fires on the tool call that wrote the file, not on
 demand.
 
-## The bib file is the source of truth (not this pipeline)
+## 📚 The bib file is the source of truth (not this pipeline)
 
 `papers/bibliography.bib` (path configurable via `config.toml`'s
 `[bib].path` or the `BIB_FILE` env var; gitignored, per-host data -- see
@@ -80,7 +80,7 @@ re-run with `--remove-stale`, because a short export is more often a
 botched one than an intentional deletion. README.md and docs/ZOTERO.md
 have the full semantics.
 
-## The four layers
+## 🏗 The four layers
 
 The numbers below are the order these are introduced, and the order you
 meet them: you need a corpus before a draft, and there is nothing to
@@ -192,7 +192,7 @@ enrichment layer is optional and nothing above it needs it.
   rather than two reports read side by side. Advisory like the rest: it
   exits 0 on a draft that got worse.
 
-## Retrieval
+## 🔎 Retrieval
 
 `chitragupta/retrieval.py` (BM25 over a cached term-frequency index, stdlib-only,
 no venv or model download needed) is what the genre skills use by
@@ -209,7 +209,7 @@ enrichment layer -- goes through that one ladder rather than re-deriving
 passages, so a caller cannot accidentally quote from a rung that isn't
 quotable. See docs/LADDERS.md.
 
-## Config lives in `config.toml`
+## ⚙ Config lives in `config.toml`
 
 Every setting lives in `config.toml` at the repo root, and every one is
 overridable by an env var of the same name (e.g.

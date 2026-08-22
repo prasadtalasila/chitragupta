@@ -1,4 +1,4 @@
-# Exporting your library from Zotero
+# 📚 Exporting your library from Zotero
 
 Status: **how-to.** Written 2026-08-03.
 
@@ -32,7 +32,7 @@ general feature):
    as an error).
 5. Re-run `python -m chitragupta.corpus sync`.
 
-## Keeping your collections (optional)
+## 🗂 Keeping your collections (optional)
 
 Zotero organises a library into collections and subcollections, and that
 tree is a judgement you have already made -- *these are the modelling
@@ -136,7 +136,7 @@ the ledger untouched until a human confirms.
 completely empty against a non-empty ledger. Same reason: fix the export
 or the path rather than deleting everything in one run.
 
-## Citekeys have to work as filenames
+## 🏷 Citekeys have to work as filenames
 
 A citekey is not only an identifier here -- it is the stem of every file
 the pipeline writes for that paper (`content/parsed/<citekey>.txt`, and

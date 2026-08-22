@@ -1,4 +1,4 @@
-# Writing standards for the drafting layer
+# ✍ Writing standards for the drafting layer
 
 Status: **reference.** Written 2026-08-03.
 
@@ -23,7 +23,7 @@ weighing alternatives *is* the deliverable. Take the audience discipline and
 the sentence-level craft from these sources; take the structural rules only
 from your own SKILL.md.
 
-## 1. Decide the audience before drafting
+## 👥 1. Decide the audience before drafting
 
 *Source: Google, Technical Writing One ("Just enough writing" / audience
 analysis); Last, TWE §7.7 "Do a careful audience and task analysis".*
@@ -37,7 +37,7 @@ A named reader beats a category. "A second-year undergraduate who has taken
 one programming course" is usable; "students" is not. "A thesis examiner in
 this subfield" is usable; "an academic audience" is not.
 
-## 2. The curse of knowledge is the default failure
+## ⚠ 2. The curse of knowledge is the default failure
 
 *Source: Google, Technical Writing One, which names the curse of knowledge
 as the central hazard for engineer-writers. The term itself is Camerer,
@@ -58,7 +58,7 @@ Concrete guards:
   failure is theirs. Delete the word; if the sentence then looks like it's
   asserting too much, that's the actual problem showing through.
 
-## 3. State scope up front
+## 📏 3. State scope up front
 
 *Source: Last, TWE §7.7, whose introduction checklist asks for the scope --
 "what will and will not be covered" -- and the reader's assumed background.*
@@ -68,7 +68,7 @@ reader is assumed to know already. A reader who can't tell whether they're
 equipped for a document will either bounce off it or waste an hour finding
 out they were missing background.
 
-## 4. Sentence-level craft
+## 🖋 4. Sentence-level craft
 
 *Source: Google, Technical Writing One (short sentences, active voice,
 consistent terms, defining terms once); Last, TWE §2.2 "Communicating with
@@ -87,7 +87,7 @@ Precision" and §7.7 "Writing Style" on the passive-voice failure.*
   possibly a factor" says less than "X is a factor", and the difference is
   not caution -- it's noise. Real uncertainty gets stated, once, precisely.
 
-## 5. Don't let a document do two jobs
+## ✂ 5. Don't let a document do two jobs
 
 *Source: Procida, Diátaxis -- the four-quadrant model and its claim that
 each kind of documentation "needs to be written in a different way".*
@@ -102,7 +102,7 @@ different genre, **stop and say so to the user** rather than absorbing it.
 The routing tables in each SKILL.md's "When to invoke" section exist for
 exactly this moment.
 
-## 6. Read it once as the reader
+## 👓 6. Read it once as the reader
 
 *Source: Last, TWE §7.7, which names as a requirement of effective
 instructions the "willingness to test your instructions on the kind of
@@ -119,14 +119,14 @@ test with a real member of the audience. That is not available inside a
 drafting run, so this reread is the substitute. Make it a genuine second
 pass, not a skim of what you just wrote.
 
-## 7. Say what you don't know
+## ❓ 7. Say what you don't know
 
 Every genre here shares one rule from AGENTS.md's citekey invariant: a gap
 stated plainly is always better than a gap papered over. Thin corpus
 coverage, an unresolved contradiction, a step you couldn't verify -- all of
 these get reported to the user in prose. None of them get smoothed.
 
-## 8. Dialect and house style
+## 🗣 8. Dialect and house style
 
 A draft is written in one dialect of English, and which one is a fact
 about the reader rather than a habit of the writer. A thesis submitted at
@@ -157,7 +157,7 @@ convention. A draft in another language needs them adapted rather than
 transliterated, and nothing in this document should be read as claiming
 they carry over unchanged.
 
-## 9. What is checked mechanically, and what is not
+## ✅ 9. What is checked mechanically, and what is not
 
 Some rules above have a decidable answer and some do not. The split
 matters in both directions, and getting it wrong fails in opposite ways.
@@ -203,7 +203,7 @@ exactly one that does.
 **Every verdict in the table is scoped to English**, for the reason §8
 gives.
 
-## 10. Figures
+## 📐 10. Figures
 
 A draft may include a figure only if it is wholly original. A figure
 extracted from a source paper carries that paper's own copyright, and
@@ -233,7 +233,7 @@ project's own `render_output.py` call, not a general pandoc claim. A
 diagram that renders one figure and breaks every other one downstream
 in the same draft is worse than no diagram.
 
-### TikZ layout and style
+### 🎨 TikZ layout and style
 
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the full guide to drawing a good TikZ
 figure: which layout metaphor to commit to before placing a node, the
@@ -242,7 +242,7 @@ and line-weight conventions that keep a figure consistent with the
 surrounding document. It is a checklist an author checks a figure
 against, not a gate -- nothing in it is enforced mechanically today.
 
-### Every figure has two forms
+### 🖼 Every figure has two forms
 
 ASCII is what a Markdown reader should see; it is not what a thesis
 wants. So a figure in this pipeline exists twice -- once as a TikZ
@@ -334,7 +334,7 @@ it -- our own render substitutes the line away first. A LaTeX comment is
 inert to pdflatex, dropped by pandoc, and meaningful only to this
 pipeline.
 
-### What the pair requires
+### 🎯 What the pair requires
 
 - **Both forms, or no figure.** A figure is not finished until both
   sibling files exist and the marker is in the draft. A pair with a
@@ -393,7 +393,7 @@ and not the other leaves the pdf and the Markdown preview disagreeing,
 silently and indefinitely. `draft-reviser` carries the only defence
 there is -- touch a figure, touch both forms.
 
-## 11. Multi-source synthesis, at your genre's unit
+## 🧩 11. Multi-source synthesis, at your genre's unit
 
 Prose that has to fuse two or more sources cannot be a transcription of
 any one of them. You cannot transcribe two sources simultaneously. That
@@ -454,7 +454,7 @@ deliberately not adapted: upstream cites by positional index into a
 truncated list, so reordering that list silently changes what every
 citation means. This project has real citekeys and keeps using them.
 
-## Sources and attribution
+## 📖 Sources and attribution
 
 Three openly licensed works supply the principles above. All three require
 attribution under their licences; this section is that attribution.
@@ -490,7 +490,7 @@ attribution under their licences; this section is that attribution.
    use and then not reverting; short sentences with one idea each; active
    voice with a named actor; leading a paragraph with its point.
 
-### What is original here
+### 💡 What is original here
 
 The prose in this file and in every `.claude/skills/*/SKILL.md` is written
 from scratch. A verbatim n-gram check against all three sources above

@@ -1,4 +1,4 @@
-# The pipeline, its ladders, and its tiers
+# 🏗 The pipeline, its ladders, and its tiers
 
 Status: **reference.** Written 2026-08-06.
 
@@ -25,22 +25,22 @@ see the workflow drawn. This page assumes both and asks a narrower
 question: where does this pipeline choose, and what does it choose
 between?
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The terms](#the-terms)
-- [The pipeline in one pass](#the-pipeline-in-one-pass)
-- [The three ladders](#the-three-ladders)
-  - [1. Evidence passages](#ladder-1-evidence-passages)
-  - [2. Enrichment text source](#ladder-2-enrichment-text-source)
-  - [3. Accelerator](#ladder-3-accelerator)
-- [The three tiers](#the-three-tiers)
-  - [1. Parser backend](#tier-1-parser-backend)
-  - [2. Interpreter](#tier-2-interpreter)
-  - [3. Render format](#tier-3-render-format)
-- [What is deliberately not a ladder](#what-is-deliberately-not-a-ladder)
-- [The mapping](#the-mapping)
+- [The terms](#-the-terms)
+- [The pipeline in one pass](#-the-pipeline-in-one-pass)
+- [The three ladders](#-the-three-ladders)
+  - [1. Evidence passages](#-ladder-1-evidence-passages)
+  - [2. Enrichment text source](#-ladder-2-enrichment-text-source)
+  - [3. Accelerator](#-ladder-3-accelerator)
+- [The three tiers](#-the-three-tiers)
+  - [1. Parser backend](#-tier-1-parser-backend)
+  - [2. Interpreter](#-tier-2-interpreter)
+  - [3. Render format](#-tier-3-render-format)
+- [What is deliberately not a ladder](#-what-is-deliberately-not-a-ladder)
+- [The mapping](#-the-mapping)
 
-## The terms
+## 🏷 The terms
 
 Seven words, used precisely throughout this repository. The first four
 describe the shape of the system; the last three describe how it decides.
@@ -152,7 +152,7 @@ repository worries about most, because the output still looks like output.
 That is why each ladder below states what its bottom rung costs you, not
 just what it is.
 
-## The pipeline in one pass
+## 🔭 The pipeline in one pass
 
 ```mermaid
 flowchart TB
@@ -199,7 +199,7 @@ Every command above and the flags it takes are in
 [docs/CLI.md](CLI.md); the same workflow drawn eleven other ways is in
 [docs/DIAGRAMS.md](DIAGRAMS.md).
 
-### What the enrichment layer works on
+### 🧠 What the enrichment layer works on
 
 Worth stating plainly, because the natural assumption is the expensive
 one and it is wrong. **By default the enrichment layer parses your whole
@@ -241,7 +241,7 @@ per-corpus rather than per-draft: on this project's own 501-PDF corpus, a
 first Docling pass is 3330s serial and 310s at twelve workers
 ([docs/PERFORMANCE.md](PERFORMANCE.md)).
 
-### Scoping a run to one draft
+### 🎯 Scoping a run to one draft
 
 `--for-draft content/drafts/<slug>.md` narrows that list to the papers
 the named draft cites, read out of it with the same
@@ -253,7 +253,7 @@ rather than take it, and deferring it is why rung 1 of the passage ladder
 below is so often absent. The flag makes the layer something you can try
 on one chapter and judge before committing the machine to the whole
 library. Flags and worked output are in
-[docs/CLI.md](CLI.md#enriching-one-drafts-papers).
+[docs/CLI.md](CLI.md#-enriching-one-drafts-papers).
 
 Which stages it reaches is the part worth being precise about, because it
 is fewer than it sounds:
@@ -297,9 +297,9 @@ Reuse is refused in three cases:
 - a run with figures on, because the corpus layer writes no bitmaps;
 - artefacts older than their PDF.
 
-## The three ladders
+## 🪜 The three ladders
 
-### Ladder 1: Evidence passages
+### 📖 Ladder 1: Evidence passages
 
 **The question:** a claim cites `smith_2024` -- which part of that source
 supports it, and may it be quoted?
@@ -348,7 +348,7 @@ rungs 3 and 4 return a `Passage` whose `text` is `None`. The guarantee is
 structural rather than advisory: a caller that wants to quote has nothing
 to quote. See [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 
-### Ladder 2: Enrichment text source
+### 🧠 Ladder 2: Enrichment text source
 
 **The question:** what text should be embedded, chunked and clustered for
 this document?
@@ -380,7 +380,7 @@ taken over whatever this ladder returned -- so a change to any rung's
 breaks to the corpus layer's `.txt` (see ladder 1's rung 3) did exactly
 that, once.
 
-### Ladder 3: Accelerator
+### ⚡ Ladder 3: Accelerator
 
 **The question:** which device parses this PDF?
 
@@ -416,10 +416,10 @@ devices costs more than finishing slowly. See
 [docs/PERFORMANCE.md](PERFORMANCE.md) for what a GPU is and isn't worth
 here.
 
-## The three tiers
+## 🎚 The three tiers
 
 Three here, four in
-[ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)'s tier-set table,
+[ARCHITECTURE.md](ARCHITECTURE.md#-ladders-and-tiers)'s tier-set table,
 and both are right. The fourth is the **detection tiers** behind
 `chitragupta/review/verbatim_check.py`'s `scan`.
 
@@ -433,7 +433,7 @@ unavailable.
 [PLAGIARISM.md](PLAGIARISM.md) treats it for a reader of a report, and
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for someone changing one.
 
-### Tier 1: Parser backend
+### 📄 Tier 1: Parser backend
 
 **Set by:** `[parser].backend` in `config.toml`, or the `PARSER` env var.
 
@@ -450,7 +450,7 @@ Two backends were evaluated and removed on 2026-08-01 (`markitdown`,
 `grobid`); [docs/PDF-PARSER.md](PDF-PARSER.md) keeps the comparison as a
 record of the decision.
 
-### Tier 2: Interpreter
+### 🐍 Tier 2: Interpreter
 
 **Set by:** which command you are running. This is a tier and not a ladder
 because nothing degrades: a module either imports or raises
@@ -467,9 +467,9 @@ one thing that must run everywhere, including as a hook on a machine that
 has never installed this project's dependencies. `chitragupta/passages.py` belongs
 to that tier too, which is why it describes a Docling document purely
 through `getattr` and never imports the library. See
-[docs/ARCHITECTURE.md](ARCHITECTURE.md#which-interpreter-and-why).
+[docs/ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why).
 
-### Tier 3: Render format
+### 📐 Tier 3: Render format
 
 **Set by:** `--format` on `python -m chitragupta.draft render`.
 
@@ -484,7 +484,7 @@ through `getattr` and never imports the library. See
 traceback, and never silently downgraded to a format that would have
 worked. A `.pdf` you asked for and did not get is a fact you need to see.
 
-## What is deliberately not a ladder
+## 🚫 What is deliberately not a ladder
 
 Naming three ladders implies the rest of the pipeline doesn't fall back,
 and mostly that is true by design. Two near-misses are worth stating so
@@ -498,7 +498,7 @@ they aren't mistaken for rungs:
   `(size, mtime_ns)` changes, when `_CACHE_VERSION` moves, or when an
   expected output file is missing. Also one answer, reached three ways.
 
-## The mapping
+## 🗺 The mapping
 
 Everything above at once. Read left to right: *when a decision is made,
 which decision it is, what implements it, and what it leaves behind.* The
@@ -614,7 +614,7 @@ a review aid and a drafting-layer render would each take a lock their own
 layer says they do not. Keeping those two out of the stage list is what
 keeps this table true rather than aspirational.
 
-## See also
+## 🔗 See also
 
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md) -- what the parts are, and which
   interpreter each needs

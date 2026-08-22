@@ -1,11 +1,11 @@
-# Technical debt: what is owed, and what only looks like it
+# 🧾 Technical debt: what is owed, and what only looks like it
 
 Status: **register, not a standard.** Written 2026-08-13, from a
 full-tree review of `chitragupta/`, `scripts/`, `bench/`, `docker/` and
 `.github/`. Nothing here is enforced. The one part of this project's debt
 that *is* enforced -- the C1/C2 ratchet -- lives in
 `tests/test_code_standards_scan.py` and is
-[pointed at](#tier-1-the-debt-the-ratchet-already-holds), never restated.
+[pointed at](#-tier-1-the-debt-the-ratchet-already-holds), never restated.
 
 **Reconciled 2026-08-18** against the tree as it now stands, since a
 register that only shrinks the way it says it should is one this
@@ -37,21 +37,21 @@ features not yet built --
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) owns the roadmap and this
 document owns the arrears. A thing that was never built is not a debt.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [How something gets on this list](#how-something-gets-on-this-list)
-- [Tier 1: the debt the ratchet already holds](#tier-1-the-debt-the-ratchet-already-holds)
-- [Tier 2: the debt CODE-STANDARDS.md already named](#tier-2-the-debt-code-standardsmd-already-named)
-- [Tier 3: found by review, tracked nowhere](#tier-3-found-by-review-tracked-nowhere)
-- [Tier 4: the test suite](#tier-4-the-test-suite)
-- [Tier 5: continuous integration and the linters](#tier-5-continuous-integration-and-the-linters)
-- [Reviewing with OpenCodeReview](#reviewing-with-opencodereview)
-- [The standing-instruction budget](#the-standing-instruction-budget)
-- [Process debt: the formats that are not adhered to](#process-debt-the-formats-that-are-not-adhered-to)
-- [What is not debt](#what-is-not-debt)
-- [What to take first](#what-to-take-first)
+- [How something gets on this list](#-how-something-gets-on-this-list)
+- [Tier 1: the debt the ratchet already holds](#-tier-1-the-debt-the-ratchet-already-holds)
+- [Tier 2: the debt CODE-STANDARDS.md already named](#-tier-2-the-debt-code-standardsmd-already-named)
+- [Tier 3: found by review, tracked nowhere](#-tier-3-found-by-review-tracked-nowhere)
+- [Tier 4: the test suite](#-tier-4-the-test-suite)
+- [Tier 5: continuous integration and the linters](#-tier-5-continuous-integration-and-the-linters)
+- [Reviewing with OpenCodeReview](#-reviewing-with-opencodereview)
+- [The standing-instruction budget](#-the-standing-instruction-budget)
+- [Process debt: the formats that are not adhered to](#-process-debt-the-formats-that-are-not-adhered-to)
+- [What is not debt](#-what-is-not-debt)
+- [What to take first](#-what-to-take-first)
 
-## How something gets on this list
+## 📋 How something gets on this list
 
 Three conditions, all of them:
 
@@ -62,7 +62,7 @@ Three conditions, all of them:
    which is how registers stop being read.
 2. **It names a file, a count, or a call site.** "The code could be
    cleaner" is a score, and
-   [R3](AUTO-IMPROVEMENT.md#the-requirements) -- the rule
+   [R3](AUTO-IMPROVEMENT.md#-the-requirements) -- the rule
    CODE-STANDARDS.md is built on -- rules out driving a score to zero.
    Every entry below carries a number or a path someone can open.
 3. **Someone would be worse off if it were left.** A stylistic
@@ -70,7 +70,7 @@ Three conditions, all of them:
 
 It comes **off** the list the way it went on: in its own pull request,
 against this file. That is the same discipline
-[the ratchet](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register)
+[the ratchet](CODE-STANDARDS.md#-what-a-ratchet-is-and-the-debt-register)
 imposes on C1/C2, applied by hand to the items no detector covers.
 
 **Coming off means the section is deleted**, not marked done and kept.
@@ -98,7 +98,7 @@ distinction is the whole reason the test could be added without making
 the debt itself a gate: leaving an entry open forever is fine, and saying
 it is on a register it left is not.
 
-## Tier 1: the debt the ratchet already holds
+## 🧱 Tier 1: the debt the ratchet already holds
 
 `tests/test_code_standards_scan.py` freezes **3 functions** over C1 (25
 statements) and **11 modules** over C2 (250 code lines), each with its
@@ -106,7 +106,7 @@ current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
 
 Those two counts had drifted badly -- this section claimed 26 and 13
-until #228 -- which is [build order](CODE-STANDARDS.md#build-order) item
+until #228 -- which is [build order](CODE-STANDARDS.md#-build-order) item
 4, the doc-drift detector, demonstrating the exact failure it was
 proposed for. CODE-STANDARDS.md's copy of the same pair stayed correct
 throughout, because a test pinned it and nothing pinned this one.
@@ -115,7 +115,7 @@ throughout, because a test pinned it and nothing pinned this one.
 `tests/test_technical_debt_scan.py` fails if the two numbers above stop
 matching `len(LEGACY_LONG_FUNCTIONS)`/`len(LEGACY_LONG_FILES)`, and also
 if any Tier 1 subsection heading or `[Tier 1]` item in [What to take
-first](#what-to-take-first) names an entry the register no longer holds.
+first](#-what-to-take-first) names an entry the register no longer holds.
 That is the narrow, checkable half of build order item 4 -- claims *about
 the register*, which has a machine-readable source of truth. Free prose
 about anything else is still nobody's detector, deliberately.
@@ -131,18 +131,18 @@ and what each was measured against is in the pull request that split it.
 the C1 register's four splittable functions, closed in #366 -- the count
 above already reflects it.
 
-## Tier 2: the debt CODE-STANDARDS.md already named
+## 🧱 Tier 2: the debt CODE-STANDARDS.md already named
 
-[Build order](CODE-STANDARDS.md#build-order) lists four things that would
+[Build order](CODE-STANDARDS.md#-build-order) lists four things that would
 extend the enforced half. Two are built now -- item 1 as `pylint`, item 2
 as `ruff` (`docs/TECHNICAL-DEBT.md`'s ruff subsection under
-[Tier 5](#tier-5-continuous-integration-and-the-linters)) -- and the two
+[Tier 5](#-tier-5-continuous-integration-and-the-linters)) -- and the two
 below are not. They are debt rather than roadmap because each has a
 **cost already being paid**, measured below. The build order owns the
 sequencing; this section only supplies the numbers it was written
 without.
 
-### Type annotations: 763 of 829
+### 🏷 Type annotations: 763 of 829
 
 **Tracked in #355.**
 
@@ -154,7 +154,7 @@ this section was last measured -- the tree has gone from 433 `def`s to
 `review/synthesis.py` among them) -- so re-run the count directly
 (`ast`-walk every `def`, check `node.returns`) rather than trusting a
 stale figure here, the same caution this document asks of its own
-size-of-`bench/` claim in [3.1](#31-bench-is-outside-every-check-in-the-repository).
+size-of-`bench/` claim in [3.1](#-31-bench-is-outside-every-check-in-the-repository).
 
 | Module | Annotated |
 |---|---|
@@ -172,7 +172,7 @@ size-of-`bench/` claim in [3.1](#31-bench-is-outside-every-check-in-the-reposito
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
 the second-largest module in the repository with no annotations at all,
 against three siblings that were effectively complete. That breaks the
-[Be consistent](CODE-STANDARDS.md#understandability) rule, which that
+[Be consistent](CODE-STANDARDS.md#-understandability) rule, which that
 document calls "the highest-value one in this list."
 
 It was annotated in full while #133, the skip-gram detection tier, was
@@ -190,11 +190,11 @@ here rather than left as a documented gap, the same one-line,
 zero-behaviour shape as the rest of this batch: `_report_stale` now
 carries its return annotation, and `sync.py` is genuinely 16/16.
 
-## Tier 3: found by review, tracked nowhere
+## 🧱 Tier 3: found by review, tracked nowhere
 
 New in this review. Each names a call site.
 
-### 3.1 `bench/` is outside every check in the repository
+### ⚠ 3.1 `bench/` is outside every check in the repository
 
 **Tracked in #356.**
 
@@ -209,7 +209,7 @@ from all four things that hold the rest of the tree:
 - the release archive (`scripts/release.py`)
 - the linters -- `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks`
   and `ruff check chitragupta scripts .claude/hooks`
-  ([5.1](#51-pylint-a-measured-baseline)/ruff subsection), never `bench/`
+  ([5.1](#-51-pylint-a-measured-baseline)/ruff subsection), never `bench/`
 
 Measured against the ratchet it does not face, with the ratchet's own
 `long_functions`/`long_files` from `tests/test_code_standards_scan.py`
@@ -252,7 +252,7 @@ four checks above. That is the same accepted call it always was -- the
 convention is a floor for scripts that publish a number, not a plan to
 bring `bench/` under the ratchet.
 
-## Tier 4: the test suite
+## 🧱 Tier 4: the test suite
 
 36,546 lines across 93 modules (2026-08-13: 21,780 across 40 -- both trees
 have grown substantially since), against `chitragupta/`'s 25,171 -- the suite is
@@ -271,7 +271,7 @@ recorded them (#235 and #236) because both were making the suite fail on
 a maintainer's machine while passing in CI, the worst direction for a
 test to be wrong in. The third is below.
 
-### 4.1 Tests that assert against un-versioned per-host data
+### 🧪 4.1 Tests that assert against un-versioned per-host data
 
 **The general rule below is tracked in #358**; the two instances that
 prompted it were already fixed when this was first recorded.
@@ -309,9 +309,9 @@ flag any assertion whose truth depends on a file the repository does not
 track. It is invisible to CI by construction, so it can only be caught by
 review.
 
-## Tier 5: continuous integration and the linters
+## 🧱 Tier 5: continuous integration and the linters
 
-### 5.1 `pylint`: a measured baseline
+### 📊 5.1 `pylint`: a measured baseline
 
 **Adopted and enforced in 5.8.0.** `ci.yml`'s `lint` job runs
 `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
@@ -335,7 +335,7 @@ download torch would otherwise report `import-error` against every one.
 
 The measurement that produced all of that follows, unchanged.
 
-[CODE-STANDARDS.md's build order](CODE-STANDARDS.md#build-order) puts a
+[CODE-STANDARDS.md's build order](CODE-STANDARDS.md#-build-order) puts a
 linter first and declines to adopt one without "a measured baseline and a
 `per-file-ignores` register of the same shape as this one". This is that
 measurement, taken with the `.pylintrc` this project inherits from DTaaS
@@ -354,7 +354,7 @@ already decided against leaves **44 real findings**:
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
 **The `line-too-long` row's residue is tracked in #362**, alongside
-[build order](CODE-STANDARDS.md#build-order) item 1's missing formatter --
+[build order](CODE-STANDARDS.md#-build-order) item 1's missing formatter --
 this baseline table itself stays as measured, the historical record
 5.8.0's adoption sequence was carried out against.
 
@@ -384,7 +384,7 @@ item. And DEVELOPER-AGENTS.md forbids shipping a check that has not been
 made to pass. So the honest sequence was
 the locale-codec item first, then the 31 long lines, then
 pylint enabled at a **binary** bar -- zero messages, never a `fail-under`
-score, because [R3](AUTO-IMPROVEMENT.md#the-requirements) rules out
+score, because [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out
 driving a number. That sequence is what 5.8.0 carried out, in that order.
 
 **Neither of the two side effects this paragraph predicted actually
@@ -395,7 +395,7 @@ table calls a "decision rather than an oversight." So the `# noqa:
 BLE001` markers stayed exactly that -- `pylint` never asked for a
 `# pylint: disable=broad-exception-caught` at any of them, because the
 category itself never fired. **That half is closed now**, by
-[5.4](#54-ruff-a-measured-baseline): `ruff`'s `BLE001` reads the markers
+[5.4](#-54-ruff-a-measured-baseline): `ruff`'s `BLE001` reads the markers
 `pylint` couldn't. The other half is not --
 `duplicate-code` found the four instances the baseline measurement used
 to surface the duplicated author-name grammar, then
@@ -403,7 +403,7 @@ was turned off rather than kept running, so a fifth duplication
 introduced today would still not be caught by anything. No tool this
 project runs re-implements it; that remains open.
 
-### 5.2 `markdownlint`: a measured baseline
+### 📊 5.2 `markdownlint`: a measured baseline
 
 **Adopted and enforced in 5.8.0**, at the same binary bar, over the same
 globs. The judgement this section left open -- what to do about `MD060` --
@@ -428,7 +428,7 @@ this section was written.
 Same shape, with `.markdownlint.yaml` inherited from the same source, run
 over this repository's own prose -- root `*.md`, `docs/**/*.md`,
 `.claude/**/*.md` and `plans/**/*.md`, per `ci.yml`'s `markdownlint` step
-([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#the-linters-which-are-enforced));
+([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-the-linters-which-are-enforced));
 `content/` is the user's drafts and out of scope:
 
 **927 findings**, of which:
@@ -449,13 +449,13 @@ register. Adoption is otherwise cheap and should follow 5.2.
 
 **This judgement is tracked in #362**, alongside the `line-too-long`
 residue above -- both are the remaining half of
-[build order](CODE-STANDARDS.md#build-order) item 1.
+[build order](CODE-STANDARDS.md#-build-order) item 1.
 
-### 5.3 Checks that came back clean
+### ✅ 5.3 Checks that came back clean
 
 Recorded so the next reviewer does not spend the afternoon re-running
 them. Each is a
-[CODE-STANDARDS.md review standard](CODE-STANDARDS.md#the-rest-of-the-checklist)
+[CODE-STANDARDS.md review standard](CODE-STANDARDS.md#-the-rest-of-the-checklist)
 with no detector, checked by hand against the tree:
 
 - **Over-configurability** ("a `config.toml` key with one caller and no
@@ -471,20 +471,20 @@ with no detector, checked by hand against the tree:
   `yaml.load`, no bare `except:`, no mutable default argument, no
   `assert` used for runtime validation, no SQL built by concatenation.
   The one f-string in a SQL position is the `PRAGMA` documented under
-  [What is not debt](#what-is-not-debt).
+  [What is not debt](#-what-is-not-debt).
 - **Resource lifecycle.** Every `sqlite3` connection in `chitragupta/` is closed
   in a `finally`; no leak. The repetition of that pattern was
   the repeated `connect()`/`finally: close()` block, now
   resolved into one `ledger.connection()` context manager -- it was a
   tidiness item, not a correctness one.
 
-### 5.4 `ruff`: a measured baseline
+### 📊 5.4 `ruff`: a measured baseline
 
 **Adopted and enforced.** `ci.yml`'s `lint` job runs
 `ruff check chitragupta scripts .claude/hooks` at the same binary
 zero-messages bar as pylint and markdownlint, closing
-[build order item 2](CODE-STANDARDS.md#build-order) -- the `# noqa`-free
-policy [5.1](#51-pylint-a-measured-baseline) named as still open, because
+[build order item 2](CODE-STANDARDS.md#-build-order) -- the `# noqa`-free
+policy [5.1](#-51-pylint-a-measured-baseline) named as still open, because
 `pylint` disables `broad-exception-caught` category-wide rather than
 requiring a per-site suppression.
 
@@ -495,7 +495,7 @@ fresh, and deliberately narrower than ruff's own (much broader) default
 `ruff check` enables with no config at all. `BLE` is the rule this
 adoption exists for; `E`/`F` are pyflakes/pycodestyle's core correctness
 checks plus the "keep lines short" review rule build order already named
-for `ruff` (`E501`, closing the gap [5.1](#51-pylint-a-measured-baseline)
+for `ruff` (`E501`, closing the gap [5.1](#-51-pylint-a-measured-baseline)
 left: line length was a hand-fixed wrap, not an enforced check); `RUF100`
 is what makes a `# noqa: BLE001` a checked claim instead of a comment
 nothing reads -- the actual mechanism that turns the suppression list and
@@ -534,7 +534,7 @@ suppressed set was the *right* set, rather than leaving it asserted.
 `bench/make_corpus.py` and `bench/bench_docling.py` would both report
 `BLE001` without their `# noqa`, verified directly (neither except block
 re-raises). They stay exactly as written. `bench/` itself is not in
-`ci.yml`'s `ruff` invocation -- [Tier 3.1](#31-bench-is-outside-every-check-in-the-repository)
+`ci.yml`'s `ruff` invocation -- [Tier 3.1](#-31-bench-is-outside-every-check-in-the-repository)
 excludes it from every check in the repository, unchanged by this
 adoption, so the tag is inert in practice (nothing runs `ruff` over
 `bench/`) but correct on the evidence, which is the more honest state
@@ -548,12 +548,12 @@ looks on its own -- an unpinned bump could move that verdict and redden
 `.markdownlint.yaml` don't carry this risk the same way; `ruff`'s pin in
 `ci.yml` is where the next reader bumping it will meet the reason.
 
-## Reviewing with OpenCodeReview
+## 🔍 Reviewing with OpenCodeReview
 
 `.opencodereview/rule.json` carries five per-tree rules, so the
 OpenCodeReview plugin reviews this repository against its own standards
 rather than against generic Python advice.
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#reviewing-before-you-push-the-opencodereview-plugin)
+[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-reviewing-before-you-push-the-opencodereview-plugin)
 says when and how to run it. Three limits belong on this list rather than
 in that document, because they are costs rather than instructions.
 **Tracked in #359.**
@@ -569,7 +569,7 @@ in that document, because they are costs rather than instructions.
   than in most repositories, because those documents are read as standing
   instructions and a stale one is followed. Doc drift remains a human's
   job, and
-  [CODE-STANDARDS.md's build order](CODE-STANDARDS.md#build-order) item 4
+  [CODE-STANDARDS.md's build order](CODE-STANDARDS.md#-build-order) item 4
   is still the only proposal that would touch it.
 
   This cost was paid before it was noticed: the first revision of the
@@ -597,12 +597,12 @@ they are obeyed. They are an aid with the same standing as the review
 layer, not a gate, and a run that reports clean is not evidence of
 anything.
 
-## The standing-instruction budget
+## 💰 The standing-instruction budget
 
 An assessment, requested rather than found: **are the developer-facing
 documents too long to be followed?**
 
-### What a session actually carries
+### 🎒 What a session actually carries
 
 | Document | Words | ~Tokens | When loaded |
 |---|---|---|---|
@@ -617,7 +617,7 @@ before it reads a line of code. The whole prose corpus, if something
 loaded all of it, is about 141,000 tokens -- which is why the router
 exists.
 
-### The answer is: not on the axis you would expect
+### 💡 The answer is: not on the axis you would expect
 
 **It is not a capacity problem.** 11,900 tokens is about 5% of a modern
 context window. Nothing is being pushed out, and the split by task
@@ -647,7 +647,7 @@ saying so is more useful than agreeing.** The single worst-adhered rule
 forgotten. It is *unreachable* by reading: GitHub composes that body from
 the repository's `squash_merge_commit_message` setting, and no amount of
 reading a document changes what a server-side default produces. See
-[Process debt](#process-debt-the-formats-that-are-not-adhered-to). A
+[Process debt](#-process-debt-the-formats-that-are-not-adhered-to). A
 shorter `DEVELOPER-AGENTS.md` would not have moved that number by one.
 
 There is a sharper version of this, which #238 has since shown: the rule
@@ -656,10 +656,10 @@ setting produces a commit body from a PR description. It is reachable
 only by a step at merge time, which is what point 3 below actually asks
 for.
 
-### What follows from that
+### ➡ What follows from that
 
 1. **Do not shorten by deleting rationale.** It is the same trap
-   [the comment rules](CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid)
+   [the comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)
    describe: the *why* is the part that cannot be reconstructed, and an
    agent that "tightens" these files destroys the most valuable thing in
    them. Length is not the defect.
@@ -685,11 +685,11 @@ for.
 mechanism to a sentence" beyond the Merging section it already produced.
 
 **Not recommended:** a word budget. It is a continuous score, and
-[R3](AUTO-IMPROVEMENT.md#the-requirements) rules those out for exactly
+[R3](AUTO-IMPROVEMENT.md#-the-requirements) rules those out for exactly
 the reason that applies here -- it would be met by deleting the
 explanations rather than by moving the rules.
 
-## Process debt: the formats that are not adhered to
+## 🤝 Process debt: the formats that are not adhered to
 
 Measured over the **last 30 commits on `main`**:
 
@@ -744,7 +744,7 @@ wrong for the one-commit case.
 there is no templating step between a PR description and a commit body
 for a setting to hook into. The body is therefore supplied at merge time
 via `gh pr merge --body-file`, which
-[DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#merging)
+[DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#-merging)
 now documents as the standing mechanism rather than as a stopgap.
 
 The estimate this section carried -- "roughly 15 of the ~20 violations
@@ -760,7 +760,7 @@ scan that self-skipped when history is absent would be green on the one
 host that never has it. The settings are strictly better: they prevent
 rather than detect.
 
-## What is not debt
+## 🚫 What is not debt
 
 The other half of this document's job. Every item below looks like a
 finding to a reviewer applying a checklist, and every one is a decision
@@ -769,21 +769,21 @@ worse.
 
 | Looks like | Actually |
 |---|---|
-| Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
+| Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
 | `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:128`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval.py` and `enrich/docling_parse.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |
-| 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#54-ruff-a-measured-baseline) -- confirmed live, not assumed so |
+| 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline) -- confirmed live, not assumed so |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
-| C2 permits a registered module to grow | [Deliberate](CODE-STANDARDS.md#what-a-ratchet-is-and-the-debt-register). Pinning each to today's size fails on every ordinary edit and gets the rule turned off |
+| C2 permits a registered module to grow | [Deliberate](CODE-STANDARDS.md#-what-a-ratchet-is-and-the-debt-register). Pinning each to today's size fails on every ordinary edit and gets the rule turned off |
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
-| Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#tests): a test that reads top to bottom is worth more than a DRY one |
+| Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#-tests): a test that reads top to bottom is worth more than a DRY one |
 | `tests/test_pdf_text.py` at 1806 code lines | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
-| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
-| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
+| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#-tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
+| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#-41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
 | `chitragupta/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, in the locale-codec pass) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
-## What to take first
+## 🎯 What to take first
 
 Ordered by what breaks if it is left, not by size.
 

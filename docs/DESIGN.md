@@ -1,4 +1,4 @@
-# Design
+# 🏗 Design
 
 Status: **reasoning document.** Written 2026-08-02.
 
@@ -17,14 +17,14 @@ ARCHITECTURE.md is the map. Where they touch the same subject,
 ARCHITECTURE.md states the behaviour and this states why it was chosen
 over the alternative.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Repository constraints and operating model](#repository-constraints-and-operating-model)
-- [Concurrency and conflict policy](#concurrency-and-conflict-policy)
-- [Parallelism and resource design](#parallelism-and-resource-design)
-- [Parser backends](#parser-backends)
+- [Repository constraints and operating model](#-repository-constraints-and-operating-model)
+- [Concurrency and conflict policy](#-concurrency-and-conflict-policy)
+- [Parallelism and resource design](#-parallelism-and-resource-design)
+- [Parser backends](#-parser-backends)
 
-## Repository constraints and operating model
+## 🎯 Repository constraints and operating model
 
 The repository is designed around a few hard constraints that strongly shape the
 architecture:
@@ -43,7 +43,7 @@ architecture:
    - Enrichment layer: optional heavier processing (`python -m chitragupta.enrich`).
    - Review layer: advisory aids over a finished draft (`python -m chitragupta.review`),
      run by hand and never blocking. They stay outside the automatic chain.
-   - [ARCHITECTURE.md](ARCHITECTURE.md#the-four-layers) is the map; this
+   - [ARCHITECTURE.md](ARCHITECTURE.md#-the-four-layers) is the map; this
      lists them only to say what the constraint is.
 
 3. **Config and host variability are first-class concerns**
@@ -76,7 +76,7 @@ architecture:
      `pdftotext` (external subprocess, releases the GIL), processes for
      `docling` (in-process, holds it), with one CUDA device per worker.
 
-## Concurrency and conflict policy
+## 🚦 Concurrency and conflict policy
 
 The rule the rest of this section implements. Every change to how runs
 interact, fail, or refuse each other should be checked against it, in
@@ -113,7 +113,7 @@ half-parsed is discarded rather than stored (1 over availability). A
 corrupt PDF is *not* retried, yet still fails the run every time (2:
 never silent, but also never pointlessly expensive).
 
-## Parallelism and resource design
+## ⚡ Parallelism and resource design
 
 The parse path is the only part of this repository that runs work in
 **parallel** -- several documents at once, to cut the wall clock of a
@@ -122,7 +122,7 @@ control** below, which stops two separate runs colliding; PARALLELISM.md
 defines both and describes the components. The design rules the parse
 path settled on are worth stating here.
 
-### Opt-in, and clamped rather than obeyed
+### ⚙ Opt-in, and clamped rather than obeyed
 
 `[parser].workers` defaults to `1`, which takes a genuinely serial path
 -- no executor, no pickling, no subprocess. Incremental skipping means a
@@ -149,7 +149,7 @@ An over-large request is clamped *and reported*. Silently obeying
 thrashes; silently ignoring leaves someone believing they configured
 something they did not.
 
-### Each backend gets the concurrency it can use
+### 🚦 Each backend gets the concurrency it can use
 
 Processes for `docling`, which runs in-process and holds the GIL; threads
 for `pdftotext`, an external subprocess that releases it. A process pool
@@ -163,7 +163,7 @@ context from such a parent. The cost -- each worker re-imports torch and
 docling -- is why parallelism buys nothing on a small corpus and a great
 deal on a large one.
 
-### The parent keeps what only the parent can do
+### 🧵 The parent keeps what only the parent can do
 
 Every ledger and cache write stays on the parent process: sqlite has a
 single writer, and the parent is the only place that can order results
@@ -177,7 +177,7 @@ corpus is 5% of all its pages; picked up last it would define the wall
 clock by itself. File size rather than page count, because counting pages
 needs a PDF library the corpus layer deliberately does not depend on.
 
-### Device assignment
+### 🖥 Device assignment
 
 Docling's `AcceleratorDevice.AUTO` resolves to `cuda:0` in *every*
 process, so N workers contend for one card while the rest idle. Each
@@ -186,7 +186,7 @@ a lock in the pool initialiser -- not from a PID or a worker index,
 because a `ProcessPoolExecutor` neither numbers its workers nor
 guarantees it starts all of them.
 
-### Failure and interruption are part of the design
+### ⚠ Failure and interruption are part of the design
 
 Five distinct failure modes, each handled where it can be:
 
@@ -233,7 +233,7 @@ Five distinct failure modes, each handled where it can be:
   because the ledger commits incrementally, so finished work is already
   on disk.
 
-### Partial success is a failure
+### ⚖ Partial success is a failure
 
 `DocumentConverter.convert(raises_on_error=True)` raises only on
 `FAILURE`. A `PARTIAL_SUCCESS` returns a document that stops early, and
@@ -246,7 +246,7 @@ Correspondingly, a `parse_failed` document is retried on the next run
 rather than skipped until its bytes change -- otherwise one dead worker
 would remove documents from the corpus permanently.
 
-### One writer at a time
+### 🔒 One writer at a time
 
 `sync` and the enrichment layer share a lock over `content/`, because the
 unsafe overlap is any-writer-against-any-writer: `sync` writes parsed
@@ -269,7 +269,7 @@ a full disk and a corrupt file, and the lock file is never deleted --
 unlinking an open file fails on Windows, and a delete-then-recreate race
 on POSIX gives two processes locks on different inodes.
 
-### What this does not cover
+### 🚫 What this does not cover
 
 The lock serialises writers only; readers see mid-run state by design.
 
@@ -277,10 +277,10 @@ Nor does serialising writers make output reproducible: Docling groups
 dense reference blocks differently under load, so parsed text and the
 passage sidecar both vary at high worker counts. What that costs, artifact
 by artifact, is
-[ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#what-is-reproducible-and-what-is-not)
+[ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
 -- the single statement of it, measured rather than asserted.
 
-## Where proposed work lives
+## 🗺 Where proposed work lives
 
 This document describes what the pipeline does and why. **Proposals for
 what it should do next are tracked in
@@ -296,9 +296,9 @@ representations, reranking, and platform portability) and the fifth --
 preserving richer per-document metadata -- is partly delivered by
 `chitragupta/passages.py` and the Docling sidecar. The parse path's own roadmap,
 which is narrower and measured, is in
-[PARALLELISM.md](PARALLELISM.md#roadmap).
+[PARALLELISM.md](PARALLELISM.md#-roadmap).
 
-## Parser backends
+## 📄 Parser backends
 
 [PDF-PARSER.md](PDF-PARSER.md) owns the backend comparison -- the
 tradeoffs, the two backends evaluated and removed, and the measured

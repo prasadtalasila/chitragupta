@@ -36,7 +36,7 @@ Depends on A2 ([`a2-claim-quote-split.md`](a2-claim-quote-split.md), issue
 **Written for** whoever builds it. **Assumed:**
 [docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md) for the dossier and
 the `claim:`/`quote:` contract, and
-[docs/CLI.md](../docs/CLI.md#python--m-chitraguptadraft-render) for where
+[docs/CLI.md](../docs/CLI.md#-python--m-chitraguptadraft-render) for where
 a render lands. **Not covered here:** why quarantining verbatim material
 reduces reuse -- that argument is the roadmap's, and this plan does not
 restate it. Nor is verifying that a quoted span really appears at the
