@@ -48,6 +48,38 @@ UNITS = {
 
 KINDS = ("paragraph", "section", "document")
 
+# Whether prose carrying no citation is *exceptional* in a genre -- worth
+# a finding every time -- or *ordinary*, the genre working correctly.
+# Keyed by the same `- genre:` line as UNITS above, and pinned against
+# `dossier.GENRES` by tests/test_review_uncited.py for the same reason.
+#
+# The split is docs/WRITING-STANDARDS.md §11's, read one level down from
+# the unit table: a tutorial's body "carries no citations at all, by
+# design", and `textbook-chapter-writer` is "not citation-dense; most
+# content is original worked examples and exercises". Measured on the
+# real drafts, `book-chapter.md` yields 81 uncited sentences after every
+# structural exclusion `uncited_prose` applies, and not one of them is
+# actionable -- learning objectives, worked arithmetic and exercises.
+# This is `synthesis.single_source_pct`'s move, which excludes uncited
+# units in the same two genres and for the same reason.
+UNCITED_PROSE = {
+    "survey": "exceptional",
+    "thesis-chapter": "exceptional",
+    "deep-research": "exceptional",
+    "textbook-chapter": "ordinary",
+    "tutorial": "ordinary",
+}
+
+STANDINGS = ("exceptional", "ordinary")
+
+# What an unknown or unrecorded genre gets: the *strict* reading, unlike
+# FALLBACK_KIND's paragraph, which is merely the commonest. The asymmetry
+# is deliberate -- measuring at the wrong scale produces a wrong number a
+# reader can see, while raising no findings produces a clean report that
+# reads as an answer. Silence is the worse failure, so the fallback is
+# the one that speaks.
+FALLBACK_STANDING = "exceptional"
+
 # What an unknown or unrecorded genre is measured at. The paragraph
 # rather than a refusal: a report that judges nothing is more useful
 # reporting at the wrong scale *and saying so* than not running -- and
@@ -123,6 +155,25 @@ def resolve_unit(draft: Path, override: str | None = None) -> tuple[str, str]:
     if genre in UNITS:
         return UNITS[genre], "scope.md"
     return FALLBACK_KIND, "nothing"
+
+
+def resolve_standing(draft: Path, override: str | None = None) -> tuple[str, str | None, str]:
+    """How `draft`'s genre treats uncited prose, the genre, and where it
+    came from.
+
+    Three sources, most specific first -- `resolve_unit`'s own order, and
+    for the same reason: the report must be able to say whether a draft
+    was read under its own recorded genre or under a fallback. The genre
+    travels even when an override won, because "read strictly, because
+    you asked, on a draft recorded as a tutorial" is a different thing to
+    have done than reading a survey under its own genre.
+    """
+    if override:
+        return UNCITED_PROSE[override], override, "--genre"
+    genre = genre_of(draft)
+    if genre in UNCITED_PROSE:
+        return UNCITED_PROSE[genre], genre, "scope.md"
+    return FALLBACK_STANDING, genre, "nothing"
 
 
 def _declaration(lines: list[str]) -> str | None:

@@ -186,7 +186,7 @@ and different enough to be dangerous.
 | autoresearch | Here | Note |
 |---|---|---|
 | `train.py` -- the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
-| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the four review aids, `chitragupta.draft gate`, #128's allowlist | The loop may run them and may not edit them |
+| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the six review aids, `chitragupta.draft gate`, #128's allowlist | The loop may run them and may not edit them |
 | `program.md` -- edited by the human, not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
 | `val_bpb` -- one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule |
 | the fixed five-minute budget | *nothing, deliberately* | Its runs compete; agenda items do not |
@@ -476,7 +476,7 @@ alternative weighed against `agenda` is worse:
 - `worklist` and `backlog` presume the items are accepted work, when
   three of six classes are undecided.
 - `remediation` names only the half the aid does not do.
-- `findings` is what all four existing aids already emit.
+- `findings` is what all six existing aids already emit.
 - `digest` suggests condensing rather than prioritising.
 - `snags` is exact but colloquial, and opaque outside British usage.
 - `docket` reads as a delivery note in that same British usage.

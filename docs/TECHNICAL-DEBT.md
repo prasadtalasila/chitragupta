@@ -174,8 +174,11 @@ size-of-`bench/` claim in [3.1](#31-bench-is-outside-every-check-in-the-reposito
 | Module | Annotated |
 |---|---|
 | `chitragupta/review/verbatim_check.py` | **69 / 69** -- resolved #133 |
-| `chitragupta/review/citation_provenance.py` | 23 / 24 |
+| `chitragupta/review/citation_provenance.py` | 17 / 18 -- was 23 / 24 before the block walk moved to `_blocks.py` (#311), which took six annotated `def`s with it |
 | `chitragupta/review/citation_coverage.py` | 14 / 15 |
+| `chitragupta/review/_blocks.py` | **6 / 6** |
+| `chitragupta/review/_claims.py` | **3 / 3** |
+| `chitragupta/review/uncited_prose.py` | 10 / 11 -- `build_parser`, which no aid annotates |
 | `chitragupta/review/__init__.py` | 10 / 10 |
 | `chitragupta/runlock.py` | **7 / 7** -- resolved #293 |
 | `chitragupta/sync.py` | **16 / 16** -- resolved #293, see correction below |

@@ -15,6 +15,7 @@ import json
 
 import pytest
 
+from chitragupta.review import _blocks
 from chitragupta.review import citation_provenance as cp
 from chitragupta import config, ledger
 
@@ -725,14 +726,14 @@ class TestEdgeShapes:
     def test_blank_lines_between_paragraphs_close_each_span(self, isolated_config):
         """Exercises the span builder's blank-line branch with content on
         both sides, not just a trailing flush."""
-        spans = cp._paragraph_spans(["one", "", "two", "", "three"])
+        spans = _blocks.paragraph_spans(["one", "", "two", "", "three"])
         assert spans == [(1, 1, "one"), (3, 3, "two"), (5, 5, "three")]
 
     def test_leading_blank_lines_are_not_a_paragraph(self, isolated_config):
-        assert cp._paragraph_spans(["", "", "body"]) == [(3, 3, "body")]
+        assert _blocks.paragraph_spans(["", "", "body"]) == [(3, 3, "body")]
 
     def test_trailing_blank_line_closes_the_last_span(self, isolated_config):
-        assert cp._paragraph_spans(["body", ""]) == [(1, 1, "body")]
+        assert _blocks.paragraph_spans(["body", ""]) == [(1, 1, "body")]
 
     def test_same_citekey_cited_twice_reads_the_source_once(self, isolated_config, monkeypatch):
         """The passage cache: re-reading a 40-page source per citation

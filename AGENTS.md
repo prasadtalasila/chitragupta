@@ -145,11 +145,13 @@ enrichment layer is optional and nothing above it needs it.
   `chitragupta/review/verbatim_check.py`,
   `chitragupta/review/citation_coverage.py`,
   `chitragupta/review/synthesis.py`,
-  `chitragupta/review/figure_layout/`): run by
+  `chitragupta/review/figure_layout/`,
+  `chitragupta/review/uncited_prose.py`): run by
   hand on
   a finished draft, never invoked automatically. Each reads a draft plus
   the corpus -- or, for `figure_layout`, the figures the draft
-  references -- and produces **evidence for a human judgement, never a
+  references, and for `uncited_prose`, nothing beyond the draft itself --
+  and produces **evidence for a human judgement, never a
   verdict** -- every one exits 0 whether it finds something or not, and
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the

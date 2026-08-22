@@ -1,15 +1,16 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Five commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
+Six commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
 `chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check.py`,
-`chitragupta/review/synthesis.py` and `chitragupta/review/figure_layout/`. Each
-reads a draft -- plus the corpus, or in `figure_layout`'s case the
-figures the draft references -- and produces evidence for a human
-judgement. None
-gates, none runs automatically, none takes the write lock, and all five
-are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4: the review
-layer" is the definition; this module is what makes the five obey one
-output contract instead of five.
+`chitragupta/review/synthesis.py`, `chitragupta/review/figure_layout/` and
+`chitragupta/review/uncited_prose.py`. Each reads a draft -- plus the
+corpus, or in `figure_layout`'s case the figures the draft references,
+or in `uncited_prose`'s case nothing else at all -- and produces
+evidence for a human judgement. None gates, none runs automatically,
+none takes the write lock, and all six are interpreter tier 1.
+docs/ARCHITECTURE.md's "Layer 4: the review layer" is the definition;
+this module is what makes the six obey one output contract instead of
+six.
 
 **One directory, mirroring the draft's path**, the same rule
 `content/rendered/` and `content/dossiers/` already follow:
@@ -20,6 +21,7 @@ output contract instead of five.
          content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
          content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf)
          content/review/<topic>/survey.figure.md       (+ .tex/.pdf)
+         content/review/<topic>/survey.uncited.md      (+ .tex/.pdf)
 
 so a draft, its dossier, its renders and its review artefacts are all
 findable from the draft's own path. The `.tex`/`.pdf` land *beside* the
@@ -35,9 +37,10 @@ computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
 Markdown through `chitragupta/render_output.py`, and this is not a render of
-anything. All four aids emit one now -- `verbatim scan` since #127,
-`provenance` and `coverage` since #309, `synthesis` from the day it
-landed -- which is why docs/AUTO-IMPROVEMENT.md's
+anything. All six aids emit one now -- `verbatim scan` since #127,
+`provenance` and `coverage` since #309, and `synthesis`, `figure` and
+`uncited` from the day each landed -- which is why
+docs/AUTO-IMPROVEMENT.md's
 `agenda` reads each aid's JSON as optional rather than required.
 
 **No timestamp in a report.** The reason to write one at all is that it
@@ -52,7 +55,7 @@ docs say so too, but a file found on disk months later is exactly the
 case the docs cannot reach.
 
 Stdlib-only, and imports `render_output` lazily so the md-only path
-doesn't pay for it -- same tier as the five commands it serves.
+doesn't pay for it -- same tier as the six commands it serves.
 """
 
 import json
@@ -72,6 +75,7 @@ AIDS = {
     "coverage": "Citation coverage",
     "synthesis": "Multi-source synthesis",
     "figure": "TikZ layout check",
+    "uncited": "Uncited prose",
 }
 
 # Deliberately names its sources rather than linking to them: this text

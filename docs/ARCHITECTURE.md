@@ -307,7 +307,7 @@ not. Reading an artefact is not calling a layer.
 
 ## Layer 4: the review layer
 
-Three aids behind one command, run by hand over a finished draft.
+Six aids behind one command, run by hand over a finished draft.
 Nothing invokes them automatically, and none of them gates anything:
 
 | Command | Answers |
@@ -316,6 +316,8 @@ Nothing invokes them automatically, and none of them gates anything:
 | `python -m chitragupta.review verbatim overlap\|locate …` | how much wording a draft shares with one cited source, and which page a phrase is on |
 | `python -m chitragupta.review verbatim scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
 | `python -m chitragupta.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
+| `python -m chitragupta.review synthesis <draft>` | how many sources each unit of the draft rests on, at the unit its genre binds at |
+| `python -m chitragupta.review uncited <draft>` | which sentences carry no citation at all -- the prose-side question `coverage` does not answer. The one aid that reads no corpus |
 
 **Advisory, not a gate**, and named accordingly. *Review* rather than
 *verification*, because `chitragupta.draft gate` is the verification: it lives in

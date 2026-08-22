@@ -284,12 +284,12 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           needed, which is why it sits here and not in chitragupta/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
-chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, four aids
+chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, six aids
   __init__.py               the layer's shared output contract -- report path (content/review/,
                           mirroring the draft), the "not a gate" banner, the header, and the
-                          write-md-then-render routine all four aids use. No timestamp, so a
+                          write-md-then-render routine all six aids use. No timestamp, so a
                           report diffs across revisions
-  __main__.py               the layer's single entry point: one parser, three subcommands, each
+  __main__.py               the layer's single entry point: one parser, five subcommands, each
                           wired to its aid's own build_parser()/run(). The aids below carry no
                           __main__ block of their own -- see docs/ARCHITECTURE.md on why a layer's
                           command surface stays one level deep
@@ -297,8 +297,19 @@ chitragupta/review/                the review layer -- one command, `python -m c
   citation_provenance.py    `provenance` -- what in each cited source supports the claim citing it,
                           not a gate (scores claims against passages.py's ladder; see
                           docs/CITATION-PROVENANCE.md)
+  synthesis.py              `synthesis` -- how many sources each unit of the draft rests on, at the
+                          unit its genre binds at (docs/WRITING-STANDARDS.md §11), not a gate
+  uncited_prose.py          `uncited` -- which sentences carry no citation at all, the prose-side
+                          question `coverage` does not answer. The one aid that reads no corpus
   verbatim_check.py         `verbatim` -- per-citekey overlap, whole-draft x whole-corpus scan, and
                           page-locating checks against sources
+  _blocks.py                what a *block* is -- a table row, a list item, a heading -- in both
+                          markups. Shared by provenance and uncited_prose; neither owns it
+  _claims.py                which sentences of a draft carry a claim, and which are scaffolding.
+                          Split from uncited_prose so the roadmap's C2 can share it
+  _units.py                 what a "unit" is per genre, and how each genre treats uncited prose --
+                          the two per-genre policy tables, pinned against dossier.GENRES
+  _synthesis_render.py      how a synthesis report reads; _uncited_render.py is the same for uncited
 chitragupta/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetry group), optional
   __main__.py               the layer's entry point, `python -m chitragupta.enrich --stages …`; orchestrates
                           the stages below, which carry no __main__ block of their own
@@ -390,7 +401,7 @@ every citation in a draft, what in the cited source supports it and where
 under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
 (`config.mirrored_dir`), and `chitragupta/review/__init__.py` owns that contract
 for all
-four review-layer commands.
+six review-layer commands.
 
 Run it directly rather than wrapping it in an enrichment stage: that
 would have the enrichment layer importing the review layer, and would

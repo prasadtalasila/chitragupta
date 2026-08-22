@@ -680,6 +680,19 @@ All three are review-layer aids: advisory, exit 0, never gates.
 
 ### C1: uncited-prose report
 
+**Shipped in [#311](https://github.com/prasadtalasila/chitragupta/issues/311)
+(6.19.0)** as `python -m chitragupta.review uncited`.
+
+*Planned in detail: [`plans/c1-uncited-prose-report.md`](../plans/c1-uncited-prose-report.md),
+which records what the measurement changed.* Two things this entry asked
+for turned out not to need building: the shared sentence splitter is
+`chitragupta/sentences.py`, which has existed since tier 3 needed it,
+and the block walk moved into `chitragupta/review/_blocks.py` rather
+than being written a fourth time. What it did *not* anticipate is a
+**per-genre standing** -- a tutorial's body carries no citations by
+design, so reporting it floods -- and a measured exclusion list without
+which the naive reading flags 78% of a survey.
+
 Which sentences carry no citation at all. **Verified as a genuine gap:**
 `chitragupta/review/citation_coverage.py` answers a different question
 (which *surfaced* candidates got cited), not which prose is
@@ -1207,10 +1220,11 @@ here that makes something run automatically, or repairs a draft without
 being asked, is gated on the amendment or refused by the self-marking
 argument.** Check a new proposal against both before costing it.
 
-**Three items have written plans.** `plans/` holds the implementation
+**Four items have written plans.** `plans/` holds the implementation
 plan for a roadmap item whose design is genuinely underdetermined --
 [A2](#a2-split-support-into-claim-and-quote),
-[B2](#b2-require-multi-source-paragraphs) and
+[B2](#b2-require-multi-source-paragraphs),
+[C1](#c1-uncited-prose-report) and
 [D2](#d2-deterministic-tikz-layout-check) have one each, as worked
 examples of the convention. Most items do not need one: the entry above
 already names the files, the size and the dependencies, and for a
