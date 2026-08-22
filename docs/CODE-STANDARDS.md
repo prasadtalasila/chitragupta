@@ -476,7 +476,7 @@ different shape than proposed here -- see their own notes.
 
 1. ~~**A linter and formatter (`ruff`).**~~ **A linter landed, but as
    `pylint`, not `ruff`, and not a formatter.** `ci.yml`'s `lint` job runs
-   `pylint --rcfile=.pylintrc src scripts .claude/hooks` at a binary
+   `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
    zero-messages bar (`docs/TECHNICAL-DEBT.md §5.1`), measured and
    enforced the way this item asked for -- a baseline first, a
    `.pylintrc` `disable=` register of the same shape this item wanted for

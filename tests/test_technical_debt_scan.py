@@ -43,6 +43,7 @@ test cannot fail on unpaid debt; it fails only when the document
 an outstanding cost.
 """
 
+import ast
 import re
 from pathlib import Path
 
@@ -52,6 +53,9 @@ from test_code_standards_scan import LEGACY_LONG_FILES, LEGACY_LONG_FUNCTIONS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEBT_DOC = REPO_ROOT / "docs" / "TECHNICAL-DEBT.md"
+CODE_STANDARDS_DOC = REPO_ROOT / "docs" / "CODE-STANDARDS.md"
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+PYPROJECT_TOML = REPO_ROOT / "pyproject.toml"
 
 # A register entry as the document writes one: `chitragupta/sync.py::run` for a
 # C1 function, `chitragupta/dossier.py` for a C2 module, always in a code span.
@@ -174,6 +178,11 @@ def _debt_doc():
     # codec, which is cp1252 on CI's Windows leg, and this document is
     # full of em dashes.
     return DEBT_DOC.read_text(encoding="utf-8")
+
+
+@pytest.fixture(name="code_standards_doc")
+def _code_standards_doc():
+    return CODE_STANDARDS_DOC.read_text(encoding="utf-8")
 
 
 class TestTheDocumentDescribesTheRegisterCorrectly:
@@ -343,3 +352,195 @@ class TestTheChecksActuallyFire:
         doc = _OPEN_HEADING_DOC.replace("**2 functions** over C1", "two functions over C1")
         with pytest.raises(AssertionError, match="no longer states its register sizes"):
             _stated_sizes(doc)
+
+
+# --- #353: the other drift-prone claims the issue asked to pin --------
+#
+# Each is a "now" claim -- true of the tree today, re-measured rather
+# than a frozen record of a past baseline -- the same shape
+# `_stated_sizes` above already pins for the C1/C2 register sizes.
+# `_regex_pin` is that shape made generic, so #348 (PACKAGING.md) and
+# #345 (ARCHITECTURE.md) can reuse it instead of reinventing it. The
+# noqa-marker count the issue also named is not pinned here: #354
+# closed that debt outright (adopted `ruff`, deleted the "inert
+# markers" section) while this PR was in flight, and `ruff`'s own
+# `RUF100` is now the mechanism that checks the suppressed set is the
+# right one -- a second, weaker prose pin here would be exactly the
+# two-debt-lists problem the register warns against.
+
+
+def _regex_pin(pattern: re.Pattern, text: str, what: str) -> tuple[str, ...]:
+    """Search `pattern` in a whitespace-normalised copy of `text` and
+    return its captured groups, failing loudly rather than returning
+    nothing if the sentence has been reworded past the pattern -- the
+    same guarantee `_stated_sizes` gives the register-size claim, made
+    reusable for the claims below and for future documents."""
+    match = pattern.search(" ".join(text.split()))
+    assert match, (
+        f"{what} no longer states this fact in the shape this test reads "
+        f"({pattern.pattern!r}). Rewording it is fine; teach this pattern "
+        "the new shape in the same change, or the check silently stops "
+        "running."
+    )
+    return match.groups()
+
+
+def _annotation_ratio() -> tuple[int, int]:
+    """(annotated, total) return-annotated `def`s under `chitragupta/`,
+    ast-walked rather than typed -- `node.returns is None`, the same
+    measure #353's own re-measurement used."""
+    annotated = total = 0
+    for path in sorted((REPO_ROOT / "chitragupta").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                total += 1
+                if node.returns is not None:
+                    annotated += 1
+    return annotated, total
+
+
+_ANNOTATION_RE = re.compile(r"\((\d+) of (\d+) `def`s carry a return annotation\)")
+
+_LINT_TARGET_QUOTE_RE = re.compile(r"pylint --rcfile=\.pylintrc ([^`]+)`")
+
+_COVERAGE_SOURCE_QUOTE_RE = re.compile(r"source = (\[[^\]]*\])")
+
+_BENCH_SELF_CHECK_RE = re.compile(r"\*\*(\d+)\*\* scripts still hold no assertion at all")
+
+
+def _ci_lint_target() -> str:
+    """The path list `ci.yml`'s lint job actually passes to pylint, read
+    from the workflow rather than typed -- the source of truth both
+    dangling cross-references #353 fixed were checked against."""
+    text = CI_WORKFLOW.read_text(encoding="utf-8")
+    match = re.search(r"run: pylint --rcfile=\.pylintrc (\S.*\S)\s*$", text, re.MULTILINE)
+    assert match, "ci.yml no longer runs pylint in the shape this test reads"
+    return match.group(1)
+
+
+def _pyproject_coverage_source() -> list[str]:
+    """`[tool.coverage.run].source`, read from `pyproject.toml` rather
+    than typed."""
+    text = PYPROJECT_TOML.read_text(encoding="utf-8")
+    match = re.search(r"^source = (\[.*\])", text, re.MULTILINE)
+    assert match, (
+        "pyproject.toml no longer states [tool.coverage.run].source in the "
+        "shape this test reads"
+    )
+    return ast.literal_eval(match.group(1))
+
+
+def _bench_scripts_without_self_check() -> int:
+    """Count of `bench/*.py` with no `def self_check`, mirroring
+    `for f in bench/*.py; do grep -q "def self_check" $f || echo $f; done`."""
+    return sum(
+        1
+        for path in sorted((REPO_ROOT / "bench").glob("*.py"))
+        if "def self_check" not in path.read_text(encoding="utf-8")
+    )
+
+
+def _assert_lint_target_matches(doc_name: str, text: str, ci_target: str) -> None:
+    """Every `pylint --rcfile=.pylintrc ...` quoted in `text` must name
+    `ci_target` -- the check both dangling cross-references #353 fixed
+    would have caught, and that catches the next rename too."""
+    quoted = _LINT_TARGET_QUOTE_RE.findall(" ".join(text.split()))
+    assert quoted, (
+        f"{doc_name} no longer quotes the pylint invocation in the shape "
+        "this test reads (`pylint --rcfile=.pylintrc ...`)"
+    )
+    assert all(target.strip() == ci_target for target in quoted), (
+        f"{doc_name} quotes `pylint --rcfile=.pylintrc ...` with a target "
+        f"that no longer matches ci.yml's `{ci_target}`. This is the "
+        "dangling-reference shape #353 fixed twice already (.pylintrc's "
+        "stale section number, docs/CODE-STANDARDS.md's stale `src`)."
+    )
+
+
+def _assert_coverage_source_matches(doc_name: str, text: str, pyproject_source: list[str]) -> None:
+    quoted = _COVERAGE_SOURCE_QUOTE_RE.findall(text)
+    assert quoted, (
+        f"{doc_name} no longer quotes [tool.coverage.run].source in the "
+        "shape this test reads (`source = [...]`)"
+    )
+    for raw in quoted:
+        assert ast.literal_eval(raw) == pyproject_source, (
+            f"{doc_name} quotes a coverage `source` list that no longer "
+            f"matches pyproject.toml's {pyproject_source!r}."
+        )
+
+
+class TestTheOtherDriftProneClaimsArePinned:
+    """Three of the four claims #353's own "What to build" list named,
+    each checked against the real document -- the fourth (the noqa
+    marker count) is #354's now, not this file's; see the comment
+    above."""
+
+    def test_the_annotation_ratio_matches_the_tree(self, debt_doc):
+        groups = _regex_pin(_ANNOTATION_RE, debt_doc, "docs/TECHNICAL-DEBT.md")
+        stated = tuple(int(n) for n in groups)
+        assert stated == _annotation_ratio(), (
+            "docs/TECHNICAL-DEBT.md's Tier 2 annotation ratio no longer "
+            "matches an ast-walk of chitragupta/ (node.returns is None). "
+            "Re-measure rather than editing the figure by hand."
+        )
+
+    def test_the_quoted_lint_target_matches_ci_everywhere_it_appears(
+        self, debt_doc, code_standards_doc
+    ):
+        ci_target = _ci_lint_target()
+        _assert_lint_target_matches("docs/TECHNICAL-DEBT.md", debt_doc, ci_target)
+        _assert_lint_target_matches("docs/CODE-STANDARDS.md", code_standards_doc, ci_target)
+
+    def test_the_quoted_coverage_source_matches_pyproject(self, debt_doc):
+        _assert_coverage_source_matches(
+            "docs/TECHNICAL-DEBT.md", debt_doc, _pyproject_coverage_source()
+        )
+
+    def test_the_bench_self_check_count_matches_the_tree(self, debt_doc):
+        stated = int(_regex_pin(_BENCH_SELF_CHECK_RE, debt_doc, "docs/TECHNICAL-DEBT.md")[0])
+        assert stated == _bench_scripts_without_self_check(), (
+            "docs/TECHNICAL-DEBT.md's 3.1 self-check count no longer "
+            "matches bench/*.py. Re-measure rather than editing the "
+            "figure by hand."
+        )
+
+
+class TestTheNewPinsFailLoudlyWhenReworded:
+    """The same guarantee
+    `test_a_reworded_size_sentence_fails_loudly_rather_than_silently`
+    pins for `_stated_sizes`, extended to the new patterns above: a pin
+    that silently stops matching is worse than no pin."""
+
+    def test_a_reworded_annotation_sentence_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer states this fact"):
+            _regex_pin(_ANNOTATION_RE, "chitragupta/ is 93% annotated now.", "the doc")
+
+    def test_a_reworded_bench_self_check_sentence_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer states this fact"):
+            _regex_pin(_BENCH_SELF_CHECK_RE, "8 scripts still have none.", "the doc")
+
+    def test_a_lint_target_no_longer_quoted_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer quotes the pylint invocation"):
+            _assert_lint_target_matches(
+                "the doc", "prose with no invocation quoted", "chitragupta scripts"
+            )
+
+    def test_a_lint_target_quoted_with_a_stale_value_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer matches ci.yml's"):
+            _assert_lint_target_matches(
+                "the doc", "`pylint --rcfile=.pylintrc src scripts`", "chitragupta scripts"
+            )
+
+    def test_a_coverage_source_no_longer_quoted_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer quotes"):
+            _assert_coverage_source_matches(
+                "the doc", "prose with no source list quoted", ["chitragupta"]
+            )
+
+    def test_a_coverage_source_quoted_with_a_stale_value_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer matches pyproject.toml's"):
+            _assert_coverage_source_matches(
+                "the doc", 'source = ["src", "scripts"]', ["chitragupta", "scripts"]
+            )

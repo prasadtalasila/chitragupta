@@ -127,6 +127,9 @@ tier holds no subsections at all: both of its named entries are closed
 (`chitragupta/sync.py::run` in #178, `chitragupta/dossier.py` in #219),
 and what each was measured against is in the pull request that split it.
 
+**Tracked in #360** (the C1 register: four of the seven functions) and
+**#361** (the C2 register: two of the eleven modules).
+
 ## Tier 2: the debt CODE-STANDARDS.md already named
 
 [Build order](CODE-STANDARDS.md#build-order) lists four things that would
@@ -138,13 +141,15 @@ below are not. They are debt rather than roadmap because each has a
 sequencing; this section only supplies the numbers it was written
 without.
 
-### Type annotations: 695 of 748
+### Type annotations: 758 of 813
+
+**Tracked in #355.**
 
 Build-order item 3 says "`chitragupta/` is partly annotated." It is 93%
-(695 of 748 `def`s carry a return annotation), and the distribution is
+(758 of 813 `def`s carry a return annotation), and the distribution is
 the finding rather than the total. Both numbers grew substantially since
 this section was last measured -- the tree has gone from 433 `def`s to
-748 as new modules landed (`spec/`, `unit/`, `registry/`,
+813 as new modules landed (`spec/`, `unit/`, `registry/`,
 `review/synthesis.py` among them) -- so re-run the count directly
 (`ast`-walk every `def`, check `node.returns`) rather than trusting a
 stale figure here, the same caution this document asks of its own
@@ -156,12 +161,12 @@ size-of-`bench/` claim in [3.1](#31-bench-is-outside-every-check-in-the-reposito
 | `chitragupta/review/citation_provenance.py` | 17 / 18 -- was 23 / 24 before the block walk moved to `_blocks.py` (#311), which took six annotated `def`s with it |
 | `chitragupta/review/citation_coverage.py` | 14 / 15 |
 | `chitragupta/review/_blocks.py` | **6 / 6** |
-| `chitragupta/review/_claims.py` | **3 / 3** |
+| `chitragupta/review/_claims.py` | **5 / 5** |
 | `chitragupta/review/uncited_prose.py` | 10 / 11 -- `build_parser`, which no aid annotates |
 | `chitragupta/review/__init__.py` | 10 / 10 |
 | `chitragupta/runlock.py` | **7 / 7** -- resolved #293 |
 | `chitragupta/sync.py` | **16 / 16** -- resolved #293, see correction below |
-| `chitragupta/dossier/` | 88 / 90 -- `_drift.py::DriftIndex.__init__` and `_sections.py::_prose_lines` are the two gaps, split from the one-file 64/65 count by #219 and re-measured per module now rather than left unmeasured |
+| `chitragupta/dossier/` | 89 / 91 -- `_drift.py::DriftIndex.__init__` and `_sections.py::_prose_lines` are the two gaps, split from the one-file 64/65 count by #219 and re-measured per module now rather than left unmeasured |
 
 **`verbatim_check.py` no longer holds the tree's only zero.** It was
 the second-largest module in the repository with no annotations at all,
@@ -190,16 +195,19 @@ New in this review. Each names a call site.
 
 ### 3.1 `bench/` is outside every check in the repository
 
+**Tracked in #356.**
+
 6,183 lines of Python across 22 files (2026-08-13: 2,021 across 8 --
 grown substantially since, mostly the plagiarism/paraphrase-tier
 benchmark scripts `docs/PLAGIARISM-DESIGN.md` cites), and it is excluded
 from all four things that hold the rest of the tree:
 
 - C1 and C2 (`STATEMENT_ROOTS`/`CODE_LINE_ROOTS` in the scan test)
-- coverage (`source = ["src", "scripts"]` in `pyproject.toml`)
+- coverage (`source = ["chitragupta", "scripts", ".claude/hooks"]` in
+  `pyproject.toml`)
 - the release archive (`scripts/release.py`)
-- the linters -- `pylint` and `ruff` both run against
-  `src scripts .claude/hooks`
+- the linters -- `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks`
+  and `ruff check chitragupta scripts .claude/hooks`
   ([5.1](#51-pylint-a-measured-baseline)/ruff subsection), never `bench/`
 
 Measured against the ratchet it does not face, with the ratchet's own
@@ -234,16 +242,19 @@ worth what it usually is: the first run of
 nothing since `chitragupta/dossier.py` became a package in #224, so its
 three dossier counts had been three measurements of the same whole set.
 
-What stays open is the wider half #294 declared out of scope: the other
-19 scripts hold no assertion at all, and `bench/` is still outside all
+**Re-measured 2026-08-22:** 14 of the 22 scripts now carry a
+`self_check()`, well past the 3 #294 left it at
+(`for f in bench/*.py; do grep -q "def self_check" $f || echo $f; done`).
+What stays open is the wider half #294 declared out of scope: **8**
+scripts still hold no assertion at all, and `bench/` is still outside all
 four checks above. That is the same accepted call it always was -- the
 convention is a floor for scripts that publish a number, not a plan to
 bring `bench/` under the ratchet.
 
 ## Tier 4: the test suite
 
-27,948 lines across 68 modules (2026-08-13: 21,780 across 40 -- both trees
-have grown substantially since), against `chitragupta/`'s 18,135 -- the suite is
+36,546 lines across 93 modules (2026-08-13: 21,780 across 40 -- both trees
+have grown substantially since), against `chitragupta/`'s 25,171 -- the suite is
 about 1.5x the code it tests, holds 100% line and branch coverage, and is in
 better shape than the code. A full review found no dead helper, no
 order-dependent test, no network access, no `xfail`, no bare
@@ -260,6 +271,9 @@ a maintainer's machine while passing in CI, the worst direction for a
 test to be wrong in. The third is below.
 
 ### 4.1 Tests that assert against un-versioned per-host data
+
+**The general rule below is tracked in #358**; the two instances that
+prompted it were already fixed when this was first recorded.
 
 `config.toml` and `papers/bibliography.bib` are gitignored, per-host, and
 different on every machine. Two tests depended on them:
@@ -338,6 +352,11 @@ already decided against leaves **44 real findings**:
 | `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard` -- deliberate lowercase context managers; belongs in `good-names` |
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
+**The `line-too-long` row's residue is tracked in #362**, alongside
+[build order](CODE-STANDARDS.md#build-order) item 1's missing formatter --
+this baseline table itself stays as measured, the historical record
+5.8.0's adoption sequence was carried out against.
+
 The categories disabled, and why, since each is a decision rather than an
 oversight:
 
@@ -406,8 +425,10 @@ re-taken at **947** on the current tree, against the 927 recorded when
 this section was written.
 
 Same shape, with `.markdownlint.yaml` inherited from the same source, run
-over this repository's own prose (root `*.md` plus `docs/`; `content/` is
-the user's drafts and out of scope):
+over this repository's own prose -- root `*.md`, `docs/**/*.md`,
+`.claude/**/*.md` and `plans/**/*.md`, per `ci.yml`'s `markdownlint` step
+([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#the-linters-which-are-enforced));
+`content/` is the user's drafts and out of scope:
 
 **927 findings**, of which:
 
@@ -424,6 +445,10 @@ enough to adopt. `MD060` alone would either produce a 827-line diff that
 touches every table in the documentation or be disabled; that is a
 judgement for whoever adopts it, not something to decide inside a debt
 register. Adoption is otherwise cheap and should follow 5.2.
+
+**This judgement is tracked in #362**, alongside the `line-too-long`
+residue above -- both are the remaining half of
+[build order](CODE-STANDARDS.md#build-order) item 1.
 
 ### 5.3 Checks that came back clean
 
@@ -529,7 +554,8 @@ OpenCodeReview plugin reviews this repository against its own standards
 rather than against generic Python advice.
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#reviewing-before-you-push-the-opencodereview-plugin)
 says when and how to run it. Three limits belong on this list rather than
-in that document, because they are costs rather than instructions:
+in that document, because they are costs rather than instructions.
+**Tracked in #359.**
 
 - **It cannot review Markdown, so it cannot review the documents that
   govern this project.** OCR opens only extensions it recognises as code
@@ -654,6 +680,9 @@ for.
    not working with a command and a setting. It would not be worth paying
    twice.
 
+**Conclusions 2 and 3 are tracked in #357** -- applying "prefer a
+mechanism to a sentence" beyond the Merging section it already produced.
+
 **Not recommended:** a word budget. It is a continuous score, and
 [R3](AUTO-IMPROVEMENT.md#the-requirements) rules those out for exactly
 the reason that applies here -- it would be met by deleting the
@@ -673,7 +702,8 @@ Measured over the **last 30 commits on `main`**:
 
 **Partly resolved in #238** (settings applied 2026-08-18). The table
 above is the measurement as taken on 2026-08-13 and is kept as the
-baseline; what follows is what each cause turned into.
+baseline; what follows is what each cause turned into. **Rows 1 and 2 --
+the ones that stay open below -- are tracked in #357.**
 
 **The dominant cause was a repository setting, not discipline.**
 `squash_merge_commit_message` was `COMMIT_MESSAGES`, which builds the
@@ -762,8 +792,9 @@ and #291), and §3.1's "pattern of one" closed in PR #294, which gave
 `bench_drift.py` and `sweep_sync.py` a `self_check()` each and wrote the
 convention down in `bench/README.md`.
 
-1. **[3.1] The rest of `bench/`.** 19 of its 22 scripts still carry no
+1. **[3.1] The rest of `bench/`.** 8 of its 22 scripts still carry no
    self-check, and the directory remains outside C1/C2, coverage, the
    release archive and the linters. Open and accepted rather than
    scheduled: the convention is a floor for a script that publishes a
-   number, not a plan to bring `bench/` under the ratchet.
+   number, not a plan to bring `bench/` under the ratchet. Tracked in
+   #356.

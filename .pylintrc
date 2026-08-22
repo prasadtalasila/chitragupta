@@ -154,7 +154,7 @@ disable=raw-checker-failed,
         too-few-public-methods,
 
         # Two are deliberate and documented; the third is registered as
-        # docs/TECHNICAL-DEBT.md's 3.7 and tracked there, which is where
+        # docs/TECHNICAL-DEBT.md's 5.1 and tracked there, which is where
         # a decision about it belongs.
         duplicate-code,
 
