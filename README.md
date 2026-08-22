@@ -131,7 +131,6 @@ chitragupta init my-project && cd my-project
 # only needed to run the test suite. docs/CLI.md's "Which interpreter"
 # explains why the module form (python -m chitragupta.<layer>) still
 # works either way.
-git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
 pipx install poetry
 bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
