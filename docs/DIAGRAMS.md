@@ -53,49 +53,64 @@ work: phase 1 is the only entrance -- citekeys come from your BibTeX
 export and nowhere else -- and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#how-it-works).
 
-The `FAIL` arrow loops back to **drafting**, not to you. A failing gate is
-normally invisible: the skill discards the unsupported claim, rewrites it
-and runs the gate again. You only get involved in the rarer case where the
-paper genuinely isn't in the corpus yet, which is a trip back to phase 1.
+The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
+gate is normally invisible: the skill discards the unsupported claim,
+rewrites it and runs the gate again. You only get involved in the rarer
+case where the paper genuinely isn't in the corpus yet, and that means
+going back to phase 1 and adding it.
 
 It carries no commands and no file paths on purpose -- this is the diagram
 for someone who has not decided to install anything yet, and a reader who
 wants either has [CLI.md](CLI.md) for the commands and
 [the artifacts diagram](#4-everything-on-disk) for the paths.
 
-Two boxes sit off the spine, dashed because neither is a step you run in
-sequence. **The dossier** ([DOSSIER.md](DOSSIER.md)) is written while a
-draft is written and read back to change it -- the reason revision does
-not re-run the genre skill. **The review layer**
-([REVIEW.md](REVIEW.md)) is six advisory aids for a finished draft; its
-arrow back to drafting is dashed for the same reason the gate's is solid,
-namely that a review finding is yours to weigh rather than something that
-blocks the pipeline.
+**Two enclosures carry the division of labour.** `LLM` holds drafting,
+the gate and the dossier: the part a model runs, loops over on its own,
+and keeps its working state in. `Author Proofs` holds publishing and
+review: the part you run once a draft is finished. Nothing crosses
+between them except a draft that has passed the gate.
+
+The two dashed boxes are stores and reports rather than steps.
+**`DOSSIER`** ([DOSSIER.md](DOSSIER.md)) is written while a draft is
+written and read back to change it -- the reason revision does not
+re-run the genre skill. **`REVIEW`** ([REVIEW.md](REVIEW.md)) is six
+advisory aids for a finished draft; its arrow back to drafting is dotted
+for the same reason the gate's is solid, namely that a review finding is
+yours to weigh rather than something that blocks the pipeline.
 
 ```mermaid
-flowchart TB
+flowchart LR
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files<br/><br/><small>nothing else may invent a citekey</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files"]
 
-  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/>read bib → update ledger<br/>→ extract PDF text<br/><br/><small>idempotent · re-runs cost almost nothing</small>"]
+  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/>read bib → update ledger<br/>→ extract PDF text"]
 
-  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative, you review</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>it retrieves only from<br/>the parsed corpus"]
+  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>only use text from<br/>the parsed corpus"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-<br/>enforced</i><br/><br/>Is every citekey<br/>in the ledger?"}}
+  P3{{"<b>4 · VERIFY</b><br/><i>machine-<br/>enforced</i><br/><br/>CITATION GATE"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>stdlib + Pandoc / TeX Live</i><br/><br/>the reference list, then<br/>the rendered document"]
+  P4["<b>5 · PUBLISH</b><br/><i>as markdown, tex, pdf</i>"]
 
-  DOSS[("<b>DOSSIER</b><br/><i>machine-facing working state</i><br/><br/>scope · kept evidence<br/>rejected candidates · revisions")]
+  DOSS[("<b>DOSSIER</b><br/><i>machine-facing working state</i>")]
 
-  REV["<b>REVIEW</b><br/><i>advisory — never a gate</i><br/><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited"]
+  REV["<b>REVIEW</b><br/><i>author advisory"]
 
-  P0 ==> P1 ==> P2 ==> P3
-  P3 == "PASS · exit 0" ==> P4
-  P3 -- "FAIL · exit 1 · <b>loop until it passes</b>" --> P2
+  P0 e1@==> P1 e2@==> P2
+  e1@{ animate: true }
+  e2@{ animate: true }
+  P3 e3@== "CITATION GATE PASS" ==> P4
+  e3@{ animate: true }
+  subgraph LLM
+    direction TB
+    P2 ==> P3
+    P2 <-. "writes it, then reads it back" .-> DOSS
+    P3 -- "GATE FAIL · <b>loop until it passes</b>" --> P2
+  end
 
-  P2 <-. "writes it, then reads it back" .-> DOSS
-  P4 -. "run it on a finished draft" .-> REV
-  REV -. "a finding you act on —<br/>revise from the dossier, don't re-draft" .-> P2
+  subgraph Author Proofs
+    P4 -. "run it on a finished draft" .-> REV
+    REV -. "a finding you act on —<br/>revise from the dossier, don't re-draft" .-> P2
+  end
 
   classDef you fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#431407
   classDef det fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b

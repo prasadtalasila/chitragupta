@@ -53,11 +53,12 @@ nothing reaches phase 5 without passing phase 4.
 <p align="center">
   <img src="docs/diagrams/svg/v1-overview.svg"
        alt="Five phases: curate in Zotero, sync the corpus, draft with a
-            genre skill, verify with the citation gate, publish. Beside
-            them, the dossier the drafting layer writes and reads back,
-            and the advisory review layer run on a finished draft. A
-            failing gate sends the draft back to be rewritten."
-       width="45%">
+            genre skill, verify with the citation gate, publish. Drafting,
+            the gate and the dossier are grouped as the part an LLM runs;
+            publishing and the advisory review aids are grouped as the
+            part the author runs on a finished draft. A failing gate sends
+            the draft back to be rewritten."
+       width="100%">
 </p>
 
 Two properties of the spine do all the work:
