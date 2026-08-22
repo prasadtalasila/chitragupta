@@ -55,6 +55,7 @@ Usage:
 """
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -249,6 +250,10 @@ def main(argv: list[str] | None = None) -> int:
              "Confined to content/ like every other path this writes",
     )
     args = parser.parse_args(argv)
+    # Imported here rather than at module scope for the same reason
+    # `emit` defers `render`: chitragupta/render_output/ imports this
+    # package's siblings and is reached from the same dispatch.
+    from chitragupta.render_output._errors import MissingBinary
 
     try:
         out_path = emit(Path(args.input), args.output_format, args.output_dir)
@@ -258,6 +263,20 @@ def main(argv: list[str] | None = None) -> int:
         # content/. Reported on stderr like every other refusal in the
         # drafting layer instead of as a traceback.
         print(f"[error] {exc.args[0] if exc.args else exc}", file=sys.stderr)
+        return 1
+    except MissingBinary as exc:
+        print(f"[missing-binary] {exc}", file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as exc:
+        # A non-`md` sidecar goes through pandoc, so it can fail the same
+        # ways a render can. Caught for the same reason
+        # chitragupta/render_output/_cli.py catches it: every genre skill
+        # is documented to warn on `[error]`/`[missing-binary]` and carry
+        # on presenting the draft, and a traceback is not something that
+        # instruction can act on. The Markdown sidecar has already been
+        # written at this point and is still on disk, which is the useful
+        # half of the output.
+        print(f"[error] pandoc failed: {exc.stderr or exc}", file=sys.stderr)
         return 1
 
     if out_path is None:

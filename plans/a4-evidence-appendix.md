@@ -1,6 +1,33 @@
 # A4: the evidence sidecar
 
-Status: **plan, unbuilt.** Written 2026-08-22. Implements
+Status: **built.** Written 2026-08-22, and amended the same day to match
+what shipped. Three things landed differently from the design below, and
+the text has been corrected rather than left to disagree with the code:
+
+- **`render_evidence()` became `evidence_appendix.emit()`**, and lives in
+  the new module rather than in `chitragupta/render_output/__init__.py`.
+  `render_output/_paths.py` commits that package to stdlib plus
+  `config`/`citation_gate`/`references` so a genre skill can render under
+  bare `python`, and says in as many words that this "rules out importing
+  `chitragupta/dossier/`". `chitragupta.dossier` turns out to be
+  stdlib-only and imports fine under bare `python3`, so the *purpose*
+  would have survived -- but putting all sidecar knowledge in one module
+  keeps the documented contract intact instead of quietly widening it.
+- **`render` does not auto-emit a sidecar.** The file table below listed
+  `render_output/_cli.py` as calling it after `render()`; neither
+  `render_output` file was touched in the end. Leaving it an explicit
+  `draft evidence` call keeps `render()`'s single-`Path` return and its
+  printed output exactly as they were, keeps `chitragupta/dossier` out of
+  the render path entirely, and matches A2's rule that a quote is a
+  deliberate act rather than a residue. **The cost is that the five genre
+  skills are what make the feature reachable at all** -- see "Files".
+- **`_strip_sidecar_suffix` imports `evidence_appendix` lazily.** At
+  module scope it is a genuine cycle: `evidence_appendix` reads the
+  dossier, so `chitragupta/dossier/__init__.py` -> `_archive` ->
+  `evidence_appendix` -> `chitragupta.dossier` fails on a partially
+  initialised package.
+
+Implements
 [docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s A4 and closes
 [#313](https://github.com/prasadtalasila/chitragupta/issues/313).
 Depends on A2 ([`a2-claim-quote-split.md`](a2-claim-quote-split.md), issue
@@ -212,8 +239,8 @@ is the point, not a gap.
 |---|---|
 | `chitragupta/evidence_appendix.py` | **new.** Stdlib-only, sibling of `references.py`. `build(draft_text, dossier, con) -> str \| None`, plus the writer |
 | `chitragupta/dossier/_evidence_check.py` | promote `_fields()` to public `fields()`. It already parses exactly `claim`/`quote`/`relevance`/`support` -- the new module reuses it rather than adding a second parser for the same file |
-| `chitragupta/render_output/__init__.py` | **new** `render_evidence(input_path, output_format, out_dir=None) -> Path \| None` |
-| `chitragupta/render_output/_cli.py` | call `render_evidence()` after `render()` |
+| ~~`chitragupta/render_output/__init__.py`~~ | **not touched.** `emit()` lives in the new module instead -- see the amendment at the top |
+| ~~`chitragupta/render_output/_cli.py`~~ | **not touched.** `render` does not auto-emit |
 | `chitragupta/draft.py` | new `evidence` verb in `VERBS` |
 | `chitragupta/dossier/_archive.py` | `_match_target` must strip the `.evidence` suffix for the `rendered` label -- see below |
 | `.gitignore` | `content/rendered/**/*.evidence.*` |
@@ -269,8 +296,44 @@ Failing first, to the 100% bar
     against the chosen path rather than a hardcoded string is the point:
     it couples the ignore pattern to the naming convention, so renaming
     `.evidence.md` fails this test.
-13. A thesis `.tex` fragment produces a standalone sidecar
-    (pandoc-gated, `pragma: no cover-windows` like its neighbours).
+13. A thesis `.tex` fragment produces a standalone sidecar, carrying its
+    own `\documentclass` and no `\bibliography` (pandoc-gated).
+14. A missing pandoc and a failing pandoc are each reported as
+    `[missing-binary]`/`[error]` rather than raised, and the Markdown
+    sidecar survives a failed pdf render. Added after an end-to-end smoke
+    run produced a traceback: a non-`md` sidecar goes through pandoc, so
+    it fails the ways a render fails, and every genre skill is documented
+    to warn on those two prefixes and carry on presenting the draft. A
+    traceback is not something that instruction can act on.
+
+## Known risks, accepted
+
+**A stale `sections.md`** groups a key under the wrong heading. Grouping
+is cosmetic -- the attribution and the quote stay correct -- and
+`dossier sections --citekeys --write` is the existing fix.
+
+**A verbatim scan pointed at a sidecar would report nothing but
+findings**, and every one of them would be false.
+`chitragupta/references.py`'s own comment records what this looks like:
+scanning a reference list against the corpus produced 97.7% of all
+findings on this project's 15-chapter book, "none of them reuse". A
+sidecar is the worse case, because its entire content is deliberate
+verbatim source wording.
+
+It is safe today, and the reason is worth writing down rather than
+assuming: **`review verbatim scan` takes one explicit draft path**
+(`p_scan.add_argument("draft", ...)`), never a walk of `content/`.
+Nothing points it at `content/rendered/`, so no `*.evidence.*` skip was
+added -- a skip in a scanner that cannot reach the file would be dead
+code claiming to prevent something. If that command ever grows a
+directory-walking mode, this is the first file it must exclude.
+
+**`emit(draft, "pdf")` deliberately leaves the `.md` beside the `.pdf`.**
+Rendering a *draft* to pdf leaves no Markdown copy, so this differs on
+purpose: the Markdown is the sidecar's own source, the only diffable form
+of it, and what `dossier export` most usefully archives. Both are ignored
+by git and both match the draft on export, so keeping it costs nothing.
+A choice, not a leak.
 
 ## Done when
 
@@ -281,3 +344,16 @@ reports `OK` with the sidecar contributing zero citations; a dossier
 carrying only legacy `support:` blocks renders no sidecar at all; and
 each of the five genre skills states its own answer in its own
 `SKILL.md`, the two that emit nothing included.
+
+**Verified end to end** on a throwaway `CONTENT_DIR`, over a two-source
+draft whose dossier carried one `quote:` block and one legacy
+`support:`-only block:
+
+- the `quote:` reached `survey.evidence.pdf`, attributed and in quotation
+  marks;
+- the `support:` window appeared **nowhere** in the rendered PDF, and its
+  `sections.md` section vanished with it rather than leaving an empty
+  heading behind;
+- `draft gate` over the sidecar reported `0 citation(s)`;
+- deleting `evidence.md` produced `no quoted evidence recorded` and
+  exit 0, writing nothing.

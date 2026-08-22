@@ -547,3 +547,62 @@ class TestNonMarkdownFormats:
 
         assert "\\bibliography" not in body
         assert "biblatex" not in body
+
+
+class TestRenderFailuresAreReportedNotRaised:
+    """A genre skill is documented to warn on `[error]`/`[missing-binary]`
+    and carry on presenting the draft. A traceback is not something that
+    instruction can act on, so `main` reports both the way
+    `chitragupta/render_output/_cli.py` does.
+    """
+
+    def _quoted_draft(self, isolated_config):
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
+        return draft
+
+    def test_a_missing_pandoc_is_reported_not_raised(
+            self, isolated_config, monkeypatch, capsys):
+        from chitragupta.render_output._errors import MissingBinary
+
+        draft = self._quoted_draft(isolated_config)
+        monkeypatch.setattr(
+            "chitragupta.render_output.render",
+            lambda *a, **k: (_ for _ in ()).throw(MissingBinary("pandoc not found")),
+        )
+
+        assert evidence_appendix.main([str(draft), "--format", "pdf"]) == 1
+        assert "[missing-binary]" in capsys.readouterr().err
+
+    def test_a_pandoc_failure_is_reported_not_raised(
+            self, isolated_config, monkeypatch, capsys):
+        draft = self._quoted_draft(isolated_config)
+
+        def boom(*_args, **_kwargs):
+            raise subprocess.CalledProcessError(1, ["pandoc"], stderr="pandoc said no")
+
+        monkeypatch.setattr("chitragupta.render_output.render", boom)
+
+        assert evidence_appendix.main([str(draft), "--format", "pdf"]) == 1
+        assert "pandoc said no" in capsys.readouterr().err
+
+    def test_the_markdown_sidecar_survives_a_failed_pdf_render(
+            self, isolated_config, monkeypatch, capsys):
+        # The useful half of the output. The Markdown is written before
+        # pandoc is ever invoked, so a pdf failure costs the format, not
+        # the evidence.
+        draft = self._quoted_draft(isolated_config)
+
+        def boom(*_args, **_kwargs):
+            raise subprocess.CalledProcessError(1, ["pandoc"], stderr="pandoc said no")
+
+        monkeypatch.setattr("chitragupta.render_output.render", boom)
+        evidence_appendix.main([str(draft), "--format", "pdf"])
+
+        sidecar = isolated_config.RENDERED_DIR / "topic" / "survey.evidence.md"
+        assert sidecar.is_file()
+        assert '> "the span"' in sidecar.read_text()

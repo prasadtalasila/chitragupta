@@ -433,6 +433,27 @@ candidate for the chapter.
     `[error]`, print a one-line warning in chat with that message and
     continue anyway -- a rendering failure never blocks presenting the
     `.md` draft.
+
+    **Then render the evidence sidecar** -- and expect it to be thin, or
+    absent:
+
+    ```bash
+    python -m chitragupta.draft evidence content/drafts/<slug>.md --format pdf
+    ```
+
+    **This chapter emits one when it has anything to show, which is
+    often not.** That follows from what this genre already is rather than
+    from a separate decision: it is deliberately not citation-dense, most
+    of it is original worked examples and exercises, and its `evidence.md`
+    is kept thin by design. Sources here are cited for motivation and
+    background, and motivation is the last place a verbatim quotation
+    earns its keep -- so most chapters capture no `quote:` at all and the
+    command prints `no quoted evidence recorded`.
+
+    **That is the right outcome, not a gap to fill.** Do not go back and
+    add a `quote:` so that a sidecar appears. Where a chapter does quote
+    a source deliberately -- a definition worth giving in its originator's
+    exact words -- the sidecar is where a student can see it attributed.
 14. **Record any steering.** If the user shaped this chapter in chat --
     "second-years, not first-years", "assume no probability", "more exercises
     and fewer worked examples", "drop the compiler example" -- append it to
