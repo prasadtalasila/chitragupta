@@ -34,21 +34,15 @@ from chitragupta.dossier._status import _cmd_status
 _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft dossier",
-        description="The working state behind a draft: create it, inspect it, "
-                    "back it up, restore it. Stdlib only; never writes to the "
-                    "corpus layer.",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
+def _add_init_parser(sub):
     p_init = sub.add_parser("init", help="Create a dossier skeleton for a draft")
     p_init.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_init.add_argument("--genre", required=True,
                         help=", ".join(GENRES))
     p_init.set_defaults(func=_cmd_init)
 
+
+def _add_status_parser(sub):
     p_status = sub.add_parser("status", help="What a dossier holds, and corpus drift since")
     p_status.add_argument("draft", nargs="?",
                           help="Draft path, or the dossier directory itself")
@@ -58,6 +52,8 @@ def main(argv: list[str] | None = None) -> int:
                           help="Machine-readable drift report (for draft-reviser)")
     p_status.set_defaults(func=_cmd_status)
 
+
+def _add_mark_revision_parser(sub):
     p_mark_revision = sub.add_parser(
         "mark-revision",
         help="Record a revision-session boundary, so retrieval cost totals per revision")
@@ -67,6 +63,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Short name for this revision (the date is already recorded)")
     p_mark_revision.set_defaults(func=_cmd_mark_revision)
 
+
+def _add_sections_parser(sub):
     p_sections = sub.add_parser(
         "sections", help="Heading -> line range, for reading and editing one section")
     p_sections.add_argument("draft", help="Path to the draft")
@@ -79,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
         help="With --citekeys: write the table to the dossier's sections.md")
     p_sections.set_defaults(func=_cmd_sections)
 
+
+def _add_brief_parser(sub):
     p_brief = sub.add_parser(
         "brief", help="The kept evidence for one section, for a subagent to read")
     p_brief.add_argument("draft", help="Draft path, or the dossier directory itself")
@@ -89,6 +89,8 @@ def main(argv: list[str] | None = None) -> int:
                          help="Report what resolves without printing the blocks")
     p_brief.set_defaults(func=_cmd_brief)
 
+
+def _add_set_language_parser(sub):
     p_set_language = sub.add_parser(
         "set-language",
         help="Record the draft's dialect, so `chitragupta.draft style` can check it",
@@ -97,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
     p_set_language.add_argument("language", help="a BCP-47 tag: en-GB, en-US, en-IN")
     p_set_language.set_defaults(func=_cmd_set_language)
 
+
+def _add_acronyms_suggest_parser(sub):
     p_suggest = sub.add_parser(
         "acronyms-suggest",
         help="Acronyms this draft's glossary or prose defines that aren't in your vocabulary yet",
@@ -109,6 +113,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_suggest.set_defaults(func=_cmd_acronyms_suggest)
 
+
+def _add_check_evidence_parser(sub):
     p_check_evidence = sub.add_parser(
         "check-evidence",
         help="Advisory: does any claim: read like its own quote: with the words moved")
@@ -119,9 +125,13 @@ def main(argv: list[str] | None = None) -> int:
              "to reword against until it drops (see _evidence_check.py)")
     p_check_evidence.set_defaults(func=_cmd_check_evidence)
 
+
+def _add_list_parser(sub):
     p_list = sub.add_parser("list", help="Every dossier on this machine")
     p_list.set_defaults(func=_cmd_list)
 
+
+def _add_export_parser(sub):
     p_export = sub.add_parser("export", help="Back up drafts and dossiers to a tar.gz")
     p_export.add_argument("names", nargs="*",
                           help="Draft names to include (default: everything)")
@@ -131,11 +141,35 @@ def main(argv: list[str] | None = None) -> int:
                                "of content/review/'s reports (large: PDFs)")
     p_export.set_defaults(func=_cmd_export)
 
+
+def _add_restore_parser(sub):
     p_restore = sub.add_parser("restore", help="Unpack a bundle (dry run unless --force)")
     p_restore.add_argument("archive", help="Path to a tar.gz written by `export`")
     p_restore.add_argument("--force", action="store_true",
                            help="Actually write, overwriting what is already there")
     p_restore.set_defaults(func=_cmd_restore)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python -m chitragupta.draft dossier",
+        description="The working state behind a draft: create it, inspect it, "
+                    "back it up, restore it. Stdlib only; never writes to the "
+                    "corpus layer.",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    _add_init_parser(sub)
+    _add_status_parser(sub)
+    _add_mark_revision_parser(sub)
+    _add_sections_parser(sub)
+    _add_brief_parser(sub)
+    _add_set_language_parser(sub)
+    _add_acronyms_suggest_parser(sub)
+    _add_check_evidence_parser(sub)
+    _add_list_parser(sub)
+    _add_export_parser(sub)
+    _add_restore_parser(sub)
 
     args = parser.parse_args(argv)
     try:

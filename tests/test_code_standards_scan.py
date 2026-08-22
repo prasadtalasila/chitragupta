@@ -58,10 +58,6 @@ CODE_LINE_ROOTS = ("chitragupta", "scripts")
 # 5.8.x SonarCloud-debt series split the worst offenders and delisted
 # each as it came back under the limit.
 LEGACY_LONG_FUNCTIONS = {
-    "chitragupta/dossier/_cli.py::main",  # 54
-    "chitragupta/enrich/embed_index.py::build_index",  # 40
-    "chitragupta/enrich/docling_parse.py::parse_doc",  # 36
-    "chitragupta/sync.py::_parse_parallel",  # 33
     "tests/test_release.py::make_repo",  # 32
     "chitragupta/retrieval.py::_windows",  # 28
     "scripts/release.py::build_release",  # 26
@@ -76,9 +72,9 @@ LEGACY_LONG_FUNCTIONS = {
 LEGACY_LONG_FILES = {
     "chitragupta/review/verbatim_check.py",  # 1880
     "chitragupta/pdf_text.py",  # 1033
-    "chitragupta/enrich/docling_parse.py",  # 511
+    "chitragupta/sync.py",  # 533
+    "chitragupta/enrich/docling_parse.py",  # 522
     "chitragupta/overlap_index.py",  # 511
-    "chitragupta/sync.py",  # 501
     "chitragupta/review/citation_provenance.py",  # 368
     "chitragupta/ledger.py",  # 444
     "chitragupta/retrieval.py",  # 401
