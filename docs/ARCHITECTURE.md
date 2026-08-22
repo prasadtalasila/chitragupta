@@ -317,7 +317,14 @@ skill may invoke them; none of them gates anything:
 | `python -m chitragupta.review verbatim scan <draft>` | everything the draft shares with **any** parsed source, cited or not -- including reuse from a source the paragraph never cites, and reuse in connective prose that cites nothing |
 | `python -m chitragupta.review coverage <draft> --query …` | retrieval surfaced these sources -- did the draft cite them? |
 | `python -m chitragupta.review synthesis <draft>` | how many sources each unit of the draft rests on, at the unit its genre binds at |
+| `python -m chitragupta.review figure <draft>` | what a TikZ figure's own geometry says -- overlapping nodes, overlong labels, protruding content, and the edge list to confirm |
 | `python -m chitragupta.review uncited <draft>` | which sentences carry no citation at all -- the prose-side question `coverage` does not answer. The one aid that reads no corpus |
+
+Six aids, seven rows: `verbatim` is one aid with two shapes of question,
+and they are listed separately because a reader looking for one of them
+would not find it under the other. `chitragupta/review/__init__.py`'s
+`AIDS` is what "six" counts, and
+`tests/test_architecture_review_layer.py` holds this section to it.
 
 **Advisory, not a gate**, and named accordingly. *Review* rather than
 *verification*, because `chitragupta.draft gate` is the verification: it lives in
@@ -343,11 +350,13 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf, .json)
      content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
      content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.figure.md       (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)
 ```
 
 `chitragupta.review provenance` writes by default. `verbatim scan`,
-`coverage` and `synthesis` write under `--write`, since printing is the
-usual use for all three.
+`coverage`, `synthesis`, `figure` and `uncited` write under `--write`,
+since printing is the usual use for all five.
 
 Every report opens with a banner saying it is not a verdict, because a
 file found on disk months later is exactly the case the docs cannot
@@ -370,7 +379,7 @@ follows.
 
 That they are *not* gates is the design, not an omission. The gate answers
 a question with one correct answer -- is this citekey in the ledger? --
-and can therefore be automatic and absolute. These three answer questions
+and can therefore be automatic and absolute. These six answer questions
 of judgement, where a machine verdict would be either wrong often enough
 to be ignored, or trusted more than it deserves. They give you the
 evidence and leave the call to you.
