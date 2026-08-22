@@ -117,40 +117,20 @@ Two ways to get a project directory, and everything from step 2 onward
 is identical either way. Pick whichever matches what you're doing:
 
 ```bash
-# pip install: for using the pipeline. .venv-full is the same venv name
-# and the same activation habit the checkout path below uses -- not just
-# any name: it's what keeps a bare `pip install` from hitting Debian/
-# Ubuntu's PEP 668 externally-managed-environment error, and what keeps
-# Claude Code's hooks (which launch as bare `python` resolved from PATH,
-# see docs/HOOKS.md) able to import chitragupta, for as long as
-# .venv-full stays activated in whatever shell you launch Claude Code
-# from. chitragupta init writes the same project directory a git
-# checkout gives you -- config.toml, .claude/, papers/, content/ and the
-# prose docs -- into DIR (default: .).
+# pip install: for using the pipeline. The venv is what avoids Debian/
+# Ubuntu's PEP 668 error and keeps Claude Code's hooks able to import
+# chitragupta -- docs/CLI.md's Installing says why the name matters.
 mkdir my-project && cd my-project
 python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli
-chitragupta init
-
-# The OS packages pip cannot install: TeX Live, Pandoc, poppler-utils.
-# Debian/Ubuntu only, and needs root (auto-sudo's). The other three
-# stages -- python-deps, dev-deps, all -- refuse by name and print the
-# pip command that reaches them; docs/CLI.md's Installing has the list.
-chitragupta install os-deps
-
-# Optional, and skippable on a first run: the enrichment layer's
-# dependencies (several GB). Step 4 below is what uses them.
-pip install chitragupta-cli[enrich]
+chitragupta init                      # config.toml, .claude/, papers/, content/, prose docs
+chitragupta install os-deps           # TeX Live, Pandoc, poppler. Debian/Ubuntu, needs root
+pip install chitragupta-cli[enrich]   # optional, several GB -- only step 4 uses it
 ```
 
 ```bash
-# git checkout: for working on the pipeline itself, or if you'd rather
-# have the source beside your project -- see DEVELOPER-AGENTS.md. Needs
-# root for os-deps (TeX Live, Pandoc, poppler); dev-deps is opt-in and
-# only needed to run the test suite. docs/CLI.md's "Which interpreter"
-# explains why the module form (python -m chitragupta.<layer>) still
-# works either way. Also .venv-full, same as above -- the script below
-# creates it if it doesn't already exist yet, and reuses it if it does.
+# git checkout: for working on the pipeline itself -- see DEVELOPER-AGENTS.md.
+# Same .venv-full; the script creates it if absent, reuses it if not.
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
 pipx install poetry
 bash scripts/install_full_pipeline.sh all
@@ -158,55 +138,41 @@ source .venv-full/bin/activate
 ```
 
 ```bash
-# 1. Export Zotero's library: format BibTeX, tick "Export Files", and save
-#    it as `bibliography` inside papers/. Zotero writes the .bib plus a
-#    companion attachment folder beside it:
+# 1. Export Zotero's library: format BibTeX, tick "Export Files", save it
+#    as `bibliography` inside papers/. Each entry's file field is relative
+#    to the .bib, so don't rename or move the companion folder afterwards
+#    -- see docs/ZOTERO.md.
 #      papers/bibliography.bib
 #      papers/bibliography/files/<id>/<name>.pdf
-#    Each entry's file field is a path relative to the .bib, so don't
-#    rename or move that folder afterwards -- see docs/ZOTERO.md.
-#      Ex: file = {Full Text PDF:bibliography/files/16/paper-name.pdf:application/pdf}
 mkdir -p papers && cp -r /path/to/your/export/. papers/
 
-# config.toml already exists if you ran `chitragupta init` above -- it's
-# gitignored per-host data, so only a git checkout needs its own copy:
-# cp config.toml.example config.toml
-
-# ...and, only if your field has its own acronyms (DT, FMU, ...) beyond
-#    the PDF/CPU/URL/API/HTML every draft already gets: copy the template,
-#    point config.toml's [style].acronyms at your copy, and every genre
-#    skill drafts from it too. See assets/style/README.md.
+# ...only if your field has its own acronyms (DT, FMU, ...) beyond the
+#    PDF/CPU/URL/API/HTML every draft already gets. assets/style/README.md.
 # cp assets/style/acronyms.toml.example content/acronyms.toml
-# # then edit [style].acronyms in config.toml to content/acronyms.toml
+# # then point [style].acronyms in config.toml at it
 
 # 2. Sync the corpus layer from papers/bibliography.bib. A citekey that
-#    later drops out of the bib file (a paper removed from your reference
-#    manager) is only *reported* by default; re-run with --remove-stale
-#    to actually delete its ledger row once you've reviewed the reported
-#    list -- not needed on a first run. docs/ZOTERO.md has the full
-#    semantics and why the default is to report rather than delete.
+#    later drops out of the bib file is only *reported*; --remove-stale
+#    deletes the row once you've read that list. docs/ZOTERO.md has why
+#    the default is report rather than delete.
 chitragupta corpus sync            # or: python -m chitragupta.corpus sync
-
-# ...and only once you've read the stale list it prints, and agree with it:
 # chitragupta corpus sync --remove-stale
 
-# 3. Inspect what it found. Read-only, takes no lock (so it works while a
-#    sync is running).
+# 3. Inspect what it found. Read-only, takes no lock.
 chitragupta corpus ledger
 
-# 4. Optional, and only when you want it: the enrichment layer -- layout-aware
-#    parsing, semantic search and topic clustering over the whole corpus.
-#    Nothing else needs it and no skill builds it for you, so skip this on a
-#    first run. What it costs and which stage is worth it: "The enrichment
-#    layer" below, then docs/RETRIEVAL.md. Needs the enrich extra
-#    (pip install chitragupta-cli[enrich], or scripts/install_full_pipeline.sh
-#    python-deps from a checkout) -- chitragupta doctor says which you have.
+# 4. Optional: the enrichment layer -- layout-aware parsing, semantic
+#    search, topic clustering. No skill builds it for you, so skip it on a
+#    first run. Needs the enrich extra above; chitragupta doctor says
+#    whether you have it. "The enrichment layer" below, then
+#    docs/RETRIEVAL.md, say which stage is worth the cost.
 
 # 5. In Claude Code, ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
+#    "do deep research on fault injection for digital twin testbeds"
 # The matching skill in .claude/skills/ picks this up automatically,
 # including its own gate -> references -> render chain (chitragupta draft <verb>)
 ```
