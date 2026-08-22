@@ -293,7 +293,7 @@ class TestJsonPayload:
         result = citation_coverage.compute_coverage(draft, ["digital twin"])
         statuses = {f["citekey"]: f["status"] for f in payload["findings"]}
         assert statuses == {
-            **{key: "uncited_candidate" for key in result.uncited_candidates},
+            **{key: "uncited_candidates" for key in result.uncited_candidates},
             **{key: "cited_outside_candidates" for key in result.cited_outside_candidates},
         }
 

@@ -161,7 +161,8 @@ def _read_unit(book, unit_id: str, built: dict, anchors: set[str]) -> None:
 
 
 def build(book) -> dict:
-    """The three registries, over the units a human has accepted.
+    """The three registries, plus the full anchor set, over the units a
+    human has accepted.
 
     Units that are not accepted are named in `skipped` rather than
     silently left out: a registry built over half a book is not the same
@@ -182,6 +183,7 @@ def build(book) -> dict:
         _read_unit(book, unit_id, built, anchors)
     for edge in built["xrefs"]:
         edge["resolves"] = edge["target"] in anchors
+    built["anchors"] = sorted(anchors)
     return built
 
 
@@ -232,8 +234,7 @@ def excerpt(book, unit_id: str) -> dict:
     built = build(book)
     return {
         "terms": [row for row in built["terms"] if row["unit"] != unit_id],
-        "anchors": sorted({entry["id"] for entry in unit.outline(book)}
-                          | {row["target"] for row in built["xrefs"] if row["resolves"]}),
+        "anchors": built["anchors"],
     }
 
 

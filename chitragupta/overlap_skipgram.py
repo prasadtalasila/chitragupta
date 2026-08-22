@@ -62,9 +62,7 @@ construction.
 
 from __future__ import annotations
 
-import hashlib
 import json
-from array import array
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from itertools import accumulate
@@ -75,7 +73,7 @@ from chitragupta.overlap_index import (
     _atomic_write_bytes,
     _atomic_write_json,
     _fingerprint_key,
-    _ledger_items,
+    _merge_corpus_index,
     _pages_from_parsed_text,
     _norm,
     _parse_cached_postings,
@@ -344,11 +342,6 @@ def _index_bin_path() -> Path:
     return config.OVERLAP_DIR / "skipgram_index.bin"
 
 
-def _corpus_key(doc_keys: list[tuple[str, list]]) -> str:
-    payload = json.dumps(sorted(doc_keys), sort_keys=True).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
-
-
 def _load_corpus_index(n: int, corpus_key: str) -> "CorpusSkipgramIndex | None":
     try:
         with open(_index_header_path(), encoding="utf-8") as f:
@@ -391,46 +384,12 @@ def build_corpus_index(n: int = DEFAULT_N) -> CorpusSkipgramIndex:
     same cache-hit/partial-rebuild behaviour, over the same ledger items,
     keyed the same way (a document's skip-gram cache is only ever stale
     for the same reasons its exact-tier one is: reparse, backend switch).
+    Shares the merge algorithm itself with tier 1 -- see
+    `overlap_index._merge_corpus_index`.
     """
-    items = _ledger_items()
-    doc_keys = [(citekey, _fingerprint_key(pdf_hash, parsed_path))
-                for citekey, pdf_hash, parsed_path in items]
-    corpus_key = _corpus_key(doc_keys)
-
-    cached = _load_corpus_index(n, corpus_key)
-    if cached is not None:
-        return cached
-
-    by_citekey = {citekey: (pdf_hash, parsed_path) for citekey, pdf_hash, parsed_path in items}
-    citekeys_sorted = sorted(by_citekey)
-    id_by_citekey = {citekey: i for i, citekey in enumerate(citekeys_sorted)}
-
-    unsorted_grams: "array[int]" = array("Q")
-    unsorted_citekey_ids: "array[int]" = array("I")
-    unsorted_pages: "array[int]" = array("I")
-    unsorted_positions: "array[int]" = array("I")
-    for citekey in citekeys_sorted:
-        pdf_hash, parsed_path = by_citekey[citekey]
-        fp = fingerprint_document(citekey, pdf_hash, parsed_path, n)
-        citekey_id = id_by_citekey[citekey]
-        for gram_hash, page, position in fp.postings:
-            unsorted_grams.append(gram_hash)
-            unsorted_citekey_ids.append(citekey_id)
-            unsorted_pages.append(page)
-            unsorted_positions.append(position)
-
-    order = sorted(range(len(unsorted_grams)), key=unsorted_grams.__getitem__)
-
-    index = CorpusSkipgramIndex(
-        n=n,
-        citekeys=citekeys_sorted,
-        grams=array("Q", (unsorted_grams[i] for i in order)),
-        citekey_ids=array("I", (unsorted_citekey_ids[i] for i in order)),
-        pages=array("I", (unsorted_pages[i] for i in order)),
-        positions=array("I", (unsorted_positions[i] for i in order)),
+    return _merge_corpus_index(
+        n, _load_corpus_index, fingerprint_document, CorpusSkipgramIndex, _save_corpus_index
     )
-    _save_corpus_index(index, corpus_key)
-    return index
 
 
 def postings_for_gram(index: CorpusSkipgramIndex, gram_hash: int) -> list[tuple[str, int, int]]:

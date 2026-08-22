@@ -64,8 +64,6 @@ LEGACY_LONG_FUNCTIONS = {
     "chitragupta/sync.py::_parse_parallel",  # 33
     "tests/test_release.py::make_repo",  # 32
     "chitragupta/retrieval.py::_windows",  # 28
-    "chitragupta/overlap_index.py::build_corpus_index",  # 27
-    "chitragupta/overlap_skipgram.py::build_corpus_index",  # 27
     "scripts/release.py::build_release",  # 26
 }
 
@@ -79,14 +77,14 @@ LEGACY_LONG_FILES = {
     "chitragupta/review/verbatim_check.py",  # 1880
     "chitragupta/pdf_text.py",  # 1033
     "chitragupta/enrich/docling_parse.py",  # 511
+    "chitragupta/overlap_index.py",  # 511
     "chitragupta/sync.py",  # 499
-    "chitragupta/overlap_index.py",  # 492
     "chitragupta/review/citation_provenance.py",  # 459
     "chitragupta/ledger.py",  # 444
     "chitragupta/retrieval.py",  # 401
     "chitragupta/config.py",  # 387
     "chitragupta/references.py",  # 370
-    "chitragupta/overlap_skipgram.py",  # 315
+    "chitragupta/overlap_skipgram.py",  # 281
 }
 
 

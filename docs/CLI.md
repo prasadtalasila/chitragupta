@@ -796,7 +796,7 @@ below): the envelope every review aid's JSON carries, plus `queries`,
 `k`, `coverage_pct`, `candidates_total`, `cited_candidates_total`, and
 one `findings` object per citekey the printed report itemises --
 `id`, `citekey`, `title` (`null` for a citation outside the candidate
-set), and `status` (`uncited_candidate` or `cited_outside_candidates`).
+set), and `status` (`uncited_candidates` or `cited_outside_candidates`).
 An additional serialisation of what `format_report` already prints,
 never a second computation.
 

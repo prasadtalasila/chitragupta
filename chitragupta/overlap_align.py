@@ -70,14 +70,6 @@ GAP_PENALTY = 0.25
 # make this a policy knob by the back door, so it is exactly zero.
 MIN_ALIGNMENT_SCORE = 0.0
 
-# Above this, the draft span and the source span share too much literal
-# wording for this tier to be the one reporting it: that is verbatim or
-# near-verbatim reuse, which tiers 1 and 2 detect deterministically and
-# report with an exact span. Measured as containment (shared words over
-# draft-span words) rather than Jaccard, because a draft sentence lifted
-# from a much longer source sentence should count as fully covered.
-MAX_LEXICAL_OVERLAP = 0.55
-
 # Alignments taken per (section, source) pair. One section can lean on
 # one paper in two separate places, and reporting only the strongest
 # would hide the second; a cap keeps a pathological pair from filling a
