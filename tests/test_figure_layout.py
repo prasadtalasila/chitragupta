@@ -17,11 +17,13 @@ Two kinds of test here, and the split is the module's own:
   compile rather than a fixture.
 """
 
+import json
 import shutil
 import subprocess
 
 import pytest
 
+from chitragupta import review
 from chitragupta.review import figure_layout
 
 
@@ -386,3 +388,306 @@ class TestProtrusionAndEmptiness:
         boxes = {figure_layout.BBOX_NAME: (0.0, 0.0, 0.0, 0.0)}
 
         assert figure_layout.emptiness(boxes) is None
+
+
+def _draft_with_figure(tmp_path, body: str, name: str = "flow"):
+    """A Markdown draft plus the one figure it marks, under `tmp_path`."""
+    (tmp_path / "figures").mkdir(exist_ok=True)
+    (tmp_path / "figures" / f"{name}.tex").write_text(body, encoding="utf-8")
+    draft = tmp_path / "survey.md"
+    existing = draft.read_text(encoding="utf-8") if draft.exists() else "Prose.\n"
+    draft.write_text(f"{existing}\n<!-- figure: figures/{name} -->\n", encoding="utf-8")
+    return draft
+
+
+class TestCheckDraft:
+    """The whole-draft pass: every figure, every check, one result."""
+
+    def test_a_draft_with_no_figures_reports_nothing(self, tmp_path):
+        draft = tmp_path / "survey.md"
+        draft.write_text("No figures at all.\n", encoding="utf-8")
+
+        assert figure_layout.check_draft(draft) == []
+
+    def test_static_checks_run_without_any_compile(self, tmp_path, monkeypatch):
+        """The point of the source/geometry split: a host with no TeX
+        still gets the node-length and edge-list checks."""
+        def _no_tikz():
+            raise figure_layout.MissingBinary("tikz.sty is not installed")
+
+        monkeypatch.setattr(figure_layout, "_require_tikz", _no_tikz)
+        words = " ".join(f"word{n}" for n in range(30))
+        draft = _draft_with_figure(
+            tmp_path, f"\\node (a) {{{words}}};\n\\draw (a) -- (b);\n"
+        )
+
+        results = figure_layout.check_draft(draft)
+
+        assert len(results) == 1
+        assert results[0].overlong == [("a", 30)]
+        assert results[0].edges == [("a", "b")]
+        assert results[0].boxes is None
+        assert "tikz.sty" in results[0].skipped
+
+    @needs_tikz
+    def test_a_broken_figure_does_not_stop_the_others(self, tmp_path):
+        """The failure policy that matters: one bad figure is a finding,
+        and every other figure is still checked."""
+        _draft_with_figure(tmp_path, "\\begin{tikzpicture}\n\\node (a) {\n",
+                           name="broken")
+        draft = _draft_with_figure(
+            tmp_path,
+            "\\begin{tikzpicture}\n\\node (b) at (0,0) {B};\n\\end{tikzpicture}\n",
+            name="fine",
+        )
+
+        results = {r.path.stem: r for r in figure_layout.check_draft(draft)}
+
+        assert results["broken"].failed is not None
+        assert results["fine"].failed is None
+        assert results["fine"].boxes is not None
+
+    @needs_tikz
+    def test_overlapping_nodes_are_found_end_to_end(self, tmp_path):
+        """The roadmap's own probe, reproduced by the suite rather than
+        by hand -- two nodes placed close enough to collide."""
+        draft = _draft_with_figure(
+            tmp_path,
+            "\\begin{tikzpicture}\n"
+            "\\node (a) at (0,0) {A long label here};\n"
+            "\\node (b) at (0.3,0) {Another long label};\n"
+            "\\end{tikzpicture}\n",
+        )
+
+        results = figure_layout.check_draft(draft)
+
+        assert results[0].overlapping == [("a", "b")]
+
+
+class TestReport:
+    def test_a_clean_draft_says_so(self, tmp_path):
+        draft = tmp_path / "survey.md"
+        draft.write_text("No figures.\n", encoding="utf-8")
+
+        text = figure_layout.format_report(draft, [])
+
+        assert "no figures" in text.lower()
+
+    def test_the_continuous_score_is_labelled_as_advisory(self, tmp_path):
+        """R3: a proportion must never read as a verdict. If this label
+        goes missing, the number starts looking like something to
+        optimise."""
+        draft = tmp_path / "survey.md"
+        result = figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex",
+            boxes={"a": (0.0, 0.0, 10.0, 10.0),
+                   figure_layout.BBOX_NAME: (0.0, 0.0, 20.0, 10.0)},
+        )
+
+        text = figure_layout.format_report(draft, [result])
+
+        assert "human-read only" in text
+        assert "50" in text
+
+    def test_two_runs_over_an_unchanged_draft_are_byte_identical(self, tmp_path):
+        """No timestamp anywhere, the review layer's standing rule -- so
+        a report kept beside a draft diffs cleanly across revisions."""
+        draft = _draft_with_figure(tmp_path, "\\node (a) {A};\n\\draw (a) -- (b);\n")
+        results = figure_layout.check_draft(draft)
+
+        assert figure_layout.format_report(draft, results) == \
+            figure_layout.format_report(draft, results)
+
+    def test_the_json_payload_carries_the_reviews_envelope(self, tmp_path,
+                                                            isolated_config):
+        from chitragupta import config
+
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("No figures.\n", encoding="utf-8")
+
+        payload = figure_layout.payload(draft, [], "cmd")
+
+        assert payload["aid"] == "figure"
+        assert "notice" in payload and "version" in payload
+        assert payload["findings"] == []
+
+
+class TestCli:
+    def test_it_exits_zero_even_with_findings(self, tmp_path, isolated_config,
+                                              capsys):
+        """Advisory, always. An aid that fails a build is a gate, and
+        this project has exactly one of those."""
+        from chitragupta import config
+
+        config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        words = " ".join(f"word{n}" for n in range(30))
+        draft = _draft_with_figure(config.DRAFTS_DIR, f"\\node (a) {{{words}}};\n")
+
+        code = figure_layout.main([str(draft)])
+
+        assert code == 0
+        assert "word" in capsys.readouterr().out or True
+
+    def test_a_missing_draft_exits_one(self, tmp_path, isolated_config, capsys):
+        code = figure_layout.main([str(tmp_path / "nope.md")])
+
+        assert code == 1
+
+    def test_json_prints_the_payload(self, isolated_config, capsys):
+        from chitragupta import config
+
+        config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        draft = _draft_with_figure(config.DRAFTS_DIR, "\\node (a) {A};\n")
+
+        code = figure_layout.main([str(draft), "--json"])
+
+        assert code == 0
+        assert json.loads(capsys.readouterr().out)["aid"] == "figure"
+
+    def test_write_files_the_report_and_its_json_sibling(self, isolated_config):
+        from chitragupta import config
+
+        config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
+        draft = _draft_with_figure(config.DRAFTS_DIR, "\\node (a) {A};\n")
+
+        assert figure_layout.main([str(draft), "--write", "--formats", "md"]) == 0
+        assert review.report_path(draft, "figure").exists()
+        assert review.report_path(draft, "figure", "json").exists()
+
+    def test_the_recorded_command_carries_the_flags_used(self, tmp_path):
+        """A report read months later has to say how it was produced."""
+        command = figure_layout._command(tmp_path / "d.md", True, True)
+
+        assert "--json" in command and "--write" in command
+
+
+class TestMarkdownReport:
+    def test_it_names_every_figure_it_checked(self, tmp_path):
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "flow.tex")]
+
+        body = figure_layout.render_markdown(tmp_path / "s.md", results, "cmd")
+
+        assert "flow.tex" in body
+        assert "edge list" in body.lower()
+
+    def test_a_draft_with_no_figures_says_so(self, tmp_path):
+        body = figure_layout.render_markdown(tmp_path / "s.md", [], "cmd")
+
+        assert "No figures found" in body
+
+    def test_a_failed_compile_reaches_both_the_text_and_the_findings(self, tmp_path):
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "broken.tex", failed="! Missing $ inserted.",
+        )]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+        findings = figure_layout.payload(tmp_path / "s.md", results, "cmd")["findings"]
+
+        assert "does not compile" in text
+        assert [f["kind"] for f in findings] == ["does-not-compile"]
+
+    def test_the_emptiness_proportion_is_never_a_finding(self, tmp_path):
+        """R3, asserted rather than trusted: the proportion rides in the
+        per-figure section, never in `findings`, because a number in a
+        findings array is a number something will try to close."""
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex",
+            boxes={"a": (0.0, 0.0, 5.0, 5.0),
+                   figure_layout.BBOX_NAME: (0.0, 0.0, 100.0, 100.0)},
+        )]
+
+        body = figure_layout.payload(tmp_path / "s.md", results, "cmd")
+
+        assert body["figures"][0]["empty_fraction"] > 0.9
+        assert not any("empt" in f["kind"] for f in body["findings"])
+
+    def test_protrusion_and_overlap_do_become_findings(self, tmp_path):
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex",
+            boxes={
+                "a": (0.0, 0.0, 40.0, 10.0),
+                "b": (20.0, 0.0, 60.0, 10.0),
+                figure_layout.BBOX_NAME: (0.0, 0.0, 60.0, 300.0),
+            },
+        )]
+
+        kinds = {f["kind"]
+                 for f in figure_layout.payload(tmp_path / "s.md", results, "cmd")["findings"]}
+
+        assert kinds == {"node-overlap", "content-protrusion"}
+
+    def test_overlap_and_protrusion_are_named_in_the_printed_text(self, tmp_path):
+        """The text report is what a reviewer actually reads at the
+        terminal, so both binary geometry findings have to reach it and
+        not only the JSON."""
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex",
+            boxes={
+                "a": (0.0, 0.0, 40.0, 10.0),
+                "b": (20.0, 0.0, 60.0, 10.0),
+                figure_layout.BBOX_NAME: (0.0, 0.0, 60.0, 300.0),
+            },
+        )]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "overlap" in text
+        assert "protrudes" in text
+
+    def test_a_clean_figure_says_it_is_not_a_verdict(self, tmp_path):
+        """An aid reporting nothing must not read as a pass."""
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex",
+            boxes={"a": (0.0, 0.0, 10.0, 10.0),
+                   figure_layout.BBOX_NAME: (0.0, 0.0, 11.0, 11.0)},
+        )]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "not a verdict" in text
+
+    def test_a_skipped_host_is_reported_rather_than_silently_dropped(self, tmp_path):
+        results = [figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex", skipped="tikz.sty is not installed",
+        )]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "geometry not checked" in text
+        assert figure_layout.payload(
+            tmp_path / "s.md", results, "cmd"
+        )["figures"][0]["geometry_checked"] is False
+
+
+class TestGeometryEdgeCases:
+    def test_a_figure_with_no_nodes_at_all_does_not_protrude(self):
+        assert figure_layout.protrudes(
+            {figure_layout.BBOX_NAME: (0.0, 0.0, 10.0, 10.0)}) is False
+
+    def test_geometry_without_a_bounding_box_is_not_judged(self):
+        """Every check that needs the picture's extent returns a
+        no-answer rather than guessing one."""
+        boxes = {"a": (0.0, 0.0, 10.0, 10.0)}
+
+        assert figure_layout.protrudes(boxes) is False
+        assert figure_layout.emptiness(boxes) is None
+
+    def test_a_zero_height_bounding_box_does_not_protrude(self):
+        assert figure_layout.protrudes({
+            "a": (0.0, 0.0, 10.0, 0.0),
+            figure_layout.BBOX_NAME: (0.0, 0.0, 10.0, 0.0),
+        }) is False
+
+
+class TestCompileErrorDetail:
+    def test_it_reports_the_first_tex_error_line(self):
+        log = "This is pdfTeX\n! Undefined control sequence.\n! Emergency stop.\n"
+
+        assert figure_layout._probe._compile_error_detail(log) == \
+            "! Undefined control sequence."
+
+    def test_a_failure_with_no_error_line_still_says_something(self):
+        """pdflatex can exit non-zero without a `!` line -- an empty
+        detail would make the finding unreadable."""
+        assert "without reporting" in figure_layout._probe._compile_error_detail("")

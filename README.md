@@ -85,8 +85,8 @@ before keeping it. Two more layers sit outside these
 phases. **Enrichment** deepens the same corpus with layout-aware parsing,
 semantic search and topic clustering, and nothing above needs it.
 **Review** is what you run afterwards on a finished draft -- provenance,
-verbatim, coverage and multi-source synthesis reports, all advisory, none
-of them a gate --
+verbatim, coverage, multi-source synthesis and TikZ-figure-layout
+reports, all advisory, none of them a gate --
 advisory means nothing blocks you, not that borrowed wording is fine to
 leave once you've found it.
 

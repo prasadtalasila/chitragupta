@@ -73,17 +73,6 @@ def _intersects(one: Box, other: Box) -> bool:
     return x_overlap > _TOLERANCE_PT and y_overlap > _TOLERANCE_PT
 
 
-def _union(boxes: dict[str, Box]) -> Box | None:
-    """The smallest box containing every node."""
-    nodes = _without_bbox(boxes)
-    if not nodes:
-        return None
-    return (
-        min(box[0] for box in nodes.values()), min(box[1] for box in nodes.values()),
-        max(box[2] for box in nodes.values()), max(box[3] for box in nodes.values()),
-    )
-
-
 def protrudes(boxes: dict[str, Box]) -> bool:
     """Whether the figure has a tall empty band across its full width.
 
