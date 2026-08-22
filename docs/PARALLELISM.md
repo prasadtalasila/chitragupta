@@ -1,4 +1,4 @@
-# Parallelism: design and roadmap
+# ⚡ Parallelism: design and roadmap
 
 Status: **implemented.** Written 2026-08-03.
 
@@ -16,20 +16,20 @@ how a setting is spelled, [CONFIG.md](CONFIG.md); for the measurements
 themselves — and the conclusions later ones overturned — `bench/RESULTS.md`
 and `git log`.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Two words for two different things](#two-words-for-two-different-things)
-- [Where parallelism lives](#where-parallelism-lives)
-- [The parse path, end to end](#the-parse-path-end-to-end)
-- [Components](#components)
-- [Worker lifecycle](#worker-lifecycle)
-- [How the worker count is decided](#how-the-worker-count-is-decided)
-- [Failure and interruption](#failure-and-interruption)
-- [Concurrency control: one writer at a time](#concurrency-control-one-writer-at-a-time)
-- [What is deliberately serial](#what-is-deliberately-serial)
-- [Roadmap](#roadmap)
+- [Two words for two different things](#-two-words-for-two-different-things)
+- [Where parallelism lives](#-where-parallelism-lives)
+- [The parse path, end to end](#-the-parse-path-end-to-end)
+- [Components](#-components)
+- [Worker lifecycle](#-worker-lifecycle)
+- [How the worker count is decided](#-how-the-worker-count-is-decided)
+- [Failure and interruption](#-failure-and-interruption)
+- [Concurrency control: one writer at a time](#-concurrency-control-one-writer-at-a-time)
+- [What is deliberately serial](#-what-is-deliberately-serial)
+- [Roadmap](#-roadmap)
 
-## Two words for two different things
+## 🏷 Two words for two different things
 
 This repository uses **parallelism** and **concurrency control** for
 different mechanisms, and keeps them apart on purpose.
@@ -48,7 +48,7 @@ Where no distinction is needed, "concurrent" is used loosely for "more
 than one thing in flight" — matching `concurrent.futures`, the stdlib
 module all of this is built on.
 
-## Where parallelism lives
+## 📍 Where parallelism lives
 
 Only the PDF parse is parallel. Everything else is fast enough to be
 serial, and is.
@@ -81,7 +81,7 @@ point — the dependency runs the other way everywhere else. Both delegate
 every *policy* decision to `pdf_text`, so "how many workers, which start
 method, which GPU" is answered in exactly one place.
 
-## The parse path, end to end
+## 🔄 The parse path, end to end
 
 ```text
                      ┌────────────────────────────────────────────┐
@@ -126,11 +126,11 @@ shared state stays on the main process: **sqlite has a single writer**,
 and replaying results in bibliography order is what makes two identical
 runs print identically.
 
-## Components
+## 🧩 Components
 
 All in `chitragupta/pdf_text.py` unless noted.
 
-### `resolve_workers(n_docs) -> (workers, complaint)`
+### 🧮 `resolve_workers(n_docs) -> (workers, complaint)`
 
 ```text
    what you asked for ──┐
@@ -147,7 +147,7 @@ An over-large request is **clamped and said out loud on stderr** — never
 silently obeyed (which thrashes), never silently ignored (which leaves
 someone believing they configured something they didn't).
 
-### `worker_ceiling()`
+### 📏 `worker_ceiling()`
 
 The machine ceiling alone: `allowed_cpus() // _CPUS_PER_DOCLING_WORKER`
 for docling, `allowed_cpus()` for `pdftotext`. Separate from
@@ -160,9 +160,9 @@ has been read.
 differ, and sizing off the machine's total oversubscribes.
 
 > **The divisor of 4 is measurably too conservative** — 32 workers beat
-> the 12 it permits by ~1.4x. Not yet changed; see [Roadmap](#roadmap).
+> the 12 it permits by ~1.4x. Not yet changed; see [Roadmap](#-roadmap).
 
-### `docling_threads(workers)`
+### 🧵 `docling_threads(workers)`
 
 Divides docling's own `num_threads` down so `workers × threads` still
 fits the machine. Capped at docling's default of 4, so a single-worker
@@ -175,7 +175,7 @@ dividing down is still the
 correct thing to do when the product would exceed the machine, not
 because it buys throughput.
 
-### `process_pool_context()`
+### 🔀 `process_pool_context()`
 
 Chooses the start method and configures it:
 
@@ -189,7 +189,7 @@ the run lock and the ledger open as live sqlite connections, and SQLite's
 own documentation says not to carry an open connection across `fork()`.
 It also measured no faster than `forkserver`.
 
-### `prestart_pool()`
+### 🚀 `prestart_pool()`
 
 Starts the forkserver *before* the caller reads the bibliography, so its
 torch/docling import overlaps work that has to happen anyway.
@@ -203,7 +203,7 @@ torch/docling import overlaps work that has to happen anyway.
 Declines when no pool is coming: not docling, `workers = 1`, or a machine
 whose ceiling is 1 regardless of what was asked for.
 
-### `init_worker(counter, lock, devices)`
+### 🔧 `init_worker(counter, lock, devices)`
 
 Pool initialiser. Each worker claims one CUDA device round-robin:
 
@@ -219,7 +219,7 @@ worker piles onto one card.
 `devices` is a **list of cards**, not a count, which is what keeps a card
 that has no memory free out of the rotation entirely.
 
-### `usable_devices()`
+### 🖥 `usable_devices()`
 
 `gpu_count()` narrowed to the cards with at least 2.5 GiB free
 (`nvidia-smi --query-gpu=index,memory.free`), which is a docling worker's
@@ -249,7 +249,7 @@ If *every* card is full the list is empty and the run parses on the CPU —
 measured 4.7x slower with OCR off, 1.8x with it on (OCR is CPU work
 either way, so it narrows the gap). Slower, but a run that finishes.
 
-### CUDA-OOM fallback — `_extract_docling()`
+### 🛟 CUDA-OOM fallback — `_extract_docling()`
 
 The backstop for what `usable_devices()` can't see: another process can
 fill a card in the second between the check and the model load. A parse
@@ -264,14 +264,14 @@ A CUDA OOM that survives the CPU retry is marked `transient`, so the
 ledger retries it next run rather than writing the document off as
 unparseable. It was the machine's fault, not the PDF's.
 
-### `gpu_count()`
+### 🔢 `gpu_count()`
 
 Reads `nvidia-smi --list-gpus`, applying `CUDA_VISIBLE_DEVICES` by hand
 since nvidia-smi ignores it and torch does not. Falls back to torch only
 where the driver's CLI is absent — the point is to answer the question
 without importing torch into the parent.
 
-### `_as_they_land()` — `chitragupta/sync.py`
+### ⏱ `_as_they_land()` — `chitragupta/sync.py`
 
 Yields futures as they complete, abandoning the run if the **whole pool**
 goes silent for `[parser].stall_timeout`.
@@ -282,7 +282,7 @@ distinguishes a hung worker from a merely slow document far better than
 any per-document number could — which matters when the slowest legitimate
 document takes 246s. A warning fires at half the budget first.
 
-## Worker lifecycle
+## ♻ Worker lifecycle
 
 What a cold worker pays before producing anything:
 
@@ -303,7 +303,7 @@ per document.
 The ~5s model load is per process and shareable by no start method, which
 is why `forkserver` is worth a fixed 1–2s rather than a multiple.
 
-## How the worker count is decided
+## ⚖ How the worker count is decided
 
 ```text
   [parser].workers = 1       ──► strictly serial: no pool, no subprocess,
@@ -324,7 +324,7 @@ Each backend gets the concurrency it can use:
 | `docling` | `ProcessPoolExecutor` | in-process, holds the GIL |
 | `pdftotext` | `ThreadPoolExecutor` | external subprocess, releases the GIL |
 
-## Failure and interruption
+## 🐛 Failure and interruption
 
 | Event | Behaviour |
 |---|---|
@@ -342,7 +342,7 @@ minutes per document with docling.
 Skipping interpreter shutdown is safe because the ledger commits
 incrementally and synchronously: whatever finished is already on disk.
 
-## Concurrency control: one writer at a time
+## 🔒 Concurrency control: one writer at a time
 
 A separate mechanism for a separate problem — two *runs* overlapping, not
 two documents.
@@ -361,7 +361,7 @@ with no PID liveness check and no platform-specific code.
 
 Full conflict policy in [DESIGN.md](DESIGN.md).
 
-## What is deliberately serial
+## 🚫 What is deliberately serial
 
 - **Ledger writes** — sqlite has a single writer.
 - **Result application** — replayed in bibliography order, so output is
@@ -370,12 +370,12 @@ Full conflict policy in [DESIGN.md](DESIGN.md).
 - **Everything outside the parse** — retrieval, gating and rendering are
   fast enough that concurrency would add risk for no measurable gain.
 
-## Roadmap
+## 🗺 Roadmap
 
 Ordered by measured benefit over risk. Figures in
 [PERFORMANCE.md](PERFORMANCE.md).
 
-### 1. Stop hard-coding `_CPUS_PER_DOCLING_WORKER = 4`
+### ▶ 1. Stop hard-coding `_CPUS_PER_DOCLING_WORKER = 4`
 
 **The largest known win: ~1.4x.** The constant models a docling worker as
 occupying 4 CPUs; measured, it occupies closer to one. 32 workers beat
@@ -390,25 +390,25 @@ one corpus, and a CPU-only machine — where the GPU does none of the work —
 would likely want a different value. Wants a per-backend measured default,
 or a short calibration run.
 
-### 2. Selective OCR
+### ▶ 2. Selective OCR
 
 OCR costs 2.08x serially and up to 4.79x in parallel, to recover content
 in a minority of documents: of 16 sampled, 8 changed and ~2 materially.
 Detecting bitmap-heavy pages cheaply and running OCR only there converts
 a global tax into a per-document one.
 
-### 3. Cache the model load across runs
+### ▶ 3. Cache the model load across runs
 
 ~5s per worker per run, shareable by no start method. Irrelevant to a
 bulk parse, dominant for a three-document top-up. Needs a resident pool,
 which is a large change to a pipeline whose appeal is being a batch job.
 
-### 4. Batch inference across documents
+### ▶ 4. Batch inference across documents
 
 Each worker uses ~7% of a GPU. Batching would use the cards properly, but
 docling exposes no batch API — upstream work, not local.
 
-### Not planned
+### 🚫 Not planned
 
 - **Intra-document splitting.** The 675-page outlier looks like a
   critical-path problem and is not at this corpus size: its floor binds
@@ -418,10 +418,10 @@ docling exposes no batch API — upstream work, not local.
   setting, and torch's *raises* rather than degrades on ops with no
   deterministic implementation. What that costs is stated artifact by
   artifact in
-  [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not);
+  [ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not);
   it is a real cost of raising `workers`, not only a curiosity.
 
-### Open questions
+### ❓ Open questions
 
 Gaps, not tasks.
 

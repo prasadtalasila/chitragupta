@@ -1,4 +1,4 @@
-# Populating `groups` in a plugin-free Zotero BibTeX export
+# 📚 Populating `groups` in a plugin-free Zotero BibTeX export
 
 Status: **how-to.** Written 2026-08-17.
 
@@ -6,11 +6,11 @@ Status: **how-to.** Written 2026-08-17.
 but cannot get [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
 to produce them. **Assumed:** a Zotero library and a BibTeX export of it.
 **Not covered here:** the supported way to get this field, which is
-[ZOTERO.md](ZOTERO.md#keeping-your-collections-optional), and what the
+[ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional), and what the
 pipeline does with collections once it has them, which is
 [CLI.md](CLI.md).
 
-## Read this before using it
+## ⚠ Read this before using it
 
 > **⚠️ WARNING — this script and this document violate the spirit of this
 > project.**
@@ -42,11 +42,11 @@ It does not touch citekeys, which is the one line that cannot be crossed
 at all -- it only ever *adds* a `groups` field to an entry that already
 exists.
 
-**Use [Better BibTeX](ZOTERO.md#keeping-your-collections-optional)
+**Use [Better BibTeX](ZOTERO.md#-keeping-your-collections-optional)
 instead** wherever you can. Reach for this only when Better BibTeX cannot
 be installed or is misbehaving, and treat the result as provisional.
 
-## Background
+## 💡 Background
 
 Zotero's built-in BibTeX export does not write a `groups` field -- that is
 a Better BibTeX extension, which writes JabRef's `groups` field when
@@ -63,7 +63,7 @@ stay comparable. Zotero does nest collections and the database does record
 the parent, so a full `Parent > Child` path could be produced here; it is
 not, because it would disagree with the field's other producer.
 
-## Usage
+## ⌨ Usage
 
 ```sh
 python3 scripts/populate_bib_groups.py <path-to-zotero.sqlite> <input.bib> <output.bib>
@@ -92,7 +92,7 @@ nothing else. It needs `bibtexparser`, the same dependency
 Re-running is safe: an entry that already has a `groups` field is left
 untouched, so a second pass over the same output adds nothing.
 
-## How matching works
+## 🔎 How matching works
 
 Bib entries carry no Zotero item ID, so each entry is matched back to a
 row in `zotero.sqlite` using, in order, first hit wins:
@@ -117,7 +117,7 @@ decoded, so `Caf\'{e}` compares equal to the `Café` Zotero stores, and
 Once an item is found, its collections come from a straight join:
 `collectionItems` -> `collections`, taking `collectionName`.
 
-## Fragility / known limitations
+## 🚫 Fragility / known limitations
 
 - **Duplicate library items.** This Zotero library has items added more
   than once (identical DOI/title, different `dateAdded`), each possibly
@@ -147,7 +147,7 @@ Once an item is found, its collections come from a straight join:
   parser reads any layout, but a file indented differently gains one line
   that does not match its neighbours.
 
-## Last run stats (this repository)
+## 📊 Last run stats (this repository)
 
 ```text
 entries total:            644

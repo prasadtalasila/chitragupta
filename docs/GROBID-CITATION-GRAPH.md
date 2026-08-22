@@ -1,4 +1,4 @@
-# Proposal: a GROBID stage for a corpus-internal citation graph
+# 🕸 Proposal: a GROBID stage for a corpus-internal citation graph
 
 Status: **a proposal, not a plan.** Written 2026-08-07.
 
@@ -15,18 +15,18 @@ can argue anything else.
 Originally drafted 2026-08-07, against an earlier layout of this
 repository, and updated here for the current one.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Answering the removal first](#answering-the-removal-first)
-- [Where the repository stands today](#where-the-repository-stands-today)
-- [Why GROBID and docling, not GROBID instead of docling](#why-grobid-and-docling-not-grobid-instead-of-docling)
-- [Proposed design](#proposed-design)
-- [Respecting the citekey invariant](#respecting-the-citekey-invariant)
-- [What it would cost](#what-it-would-cost)
-- [What this does not change](#what-this-does-not-change)
-- [Open questions](#open-questions)
+- [Answering the removal first](#-answering-the-removal-first)
+- [Where the repository stands today](#-where-the-repository-stands-today)
+- [Why GROBID and docling, not GROBID instead of docling](#-why-grobid-and-docling-not-grobid-instead-of-docling)
+- [Proposed design](#-proposed-design)
+- [Respecting the citekey invariant](#-respecting-the-citekey-invariant)
+- [What it would cost](#-what-it-would-cost)
+- [What this does not change](#-what-this-does-not-change)
+- [Open questions](#-open-questions)
 
-## Answering the removal first
+## 💡 Answering the removal first
 
 GROBID was in this repository and was **removed on 2026-08-01**. Any
 proposal to bring it back has to say what is different, so:
@@ -39,7 +39,7 @@ proposal to bring it back has to say what is different, so:
 > `/api/processFulltextDocument` specifically -- not the header endpoint
 > that was here.
 >
-> -- [PDF-PARSER.md](PDF-PARSER.md#why-grobid-was-removed)
+> -- [PDF-PARSER.md](PDF-PARSER.md#-why-grobid-was-removed)
 
 **This proposal is exactly that revisit.** The removed integration called
 `/api/processHeaderDocument` for title, authors and abstract -- metadata
@@ -51,9 +51,9 @@ does not supply and nothing else in the pipeline can derive.
 That is a genuine difference in capability, not a re-litigation. It does
 **not** dispose of the operational objection -- a pinned JDK 21, a
 multi-GB Gradle build, and a long-running service -- which is unchanged
-and is the main cost weighed in [What it would cost](#what-it-would-cost).
+and is the main cost weighed in [What it would cost](#-what-it-would-cost).
 
-## Where the repository stands today
+## 🔭 Where the repository stands today
 
 Two layers touch PDFs, and neither produces bibliographic structure:
 
@@ -87,7 +87,7 @@ under `chitragupta/enrich/`, run from `chitragupta/enrich/__main__.py`,
 independent of
 `[parser].backend`.
 
-## Why GROBID and docling, not GROBID instead of docling
+## ⚖ Why GROBID and docling, not GROBID instead of docling
 
 Each is purpose-built for something the other is not:
 
@@ -109,9 +109,9 @@ measures at 55m 30s for a serial 501-PDF pass with OCR off, CPU-bound
 even on a GPU host (~7% SM utilisation on an A40). GROBID writes to a
 separate artefact, so it does not compete for the same CPU-bound budget.
 
-## Proposed design
+## 🏗 Proposed design
 
-### Where the stage sits
+### 📍 Where the stage sits
 
 ```mermaid
 flowchart TB
@@ -158,7 +158,7 @@ nothing else -- so every document GROBID sees is one a draft is allowed
 to cite. That is a constraint, not an accident; see
 [AGENTS.md](../AGENTS.md).
 
-### `chitragupta/enrich/grobid_parse.py`
+### 🐍 `chitragupta/enrich/grobid_parse.py`
 
 Modelled on `docling_parse.py`: corpus-wide, incremental, self-probing.
 It calls GROBID's `/api/processFulltextDocument` per PDF and writes the
@@ -185,7 +185,7 @@ Status vocabulary, matching `chitragupta/enrich/__main__.py`:
 | TEI written | `ok` |
 | GROBID returns malformed or empty TEI for one PDF | `partial`, with a warning naming the citekey -- one bad document does not fail the corpus |
 
-### `chitragupta/enrich/citation_graph.py`
+### 🐍 `chitragupta/enrich/citation_graph.py`
 
 Parses each TEI's `<listBibl>`, extracts each referenced work's
 title/DOI, and resolves it against the ledger's existing citekeys.
@@ -217,7 +217,7 @@ similarity. Neither can answer "what does this corpus treat as
 foundational" or "cluster these papers by citation structure rather than
 by topic model" -- there is no citation-structure data to answer from.
 
-### Configuration
+### ⚙ Configuration
 
 A new section, following the existing `[parser]`/`[enrich]` pattern, each
 key overridable by an env var of the same name:
@@ -239,7 +239,7 @@ strings, so **this stage may need network access per document at parse
 time** -- a different network profile from anything else here, where the
 network is needed once for model downloads and never again.
 
-### Runtime
+### 🐳 Runtime
 
 GROBID runs as a long-lived service, not an in-process import:
 
@@ -254,7 +254,7 @@ sidecar. Invocation would extend `--stages`:
 .venv-full/bin/python -m chitragupta.enrich --stages grobid,citation_graph
 ```
 
-## Respecting the citekey invariant
+## 🔑 Respecting the citekey invariant
 
 **The hard rule is unchanged and this stage does not get an exception.**
 GROBID's consolidated references routinely resolve to DOIs and titles not
@@ -280,7 +280,7 @@ draft:
   construct a path from a GROBID-derived string, which carries no such
   guarantee.
 
-## What it would cost
+## ⚡ What it would cost
 
 Honest accounting, since the operational objection that removed GROBID
 still stands:
@@ -291,7 +291,7 @@ still stands:
 | A multi-GB, multi-minute build | Or accepting the prebuilt Docker image and its footprint |
 | A long-running service on port 8070 | The only component here that is not a batch job -- a genuinely new operational shape |
 | Per-document network | With `consolidate_citations > 0`. New for this pipeline |
-| A new artefact in the reproducibility contract | [ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not) is artifact-by-artifact; `.tei.xml` and `citation_graph.json` each need a row, and consolidation makes the graph depend on an *external service's* state, so it is unlikely to be reproducible at all |
+| A new artefact in the reproducibility contract | [ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not) is artifact-by-artifact; `.tei.xml` and `citation_graph.json` each need a row, and consolidation makes the graph depend on an *external service's* state, so it is unlikely to be reproducible at all |
 
 **The case turns on one question: is snowballing a real workflow here?**
 If corpus growth stays "notice a paper, catalogue it in Zotero,
@@ -299,7 +299,7 @@ re-export", the graph is interesting but unused, and this is a service
 and a JDK for a feature nobody runs. If it becomes routine, this is the
 only design that supports it without touching the citekey invariant.
 
-## What this does not change
+## 🚫 What this does not change
 
 - **The corpus layer** -- `sync`, `pdf_text.py`, BM25 retrieval:
   untouched.
@@ -313,7 +313,7 @@ only design that supports it without touching the citekey invariant.
 - **Who runs it** -- a human, like every other enrichment stage. No skill
   builds it.
 
-## Open questions
+## ❓ Open questions
 
 - **Does the graph have a consumer?** `content/topics.json` is already an
   artefact nothing reads (see [DEVELOPER.md](../DEVELOPER.md)). Adding a

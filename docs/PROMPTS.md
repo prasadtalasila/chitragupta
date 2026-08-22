@@ -1,4 +1,4 @@
-# PROMPTS.md
+# 🤖 PROMPTS.md
 
 What text does the model actually see when a genre skill runs? This
 document answers that for two skills that sit at opposite ends of this
@@ -10,7 +10,7 @@ This file is self-contained: read it without any other doc open. Where
 it names a file, that is so you can go verify the claim yourself, not
 because you need to have already read it.
 
-## Vocabulary this document assumes
+## 🏷 Vocabulary this document assumes
 
 - **The prompt**: everything the model is given before it generates --
   the harness's own system prompt, plus whatever project files, prior
@@ -41,7 +41,7 @@ because you need to have already read it.
   so a later revision doesn't have to reconstruct it from a stale
   conversation. `docs/DRAFT-ITERATION.md` is the full design.
 
-## 1. A single-context skill: `textbook-chapter-writer`
+## ✍ 1. A single-context skill: `textbook-chapter-writer`
 
 This skill never dispatches a subagent. Everything happens in one
 context, so its prompt is one stack that only ever grows, in this
@@ -95,7 +95,7 @@ call, and so on -- rather than all at once at the start. Layer 7 is
 the only layer that changes from one invocation of this skill to the
 next.
 
-## 2. A multi-agent skill: `deep-research`
+## 🔎 2. A multi-agent skill: `deep-research`
 
 `deep-research` shares layers 1-3 with every other skill in this
 pipeline -- CLAUDE.md still routes to AGENTS.md/SOUL.md first, the
@@ -107,7 +107,7 @@ A subagent's prompt is built fresh each time, and does not inherit the
 orchestrator's conversation -- only the specific fields the orchestrator
 decides to hand it.
 
-### 2a. The orchestrating context
+### 🎛 2a. The orchestrating context
 
 Same first three layers as any skill, then:
 
@@ -153,7 +153,7 @@ context. That discipline is why the orchestrator's own prompt does not
 balloon by the size of every packet every subagent ever returned --
 only the transcribed, deduplicated dossier does.
 
-### 2b. A dispatched subagent's context (the part that's genuinely different)
+### 🤖 2b. A dispatched subagent's context (the part that's genuinely different)
 
 Each subagent dispatched from Phases 2, 5 and 7 gets its **own** fresh
 context. Its shape is not layers 1-7 above; the orchestrator's
@@ -207,7 +207,7 @@ transcribed by the orchestrator, in the same phase, before it moves on
 -- a fourth Phase-2 packet sitting unread while a fifth is dispatched is
 exactly how a discarded citekey's reasoning gets lost for good.
 
-## 3. Why the two don't look the same
+## ⚖ 3. Why the two don't look the same
 
 | | `textbook-chapter-writer` | `deep-research` |
 |---|---|---|

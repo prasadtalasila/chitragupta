@@ -1,4 +1,4 @@
-# Architecture
+# 🏗 Architecture
 
 Status: **reference.** Written 2026-08-06.
 
@@ -10,28 +10,28 @@ layer is worth building, wire a new script into the chain, or work out
 why a command needs a virtual environment when the one next to it does
 not.
 
-**Assumed** you have run [the Quickstart](../README.md#quickstart) at least
+**Assumed** you have run [the Quickstart](../README.md#-quickstart) at least
 once. **Not covered here:** every flag of every command
 ([CLI.md](CLI.md)), every setting ([CONFIG.md](CONFIG.md)), the internal
 design rationale and failure analysis ([DESIGN.md](DESIGN.md)), and how to
 work on the repository itself ([DEVELOPER.md](../DEVELOPER.md)).
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The four layers](#the-four-layers)
-- [Layer 1: the corpus layer](#layer-1-the-corpus-layer)
-- [Layer 2: the drafting layer](#layer-2-the-drafting-layer)
-- [Layer 3: the enrichment layer](#layer-3-the-enrichment-layer)
-- [Layer 4: the review layer](#layer-4-the-review-layer)
-- [Incremental by default, honest about failure](#incremental-by-default-honest-about-failure)
-- [What is reproducible, and what is not](#what-is-reproducible-and-what-is-not)
-- [What this architecture does not do](#what-this-architecture-does-not-do)
-- [What each capability requires](#what-each-capability-requires)
-- [Which interpreter, and why](#which-interpreter-and-why)
-- [Ladders and tiers](#ladders-and-tiers)
-- [One writer at a time](#one-writer-at-a-time)
+- [The four layers](#-the-four-layers)
+- [Layer 1: the corpus layer](#-layer-1-the-corpus-layer)
+- [Layer 2: the drafting layer](#-layer-2-the-drafting-layer)
+- [Layer 3: the enrichment layer](#-layer-3-the-enrichment-layer)
+- [Layer 4: the review layer](#-layer-4-the-review-layer)
+- [Incremental by default, honest about failure](#-incremental-by-default-honest-about-failure)
+- [What is reproducible, and what is not](#-what-is-reproducible-and-what-is-not)
+- [What this architecture does not do](#-what-this-architecture-does-not-do)
+- [What each capability requires](#-what-each-capability-requires)
+- [Which interpreter, and why](#-which-interpreter-and-why)
+- [Ladders and tiers](#-ladders-and-tiers)
+- [One writer at a time](#-one-writer-at-a-time)
 
-## The four layers
+## 🧩 The four layers
 
 Four layers: a deterministic **corpus layer**, a generative **drafting
 layer**, an optional **enrichment layer** that deepens the corpus for
@@ -112,7 +112,7 @@ flowchart TB
 ```
 
 Every module, every file it writes, and the exact edges between them are in
-[DIAGRAMS.md's full workflow](DIAGRAMS.md#3-the-full-workflow) -- the same
+[DIAGRAMS.md's full workflow](DIAGRAMS.md#-3-the-full-workflow) -- the same
 system at source-reading detail, plus ten other views of it.
 
 Two properties carry the safety argument, and both are visible above:
@@ -124,7 +124,7 @@ Two properties carry the safety argument, and both are visible above:
   `content/ledger.sqlite` and nothing else, so a citekey no `sync` ever put
   there cannot survive into a rendered draft.
 
-## Layer 1: the corpus layer
+## 📚 Layer 1: the corpus layer
 
 One entry point, `python -m chitragupta.corpus`, with two verbs: `sync` does the
 work and `ledger` reads back what it did. Until 5.2.0 this section said
@@ -150,7 +150,7 @@ taking no lock, on the bare-`python` tier, so it answers "what does the
 corpus hold?" *while* a sync is running. Exit codes: `0` on any
 successful read, `1` for a citekey the ledger doesn't hold.
 
-## Layer 2: the drafting layer
+## ✍ Layer 2: the drafting layer
 
 Nine Claude Code skills in `.claude/skills/`, one set of grounding rules
 between them: five that write a new draft, three that revise one that
@@ -174,7 +174,7 @@ explains, a tutorial is verified to run. `draft-reviser` and
 `corpus-reviser` are separate for a different reason: `draft-reviser`
 contains no instructions for a wide search, so the cheap path cannot
 drift into the expensive one -- see
-[GENRE.md](GENRE.md#revising-widely-corpus-reviser). The prose standards
+[GENRE.md](GENRE.md#-revising-widely-corpus-reviser). The prose standards
 all eight prose-writing skills share -- every one but `book-assembler`,
 which writes no prose of its own -- and where in the
 technical-communication literature they come from, are in
@@ -225,9 +225,9 @@ lightweight default when it is not there.
 
 Building that stack is your decision, not a side effect of asking for a
 draft. See [layer 3, the enrichment
-layer](#layer-3-the-enrichment-layer) below.
+layer](#-layer-3-the-enrichment-layer) below.
 
-## Layer 3: the enrichment layer
+## 🧠 Layer 3: the enrichment layer
 
 **It extends the corpus layer, not the drafting one.** That is worth
 saying plainly, because a layer this expensive sitting next to the
@@ -267,8 +267,8 @@ The default unit of work is the whole corpus. `--for-draft` narrows it to
 the papers one draft cites, and reaches `docling` only. `embed` and
 `bertopic` each write one whole-corpus artefact with no partial form, so
 they are refused rather than scoped.
-[LADDERS.md](LADDERS.md#scoping-a-run-to-one-draft) has the reasoning,
-and [CLI.md](CLI.md#enriching-one-drafts-papers) the flags.
+[LADDERS.md](LADDERS.md#-scoping-a-run-to-one-draft) has the reasoning,
+and [CLI.md](CLI.md#-enriching-one-drafts-papers) the flags.
 
 Each stage probes its own prerequisites and reports `ok`, `partial`,
 `skipped`, `missing-binary` or `error`, so a missing dependency is a
@@ -305,7 +305,7 @@ the only edge between the two. It checks the stack exists before using it
 and degrades to the lightweight default rather than erroring when it does
 not. Reading an artefact is not calling a layer.
 
-## Layer 4: the review layer
+## 🔍 Layer 4: the review layer
 
 Six aids behind one command, run over a finished draft. **What each one
 answers, what a report looks like, and how to read one is
@@ -383,7 +383,7 @@ a clean run can be incomplete rather than wrong. It names any tier that
 did not run. See
 [docs/PLAGIARISM.md](PLAGIARISM.md).
 
-## Incremental by default, honest about failure
+## ♻ Incremental by default, honest about failure
 
 Two properties run through every stage, and both are load-bearing rather
 than incidental.
@@ -403,7 +403,7 @@ than crashing or silently succeeding. The parse path adds a quality guard
 on top: it warns when a backend starts fusing words together, which is
 invisible in a spot check but quietly wrecks keyword retrieval.
 
-## What is reproducible, and what is not
+## 🔁 What is reproducible, and what is not
 
 Run the pipeline twice over an unchanged bibliography and some artifacts
 come back byte-identical, some come back equivalent-but-not-identical,
@@ -431,7 +431,7 @@ a specific span of a specific source.
 | `content/overlap/` | A cache, not an output: `chitragupta/review/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
 | `content/chroma/` | The embedding store the `embed` stage writes -- persistent, not a cache, but incremental: a document whose text hashes the same is not re-embedded. Inherits whatever instability its input text has |
 
-### The passage sidecar, specifically
+### 🗄 The passage sidecar, specifically
 
 Docling groups dense reference blocks into elements slightly differently
 under contention, and `chitragupta/passages.py` writes **one passage record per
@@ -469,7 +469,7 @@ difference into a hard failure.
 re-parse?" has the measurement, the three mechanisms it separates, and
 its own statement of how little 286 comparisons can pin down.
 
-## What this architecture does not do
+## 🚫 What this architecture does not do
 
 - **It does not fetch papers.** There is no downloader, no metadata API
   client, no crawler. You curate the bibliography; the pipeline reads it.
@@ -481,7 +481,7 @@ its own statement of how little 286 comparisons can pin down.
   aids above are for, and they are aids -- reading the source remains your
   job.
 
-## What each capability requires
+## 🔧 What each capability requires
 
 The pipeline probes for what it needs and reports what is missing, so a
 machine with only some of these still works. It reports the rest as
@@ -490,17 +490,17 @@ unavailable rather than failing.
 | Capability | What it needs |
 |---|---|
 | Parse bib file, track citekeys and PDF paths | `bibtexparser` (venv, main Poetry group) |
-| Extract PDF text | `pdftotext` (poppler-utils, `os-deps` stage) by default -- `docling` is an opt-in alternative, see [CONFIG.md](CONFIG.md#backend-pdftotext-or-docling) |
+| Extract PDF text | `pdftotext` (poppler-utils, `os-deps` stage) by default -- `docling` is an opt-in alternative, see [CONFIG.md](CONFIG.md#-backend-pdftotext-or-docling) |
 | Track parse status incrementally | stdlib `sqlite3` |
 | BM25-ranked retrieval | stdlib only |
-| Citation gate, References section, tex/pdf render | stdlib only, no venv (see [below](#which-interpreter-and-why)) |
+| Citation gate, References section, tex/pdf render | stdlib only, no venv (see [below](#-which-interpreter-and-why)) |
 | Prose conformance report (`chitragupta.draft style`) | stdlib only, plus `vale` on PATH (`os-deps` stage); absent, it reports missing-binary |
 | Docling layout-aware parsing, embeddings/Chroma, BERTopic | venv, `enrich` Poetry group |
 | Compiling generated `.tex` to PDF | `pandoc`, `pdflatex`, `latexmk` (`os-deps` stage) |
 
-## Which interpreter, and why
+## 🐍 Which interpreter, and why
 
-Three tiers, on purpose. [CLI.md](CLI.md#which-interpreter) lists which
+Three tiers, on purpose. [CLI.md](CLI.md#-which-interpreter) lists which
 tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
@@ -586,7 +586,7 @@ not missing data.
 
 So that module carries a `__main__` block that prints
 `python -m chitragupta.corpus sync` and exits **64**. That is deliberately none
-of the three codes [CLI.md](CLI.md#running-sync-on-a-schedule) publishes
+of the three codes [CLI.md](CLI.md#-running-sync-on-a-schedule) publishes
 as `sync`'s API, since a scheduler reads `2` there as "expected, do
 nothing". #153 removed the old spelling from the documentation.
 
@@ -660,7 +660,7 @@ reverted with the directory that held it.
 skills, so a nested invocation cannot reach a reader through prose
 either. None of it is left to someone comparing files by eye.
 
-## Ladders and tiers
+## 🪜 Ladders and tiers
 
 Both words appear across these docs, and they are not the same thing.
 Summarised here; each one is treated in full, with what its bottom rung
@@ -703,7 +703,7 @@ repeats. A tier that could not run says so by name, so a clean run means
 [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has the three tiers
 and the literature behind them.
 
-## One writer at a time
+## 🔒 One writer at a time
 
 `sync` and the enrichment layer take the same lock over `content/`
 (`content/pipeline.lock.db`), because the unsafe overlap is any writer

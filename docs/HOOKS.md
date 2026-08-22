@@ -1,4 +1,4 @@
-# Hooks: what runs automatically, and what is allowed to block
+# 🪝 Hooks: what runs automatically, and what is allowed to block
 
 Status: **built, as of 5.20.0.** Written 2026-08-15. Three hooks exist --
 `citation_gate_hook.py`, `style_check_hook.py` and
@@ -28,21 +28,21 @@ checker is [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 and
 [HOUSE-STYLE.md](HOUSE-STYLE.md). This file is about *invocation*, which is
 a separate question and has separate rules.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The rule that decides everything](#the-rule-that-decides-everything)
-- [The two classes](#the-two-classes)
-- [The registry](#the-registry)
-- [The shared design, in files](#the-shared-design-in-files)
-- [The launcher contract](#the-launcher-contract)
-- [The output contract](#the-output-contract)
-- [What is measured, and what is merely documented](#what-is-measured-and-what-is-merely-documented)
-- [Testing a hook](#testing-a-hook)
-- [Deliberately not done](#deliberately-not-done)
-- [Prior art](#prior-art)
-- [Open questions](#open-questions)
+- [The rule that decides everything](#-the-rule-that-decides-everything)
+- [The two classes](#-the-two-classes)
+- [The registry](#-the-registry)
+- [The shared design, in files](#-the-shared-design-in-files)
+- [The launcher contract](#-the-launcher-contract)
+- [The output contract](#-the-output-contract)
+- [What is measured, and what is merely documented](#-what-is-measured-and-what-is-merely-documented)
+- [Testing a hook](#-testing-a-hook)
+- [Deliberately not done](#-deliberately-not-done)
+- [Prior art](#-prior-art)
+- [Open questions](#-open-questions)
 
-## The rule that decides everything
+## 🔑 The rule that decides everything
 
 > **A hook fails loud or fails silent, and which one it is follows from
 > what it protects -- never from what is convenient.**
@@ -81,7 +81,7 @@ exit /b 0
 
 Neither may be applied to the citation gate.
 
-## The two classes
+## 🧩 The two classes
 
 Classify a hook once, at the point of proposing it, and every subsequent
 question is already answered:
@@ -94,7 +94,7 @@ question is already answered:
 | On its own internal failure | must be detectable | exit 0, say nothing |
 | May be skipped by a config key | no | yes |
 | May use conditional spawning (`if`) | no | yes |
-| May run `async` | no | no, see [below](#deliberately-not-done) |
+| May run `async` | no | no, see [below](#-deliberately-not-done) |
 
 Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) -- *"A gate
 `FAIL` is a failing test, not a lint warning"* -- and
@@ -112,7 +112,7 @@ The operating formula, from #183: **invocation is enforced, conformance is
 not.** A hook guarantees the findings reach the agent. Only the gate
 guarantees anything about what the agent then does.
 
-## The registry
+## 🗄 The registry
 
 | Event | Matcher | Script | Class | Status |
 |---|---|---|---|---|
@@ -126,7 +126,7 @@ fault isolation: a defect in a prose checker must not be able to weaken the
 citekey gate, and one process means one crash takes both. The usual
 argument for consolidating -- controlling how several checks' findings
 merge into a single stdout -- does not apply, because the harness already
-merges them correctly; see [the trial table](#what-is-measured-and-what-is-merely-documented).
+merges them correctly; see [the trial table](#-what-is-measured-and-what-is-merely-documented).
 
 The two share exactly one decision -- *is this write a draft?* -- and it
 is factored into one helper beside them rather than copied, because a
@@ -138,7 +138,7 @@ relative. The repo root must be derived from the hook's own location
 rather than from the target path. And containment must be tested with
 `is_relative_to`, not a substring match on `/content/drafts/`.
 
-### The session preflight
+### 🛫 The session preflight
 
 `session_start_hook.py` exists because a hook that fails to start cannot
 report that it failed to start. The settings file still lists it, its tests
@@ -168,7 +168,7 @@ It makes three checks, of which **only the first two are faults**:
 
 Note the inversion in the second: the alarm is the bad probe *passing*.
 
-#### Why a pre-sync corpus is a stage and not a fault
+#### 💡 Why a pre-sync corpus is a stage and not a fault
 
 This is the design decision the hook turns on, and the naive version gets
 it wrong. The normal sequence is clone -> `config.toml` ->
@@ -204,7 +204,7 @@ Cost: **126 ms** for both subprocesses, against 16 ms for a bare
 interpreter. It writes nothing under the user's `content/` and reads no
 draft of theirs.
 
-## The shared design, in files
+## 🏗 The shared design, in files
 
 Both `PostToolUse` hooks answer the same three questions in the same order
 -- *was this write a draft? what does the check say? how do I hand that
@@ -243,7 +243,7 @@ payload or an envelope.** That line is where the boundary actually falls.
 An adapter is defined by handling the harness's stdin/stdout contract, and
 this module handles neither -- it reads `settings.json` and returns English
 sentences. It has to be here, because the preflight cannot report its own
-interpreter missing and [the gate can](#the-session-preflight).
+interpreter missing and [the gate can](#-the-session-preflight).
 
 **Layer 2, `.claude/hooks/`, holds adapters.** An adapter reads a
 `PostToolUse` payload on stdin, decides whether it is interested, shells
@@ -253,12 +253,12 @@ One rule keeps this layer honest: **an adapter contains no logic anyone
 could want to run by hand.** That is what makes the check usable from a
 skill, a terminal or CI without going near the hook. It is also why a
 skill that invoked the hook would be [inverting the
-dependency](#a-skill-that-runs-the-hook).
+dependency](#-a-skill-that-runs-the-hook).
 
 **Layer 3, `settings.json`, holds the launcher**, and nothing else. See
-[the launcher contract](#the-launcher-contract).
+[the launcher contract](#-the-launcher-contract).
 
-### What the shared helper holds, and why sharing it is safe
+### 🔒 What the shared helper holds, and why sharing it is safe
 
 `draft_target.py` answers *was this write a draft?* and nothing else. It
 was described here before it existed, and extracted when the second hook
@@ -294,7 +294,7 @@ launcher sets; and `tests/test_citation_gate_hook.py`'s `hook_repo`
 fixture, which copies the hook script into a temporary root so that
 `Path(__file__).resolve()` lands there, must copy the helper beside it.
 
-## The launcher contract
+## 📜 The launcher contract
 
 The launcher is the line in `.claude/settings.json` that starts the hook
 process. It is not code, no test imports it, and CI never executes it --
@@ -353,12 +353,12 @@ three findings:
   silent degradation this document exists to prevent.
 
 The launcher does not have to be the venv's interpreter, which is what
-makes the choice this narrow: the gate is [tier 1](CLI.md#which-interpreter)
+makes the choice this narrow: the gate is [tier 1](CLI.md#-which-interpreter)
 and runs under a bare interpreter with no venv, measured.
 
 **A dead launcher is silent, so something else has to say so.** A hook
 whose `command` does not resolve produces nothing at all -- no error to the
-model, nothing in a log (see [the trials](#what-is-measured-and-what-is-merely-documented)).
+model, nothing in a log (see [the trials](#-what-is-measured-and-what-is-merely-documented)).
 `session_start_hook.py` cannot cover that alone, being launched by the same
 name; `python -m chitragupta.draft gate` prints the same warning from an
 interpreter that has demonstrably started. Both call
@@ -380,7 +380,7 @@ Windows auto-detection prepends `bash` to any command containing `.sh`.
 The hooks here are `.py` and unaffected -- recorded so that nobody renames
 them defensively on the strength of that comment.
 
-## The output contract
+## 📜 The output contract
 
 **Stdout is one JSON document, or nothing at all.** This is the rule most
 often broken by accident and the one whose breach is hardest to see. A
@@ -414,7 +414,7 @@ exits non-zero *without* the block, so the draft lands ungated. A hard gate
 that degrades to advisory depending on which interpreter aliases a host
 happens to have is the worst of the available failure modes.
 
-This does not contradict [the launcher](#the-launcher-contract), which is
+This does not contradict [the launcher](#-the-launcher-contract), which is
 a bare `python` by decision. The difference is what each process has to
 inherit from: a hook already running *is* an interpreter, so naming it
 again is a needless second chance to fail, while the launcher has nothing
@@ -430,7 +430,7 @@ deduplicating, so emitting several delivers the payload twice. This
 repository targets Claude Code and does not branch; the branch point is
 recorded because it is not guessable from the field names.
 
-## What is measured, and what is merely documented
+## 📊 What is measured, and what is merely documented
 
 Six trials, run against this repository's own gate hook with a throwaway
 second entry beside it, on 2026-08-15. Recorded because two of the answers
@@ -492,7 +492,7 @@ preflight, each before it was relied on:
   states. It is read-only and takes no lock, so the preflight can call it
   at every session start without contending with anything.
 
-### How much an advisory hook would actually say
+### 💬 How much an advisory hook would actually say
 
 The standing worry about a per-write check is noise. Measured rather than
 argued, on the fifteen-chapter book in `content/backup/`: **123 findings
@@ -519,7 +519,7 @@ today. `tests/test_citation_gate_hook.py` asserts only that the shape is
 *emitted*; no test in this repository can assert that the harness *honours*
 it. That is precisely what the session preflight would check live.
 
-## Testing a hook
+## 🧪 Testing a hook
 
 Hook tests live in `tests/`, run under pytest with the rest of the suite,
 and **`.claude/hooks` is inside `[tool.coverage.run].source`**, so the same
@@ -593,7 +593,7 @@ hook test asserting fields (`priority`, `message`) that its own hook no
 longer emits. Keeping these in pytest, where CI runs them, is the whole
 defence.
 
-## Deliberately not done
+## 🚫 Deliberately not done
 
 **A dispatcher process.** Consolidating every `PostToolUse` check into one
 process, with per-check controls inside it, is tidier and is what
@@ -630,7 +630,7 @@ Rejected because the gate must not be individually disableable, and a
 harness-level `disableAllHooks` already exists for anyone who genuinely
 needs the escape hatch.
 
-### A skill that runs the hook
+### 🤖 A skill that runs the hook
 
 Asked directly, and recorded because the answer differs for the two things
 the question can mean.
@@ -667,7 +667,7 @@ verbatim findings. Today the fix path for a prose finding already has a
 home in `draft-reviser`'s copy-edit mode (#103), so the loop does not need
 a second one.
 
-## Prior art
+## 📚 Prior art
 
 Credited properly in [INSPIRATION.md](INSPIRATION.md); summarised here for
 whoever is changing a hook and wants the sources.
@@ -687,10 +687,10 @@ whoever is changing a hook and wants the sources.
   it: resolve paths inside the interpreter rather than in the shell. The
   principle is adopted via exec form; the dispatcher is not.
 
-## Open questions
+## ❓ Open questions
 
 1. **Whether `python` really starts a hook on a bare Windows clone.**
-   The name is [settled](#the-launcher-contract) and #197 is closed, but
+   The name is [settled](#-the-launcher-contract) and #197 is closed, but
    the Windows half of the reasoning is read off CPython's `venv` module
    and the harness documentation -- no Windows host without Git Bash was
    available to try it on. The Linux half is measured. If the answer there

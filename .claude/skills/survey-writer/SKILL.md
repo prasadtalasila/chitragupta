@@ -550,7 +550,7 @@ collapse them for the sake of a cleaner narrative.
 The prose standards this skill inherits are not original to this project.
 
 Full citations, licences and a per-principle attribution table are in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#sources-and-attribution).
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
 All three works are openly licensed (CC-BY or CC-BY-SA) and require credit.
 
 What bears on *this* genre specifically:

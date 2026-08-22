@@ -1,4 +1,4 @@
-# Running with Docker
+# 🐳 Running with Docker
 
 `docker/Dockerfile` builds the same TeX Live/Pandoc/Poetry stack inside
 a container, for hosts where the user doesn't hold root permissions.
@@ -14,7 +14,7 @@ this image, so a break here won't be caught automatically; re-verify by
 hand after changing `docker/Dockerfile`, `scripts/install_full_pipeline.sh`,
 or `poetry.lock`.
 
-## Build
+## 🔧 Build
 
 ```bash
 docker build -t chitragupta -f docker/Dockerfile .
@@ -33,7 +33,7 @@ command's `COPY` depends on, and this file feeds both of them. The
 `python-deps` layer pulls torch and Docling's models; expect a long
 first build.
 
-### CPU-only vs. GPU-capable: `TORCH_VARIANT`
+### ⚖ CPU-only vs. GPU-capable: `TORCH_VARIANT`
 
 `torch` isn't pinned in `pyproject.toml` (it's a transitive dependency of
 `sentence-transformers`/`docling`/`accelerate`; see that file's own
@@ -66,7 +66,7 @@ full set of downloaded wheel archives sitting in the final image on top
 of the installed packages (measured: 24.9GB for the `gpu` variant with
 the cache left in place, more than double its 11.6GB with it purged).
 
-## Run
+## 🚀 Run
 
 Mount your repo and a volume for `content/` so it survives container
 restarts:
@@ -87,7 +87,7 @@ will refuse to import:
 cp config.toml.example config.toml
 ```
 
-## Verify the toolchain
+## ✅ Verify the toolchain
 
 Inside the running container, check that the render and enrichment
 dependencies actually resolved:
@@ -97,7 +97,7 @@ command -v latexmk pandoc pdftotext
 python -c "import sentence_transformers, chromadb, bertopic, docling; print('enrich group OK')"
 ```
 
-## Running pipeline commands inside the container
+## ⌨ Running pipeline commands inside the container
 
 The same commands as the main README's Quickstart work directly with no
 venv prefix, since `/opt/venv` is already on `PATH` (and exported as

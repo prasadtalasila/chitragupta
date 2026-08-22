@@ -1,4 +1,4 @@
-# Requirements
+# 🎯 Requirements
 
 Status: **requirements record, revised against the codebase.** The
 underlying discussion was held August 2026; this revision was written
@@ -30,18 +30,18 @@ Chitragupta itself in §5 was checked against the current code and the
 project's own closed GitHub issues, not carried over from the original
 discussion.*
 
-## Table of contents
+## 🧭 Table of contents
 
-- [1. What a Good Grounded Writing Software Must Do](#1-what-a-good-grounded-writing-software-must-do)
-- [2. The Landscape: Closed and Open Source](#2-the-landscape-closed-and-open-source)
-- [3. Architectural Principles for Grounded Long-Form Drafting](#3-architectural-principles-for-grounded-long-form-drafting)
-- [4. How Chitragupta Was Built](#4-how-chitragupta-was-built)
-- [5. Where Chitragupta Stands, and What's Left](#5-where-chitragupta-stands-and-whats-left)
-- [6. One Experiment Worth Running Regardless](#6-one-experiment-worth-running-regardless)
+- [1. What a Good Grounded Writing Software Must Do](#-1-what-a-good-grounded-writing-software-must-do)
+- [2. The Landscape: Closed and Open Source](#-2-the-landscape-closed-and-open-source)
+- [3. Architectural Principles for Grounded Long-Form Drafting](#-3-architectural-principles-for-grounded-long-form-drafting)
+- [4. How Chitragupta Was Built](#-4-how-chitragupta-was-built)
+- [5. Where Chitragupta Stands, and What's Left](#-5-where-chitragupta-stands-and-whats-left)
+- [6. One Experiment Worth Running Regardless](#-6-one-experiment-worth-running-regardless)
 
 ---
 
-## 1. What a Good Grounded Writing Software Must Do
+## 📋 1. What a Good Grounded Writing Software Must Do
 
 The defining failure of LLM-assisted academic writing is **citation
 fabrication**: models invent plausible-looking references, page numbers,
@@ -49,7 +49,7 @@ and quotes. A grounded writing system exists to make this failure
 impossible or detectable. The full requirement set, in rough order of
 importance:
 
-### 1.1 Hard citation grounding (the gate property)
+### ✅ 1.1 Hard citation grounding (the gate property)
 
 - Every citation key that appears in output must correspond to an entry
   in the user's own reference library (e.g. a Zotero-exported `.bib`
@@ -64,7 +64,7 @@ importance:
 - The bibliography is the **single admission point** for sources.
   Nothing enters the citable universe except through it.
 
-### 1.2 Faithful use of sources, not just existence of sources
+### 📖 1.2 Faithful use of sources, not just existence of sources
 
 A citation can point to a real paper and still be wrong. Beyond
 existence-gating, a mature system should verify:
@@ -77,7 +77,7 @@ existence-gating, a mature system should verify:
 - **Quotation integrity**: quoted spans must appear verbatim in the
   source at the cited location.
 
-### 1.3 Plagiarism / verbatim-overlap detection against the cited corpus
+### 🔍 1.3 Plagiarism / verbatim-overlap detection against the cited corpus
 
 The complement of citation grounding: the system must ensure the draft
 does not silently **reuse the wording** of its sources. This means
@@ -91,7 +91,7 @@ overlap); report overlap regions side-by-side with source location
 (citekey, page); distinguish severity tiers; support an allowlist for
 domain boilerplate.
 
-### 1.4 Rephrasing / remediation loop
+### 🔁 1.4 Rephrasing / remediation loop
 
 Detection without remediation leaves the human doing the tedious part.
 The system should route each overlap finding back into a constrained
@@ -101,7 +101,7 @@ statements), convert to an explicit quotation with quote marks and a
 page-anchored citation. Rewrites must be re-verified before acceptance
 (same gate-fail-retry loop as citations), and logged for audit.
 
-### 1.5 Long-form structure and consistency
+### 🏗 1.5 Long-form structure and consistency
 
 For thesis- and book-scale output: hierarchical decomposition (book ->
 chapter -> section), outline-first workflows, and **cross-chapter
@@ -109,7 +109,7 @@ consistency** of terminology, notation, claims, and cross-references.
 Consistency cannot live in model memory; it must live in explicit
 artifacts (see §3.3).
 
-### 1.6 Determinism, auditability, and reproducibility
+### 🧾 1.6 Determinism, auditability, and reproducibility
 
 - The corpus layer (parsing, hashing, indexing) must be deterministic
   and LLM-free.
@@ -119,7 +119,7 @@ artifacts (see §3.3).
 - Re-running the pipeline on unchanged inputs should cost nothing
   (content-addressed caching).
 
-### 1.7 Language quality
+### 🔤 1.7 Language quality
 
 Spelling, grammar, and style conformance to a house/genre standard --
 ideally as a deterministic-where-possible check layer (spell-checking
@@ -127,7 +127,7 @@ against a project dictionary, style linting) plus LLM-assisted polish,
 applied per-unit and re-verified. Distinct from §1.5's structural
 consistency: this is about the prose surface, not the argument's shape.
 
-### 1.8 Data control
+### 🔒 1.8 Data control
 
 For thesis and book manuscripts, many users need the corpus and drafts
 to never leave their machine. Local-first operation is a requirement for
@@ -136,9 +136,9 @@ between open-source and SaaS offerings.
 
 ---
 
-## 2. The Landscape: Closed and Open Source
+## 🌐 2. The Landscape: Closed and Open Source
 
-### 2.1 Closed-source (commercial SaaS)
+### 🏢 2.1 Closed-source (commercial SaaS)
 
 The category has converged on one pitch -- *citations grounded in real
 sources, no hallucinated references* -- because fabricated citations
@@ -173,7 +173,7 @@ their large public index, which reintroduces ambiguity about what the
 writer is allowed to draw from. Jenni and Anara are purer "your library
 is the whole universe" designs.
 
-### 2.2 Open-source
+### 🔓 2.2 Open-source
 
 No open-source project replicates the full commercial feature set. What
 exists:
@@ -213,7 +213,7 @@ exists:
   upstream of any bring-your-own-corpus pipeline (and Chitragupta's
   actual upstream), but not a writing tool.
 
-### 2.3 Plagiarism detection for a closed corpus (source-vs-draft overlap, iThenticate-style)
+### 🔍 2.3 Plagiarism detection for a closed corpus (source-vs-draft overlap, iThenticate-style)
 
 A distinct sub-landscape. No open-source tool matches iThenticate's
 web-scale index (billions of crawled pages + publisher partnerships) --
@@ -264,7 +264,7 @@ each of its three detection tiers, and why -- see §5.1 below.
 
 ---
 
-## 3. Architectural Principles for Grounded Long-Form Drafting
+## 🏗 3. Architectural Principles for Grounded Long-Form Drafting
 
 The fundamental constraint: **a book does not fit in a context window,
 and generation quality degrades long before the limit.** Every sound
@@ -273,7 +273,7 @@ These are the principles Chitragupta's own architecture follows --
 [DESIGN.md](DESIGN.md) is the fuller rationale document for the same
 choices, where the two overlap.
 
-### 3.1 Two-plane separation: deterministic substrate, stochastic generation
+### 🧩 3.1 Two-plane separation: deterministic substrate, stochastic generation
 
 The corpus layer -- PDF parsing, text extraction, bibliography parsing,
 content hashing, chunk indexing -- must be fully deterministic,
@@ -284,7 +284,7 @@ reproducibility and makes downstream verification circular.
 
 > **Constraint: no LLM call may ever write to the corpus plane.**
 
-### 3.2 Closed-world enforcement at a structural boundary, not in the prompt
+### 🚧 3.2 Closed-world enforcement at a structural boundary, not in the prompt
 
 "Only cite these sources" as a prompt instruction fails probabilistically;
 it must fail deterministically. This requires (a) a single admission
@@ -294,7 +294,7 @@ security: the generator is not *asked* not to fabricate; it is *unable*
 to get a fabrication past the boundary. The same pattern generalizes to
 page numbers, quoted spans, and (with more work) numeric claims.
 
-### 3.3 Externalized state: the model remembers nothing
+### 🗄 3.3 Externalized state: the model remembers nothing
 
 Cross-chapter consistency cannot live in model memory across calls. It
 lives in explicit artifacts:
@@ -316,7 +316,7 @@ Chitragupta already externalizes per-draft state this way, via the
 dossier (`docs/DRAFT-ITERATION.md`); the book-scale registries above are
 the still-open piece (§5.2).
 
-### 3.4 Hierarchical decomposition with a fixed unit of generation
+### 🌳 3.4 Hierarchical decomposition with a fixed unit of generation
 
 Book -> part -> chapter -> section, **planned top-down** (outline
 approved first), **generated bottom-up** in units small enough that
@@ -326,7 +326,7 @@ has a contract: inputs (spec slice, registry excerpts, retrieved source
 chunks) -> outputs (draft + citations + claims to register). Units are
 independently regenerable, enabling parallelism and cheap iteration.
 
-### 3.5 A verification ladder, ordered by cost, with blocking vs. advisory tiers
+### ✅ 3.5 A verification ladder, ordered by cost, with blocking vs. advisory tiers
 
 Cheapest first:
 
@@ -351,7 +351,7 @@ Cheapest first:
 > regeneration retries and then fail loudly to the human; they never
 > silently pass.
 
-### 3.6 Content-addressed caching and resumability everywhere
+### 💾 3.6 Content-addressed caching and resumability everywhere
 
 At book scale, one section is regenerated fifty times while 200 pages
 sit untouched. Every stage is keyed by the content hash of its inputs so
@@ -359,7 +359,7 @@ a full-pipeline re-run costs only what changed. The same machinery
 yields the audit trail: a ledger recording which sources, prompts,
 model, and verification results produced every span.
 
-### 3.7 Conventions as data, not code
+### ⚙ 3.7 Conventions as data, not code
 
 Genre rules (thesis chapter vs. tutorial vs. survey vs. deep research),
 house style, citation format, and structural templates live in editable
@@ -367,7 +367,7 @@ skill/config files consumed by the generation layer -- making the
 pipeline retargetable (thesis -> book -> tutorial series) without
 touching enforcement machinery.
 
-### 3.8 The constraints, stated bluntly
+### ⚠ 3.8 The constraints, stated bluntly
 
 - Single source-admission point (the bibliography).
 - LLM never touches the deterministic plane.
@@ -382,13 +382,13 @@ touching enforcement machinery.
 
 ---
 
-## 4. How Chitragupta Was Built
+## 🔨 4. How Chitragupta Was Built
 
 The build sequence Chitragupta actually followed, in the dependency
 order the principles above imply. Each step below is marked with what
 shipped it; §5 has the full status table.
 
-### 4.1 Corpus substrate first — built
+### 📚 4.1 Corpus substrate first — built
 
 1. **Ingestion**: parse the reference manager's export (BibTeX).
    `chitragupta/bib_reader.py` handles the real format quirks -- Zotero's `file`
@@ -404,7 +404,7 @@ shipped it; §5 has the full status table.
    (PDF, parsed text, bib entry) and is the ground truth for "what
    exists" and the cache key for everything downstream.
 
-### 4.2 The gate — built
+### ✅ 4.2 The gate — built
 
 1. `python -m chitragupta.draft gate` validates every citekey a draft uses
    against the bib parse **and** the ledger (entry exists *and* has a
@@ -415,7 +415,7 @@ shipped it; §5 has the full status table.
    (`.claude/hooks/citation_gate_hook.py`) enforces the same check
    mechanically on every write under `content/drafts/`.
 
-### 4.3 Overlap detection (the plagiarism layer) — built
+### 🔍 4.3 Overlap detection (the plagiarism layer) — built
 
 1. **Whole-draft x whole-corpus verbatim scan** (`python -m chitragupta.review
    verbatim scan`, #110/#127/#128/#131): every parsed source is
@@ -438,7 +438,7 @@ shipped it; §5 has the full status table.
    **Declined.** `chitragupta.draft gate` remains the only blocking check in the
    pipeline.
 
-### 4.4 The remediation loop — built
+### 🔁 4.4 The remediation loop — built
 
 1. Overlap findings are machine-readable (`--json`, draft span, source
    span, citekey, run length) and feed the `overlap-reviser` skill: a
@@ -450,7 +450,7 @@ shipped it; §5 has the full status table.
    (`revisions.md`), so edit provenance is as auditable as citation
    provenance.
 
-### 4.5 Language quality layer — built for English, explicitly parked for others
+### 🔤 4.5 Language quality layer — built for English, explicitly parked for others
 
 1. Deterministic-first: `python -m chitragupta.draft style` wraps a vendored
     Vale configuration (`assets/vale/`) checking §2's defect markers, an
@@ -485,7 +485,7 @@ shipped it; §5 has the full status table.
     soft-solved" -- everything else in that paragraph is what #106
     would have built and didn't.
 
-### 4.6 Scaling to books — not yet built
+### 📕 4.6 Scaling to books — not yet built
 
 1. **Spec/outline artifact** with human sign-off before any prose
    (#136).
@@ -502,7 +502,7 @@ shipped it; §5 has the full status table.
 5. **LaTeX book assembly** as a genre skill -- data, not code, per §3.7
    (#139).
 
-### 4.7 Testing and operations — built, and structural to the repo
+### 🧪 4.7 Testing and operations — built, and structural to the repo
 
 - The deterministic plane gets ordinary unit/CI tests (fixtures of bib
   files, PDFs, drafts with planted violations). This repository holds
@@ -516,9 +516,9 @@ shipped it; §5 has the full status table.
 
 ---
 
-## 5. Where Chitragupta Stands, and What's Left
+## 📍 5. Where Chitragupta Stands, and What's Left
 
-### 5.1 Current position
+### 🔭 5.1 Current position
 
 Every principle in §3 that does not depend on book scale is built and in
 production, not just designed. As of v5.29.0:
@@ -549,7 +549,7 @@ measured, on-the-record decision about where a second blocking gate
 would and would not help, which none of the commercial tools publish
 enough to even ask about.
 
-### 5.2 Book scale
+### 📕 5.2 Book scale
 
 What raises the ceiling from chapter/report scale to book scale is
 built, tracked under
@@ -592,7 +592,7 @@ the record of what each shipped as, not just what it was scoped to be.
 
 ---
 
-## 6. One Experiment Worth Running Regardless
+## 🔬 6. One Experiment Worth Running Regardless
 
 Test the commercial tools' gate claims empirically: in Paperguide's (or
 Jenni's) writer, select a library with a deliberate gap and prompt for a

@@ -1,4 +1,4 @@
-# Citation provenance
+# 📖 Citation provenance
 
 Status: **implemented.** Written 2026-08-01.
 
@@ -7,7 +7,7 @@ do about a low-scoring claim. **Assumed:** a drafted, gated document.
 **Not covered here:** the scoring internals a change to them would need,
 which are in the module's own docstrings.
 
-## Background: what this repository does
+## 💡 Background: what this repository does
 
 Skip this section if you already know the codebase.
 
@@ -48,7 +48,7 @@ Two other terms used here:
   run by `python -m chitragupta.enrich`: layout-aware Docling parsing,
   embeddings, topic modelling, and rendering to PDF/LaTeX.
 
-## The problem
+## ❗ The problem
 
 You are reading a draft. A sentence carries a citation:
 
@@ -67,7 +67,7 @@ enough that in practice it doesn't get done, which means the failure it
 would catch -- a claim that drifted away from its source during drafting
 -- ships.
 
-### Why the existing tools don't cover it
+### 💡 Why the existing tools don't cover it
 
 The repository already had two of these commands, and neither answers
 this question.
@@ -100,7 +100,7 @@ here. A correctly paraphrased claim shares *no* 8-word run with its
 source and scores zero, indistinguishable from a claim the source never
 made. The failure mode we care about is precisely the paraphrased one.
 
-## What is being asked for
+## 🎯 What is being asked for
 
 A **citation provenance document**: for a given draft, a report that
 walks every citation and shows what in the source supports it, so a
@@ -109,7 +109,7 @@ human reading the draft can jump straight to the doubtful ones.
 Explicitly a manual review step, run when you want it. Not a gate, not
 part of any automatic chain.
 
-## The solution, as built
+## 🏗 The solution, as built
 
 ```bash
 python -m chitragupta.review provenance content/drafts/<slug>.md
@@ -127,7 +127,7 @@ same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 `content/drafts/`, or outside it altogether, has no path to mirror and
 keeps the flat directory; a draft resolving outside `content/` is
 refused. `chitragupta/review/__init__.py` owns that contract for all six review-layer
-commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#layer-4-the-review-layer).
+commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer).
 
 For each citing passage in the draft, emit:
 
@@ -144,7 +144,7 @@ Sorted **worst match first**, so the report opens on the citations most
 worth your attention rather than making you read forty entries to find
 three.
 
-### Design decisions
+### ⚖ Design decisions
 
 **Advisory, not a gate.** This mirrors `citation_coverage.py`'s
 stated position exactly -- it is why the two share a layer. The reason is not
@@ -176,7 +176,7 @@ report needs) plus `verbatim_check`'s `pages()` and `norm()`, all of
 which are already stdlib-only. There is no reason for this one to be
 heavier.
 
-### Prerequisite: already cleared
+### 🔧 Prerequisite: already cleared
 
 This proposal was blocked on the PDF resolver. `verbatim_check.pdf_path()`
 resolved only **305 of 501** PDFs, for two independent reasons -- it
@@ -188,7 +188,7 @@ saying nothing: it looks like a finding.
 
 Both are fixed. All 501 now resolve.
 
-## What this deliberately does not do
+## 🚫 What this deliberately does not do
 
 **It does not judge whether the claim is true**, or whether the citation
 is appropriate. It surfaces the evidence and leaves the judgment where it
@@ -207,7 +207,7 @@ misrepresenting it. The report is a reading order, not a verdict. This is
 the honest limit of lexical matching, and the reason the tool warns
 rather than gates.
 
-## The Docling provenance sidecar
+## 📄 The Docling provenance sidecar
 
 Docling's document model carries full provenance -- verified on a real
 17-page paper, **336 of 336 text items** had both a page number and a
@@ -222,7 +222,7 @@ renders a highlight, which nothing here does.
 
 The real argument is different, and it exposes a hole in the plan above.
 
-### Reading order, and why it matters more than coordinates
+### 💡 Reading order, and why it matters more than coordinates
 
 `pdftotext -layout` preserves the *visual* arrangement of a page, not its
 reading order. On a two-column paper that means two unrelated columns
@@ -245,7 +245,7 @@ So roughly **40% of this corpus cannot yield a clean quotable passage**
 from `content/parsed/` at all. Any window drawn over that text is a
 splice of two arguments.
 
-### What this does and doesn't break
+### ⚠ What this does and doesn't break
 
 The distinction that matters is between *scoring* and *quoting*.
 
@@ -265,7 +265,7 @@ semantically labelled, so a passage is a real passage. The bounding box
 arrives in the same sidecar, essentially free, but it is the reading
 order that carries the value.
 
-### Revised plan
+### 🗺 Revised plan
 
 **Phase 1 -- lexical matcher, page-level report.** Ship the tool above
 with the passage field reduced to page-plus-score, or shown only for
@@ -284,10 +284,10 @@ display* and leaves the matching problem exactly where it was. A precise
 rectangle around a badly-matched paragraph is worse than a page number,
 because false precision invites trust.
 
-### Costs of Phase 2
+### ⚡ Costs of Phase 2
 
 Phase 2 has since shipped, in both layers -- see ["What the corpus layer
-keeps when it uses docling"](#what-the-corpus-layer-keeps-when-it-uses-docling)
+keeps when it uses docling"](#-what-the-corpus-layer-keeps-when-it-uses-docling)
 below. The estimates it was planned against are kept here, corrected
 against what was later measured, because three of the four moved:
 
@@ -295,7 +295,7 @@ against what was later measured, because three of the four moved:
   ~3.6 hours for 501 papers. Measured, once the converter was hoisted out
   of the per-document path: **6.65s/PDF serial -- 3330s for the whole
   501-PDF corpus, and 310s at twelve workers**
-  ([docs/PERFORMANCE.md](PERFORMANCE.md#parserworkers----document-level-parallelism)).
+  ([docs/PERFORMANCE.md](PERFORMANCE.md#-parserworkers----document-level-parallelism)).
   About 4x cheaper than the figure this decision was weighed against, and
   cheaper again now that a corpus-layer Docling parse is adopted rather
   than repeated. What remains true is the tail of the original bullet:
@@ -314,7 +314,7 @@ against what was later measured, because three of the four moved:
   reading order, so page-level reporting stays the answer for anyone who
   hasn't paid for a Docling parse either way.
 
-## What the corpus layer keeps when it uses docling
+## 📚 What the corpus layer keeps when it uses docling
 
 Docling appears twice in this repository, for two different purposes. The
 corpus layer's parser (`[parser].backend = "docling"`) and the enrichment
@@ -414,7 +414,7 @@ shifts the pages after it. The sidecar is unaffected, because it records
 each item's own `page_no` rather than counting separators. Where the two
 disagree, the sidecar is right.
 
-## Worked example
+## 📝 Worked example
 
 Run against a real 13-citation draft over a 10-paper corpus, the report
 opens like this:
@@ -443,7 +443,7 @@ Best match is on **page 2** of the source.
 With a Docling sidecar present, that last line is replaced by the actual
 paragraph from the paper.
 
-## A calibration caveat, found by running it
+## ⚠ A calibration caveat, found by running it
 
 Scores are comparable *within* a passage source, not across them. A
 quoted paragraph is a far smaller haystack than a whole page, so the
@@ -460,12 +460,12 @@ absolute threshold that meant the same thing for both sources would
 require normalising by passage length, which buys precision the tool
 does not claim to have.
 
-## Two things the build got wrong first
+## 🐛 Two things the build got wrong first
 
 Worth recording, because both are the kind of defect only a real run
 finds -- and the second was caused by the fix for the first.
 
-### Too narrow: the citing line
+### 🐛 Too narrow: the citing line
 
 The first implementation read the citing **line** to recover the claim.
 Every draft this project produces is hard-wrapped, so a sentence spans
@@ -479,7 +479,7 @@ sentences with an abbreviation-aware splitter (so `Fig. 1` and `e.g.`
 don't create the same problem one level down). The same draft went from
 5 spurious "no support found" to 0.
 
-### Too wide: the whole table (issue #19)
+### 🐛 Too wide: the whole table (issue #19)
 
 Widening the unit from a line to a blank-line paragraph had no upper
 bound, and a markdown table has no blank lines in it. A citation in a
@@ -533,7 +533,7 @@ The general lesson, since it is the second instance: the claim unit has a
 *correct size*, and both failures came from choosing that size by
 document syntax the code did not actually model.
 
-## Sizing (as built)
+## 📊 Sizing (as built)
 
 | Piece | Actual |
 |---|---|

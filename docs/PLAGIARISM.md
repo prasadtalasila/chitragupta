@@ -1,4 +1,4 @@
-# Plagiarism / verbatim-reuse detection
+# 🔍 Plagiarism / verbatim-reuse detection
 
 Status: **implemented, three detection tiers of a planned three.** The
 second and third shipped advisory-only. The third runs only where the
@@ -39,11 +39,11 @@ sources that section already cites.
 
 This is the one **tier set** in this project whose options
 are not mutually exclusive
-([ARCHITECTURE.md](ARCHITECTURE.md#ladders-and-tiers)): nobody picks one,
+([ARCHITECTURE.md](ARCHITECTURE.md#-ladders-and-tiers)): nobody picks one,
 every available tier runs, and the findings are unioned. A tier that
 could not run says so, by name, in every form of the report.
 
-## What "plagiarism" means here, and what it deliberately doesn't
+## 🏷 What "plagiarism" means here, and what it deliberately doesn't
 
 This pipeline draws citekeys from a synced bibliography and gates on
 them (`chitragupta/citation_gate.py`): a draft cannot cite a source that isn't
@@ -85,7 +85,7 @@ printed and written forms and as `tiers_not_run` in the JSON payload.
 An unbuilt or unavailable tier does not otherwise announce itself, so a
 thin result and a thorough one look identical.
 
-## The two tools, and when each is right
+## ⚖ The two tools, and when each is right
 
 | | `overlap` | `scan` |
 |---|---|---|
@@ -105,16 +105,16 @@ Whether long verbatim runs should gate is a later and deliberately
 separate decision, issue #110's Phase 2. These tools only produce the
 findings that decision would be tuned against.
 
-## How it works
+## ⚙ How it works
 
 Both modes compare the draft against a **fingerprint** of each source:
 its text reduced to hashed, overlapping word n-grams, cached under
 `content/overlap/` and rebuilt only when the source changes. That is
 enough to read the rest of this page; the scheme itself, and why the
 hash is what it is, are in
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#fingerprinting-word-n-grams-hashed-deterministically).
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#-fingerprinting-word-n-grams-hashed-deterministically).
 
-### `overlap`: one citekey, exact-match runs
+### ⌨ `overlap`: one citekey, exact-match runs
 
 For one citekey, builds a `{gram_hash: page}` map from that document's
 fingerprint and slides the draft's own paragraphs (that cite the
@@ -122,7 +122,7 @@ citekey) across it, reporting maximal verbatim runs -- `n` or more words
 in an unbroken match. Fast because it never looks past the one source
 named.
 
-### `scan`: the whole draft against the whole corpus
+### ⌨ `scan`: the whole draft against the whole corpus
 
 Normalizes the entire draft once, masking code fences and inline code the
 same way `chitragupta/citation_gate.py` does, and masking the generated
@@ -154,7 +154,7 @@ It also carries `id`, a position-free name for the finding, and four
 fields that locate it in the draft as written. One of those is easy to
 misread: `start` is a word offset into the normalised stream, not a
 position in the draft file, and the locators are what to use instead. All
-of them are in [CLI.md](CLI.md#python--m-chitraguptareview-verbatim).
+of them are in [CLI.md](CLI.md#-python--m-chitraguptareview-verbatim).
 
 Matches are grouped by `(citekey, diagonal)`, where `diagonal =
 source_position - draft_position`. That `source_position` is a *global*
@@ -205,7 +205,7 @@ exists to let a reader skip (#189). Four hand-labelled
 of them with the quoted words a minority of the span, so a
 majority-of-span rule does not reach them either.
 
-## Severity buckets, and the boilerplate allowlist
+## ⚠ Severity buckets, and the boilerplate allowlist
 
 Two additions from issue #128, both aimed at the same goal as any future
 gate built on top of `scan`: a tolerable false-positive rate.
@@ -230,7 +230,7 @@ report can show only the `long` section with `short`/`quoted` empty or
 absent. The report says so when `--limit` is set, rather than letting an
 empty section read as "none exist."
 
-### The boilerplate allowlist
+### 🔒 The boilerplate allowlist
 
 Every corpus accumulates boilerplate a verbatim scan will always flag
 and a reviewer will always wave through -- a standard's own name, an
@@ -290,11 +290,11 @@ than a flag, so it is not part of the recorded, re-runnable command. A
 report has to say what it consulted, or "what was waved through" stops
 being visible from the report's own side.
 
-## Repairing what the scan found
+## 🛠 Repairing what the scan found
 
 Detection without remediation leaves the human doing the tedious part.
 Issue #129 adds the other half: the `overlap-reviser` skill
-([GENRE.md](GENRE.md#repairing-overlap-overlap-reviser)) works a scan's
+([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)) works a scan's
 findings one at a time, and `python -m chitragupta.review verbatim recheck`
 decides whether each repair may be kept.
 
@@ -340,16 +340,16 @@ for someone under *what you will not do*.
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
 every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
-should ever join it is [#130](AUTO-IMPROVEMENT.md#build-order)'s question;
+should ever join it is [#130](AUTO-IMPROVEMENT.md#-build-order)'s question;
 it has now been measured rather than guessed, and
-[the gate measurement](PLAGIARISM-DESIGN.md#measured-what-a-blocking-overlap-gate-would-block-130)
+[the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block-130)
 is what the measurement found.
 
 And the caveat that governs the whole section: repairing every finding
 the exact tier can see leaves untouched everything it cannot. Paraphrase
 is not detected. An empty findings list is not a clean bill of health.
 
-## Measured: does the corpus's parser backend change the answer?
+## 📊 Measured: does the corpus's parser backend change the answer?
 
 `[parser].backend` (`config.toml`) is `pdftotext` or `docling`. Both
 backends' output gets the same `\f` page-break convention
@@ -455,14 +455,14 @@ setting reaches it. If catching more matters enough to justify slower
 checks, that global-token-position fix is the next lever worth pulling,
 ahead of tuning either flag further.
 
-## See also
+## 🔗 See also
 
 - [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) -- the developer-facing
   half: the fingerprinting scheme, each tier's mechanism, the gate and
   document-frequency measurements, and the tiers deliberately not built.
 - [CLI.md](CLI.md) -- `overlap`/`scan` flags and usage, and the
   review-aid step of [The full first run, step by
-  step](CLI.md#the-full-first-run-step-by-step). `scan` is also offered
+  step](CLI.md#-the-full-first-run-step-by-step). `scan` is also offered
   by each of the nine skills' own final-check steps.
 - [LADDERS.md](LADDERS.md) -- *ladder*, *rung* and *tier* as this project
   uses them, and the other three tier sets these sit beside.

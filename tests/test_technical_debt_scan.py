@@ -72,10 +72,18 @@ _ENTRY_RE = re.compile(r"`(chitragupta/[\w./-]+\.py(?:::\w+)?)`")
 _RESOLVED_BODY_RE = re.compile(r"^\*\*Resolved\b")
 
 
+# Headings carry an emoji prefix (`## 🧱 Tier 1: ...`), which sits between
+# the `## ` this splits on and the text being matched. Stripped as "a
+# leading run of non-ASCII plus its space" rather than as today's emoji,
+# so changing which emoji a heading wears is a docs edit, not a test edit.
+_HEADING_EMOJI_RE = re.compile(r"^[^\x00-\x7F]+\s+")
+
+
 def _section(text: str, heading_prefix: str) -> str:
     """The `## `-level section starting with `heading_prefix`, to the next."""
     parts = re.split(r"^## ", text, flags=re.MULTILINE)
-    matching = [p for p in parts if p.startswith(heading_prefix)]
+    matching = [p for p in parts
+                if _HEADING_EMOJI_RE.sub("", p).startswith(heading_prefix)]
     assert len(matching) == 1, f"expected exactly one '## {heading_prefix}' section"
     return matching[0]
 
