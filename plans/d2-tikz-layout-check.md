@@ -1,20 +1,55 @@
 # D2: deterministic TikZ layout check
 
-Status: **plan, unbuilt.** Written 2026-08-20. Implements
-[docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s D2.
+Status: **plan, in build.** Written 2026-08-20; the mechanism section
+revised 2026-08-22 after re-probing it on this host, which is what
+that section itself asked the implementer to do. D1 shipped in 6.16.2
+(#329) as [docs/TIKZ-STYLE.md](../docs/TIKZ-STYLE.md); this is D2.
+Implements [docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s D2.
 
 **Written for** whoever builds it. **Assumed:**
 [docs/WRITING-STANDARDS.md](../docs/WRITING-STANDARDS.md) §10 for the
 two-form figure contract, and the roadmap's Theme D for why this is
 deterministic rather than a vision model. **Not covered here:** the
-style guidance a figure is written against, which is D1's.
+style guidance a figure is written against, which is D1's --
+[docs/TIKZ-STYLE.md](../docs/TIKZ-STYLE.md) now.
 
-## The mechanism, already probed
+## The mechanism, re-probed 2026-08-22
 
-A `standalone` + `tikz` document that emits node corner coordinates via
-`\pgfpointanchor` and `\typeout` yields machine-readable geometry from
-an ordinary `pdflatex` run. Verified on this host (`tikz.sty` and
-`standalone.cls` both present):
+Each figure is wrapped in a scaffold document and compiled with an
+ordinary `pdflatex`. That much was always the plan. What the re-probe
+changed is what the scaffold looks like, and it changed three things --
+each one verified by compiling, not reasoned about:
+
+**1. `article`, not `standalone`.** `standalone.cls` ships in
+`texlive-latex-extra`; `tikz.sty` ships in `texlive-pictures`. They are
+separate packages, so a scaffold built on `standalone` depends on a
+toolchain fact nothing in this project checks -- reintroducing exactly
+the class of bug `_require_tikz()` exists to prevent (#226, where
+`pdflatex` being on PATH was wrongly taken to imply `tikz.sty`).
+`\documentclass{article}` + `\usepackage{tikz}` is the same minimal
+wrapper [docs/WRITING-STANDARDS.md](../docs/WRITING-STANDARDS.md) §10
+and every genre skill's "verify it compiles" step already specify, it
+needs no package beyond what `_require_tikz()` checks, and it yields
+byte-identical `\pgfpointanchor` output. Use it.
+
+**2. `\pgfgetlastxy`, not raw `\pgf@x`/`\pgf@y`.** The original probe
+read pgf's internal registers directly, which needs `\makeatletter` in
+the emitted document -- `@` is a non-letter catcode outside one, and
+without it the `\typeout` degrades silently to the literal text
+`\the \pgf` plus a stream of "Undefined control sequence" errors while
+still exiting 0. `\pgfgetlastxy{\x}{\y}` is pgf's public accessor for
+the same values, needs no `\makeatletter`, and cannot break on a pgf
+version that reorganises its internals.
+
+**3. The picture's own bounding box is `current bounding box`.** The
+original section covered node-to-node overlap only and left the
+protrusion and corner-emptiness checks without a source for the
+picture-wide box. TikZ's `current bounding box` is a real pseudo-node,
+so `\pgfpointanchor{current bounding box}{south west}` works through
+the identical mechanism -- one probe shape serves all three
+geometry-dependent checks rather than two.
+
+The emitted scaffold therefore looks like this, and yields:
 
 ```text
 CGBOX a -42.87912pt -7.97742pt 42.87912pt 7.97742pt
@@ -25,8 +60,21 @@ CGBOX c -20.78996pt -63.85512pt 20.78996pt -49.95586pt
 `a` and `b` overlap by 51.6pt in x and overlap in y -- a real collision,
 detected with no model in the loop.
 
+**Why the instrumentation, rather than just compiling and reading the
+PDF.** Worth stating because "compile the figure and look at it" is the
+obvious first thought and it does not work. Verified on this host: a
+compiled figure's PDF contains **zero** occurrences of its own node
+names. The content stream is anonymous drawing operators
+(`1 0 0 1 155.769 660.474 cm`, `[(A)]TJ`) -- TikZ knows a node's name
+only at compile time, and the PDF has already forgotten it. So a bare
+compile answers exactly one of the five checks, "does it compile?", and
+cannot answer "does node `a`'s box overlap node `b`'s", because nothing
+in the artefact still says which box was `a`. The `\typeout` is what
+makes TikZ print the name-to-box mapping while it still knows it.
+
 **Reproduce the probe before writing code.** It is the one assumption
-everything else rests on, and it is cheap to re-run.
+everything else rests on, it is cheap to re-run, and re-running it is
+what produced all three corrections above.
 
 ## What it checks
 
@@ -73,24 +121,47 @@ the judgement register belongs to the gate. Not `triage`, which
 withdrawn. `figure` is accurate and free.
 
 **Compiling is a side effect, and must not litter.** Build in a
-temporary directory and never beside the draft. A figure that fails to
-compile is a **reported finding, not a crash** -- `_require_tikz()`
-already models the missing-`tikz.sty` case, and this reuses it rather
-than re-probing.
+temporary directory and never beside the draft. Two different failures
+hide in one sentence here, and they want opposite handling:
+
+- **`tikz.sty` absent on the host.** One fact for the whole run, checked
+  once, and `_require_tikz()` already models it -- reuse it rather than
+  writing a second `kpsewhich` probe. Because the scaffold is now
+  `article`-based (above), that one call covers the scaffold's entire
+  dependency surface, so there is no second toolchain fact to check.
+- **One figure's own TikZ is broken**, on a host where `tikz.sty` is
+  present. Catch the `CalledProcessError` per figure, turn it into a
+  finding, and **keep checking the other figures** -- one bad figure must
+  not end the run or take the exit code with it. `review/__init__.py`'s
+  own `write()` already does exactly this warn-and-continue for a failing
+  pandoc render; follow it.
+
+Either way the aid **reports and exits 0**. It is an aid, not a gate.
 
 **No timestamp in the report**, per the layer's existing rule: two runs
 over an unchanged figure produce byte-identical output.
+
+**Reuse the renderer's figure discovery, do not re-parse.**
+`render_output/_figures.py` already owns both spellings a draft uses for
+a figure -- a Markdown draft's `<!-- figure: ... -->` marker and a
+`.tex` fragment's real `\input{...}` -- in `_figure_refs()`, and owns
+the never-read-outside-the-draft-directory rule in `_resolve_sibling()`.
+A second parser here would mean a marker convention changes in two
+places, and the one that drifts is the one nothing renders.
 
 ## Files
 
 | File | Change |
 |---|---|
-| `chitragupta/review/figure_layout.py` | new: probe emitter, log parser, the five checks |
-| `chitragupta/review/__init__.py` | register in `AIDS` |
-| `chitragupta/review/__main__.py` | register in `AIDS`, wire the subcommand |
-| `chitragupta/render_output/_figures.py` | reuse `_require_tikz()`; no behaviour change |
-| `docs/CLI.md`, `AGENTS.md`, `README.md`, `mkdocs.yml` | R10's sweep |
-| `docs/WRITING-STANDARDS.md` | §10 gains a pointer, not a restatement |
+| `chitragupta/review/figure_layout.py` | new: probe emitter, log parser, the five checks. Split into a package if it crosses `MAX_CODE_LINES = 250` -- a new offender is never added to the register |
+| `chitragupta/review/__init__.py` | register in `AIDS`; its docstring says "Three commands" twice |
+| `chitragupta/review/__main__.py` | register in `AIDS`, wire the subcommand; docstring and `DESCRIPTION` both say "three aids" |
+| `chitragupta/render_output/_figures.py` | reuse `_require_tikz()`, `_figure_refs()`, `_resolve_sibling()`; no behaviour change |
+| `docs/PACKAGING.md` | a row in the `review` table -- `tests/test_packaging_command_table.py` checks this file against live `--help`, so it is required, not optional |
+| `tests/test_review_entrypoint.py`, `tests/test_packaging_command_table.py`, `tests/test_review.py` | each hard-codes the aid count or list |
+| `docs/CLI.md`, `AGENTS.md`, `README.md` | R10's sweep, plus the stale "all three aids" counts |
+| `mkdocs.yml` | **nothing to add.** R10 names it, but the precedent is against: `coverage` has no nav entry either. The nav lists *documents*, and only aids with a dedicated doc (`CITATION-PROVENANCE.md`, `PLAGIARISM.md`) appear. This aid adds no doc page |
+| `docs/WRITING-STANDARDS.md` | **nothing to add.** §10's TikZ advice moved to `docs/TIKZ-STYLE.md` in #329; that file is where a pointer belongs if one is wanted |
 
 ## Tests
 
@@ -102,10 +173,41 @@ Failing first:
    assumption.
 3. A node of 30 words is reported; one of 5 is not.
 4. The edge list of a three-node chain is exactly `a -> b, b -> c`.
-5. A figure that fails to compile produces a finding and **exit 0**.
+5. A figure that fails to compile produces a finding and **exit 0**,
+   *and* a well-formed figure in the same draft is still checked -- the
+   second half is the one that would regress silently.
 6. Byte-identical output over two runs.
 7. `AIDS` disagreement raises -- likely already covered; assert it
    covers the new key.
+8. Discovery finds a Markdown draft's marked figure and a `.tex`
+   fragment's real `\input`, and drops a marker naming a file that is
+   not there.
+
+**Tests 1, 2, 5 and 6 need a real `pdflatex` with `tikz.sty`; 3, 4 and 8
+do not.** Mark the first group to self-skip on a host without the
+toolchain, the way this repository's render tests already do -- CI's
+Windows leg installs no `os-deps` and would otherwise fail them for a
+missing binary rather than a missing behaviour. Keeping the static
+checks free of that dependency is why the module splits them out.
+
+## Build order
+
+Each step is one commit, test first:
+
+1. Discovery (`figures_in`), reusing `_figures.py`. **Done.**
+2. Static check: node text over 15 words.
+3. Static check: the edge list.
+4. The scaffold emitter, `pdflatex` runner and `CGBOX` parser.
+5. Compile-failure handling, both kinds (see "Decisions").
+6. Node overlap, from the parsed boxes.
+7. Protrusion and corner emptiness, from `current bounding box` against
+   the union of node boxes. Note in the docstring that the union
+   over-estimates where nodes overlap, which is acceptable precisely
+   because overlap is independently reported by step 6.
+8. Report and CLI -- text and JSON, following `citation_coverage.py`'s
+   `format_report`/`run()` shape and `review.header()`/`envelope()`.
+9. Register in both `AIDS` dicts.
+10. The doc and test sweep from the Files table.
 
 ## Done when
 
