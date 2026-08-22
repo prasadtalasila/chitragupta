@@ -87,6 +87,43 @@ def edge_list(source: str) -> list[tuple[str, str]]:
     `->` and `edge` are rendering differences over one claim about what
     connects to what. Bare coordinates are dropped: a line between two
     points is not an edge between two named things.
+
+    **This is a regex over TikZ, not a parser of it, and the difference
+    matters more here than anywhere else in this package.** The other
+    checks fail safe: an under-counted node label is a finding missed, and
+    a missed finding is what an advisory aid does anyway. This one is
+    *read as a list of what the figure claims*, so a wrong entry is worse
+    than a missing one -- an author confirming an edge list against their
+    prose is trusting it to be the figure's actual wiring.
+
+    What that costs, stated so the next reader does not have to
+    rediscover it:
+
+    - **Only `\\draw` and `\\path` are scanned.** An edge drawn by a
+      library that wraps them -- `\\graph`, a `matrix` with `\\arrow`,
+      `chains`'s `join` -- is invisible here, so the list is silently
+      short rather than wrong. A missing edge and a figure that genuinely
+      has none look identical.
+    - **Anchors ride along.** `(a.south) -- (b.north)` reports
+      `a.south -> b.north`, not `a -> b`. Real drafted figures do this
+      often enough to see, and stripping the anchor would be a guess
+      about which side of the dot is a node name.
+    - **`to[...]`/`edge[...]` options are not distinguished** from the
+      nodes around them, and a `node` placed *on* a path (a mid-edge
+      label) is a parenthesised token like any other only when it is
+      named.
+    - **A `\\foreach` body is read literally, once.** The loop is not
+      unrolled, so an edge drawn n times appears once with its macro
+      names intact -- which is why anything containing a comma is
+      dropped as a coordinate rather than reported.
+
+    Widening any of these means parsing TikZ's path grammar properly.
+    That is a real piece of work and not obviously worth it: the check
+    exists because a *wrong* edge is invisible to every check over pixels,
+    and it earns that on the ordinary `\\draw (a) -- (b);` figures this
+    pipeline actually produces. Verified against every figure in this
+    repository's own `content/drafts/` -- correct on all of them, which is
+    evidence about those figures and not a proof about TikZ.
     """
     edges = []
     for statement in _PATH_STATEMENT_RE.finditer(source):

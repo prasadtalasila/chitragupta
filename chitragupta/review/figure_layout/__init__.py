@@ -54,7 +54,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, review
-from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._figures import (
     _figure_refs, _require_tikz, _resolve_sibling,
 )
@@ -107,11 +107,20 @@ def figures_in(draft_path: Path) -> list[Path]:
 def check_draft(draft_path: Path) -> list[FigureResult]:
     """Every figure in `draft_path`, checked as far as this host allows.
 
-    `_require_tikz()` is called once, not once per figure: whether
-    `tikz.sty` exists is a fact about the host, and re-probing it per
-    figure would report the same absence n times. Where it is absent the
-    static checks still run -- that is what the source/geometry split in
-    this package is for.
+    The toolchain is probed once, not once per figure: what this host has
+    installed is one fact, and re-probing it per figure would report the
+    same absence n times. Where it is missing the static checks still run
+    -- that is what the source/geometry split in this package is for.
+
+    **Both halves of the toolchain are probed, and needing both is not
+    obvious.** `_require_tikz()` answers "is `tikz.sty` installed?" and
+    deliberately says *nothing* on a host with no `kpsewhich`, leaving
+    `pdflatex` to report a missing package itself -- correct for the
+    renderer, which calls `_require("pdflatex")` separately right beside
+    it. An aid that called only `_require_tikz()` would sail past a host
+    with no TeX at all and then crash on `FileNotFoundError` from the
+    `subprocess` call. CI's Windows leg installs no `os-deps` and is
+    exactly that host; it caught this.
 
     A figure whose own TikZ does not compile becomes a finding on that
     figure and nothing more; the remaining figures are still checked.
@@ -122,7 +131,8 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
 
     skipped = ""
     try:
-        _require_tikz()
+        _require("pdflatex")
+        _require_tikz()  # pragma: no cover-windows
     except MissingBinary as exc:
         skipped = str(exc)
 
@@ -135,7 +145,9 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
             edges=edge_list(source),
             skipped=skipped,
         )
-        if not skipped:
+        # Unreachable on a host with no TeX, where `skipped` is always
+        # set above -- CI's Windows leg, which installs no `os-deps`.
+        if not skipped:  # pragma: no cover-windows
             try:
                 result.boxes = node_boxes(path)
             except FigureCompileError as exc:

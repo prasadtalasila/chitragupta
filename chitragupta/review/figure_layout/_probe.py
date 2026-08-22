@@ -158,8 +158,12 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
     a finding for the caller to report, not a crash: the draft's other
     figures are still worth checking.
     """
-    source = figure_path.read_text(encoding="utf-8")
-    with tempfile.TemporaryDirectory() as tmp:
+    # Every line below needs a real pdflatex, which CI's Windows leg does
+    # not install (`os-deps` is apt-only) -- the same `no cover-windows`
+    # marking render_output.py's own toolchain tail carries, and for the
+    # same reason. The Linux leg measures all of it for real.
+    source = figure_path.read_text(encoding="utf-8")  # pragma: no cover-windows
+    with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows
         probe = Path(tmp) / "probe.tex"
         probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
         result = subprocess.run(

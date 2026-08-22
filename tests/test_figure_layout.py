@@ -185,6 +185,34 @@ class TestEdgeList:
         assert figure_layout.edge_list(source) == []
 
 
+class TestEdgeListLimits:
+    """What the regex costs, pinned rather than left in prose.
+
+    This extraction is a regex over TikZ, not a parser of it, and this is
+    the one check where that matters most: the list is read as *what the
+    figure claims*, so a wrong entry is worse than a missing one. These
+    tests exist so the boundary is a decision on record -- if one starts
+    failing, the extraction got better and the docstring in
+    `_source.py::edge_list` needs updating with it.
+    """
+
+    def test_an_anchor_rides_along_rather_than_being_stripped(self):
+        """`a.south` is reported as-is. Stripping to `a` would be a guess
+        about which side of the dot is a node name."""
+        assert figure_layout.edge_list("\\draw (a.south) -- (b.north);") == [
+            ("a.south", "b.north")
+        ]
+
+    def test_an_edge_drawn_by_a_wrapping_library_is_invisible(self):
+        """`\\graph` never writes `\\draw`, so the list comes back
+        silently short rather than wrong -- indistinguishable from a
+        figure with no edges at all."""
+        assert figure_layout.edge_list("\\graph { a -> b };") == []
+
+    def test_a_to_with_options_is_still_an_edge(self):
+        assert figure_layout.edge_list("\\draw (a) to[bend left] (b);") == [("a", "b")]
+
+
 class TestScaffold:
     """The document each figure is compiled inside.
 
@@ -219,6 +247,77 @@ class TestScaffold:
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "current bounding box" in scaffold
+
+
+class TestProbePlacement:
+    """Where the probes are spliced in, and which nodes get probed.
+
+    Pure string work, so these run on a host with no TeX -- which is the
+    point: they were previously exercised only through the compile
+    tests, so CI's Windows leg measured them as uncovered even though
+    nothing here needs a toolchain.
+    """
+
+    def test_node_names_finds_every_named_node(self):
+        source = "\\node (a) {A};\n\\node[draw] (b) at (1,0) {B};\n"
+
+        assert figure_layout.node_names(source) == ["a", "b"]
+
+    def test_node_names_ignores_an_unnamed_node(self):
+        """A node with no `(name)` cannot be probed -- `\\pgfpointanchor`
+        has nothing to ask for."""
+        assert figure_layout.node_names("\\node {just a label};\n") == []
+
+    def test_probes_go_inside_the_picture_not_after_it(self):
+        """`current bounding box` belongs to the picture being built, so
+        a probe placed after `\\end{tikzpicture}` measures an empty one.
+        That bug reported every real figure as 100% empty."""
+        source = "\\begin{tikzpicture}\n\\node (a) {A};\n\\end{tikzpicture}\n"
+
+        built = figure_layout.scaffold(source, ["a"])
+        before_end = built[:built.index("\\end{tikzpicture}")]
+
+        assert "CGBOX a" in before_end
+
+    def test_the_last_picture_is_the_one_measured(self):
+        """A figure built from several pictures is measured as the whole
+        thing a reader sees, not as its first component."""
+        source = (
+            "\\begin{tikzpicture}\n\\node (a) {A};\n\\end{tikzpicture}\n"
+            "\\begin{tikzpicture}\n\\node (b) {B};\n\\end{tikzpicture}\n"
+        )
+
+        built = figure_layout.scaffold(source, ["a", "b"])
+
+        assert built.index("CGBOX a") > built.index("\\node (b)")
+
+    def test_cgbox_lines_parse_out_of_a_log(self):
+        """The format the whole aid rests on, parsed here from a literal
+        log so the parser is measured on any host. The compile test
+        pins the same format against a *real* pdflatex run, which is
+        what stops this fixture from drifting into fiction."""
+        log = (
+            "This is pdfTeX, Version 3.14\n"
+            "CGBOX a -42.87912pt -7.97742pt 42.87912pt 7.97742pt\n"
+            "CGBOX current bounding box -20.0pt -10.0pt 60.0pt 10.0pt\n"
+            "Output written on probe.pdf\n"
+        )
+
+        boxes = figure_layout.parse_boxes(log)
+
+        assert boxes["a"] == (-42.87912, -7.97742, 42.87912, 7.97742)
+        assert boxes[figure_layout.BBOX_NAME] == (-20.0, -10.0, 60.0, 10.0)
+
+    def test_a_log_with_no_cgbox_lines_parses_to_nothing(self):
+        assert figure_layout.parse_boxes("pdfTeX ran and said nothing\n") == {}
+
+    def test_a_figure_with_no_picture_at_all_still_builds(self):
+        """Nothing to measure, but the scaffold must not raise -- the
+        honest answer for a figure file that draws no picture is an empty
+        result, not a crash."""
+        built = figure_layout.scaffold("% just a comment\n", [])
+
+        assert "\\begin{document}" in built
 
 
 @needs_tikz
@@ -452,7 +551,14 @@ class TestCheckDraft:
 
     def test_static_checks_run_without_any_compile(self, tmp_path, monkeypatch):
         """The point of the source/geometry split: a host with no TeX
-        still gets the node-length and edge-list checks."""
+        still gets the node-length and edge-list checks.
+
+        Asserts only that *something* was skipped and said so, not which
+        binary was missing. Two separate absences reach here -- no
+        `pdflatex`, and no `tikz.sty` -- and pinning the message to one
+        of them made this fail on a host missing the *other*, which is
+        CI's Windows leg.
+        """
         def _no_tikz():
             raise figure_layout.MissingBinary("tikz.sty is not installed")
 
@@ -468,7 +574,26 @@ class TestCheckDraft:
         assert results[0].overlong == [("a", 30)]
         assert results[0].edges == [("a", "b")]
         assert results[0].boxes is None
-        assert "tikz.sty" in results[0].skipped
+        assert results[0].skipped
+
+    def test_a_host_with_no_pdflatex_skips_geometry_rather_than_crashing(
+        self, tmp_path, monkeypatch
+    ):
+        """`_require_tikz()` says nothing where `kpsewhich` is absent, by
+        design, so probing it alone let a host with no TeX at all reach
+        the `subprocess` call and die on `FileNotFoundError`. CI's
+        Windows leg is that host, and this is the regression test for
+        what it caught."""
+        def _no_pdflatex(binary):
+            raise figure_layout.MissingBinary(f"'{binary}' is not on PATH.")
+
+        monkeypatch.setattr(figure_layout, "_require", _no_pdflatex)
+        draft = _draft_with_figure(tmp_path, "\\node (a) {A};\n")
+
+        results = figure_layout.check_draft(draft)
+
+        assert results[0].boxes is None
+        assert "pdflatex" in results[0].skipped
 
     @needs_tikz
     def test_a_broken_figure_does_not_stop_the_others(self, tmp_path):
@@ -558,7 +683,13 @@ class TestCli:
     def test_it_exits_zero_even_with_findings(self, tmp_path, isolated_config,
                                               capsys):
         """Advisory, always. An aid that fails a build is a gate, and
-        this project has exactly one of those."""
+        this project has exactly one of those.
+
+        The finding itself is asserted, not just the exit code: "exits 0"
+        is also what an aid that found nothing does, so without the
+        second assertion this would pass just as happily against a
+        checker that had silently stopped checking.
+        """
         from chitragupta import config
 
         config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -568,7 +699,7 @@ class TestCli:
         code = figure_layout.main([str(draft)])
 
         assert code == 0
-        assert "word" in capsys.readouterr().out or True
+        assert "30 words" in capsys.readouterr().out
 
     def test_a_missing_draft_exits_one(self, tmp_path, isolated_config, capsys):
         code = figure_layout.main([str(tmp_path / "nope.md")])
@@ -595,6 +726,20 @@ class TestCli:
         assert figure_layout.main([str(draft), "--write", "--formats", "md"]) == 0
         assert review.report_path(draft, "figure").exists()
         assert review.report_path(draft, "figure", "json").exists()
+
+    def test_flags_hang_off_a_parser_the_entry_point_supplies(self):
+        """`review/__main__.py` creates the `figure` subparser and passes
+        it in, so the flags are declared once here and never restated
+        there. The standalone path (`parser is None`) is what `main()`
+        uses; both have to work."""
+        import argparse
+
+        sub = argparse.ArgumentParser().add_subparsers().add_parser("figure")
+        figure_layout.build_parser(sub)
+
+        args = sub.parse_args(["draft.md", "--json"])
+
+        assert args.draft == "draft.md" and args.json is True
 
     def test_the_recorded_command_carries_the_flags_used(self, tmp_path):
         """A report read months later has to say how it was produced."""
