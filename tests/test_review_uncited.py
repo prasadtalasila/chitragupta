@@ -251,6 +251,12 @@ class TestTheGenreDecidesWhetherUncitedProseIsAFinding:
     def test_every_standing_is_one_of_the_two(self):
         assert set(_units.UNCITED_PROSE.values()) <= set(_units.STANDINGS)
 
+    def test_the_report_has_a_sentence_for_every_standing(self):
+        """The renderer keys a dict on the standing, so a third one would
+        reach a reader as a KeyError rather than as a missing paragraph.
+        Same guard as the genre pin above, one layer out."""
+        assert set(_uncited_render._STANDING) == set(_units.STANDINGS)
+
 
 class TestFindingIdentity:
     def test_it_is_stable_across_runs(self, isolated_config):

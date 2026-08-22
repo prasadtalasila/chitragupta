@@ -41,14 +41,17 @@ from dataclasses import dataclass
 from chitragupta import citation_gate, sentences
 from chitragupta.review import _blocks
 
-# Where a draft's own bibliography starts. Everything from here to the end
-# is uncited prose by construction -- 40 of survey.md's 87 naive findings
-# -- and none of it is a claim the draft is making. The optional number
-# is not decoration: the real drafts write `## 7. References`, so a
-# pattern anchored straight after the hashes matches none of them.
-REFERENCE_HEADING = re.compile(
-    r"^\s*(?:#{1,6}\s+|\\(?:chapter|(?:sub){0,2}section|paragraph)\*?\{)"
-    r"\s*(?:[0-9A-Z]+[.)]\s*)?(?:references|bibliography|works\s+cited)\b",
+# A heading that opens a draft's own bibliography, matched against the
+# heading's *title* rather than its markup -- `_blocks` already knows what
+# a heading looks like in both markups and how to strip one down to its
+# title, and a fourth pattern restating that here is the duplication
+# docs/CODE-STANDARDS.md calls the highest-value finding.
+#
+# The optional number is not decoration: the real drafts write
+# `## 7. References`, so a pattern anchored at the title's first word
+# matches none of them.
+REFERENCE_TITLE = re.compile(
+    r"^\s*(?:[0-9A-Z]+[.)]\s*)?(?:references|bibliography|works\s+cited)\b",
     re.IGNORECASE,
 )
 
@@ -84,6 +87,19 @@ class Sentence:
     block_cites: bool
 
 
+def _is_heading(line: str) -> bool:
+    return bool(_blocks.HEADING.match(line) or _blocks.TEX_HEADING.match(line))
+
+
+def _opens_the_reference_list(line: str) -> bool:
+    """Whether `line` is the heading a draft's bibliography starts under.
+
+    `_blocks.text_of` does the stripping, so `## 7. References` and
+    `\\section*{Bibliography}` both arrive here as their bare titles.
+    """
+    return _is_heading(line) and bool(REFERENCE_TITLE.match(_blocks.text_of([line])))
+
+
 def _excluded(first_line: str, next_line: str) -> bool:
     """Whether the block opening at `first_line` carries no claim.
 
@@ -92,7 +108,7 @@ def _excluded(first_line: str, next_line: str) -> bool:
     other except that a separator row follows it. The column names are
     scaffolding; the rows beneath them are claims.
     """
-    if _blocks.HEADING.match(first_line) or _blocks.TEX_HEADING.match(first_line):
+    if _is_heading(first_line):
         return True
     if CAPTION.match(first_line) or COMMENT.match(first_line):
         return True
@@ -103,13 +119,18 @@ def _excluded(first_line: str, next_line: str) -> bool:
 def _body(text: str) -> list[str]:
     """The draft's lines up to its reference list, code already blanked.
 
+    To the *end* of the draft, not to the next heading. That is right for
+    all five genres as they stand -- every one puts its bibliography last
+    -- and it is the assumption the roadmap's A4 evidence appendix has to
+    check before deciding where it sits.
+
     `citation_gate._blank_code` first, for the reason `_units.units`
     calls it: a fenced block demonstrating this project's own markup
     would otherwise be read as prose making a claim.
     """
     lines = citation_gate._blank_code(text).splitlines()
     for index, line in enumerate(lines):
-        if REFERENCE_HEADING.match(line):
+        if _opens_the_reference_list(line):
             return lines[:index]
     return lines
 
