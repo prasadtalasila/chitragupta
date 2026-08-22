@@ -31,10 +31,12 @@ Three things live here:
   aligning against.
 """
 
+from typing import Any
+
 from chitragupta import config
 
 
-def optional_stack():
+def optional_stack() -> tuple[Any, Any] | None:
     """`(chromadb, SentenceTransformer)`, or `None` if the enrich Poetry
     group is not installed.
 
@@ -53,7 +55,7 @@ def optional_stack():
     return chromadb, SentenceTransformer
 
 
-def built_collection(chromadb_module):
+def built_collection(chromadb_module) -> Any:
     """The corpus collection for the configured embedding model, or
     `None` when it does not exist or is empty.
 
@@ -109,18 +111,18 @@ class Embedder:
     itself, which is what keeps a fake free to return plain lists.
     """
 
-    def __init__(self, model=None):
+    def __init__(self, model=None) -> None:
         self._model = model
 
     @property
-    def model(self):
+    def model(self) -> Any:
         if self._model is None:
             from chitragupta.enrich import embed_index
 
             _client, self._model = embed_index.get_client_and_model()
         return self._model
 
-    def encode(self, texts: list[str]):
+    def encode(self, texts: list[str]) -> Any:
         # Normalized, so a dot product *is* the cosine and the alignment
         # never divides by a norm it would otherwise recompute per cell.
         return self.model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
