@@ -41,7 +41,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 SOURCE_ROOT = PACKAGE_ROOT.parent
 SCRIPT = SOURCE_ROOT / "scripts" / "install_full_pipeline.sh"
 
-DESCRIPTION = "Run the install_full_pipeline.sh stages a pip install cannot do itself."
+DESCRIPTION = "Run the install_full_pipeline.sh stage a pip install cannot do itself."
 
 # What this refuses, and the pip equivalent each one names -- every
 # refusal is a repo-shaped stage this environment has no real analogue
@@ -54,6 +54,16 @@ REFUSED = {
 }
 
 STAGES = ("os-deps", "gpu-torch", *REFUSED)
+
+# Derived, not restated: choices= alone gives --help no way to show which
+# of the five actually run something (#369 -- a reader who tried
+# python-deps/dev-deps/all off the usage line alone had no reason to
+# expect an immediate refusal instead of a stage running).
+_STAGE_HELP = (
+    f"{'/'.join(sorted(s for s in STAGES if s not in REFUSED))} run a "
+    f"stage; {'/'.join(sorted(REFUSED))} refuse by name and print the "
+    "pip command that reaches them instead"
+)
 
 
 def _refuse(stage: str) -> int:
@@ -91,7 +101,7 @@ def _run_gpu_torch() -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=prog_for("install"), description=DESCRIPTION)
-    parser.add_argument("stage", choices=sorted(STAGES))
+    parser.add_argument("stage", choices=sorted(STAGES), help=_STAGE_HELP)
     return parser
 
 

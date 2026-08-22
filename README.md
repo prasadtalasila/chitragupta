@@ -126,7 +126,11 @@ is identical either way. Pick whichever matches what you're doing:
 # .venv-full stays activated in whatever shell you launch Claude Code
 # from. chitragupta init writes the same project directory a git
 # checkout gives you -- config.toml, .claude/, papers/, content/ and the
-# prose docs -- into DIR (default: .).
+# prose docs -- into DIR (default: .). This base install covers
+# everything except the enrichment layer -- `chitragupta install
+# python-deps|dev-deps|all` refuse by name and print the pip command
+# that actually reaches each one (docs/CLI.md's Installing section has
+# the full list); `chitragupta install os-deps` is the one that runs.
 mkdir my-project && cd my-project
 python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli

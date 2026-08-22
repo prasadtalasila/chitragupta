@@ -133,3 +133,16 @@ class TestMain:
     def test_help_does_not_print_the_module_docstring(self):
         assert install.DESCRIPTION != install.__doc__
         assert "\n\n" not in install.DESCRIPTION
+
+    def test_help_says_which_stages_actually_run(self, capsys):
+        # #369: the usage line alone lists all five choices with no way
+        # to tell that three of them (REFUSED) refuse by name instead of
+        # running install_full_pipeline.sh -- a reader who tried
+        # python-deps off that line alone had no reason to expect an
+        # immediate refusal.
+        with pytest.raises(SystemExit):
+            install.main(["--help"])
+        out = capsys.readouterr().out
+        for stage in ("os-deps", "gpu-torch", *install.REFUSED):
+            assert stage in out
+        assert "refuse" in out

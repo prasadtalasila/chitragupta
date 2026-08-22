@@ -84,6 +84,32 @@ gives you -- `config.toml` from `config.toml.example`, `.claude/`,
 `papers/`, `content/{drafts,dossiers,specs,review,rendered}/` and the
 prose docs -- so everything from [step 1](#the-full-first-run-step-by-step)
 onward reads the same regardless of which path got you here.
+
+**The base `pip install chitragupta-cli` above already covers tiers 1
+and 2** ([Which interpreter](#which-interpreter) below) -- everything
+except the enrichment layer. `chitragupta install <stage>` refuses
+three stage names by pointing at the pip command that actually reaches
+them, rather than running something with a different meaning than the
+argument implies; run these directly instead of the refused stage, once
+`.venv-full` above is activated:
+
+```bash
+# chitragupta install python-deps refuses, naming this:
+pip install chitragupta-cli[enrich]   # tier 3 -- chitragupta enrich (docling, embeddings, topic clustering)
+
+# chitragupta install dev-deps refuses, naming this. There is no
+# pip-installed equivalent of tests/ to run pytest against, though --
+# only a checkout ships the test suite itself, so this extra is not
+# useful outside one.
+pip install chitragupta-cli[dev]
+
+# chitragupta install all refuses, naming pip install chitragupta-cli[enrich]
+# (above) plus this, run separately -- os-deps is the one stage that
+# actually runs (Debian/Ubuntu + root; `chitragupta doctor` reports what
+# it's missing on any other host):
+chitragupta install os-deps
+```
+
 [PACKAGING.md](PACKAGING.md) has the full command-surface table;
 [NAME.md](NAME.md) has why the distribution is `chitragupta-cli` while
 the command stays `chitragupta` (`cg` for short).
