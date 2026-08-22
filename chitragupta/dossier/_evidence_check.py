@@ -48,10 +48,16 @@ _OVERLAP_THRESHOLD = 0.5
 _FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):\s*", re.MULTILINE)
 
 
-def _fields(block: str) -> dict[str, str]:
+def fields(block: str) -> dict[str, str]:
     """`block`'s `field: value` lines, keyed by field name -- the same
     match-then-slice-to-the-next-match reading `_citekeys._GLOSSARY_TERM`
     uses, over this module's own field set instead of glossary bullets.
+
+    Public because `chitragupta/evidence_appendix.py` reads the same four
+    fields out of the same file. `evidence.md` has one field parser and
+    this is it: a second one would be a second place for the field set to
+    drift, and the two callers disagree about *which* fields they may act
+    on rather than about how a block is read.
     """
     matches = list(_FIELD.finditer(block))
     fields: dict[str, str] = {}
@@ -99,8 +105,8 @@ def reworded_claims(dossier: Path) -> dict[str, float]:
     """
     found: dict[str, float] = {}
     for citekey, block in evidence_blocks(dossier).items():
-        fields = _fields(block)
-        claim, quote = fields.get("claim"), fields.get("quote")
+        block_fields = fields(block)
+        claim, quote = block_fields.get("claim"), block_fields.get("quote")
         if not claim or not quote:
             continue
         score = overlap_score(claim, quote)
