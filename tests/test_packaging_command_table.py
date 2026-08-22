@@ -44,6 +44,59 @@ REVIEW_FLAT_AIDS = {"provenance", "coverage", "synthesis", "figure", "uncited"}
 CORPUS_VERBS = {"sync", "ledger", "topics"}
 
 
+# The two arithmetic breakdowns docs/PACKAGING.md states alongside its
+# totals. Parsed rather than retyped: #348 found that the totals were
+# pinned and the breakdowns were not, so the document could state
+# per-layer numbers contradicting both its own tables and its own total
+# and stay green. Deliberately anchored on the surrounding prose rather
+# than on "the first parenthesis", so a reworded sentence fails loudly
+# here instead of silently matching something else.
+_VERB_BREAKDOWN_RE = re.compile(r"verbs and aids \(([\d\s+]+)\)")
+_LEAF_BREAKDOWN_RE = re.compile(r"invocable leaf commands\*{0,2}:\s*([\d\s+()]+?)\.")
+
+
+def _stated_terms(pattern: re.Pattern) -> tuple[int, ...]:
+    """The integers docs/PACKAGING.md's breakdown lists, left to right.
+
+    Parentheses inside the leaf breakdown (`(5 + 23)`) group terms for a
+    reader; they carry no arithmetic this needs, so they are stripped and
+    the terms compared in order against the per-layer counts below.
+    """
+    match = pattern.search(PACKAGING_TEXT)
+    assert match, (
+        f"docs/PACKAGING.md no longer states a breakdown matching {pattern.pattern!r}. "
+        "If the sentence was reworded, update this pattern -- do not delete the check: "
+        "the breakdown is the part a human recomputes by hand during a merge conflict."
+    )
+    return tuple(int(term) for term in re.findall(r"\d+", match.group(1)))
+
+
+def _verb_terms() -> tuple[int, ...]:
+    """Verbs and aids per layer: corpus, draft, review, enrich."""
+    return (
+        len(CORPUS_VERBS),
+        len(DRAFT_FLAT_VERBS) + len(DRAFT_SUBCOMMANDS),
+        len(REVIEW_FLAT_AIDS) + len(REVIEW_SUBCOMMANDS),
+        1,  # enrich, a single command with no verbs of its own
+    )
+
+
+def _leaf_terms() -> tuple[int, ...]:
+    """Invocable leaves in the order the prose lists them: package-level,
+    corpus, draft flat, draft subcommand leaves, review flat, review
+    subcommand leaves, enrich.
+    """
+    return (
+        3,  # init, doctor, install -- each one atomic command
+        len(CORPUS_VERBS),
+        len(DRAFT_FLAT_VERBS),
+        sum(len(v) for v in DRAFT_SUBCOMMANDS.values()),
+        len(REVIEW_FLAT_AIDS),
+        sum(len(v) for v in REVIEW_SUBCOMMANDS.values()),
+        1,  # enrich
+    )
+
+
 def _help(*module_args) -> str:
     result = subprocess.run(
         [sys.executable, "-m", "chitragupta", *module_args, "--help"],
@@ -133,21 +186,42 @@ class TestInstall:
 
 
 class TestStatedCounts:
-    """The formula docs/PACKAGING.md states in prose: 4 layers, 20 verbs
-    and aids, 44 invocable leaf commands -- computed here from the same
-    structures the tests above already verified against the live code,
-    not retyped as a fresh set of literals."""
+    """The formula docs/PACKAGING.md states in prose -- both the totals
+    and the arithmetic behind them -- checked against the same structures
+    the tests above already verified against the live parsers.
 
-    def test_twenty_verbs_and_aids(self):
-        verbs_and_aids = (len(CORPUS_VERBS) + len(DRAFT_FLAT_VERBS) + len(DRAFT_SUBCOMMANDS)
-                           + len(REVIEW_FLAT_AIDS) + len(REVIEW_SUBCOMMANDS) + 1)  # enrich
-        assert verbs_and_aids == 20
-        assert "20 verbs and aids" in PACKAGING_TEXT
+    No total is written down here. It used to be, and every command added
+    then had to change three things: the sets, a literal, and the test's
+    own name (`test_forty_three_leaf_commands`). Deriving instead means a
+    new aid edits docs/PACKAGING.md and nothing in this file -- which is
+    the point, since #348 exists because that sentence is a merge-conflict
+    magnet.
+    """
 
-    def test_forty_four_leaf_commands(self):
-        draft_leaves = len(DRAFT_FLAT_VERBS) + sum(len(v) for v in DRAFT_SUBCOMMANDS.values())
-        review_leaves = len(REVIEW_FLAT_AIDS) + sum(len(v) for v in REVIEW_SUBCOMMANDS.values())
-        package_level = 3  # init, doctor, install -- each one atomic command
-        total = package_level + len(CORPUS_VERBS) + draft_leaves + review_leaves + 1  # enrich
-        assert total == 44
-        assert "44 invocable leaf commands" in PACKAGING_TEXT
+    def test_the_stated_verb_total_matches_the_live_structures(self):
+        assert f"{sum(_verb_terms())} verbs and aids" in PACKAGING_TEXT
+
+    def test_the_stated_leaf_total_matches_the_live_structures(self):
+        assert f"{sum(_leaf_terms())} invocable leaf commands" in PACKAGING_TEXT
+
+    def test_the_stated_verb_breakdown_matches_it_term_by_term(self):
+        """`(3 + 10 + 6 + 1)`, not just the 20 it sums to.
+
+        The breakdown is the half a human recomputes by hand while
+        resolving a merge conflict -- #346 hit exactly that, with two
+        branches adding a command in different layers -- and until #348
+        it was the half nothing checked. A breakdown reading
+        `(99 + 99 + 99 + 99)` under a correct total was green.
+        """
+        assert _stated_terms(_VERB_BREAKDOWN_RE) == _verb_terms()
+
+    def test_the_stated_leaf_breakdown_matches_it_term_by_term(self):
+        assert _stated_terms(_LEAF_BREAKDOWN_RE) == _leaf_terms()
+
+    def test_each_stated_breakdown_sums_to_the_total_beside_it(self):
+        """Term-by-term agreement already implies this, but a reader
+        checks the sum by eye, and a future refactor of the term lists
+        should not be able to drop that property silently.
+        """
+        assert sum(_stated_terms(_VERB_BREAKDOWN_RE)) == sum(_verb_terms())
+        assert sum(_stated_terms(_LEAF_BREAKDOWN_RE)) == sum(_leaf_terms())

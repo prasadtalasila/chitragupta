@@ -141,6 +141,7 @@ exclude_docs: |
 nav:
   - Home: README.md
   - Getting started:
+      - What it does: docs/FEATURES.md
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
@@ -151,6 +152,7 @@ nav:
       - Settings: docs/CONFIG.md
   - Understanding the system:
       - Architecture: docs/ARCHITECTURE.md
+      - The dossier (machine-facing): docs/DOSSIER.md
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
       - Retrieval: docs/RETRIEVAL.md
@@ -159,6 +161,7 @@ nav:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
   - Reading the output:
+      - The review layer: docs/REVIEW.md
       - Citation provenance: docs/CITATION-PROVENANCE.md
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
@@ -174,7 +177,6 @@ nav:
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
       - Auto-improvement, what would be built: docs/AUTO-IMPROVEMENT.md
-      - Feature roadmap, what would be built: docs/FEATURE-ROADMAP.md
       - Auto-improvement, why: docs/AUTO-IMPROVEMENT-RATIONALE.md
       - House style: docs/HOUSE-STYLE.md
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md

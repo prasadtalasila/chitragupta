@@ -10,10 +10,11 @@ wondering why a skill refused something. **Assumed:**
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md).
 
 Which skill writes what, how to pick between them, and what each one
-refuses to do. Eight skills live in `.claude/`: five write a new draft,
-and three change an existing one. Of those three, one is cheap and
-scoped, one goes back to the whole corpus when you ask it to, and one
-repairs what a verbatim scan found.
+refuses to do. Nine skills live in `.claude/`: five write a new draft,
+three change an existing one, and one assembles a book from units the
+others wrote. Of the three revisers, one is cheap and scoped, one goes
+back to the whole corpus when you ask it to, and one repairs what a
+verbatim scan found.
 
 You do not invoke any of them by name. Each has a `description` in its
 frontmatter that names its triggers, and asking for the thing in ordinary

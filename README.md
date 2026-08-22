@@ -74,7 +74,7 @@ discards the unsupported claim and writes again. You only get involved in
 the rarer case where the paper genuinely isn't in the corpus yet -- the
 dotted arrow back to phase 1.
 
-Eight skills sit behind phase 3, all obeying the same grounding rules:
+Nine skills sit behind phase 3, all obeying the same grounding rules:
 five that write a new draft -- survey, thesis chapter, undergraduate
 textbook chapter, tutorial, and a heavier multi-perspective deep-research
 mode -- and three that change one that already exists, because a draft is
@@ -85,8 +85,8 @@ before keeping it. Two more layers sit outside these
 phases. **Enrichment** deepens the same corpus with layout-aware parsing,
 semantic search and topic clustering, and nothing above needs it.
 **Review** is what you run afterwards on a finished draft -- provenance,
-verbatim, coverage, multi-source synthesis and TikZ-figure-layout
-reports, all advisory, none of them a gate --
+verbatim, coverage, multi-source synthesis, TikZ-figure-layout and
+uncited-prose reports, all advisory, none of them a gate --
 advisory means nothing blocks you, not that borrowed wording is fine to
 leave once you've found it.
 
