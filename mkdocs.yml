@@ -141,10 +141,10 @@ exclude_docs: |
 nav:
   - Home: README.md
   - Getting started:
+      - What it does: docs/FEATURES.md
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
-      - What it does: docs/FEATURES.md
       - Which genre skill: docs/GENRE.md
       - Getting your library in: docs/ZOTERO.md
       - Commands: docs/CLI.md

@@ -261,6 +261,8 @@ flowchart TB
     A2["<b>chitragupta.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
     A3["<b>chitragupta.review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
     A4["<b>chitragupta.review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
+    A5["<b>chitragupta.review figure</b><br/><small>overlapping nodes · protrusion · overlong labels</small>"]
+    A6["<b>chitragupta.review uncited</b><br/><small>which sentences cite nothing at all?</small>"]
   end
 
   %% ─────────────── SPINE ───────────────
@@ -296,7 +298,7 @@ flowchart TB
   class BLOCK bad
   class ITER loop
   class SKILLS gen
-  class A1,A2,A3,A4,ADV aid
+  class A1,A2,A3,A4,A5,A6,ADV aid
   class H1,H2,H3,EMB heavy
 ```
 
@@ -359,7 +361,7 @@ flowchart TB
       direction LR
       DRF[/"content/drafts/&lt;slug&gt;.md | .tex"/]
       REN[/"content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md"/]
-      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage,synthesis,figure}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
+      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage,synthesis,figure,uncited}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
     end
 
     LCK[/"content/pipeline.lock.db<br/><small>held by whichever writer is running</small>"/]
@@ -387,7 +389,7 @@ flowchart TB
   LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
   DRF == "<b>chitragupta.draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
   DRF -- "chitragupta.draft render<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>chitragupta.review provenance · verbatim scan --write<br/>chitragupta.review coverage --write</small>" --> RVW
+  DRF -- "the review layer<br/><small>chitragupta.review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef corpus fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b
@@ -648,7 +650,7 @@ flowchart LR
 
   P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta.draft references</code> → IEEE list<br/><code>chitragupta.draft render --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
 
-  AID["<b>LAYER 4 · REVIEW — afterwards, never a gate</b><br/><code>chitragupta.review provenance</code> · <code>chitragupta.review verbatim</code><br/><code>chitragupta.review coverage</code> · <code>chitragupta.review synthesis</code><br/><code>chitragupta.review figure</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
+  AID["<b>LAYER 4 · REVIEW — afterwards, never a gate</b><br/><code>chitragupta.review provenance</code> · <code>chitragupta.review verbatim</code><br/><code>chitragupta.review coverage</code> · <code>chitragupta.review synthesis</code><br/><code>chitragupta.review figure</code> · <code>chitragupta.review uncited</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
 
   BERT["<b>bertopic</b> → content/topics.json<br/><small>no skill calls this. It is for <i>you</i>, deciding what<br/>the survey should even be about.</small>"]
 
@@ -903,7 +905,7 @@ sequenceDiagram
     Ren-->>You: content/rendered/<slug>.pdf
     end
 
-    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta.review provenance · verbatim · coverage · synthesis<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
+    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta.review provenance · verbatim · coverage · synthesis<br/>figure · uncited<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
 ```
 
 ### The life of a single citekey

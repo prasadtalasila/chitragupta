@@ -193,24 +193,101 @@ flowchart LR
   RE["content/rendered/dt/survey.{md,tex,pdf}"]
   RV["content/review/dt/survey.*.md"]
 
-  DR --> DO
-  DR --> RE
-  DR --> RV
+  DR -->|"the working state"| DO
+  DR -->|"what you hand over"| RE
+  DR -->|"what you check afterwards"| RV
 
-  DO --- N["scope · evidence · rejected<br/>sections · steering · revisions · retrieval"]
+  DO --- N["<b>seven dossier files</b><br/>scope · evidence · rejected<br/>sections · steering · revisions · retrieval"]
+  RE --- M["<b>plus the evidence sidecar</b><br/>survey.evidence.{md,tex,pdf}<br/><small>never committed</small>"]
+  RV --- P["<b>six review reports</b><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited<br/><small>each + .tex/.pdf, some + .json</small>"]
 
   style DO fill:#eef2ff,stroke:#4338ca
+  style RE fill:#eef2ff,stroke:#4338ca
+  style RV fill:#eef2ff,stroke:#4338ca
   style N fill:#f8fafc,stroke:#94a3b8
+  style M fill:#f8fafc,stroke:#94a3b8
+  style P fill:#f8fafc,stroke:#94a3b8
 ```
 
 One path, mirrored four ways, so a draft, its working state, its renders
-and its review reports are all findable from the draft's own path.
+and its review reports are all findable from the draft's own path. That
+mirroring is what lets `draft dossier export` bundle a draft with
+everything belonging to it by matching paths, rather than by keeping a
+registry that could fall out of step.
 
-The two files that matter most are the two that did not exist before the
-dossier did: **`rejected.md`**, without which the next revision
-re-searches and re-judges the same papers, and **`steering.md`**, which
-holds the guidance you gave in chat that the prose does not show.
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the contract.
+Seven files, each answering a question the draft itself cannot.
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the contract; what follows is
+what each one is *for*.
+
+**`scope.md` -- the boundary.** Genre, the reader the draft is written
+for, the dialect it is written in (`language:`, so an en-GB draft stays
+en-GB through a revision six weeks later), what the draft covers, what it
+deliberately excludes, and a glossary of the terms it commits to. It also
+records a **corpus fingerprint**: how many citekeys the ledger held and a
+digest of that set. That last line is what makes drift *detectable* --
+`draft dossier status` recomputes it, and a mismatch means the corpus
+moved under the draft. Without `scope.md` a reviser has no way to tell an
+omission from an exclusion, and will helpfully add back the section you
+asked to leave out.
+
+**`evidence.md` -- what was kept, and why.** One block per kept citekey,
+carrying `relevance:` (why this source bears on the sub-theme), `claim:`
+(what it establishes, in the drafter's own words) and an optional
+`quote:` (its exact wording). **Only `claim:` may be drafted prose
+from**, and the ordering is the whole mechanism: it is written at the
+moment the evidence is judged, before any sentence of the draft exists,
+so it cannot be a lightly-edited copy of the passage. `quote:` is absent
+by default -- a quotation is a deliberate act, not the residue of
+retrieval -- and is what the evidence sidecar renders. Blocks written
+before this contract carry a single `support:` field and are never
+rewritten; old and new coexist by construction.
+
+**`rejected.md` -- the candidates turned down, with the reason.** This is
+the file whose absence *is* the expensive mistake. Without it, the next
+revision retrieves the same papers, re-reads them, and re-reaches the
+same judgement, paying the full cost of a decision already made. A
+reviser is required to honour it: a candidate listed here with a reason
+is not retrieved and re-judged. It is also the largest file in the
+dossier, which is why the dossier is seven files rather than one -- a
+revision loads only what it needs, and this one is needed only when a
+change reopens a sub-theme for searching.
+
+**`sections.md` -- which citekeys are cited under which heading.**
+Derived, not maintained: a heading owns a line range, a citekey is cited
+on a line, and the relation falls out of the intersection.
+`draft dossier sections --citekeys --write` rebuilds it from the draft,
+skipping fenced code and LaTeX verbatim so a `# Step 1` comment in an
+example listing is neither a heading nor a citation. That matters because
+a hand-maintained version disagreeing with the draft hands a reviser the
+wrong section for a citation. `deep-research` is the one exception, and
+only for timing: it writes *planned* rows before the sections exist, and
+replaces them with what the finished report actually cites.
+
+**`steering.md` -- what you asked for that the prose cannot show.**
+"Don't lead with tooling." "Shorter." "Drop the adoption angle." This
+guidance shaped the draft and is invisible in it, so without this file it
+survives only in a chat log nobody will reread. Its practical effect is
+that a revision months later does not quietly undo a decision you made
+deliberately -- the commonest way a revised draft comes back subtly wrong.
+
+**`revisions.md` -- an append-only log of what changed and why.**
+Including the attempts that failed. A repair tried and reverted is
+knowledge: without the record, the next session re-tries it, re-discovers
+the same problem, and reverts again. `overlap-reviser` logs every attempt
+here, refusals and reverts included, and a copy-edit pass leaves one
+entry naming the convention it applied. Append-only because the value is
+the sequence, not the current state.
+
+**`retrieval.md` -- every retrieval call, and the size of what came
+back.** Two jobs. It lets you compare one run's retrieval cost against
+another's on a real corpus, and -- more load-bearing -- it **bounds
+re-grounding**: when a draft has to be brought back into line after the
+corpus moved, the candidates come from the queries already recorded here,
+so that pass cannot invent a new search and quietly become a full
+re-draft. One honest limit worth knowing: it records the *character
+payload* of each call, not tokens, and nothing records what the drafting
+turns themselves cost. Enough to compare two runs; not enough to price a
+whole draft.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
 `status`, `sections`, `brief`, `check-evidence`, `list`, and `export`/
@@ -277,15 +354,71 @@ citekey in the ledger? -- so it can be automatic and absolute. These six
 answer questions of judgement, where a machine verdict would be either
 wrong often enough to be ignored, or trusted more than it deserves.
 
-Two nuances:
+**`review provenance` -- does the cited paper actually say this?** The
+gate answers "is this citekey real?" exactly, and that is all it can
+answer. A claim that drifted away from its source during drafting passes
+the gate cleanly, because the citekey is perfectly real; only reading the
+source catches it. This report quotes, for each citation, the passage in
+the cited source that supports it and where it sits, so the question
+becomes a two-minute read rather than a re-derivation.
+[CITATION-PROVENANCE.md](CITATION-PROVENANCE.md) has the scoring.
 
-- **Verbatim detection runs in three tiers** -- exact n-gram, skip-gram,
-  and embedding -- and the third needs the optional enrichment layer. It
-  says which tier was unavailable rather than silently reporting less
-  ([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)).
-- **A clean scan is not a clean bill of health.** Genuine restatement is
-  only detected where the embedding tier can run
-  ([PLAGIARISM.md](PLAGIARISM.md)).
+**`review verbatim` -- how much wording came along with the ideas.** Two
+shapes of question behind one aid. `overlap` and `locate` compare the
+draft against *one* cited source and tell you which page a phrase is on;
+`scan` compares it against **any** parsed source, cited or not -- which is
+the one that finds reuse from a paper the paragraph never cites, and
+reuse in connective prose that cites nothing at all. Detection runs in
+three tiers (exact n-gram, skip-gram, embedding), and it names the tier
+it could not run rather than silently reporting less.
+
+**`review coverage` -- did the draft use what retrieval found?** Give it
+the queries, and it reports which surfaced candidates were cited and
+which were not. An uncited high-scorer is either a source the draft
+skipped or a query that was too broad, and the report deliberately does
+not decide which. It also shows citekeys cited but surfaced by none of
+your queries, which is normally *not* a gap -- the skill ran other
+queries -- and is shown so the report cannot be misread as a gap-finder.
+
+**`review synthesis` -- how many sources is each unit standing on?**
+Prose required to fuse two or more sources cannot be a transcription of
+any one of them: you cannot transcribe two sources simultaneously. That
+is the guarantee the writing standards ask for, and this makes it
+observable. The *unit* differs by genre -- paragraph for a survey, a
+thesis chapter and a deep-research report; the section for a textbook
+chapter; the whole document for a tutorial, whose body carries no
+citations by design -- and the report's header names which unit it used
+and where that came from, so a tutorial's report is not read against a
+survey's expectations.
+
+**`review figure` -- what a TikZ figure's own geometry says.**
+Overlapping nodes, content protruding past the frame, node text too long
+to fit, page-width overflow, and the edge list to confirm the figure
+connects what you meant it to. The mechanical half of the figure style
+guide: it checks what can be measured from the compiled geometry and
+leaves taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)).
+
+**`review uncited` -- which sentences rest on nothing at all.** This
+looks like `coverage` and is its mirror image. `coverage` asks a question
+about the *corpus* side of the boundary -- were the surfaced candidates
+used? `uncited` asks about the *prose* side -- which claims here are
+supported by no citation? They share the word "uncited" and nothing else,
+which is why one always says *candidates* and the other always says
+*sentences*. It is also the only aid that reads no corpus, so it runs
+before you have parsed anything.
+
+Two nuances that apply across the layer:
+
+- **A clean verbatim scan is not a clean bill of health.** Genuine
+  restatement is only detected where the embedding tier can run, and that
+  tier needs the optional enrichment layer
+  ([PLAGIARISM.md](PLAGIARISM.md),
+  [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)).
+- **Every report says it is not a verdict, and carries no timestamp.**
+  The banner is there because a report found on disk months later is
+  exactly the case documentation cannot reach. The missing timestamp is
+  deliberate too: it makes a report diff cleanly against the next
+  revision's, so you can see what changed rather than that something did.
 
 ## Enrichment layer: optional depth
 
