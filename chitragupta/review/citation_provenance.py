@@ -395,7 +395,7 @@ def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
     )
 
 
-def build_parser(parser=None):
+def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags.
 
     `parser` is passed by chitragupta/review/__main__.py, which has already
