@@ -328,6 +328,16 @@ added -- a skip in a scanner that cannot reach the file would be dead
 code claiming to prevent something. If that command ever grows a
 directory-walking mode, this is the first file it must exclude.
 
+**The release archive cannot ship a sidecar**, and by a stronger
+mechanism than the `.gitignore` rule alone. `scripts/release.py` builds
+its file list from `git ls-files`, not from a filesystem walk -- so an
+ignored file is unreachable to it by construction, and no
+`EXCLUDE_TOP_LEVEL` entry is needed. Worth stating because the
+neighbouring `_archive.py` does the opposite (`root.rglob("*")`, which is
+why a sidecar *is* correctly included in a `dossier export`), and the two
+are easy to assume alike. If `release.py` ever changes to a walk,
+`content/` becomes the first thing it must exclude.
+
 **`emit(draft, "pdf")` deliberately leaves the `.md` beside the `.pdf`.**
 Rendering a *draft* to pdf leaves no Markdown copy, so this differs on
 purpose: the Markdown is the sidecar's own source, the only diffable form
