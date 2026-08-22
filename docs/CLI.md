@@ -31,6 +31,7 @@ short path; this is the full set.
   - [`chitragupta.review coverage`](#python--m-chitraguptareview-coverage)
   - [`chitragupta.review provenance`](#python--m-chitraguptareview-provenance)
   - [`chitragupta.review synthesis`](#python--m-chitraguptareview-synthesis)
+  - [`chitragupta.review uncited`](#python--m-chitraguptareview-uncited)
   - [`chitragupta.review verbatim`](#python--m-chitraguptareview-verbatim)
   - [`chitragupta.draft render`](#python--m-chitraguptadraft-render)
   - [`chitragupta.draft spec`](#python--m-chitraguptadraft-spec)
@@ -250,7 +251,9 @@ chitragupta review verbatim overlap content/drafts/<slug>.md <citekey>  # wordin
 chitragupta review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
 chitragupta review verbatim locate <citekey> "a phrase to find"  # which pdf page a phrase is on
 chitragupta review coverage content/drafts/<slug>.md --query "digital twin composability"
-# add --write to any of the three to file the report under content/review/,
+chitragupta review synthesis content/drafts/<slug>.md            # how many sources each unit rests on
+chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
+# add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
 
@@ -327,6 +330,8 @@ python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>
 python -m chitragupta.review verbatim scan content/drafts/<slug>.md
 python -m chitragupta.review verbatim locate <citekey> "a phrase to find"
 python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
+python -m chitragupta.review synthesis content/drafts/<slug>.md
+python -m chitragupta.review uncited content/drafts/<slug>.md
 ```
 
 ### Migrating a checkout to `pip install`
@@ -908,6 +913,73 @@ fenced code block is ignored.
 `undeclared`, `single_source_pct`, and one `findings` object per unit
 itemised -- `id`, `kind` (`single_source` or `single_key_run`), `line`,
 `unit`, `citekeys`, `declared` and `longest_run`.
+
+### `python -m chitragupta.review uncited`
+
+Which sentences of a draft carry **no citation at all**. This is the
+prose-side question, and it is the one nothing answered before:
+[`coverage`](#python--m-chitraguptareview-coverage) looks like it
+answers this and does not -- it reports which *surfaced candidates* got
+cited, which is about the corpus. **Advisory, exits 0 whatever it
+finds**, and nothing reads it back. Alone among the five aids it reads
+no corpus: no ledger, no sync, no `enrich` extra, only the draft.
+
+**Most of a draft carries no citation, and most of that is fine.** So
+the report's real work is what it declines to raise. Two things narrow
+it, and both are measured rather than assumed -- see
+`plans/c1-uncited-prose-report.md`.
+
+**Structural exclusions.** The reference list, headings, captions, a
+table's header row, comment-only blocks (including §11's
+`<!-- single-source: ... -->` marker), fenced code, and anything left
+empty once its list marker is stripped. Table *rows* are not excluded: a
+citekey in backticks is not a citation the gate can see, so a comparison
+table that attributes rows that way genuinely rests on nothing.
+
+**The genre decides whether uncited prose is a finding at all.**
+
+| Genre | Uncited prose is | Findings |
+|---|---|---|
+| `survey`, `thesis-chapter`, `deep-research` | exceptional | one per uncited sentence |
+| `textbook-chapter`, `tutorial` | ordinary -- most prose is original by design, per [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 | none. The counts are still reported |
+| not recorded in `scope.md` | exceptional | raised, and the report says the genre was not recorded |
+
+| Flag | Default | What it does |
+|---|---|---|
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The draft to check |
+| `--genre {deep-research,survey,textbook-chapter,thesis-chapter,tutorial}` | from `scope.md` | Read the draft under this genre instead. For a draft with no dossier, or to read one strictly on purpose |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+
+```bash
+python -m chitragupta.review uncited content/drafts/survey.md
+# ... --genre survey          # a draft whose dossier records no genre
+# ... --write --formats md
+# ... --json > uncited.json
+```
+
+**A finding is a sentence, and its block is an attribute, not a
+filter.** Each finding carries `block_cites` -- whether anything in the
+paragraph it sits in cites a source. A sentence whose paragraph cites
+nothing rests on nothing at all and is listed first; one whose paragraph
+cites something sits beside evidence that may or may not cover it.
+Suppressing the second kind would be simpler and would miss the failure
+this aid is for: a paragraph with one citation at the end and four
+unrelated assertions before it.
+
+**The fix for an uncited claim is evidence, not wording**, so nothing
+repairs these findings for you. Rewording one would make it look
+supported without making it supported, which is the failure class this
+project exists to prevent -- so unlike a verbatim finding, this is
+surfaced and never repaired unattended.
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`genre`, `genre_source` (`scope.md`, `--genre` or `nothing`),
+`standing` (`exceptional` or `ordinary`), `sentences_total`, `uncited`,
+`bare`, and one `findings` object per uncited sentence -- `id`, `line`,
+`sentence` and `block_cites`.
 
 ### `python -m chitragupta.review verbatim`
 

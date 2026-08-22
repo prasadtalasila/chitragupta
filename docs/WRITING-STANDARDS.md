@@ -178,6 +178,7 @@ means they are checked only when someone remembers to.
 | Hedging that carries no information | §4 | detectable | no -- the fix is a judgement |
 | Short sentences, one idea each | §4 | **no: this is a score** | no |
 | Citekeys per unit, and how many units rest on one source | §11 | yes | no -- it is a **proportion**, and a thin corpus legitimately produces single-source units. Counted and read, never acted on |
+| Whether a sentence carries a citation at all | §11 | yes, per sentence -- but *whether it needs one* is not, which is why the genre decides if it is a finding | no -- surfaced. The fix for an uncited claim is evidence, not wording, and a machine rewording one would make it look supported without making it supported |
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A

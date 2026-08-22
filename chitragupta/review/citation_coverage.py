@@ -10,9 +10,9 @@ citekey cited but never surfaced by any of the given queries is not a
 problem (it's likely explained by a different query the skill also ran)
 but worth showing so the report isn't misread as a gap-finder.
 
-One of the four commands in the **review layer**, beside
-citation_provenance.py, verbatim_check.py and synthesis.py -- run by hand
-on a finished draft, never automatically, never a gate, and never
+One of the five commands in the **review layer**, beside
+citation_provenance.py, verbatim_check.py, synthesis.py and uncited_prose.py --
+run by hand on a finished draft, never automatically, never a gate, and never
 holding the write lock. Purely informational, unlike citation_gate.py.
 chitragupta/review/__init__.py owns where a written report goes
 (`content/review/<topic>/<stem>.coverage.md`, mirroring the draft's
