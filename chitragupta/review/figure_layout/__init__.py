@@ -161,7 +161,7 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
 # reader of any of the three learns the same thing about the number.
 
 
-def build_parser(parser=None):
+def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags, declared here so the entry point never restates
     them -- `citation_coverage.build_parser`'s own contract."""
     if parser is None:

@@ -430,7 +430,7 @@ def _print_results(results: list[SearchResult]) -> int:
     return chars
 
 
-def _build_parser():
+def _build_parser() -> "argparse.ArgumentParser":
     import argparse
 
     parser = argparse.ArgumentParser(
