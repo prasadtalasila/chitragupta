@@ -674,24 +674,37 @@ Squash -- not by convention, by configuration: `allow_merge_commit` and
 repository offers. Merge with:
 
 ```bash
-gh pr merge <N> --squash --body-file <path to a body in the shape above>
+python scripts/merge_pr.py <N>
 ```
+
+It composes the squash body from the PR's own description (falling back
+to the branch's commit subjects only when the description carries no
+bullets at all), prints what it composed, and calls
+`gh pr merge <N> --squash --body-file -` for you --
+`--dry-run` prints the composed body without merging, for a look before
+committing to it.
 
 **No `--subject`, and no `(#N)`.** `squash_merge_commit_title` is
 `PR_TITLE`, so GitHub composes the title from the PR and appends the
 number itself. Passing `--subject` takes your string verbatim instead,
 which means re-solving a problem that is now solved and getting `(#42)
-(#42)` if you also write the number in.
+(#42)` if you also write the number in -- and the script does not offer
+the flag, so this cannot happen by way of it.
 
-**`--body-file` is still needed, and is not a leftover.** The body
+**A body on stdin is still needed, and is not a leftover.** The body
 setting is `PR_BODY`, which lands the PR description verbatim -- review
-tick-boxes and all -- so without this flag `main`'s history gets
+tick-boxes and all -- so without it `main`'s history gets
 `.github/pull_request_template.md` rather than a commit message. As
 ["Commit messages"](#-commit-messages) sets out, no value of
 `squash_merge_commit_message` produces the documented shape, because none
-of them transforms the text. Write the file in the bulleted shape rather
-than piping raw branch commits into it, which just reproduces the old
-`*`-concatenated default by another route.
+of them transforms the text. The script composes the bullets itself
+rather than piping raw branch commits through, which would just
+reproduce the old `*`-concatenated default by another route --
+`scripts/merge_pr.py`'s own docstring has why the source is the PR's
+description rather than its commits, and why that choice is enforced by
+being the one documented command rather than by a CI check
+(producer-is-enforcement, the same standing the OpenCodeReview step below
+already has).
 
 The point is not the exact incantation. It is that the format becomes
 something a command produces, not something a person has to remember at
@@ -829,7 +842,8 @@ succeeded -- not merely started:
    byte-identical line that git merges without a conflict --
    `scripts/check_version_bump.py` now fails CI on that, but it can only
    fail on a run that actually happened.
-8. Squash-merge the PR.
+8. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
+   above).
 9. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
    push the tag.
 10. Confirm `.github/workflows/release.yml` completed and the resulting

@@ -566,26 +566,19 @@ for.
    describe: the *why* is the part that cannot be reconstructed, and an
    agent that "tightens" these files destroys the most valuable thing in
    them. Length is not the defect.
-2. **Shorten by moving, where a rule fires late.** The commit, PR, merge
-   and release rules are needed at the *end* of a session and stored at
-   73-92% of a file read at the beginning. Turning each into a command
-   the session runs -- rather than a paragraph it must still be holding
-   -- is the change that would help, and is what the new `Merging`
-   section does.
-3. **Prefer a mechanism to a sentence.** This project's own position,
-   stated twice already (the citation gate, the C1/C2 ratchet): "an agent
-   cannot talk its way past a failing test, and a future session that has
-   never read this document still cannot land a 40-statement function."
-   Every rule that can become a setting or a check should, and the prose
-   should then say less, not more.
-4. **Watch the trend, not the total.** This PR grew
+2. **Watch the trend, not the total.** This PR grew
    `DEVELOPER-AGENTS.md` by 26% (2,983 to 3,772 words). That is a real
    cost, accepted here because it replaces guidance that demonstrably was
    not working with a command and a setting. It would not be worth paying
    twice.
 
-**Conclusions 2 and 3 are tracked in #357** -- applying "prefer a
-mechanism to a sentence" beyond the Merging section it already produced.
+Two further conclusions this assessment drew -- shorten by moving a
+late-firing rule into a command, and prefer a mechanism to a sentence,
+applied beyond the Merging section they had already produced -- are paid
+off rather than restated here: #357 turned the commit-body rule into
+`scripts/merge_pr.py`, so what they asked for is now [Process
+debt](#-process-debt-the-formats-that-are-not-adhered-to)'s history
+rather than this section's open item.
 
 **Not recommended:** a word budget. It is a continuous score, and
 [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules those out for exactly
@@ -598,16 +591,19 @@ Measured over the **last 30 commits on `main`**:
 
 | Rule | Violations | Cause |
 |---|---|---|
-| Body is a bulleted list, no preamble | 14 carry a leading `* <title>` | GitHub's `COMMIT_MESSAGES` squash default |
-| Body is a bulleted list, no preamble | 8 are prose paragraphs | Authoring |
 | Squash-merged through a PR | 4 of 28 have no `(#N)` | Pushed to `main` directly |
 | PR number not added by hand | 1 reads `(#144) (#148)` | Authoring |
 | Title in imperative mood | 1 noun phrase | Authoring |
 
-**Partly resolved in #238** (settings applied 2026-08-18). The table
-above is the measurement as taken on 2026-08-13 and is kept as the
-baseline; what follows is what each cause turned into. **Rows 1 and 2 --
-the ones that stay open below -- are tracked in #357.**
+**Resolved in #238 and #357** (settings applied 2026-08-18; the merge
+command in #357). The table above is the measurement as taken on
+2026-08-13 and is kept as the baseline for the three title-side rows
+still open in it; what follows is what every cause -- title and body
+alike -- turned into. Two rows from that original measurement are not in
+the table above at all: "Body is a bulleted list, no preamble", 14 with a
+leading `* <title>` and 8 prose paragraphs. Paid off by #357, they are
+deleted rather than kept and marked done, per
+["How something gets on this list"](#-how-something-gets-on-this-list).
 
 **The dominant cause was a repository setting, not discipline.**
 `squash_merge_commit_message` was `COMMIT_MESSAGES`, which builds the
@@ -628,8 +624,8 @@ wrong for the one-commit case.
 - `squash_merge_commit_title=PR_TITLE` -- **closed the title outright.**
   The PR title is the commit title unconditionally, GitHub appends the
   `(#N)` itself, and the "add it by hand when you pass `--subject`"
-  exception is retired. Rows 3 and 4 of the table above cannot recur by
-  this route.
+  exception is retired. The first two rows of the table above cannot
+  recur by this route.
 - `allow_merge_commit=false`, `allow_rebase_merge=false` -- "Merge
   method: squash" is a property of the repository rather than a sentence.
 - `squash_merge_commit_message=PR_BODY` -- **did not close the body, and
@@ -641,27 +637,43 @@ wrong for the one-commit case.
   `*`-concatenated commit titles. Both are wrong; the new one is at
   least conspicuous.
 
-**So rows 1 and 2 stay open, and no setting closes them.**
-`squash_merge_commit_message` takes exactly three values -- `PR_BODY`,
-`COMMIT_MESSAGES`, `BLANK` -- and none transforms the text, because
-there is no templating step between a PR description and a commit body
-for a setting to hook into. The body is therefore supplied at merge time
-via `gh pr merge --body-file`, which
+**No setting closed the body, so #357 supplies it with a command
+instead.** `squash_merge_commit_message` takes exactly three values --
+`PR_BODY`, `COMMIT_MESSAGES`, `BLANK` -- and none transforms the text,
+because there is no templating step between a PR description and a
+commit body for a setting to hook into. `scripts/merge_pr.py` composes
+the body from the PR's own description (falling back to the branch's
+commits only when the description has no bullets to pull from) and calls
+`gh pr merge --squash --body-file -`, which
 [DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#-merging)
-now documents as the standing mechanism rather than as a stopgap.
+documents as the standing way to merge rather than as an incantation to
+still be remembered at the end of a session.
 
 The estimate this section carried -- "roughly 15 of the ~20 violations
-closed by configuration" -- was too optimistic for that reason. The
-title-side rows are closed permanently; the body-side rows moved from
-"the default fights you" to "one flag at merge time", which is an
-improvement in kind but not the automatic fix that was predicted.
+closed by configuration" -- was too optimistic for that reason, at the
+time it was written. The title-side rows are closed permanently by a
+setting; the body-side rows needed a command instead, because no setting
+could reach them.
 
-**What deliberately is not proposed:** a test over `git log`. It is the
-obvious move in this repository's idiom, and it does not work here --
+**The enforcement question, decided.** A test over `git log` was
+considered for the title-side rows and rejected: it is the obvious move
+in this repository's idiom, and it does not work here --
 `actions/checkout` fetches depth 1, so CI has no history to walk, and a
 scan that self-skipped when history is absent would be green on the one
-host that never has it. The settings are strictly better: they prevent
-rather than detect.
+host that never has it. The title-side settings do not need that
+argument to hold anyway -- they prevent rather than detect, mechanically,
+and cannot be bypassed by merging a different way. `scripts/merge_pr.py`
+cannot make that claim: a command, unlike a repository setting, can be
+skipped by merging through the web UI instead. The choice made in #357 is
+**producer-is-enforcement** -- the script becomes the one documented way
+to merge, the same standing the OpenCodeReview step already has as "not
+in CI and not a dependency, so it is the developing agent that has to
+invoke it" -- over a CI job with a deeper checkout that re-scans `main`'s
+recent history, which was considered and rejected: it would only catch a
+bypass after it had already landed, and it costs a dedicated job plus a
+bounded-window policy to avoid false negatives past that window.
+`scripts/merge_pr.py`'s own docstring carries the same argument, kept
+next to the code it decides for.
 
 ## 🚫 What is not debt
 
