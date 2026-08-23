@@ -88,7 +88,7 @@ came from.
 
   | Its category | Where this project does that |
   |---|---|
-  | Specs, agent files & workflow design | [CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md), [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md), `.claude/skills/` |
+  | Specs, agent files & workflow design | [CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md), `DEVELOPER-AGENTS.md` (git checkout only), `.claude/skills/` |
   | Constraints, guardrails & safe autonomy | The citation gate and its PostToolUse hook; the review layer's rule that it never blocks ([SOUL.md](../SOUL.md)) |
   | Context, memory & working state | The dossier ([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), and [TOKENS.md](TOKENS.md) for what context costs |
   | Evals & observability | The review layer's four aids, and [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s unbuilt `agenda` |

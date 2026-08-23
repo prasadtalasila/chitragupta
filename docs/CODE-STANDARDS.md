@@ -13,14 +13,14 @@ changes *this repository's own code* against.
 
 **Written for** someone changing code in `chitragupta/` or `scripts/`, or
 deciding whether a proposed rule is worth enforcing. It assumes
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the process around a
+`DEVELOPER-AGENTS.md` for the process around a
 change -- test policy, the local check suite, commit/PR/release
 conventions -- and states only what the code itself must look like.
 
 **Not covered here:** prose standards for drafts
 ([WRITING-STANDARDS.md](WRITING-STANDARDS.md)), module boundaries and
 which layer owns what ([ARCHITECTURE.md](ARCHITECTURE.md), and
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s "Module boundaries"),
+`DEVELOPER-AGENTS.md`'s "Module boundaries"),
 and the drafting loop this document borrows its shape from
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
@@ -192,7 +192,7 @@ Read as an instruction to each edit, that contradicts this project's
 process rule, which is that a change should be **surgical**: don't
 refactor unrelated code, match the local style, report pre-existing dead
 code rather than deleting it in the same diff
-([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-behavioural-rules-think-before-coding)).
+(`DEVELOPER-AGENTS.md`'s "Behavioural rules: think before coding").
 Both cannot be followed at the level of a single edit.
 
 They are reconciled by moving the Boy Scout Rule up one level. **The
@@ -464,7 +464,7 @@ agree or disagree with.
 
 Four rules about how an agent should *work* rather than what the code
 should look like. They live with the process rules in
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-behavioural-rules-think-before-coding)
+`DEVELOPER-AGENTS.md`'s "Behavioural rules: think before coding"
 rather than here: think before coding, simplicity first, surgical changes,
 goal-driven execution. The third is the one
 [reconciled above](#-the-boy-scout-rule-and-surgical-changes).

@@ -844,7 +844,7 @@ D2 have one each, as worked
 examples of the convention. Most items do not need one: the entry above
 already names the files, the size and the dependencies, and for a
 mechanical change that is the whole plan.
-[plans/README.md](../plans/README.md) has the three tests for when a
+`plans/README.md` has the three tests for when a
 plan earns its place. That directory does not ship.
 
 **The first four PRs need no decision and no new dependency**, and

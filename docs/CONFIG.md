@@ -633,7 +633,7 @@ string to cite it by.
 Those images are a **reading aid** for checking a draft against its
 sources. They are never inserted into a draft: a figure's copyright is
 not the paper's citekey to grant. See
-[DEVELOPER.md](../DEVELOPER.md#-figures-and-copyright).
+`DEVELOPER.md`'s "Figures and copyright" (git checkout only).
 
 Changing this invalidates the whole docling cache, so the next run
 re-parses the corpus from scratch. Costs in

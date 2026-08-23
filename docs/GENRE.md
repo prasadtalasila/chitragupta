@@ -7,7 +7,7 @@ as it stands.
 wondering why a skill refused something. **Assumed:**
 [AGENTS.md](../AGENTS.md), the drafting contract these skills work under.
 **Not covered here:** how a skill is written or changed. That is
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md).
+`DEVELOPER-AGENTS.md` (git checkout only).
 
 Which skill writes what, how to pick between them, and what each one
 refuses to do. Nine skills live in `.claude/`: five write a new draft,

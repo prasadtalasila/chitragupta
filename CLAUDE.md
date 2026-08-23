@@ -16,8 +16,8 @@ they start editing `chitragupta/`.
 | If you are... | Read | Then stop |
 |---|---|---|
 | **Drafting content** with this pipeline -- a survey, thesis chapter, textbook chapter, tutorial, deep-research report -- or revising one | **[AGENTS.md](AGENTS.md)** | That file and the skill you are running are the whole contract. You do not need anything below |
-| **Changing this repository's own code** -- anything under `chitragupta/`, `scripts/`, `tests/`, `bench/`, `.github/` | **[DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md)**, which governs, then **[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)** for what the code must look like | -- |
-| **Changing this repository's prose** -- `docs/`, `README.md`, or these files | [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) for the commit/PR conventions | -- |
+| **Changing this repository's own code** -- anything under `chitragupta/`, `scripts/`, `tests/`, `bench/`, `.github/` | **`DEVELOPER-AGENTS.md`**, which governs, then **[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)** for what the code must look like | -- |
+| **Changing this repository's prose** -- `docs/`, `README.md`, or these files | `DEVELOPER-AGENTS.md` for the commit/PR conventions | -- |
 | **In a `pip install`ed, `chitragupta init`-scaffolded project directory** -- no `chitragupta/`, `scripts/`, `tests/`, `bench/` or `.github/` to change; `chitragupta init` deliberately does not scaffold them ([docs/PACKAGING.md](docs/PACKAGING.md)) | **[AGENTS.md](AGENTS.md)** -- the drafting row above is your whole contract, same as anyone else | You do not have a `DEVELOPER-AGENTS.md` route here, and that is correct, not missing: changing the pipeline's own code means changing the git checkout it was installed from, a different project directory entirely |
 
 Doing both in one session is normal -- drafting with the pipeline and

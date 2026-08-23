@@ -324,9 +324,9 @@ one-screen router for exactly that.
 | [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **Unbuilt.** If the pipeline assembled its own worklist and attempted the mechanical repairs, what exactly would be built, and what would it have to satisfy? Normative, and carries no argument |
 | [docs/AUTO-IMPROVEMENT-RATIONALE.md](docs/AUTO-IMPROVEMENT-RATIONALE.md) | Why that loop, and where its line falls: why every quality signal here currently ends in prose a human must act on, what a machine may never repair, and the one documented rule this cannot satisfy without the user's approval |
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
-| [DEVELOPER.md](DEVELOPER.md) | How do I run the tests, where does everything live, and what is unbuilt? |
-| [DOCKER.md](DOCKER.md) | How do I run this in a container? |
-| [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
+| `DEVELOPER.md` (git checkout only -- `chitragupta init` deliberately does not scaffold it) | How do I run the tests, where does everything live, and what is unbuilt? |
+| `DOCKER.md` (git checkout only) | How do I run this in a container? |
+| `DEVELOPER-AGENTS.md` (git checkout only) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
 | [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
 | [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and -- where the licence requires it -- what was deliberately not |
 | [docs/EXPORT-ZOTERO-GROUPS.md](docs/EXPORT-ZOTERO-GROUPS.md) | **Discouraged, and says so.** How the one script that reads `zotero.sqlite` directly recovers collection labels when Better BibTeX cannot, which two project rules it bends to do it, and why you should use Better BibTeX instead |

@@ -23,8 +23,8 @@ pipeline does with collections once it has them, which is
 Two of this project's rules bend for it:
 
 - **`chitragupta/bib_reader.py` is the only sanctioned reader of bibliographic
-  data** ([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s module
-  boundaries). It reads an *export* -- a file the user deliberately
+  data** (`DEVELOPER-AGENTS.md`'s module boundaries). It reads an
+  *export* -- a file the user deliberately
   produced and can inspect. This script reaches behind the export into
   `itemData`, `itemDataValues`, `fieldsCombined`, `collectionItems` and
   `collections`: Zotero application internals with no compatibility

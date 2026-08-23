@@ -247,7 +247,7 @@ GROBID runs as a long-lived service, not an in-process import:
 docker run --rm -p 8070:8070 grobid/grobid:0.9.0
 ```
 
-That fits the existing container story ([DOCKER.md](../DOCKER.md)) as a
+That fits the existing container story (`DOCKER.md`, git checkout only) as a
 sidecar. Invocation would extend `--stages`:
 
 ```bash
@@ -316,7 +316,7 @@ only design that supports it without touching the citekey invariant.
 ## ❓ Open questions
 
 - **Does the graph have a consumer?** `content/topics.json` is already an
-  artefact nothing reads (see [DEVELOPER.md](../DEVELOPER.md)). Adding a
+  artefact nothing reads (see `DEVELOPER.md`, git checkout only). Adding a
   second unread artefact, at the cost of a JDK and a service, would be a
   worse version of the same mistake. A concrete consumer -- a
   `survey-writer` step, a retrieval signal -- should be named before this

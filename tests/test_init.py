@@ -1,13 +1,17 @@
 """`chitragupta init`: scaffold a project directory from a small, controlled
 fixture rather than this repository's own ever-growing `.claude/`/`docs/`
 tree -- the same reasoning tests/test_release.py gives for building a
-throwaway git repo instead of asserting against the real one. The
-manifest-agreement test at the bottom is the one exception: it reads the
-real repository, because that is the pair of lists (`scripts/release.py`'s
-denylist, this module's allowlist) the test exists to keep honest.
+throwaway git repo instead of asserting against the real one. Two classes
+at the bottom are the exceptions: they read the real repository, because
+that is the actual thing each guards against drift -- the manifest-agreement
+test reads the pair of lists (`scripts/release.py`'s denylist, this
+module's allowlist) it exists to keep honest, and the link-resolution test
+(#352) reads the real prose, because a synthetic fixture would not contain
+the dangling links it exists to catch.
 """
 
 from pathlib import Path
+import re
 
 import pytest
 
@@ -191,3 +195,39 @@ class TestManifestAgreesWithTheReleaseZip:
                   for p in zip_top_level}
         assert renamed - init.TOP_LEVEL == init.DELIBERATE_DIFFERENCES
         assert init.TOP_LEVEL - renamed == set()
+
+
+class TestScaffoldedDocLinksResolve:
+    """#352: `init` copies `docs/`, `AGENTS.md`, `CLAUDE.md`, `SOUL.md` and
+    `README.md` verbatim, and those documents cross-reference each other
+    by relative Markdown link. Four targets in `DELIBERATE_DIFFERENCES` --
+    `DEVELOPER-AGENTS.md`, `DEVELOPER.md`, `DOCKER.md`, `plans/` -- are
+    deliberately not copied, so a link to any of them from something that
+    *is* copied dangles in a scaffolded project even though it resolves
+    fine in this checkout. Reads the real `SOURCE_ROOT` rather than the
+    `source` fixture's tiny tree, because a synthetic fixture would not
+    contain the prose this exists to check."""
+
+    # Same shape as scripts/release.py's own `_rewrite_link` pattern.
+    LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+    def test_every_relative_markdown_link_resolves(self, tmp_path):
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+
+        broken = []
+        for md_file in sorted(dest.rglob("*.md")):
+            text = md_file.read_text(encoding="utf-8")
+            for text_, target in self.LINK_RE.findall(text):
+                if target.startswith(("http://", "https://", "mailto:", "#")):
+                    continue
+                target_path = target.split("#", 1)[0]
+                if not target_path or "content/" in target_path:
+                    continue
+                if not (md_file.parent / target_path).resolve().exists():
+                    broken.append(f"{md_file.relative_to(dest)}: [{text_}]({target})")
+
+        assert not broken, (
+            "Dangling relative Markdown link(s) in a scaffolded project "
+            "(target not among init's COPY_VERBATIM):\n" + "\n".join(broken)
+        )
