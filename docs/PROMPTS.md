@@ -156,10 +156,13 @@ only the transcribed, deduplicated dossier does.
 ### 🤖 2b. A dispatched subagent's context (the part that's genuinely different)
 
 Each subagent dispatched from Phases 2, 5 and 7 gets its **own** fresh
-context. Its shape is not layers 1-7 above; the orchestrator's
-conversation, `CLAUDE.md`, `AGENTS.md` and `SOUL.md` are not
-automatically forwarded into it. What replaces layers 2-4 is a single
-file the harness loads as that subagent's system prompt:
+context. Its shape is not layers 1-7 above: the orchestrator's
+conversation, `AGENTS.md` and `SOUL.md` are not forwarded into it.
+`CLAUDE.md` **is** -- measured 2026-08-23, a dispatched subagent had it
+in context verbatim, layer 2 included, so the one hard rule reaches a
+subagent whether or not its definition restates it. What replaces
+layers 3-4 is a single file the harness loads as that subagent's system
+prompt:
 
 ```mermaid
 flowchart TB
@@ -168,7 +171,7 @@ flowchart TB
   subgraph SUB["ONE DISPATCHED SUBAGENT — a fresh context, its own system prompt"]
     direction TB
     H["<b>1 · HARNESS LAYER</b><br/><small>same fixed overhead as any context</small>"]
-    DEF["<b>2 · AGENT DEFINITION</b><br/>.claude/agents/&lt;role&gt;.md<br/><small>stands in for CLAUDE.md/AGENTS.md/SOUL.md/SKILL.md<br/>all at once, for this one role — the citekey invariant<br/>is restated here, inline, not read from AGENTS.md</small>"]
+    DEF["<b>2 · AGENT DEFINITION</b><br/>.claude/agents/&lt;role&gt;.md<br/><small>stands in for AGENTS.md/SOUL.md/SKILL.md all at once,<br/>for this one role — the citekey invariant is restated<br/>here, inline, not read from AGENTS.md (CLAUDE.md itself<br/>arrives anyway, so that restatement is belt-and-braces)</small>"]
     PARAMS["<b>3 · ORCHESTRATOR-SUPPLIED PARAMETERS</b><br/><small>small and specific — e.g. TOPIC/PERSPECTIVE/ROUNDS/DRAFT PATH<br/>(interviewer), or a `dossier brief` pointer instead of pasted<br/>evidence (writer) — see the table below for all three roles</small>"]
     H --> DEF --> PARAMS
   end
@@ -224,3 +227,29 @@ this run already made. What differs is *where* that rule and that
 judgment live at any given moment: in one growing context for
 `textbook-chapter-writer`, or handed piece by piece into contexts that
 are built, used once, and thrown away, for `deep-research`.
+
+## 🧼 4. What was in the context before the skill was invoked
+
+Everything above describes what a skill *adds*. Layer 7 is whatever was
+already there -- and on a session that has been working for an hour,
+that is the largest layer and the only one nobody designed.
+
+It matters more than it looks, because of an asymmetry the gate cannot
+close. A **fabricated** citekey is caught mechanically, every time: the
+ledger is ground truth and an absent key is absent. A **real** citekey
+carried in from an earlier task in the same session is not caught by
+anything -- it resolves, it renders, `python -m chitragupta.draft gate`
+exits 0, and the claim it was attached to may have nothing to do with
+the paper. The deterministic layer has no purchase on it, and neither
+does `python -m chitragupta.review verbatim scan`, which is measuring
+something else.
+
+So the remedy is procedural, and [AGENTS.md](../AGENTS.md) states it as
+practice: **start each draft in a fresh session.** That is affordable
+only because the dossier already holds the scope, the evidence, the
+rejections and the steering on disk -- see
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) -- which is the same reason
+`deep-research` can throw away a subagent's context without losing what
+it found. The two halves of this document are one argument: a context
+is worth clearing precisely when the judgment inside it has been
+written down somewhere else first.

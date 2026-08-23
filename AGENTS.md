@@ -46,6 +46,38 @@ of defense -- but still run the gate by hand before calling a draft done,
 since the hook only fires on the tool call that wrote the file, not on
 demand.
 
+## 🧼 Start each draft in a clean session
+
+Begin a draft in a fresh session -- `/clear`, or a new conversation.
+Not as tidiness: it closes the one failure the gate above cannot see.
+
+The gate is mechanical and complete for what it measures. A citekey is
+in the ledger or it is not, so a **fabricated** one is caught every
+time. What it cannot catch is a **real** citekey -- present in
+`content/ledger.sqlite`, correctly spelled, genuinely parsed from a
+genuine PDF -- that an earlier task in the same session left sitting in
+context, and that then gets cited for a claim it does not support.
+Every deterministic check in this pipeline passes that draft. `python
+-m chitragupta.draft gate` passes it, the PostToolUse hook passes it,
+and `python -m chitragupta.review verbatim scan` is looking for
+something else entirely. Nothing anywhere detects it, which is why the
+remedy is procedural rather than another check.
+
+Framing travels the same way. A session that spent an hour on one topic
+carries its vocabulary, its emphases and its sense of what matters, and
+the next draft inherits all three without anyone having chosen them.
+
+**Clearing is cheap here, and that is not a coincidence** -- it is what
+`content/dossiers/` is for. The reader, the scope, the glossary, the
+kept evidence, the rejected candidates and the steering already given
+live on disk rather than in the conversation, so a fresh session picks
+a draft back up by reading them. `docs/DRAFT-ITERATION.md` is that
+design; this guidance and that architecture argue for each other.
+
+One thing to do before clearing mid-work: **get this session's steering
+into `steering.md` first.** `draft-reviser` reads chat steering from
+the dossier, so steering that was only ever said dies with the session.
+
 ## 📚 The bib file is the source of truth (not this pipeline)
 
 `papers/bibliography.bib` (path configurable via `config.toml`'s
