@@ -55,14 +55,16 @@ from chitragupta.progname import prog_for
 # `enrich`'s imports, several of which are absent unless the optional
 # group is installed.
 LAYERS = {
-    "corpus": ("chitragupta.corpus",
-               "bring the ledger up to date, or read what it recorded"),
-    "draft": ("chitragupta.draft",
-              "work on one draft -- gate it, cite it, render it"),
-    "review": ("chitragupta.review.__main__",
-               "four read-only aids over a finished draft; never a gate"),
-    "enrich": ("chitragupta.enrich.__main__",
-               "Docling -> embeddings/Chroma -> BERTopic, over the whole corpus"),
+    "corpus": ("chitragupta.corpus", "bring the ledger up to date, or read what it recorded"),
+    "draft": ("chitragupta.draft", "work on one draft -- gate it, cite it, render it"),
+    "review": (
+        "chitragupta.review.__main__",
+        "four read-only aids over a finished draft; never a gate",
+    ),
+    "enrich": (
+        "chitragupta.enrich.__main__",
+        "Docling -> embeddings/Chroma -> BERTopic, over the whole corpus",
+    ),
 }
 
 # Package-level commands (#258's "package itself" table): only meaningful
@@ -72,21 +74,29 @@ LAYERS = {
 # point into one of its four layers. Dispatched the same way as LAYERS,
 # in CHOICES below, so this stays the only place the distinction is drawn.
 COMMANDS = {
-    "init": ("chitragupta.init",
-             "scaffold a project directory -- config.toml, .claude/, "
-             "papers/, content/ and the prose docs"),
-    "doctor": ("chitragupta.doctor",
-               "probe and report: OS binaries, the enrich extra, torch "
-               "vs. the GPU driver, a competing distribution"),
-    "install": ("chitragupta.install",
-                "run the install_full_pipeline.sh stages a pip install "
-                "cannot do itself -- os-deps, gpu-torch"),
+    "init": (
+        "chitragupta.init",
+        "scaffold a project directory -- config.toml, .claude/, "
+        "papers/, content/ and the prose docs",
+    ),
+    "doctor": (
+        "chitragupta.doctor",
+        "probe and report: OS binaries, the enrich extra, torch "
+        "vs. the GPU driver, a competing distribution",
+    ),
+    "install": (
+        "chitragupta.install",
+        "run the install_full_pipeline.sh stages a pip install "
+        "cannot do itself -- os-deps, gpu-torch",
+    ),
 }
 
 CHOICES = {**LAYERS, **COMMANDS}
 
-DESCRIPTION = ("Turn a curated bibliography into grounded drafts, "
-               "with every citekey verified against a real parse.")
+DESCRIPTION = (
+    "Turn a curated bibliography into grounded drafts, "
+    "with every citekey verified against a real parse."
+)
 
 
 def _version() -> str:
@@ -100,6 +110,7 @@ def _version() -> str:
     """
     try:
         from importlib.metadata import PackageNotFoundError, version
+
         return version("chitragupta-cli")
     except (ImportError, PackageNotFoundError):  # pragma: no cover - see tests
         return "unknown"
@@ -109,9 +120,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=prog_for(""), description=DESCRIPTION)
     parser.add_argument("--version", action="version", version=_version())
     parser.add_argument(
-        "layer", choices=sorted(CHOICES), nargs="?",
-        help=" / ".join(f"{name} -- {help_text}"
-                        for name, (_, help_text) in CHOICES.items()),
+        "layer",
+        choices=sorted(CHOICES),
+        nargs="?",
+        help=" / ".join(f"{name} -- {help_text}" for name, (_, help_text) in CHOICES.items()),
     )
     # REMAINDER, so a layer can take its own `-h`/`--help` and this parser
     # never sees it -- the same contract chitragupta/draft.py uses for its

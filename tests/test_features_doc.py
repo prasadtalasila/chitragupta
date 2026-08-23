@@ -34,8 +34,16 @@ FEATURES_TEXT = FEATURES.read_text(encoding="utf-8")
 SKILLS = sorted(p.name for p in (REPO_ROOT / ".claude" / "skills").iterdir() if p.is_dir())
 
 _NUMBER_WORDS = {
-    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five",
-    6: "Six", 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten",
+    1: "One",
+    2: "Two",
+    3: "Three",
+    4: "Four",
+    5: "Five",
+    6: "Six",
+    7: "Seven",
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
 }
 
 
@@ -114,8 +122,15 @@ class TestTheDocumentRoutesRatherThanRestates:
         # defer to: they own the detail it used to carry inline, and a
         # FEATURES.md that stopped pointing at them would be one that had
         # started restating them again.
-        for owner in ("CLI.md", "ARCHITECTURE.md", "GENRE.md", "DOSSIER.md",
-                      "REVIEW.md", "DIAGRAMS.md", "SOUL.md"):
+        for owner in (
+            "CLI.md",
+            "ARCHITECTURE.md",
+            "GENRE.md",
+            "DOSSIER.md",
+            "REVIEW.md",
+            "DIAGRAMS.md",
+            "SOUL.md",
+        ):
             assert f"({owner})" in FEATURES_TEXT or f"/{owner})" in FEATURES_TEXT, (
                 f"docs/FEATURES.md no longer links to {owner}."
             )

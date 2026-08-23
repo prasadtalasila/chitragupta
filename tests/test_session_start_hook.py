@@ -91,7 +91,10 @@ class PreflightRepo:
         return subprocess.run(
             [sys.executable, str(self.hook)],
             input=json.dumps({"hook_event_name": "SessionStart", "source": "startup"}),
-            cwd=str(self.root), capture_output=True, text=True, env=self.env,
+            cwd=str(self.root),
+            capture_output=True,
+            text=True,
+            env=self.env,
         )
 
     @staticmethod
@@ -157,8 +160,7 @@ class TestSilenceWhenReady:
     def test_output_is_one_json_document_when_it_does_speak(self, preflight):
         """The rule a stray print() breaks invisibly: stdout parses, whole."""
         result = preflight.run()
-        assert json.loads(result.stdout)["hookSpecificOutput"]["hookEventName"] \
-            == "SessionStart"
+        assert json.loads(result.stdout)["hookSpecificOutput"]["hookEventName"] == "SessionStart"
 
 
 class TestCorpusStageIsNotAFault:
@@ -231,16 +233,23 @@ class TestLauncherFaults:
         assert "unbraced" in context
 
     def test_an_interpreter_not_on_path_is_reported(self, synced):
-        synced.write_settings(settings(
-            {"type": "command", "command": "python4.2",
-             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/citation_gate_hook.py"]}))
+        synced.write_settings(
+            settings(
+                {
+                    "type": "command",
+                    "command": "python4.2",
+                    "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/citation_gate_hook.py"],
+                }
+            )
+        )
         context = PreflightRepo.context(synced.run())
         assert "python4.2" in context
         assert "not on PATH" in context
 
     def test_a_shell_form_command_is_checked_by_its_first_word(self, synced):
-        synced.write_settings(settings(
-            {"type": "command", "command": 'python4.2 "${CLAUDE_PROJECT_DIR}/x.py"'}))
+        synced.write_settings(
+            settings({"type": "command", "command": 'python4.2 "${CLAUDE_PROJECT_DIR}/x.py"'})
+        )
         assert "python4.2" in PreflightRepo.context(synced.run())
 
     def test_a_hook_entry_with_no_command_is_ignored(self, synced):
@@ -248,8 +257,9 @@ class TestLauncherFaults:
         assert synced.run().stdout.strip() == ""
 
     def test_every_registered_event_is_checked_not_just_posttooluse(self, synced):
-        synced.write_settings({"hooks": {"SessionStart": [
-            {"hooks": [{"type": "command", "command": "python4.2"}]}]}})
+        synced.write_settings(
+            {"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "python4.2"}]}]}}
+        )
         assert "python4.2" in PreflightRepo.context(synced.run())
 
 
@@ -267,7 +277,8 @@ class TestImportProbeFault:
     def test_is_reported_through_the_real_hook(self, synced):
         pkg = synced.root / "chitragupta"
         pkg.mkdir(exist_ok=True)
-        (pkg / "__init__.py").write_text("raise ImportError('stubbed for #264')\n",
-                                          encoding="utf-8")
+        (pkg / "__init__.py").write_text(
+            "raise ImportError('stubbed for #264')\n", encoding="utf-8"
+        )
         context = PreflightRepo.context(synced.run())
         assert "cannot import chitragupta" in context

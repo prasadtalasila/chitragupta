@@ -77,6 +77,7 @@ def fake_extract_text_factory(fail_citekeys=()):
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
         out_path.write_text(f"extracted text for {citekey}")
         return out_path
+
     return fake_extract_text
 
 
@@ -129,6 +130,7 @@ class TestRun:
         """The guard has to fire from sync, not just exist in pdf_text:
         a backend losing word boundaries is invisible otherwise until it
         shows up as bad retrieval much later."""
+
         def fused(pdf_path, citekey):
             out_path = config.PARSED_DIR / f"{citekey}.txt"
             config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -165,13 +167,17 @@ class TestRun:
         assert "noauthor_page_nodate" in out
 
     def test_warns_about_duplicate_titles(self, isolated_config, monkeypatch, capsys):
-        write_bib(isolated_config.BIB_FILE_PATH, BASIC_BIB + """
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            BASIC_BIB
+            + """
 @misc{smith_example_2024_dup,
   title = {An Example Paper},
   author = {Smith, Jane},
   year = {2024},
 }
-""")
+""",
+        )
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         out = capsys.readouterr().out
@@ -179,18 +185,24 @@ class TestRun:
         assert "smith_example_2024" in out
         assert "smith_example_2024_dup" in out
 
-    def test_warns_when_bib_reader_drops_a_malformed_entry(self, isolated_config, monkeypatch, capsys):
+    def test_warns_when_bib_reader_drops_a_malformed_entry(
+        self, isolated_config, monkeypatch, capsys
+    ):
         # bib_reader.read_library() prints this warning itself (it's the
         # only place with both the raw file text and the parsed count) --
         # pin that it actually reaches sync's own output, not just
         # read_library()'s own direct tests.
-        write_bib(isolated_config.BIB_FILE_PATH, BASIC_BIB + """
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            BASIC_BIB
+            + """
 @article{malformed_2024,
   title = {Unbalanced {Braces},
   author = {Roe, Jan},
   year = {2022},
 }
-""")
+""",
+        )
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         out = capsys.readouterr().out
@@ -264,7 +276,9 @@ class TestRun:
         sync.run()
         capsys.readouterr()
 
-        (basic_corpus.BIB_FILE_PATH.parent / "paper.pdf").write_bytes(b"%PDF-1.4 NEW content, changed")
+        (basic_corpus.BIB_FILE_PATH.parent / "paper.pdf").write_bytes(
+            b"%PDF-1.4 NEW content, changed"
+        )
         rc = sync.run()
         out = capsys.readouterr().out
         assert rc == 0
@@ -291,9 +305,12 @@ class TestRun:
         sync.run()
         capsys.readouterr()
 
-        write_bib(basic_corpus.BIB_FILE_PATH, BASIC_BIB.replace(
-            "@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", ""
-        ))
+        write_bib(
+            basic_corpus.BIB_FILE_PATH,
+            BASIC_BIB.replace(
+                "@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", ""
+            ),
+        )
         rc = sync.run()
         out = capsys.readouterr().out
 
@@ -320,9 +337,12 @@ class TestRun:
         sync.run()
         capsys.readouterr()
 
-        write_bib(basic_corpus.BIB_FILE_PATH, BASIC_BIB.replace(
-            "@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", ""
-        ))
+        write_bib(
+            basic_corpus.BIB_FILE_PATH,
+            BASIC_BIB.replace(
+                "@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", ""
+            ),
+        )
         rc = sync.run(remove_stale=True)
         out = capsys.readouterr().out
 
@@ -426,7 +446,9 @@ class TestRun:
         # which items were silently missing a PDF the bib file still
         # claims to have, and which were invisible to retrieval because
         # only a non-PDF (e.g. HTML) attachment was ever saved.
-        write_bib(isolated_config.BIB_FILE_PATH, """
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
 @misc{no_file_field_2024,
   title = {No File Field At All},
 }
@@ -451,7 +473,8 @@ class TestRun:
   year = {2024},
   file = {just-a-filename-no-colons},
 }
-""")
+""",
+        )
         html = isolated_config.BIB_FILE_PATH.parent / "page.html"
         html.write_text("<html></html>")
 
@@ -475,9 +498,12 @@ class TestRun:
         self, basic_corpus, monkeypatch, capsys
     ):
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
-        write_bib(basic_corpus.BIB_FILE_PATH, BASIC_BIB.replace(
-            "@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", ""
-        ))
+        write_bib(
+            basic_corpus.BIB_FILE_PATH,
+            BASIC_BIB.replace(
+                "@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", ""
+            ),
+        )
         sync.run()
         out = capsys.readouterr().out
         assert "no-PDF breakdown" not in out
@@ -551,7 +577,8 @@ class TestCliEntrypoint:
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.corpus", "sync", "--help"],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0
         assert "--remove-stale" in result.stdout
@@ -560,7 +587,8 @@ class TestCliEntrypoint:
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.corpus", "sync", "--bogus-flag"],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "unrecognized arguments" in result.stderr
@@ -588,14 +616,17 @@ class TestTheRemovedDirectInvocation:
         assert sync.EXIT_COMMAND_REMOVED not in (0, 1, runlock.EXIT_ALREADY_RUNNING)
 
 
-MANY_BIB = "".join(f"""
+MANY_BIB = "".join(
+    f"""
 @article{{doc_{i}_2024,
   title = {{Paper {i}}},
   author = {{Author, A}},
   year = {{2024}},
   file = {{p{i}.pdf:p{i}.pdf:application/pdf}},
 }}
-""" for i in range(6))
+"""
+    for i in range(6)
+)
 
 
 @pytest.fixture
@@ -639,6 +670,7 @@ def _recording_executor(submitted):
 def fake_extract_one_factory(record=None, fail_citekeys=()):
     """Stands in for pdf_text.extract_one, the picklable pool entry point.
     Returns the (citekey, out_path, exception) triple it does."""
+
     def fake_extract_one(job):
         pdf_path, citekey, threads = job
         if record is not None:
@@ -649,6 +681,7 @@ def fake_extract_one_factory(record=None, fail_citekeys=()):
         out_path = config.PARSED_DIR / f"{citekey}.txt"
         out_path.write_text(f"extracted text for {citekey}")
         return citekey, str(out_path), None
+
     return fake_extract_one
 
 
@@ -713,8 +746,11 @@ class TestParallelParsing:
         no one could diff them."""
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
-        printed = [ln.split()[-1] for ln in capsys.readouterr().out.splitlines()
-                   if ln.startswith("  parsed  ")]
+        printed = [
+            ln.split()[-1]
+            for ln in capsys.readouterr().out.splitlines()
+            if ln.startswith("  parsed  ")
+        ]
         assert printed == [f"doc_{i}_2024" for i in range(6)]
 
     def test_largest_pdf_is_submitted_first(self, many_corpus, monkeypatch):
@@ -935,8 +971,7 @@ class TestGpuAssignment:
         cuda:0 in every process, so without an explicit per-worker device
         N workers contend for one card while the rest idle."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(
-            pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -991,7 +1026,8 @@ class TestGpuAssignment:
         reason."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(
-            pdf_text._pool, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0"))
+            pdf_text._pool, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0")
+        )
         self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1016,8 +1052,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         chosen = multiprocessing.get_context()
-        monkeypatch.setattr(
-            pdf_text._pool, "process_pool_context", lambda: (chosen, None))
+        monkeypatch.setattr(pdf_text._pool, "process_pool_context", lambda: (chosen, None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1044,8 +1079,10 @@ class TestGpuAssignment:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
         monkeypatch.setattr(
-            pdf_text._pool, "process_pool_context",
-            lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"))
+            pdf_text._pool,
+            "process_pool_context",
+            lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"),
+        )
         self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1158,8 +1195,11 @@ class TestProgressReporting:
         deterministic and diffable between runs."""
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
-        printed = [ln.split()[-1] for ln in capsys.readouterr().out.splitlines()
-                   if ln.startswith("  parsed  ")]
+        printed = [
+            ln.split()[-1]
+            for ln in capsys.readouterr().out.splitlines()
+            if ln.startswith("  parsed  ")
+        ]
         assert printed == [f"doc_{i}_2024" for i in range(6)]
 
 
@@ -1280,9 +1320,12 @@ class TestReparse:
 
     def test_reparse_is_registered_on_the_cli(self, isolated_config):
         import subprocess
+
         out = subprocess.run(
             [sys.executable, "-m", "chitragupta.corpus", "sync", "--help"],
-            capture_output=True, text=True, cwd=str(config.PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            cwd=str(config.PROJECT_ROOT),
         ).stdout
         assert "--reparse" in out
 
@@ -1315,7 +1358,8 @@ class TestFailureReporting:
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
         monkeypatch.setattr(
-            pdf_text, "extract_one",
+            pdf_text,
+            "extract_one",
             lambda job: (_ for _ in ()).throw(BrokenProcessPool("worker died")),
         )
         assert sync.run() == 1
@@ -1348,6 +1392,7 @@ def timing_out_extract_text_factory(timeout_citekeys):
             error.timed_out = True
             raise error
         return parse(pdf_path, citekey)
+
     return fake_extract_text
 
 
@@ -1361,7 +1406,8 @@ class TestTimeoutReporting:
     ):
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 90.0)
         monkeypatch.setattr(
-            pdf_text, "extract_text",
+            pdf_text,
+            "extract_text",
             timing_out_extract_text_factory({"doe_broken_2023"}),
         )
         assert sync.run() == 1
@@ -1379,7 +1425,8 @@ class TestTimeoutReporting:
         it while the line below says to raise a setting."""
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 90.0)
         monkeypatch.setattr(
-            pdf_text, "extract_text",
+            pdf_text,
+            "extract_text",
             timing_out_extract_text_factory({"doe_broken_2023"}),
         )
         sync.run()
@@ -1403,20 +1450,24 @@ class TestTimeoutReporting:
         """Past a handful, the count is the diagnosis and the names are
         noise -- naming every one of them would bury the line that says
         what to do in a list no terminal wants to scroll."""
-        entries = "".join(f"""
+        entries = "".join(
+            f"""
 @article{{doc_{i}_2024,
   title = {{Document {i}}},
   author = {{Roe, Jan}},
   year = {{2024}},
   file = {{p{i}.pdf:p{i}.pdf:application/pdf}},
 }}
-""" for i in range(14))
+"""
+            for i in range(14)
+        )
         write_bib(isolated_config.BIB_FILE_PATH, entries)
         for i in range(14):
             (isolated_config.BIB_FILE_PATH.parent / f"p{i}.pdf").write_bytes(b"%PDF")
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 5.0)
         monkeypatch.setattr(
-            pdf_text, "extract_text",
+            pdf_text,
+            "extract_text",
             timing_out_extract_text_factory({f"doc_{i}_2024" for i in range(14)}),
         )
         sync.run()
@@ -1428,9 +1479,7 @@ class TestTimeoutReporting:
         line = next(ln for ln in out.splitlines() if "hit the 5.0s" in ln)
         assert line.count("doc_") == 10
 
-    def test_an_ordinary_failure_produces_no_timeout_line(
-        self, basic_corpus, monkeypatch, capsys
-    ):
+    def test_an_ordinary_failure_produces_no_timeout_line(self, basic_corpus, monkeypatch, capsys):
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
         )
@@ -1445,7 +1494,8 @@ class TestTimeoutReporting:
         and never converges."""
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 90.0)
         monkeypatch.setattr(
-            pdf_text, "extract_text",
+            pdf_text,
+            "extract_text",
             timing_out_extract_text_factory({"doe_broken_2023"}),
         )
         assert sync.run() == 1
@@ -1459,7 +1509,8 @@ class TestTimeoutReporting:
     def test_every_timed_out_document_is_named(self, basic_corpus, monkeypatch, capsys):
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 5.0)
         monkeypatch.setattr(
-            pdf_text, "extract_text",
+            pdf_text,
+            "extract_text",
             timing_out_extract_text_factory({"doe_broken_2023", "smith_example_2024"}),
         )
         sync.run()
@@ -1468,9 +1519,7 @@ class TestTimeoutReporting:
         assert "doe_broken_2023" in out
         assert "smith_example_2024" in out
 
-    def test_a_timeout_from_a_pool_worker_is_reported_too(
-        self, many_corpus, monkeypatch, capsys
-    ):
+    def test_a_timeout_from_a_pool_worker_is_reported_too(self, many_corpus, monkeypatch, capsys):
         """The parallel path returns the exception across a process
         boundary rather than raising it, so the mark has to arrive
         intact for the summary to say anything."""

@@ -20,7 +20,7 @@ is shaped that way.
 ## When to invoke
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | User asks to shorten, expand, restructure, correct or update an existing draft | Invoke this skill |
 | User asks for a grammar pass, a spelling fix, a dialect conversion (en-US -> en-GB/en-IN), or rephrasing to meet a style guideline | This skill, in **copy-edit mode** (below) -- the loop's search and evidence steps short-circuit |
 | User asks to re-target the draft at a **different reader** | Hand off to `corpus-reviser` -- what counts as support changes with the reader, so the kept set has to be re-judged, not extended |
@@ -352,7 +352,7 @@ change of substance.
 What changes, relative to the loop above:
 
 | Step | In copy-edit mode |
-|---|---|
+| --- | --- |
 | 1. Locate and read state | Unchanged, and load-bearing. `scope.md`'s `language:` line is the target a dialect pass converts *to*, and `steering.md` may already carry a house-style decision. Skip this and you apply your own default instead of the user's recorded one |
 | 2. Check against recorded scope | Not applicable -- wording is not scope |
 | 3. Map the change onto sections | Read the whole draft. This is precisely the case step 3's exception exists for, and it is paid for deliberately |

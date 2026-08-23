@@ -45,20 +45,20 @@ def corpus_texts(docs: list[CorpusDoc]) -> dict:
 # The headings that mean "the paper is over". Matched at the *last*
 # occurrence, not the first: a paper's own related-work section may say
 # "References" in prose, and an appendix can follow the bibliography.
-BACK_MATTER = re.compile(
-    r"(?im)^\s*#{1,6}\s*\**\s*(references|bibliography|works cited)\b")
+BACK_MATTER = re.compile(r"(?im)^\s*#{1,6}\s*\**\s*(references|bibliography|works cited)\b")
 
 # Lines that carry no topical content at whatever depth they appear:
 # contact details, retrieval boilerplate, bare page numbers, and the
 # running heads a PDF extractor repeats on every page.
 NOISE_LINE = re.compile(
     r"(?im)^\s*(?:"
-    r"\S+@\S+\.\S+"                       # an email address on its own
-    r"|(?:https?://|www\.|doi:|10\.\d{4}/)\S*"   # a bare URL or DOI
+    r"\S+@\S+\.\S+"  # an email address on its own
+    r"|(?:https?://|www\.|doi:|10\.\d{4}/)\S*"  # a bare URL or DOI
     r"|(?:downloaded from|licensed under|all rights reserved|"
     r"copyright|\(c\)\s*\d{4}|©).*"
-    r"|\d{1,4}"                             # a bare page number
-    r")\s*$")
+    r"|\d{1,4}"  # a bare page number
+    r")\s*$"
+)
 
 
 def content_text(text: str) -> str:
@@ -94,9 +94,8 @@ def content_text(text: str) -> str:
     for match in BACK_MATTER.finditer(text):
         pass  # the last one wins -- see BACK_MATTER
     if match is not None:
-        text = text[:match.start()]
-    return "\n".join(line for line in text.splitlines()
-                      if not NOISE_LINE.match(line))
+        text = text[: match.start()]
+    return "\n".join(line for line in text.splitlines() if not NOISE_LINE.match(line))
 
 
 # Bumped when the arithmetic that turns a document into one vector
@@ -170,7 +169,8 @@ def document_embeddings(doc_texts: dict, model) -> dict:
     # EMBED_METHOD is the same argument for the pooling arithmetic, which
     # changes a vector while leaving both the text and the model id alone.
     stale_citekeys = [
-        citekey for citekey in doc_texts
+        citekey
+        for citekey in doc_texts
         if citekey not in cache
         or cache[citekey]["hash"] != doc_hashes[citekey]
         or cache[citekey].get("model") != config.EMBEDDING_MODEL
@@ -191,5 +191,4 @@ def document_embeddings(doc_texts: dict, model) -> dict:
     # A document whose text chunked to nothing has no vector and is
     # dropped rather than carried as a zero row, which would cluster with
     # every other empty document and invent a topic out of parse failures.
-    return {citekey: cache[citekey]["embedding"]
-            for citekey in doc_texts if citekey in cache}
+    return {citekey: cache[citekey]["embedding"] for citekey in doc_texts if citekey in cache}

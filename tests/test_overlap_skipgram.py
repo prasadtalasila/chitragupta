@@ -105,9 +105,12 @@ class TestSkipgramPostings:
     def test_too_few_family_members_yields_no_postings(self):
         # DEFAULT_N content words are needed in *one* family; four
         # distinct content words split roughly 2/2 is not enough.
-        assert overlap_skipgram.skipgram_postings(
-            "alpha beta gamma delta".split(), overlap_skipgram.DEFAULT_N
-        ) == []
+        assert (
+            overlap_skipgram.skipgram_postings(
+                "alpha beta gamma delta".split(), overlap_skipgram.DEFAULT_N
+            )
+            == []
+        )
 
 
 class TestNumericWindowsAreNotEvidence:
@@ -122,9 +125,12 @@ class TestNumericWindowsAreNotEvidence:
         # A page-number run, or a scoring grid's row: nothing here is a
         # word, so nothing here distinguishes this document from any
         # other document with a table in it.
-        assert overlap_skipgram.skipgram_postings(
-            "1 4 2 7 3 9 0 6 5 8 2 3 8 1".split(), overlap_skipgram.DEFAULT_N
-        ) == []
+        assert (
+            overlap_skipgram.skipgram_postings(
+                "1 4 2 7 3 9 0 6 5 8 2 3 8 1".split(), overlap_skipgram.DEFAULT_N
+            )
+            == []
+        )
 
     def test_a_figure_among_content_words_still_yields_postings(self):
         # The case #180 explicitly asks to keep: "48.2 billion" quoted by
@@ -132,8 +138,10 @@ class TestNumericWindowsAreNotEvidence:
         # every digit" rule would have lost it. The even family here
         # reduces to `annual reach 2 dollar fiscal across region` -- one
         # number among six words -- so every window it makes survives.
-        words = ("annual revenue reached 48 2 billion dollars during the "
-                 "2021 fiscal year across every regional market").split()
+        words = (
+            "annual revenue reached 48 2 billion dollars during the "
+            "2021 fiscal year across every regional market"
+        ).split()
         starts = [s for _h, s, _e in overlap_skipgram.skipgram_postings(words, 5)]
         assert 0 in starts, "a window holding a figure among content words was dropped"
 
@@ -220,9 +228,13 @@ class TestFingerprintDocument:
         assert data["n"] == 5
         assert data["key"][0] == "hash1"
 
-    def test_unchanged_key_reuses_cache_without_rebuilding(self, isolated_config, tmp_path, monkeypatch):
+    def test_unchanged_key_reuses_cache_without_rebuilding(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
         parsed = tmp_path / "smith_2024.txt"
-        parsed.write_text("digital twins require continuous validation against physical measurements")
+        parsed.write_text(
+            "digital twins require continuous validation against physical measurements"
+        )
         first = overlap_skipgram.fingerprint_document("smith_2024", "hash1", str(parsed), n=5)
 
         def _boom(*a, **kw):
@@ -234,7 +246,9 @@ class TestFingerprintDocument:
 
     def test_changed_pdf_hash_triggers_rebuild(self, isolated_config, tmp_path):
         parsed = tmp_path / "smith_2024.txt"
-        parsed.write_text("digital twins require continuous validation against physical measurements")
+        parsed.write_text(
+            "digital twins require continuous validation against physical measurements"
+        )
         overlap_skipgram.fingerprint_document("smith_2024", "hash1", str(parsed), n=5)
         second = overlap_skipgram.fingerprint_document("smith_2024", "hash2", str(parsed), n=5)
         assert second.key[0] == "hash2"
@@ -262,10 +276,16 @@ class TestFingerprintDocument:
         key = overlap_skipgram._fingerprint_key("hash1", str(parsed))
         cache_path = config.OVERLAP_DIR / "docs" / "smith_2024.skipgram.fpr"
         cache_path.parent.mkdir(parents=True)
-        cache_path.write_text(json.dumps(
-            {"tokenizer_version": overlap_skipgram._TOKENIZER_VERSION, "n": 4,
-             "key": key, "postings": "nope"}
-        ))
+        cache_path.write_text(
+            json.dumps(
+                {
+                    "tokenizer_version": overlap_skipgram._TOKENIZER_VERSION,
+                    "n": 4,
+                    "key": key,
+                    "postings": "nope",
+                }
+            )
+        )
         fp = overlap_skipgram.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert fp.n == 4
 
@@ -275,10 +295,16 @@ class TestFingerprintDocument:
         key = overlap_skipgram._fingerprint_key("hash1", str(parsed))
         cache_path = config.OVERLAP_DIR / "docs" / "smith_2024.skipgram.fpr"
         cache_path.parent.mkdir(parents=True)
-        cache_path.write_text(json.dumps(
-            {"tokenizer_version": overlap_skipgram._TOKENIZER_VERSION, "n": 4, "key": key,
-             "postings": [["not-an-int", 1, 0]]}
-        ))
+        cache_path.write_text(
+            json.dumps(
+                {
+                    "tokenizer_version": overlap_skipgram._TOKENIZER_VERSION,
+                    "n": 4,
+                    "key": key,
+                    "postings": [["not-an-int", 1, 0]],
+                }
+            )
+        )
         fp = overlap_skipgram.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert fp.n == 4
 
@@ -290,7 +316,9 @@ class TestFingerprintDocument:
         from chitragupta import overlap_index
 
         parsed = tmp_path / "smith_2024.txt"
-        parsed.write_text("digital twins require continuous validation against physical measurements")
+        parsed.write_text(
+            "digital twins require continuous validation against physical measurements"
+        )
         overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=8)
         overlap_skipgram.fingerprint_document("smith_2024", "hash1", str(parsed), n=5)
         assert (config.OVERLAP_DIR / "docs" / "smith_2024.fpr").exists()
@@ -305,12 +333,16 @@ class TestBuildCorpusIndex:
 
     def test_index_is_sorted_and_lookup_finds_a_known_gram(self, ledger_con, tmp_path):
         _add_parsed_item(
-            ledger_con, tmp_path, "smith_2024",
+            ledger_con,
+            tmp_path,
+            "smith_2024",
             "the validation of a digital twin requires continuous comparison "
             "against measurements taken from the physical asset",
         )
         _add_parsed_item(
-            ledger_con, tmp_path, "doe_2023",
+            ledger_con,
+            tmp_path,
+            "doe_2023",
             "a recipe for sourdough bread needs flour water salt and patient "
             "overnight fermentation before baking",
         )
@@ -320,7 +352,9 @@ class TestBuildCorpusIndex:
 
     def test_unchanged_corpus_is_a_full_cache_hit(self, ledger_con, tmp_path, monkeypatch):
         _add_parsed_item(
-            ledger_con, tmp_path, "smith_2024",
+            ledger_con,
+            tmp_path,
+            "smith_2024",
             "digital twins require continuous validation against physical measurements",
         )
         overlap_skipgram.build_corpus_index(n=5)
@@ -333,14 +367,18 @@ class TestBuildCorpusIndex:
         assert second.citekeys == ["smith_2024"]
 
     def test_header_not_a_dict_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
+        )
         overlap_skipgram.build_corpus_index(n=5)
         (config.OVERLAP_DIR / "skipgram_index.json").write_text("[1, 2, 3]")
         index = overlap_skipgram.build_corpus_index(n=5)
         assert index.citekeys == ["smith_2024"]
 
     def test_header_version_mismatch_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
+        )
         overlap_skipgram.build_corpus_index(n=5)
         header_path = config.OVERLAP_DIR / "skipgram_index.json"
         header = json.loads(header_path.read_text())
@@ -350,7 +388,9 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_header_citekeys_not_a_list_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
+        )
         overlap_skipgram.build_corpus_index(n=5)
         header_path = config.OVERLAP_DIR / "skipgram_index.json"
         header = json.loads(header_path.read_text())
@@ -360,7 +400,9 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_missing_index_bin_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
+        )
         overlap_skipgram.build_corpus_index(n=5)
         (config.OVERLAP_DIR / "skipgram_index.bin").unlink()
         index = overlap_skipgram.build_corpus_index(n=5)
@@ -373,7 +415,9 @@ class TestBuildCorpusIndex:
         # DEFAULT_N=5 in either family, so a *shorter* text than this
         # produces zero postings and an empty (un-truncatable) file.
         _add_parsed_item(
-            ledger_con, tmp_path, "smith_2024",
+            ledger_con,
+            tmp_path,
+            "smith_2024",
             "the validation of a digital twin requires continuous comparison "
             "against measurements taken from the physical asset",
         )
@@ -387,7 +431,9 @@ class TestBuildCorpusIndex:
 
     def test_postings_for_gram_returns_citekey_page_position(self, ledger_con, tmp_path):
         _add_parsed_item(
-            ledger_con, tmp_path, "smith_2024",
+            ledger_con,
+            tmp_path,
+            "smith_2024",
             "the validation of a digital twin requires continuous comparison "
             "against measurements taken from the physical asset",
         )

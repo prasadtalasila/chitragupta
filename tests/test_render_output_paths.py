@@ -59,9 +59,7 @@ class TestOutputDir:
             isolated_config.RENDERED_DIR
         )
 
-    def test_a_parent_escaping_argument_cannot_steer_the_output(
-        self, isolated_config, tmp_path
-    ):
+    def test_a_parent_escaping_argument_cannot_steer_the_output(self, isolated_config, tmp_path):
         # `..` is gone by the time anything is compared, because both
         # sides are resolved first -- so this names a draft outside
         # content/drafts/ and gets the flat directory, not a write into
@@ -69,9 +67,7 @@ class TestOutputDir:
         escaping = isolated_config.DRAFTS_DIR / ".." / ".." / "outside" / "draft.md"
         assert render_output._output_dir(escaping) == isolated_config.RENDERED_DIR
 
-    def test_a_symlinked_draft_is_judged_by_where_it_really_lives(
-        self, isolated_config, tmp_path
-    ):
+    def test_a_symlinked_draft_is_judged_by_where_it_really_lives(self, isolated_config, tmp_path):
         # The draft's path says content/drafts/dt/, but the file is
         # elsewhere on disk. Mirroring the name rather than the reality
         # would be a directory this project doesn't own.
@@ -82,9 +78,7 @@ class TestOutputDir:
         link_dir.mkdir(parents=True)
         (link_dir / "survey.md").symlink_to(real)
 
-        assert render_output._output_dir(link_dir / "survey.md") == (
-            isolated_config.RENDERED_DIR
-        )
+        assert render_output._output_dir(link_dir / "survey.md") == (isolated_config.RENDERED_DIR)
 
     def test_a_mirrored_directory_that_escapes_is_refused(self, isolated_config, tmp_path):
         # content/rendered/dt/ already exists as a symlink out of

@@ -33,8 +33,8 @@ def _figure_repair_hint(input_arg: str) -> str:
     named = ", ".join(refs)
     return (
         f"\n[figure] This draft has a TikZ figure ({named}). If the error above "
-        "names one, run the draft-reviser skill: \"the TikZ figure <file> fails to "
-        "compile; repair it or drop the figure\". A figure that does not compile "
+        'names one, run the draft-reviser skill: "the TikZ figure <file> fails to '
+        'compile; repair it or drop the figure". A figure that does not compile '
         "here will not compile in the document that \\input-s this draft either."
     )
 
@@ -54,37 +54,46 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
-    parser.add_argument("--format", dest="output_format", default="pdf",
-                        help="Output format (default: pdf)")
-    parser.add_argument("--documentclass", default="article",
-                        help="LaTeX documentclass (default: article)")
+    parser.add_argument(
+        "--format", dest="output_format", default="pdf", help="Output format (default: pdf)"
+    )
+    parser.add_argument(
+        "--documentclass", default="article", help="LaTeX documentclass (default: article)"
+    )
     parser.add_argument("--fontsize", default="12pt", help="LaTeX font size (default: 12pt)")
     parser.add_argument(
-        "--papersize", default="a4",
+        "--papersize",
+        default="a4",
         help='LaTeX paper size, without the "paper" suffix pandoc appends itself (default: a4)',
     )
-    parser.add_argument("--margin", default="1in",
-                        help="Page margin, passed to the geometry package "
-                             "(default: 1in)")
     parser.add_argument(
-        "--csl", default=None,
+        "--margin", default="1in", help="Page margin, passed to the geometry package (default: 1in)"
+    )
+    parser.add_argument(
+        "--csl",
+        default=None,
         help=f"CSL style for citations and the bibliography (default: {config.CSL_STYLE_PATH})",
     )
     parser.add_argument(
-        "--output-dir", default=None,
+        "--output-dir",
+        default=None,
         help="Write the output here instead of content/rendered/<mirrored path> "
-             "-- for a book unit, the directory book.tex \\input-s it from. "
-             "Confined to content/ like every other path this writes",
+        "-- for a book unit, the directory book.tex \\input-s it from. "
+        "Confined to content/ like every other path this writes",
     )
     parser.add_argument(
-        "--fragment", action="store_true",
+        "--fragment",
+        action="store_true",
         help="Emit an \\input-able LaTeX fragment (no preamble) whose top "
-             "heading is a chapter, for assembling a book -- see docs/BOOKS.md",
+        "heading is a chapter, for assembling a book -- see docs/BOOKS.md",
     )
     parser.add_argument(
-        "--no-collapse-citations", dest="collapse_citations", action="store_false", default=None,
+        "--no-collapse-citations",
+        dest="collapse_citations",
+        action="store_false",
+        default=None,
         help="Render a consecutive run as [3], [4], [5], [6] instead of [3]-[6] "
-             "-- i.e. leave the CSL style exactly as it is on disk",
+        "-- i.e. leave the CSL style exactly as it is on disk",
     )
     return parser
 
@@ -110,9 +119,15 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         out_path = render(
-            args.input, args.output_format, args.documentclass,
-            args.fontsize, args.papersize, args.margin,
-            args.csl, args.collapse_citations, args.output_dir,
+            args.input,
+            args.output_format,
+            args.documentclass,
+            args.fontsize,
+            args.papersize,
+            args.margin,
+            args.csl,
+            args.collapse_citations,
+            args.output_dir,
             fragment=args.fragment,
         )
     except MissingBinary as exc:

@@ -55,7 +55,7 @@ class TestClaims:
             "and validating these systems\n"
             "[@zampetti_continuous_2023].\n"
         )
-        (line, citekey, claim), = cp.claims(draft)
+        ((line, citekey, claim),) = cp.claims(draft)
 
         assert citekey == "zampetti_continuous_2023"
         assert line == 3, "line number still points at the citation itself"
@@ -75,12 +75,12 @@ class TestClaims:
 
     def test_does_not_split_on_abbreviations(self, isolated_config):
         draft = "As Fig. 1 shows, the loop closes [@a_2024].\n"
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim.startswith("As Fig. 1 shows")
 
     def test_strips_citation_markup_from_the_claim(self, isolated_config):
         draft = "Digital twins close the loop [@a_2024].\n"
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert "[@" not in claim
         assert claim == "Digital twins close the loop."
 
@@ -88,7 +88,7 @@ class TestClaims:
         """This text is quoted back to a reviewer, so "processes , or"
         reads as sloppiness in the draft rather than in this tool."""
         draft = "Systems integrate computation [@a_2024], or so it is claimed.\n"
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "Systems integrate computation, or so it is claimed."
         assert "  " not in claim
 
@@ -124,8 +124,12 @@ class TestBlockShapedClaims:
     def test_table_cells_read_as_prose(self, isolated_config):
         found = {k: c for _, k, c in cp.claims(self.TABLE)}
 
-        assert found["a_2024"] == "Physics-based -- Known structural equations -- Simulating a bridge"
-        assert "|" not in found["a_2024"], "a raw pipe becomes a wall of \\textbar{} in the tex render"
+        assert (
+            found["a_2024"] == "Physics-based -- Known structural equations -- Simulating a bridge"
+        )
+        assert "|" not in found["a_2024"], (
+            "a raw pipe becomes a wall of \\textbar{} in the tex render"
+        )
         assert "---" not in found["b_2024"], "the |---|---| separator row is not content"
 
     def test_two_citations_in_one_table_are_told_apart(self, isolated_config):
@@ -138,7 +142,9 @@ class TestBlockShapedClaims:
         """Whole-table claims inflate the denominator -- measured at ~4x on
         a real draft -- pushing a genuinely supported citation under the
         band thresholds."""
-        _add_item("a_2024", parsed_text="known structural equations simulating a bridge deck\fpage two")
+        _add_item(
+            "a_2024", parsed_text="known structural equations simulating a bridge deck\fpage two"
+        )
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.TABLE)
@@ -154,8 +160,11 @@ class TestBlockShapedClaims:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.TABLE)
 
-        quoted = [line for line in cp.render_markdown(cp.build_report(path)).splitlines()
-                  if line.startswith("> ")]
+        quoted = [
+            line
+            for line in cp.render_markdown(cp.build_report(path)).splitlines()
+            if line.startswith("> ")
+        ]
         assert quoted, "the report quotes the citing claim"
         assert not any("|" in line for line in quoted)
 
@@ -211,7 +220,7 @@ class TestBlockShapedClaims:
 
     def test_an_escaped_pipe_stays_inside_its_cell(self, isolated_config):
         draft = "| Notation | a \\| b means either [@a_2024] |\n"
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "Notation -- a \\| b means either"
 
     def test_prose_paragraphs_are_untouched_by_block_splitting(self, isolated_config):
@@ -222,8 +231,11 @@ class TestBlockShapedClaims:
             "and validating these systems\n"
             "[@a_2024]. A second sentence follows it.\n"
         )
-        (_, _, claim), = cp.claims(draft)
-        assert claim == "Simulation has become a cornerstone of developing and validating these systems."
+        ((_, _, claim),) = cp.claims(draft)
+        assert (
+            claim
+            == "Simulation has become a cornerstone of developing and validating these systems."
+        )
 
 
 class TestLatexBlockShapedClaims:
@@ -262,7 +274,9 @@ class TestLatexBlockShapedClaims:
 
         for noise in ("begin", "tabular", "lll", "toprule", "midrule", "&", "\\\\"):
             assert noise not in found["a_2024"], f"{noise!r} is markup, not a claim"
-        assert found["a_2024"] == "Ontology-driven -- Shared semantic model -- Heavy modelling effort"
+        assert (
+            found["a_2024"] == "Ontology-driven -- Shared semantic model -- Heavy modelling effort"
+        )
 
     def test_a_row_wrapped_across_lines_is_one_claim(self, isolated_config):
         """A LaTeX row ends at `\\\\`, so unlike a markdown row it can span
@@ -276,12 +290,14 @@ class TestLatexBlockShapedClaims:
         )
         found = {k: c for _, k, c in cp.claims(draft)}
 
-        assert found["a_2024"] == "Ontology-driven -- Shared semantic model with an agreed vocabulary"
+        assert (
+            found["a_2024"] == "Ontology-driven -- Shared semantic model with an agreed vocabulary"
+        )
         assert "Message contracts" not in found["a_2024"]
 
     def test_an_escaped_ampersand_stays_inside_its_cell(self, isolated_config):
         draft = "Research \\& development & funded separately \\citep{a_2024} \\\\\n"
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "Research \\& development -- funded separately"
 
     def test_an_itemize_item_is_the_claim_not_the_whole_list(self, isolated_config):
@@ -308,7 +324,7 @@ class TestLatexBlockShapedClaims:
 
     def test_an_item_opened_on_the_environment_line_drops_its_marker(self, isolated_config):
         draft = "\\begin{itemize} \\item data from sensors \\citep{a_2024}\n"
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "data from sensors"
 
     def test_a_sectioning_command_is_not_part_of_the_paragraph_below(self, isolated_config):
@@ -316,10 +332,12 @@ class TestLatexBlockShapedClaims:
             "\\section{Standards and interoperability}\n"
             "The prose beneath it, with no blank line between \\citep{a_2024}.\n"
         )
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "The prose beneath it, with no blank line between."
 
-    def test_prose_running_straight_into_a_tabular_does_not_leak_into_the_first_row(self, isolated_config):
+    def test_prose_running_straight_into_a_tabular_does_not_leak_into_the_first_row(
+        self, isolated_config
+    ):
         """A lead-in ending in a colon is the normal way to introduce a
         table, and `\\begin{tabular}` after it has no blank line before it.
         Unlike a markdown `|` row, the environment line is not itself a
@@ -332,7 +350,7 @@ class TestLatexBlockShapedClaims:
             "Physics-based & known structural laws \\citep{a_2024} \\\\\n"
             "\\end{tabular}\n"
         )
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "Physics-based -- known structural laws"
 
     def test_a_sectioning_command_after_prose_opens_its_own_block(self, isolated_config):
@@ -340,7 +358,7 @@ class TestLatexBlockShapedClaims:
             "A lead-in with no blank line after it:\n"
             "\\section{Standards and interoperability \\citep{a_2024}}\n"
         )
-        (_, _, claim), = cp.claims(draft)
+        ((_, _, claim),) = cp.claims(draft)
         assert claim == "Standards and interoperability"
         assert "lead-in" not in claim
         assert "\\section" not in claim, "the command is markup, not part of the heading"
@@ -353,8 +371,11 @@ class TestLatexBlockShapedClaims:
             "and validating these systems \\citep{a_2024}. A second\n"
             "sentence follows it.\n"
         )
-        (_, _, claim), = cp.claims(draft)
-        assert claim == "Simulation has become a cornerstone of developing and validating these systems."
+        ((_, _, claim),) = cp.claims(draft)
+        assert (
+            claim
+            == "Simulation has become a cornerstone of developing and validating these systems."
+        )
 
 
 class TestScoring:
@@ -362,11 +383,15 @@ class TestScoring:
         """The reason this uses overlap rather than verbatim n-grams:
         a paraphrase keeps content words while changing order and
         function words, and would score zero under exact matching."""
-        passage = cp.Passage(page=1, words=cp.distinctive(
-            "The digital twin supports what-if analysis of environmental changes"))
+        passage = cp.Passage(
+            page=1,
+            words=cp.distinctive(
+                "The digital twin supports what-if analysis of environmental changes"
+            ),
+        )
         score, best = cp.score_claim(
-            "What-if analysis of environmental change is supported by the twin",
-            [passage])
+            "What-if analysis of environmental change is supported by the twin", [passage]
+        )
         assert score > 0.5
         assert best is passage
 
@@ -414,8 +439,10 @@ class TestReport:
 
     def test_markdown_quotes_only_when_reading_order_exists(self, isolated_config):
         _add_item("quotable_2024", parsed_text="ignored\fignored")
-        _sidecar("quotable_2024", [{"text": "Hysteresis prevents relay chatter.",
-                                    "label": "text", "page": 7}])
+        _sidecar(
+            "quotable_2024",
+            [{"text": "Hysteresis prevents relay chatter.", "label": "text", "page": 7}],
+        )
         _add_item("paged_2024", parsed_text="hysteresis relay chatter\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -461,7 +488,9 @@ class TestWriteReportAndCli:
         assert written["md"] == config.REVIEW_DIR / "d.provenance.md"
         assert written["md"].exists()
 
-    def test_missing_render_binary_warns_and_still_returns_md(self, isolated_config, monkeypatch, capsys):
+    def test_missing_render_binary_warns_and_still_returns_md(
+        self, isolated_config, monkeypatch, capsys
+    ):
         from chitragupta import render_output
 
         def raise_missing(*a, **k):
@@ -515,7 +544,9 @@ class TestWriteReportAndCli:
 
         def raise_called_process_error(*a, **k):
             raise subprocess.CalledProcessError(
-                43, ["pandoc"], output="",
+                43,
+                ["pandoc"],
+                output="",
                 stderr="! LaTeX Error: Unicode character not set up for use with LaTeX.\n",
             )
 
@@ -534,7 +565,10 @@ class TestWriteReportAndCli:
         assert "LaTeX Error" in err
 
     def test_pandoc_failure_with_no_stderr_falls_back_to_the_exception(
-        self, isolated_config, monkeypatch, capsys,
+        self,
+        isolated_config,
+        monkeypatch,
+        capsys,
     ):
         """capture_output=True always sets .stderr on the CalledProcessError
         render() raises, but the `exc.stderr or exc` fallback exists for a
@@ -663,11 +697,17 @@ class TestJsonPayload:
 
 
 class TestBands:
-    @pytest.mark.parametrize("score,expected", [
-        (0.0, "no support found"), (0.19, "no support found"),
-        (0.20, "weak"), (0.49, "weak"),
-        (0.50, "supported"), (1.0, "supported"),
-    ])
+    @pytest.mark.parametrize(
+        "score,expected",
+        [
+            (0.0, "no support found"),
+            (0.19, "no support found"),
+            (0.20, "weak"),
+            (0.49, "weak"),
+            (0.50, "supported"),
+            (1.0, "supported"),
+        ],
+    )
     def test_band_boundaries(self, isolated_config, score, expected):
         assert cp._band(score) == expected
 
@@ -685,7 +725,7 @@ class TestEdgeShapes:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Intro paragraph.\n\nThe hysteresis relay matters [@a_2024].")
 
-        (_, _, claim), = cp.claims(path.read_text())
+        ((_, _, claim),) = cp.claims(path.read_text())
         assert claim == "The hysteresis relay matters."
 
     def test_citekey_not_in_any_sentence_falls_back_to_the_paragraph(self, isolated_config):
@@ -742,15 +782,14 @@ class TestEdgeShapes:
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            "Hysteresis prevents chatter [@a_2024].\n"
-            "\n"
-            "The relay depends on hysteresis [@a_2024].\n"
+            "Hysteresis prevents chatter [@a_2024].\n\nThe relay depends on hysteresis [@a_2024].\n"
         )
 
         calls = []
         real = cp.source_passages
-        monkeypatch.setattr(cp, "source_passages",
-                            lambda con, key: calls.append(key) or real(con, key))
+        monkeypatch.setattr(
+            cp, "source_passages", lambda con, key: calls.append(key) or real(con, key)
+        )
 
         report = cp.build_report(path)
 
@@ -781,8 +820,7 @@ class TestReportPathMirrorsTheDraft:
             paths[topic] = cp.write_report(draft, ["md"])["md"]
 
         assert paths["topic-a"] != paths["topic-b"], (
-            "both topics wrote the same provenance report; one silently "
-            "overwrote the other"
+            "both topics wrote the same provenance report; one silently overwrote the other"
         )
         assert paths["topic-a"] == config.REVIEW_DIR / "topic-a" / "survey.provenance.md"
         assert paths["topic-b"] == config.REVIEW_DIR / "topic-b" / "survey.provenance.md"

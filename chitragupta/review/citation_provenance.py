@@ -186,8 +186,14 @@ def build_report(draft_path: Path) -> Report:
             score, passage = score_claim(claim, cache[citekey])
             note = report.unreadable.get(citekey)
             report.findings.append(
-                Finding(line=line_no, citekey=citekey, claim=claim,
-                        score=score, passage=passage, note=note)
+                Finding(
+                    line=line_no,
+                    citekey=citekey,
+                    claim=claim,
+                    score=score,
+                    passage=passage,
+                    note=note,
+                )
             )
     # Worst first: the report should open on what deserves attention,
     # not make a reviewer read forty entries to find three.
@@ -207,7 +213,8 @@ def render_markdown(report: Report) -> str:
     weak = config.PROVENANCE_WEAK_SCORE
     good = config.PROVENANCE_GOOD_SCORE
     lines = review.header(
-        report.draft, "provenance",
+        report.draft,
+        "provenance",
         # shlex.join, not an f-string: a draft path with a space in it
         # would otherwise be recorded as two arguments, so the header
         # would name an invocation that doesn't reproduce the report.
@@ -274,9 +281,13 @@ def _summary_lines(report: Report) -> list[str]:
         lines += ["## Sources that could not be read", ""]
         for citekey, reason in sorted(report.unreadable.items()):
             lines.append(f"- `{citekey}`: {reason}")
-        lines += ["", "Findings for these show a score of 0 because there was "
-                      "nothing to compare against, not because the claim is "
-                      "unsupported.", ""]
+        lines += [
+            "",
+            "Findings for these show a score of 0 because there was "
+            "nothing to compare against, not because the claim is "
+            "unsupported.",
+            "",
+        ]
     return lines
 
 
@@ -284,8 +295,7 @@ def _finding_lines(finding: Finding) -> list[str]:
     """One finding's body: the claim, then the best-match passage or the
     stated reason there is none."""
     lines = [
-        f"#### Line {finding.line} -- `[@{finding.citekey}]` "
-        f"({finding.score:.0%} match)",
+        f"#### Line {finding.line} -- `[@{finding.citekey}]` ({finding.score:.0%} match)",
         "",
         f"> {finding.claim}" if finding.claim else "> (no sentence text)",
         "",
@@ -293,8 +303,7 @@ def _finding_lines(finding: Finding) -> list[str]:
     if finding.note:
         lines += [f"*Source unavailable: {finding.note}*", ""]
     elif finding.passage is None:
-        lines += ["*No passage in the source matched any distinctive word "
-                  "from this sentence.*", ""]
+        lines += ["*No passage in the source matched any distinctive word from this sentence.*", ""]
     elif finding.passage.quotable:
         page = f", p.{finding.passage.page}" if finding.passage.page else ""
         lines += [f"Best match in the source{page}:", ""]
@@ -362,10 +371,12 @@ def provenance_payload(report: Report, command: str) -> dict:
     what was found.
     """
     payload = review.envelope(report.draft, "provenance", command)
-    payload.update({
-        "unreadable": report.unreadable,
-        "findings": [published(finding) for finding in report.findings],
-    })
+    payload.update(
+        {
+            "unreadable": report.unreadable,
+            "findings": [published(finding) for finding in report.findings],
+        }
+    )
     return payload
 
 
@@ -409,16 +420,20 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
         )
     parser.add_argument("draft", help="Markdown draft to check")
     parser.add_argument(
-        "--formats", default="md,tex,pdf",
+        "--formats",
+        default="md,tex,pdf",
         help="Additional formats to render beside the Markdown report "
-             "(default: md,tex,pdf). The .md is always written -- it is the "
-             "report; tex/pdf are renders of it, and need pandoc/pdflatex "
-             "on PATH.",
+        "(default: md,tex,pdf). The .md is always written -- it is the "
+        "report; tex/pdf are renders of it, and need pandoc/pdflatex "
+        "on PATH.",
     )
-    parser.add_argument("--json", action="store_true",
-                        help="Print the findings as JSON instead of just the "
-                             "written-files summary. The .json sibling is filed "
-                             "beside the Markdown report either way.")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of just the "
+        "written-files summary. The .json sibling is filed "
+        "beside the Markdown report either way.",
+    )
     return parser
 
 

@@ -86,7 +86,7 @@ BANNER = (
     "> **Review aid, not a gate.** This report is evidence for a human "
     "judgement, never a verdict. A driver may read it back; no draft is "
     "blocked by what it says. See SOUL.md, and "
-    "docs/ARCHITECTURE.md's \"Layer 4: the review layer\"."
+    'docs/ARCHITECTURE.md\'s "Layer 4: the review layer".'
 )
 
 
@@ -273,9 +273,7 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
 
     for fmt in remaining:
         try:
-            written[fmt] = render_output.render(
-                str(md_path), fmt, output_dir=md_path.parent
-            )
+            written[fmt] = render_output.render(str(md_path), fmt, output_dir=md_path.parent)
         except render_output.MissingBinary as exc:
             print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
         except render_output.OutsideContentDir as exc:
@@ -294,8 +292,9 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
             # as warn-and-continue rather than a crash; do the same here
             # so one unrenderable format doesn't take out the md/tex
             # formats that did succeed.
-            print(f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}",
-                  file=sys.stderr)
+            print(
+                f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}", file=sys.stderr
+            )
     return written
 
 

@@ -39,7 +39,7 @@ globally unique; the other two are directories any distribution may write
 into.
 
 | | Value | Uniqueness enforced by |
-|---|---|---|
+| --- | --- | --- |
 | Distribution (the PyPI project) | `chitragupta-cli` | **PyPI, globally** |
 | Import package (`site-packages/`) | `chitragupta` | nobody -- first writer, then overwrite |
 | Console scripts (venv `bin/`) | `chitragupta`, `cg` | nobody -- same |
@@ -91,7 +91,7 @@ command already has -- this is a front door, not a redesign.
 ### 📦 The package itself
 
 | Command | What it does |
-|---|---|
+| --- | --- |
 | `chitragupta init [DIR] [--force] [--dry-run]` | Scaffold a project directory -- `config.toml`, `.claude/` skills and hooks, `papers/`, `content/`, `assets/`, the prose docs. What the release zip ships today |
 | `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution. Exits 0 on findings -- an aid, never a gate |
 | `chitragupta install os-deps\|gpu-torch` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do. Other stages are refused by name with the pip equivalent |
@@ -100,7 +100,7 @@ command already has -- this is a front door, not a redesign.
 ### 📚 `corpus` -- the deterministic run
 
 | Command | Flags |
-|---|---|
+| --- | --- |
 | `chitragupta corpus sync` | `--reparse`, `--remove-stale` |
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
 | `chitragupta corpus topics` | `--topic` |
@@ -108,7 +108,7 @@ command already has -- this is a front door, not a redesign.
 ### ✍ `draft` -- work on one draft
 
 | Command | Subcommands / flags |
-|---|---|
+| --- | --- |
 | `chitragupta draft gate <file>...` | -- (takes no options; this is the hard gate) |
 | `chitragupta draft references <file>` | `--heading` |
 | `chitragupta draft evidence <file>` | `--format`, `--output-dir` |
@@ -123,7 +123,7 @@ command already has -- this is a front door, not a redesign.
 ### 🔍 `review` -- read-only aids, no gate
 
 | Command | Subcommands / flags |
-|---|---|
+| --- | --- |
 | `chitragupta review provenance <draft>` | `--formats` |
 | `chitragupta review verbatim` | `overlap`, `scan`, `recheck`, `locate` |
 | `chitragupta review coverage <draft>` | `--query` (required, repeatable), `--k`, `--write`, `--formats` |
@@ -133,8 +133,8 @@ command already has -- this is a front door, not a redesign.
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
-| Command | Flags |
-|---|---|
+| Command              | Flags                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
 That is 4 layers and 20 verbs and aids (3 + 10 + 6 + 1), plus 3
@@ -193,7 +193,7 @@ artefact it should have been, and it is written as the objections rather
 than as a conclusion, because three of them survive.
 
 | The objection | Where it was written | What happened to it |
-|---|---|---|
+| --- | --- | --- |
 | Needs renaming the `src` layout | `pyproject.toml` header | **Retired by doing it.** A top-level `src` in `site-packages` claims the most generic name on the index; it is unshippable at any price |
 | "Don't add a second install path" | `DEVELOPER-AGENTS.md` (git checkout only) | **Survives as an invariant, not as a mechanism.** The goal was one place a dependency fact can be written. There are now two front doors to one `install_full_pipeline.sh` and one `pyproject.toml` |
 | Tier 1 must not be blockable by a broken venv | [CLI.md](CLI.md#-which-interpreter) | **Retired by keeping the module form** -- see above. The hooks never move to the console script |

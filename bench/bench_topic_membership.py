@@ -78,9 +78,12 @@ def score(name, weights, labels, columns, ratio=0.5):
 
     real = np.asarray(labels) != -1
     index = {topic_id: i for i, topic_id in enumerate(columns)}
-    in_set = np.array([keep[row, index[labels[row]]]
-                       if real[row] and labels[row] in index else False
-                       for row in range(len(weights))])
+    in_set = np.array(
+        [
+            keep[row, index[labels[row]]] if real[row] and labels[row] in index else False
+            for row in range(len(weights))
+        ]
+    )
     return {
         "mechanism": name,
         "topics_per_doc": float(counts[live].mean()) if live.any() else 0.0,
@@ -88,8 +91,7 @@ def score(name, weights, labels, columns, ratio=0.5):
         "top_share": float(top_share[ok].mean()) if ok.any() else 0.0,
         "uniform_baseline": 1.0 / weights.shape[1],
         "agreement": float(in_set[real].sum() / max(real.sum(), 1)),
-        "is_top": float((ranked_top[real] == np.asarray(labels)[real]).sum()
-                        / max(real.sum(), 1)),
+        "is_top": float((ranked_top[real] == np.asarray(labels)[real]).sum() / max(real.sum(), 1)),
     }
 
 
@@ -116,16 +118,19 @@ def self_check() -> None:
     result = score("fixture", weights, labels, columns)
     assert result["agreement"] == 1.0, (
         f"a correct column mapping over a clean 3-document fixture must "
-        f"score full agreement, got {result['agreement']}")
+        f"score full agreement, got {result['agreement']}"
+    )
     assert result["is_top"] == 1.0, (
-        f"the top-ranked topic must match the assigned one here, got {result['is_top']}")
+        f"the top-ranked topic must match the assigned one here, got {result['is_top']}"
+    )
     # The mapping this guards against: sorted(set(labels)) == [2, 5],
     # not [5, 2] -- using it instead degrades agreement to 1/3 on this
     # same fixture, verified directly rather than asserted from memory.
     wrong = score("wrong-mapping", weights, labels, sorted(set(labels)))
     assert wrong["agreement"] < result["agreement"], (
         "the wrong column mapping did not degrade agreement on this fixture -- "
-        "the fixture no longer exercises the bug this check exists for")
+        "the fixture no longer exercises the bug this check exists for"
+    )
 
 
 def main(argv=None):
@@ -149,15 +154,23 @@ def main(argv=None):
     fitted, topics = topic_model._fit(texts, embeddings, model)  # noqa: SLF001
     labels = [int(t) for t in topics]
     ids = sorted(set(labels) - {-1})
-    print(f"{len(citekeys)} documents, {len(ids)} topics, "
-          f"{100 * labels.count(-1) / len(labels):.0f}% outliers\n", flush=True)
+    print(
+        f"{len(citekeys)} documents, {len(ids)} topics, "
+        f"{100 * labels.count(-1) / len(labels):.0f}% outliers\n",
+        flush=True,
+    )
 
     assigned = np.asarray(labels)
     rows = []
 
-    rows.append(score("approximate_distribution",
-                      fitted.approximate_distribution(texts, min_similarity=0.0)[0],
-                      labels, ids))
+    rows.append(
+        score(
+            "approximate_distribution",
+            fitted.approximate_distribution(texts, min_similarity=0.0)[0],
+            labels,
+            ids,
+        )
+    )
 
     centred = embeddings - embeddings.mean(axis=0)
     centroids = np.array([centred[assigned == t].mean(axis=0) for t in ids])
@@ -168,8 +181,9 @@ def main(argv=None):
     distance = np.linalg.norm(reduced[:, None, :] - reduced_centroids[None, :, :], axis=2)
     rows.append(score("centroid-umap", 1.0 / (1.0 + distance), labels, ids))
 
-    mixture = GaussianMixture(n_components=len(ids), covariance_type="diag",
-                              random_state=42).fit(reduced)
+    mixture = GaussianMixture(n_components=len(ids), covariance_type="diag", random_state=42).fit(
+        reduced
+    )
     rows.append(score("gaussian-mixture", mixture.predict_proba(reduced), labels, ids))
 
     # HDBSCAN's columns are its own cluster ids. The mapping onto
@@ -178,26 +192,44 @@ def main(argv=None):
     cluster_labels = [int(label) for label in fitted.hdbscan_model.labels_]
     cluster_columns = sorted(set(cluster_labels) - {-1})
     renumbered = {cluster: topic for cluster, topic in zip(cluster_labels, labels)}
-    rows.append(score("hdbscan-soft",
-                      np.atleast_2d(np.asarray(all_points_membership_vectors(
-                          fitted.hdbscan_model))), labels,
-                      [renumbered[c] for c in cluster_columns]))
+    rows.append(
+        score(
+            "hdbscan-soft",
+            np.atleast_2d(np.asarray(all_points_membership_vectors(fitted.hdbscan_model))),
+            labels,
+            [renumbered[c] for c in cluster_columns],
+        )
+    )
 
-    print(f"{'mechanism':26} {'topics/doc':>10} {'plural':>7} {'top-share':>10} "
-          f"{'agreement':>10} {'is-top':>7}")
+    print(
+        f"{'mechanism':26} {'topics/doc':>10} {'plural':>7} {'top-share':>10} "
+        f"{'agreement':>10} {'is-top':>7}"
+    )
     for row in rows:
-        print(f"{row['mechanism']:26} {row['topics_per_doc']:>10.2f} "
-              f"{100 * row['plural_share']:>6.0f}% {row['top_share']:>10.2f} "
-              f"{100 * row['agreement']:>9.0f}% {100 * row['is_top']:>6.0f}%")
-    print(f"\nuniform top-share baseline: {rows[0]['uniform_baseline']:.2f} "
-          f"-- a mechanism at that number is saying nothing")
+        print(
+            f"{row['mechanism']:26} {row['topics_per_doc']:>10.2f} "
+            f"{100 * row['plural_share']:>6.0f}% {row['top_share']:>10.2f} "
+            f"{100 * row['agreement']:>9.0f}% {100 * row['is_top']:>6.0f}%"
+        )
+    print(
+        f"\nuniform top-share baseline: {rows[0]['uniform_baseline']:.2f} "
+        f"-- a mechanism at that number is saying nothing"
+    )
 
     out = Path(__file__).resolve().parent / "results" / args.tag
     out.mkdir(parents=True, exist_ok=True)
     (out / "membership.json").write_text(
-        json.dumps({"n_docs": len(citekeys), "n_topics": len(ids),
-                    "model": config.EMBEDDING_MODEL, "rows": rows}, indent=2),
-        encoding="utf-8")
+        json.dumps(
+            {
+                "n_docs": len(citekeys),
+                "n_topics": len(ids),
+                "model": config.EMBEDDING_MODEL,
+                "rows": rows,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     print(f"wrote {out / 'membership.json'}")
     return 0
 

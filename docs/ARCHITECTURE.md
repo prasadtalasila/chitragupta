@@ -158,7 +158,7 @@ already exists, and `book-assembler` -- the only one that writes no
 prose -- which composes an already-drafted book from its accepted units.
 
 | Skill | Produces |
-|---|---|
+| --- | --- |
 | `survey-writer` | a survey, related-work or background section, topic-clustered, with a comparison table and a gap analysis |
 | `thesis-chapter-writer` | a research-question-driven chapter as a standalone LaTeX fragment you `\input` |
 | `textbook-chapter-writer` | an undergraduate chapter -- worked examples and exercises, for a reader who is studying |
@@ -245,7 +245,7 @@ ever reads what it produced.
 ```
 
 | Stage | What it produces | `--for-draft` |
-|---|---|---|
+| --- | --- | --- |
 | `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | scoped |
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
@@ -417,7 +417,7 @@ as equivalent to "the same": a passage shown to a reviewer as evidence is
 a specific span of a specific source.
 
 | Artifact | Stable across a re-run on unchanged input? |
-|---|---|
+| --- | --- |
 | `content/ledger.sqlite` rows | **Yes, except `last_synced`**, which is wall-clock and changes every run. `pdf_hash`, `status`, `parsed_path`, `failure_kind` and the bib columns are byte-stable |
 | `pdf_size`, `pdf_mtime_ns` | Stable only while the file is untouched. A re-export producing byte-identical PDFs with fresh mtimes changes `pdf_mtime_ns` -- which is what the stat-before-hash skip reads, so those documents are re-hashed (not re-parsed: the hash still matches) |
 | `content/parsed/<citekey>.txt`, `pdftotext` | **Yes** -- byte-identical, measured |
@@ -488,7 +488,7 @@ machine with only some of these still works. It reports the rest as
 unavailable rather than failing.
 
 | Capability | What it needs |
-|---|---|
+| --- | --- |
 | Parse bib file, track citekeys and PDF paths | `bibtexparser` (venv, main Poetry group) |
 | Extract PDF text | `pdftotext` (poppler-utils, `os-deps` stage) by default -- `docling` is an opt-in alternative, see [CONFIG.md](CONFIG.md#-backend-pdftotext-or-docling) |
 | Track parse status incrementally | stdlib `sqlite3` |
@@ -504,7 +504,7 @@ Three tiers, on purpose. [CLI.md](CLI.md#-which-interpreter) lists which
 tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
-|---|---|---|
+| --- | --- | --- |
 | 1 | bare `python`, stdlib only | `chitragupta.draft` (all nine commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
@@ -672,7 +672,7 @@ the first rung, and falls to the next when that one can't answer. A
 **rung** is one option in such a chain.
 
 | Ladder | Rungs, best first | Where |
-|---|---|---|
+| --- | --- | --- |
 | Evidence passages | the enrichment layer's `.passages.json` -> the corpus layer's `.passages.json` -> parsed text split on page breaks -> a fresh `pdftotext` run | `chitragupta/passages.py` |
 | Enrichment text source | `content/docling/<id>.md` -> the ledger's parsed `.txt` -> a fresh `pdftotext` run | `embed_index.get_text` |
 | Accelerator | one CUDA device per worker -> that worker falls back to the CPU on an out-of-memory error | `chitragupta/pdf_text.py` |
@@ -683,7 +683,7 @@ quietly and you may not notice, while a tier fails loudly and tells you
 what is missing.
 
 | Tier set | Options | What happens if the one you picked is unavailable |
-|---|---|---|
+| --- | --- | --- |
 | Parser backend | `pdftotext`, `docling` | `sync` warns and skips parsing. It does **not** silently substitute the other backend |
 | Interpreter | the three tiers above | `ModuleNotFoundError` |
 | Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + pdflatex) | reported as `missing-binary`. No format is silently downgraded to another |

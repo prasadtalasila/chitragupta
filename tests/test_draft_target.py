@@ -32,8 +32,7 @@ def dt():
     """A fresh module, so a monkeypatched REPO_ROOT cannot leak between tests."""
     if str(HOOKS) not in sys.path:
         sys.path.insert(0, str(HOOKS))
-    spec = importlib.util.spec_from_file_location("draft_target",
-                                                  HOOKS / "draft_target.py")
+    spec = importlib.util.spec_from_file_location("draft_target", HOOKS / "draft_target.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -54,18 +53,21 @@ class TestMalformedStdinFailsOpen:
     "no file path was given", and a helper that raises on one is a hook
     that stops reporting -- for the gate, that is enforcement lost."""
 
-    @pytest.mark.parametrize("payload,why", [
-        ("{not json", "invalid JSON syntax"),
-        ("", "empty stdin"),
-        ("[]", "valid JSON that is not an object"),
-        ('"a string"', "valid JSON that is a bare scalar"),
-        ('{"tool_input": []}', "tool_input of the wrong shape"),
-        ('{"tool_input": null}', "tool_input explicitly null"),
-        ('{}', "no tool_input at all"),
-        ('{"tool_input": {}}', "no file_path at all"),
-        ('{"tool_input": {"file_path": ""}}', "an empty file_path"),
-        ('{"tool_input": {"file_path": 7}}', "a file_path that is not a string"),
-    ])
+    @pytest.mark.parametrize(
+        "payload,why",
+        [
+            ("{not json", "invalid JSON syntax"),
+            ("", "empty stdin"),
+            ("[]", "valid JSON that is not an object"),
+            ('"a string"', "valid JSON that is a bare scalar"),
+            ('{"tool_input": []}', "tool_input of the wrong shape"),
+            ('{"tool_input": null}', "tool_input explicitly null"),
+            ("{}", "no tool_input at all"),
+            ('{"tool_input": {}}', "no file_path at all"),
+            ('{"tool_input": {"file_path": ""}}', "an empty file_path"),
+            ('{"tool_input": {"file_path": 7}}', "a file_path that is not a string"),
+        ],
+    )
     def test_returns_none(self, dt, payload, why):
         assert dt.from_stdin(stdin_of(payload)) is None, why
 
@@ -84,13 +86,16 @@ class TestContainment:
         nested.parent.mkdir(parents=True)
         assert dt.target(str(nested), root) == nested.resolve()
 
-    @pytest.mark.parametrize("relative,why", [
-        ("notes.md", "the repo root itself"),
-        ("content/notes.md", "content/ but not drafts/"),
-        ("content/rendered/survey.md", "a sibling of drafts/"),
-        ("content/drafts/../../notes.md", "escaping via .."),
-        ("content/draftsy/survey.md", "a directory whose name merely starts the same"),
-    ])
+    @pytest.mark.parametrize(
+        "relative,why",
+        [
+            ("notes.md", "the repo root itself"),
+            ("content/notes.md", "content/ but not drafts/"),
+            ("content/rendered/survey.md", "a sibling of drafts/"),
+            ("content/drafts/../../notes.md", "escaping via .."),
+            ("content/draftsy/survey.md", "a directory whose name merely starts the same"),
+        ],
+    )
     def test_a_write_elsewhere_is_not_a_draft(self, dt, root, relative, why):
         assert dt.target(relative, root) is None, why
 
@@ -114,9 +119,16 @@ class TestSuffixes:
     def test_the_two_this_pipeline_writes(self, dt, root, name):
         assert dt.target(f"content/drafts/{name}", root) is not None
 
-    @pytest.mark.parametrize("name", [
-        "notes.txt", "data.json", "scope.md.bak", "noextension", "draft.MD",
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "notes.txt",
+            "data.json",
+            "scope.md.bak",
+            "noextension",
+            "draft.MD",
+        ],
+    )
     def test_anything_else_is_ignored(self, dt, root, name):
         """Including `.MD`: the suffix check is exact, and a case-insensitive
         one would be a guess about a filesystem rather than about this
@@ -135,14 +147,13 @@ class TestPathsTheFilesystemRefuses:
     def test_an_embedded_null_byte_is_not_a_draft(self, dt, root):
         assert dt.target("content/drafts/a\0b.md", root) is None
 
-    def test_a_null_byte_through_the_stdin_path_is_not_a_draft(self, dt, root,
-                                                               monkeypatch):
+    def test_a_null_byte_through_the_stdin_path_is_not_a_draft(self, dt, root, monkeypatch):
         monkeypatch.setattr(dt, "REPO_ROOT", root)
-        assert dt.from_stdin(
-            stdin_of({"tool_input": {"file_path": "content/drafts/a\0b.md"}})) is None
+        assert (
+            dt.from_stdin(stdin_of({"tool_input": {"file_path": "content/drafts/a\0b.md"}})) is None
+        )
 
-    def test_a_very_long_path_is_judged_on_its_location_like_any_other(
-            self, dt, root):
+    def test_a_very_long_path_is_judged_on_its_location_like_any_other(self, dt, root):
         """Not an error case, and worth pinning as such: `resolve()` does
         not stat, so a path past the OS length limit raises nothing here.
         `OSError` stays in the guard for the platforms where it would."""
@@ -158,7 +169,8 @@ class TestPathResolution:
         assert dt.target("content/drafts/rel.md", root) == draft.resolve()
 
     def test_the_root_is_not_taken_from_the_working_directory(
-            self, dt, root, tmp_path, monkeypatch):
+        self, dt, root, tmp_path, monkeypatch
+    ):
         """A hook runs from wherever the harness happens to be."""
         elsewhere = tmp_path / "cwd"
         elsewhere.mkdir()
@@ -175,18 +187,19 @@ class TestPathResolution:
         """Both hooks read `REPO_ROOT` through the module rather than
         copying it at import, which is what lets one patch relocate both."""
         monkeypatch.setattr(dt, "REPO_ROOT", root)
-        assert dt.target("content/drafts/rel.md") == (
-            root / "content" / "drafts" / "rel.md").resolve()
+        assert (
+            dt.target("content/drafts/rel.md") == (root / "content" / "drafts" / "rel.md").resolve()
+        )
 
 
 class TestFromStdin:
     def test_a_draft_payload_yields_its_path(self, dt, root, monkeypatch):
         monkeypatch.setattr(dt, "REPO_ROOT", root)
         draft = root / "content" / "drafts" / "survey.md"
-        assert dt.from_stdin(stdin_of({"tool_input": {"file_path": str(draft)}})) \
-            == draft.resolve()
+        assert dt.from_stdin(stdin_of({"tool_input": {"file_path": str(draft)}})) == draft.resolve()
 
     def test_a_non_draft_payload_yields_none(self, dt, root, monkeypatch):
         monkeypatch.setattr(dt, "REPO_ROOT", root)
-        assert dt.from_stdin(
-            stdin_of({"tool_input": {"file_path": str(root / "notes.md")}})) is None
+        assert (
+            dt.from_stdin(stdin_of({"tool_input": {"file_path": str(root / "notes.md")}})) is None
+        )

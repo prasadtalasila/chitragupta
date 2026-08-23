@@ -37,7 +37,9 @@ class TestFindDuplicates:
     def test_shared_doi_is_flagged(self):
         refs = [
             make_reference(citekey="a2024", title="Title A", doi="10.1000/xyz"),
-            make_reference(citekey="b2024", title="Title B (preprint)", doi="https://doi.org/10.1000/xyz"),
+            make_reference(
+                citekey="b2024", title="Title B (preprint)", doi="https://doi.org/10.1000/xyz"
+            ),
         ]
         groups = dedup.find_duplicates(refs)
         assert len(groups) == 1

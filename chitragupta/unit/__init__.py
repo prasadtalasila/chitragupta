@@ -57,14 +57,16 @@ def _parsed_spec(book: Path) -> tuple[str, dict]:
     """
     path = spec.spec_path(book)
     if not path.is_file():
-        raise UnitError(f"No spec at {path}. Write one with "
-                        f"`python -m chitragupta.draft spec init {book}`.")
+        raise UnitError(
+            f"No spec at {path}. Write one with `python -m chitragupta.draft spec init {book}`."
+        )
     text = path.read_text(encoding="utf-8")
     parsed = spec.parse(text)
     if parsed["problems"]:
         raise UnitError(
             f"{path} does not parse: {len(parsed['problems'])} problem(s). "
-            f"`python -m chitragupta.draft spec show {book}` lists them.")
+            f"`python -m chitragupta.draft spec show {book}` lists them."
+        )
     return text, parsed
 
 
@@ -94,12 +96,15 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
     text, parsed = _parsed_spec(book)
     found = next((entry for entry in parsed["units"] if entry["id"] == unit_id), None)
     if found is None:
-        raise UnitError(f"no unit `{unit_id}` in {spec.spec_path(book)}. It holds: "
-                        + ", ".join(entry["id"] for entry in parsed["units"]))
+        raise UnitError(
+            f"no unit `{unit_id}` in {spec.spec_path(book)}. It holds: "
+            + ", ".join(entry["id"] for entry in parsed["units"])
+        )
     if found["kind"] != "section":
         raise UnitError(
             f"`{unit_id}` is a {found['kind']}, not a section. The section is the "
-            f"generation unit; a {found['kind']} names no prose of its own.")
+            f"generation unit; a {found['kind']} names no prose of its own."
+        )
     return {
         "unit": unit_id,
         "title": found["title"],
@@ -142,9 +147,12 @@ def input_digest(built: dict) -> str:
         f"unit: {built['unit']}",
         f"in: {' > '.join(built['ancestors'])}",
         f"title: {built['title']}",
-        "brief:", built["brief"],
-        "sources:", *built["sources"],
-        "registries:", *built["registries"],
+        "brief:",
+        built["brief"],
+        "sources:",
+        *built["sources"],
+        "registries:",
+        *built["registries"],
     ]
     return spec.digest("\n".join(parts))
 
@@ -197,7 +205,8 @@ def state(book: Path, unit_id: str) -> str:
     if record is None:
         return "drafted"
     if record.get("input_digest") != input_digest(
-            contract(book, unit_id, record.get("sources", []))):
+        contract(book, unit_id, record.get("sources", []))
+    ):
         return "stale: inputs changed"
     if record.get("output_digest") != spec.digest(path.read_text(encoding="utf-8")):
         return "stale: draft changed since accepted"

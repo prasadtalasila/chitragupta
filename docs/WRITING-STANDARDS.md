@@ -166,7 +166,7 @@ past the point the argument survives. Leaving §2's literals to memory
 means they are checked only when someone remembers to.
 
 | Rule | Section | Decidable? | May a machine act on it unattended? |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Dialect matches `scope.md`'s `language:` | §8 | yes | yes |
 | No defect markers: "obviously", "simply", "of course", "clearly", "easy" | §2 | yes | yes |
 | "just", specifically | §2 | no | no -- the adverb ("just add the flag") and the adjective ("a just outcome") are not separable by string match, so it is reported for a human eye |
@@ -407,7 +407,7 @@ rather than a default.
 **The unit differs by genre. The rule does not.**
 
 | Genre | Unit | What that means |
-|---|---|---|
+| --- | --- | --- |
 | `survey`, `thesis-chapter`, `deep-research` | paragraph | A body paragraph closes on more than one citekey |
 | `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* -- see below. Individual paragraphs are free to be single-source; multi-source paragraphs are a distraction in a genre whose job is explanation |
 | `tutorial` | document | The body carries no citations at all, by design. The floor is on the lesson's derivation: it must not be a walkthrough of one source's procedure, and two or more distinct citekeys in "Where to go next" are the evidence that it is not |

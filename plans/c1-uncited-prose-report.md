@@ -95,7 +95,7 @@ corpus -- the same drafts the roadmap's own verbatim baseline uses.
 The naive reading (every sentence carrying no citekey is a finding):
 
 | Draft | Sentences | Uncited | Naive findings |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `survey.md` | 112 | 87 | 78% of the draft |
 | `book-chapter.md` | 103 | 98 | 95% of the draft |
 | `deep-research.md` | 51 | 38 | 75% of the draft |
@@ -155,7 +155,7 @@ them in blocks citing nothing.
 A sentence is not a claim, and raises no finding, when it is:
 
 | Excluded | Why, from the measurement |
-|---|---|
+| --- | --- |
 | **The reference list** -- everything from a heading titled `References` / `Bibliography` / `Works Cited` to the end of the draft | 40 of `survey.md`'s 87 naive findings. A bibliography entry is uncited prose by construction. The heading match must tolerate a section number: the real drafts write `## 7. References` |
 | **Headings**, Markdown and LaTeX | Also a splitter artefact: `## 1. The connection is the twin` splits into `1.` and the title, so a heading costs two findings, not one |
 | **Captions** -- `\caption{...}`, `![alt](...)`, and a block opening `Figure N.` / `Table N:` / `Listing N.` | Named in the issue |
@@ -195,7 +195,7 @@ So a genre declares whether uncited prose is **exceptional** or
 **ordinary**:
 
 | Genre | Uncited prose is | Findings raised |
-|---|---|---|
+| --- | --- | --- |
 | `survey`, `thesis-chapter`, `deep-research` | exceptional | yes, one per uncited sentence |
 | `textbook-chapter`, `tutorial` | ordinary | none. The counts are still reported |
 | unrecorded (no dossier, no `- genre:`) | exceptional | yes, and the report says the genre was not recorded |

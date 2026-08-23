@@ -19,7 +19,7 @@ documents evidence *you* weigh before deciding a draft is done. The two
 mirror the same draft path and are otherwise unalike:
 
 | | The dossier | A review report |
-|---|---|---|
+| --- | --- | --- |
 | Read by | usually an LLM, resuming a run | you, once, near the end |
 | Written | continuously, while drafting | on demand, after a draft exists |
 | If nobody reads it | the next revision pays twice | nothing happened; it was advisory |

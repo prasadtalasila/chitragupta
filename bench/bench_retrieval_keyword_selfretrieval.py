@@ -49,8 +49,14 @@ sys.path.insert(0, str(REPO))
 
 from chitragupta import bib_reader, ledger, retrieval  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
-    K_REPORT, K_POOL, DENSE_MODELS, RERANK_MODEL,
-    recall_at_k, ndcg_at_k, collapse_to_citekeys, _venv_python,
+    K_REPORT,
+    K_POOL,
+    DENSE_MODELS,
+    RERANK_MODEL,
+    recall_at_k,
+    ndcg_at_k,
+    collapse_to_citekeys,
+    _venv_python,
 )
 
 
@@ -58,8 +64,10 @@ def build_keyword_ground_truth():
     """One row per bib entry with a real `keywords` field and parsed
     text -- query is that entry's own keywords, joined; the correct
     answer is that entry's own citekey."""
-    parsed_citekeys = {r[0] for r in
-                       ledger.connect().execute("SELECT citekey FROM items WHERE parsed_path IS NOT NULL")}
+    parsed_citekeys = {
+        r[0]
+        for r in ledger.connect().execute("SELECT citekey FROM items WHERE parsed_path IS NOT NULL")
+    }
     rows = []
     for ref in bib_reader.read_library():
         keywords = ref.fields.get("keywords", "").strip()
@@ -116,7 +124,10 @@ def bm25_row(ground_truth):
     for row in ground_truth:
         results = retrieval.search(row["query"], k=K_REPORT)
         ranked_by_query[row["citekey"]] = [r.citekey for r in results]
-    return {"row": "BM25 (chitragupta/retrieval.py)", **score_keyword_rows(ranked_by_query, ground_truth)}
+    return {
+        "row": "BM25 (chitragupta/retrieval.py)",
+        **score_keyword_rows(ranked_by_query, ground_truth),
+    }
 
 
 def _dense_worker(ground_truth):
@@ -131,8 +142,9 @@ def _dense_worker(ground_truth):
         dense_ranked[key] = collapse_to_citekeys(hits)[:K_REPORT]
 
         scores = reranker.predict([(row["query"], hit["snippet"]) for hit in hits])
-        reranked_hits = [hit for _score, hit in
-                         sorted(zip(scores, hits), key=lambda pair: -pair[0])]
+        reranked_hits = [
+            hit for _score, hit in sorted(zip(scores, hits), key=lambda pair: -pair[0])
+        ]
         reranked[key] = collapse_to_citekeys(reranked_hits)[:K_REPORT]
     return dense_ranked, reranked
 
@@ -142,9 +154,12 @@ def dense_and_rerank_rows(model, ground_truth, tag):
     payload_path = BENCH_DIR / "results" / tag / f"_dense_worker_{model.rsplit('/', 1)[-1]}.json"
     payload_path.parent.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
-        [_venv_python(), str(Path(__file__)), "--dense-worker", model,
-         "--out", str(payload_path)],
-        env=env, cwd=str(REPO), capture_output=True, text=True, check=False,
+        [_venv_python(), str(Path(__file__)), "--dense-worker", model, "--out", str(payload_path)],
+        env=env,
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode != 0:
         print(result.stdout, file=sys.stderr)
@@ -180,8 +195,10 @@ def specter2_row(ground_truth):
         query_vector = em.embed_query(row["query"])
         ranked = sorted(all_citekeys, key=lambda c: -cosine(query_vector, paper_vectors[c]))
         ranked_by_query[row["citekey"]] = ranked[:K_REPORT]
-    return {"row": "SPECTER2 (adhoc_query + proximity, full corpus)",
-           **score_keyword_rows(ranked_by_query, ground_truth)}
+    return {
+        "row": "SPECTER2 (adhoc_query + proximity, full corpus)",
+        **score_keyword_rows(ranked_by_query, ground_truth),
+    }
 
 
 def _cascade_worker(ground_truth, shortlist_size):
@@ -206,20 +223,27 @@ def _cascade_worker(ground_truth, shortlist_size):
     ranked_by_query = {}
     for row in ground_truth:
         query_vector = em.embed_query(row["query"])
-        shortlist = sorted(all_citekeys,
-                           key=lambda c: -cosine(query_vector, paper_vectors[c]))[:shortlist_size]
+        shortlist = sorted(all_citekeys, key=lambda c: -cosine(query_vector, paper_vectors[c]))[
+            :shortlist_size
+        ]
 
         query_embedding = dense_model.encode([row["query"]], show_progress_bar=False).tolist()
-        raw = collection.query(query_embeddings=query_embedding, n_results=K_POOL,
-                               where={"citekey": {"$in": shortlist}})
-        hits = [{**meta, "snippet": doc[:500]}
-               for doc, meta in zip(raw["documents"][0], raw["metadatas"][0])]
+        raw = collection.query(
+            query_embeddings=query_embedding,
+            n_results=K_POOL,
+            where={"citekey": {"$in": shortlist}},
+        )
+        hits = [
+            {**meta, "snippet": doc[:500]}
+            for doc, meta in zip(raw["documents"][0], raw["metadatas"][0])
+        ]
         if not hits:
             ranked_by_query[row["citekey"]] = []
             continue
         scores = reranker.predict([(row["query"], hit["snippet"]) for hit in hits])
-        reranked_hits = [hit for _score, hit in
-                         sorted(zip(scores, hits), key=lambda pair: -pair[0])]
+        reranked_hits = [
+            hit for _score, hit in sorted(zip(scores, hits), key=lambda pair: -pair[0])
+        ]
         ranked_by_query[row["citekey"]] = collapse_to_citekeys(reranked_hits)[:K_REPORT]
     return ranked_by_query
 
@@ -229,9 +253,21 @@ def cascade_row(winning_model, ground_truth, tag, shortlist_size=50):
     payload_path = BENCH_DIR / "results" / tag / "_cascade_worker.json"
     payload_path.parent.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
-        [_venv_python(), str(Path(__file__)), "--cascade-worker", winning_model,
-         "--out", str(payload_path), "--shortlist-size", str(shortlist_size)],
-        env=env, cwd=str(REPO), capture_output=True, text=True, check=False,
+        [
+            _venv_python(),
+            str(Path(__file__)),
+            "--cascade-worker",
+            winning_model,
+            "--out",
+            str(payload_path),
+            "--shortlist-size",
+            str(shortlist_size),
+        ],
+        env=env,
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode != 0:
         print(result.stdout, file=sys.stderr)
@@ -239,8 +275,10 @@ def cascade_row(winning_model, ground_truth, tag, shortlist_size=50):
         raise RuntimeError(f"cascade worker exited {result.returncode}")
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
     ranked_by_query = dict(payload["ranked"])
-    return {"row": f"cascade: SPECTER2 shortlist({shortlist_size}) -> {winning_model} +rerank",
-           **score_keyword_rows(ranked_by_query, ground_truth)}
+    return {
+        "row": f"cascade: SPECTER2 shortlist({shortlist_size}) -> {winning_model} +rerank",
+        **score_keyword_rows(ranked_by_query, ground_truth),
+    }
 
 
 def main(argv=None):
@@ -257,23 +295,32 @@ def main(argv=None):
 
     if args.dense_worker:
         dense_ranked, reranked = _dense_worker(ground_truth)
-        Path(args.out).write_text(json.dumps({
-            "dense": list(dense_ranked.items()), "reranked": list(reranked.items()),
-        }), encoding="utf-8")
+        Path(args.out).write_text(
+            json.dumps(
+                {
+                    "dense": list(dense_ranked.items()),
+                    "reranked": list(reranked.items()),
+                }
+            ),
+            encoding="utf-8",
+        )
         return 0
 
     if args.cascade_worker:
         ranked_by_query = _cascade_worker(ground_truth, args.shortlist_size)
-        Path(args.out).write_text(json.dumps({"ranked": list(ranked_by_query.items())}),
-                                  encoding="utf-8")
+        Path(args.out).write_text(
+            json.dumps({"ranked": list(ranked_by_query.items())}), encoding="utf-8"
+        )
         return 0
 
     if not args.tag:
         print("--tag is required", file=sys.stderr)
         return 2
 
-    print(f"{len(ground_truth)} keyword-bearing, parsed bib entries "
-          f"(self-retrieval ground truth)", flush=True)
+    print(
+        f"{len(ground_truth)} keyword-bearing, parsed bib entries (self-retrieval ground truth)",
+        flush=True,
+    )
 
     rows = [bm25_row(ground_truth)]
     for model in DENSE_MODELS:
@@ -288,8 +335,10 @@ def main(argv=None):
 
     print(f"\n{'row':50}  {'n':>3}  recall@{K_REPORT}  ndcg@{K_REPORT}")
     for row in rows:
-        print(f"{row['row']:50}  {row['n_queries']:>3}  "
-              f"{row[f'recall@{K_REPORT}']:>9}  {row[f'ndcg@{K_REPORT}']:>8}")
+        print(
+            f"{row['row']:50}  {row['n_queries']:>3}  "
+            f"{row[f'recall@{K_REPORT}']:>9}  {row[f'ndcg@{K_REPORT}']:>8}"
+        )
 
     out_dir = BENCH_DIR / "results" / Path(args.tag).name
     out_dir.mkdir(parents=True, exist_ok=True)

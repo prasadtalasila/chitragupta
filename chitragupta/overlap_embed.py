@@ -64,7 +64,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import (
-    config, dossier, ledger, overlap_align, overlap_chroma, overlap_segments,
+    config,
+    dossier,
+    ledger,
+    overlap_align,
+    overlap_chroma,
+    overlap_segments,
 )
 
 # How many of a section's cited sources are aligned against, after the
@@ -97,11 +102,11 @@ class Scope:
     can: the dossier's section -> citekeys mapping, the chroma collection
     to shortlist against, and the ledger connection source passages come
     from."""
+
     citekeys_by_section: dict[str, list[str]]
     collection: object
     connection: object
-    embedder: overlap_chroma.Embedder = field(
-        default_factory=overlap_chroma.Embedder)
+    embedder: overlap_chroma.Embedder = field(default_factory=overlap_chroma.Embedder)
 
 
 def unavailable_reason(draft: Path) -> str | None:
@@ -162,8 +167,9 @@ def _dossier_scope(draft: Path) -> tuple[dict[str, list[str]] | None, str | None
             "the draft is not under content/drafts/, so it has no dossier -- "
             "this tier compares each section against the citekeys its dossier records"
         )
-    mapping = {title: keys for title, keys in
-               dossier.citekeys_by_section(directory).items() if keys}
+    mapping = {
+        title: keys for title, keys in dossier.citekeys_by_section(directory).items() if keys
+    }
     if not mapping:
         return None, (
             f"{directory}/sections.md records no citekeys for any section -- "
@@ -184,6 +190,7 @@ class SectionAlignment:
 
     `section` is the draft heading it was found under -- not published in
     the finding, but what `report` ranks within."""
+
     section: str
     citekey: str
     page: int
@@ -232,8 +239,11 @@ def align_draft(
     for section in sections:
         vectors = scope.embedder.encode([s.text for s in section.sentences])
         for citekey in overlap_chroma.shortlist(
-            scope.collection, scope.embedder, section.citekeys,
-            " ".join(s.text for s in section.sentences), SHORTLIST_SOURCES,
+            scope.collection,
+            scope.embedder,
+            section.citekeys,
+            " ".join(s.text for s in section.sentences),
+            SHORTLIST_SOURCES,
         ):
             if citekey not in sources:
                 sources[citekey] = _encoded_source(scope, citekey)
@@ -276,8 +286,10 @@ def report(alignments: list[SectionAlignment]) -> list[SectionAlignment]:
     for alignment in alignments:
         if per_section.get(alignment.section, 0) >= SECTION_LIMIT:
             continue
-        if any(other.word_start < alignment.word_end
-               and alignment.word_start < other.word_end for other in kept):
+        if any(
+            other.word_start < alignment.word_end and alignment.word_start < other.word_end
+            for other in kept
+        ):
             continue
         kept.append(alignment)
         per_section[alignment.section] = per_section.get(alignment.section, 0) + 1
@@ -299,19 +311,21 @@ def _align_section(
     scores = [[value - overlap_align.TAU for value in row] for row in cosines]
     found = []
     for alignment in overlap_align.align(scores):
-        draft_span = section.sentences[alignment.draft_start:alignment.draft_end]
-        source_span = source[alignment.source_start:alignment.source_end]
+        draft_span = section.sentences[alignment.draft_start : alignment.draft_end]
+        source_span = source[alignment.source_start : alignment.source_end]
         source_text = " ".join(s.text for s in source_span)
         matched = overlap_segments.matched_words(section, alignment.matched)
-        found.append(SectionAlignment(
-            section=section.title,
-            citekey=citekey,
-            page=min(s.page for s in source_span),
-            end_page=max(s.page for s in source_span),
-            score=alignment.score,
-            word_start=draft_span[0].word_start,
-            word_end=draft_span[-1].word_end,
-            matched_words=matched,
-            source_text=source_text,
-        ))
+        found.append(
+            SectionAlignment(
+                section=section.title,
+                citekey=citekey,
+                page=min(s.page for s in source_span),
+                end_page=max(s.page for s in source_span),
+                score=alignment.score,
+                word_start=draft_span[0].word_start,
+                word_end=draft_span[-1].word_end,
+                matched_words=matched,
+                source_text=source_text,
+            )
+        )
     return found

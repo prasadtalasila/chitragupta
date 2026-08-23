@@ -80,8 +80,11 @@ CONFIG_DEST = "config.toml"
 # `corpus sync` populates them.
 EMPTY_DIRS = (
     "papers",
-    "content/drafts", "content/dossiers", "content/specs",
-    "content/review", "content/rendered",
+    "content/drafts",
+    "content/dossiers",
+    "content/specs",
+    "content/review",
+    "content/rendered",
 )
 
 TOP_LEVEL = frozenset({CONFIG_DEST, *COPY_VERBATIM, "papers", "content"})
@@ -92,30 +95,44 @@ TOP_LEVEL = frozenset({CONFIG_DEST, *COPY_VERBATIM, "papers", "content"})
 # is design commentary aimed at a reader of the file, and printing forty
 # lines of it before the flags buries the two lines that answer "how do
 # I run this".
-DESCRIPTION = ("Scaffold a project directory -- config.toml, .claude/, "
-               "papers/, content/, assets/ and the prose docs.")
+DESCRIPTION = (
+    "Scaffold a project directory -- config.toml, .claude/, "
+    "papers/, content/, assets/ and the prose docs."
+)
 
 # What scripts/release.py's zip ships (every git-tracked top-level entry
 # minus its own EXCLUDE_TOP_LEVEL) that `init` deliberately does not
 # scaffold, each for a stated reason -- see the module docstring for why
 # this has to be a named set rather than an unremarked gap.
-DELIBERATE_DIFFERENCES = frozenset({
-    # Dev/checkout-only machinery: does something only inside a git
-    # checkout of this repository, or names a version/lock fact a `pip
-    # install` resolves independently at install time.
-    "poetry.lock", "poetry.toml", "pyproject.toml", "scripts", "docker",
-    "mkdocs.yml", ".gitattributes", ".markdownlint.yaml", ".pylintrc",
-    ".opencodereview",
-    # Audience is someone changing chitragupta's own source, which a
-    # pip-installed, init-ed project does not have -- #267 gives
-    # CLAUDE.md's routing table the "no src/ to change" row this implies.
-    "DEVELOPER-AGENTS.md", "DEVELOPER.md", "DOCKER.md",
-    # About the chitragupta *software itself*, not the user's own project.
-    "LICENSE", "CITATION.cff",
-    # The source code -- already installed via pip, not copied a second
-    # time into the user's project directory.
-    "chitragupta",
-})
+DELIBERATE_DIFFERENCES = frozenset(
+    {
+        # Dev/checkout-only machinery: does something only inside a git
+        # checkout of this repository, or names a version/lock fact a `pip
+        # install` resolves independently at install time.
+        "poetry.lock",
+        "poetry.toml",
+        "pyproject.toml",
+        "scripts",
+        "docker",
+        "mkdocs.yml",
+        ".gitattributes",
+        ".markdownlint.yaml",
+        ".pylintrc",
+        ".opencodereview",
+        # Audience is someone changing chitragupta's own source, which a
+        # pip-installed, init-ed project does not have -- #267 gives
+        # CLAUDE.md's routing table the "no src/ to change" row this implies.
+        "DEVELOPER-AGENTS.md",
+        "DEVELOPER.md",
+        "DOCKER.md",
+        # About the chitragupta *software itself*, not the user's own project.
+        "LICENSE",
+        "CITATION.cff",
+        # The source code -- already installed via pip, not copied a second
+        # time into the user's project directory.
+        "chitragupta",
+    }
+)
 
 
 def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
@@ -156,9 +173,11 @@ def _write_tree(src: Path, dst: Path, *, force: bool, dry_run: bool) -> list[str
     """
     if src.is_file():
         return [_write_one(src, dst, force=force, dry_run=dry_run)]
-    return [_write_one(f, dst / f.relative_to(src), force=force, dry_run=dry_run)
-            for f in sorted(src.rglob("*"))
-            if f.is_file() and "__pycache__" not in f.parts]
+    return [
+        _write_one(f, dst / f.relative_to(src), force=force, dry_run=dry_run)
+        for f in sorted(src.rglob("*"))
+        if f.is_file() and "__pycache__" not in f.parts
+    ]
 
 
 def _write_empty_dir(dst: Path, *, dry_run: bool) -> str:
@@ -179,10 +198,10 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
     """
     report = []
     for name in COPY_VERBATIM:
-        report.extend(_write_tree(SOURCE_ROOT / name, dest / name,
-                                  force=force, dry_run=dry_run))
-    report.append(_write_one(SOURCE_ROOT / CONFIG_EXAMPLE, dest / CONFIG_DEST,
-                             force=force, dry_run=dry_run))
+        report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
+    report.append(
+        _write_one(SOURCE_ROOT / CONFIG_EXAMPLE, dest / CONFIG_DEST, force=force, dry_run=dry_run)
+    )
     for rel in EMPTY_DIRS:
         report.append(_write_empty_dir(dest / rel, dry_run=dry_run))
     return report
@@ -190,12 +209,15 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=prog_for("init"), description=DESCRIPTION)
-    parser.add_argument("dir", nargs="?", default=".", type=Path,
-                        help="Where to write the project (default: .)")
-    parser.add_argument("--force", action="store_true",
-                        help="Overwrite existing files, named one by one")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print the tree that would be written; write nothing")
+    parser.add_argument(
+        "dir", nargs="?", default=".", type=Path, help="Where to write the project (default: .)"
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="Overwrite existing files, named one by one"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print the tree that would be written; write nothing"
+    )
     return parser
 
 

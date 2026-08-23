@@ -101,8 +101,17 @@ THRESHOLDS = (1, 2, 3, 4, 5, 6)
 # Recorded per finding: identity, size, and the DF profile. Deliberately
 # not the payload's text fields (see the module docstring).
 KEPT_FIELDS = (
-    "id", "citekey", "page", "end_page", "tier", "span_words",
-    "matched_words", "line", "cites_source", "quoted", "severity",
+    "id",
+    "citekey",
+    "page",
+    "end_page",
+    "tier",
+    "span_words",
+    "matched_words",
+    "line",
+    "cites_source",
+    "quoted",
+    "severity",
 )
 
 
@@ -207,15 +216,17 @@ def sweep(book, control, labels, thresholds):
         hit = [f for f in gateable if f["median_df"] >= threshold]
         fps = [f for f in hit if labels.get(f["id"], {}).get("label") == "fp"]
         lost = [f for f in control_gateable if f["median_df"] >= threshold]
-        rows.append({
-            "threshold": threshold,
-            "suppressed": len(hit),
-            "fp_suppressed": len(fps),
-            "unlabelled_suppressed": len(hit) - len(fps),
-            "remaining": len(gateable) - len(hit),
-            "control_findings": len(control_gateable),
-            "tp_suppressed": len(lost),
-        })
+        rows.append(
+            {
+                "threshold": threshold,
+                "suppressed": len(hit),
+                "fp_suppressed": len(fps),
+                "unlabelled_suppressed": len(hit) - len(fps),
+                "remaining": len(gateable) - len(hit),
+                "control_findings": len(control_gateable),
+                "tp_suppressed": len(lost),
+            }
+        )
     return rows
 
 
@@ -252,10 +263,14 @@ def self_check():
     """
     assert summarise([4, 4, 0, 4])["median_df"] == 4, "median must absorb a gap artefact"
     assert summarise([])["grams"] == 0, "a run shorter than n has no grams"
-    boilerplate = {"id": "a", "tier": "exact", "quoted": False,
-                   "cites_source": False, "median_df": 4}
-    reuse = {"id": "b", "tier": "exact", "quoted": False,
-             "cites_source": False, "median_df": 1}
+    boilerplate = {
+        "id": "a",
+        "tier": "exact",
+        "quoted": False,
+        "cites_source": False,
+        "median_df": 4,
+    }
+    reuse = {"id": "b", "tier": "exact", "quoted": False, "cites_source": False, "median_df": 1}
     rows = sweep([boilerplate, reuse], [reuse], {"a": {"label": "fp"}}, (2,))
     assert rows[0]["fp_suppressed"] == 1, "a median-4 run must suppress at D=2"
     assert rows[0]["tp_suppressed"] == 0, "a median-1 run must survive D=2"
@@ -267,37 +282,50 @@ def print_arm(name, findings):
     print(f"\n{name}: {len(findings)} finding(s) at or above {SWEEP_FLOOR} words")
     print(f"  {'id':14}{'draft':26}{'words':>6}{'grams':>6}{'min':>5}{'med':>5}{'max':>5}")
     for finding in sorted(findings, key=lambda f: -f["median_df"]):
-        print(f"  {finding['id'][:12]:14}{finding['draft'][:24]:26}"
-              f"{finding['span_words']:>6}{finding['grams']:>6}"
-              f"{finding['min_df']:>5}{finding['median_df']:>5}{finding['max_df']:>5}")
+        print(
+            f"  {finding['id'][:12]:14}{finding['draft'][:24]:26}"
+            f"{finding['span_words']:>6}{finding['grams']:>6}"
+            f"{finding['min_df']:>5}{finding['median_df']:>5}{finding['max_df']:>5}"
+        )
 
 
 def print_sweep(rows):
     """The suppression table, both arms on one line per threshold."""
-    print(f"\n{'D':>3}{'suppressed':>12}{'fp':>5}{'unlab':>7}{'remaining':>11}"
-          f"{'tp_lost':>9}{'of_tp':>7}")
+    print(
+        f"\n{'D':>3}{'suppressed':>12}{'fp':>5}{'unlab':>7}{'remaining':>11}"
+        f"{'tp_lost':>9}{'of_tp':>7}"
+    )
     for row in rows:
-        print(f"{row['threshold']:>3}{row['suppressed']:>12}{row['fp_suppressed']:>5}"
-              f"{row['unlabelled_suppressed']:>7}{row['remaining']:>11}"
-              f"{row['tp_suppressed']:>9}{row['control_findings']:>7}")
+        print(
+            f"{row['threshold']:>3}{row['suppressed']:>12}{row['fp_suppressed']:>5}"
+            f"{row['unlabelled_suppressed']:>7}{row['remaining']:>11}"
+            f"{row['tp_suppressed']:>9}{row['control_findings']:>7}"
+        )
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--drafts", required=True,
-                        help="directory of drafts to scan (*.md)")
-    parser.add_argument("--tag", required=True,
-                        help="names the output directory, bench/results/<tag>/. "
-                             "Passed in rather than derived from the clock, so a "
-                             "re-run over an unchanged corpus reproduces the same "
-                             "record byte for byte.")
-    parser.add_argument("--labels",
-                        default="bench/results/2026-08-13-overlap-gate/labels.json",
-                        help="hand-authored ground truth, keyed by finding id. "
-                             "Shared with bench_overlap_gate.py rather than "
-                             "duplicated: the same findings, the same labels.")
-    parser.add_argument("--control", default=str(CONTROL_FIXTURE),
-                        help="the planted-reuse fixture supplying the true positive")
+    parser.add_argument("--drafts", required=True, help="directory of drafts to scan (*.md)")
+    parser.add_argument(
+        "--tag",
+        required=True,
+        help="names the output directory, bench/results/<tag>/. "
+        "Passed in rather than derived from the clock, so a "
+        "re-run over an unchanged corpus reproduces the same "
+        "record byte for byte.",
+    )
+    parser.add_argument(
+        "--labels",
+        default="bench/results/2026-08-13-overlap-gate/labels.json",
+        help="hand-authored ground truth, keyed by finding id. "
+        "Shared with bench_overlap_gate.py rather than "
+        "duplicated: the same findings, the same labels.",
+    )
+    parser.add_argument(
+        "--control",
+        default=str(CONTROL_FIXTURE),
+        help="the planted-reuse fixture supplying the true positive",
+    )
     parser.add_argument("--out", help="output directory (default: bench/results/<tag>)")
     return parser.parse_args()
 
@@ -319,9 +347,7 @@ def main():
 
     print("  building the corpus index ...")
     index = overlap_index.build_corpus_index()
-    header = json.loads(
-        (Path(config.OVERLAP_DIR) / "index.json").read_text(encoding="utf-8")
-    )
+    header = json.loads((Path(config.OVERLAP_DIR) / "index.json").read_text(encoding="utf-8"))
     print(f"    {len(index.citekeys)} document(s), {len(index.grams)} distinct gram(s)")
 
     print(f"  scanning {len(drafts)} draft(s) ...")
@@ -336,9 +362,11 @@ def main():
 
     unlabelled = [f["id"] for f in book if f["id"] not in labels]
     if unlabelled:
-        print(f"\n  {len(unlabelled)} finding(s) carry no label -- the corpus has "
-              f"moved since labels.json was authored, and every count above is "
-              f"scored against a partial ground truth.")
+        print(
+            f"\n  {len(unlabelled)} finding(s) carry no label -- the corpus has "
+            f"moved since labels.json was authored, and every count above is "
+            f"scored against a partial ground truth."
+        )
 
     record = {
         "about": __doc__.split("\n\n")[0].replace("\n", " "),

@@ -16,13 +16,22 @@ from pathlib import Path
 from chitragupta import config
 from chitragupta.dossier._citekeys import cited_citekeys
 from chitragupta.dossier import (
-    EVIDENCE_MD, FILES, REJECTED_MD, _resolve_dossier, digest, dossier_dir,
-    draft_relpath, find_draft, known_citekeys, recorded_corpus,
+    EVIDENCE_MD,
+    FILES,
+    REJECTED_MD,
+    _resolve_dossier,
+    digest,
+    dossier_dir,
+    draft_relpath,
+    find_draft,
+    known_citekeys,
+    recorded_corpus,
 )
 from chitragupta.dossier._drift import drift, drift_all
 from chitragupta.dossier._drift_report import _cmd_status_all
 from chitragupta.dossier._retrieval import RevisionCost, retrieval_cost_by_revision
 from chitragupta.dossier._sections import Section, sections
+
 
 @dataclass
 class FileStatus:
@@ -65,15 +74,16 @@ def _count(text: str, shape: str) -> int:
     if shape == "blocks":
         return sum(1 for line in body.splitlines() if line.startswith("## "))
     if shape == "rows":
-        return sum(
-            1
-            for line in body.splitlines()
-            if line.lstrip().startswith("|") and not set(line) <= set("|-: \t")
-        ) - 1  # the header row, which every template ships with
+        return (
+            sum(
+                1
+                for line in body.splitlines()
+                if line.lstrip().startswith("|") and not set(line) <= set("|-: \t")
+            )
+            - 1
+        )  # the header row, which every template ships with
     return sum(
-        1
-        for line in body.splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
+        1 for line in body.splitlines() if line.strip() and not line.lstrip().startswith("#")
     )
 
 
@@ -134,8 +144,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
     report = status(Path(args.draft))
     if not report.dossier.is_dir():
         print(f"No dossier at {draft_relpath(report.dossier)}.")
-        print("Create one with `python -m chitragupta.draft dossier init "
-              f"{args.draft} --genre <genre>`.")
+        print(
+            "Create one with `python -m chitragupta.draft dossier init "
+            f"{args.draft} --genre <genre>`."
+        )
         return 1
 
     print(f"Dossier: {draft_relpath(report.dossier)}")
@@ -173,8 +185,10 @@ def _print_status_retrieval(report: Status) -> None:
         return
     kept = next((f.entries for f in report.files if f.name == EVIDENCE_MD), 0)
     rejected = next((f.entries for f in report.files if f.name == REJECTED_MD), 0)
-    print(f"\nRetrieval: {report.retrieval_calls} call(s) returned "
-          f"{report.retrieval_chars:,} characters")
+    print(
+        f"\nRetrieval: {report.retrieval_calls} call(s) returned "
+        f"{report.retrieval_chars:,} characters"
+    )
     if kept or rejected:
         print(f"  {kept} kept, {rejected} rejected")
     else:
@@ -200,8 +214,7 @@ def _print_status_retrieval(report: Status) -> None:
     if len(report.revisions) > 1:
         print("  by revision:")
         for segment in report.revisions:
-            print(f"    {segment.label:<24}{segment.calls} call(s), "
-                  f"{segment.chars:,} characters")
+            print(f"    {segment.label:<24}{segment.calls} call(s), {segment.chars:,} characters")
 
 
 def _print_status_drift(report: Status) -> None:
@@ -224,8 +237,10 @@ def _print_status_drift(report: Status) -> None:
     print(f"  CHANGED ({report.current[0] - report.recorded[0]:+d} citekeys)")
     if report.unconsidered:
         shown = sorted(report.unconsidered)[:10]
-        print(f"\n  {len(report.unconsidered)} citekey(s) in the ledger appear nowhere in "
-              "this dossier:")
+        print(
+            f"\n  {len(report.unconsidered)} citekey(s) in the ledger appear nowhere in "
+            "this dossier:"
+        )
         for citekey in shown:
             print(f"    {citekey}")
         if len(report.unconsidered) > len(shown):

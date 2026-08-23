@@ -60,9 +60,7 @@ class TestReportPath:
         with pytest.raises(config.OutsideContentDir):
             review.report_path(config.DRAFTS_DIR / "survey.md", "provenance")
 
-    def test_a_topic_directory_symlinked_out_of_review_is_refused(
-        self, isolated_config, tmp_path
-    ):
+    def test_a_topic_directory_symlinked_out_of_review_is_refused(self, isolated_config, tmp_path):
         """A draft's own path is never a reason to write outside content/."""
         outside = tmp_path / "outside"
         outside.mkdir()
@@ -124,9 +122,7 @@ class TestHeader:
         draft.parent.mkdir(parents=True)
         draft.write_text("No citations here.\n")
 
-        body = citation_provenance.render_markdown(
-            citation_provenance.build_report(draft)
-        )
+        body = citation_provenance.render_markdown(citation_provenance.build_report(draft))
 
         assert f"- Draft: `{draft}`" in body
         assert f"'{draft}'" in body, "the command has to be shlex-quoted"
@@ -225,7 +221,9 @@ class TestEnvelope:
     def test_carries_the_notice_the_aid_the_draft_and_the_command(self, isolated_config):
         draft = config.DRAFTS_DIR / "dt" / "survey.md"
 
-        envelope = review.envelope(draft, "verbatim", "python -m chitragupta.review verbatim scan x")
+        envelope = review.envelope(
+            draft, "verbatim", "python -m chitragupta.review verbatim scan x"
+        )
 
         assert envelope["aid"] == "verbatim"
         assert envelope["draft"] == str(draft)

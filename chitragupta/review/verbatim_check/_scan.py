@@ -98,7 +98,8 @@ def scan_findings(
     # the signal this tier exists to surface, and containment is the
     # narrowest test that still avoids the redundant report.
     skipgram_findings = [
-        f for f in skipgram_findings
+        f
+        for f in skipgram_findings
         if not any(
             e["citekey"] == f["citekey"]
             and e["start"] <= f["start"]
@@ -122,7 +123,8 @@ def scan_findings(
     # Any overlap means a deterministic tier already pointed here.
     lexical_findings = exact_findings + skipgram_findings
     embed_findings = [
-        f for f in embed_findings
+        f
+        for f in embed_findings
         if not any(
             other["citekey"] == f["citekey"]
             and other["start"] < f["start"] + f["span_words"]
@@ -133,8 +135,7 @@ def scan_findings(
 
     findings = lexical_findings + embed_findings
     suppressed = exact_suppressed + skipgram_suppressed + embed_suppressed
-    not_run = ([{"tier": "embedding", "reason": embed_not_run}]
-               if embed_not_run is not None else [])
+    not_run = [{"tier": "embedding", "reason": embed_not_run}] if embed_not_run is not None else []
 
     # Longest run first, no silent truncation -- every finding above the
     # floor prints unless --limit narrows it, matching the issue's explicit
@@ -249,9 +250,22 @@ def _not_run_lines(not_run: list[dict]) -> list[str]:
 # become part of a published contract that #128's severity buckets and
 # #129's remediation loop consume.
 _PAYLOAD_FIELDS = (
-    "id", "citekey", "page", "end_page", "tier", "span_words",
-    "matched_words", "start", "line", "char_start", "char_end",
-    "draft_text", "fragment", "context", "cites_source", "quoted",
+    "id",
+    "citekey",
+    "page",
+    "end_page",
+    "tier",
+    "span_words",
+    "matched_words",
+    "start",
+    "line",
+    "char_start",
+    "char_end",
+    "draft_text",
+    "fragment",
+    "context",
+    "cites_source",
+    "quoted",
     # Tier 3's alignment strength, `None` on the two deterministic tiers
     # (#134). Appended rather than slotted next to `span_words`, so a
     # consumer reading these positionally -- `bench/`'s `KEPT_FIELDS`

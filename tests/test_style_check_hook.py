@@ -57,7 +57,10 @@ class StyleHookRepo:
         return subprocess.run(
             [sys.executable, str(self.hook)],
             input=json.dumps({"tool_input": {"file_path": str(file_path)}}),
-            cwd=str(self.root), capture_output=True, text=True, env=self.env,
+            cwd=str(self.root),
+            capture_output=True,
+            text=True,
+            env=self.env,
             check=False,
         )
 
@@ -92,14 +95,25 @@ class TestTheProcessContract:
         assert "ModuleNotFoundError" not in result.stderr
         assert result.returncode == 0
 
-    @pytest.mark.parametrize("payload", [
-        "{not json", "[]", '{"tool_input": []}', '{"tool_input": {}}',
-    ])
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "{not json",
+            "[]",
+            '{"tool_input": []}',
+            '{"tool_input": {}}',
+        ],
+    )
     def test_malformed_stdin_exits_zero_and_says_nothing(self, style_hook, payload):
         result = subprocess.run(
-            [sys.executable, str(style_hook.hook)], input=payload,
-            cwd=str(style_hook.root), capture_output=True, text=True,
-            env=style_hook.env, check=False)
+            [sys.executable, str(style_hook.hook)],
+            input=payload,
+            cwd=str(style_hook.root),
+            capture_output=True,
+            text=True,
+            env=style_hook.env,
+            check=False,
+        )
         assert result.returncode == 0
         assert result.stdout == ""
 
@@ -121,8 +135,7 @@ class TestTheProcessContract:
 
     def test_it_never_blocks_whatever_the_draft_says(self, style_hook):
         """An advisory hook has one output shape it may never emit."""
-        draft = style_hook.draft(
-            "d.md", "This is obviously simple and clearly easy.\n")
+        draft = style_hook.draft("d.md", "This is obviously simple and clearly easy.\n")
         result = style_hook.run(draft)
         assert result.returncode == 0
         assert "decision" not in result.stdout

@@ -41,10 +41,12 @@ def registered_hooks() -> list[tuple[str, dict]]:
     which says something more useful than a KeyError would.
     """
     events = json.loads(SETTINGS.read_text(encoding="utf-8"))["hooks"]
-    return [(f"{event}[{i}][{j}]", hook)
-            for event, entries in events.items()
-            for i, entry in enumerate(entries)
-            for j, hook in enumerate(entry.get("hooks", []))]
+    return [
+        (f"{event}[{i}][{j}]", hook)
+        for event, entries in events.items()
+        for i, entry in enumerate(entries)
+        for j, hook in enumerate(entry.get("hooks", []))
+    ]
 
 
 HOOKS = registered_hooks()
@@ -75,7 +77,8 @@ class TestLauncherContract:
         catch (#264) -- `python <script>.py` degrades to a clear PATH
         fault instead."""
         assert hook["command"] == INTERPRETER, (
-            f"hook launches {hook['command']!r}, not the agreed {INTERPRETER!r}")
+            f"hook launches {hook['command']!r}, not the agreed {INTERPRETER!r}"
+        )
 
     def test_every_placeholder_is_braced(self, hook):
         """Claude Code substitutes `${CLAUDE_PROJECT_DIR}` itself, into

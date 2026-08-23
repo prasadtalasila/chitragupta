@@ -17,8 +17,15 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from chitragupta.spec import (_KINDS, SpecError, digest, parse, recorded_digest,
-                      signoff_path, spec_path)
+from chitragupta.spec import (
+    _KINDS,
+    SpecError,
+    digest,
+    parse,
+    recorded_digest,
+    signoff_path,
+    spec_path,
+)
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
 
@@ -53,8 +60,9 @@ def _read(book: Path) -> tuple[str, dict]:
     """A book's spec text and its parse, refusing a book that has none."""
     path = spec_path(book)
     if not path.is_file():
-        raise SpecError(f"No spec at {path}. Write one with "
-                        f"`python -m chitragupta.draft spec init {book}`.")
+        raise SpecError(
+            f"No spec at {path}. Write one with `python -m chitragupta.draft spec init {book}`."
+        )
     text = path.read_text(encoding="utf-8")
     return text, parse(text)
 
@@ -71,15 +79,19 @@ def _report_problems(parsed: dict, book: Path) -> int:
 def _cmd_init(args) -> int:
     path = spec_path(args.book)
     if path.exists():
-        print(f"[error] {path} already exists. Edit it rather than starting again "
-              "-- an outline someone signed off is the record of that decision.",
-              file=sys.stderr)
+        print(
+            f"[error] {path} already exists. Edit it rather than starting again "
+            "-- an outline someone signed off is the record of that decision.",
+            file=sys.stderr,
+        )
         return 1
     path.parent.mkdir(parents=True, exist_ok=True)
     title = args.title or Path(args.book).name
     path.write_text(_TEMPLATE.replace("{title}", title), encoding="utf-8")
-    print(f"Wrote {path}. Edit it, then approve it with "
-          f"`python -m chitragupta.draft spec sign {args.book}`.")
+    print(
+        f"Wrote {path}. Edit it, then approve it with "
+        f"`python -m chitragupta.draft spec sign {args.book}`."
+    )
     return 0
 
 
@@ -93,8 +105,11 @@ def _show_unit(book: Path, text: str, parsed: dict, unit_id: str) -> int:
     """One unit's slice: what a genre skill is handed to generate from."""
     unit = next((entry for entry in parsed["units"] if entry["id"] == unit_id), None)
     if unit is None:
-        print(f"[error] no unit `{unit_id}` in {spec_path(book)}. It holds: "
-              + ", ".join(entry["id"] for entry in parsed["units"]), file=sys.stderr)
+        print(
+            f"[error] no unit `{unit_id}` in {spec_path(book)}. It holds: "
+            + ", ".join(entry["id"] for entry in parsed["units"]),
+            file=sys.stderr,
+        )
         return 1
     signed = "yes" if recorded_digest(book) == digest(text) else "no"
     print(f"# {unit['title']}")
@@ -176,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft spec",
         description="The outline a book is generated from, and the human "
-                    "sign-off on it. Stdlib only; writes only under content/specs/.",
+        "sign-off on it. Stdlib only; writes only under content/specs/.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -195,8 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     p_sign.add_argument("--by", default="", help="Who approved it")
     p_sign.set_defaults(func=_cmd_sign)
 
-    p_status = sub.add_parser(
-        "status", help="What the outline holds, and whether it is signed off")
+    p_status = sub.add_parser("status", help="What the outline holds, and whether it is signed off")
     p_status.add_argument("book", help=_BOOK_HELP)
     p_status.set_defaults(func=_cmd_status)
 

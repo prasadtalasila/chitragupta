@@ -31,13 +31,17 @@ class TestParseAuthors:
 
     def test_stray_whitespace_and_empty_segments(self):
         assert bib_reader._parse_authors("Smith, Jane and  and Doe, John") == [
-            ("Jane", "Smith"), ("John", "Doe"),
+            ("Jane", "Smith"),
+            ("John", "Doe"),
         ]
 
 
 class TestCleanTitle:
     def test_strips_braces(self):
-        assert bib_reader._clean_title("{Digital} Twins in {P4} Medicine") == "Digital Twins in P4 Medicine"
+        assert (
+            bib_reader._clean_title("{Digital} Twins in {P4} Medicine")
+            == "Digital Twins in P4 Medicine"
+        )
 
     def test_no_braces_unchanged(self):
         assert bib_reader._clean_title("Plain Title") == "Plain Title"
@@ -55,7 +59,8 @@ class TestResolvePdfPath:
         pdf.write_bytes(b"%PDF-1.4")
         field = f"paper.pdf:{pdf}:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path / "unrelated") == (
-            str(pdf), bib_reader.PDF_RESOLVED,
+            str(pdf),
+            bib_reader.PDF_RESOLVED,
         )
 
     def test_nonexistent_pdf_reports_pdf_path_gone(self, tmp_path):
@@ -78,7 +83,8 @@ class TestResolvePdfPath:
         html.write_text("<html></html>")
         field = "page.html:page.html:text/html"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (
-            None, bib_reader.PDF_NON_PDF_ATTACHMENT,
+            None,
+            bib_reader.PDF_NON_PDF_ATTACHMENT,
         )
 
     def test_non_html_non_pdf_mime_also_reports_non_pdf_attachment(self, tmp_path):
@@ -90,7 +96,8 @@ class TestResolvePdfPath:
         note.write_text("some notes")
         field = "notes.txt:notes.txt:text/plain"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (
-            None, bib_reader.PDF_NON_PDF_ATTACHMENT,
+            None,
+            bib_reader.PDF_NON_PDF_ATTACHMENT,
         )
 
     def test_multiple_attachments_picks_the_pdf(self, tmp_path):
@@ -103,7 +110,8 @@ class TestResolvePdfPath:
 
     def test_malformed_field_too_few_parts_reports_malformed(self, tmp_path):
         assert bib_reader._resolve_pdf_path("just-a-filename.pdf", tmp_path) == (
-            None, bib_reader.PDF_MALFORMED_FILE_FIELD,
+            None,
+            bib_reader.PDF_MALFORMED_FILE_FIELD,
         )
 
     def test_pdf_mime_but_missing_file_wins_over_non_pdf_attachment(self, tmp_path):
@@ -256,9 +264,7 @@ class TestTheDroppedEntryWarningAndTheStub:
         assert "WARNING" in out
         assert "silently dropped" in out
 
-    def test_the_stub_does_not_inflate_the_warning_it_appears_beside(
-        self, isolated_config, capsys
-    ):
+    def test_the_stub_does_not_inflate_the_warning_it_appears_beside(self, isolated_config, capsys):
         """The number in the message is what a reader acts on. With both
         in the file it must say 1 -- the unbalanced entry -- not 2."""
         write_bib(
@@ -275,27 +281,33 @@ class TestCitekeyProblem:
     the enrichment layer's own outputs), so one that can't be a filename
     has to be caught here -- at the only boundary both layers share."""
 
-    @pytest.mark.parametrize("citekey", [
-        "smith_example_2024",
-        "smith2024",
-        "ok.with.dots",
-        "naive_2024",
-        "naïve_2024",          # non-ASCII is a perfectly legal filename
-        "UPPER-and-dash_2024",
-        "CONSTANT",            # only exactly CON is reserved, not a prefix of it
-    ])
+    @pytest.mark.parametrize(
+        "citekey",
+        [
+            "smith_example_2024",
+            "smith2024",
+            "ok.with.dots",
+            "naive_2024",
+            "naïve_2024",  # non-ASCII is a perfectly legal filename
+            "UPPER-and-dash_2024",
+            "CONSTANT",  # only exactly CON is reserved, not a prefix of it
+        ],
+    )
     def test_accepts_a_usable_citekey(self, citekey):
         assert bib_reader.citekey_problem(citekey) is None
 
-    @pytest.mark.parametrize("citekey,expected", [
-        ("smith/2024", "'/'"),           # writes into a subdirectory that doesn't exist
-        ("../escape2024", "'/'"),        # escapes content/ entirely
-        ("a\\b", "'\\\\'"),              # the Windows separator
-        ("doc:legacy", "':'"),           # a drive spec / alternate data stream there
-        ("a<b", "'<'"),
-        ("a|b", "'|'"),
-        ('a"b', "'\"'"),
-    ])
+    @pytest.mark.parametrize(
+        "citekey,expected",
+        [
+            ("smith/2024", "'/'"),  # writes into a subdirectory that doesn't exist
+            ("../escape2024", "'/'"),  # escapes content/ entirely
+            ("a\\b", "'\\\\'"),  # the Windows separator
+            ("doc:legacy", "':'"),  # a drive spec / alternate data stream there
+            ("a<b", "'<'"),
+            ("a|b", "'|'"),
+            ('a"b', "'\"'"),
+        ],
+    )
     def test_rejects_a_path_hostile_citekey(self, citekey, expected):
         problem = bib_reader.citekey_problem(citekey)
         assert problem is not None

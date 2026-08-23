@@ -18,7 +18,7 @@ tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 ## 🔭 The short answer
 
 | | **BM25** | **embeddings** | **topic model** |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Module | `chitragupta/retrieval.py` | `chitragupta/enrich/embed_index.py` | `chitragupta/enrich/topic_model.py` |
 | Question it answers | which sources match this query? | *the same question* | what clusters exist in my corpus? |
 | Takes a query | yes | yes | **no** |
@@ -223,7 +223,7 @@ Three things to know before you run it:
 ## ⚖ Which should I build?
 
 | If you want to… | Do this |
-|---|---|
+| --- | --- |
 | Draft from a modest, consistent corpus | Nothing. BM25 is already running |
 | Quote sources accurately in a review | `--stages docling` -- it is the passage sidecar, not the ranker, that improves quoting |
 | Find papers that argue your point in other words | `--stages docling,embed` |

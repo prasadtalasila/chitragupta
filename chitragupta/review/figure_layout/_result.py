@@ -13,7 +13,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta.review.figure_layout._geometry import (
-    Box, emptiness, overlaps, protrudes,
+    Box,
+    emptiness,
+    overlaps,
+    protrudes,
 )
 
 
@@ -51,6 +54,4 @@ class FigureResult:
         """Whether anything binary fired. Deliberately excludes
         `empty_fraction`: a proportion is not a finding, and counting it
         as one is the first step towards something optimising it."""
-        return bool(
-            self.overlong or self.overlapping or self.protruding or self.failed
-        )
+        return bool(self.overlong or self.overlapping or self.protruding or self.failed)

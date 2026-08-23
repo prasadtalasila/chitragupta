@@ -89,7 +89,7 @@ Measured 2026-08-23 (`for f in bench/*.py; do grep -q "def self_check" $f
 uses:
 
 | Script | Verdict | Why |
-|---|---|---|
+| --- | --- | --- |
 | `bench_collection_scope.py` | **needs one** (Task 6) | `_pool_usage()`'s max-vs-first aggregation across streaming partials is the exact shape of bug that already cost this script a real, silent 5x undercount (its own docstring records it); `_hash_check()`'s `replay_sound` flag is what every other figure in the script's output depends on being true |
 | `bench_docling.py` | **exempt** | Every published number (`seconds`, `s_per_page`, `md_chars`) is a direct, honestly-labelled measurement of one real `conv.convert()` call -- no comparison or aggregation of its own that could silently read a real difference as none |
 | `bench_overlap.py` | **needs one** (Task 1) | `findings = warm_out.count("tier=exact")` is a plain substring count over another module's printed output -- the same failure class `sweep_sync.py`'s own `self_check()` guards (a regex/string match that stops matching reports the same `0` a clean run does) |
@@ -107,7 +107,7 @@ than leaving "which is which" for the next reader to re-derive.
 ### 2. The four exclusions
 
 | Exclusion | Decision | Reason |
-|---|---|---|
+| --- | --- | --- |
 | **C1/C2** (`tests/test_code_standards_scan.py`'s `STATEMENT_ROOTS`/`CODE_LINE_ROOTS`) | **Reaffirmed, unchanged** | Already stated and defended in `docs/CODE-STANDARDS.md` ("bench/ is out of scope for both... one-shot analysis code whose main() reads top to bottom on purpose"). Nothing in this issue's own investigation gives a reason to revisit it |
 | **Coverage** (`pyproject.toml`'s `[tool.coverage.run].source = ["chitragupta", "scripts", ".claude/hooks"]`) | **Reaffirmed, unchanged** | `bench/` is never imported by the shipped pipeline; `self_check()` is its substitute regression guard, run on every invocation rather than once in CI |
 | **Release archive** (`scripts/release.py`'s `EXCLUDE_TOP_LEVEL`) | **Reaffirmed, unchanged** | `bench/` is dev tooling that measures this checkout, not something a `pip install`ed or unzipped-release consumer runs |

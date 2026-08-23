@@ -27,7 +27,8 @@ def make_source(tmp_path: Path) -> Path:
     src = tmp_path / "source"
     (src / ".claude" / "skills" / "survey-writer").mkdir(parents=True)
     (src / ".claude" / "skills" / "survey-writer" / "SKILL.md").write_text(
-        "# survey", encoding="utf-8")
+        "# survey", encoding="utf-8"
+    )
     (src / ".claude" / "hooks").mkdir(parents=True)
     (src / ".claude" / "hooks" / "session_start_hook.py").write_text("# hook", encoding="utf-8")
     (src / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
@@ -40,7 +41,8 @@ def make_source(tmp_path: Path) -> Path:
     (src / "SOUL.md").write_text("why", encoding="utf-8")
     (src / "README.md").write_text("readme", encoding="utf-8")
     (src / "config.toml.example").write_text(
-        "[bib]\npath = \"papers/bibliography.bib\"\n", encoding="utf-8")
+        '[bib]\npath = "papers/bibliography.bib"\n', encoding="utf-8"
+    )
     return src
 
 
@@ -60,14 +62,15 @@ class TestScaffold:
     def test_config_toml_example_becomes_config_toml(self, source, tmp_path):
         dest = tmp_path / "project"
         init.scaffold(dest)
-        assert (dest / "config.toml").read_text(encoding="utf-8") == \
-            (source / "config.toml.example").read_text(encoding="utf-8")
+        assert (dest / "config.toml").read_text(encoding="utf-8") == (
+            source / "config.toml.example"
+        ).read_text(encoding="utf-8")
         assert not (dest / "config.toml.example").exists()
 
     def test_nested_files_land_at_the_matching_relative_path(self, source, tmp_path):
         dest = tmp_path / "project"
         init.scaffold(dest)
-        got = (dest / ".claude" / "skills" / "survey-writer" / "SKILL.md")
+        got = dest / ".claude" / "skills" / "survey-writer" / "SKILL.md"
         assert got.read_text(encoding="utf-8") == "# survey"
 
     def test_pycache_is_never_copied(self, source, tmp_path):
@@ -135,8 +138,9 @@ class TestScaffold:
         real_report = init.scaffold(real_dest)
         dry_paths = {line.split(": ", 1)[1] for line in dry_report}
         real_paths = {line.split(": ", 1)[1] for line in real_report}
-        assert {p.replace(str(dry_dest), "") for p in dry_paths} == \
-            {p.replace(str(real_dest), "") for p in real_paths}
+        assert {p.replace(str(dry_dest), "") for p in dry_paths} == {
+            p.replace(str(real_dest), "") for p in real_paths
+        }
 
     def test_dry_run_on_an_existing_project_reports_would_overwrite(self, source, tmp_path):
         dest = tmp_path / "project"
@@ -189,10 +193,10 @@ class TestManifestAgreesWithTheReleaseZip:
     repository, which is the actual pair of lists at risk of drifting."""
 
     def test_the_named_differences_are_exactly_the_gap(self):
-        zip_top_level = {p.split("/", 1)[0] for p in release.tracked_files()} \
-            | release.EMPTY_TOP_LEVEL
-        renamed = {init.CONFIG_DEST if p == init.CONFIG_EXAMPLE else p
-                  for p in zip_top_level}
+        zip_top_level = {
+            p.split("/", 1)[0] for p in release.tracked_files()
+        } | release.EMPTY_TOP_LEVEL
+        renamed = {init.CONFIG_DEST if p == init.CONFIG_EXAMPLE else p for p in zip_top_level}
         assert renamed - init.TOP_LEVEL == init.DELIBERATE_DIFFERENCES
         assert init.TOP_LEVEL - renamed == set()
 

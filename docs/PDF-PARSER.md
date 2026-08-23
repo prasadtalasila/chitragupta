@@ -32,7 +32,7 @@ evaluated and not adopted"](#-four-newer-backends-evaluated-and-not-adopted).
 ## ⚖ Comparison table
 
 | Tool | Best at | Strengths | Weaknesses | Relative speed vs `pdftotext` | Fit for this repo |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `pdftotext` | Plain text extraction | Very fast, simple, stable, low dependency footprint | Weak on layout, tables, headings, and reading order | 1x | Best lightweight baseline |
 | `markitdown` | General file-to-Markdown conversion | Flexible normalization, multi-format support | Fuses adjacent words on this corpus (4.17% of tokens), which silently breaks BM25 ranking | ~17x slower (measured, 5 real bib PDFs) | **Removed 2026-08-01** -- see below |
 | `docling` | Layout-aware PDF parsing | Better reading order, sections, tables, and structured Markdown -- and the only backend whose reading order is *kept*, as the passage sidecar a claim can be quoted from | Heavy, slower, model/runtime complexity | ~42x slower (measured, 5 real bib PDFs, OCR on -- see note below) | Best quality parser for either layer; required if you want quotable passages |
@@ -185,7 +185,7 @@ The bar is not "does it parse a PDF". This repository depends on specific
 docling behaviours, and a replacement has to supply all of them:
 
 | What the repo uses | Where |
-|---|---|
+| --- | --- |
 | Per-item `label`, `text`, `prov[0].page_no`, `prov[0].bbox` | passage provenance, `chitragupta/passages.py` |
 | `pic.caption_text(dl_doc)` -- figure caption matched to "Figure N" in prose | `_figure_records`, see `DEVELOPER.md`'s "Figures and copyright" (git checkout only) |
 | `export_to_markdown()` | `content/docling/<citekey>.md`, the artefact downstream stages read |
@@ -195,7 +195,7 @@ docling behaviours, and a replacement has to supply all of them:
 ### ⚖ Comparison
 
 | | **docling** (incumbent) | **marker** | **surya** | **xberg** | **unstructured** |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Category | End-to-end layout-aware PDF→doc | End-to-end PDF→Markdown/JSON, built on surya | Layout/OCR/table **primitives** (marker's foundation) | Polyglot doc-intelligence engine, Rust core | ETL "elements" extractor, multi-strategy |
 | Native Markdown export | Yes | Yes | **No** -- assembly required | Yes (+ Djot/HTML/JSON) | **No** -- typed `Element` list only |
 | Provenance (page + bbox + label) | Yes, per item | Yes, JSON block tree | Yes, but page/doc assembly is on you | Yes, "Structured" JSON | Yes, per element |

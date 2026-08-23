@@ -99,7 +99,7 @@ it is on a register it left is not.
 ## 🧱 Tier 1: the debt the ratchet already holds
 
 `tests/test_code_standards_scan.py` freezes **3 functions** over C1 (25
-statements) and **9 modules** over C2 (250 code lines), each with its
+statements) and **15 modules** over C2 (250 code lines), each with its
 current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
 
@@ -194,16 +194,17 @@ Most of it is not debt. Disabling the categories this repository has
 already decided against leaves **44 real findings**:
 
 | Category | Count | Disposition |
-|---|---|---|
+| --- | --- | --- |
 | `line-too-long` (>100) | 31 | Real. "Keep lines short" is a review standard here with no detector; this is it, measured |
 | `unspecified-encoding` | 7 | Fixed as part of the locale-codec item (closed 2026-08-13) -- pylint saw only the `open()` calls, 7 of that item's 32 original sites |
 | `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard` -- deliberate lowercase context managers; belongs in `good-names` |
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
-**The `line-too-long` row's residue is tracked in #362**, alongside
-[build order](CODE-STANDARDS.md#-build-order) item 1's missing formatter --
-this baseline table itself stays as measured, the historical record
-5.8.0's adoption sequence was carried out against.
+**The `line-too-long` row's residue closed in #362**, alongside
+[build order](CODE-STANDARDS.md#-build-order) item 1's missing formatter
+-- see the ruff-format subsection below. This baseline table itself
+stays as measured, the historical record 5.8.0's adoption sequence was
+carried out against.
 
 The categories disabled, and why, since each is a decision rather than an
 oversight:
@@ -254,12 +255,39 @@ project runs re-implements it; that remains open.
 
 **Adopted and enforced in 5.8.0**, at the same binary bar, over the same
 globs. The judgement this section left open -- what to do about `MD060` --
-was taken as **disable**: 839 of the 947 findings, table cell padding, and
-the alternative was a diff touching every table in the documentation to
-move spaces around, changing no rendered output. Everything else was
-fixed, including four prose lines that began with an issue reference
-(`#126 already fixes...`) which a naive `--fix` rewrote into H1 headings
-before the corruption was caught and reverted.
+was taken as **disable** then: 839 of the 947 findings, table cell
+padding, and the alternative was a diff touching every table in the
+documentation to move spaces around, changing no rendered output.
+Everything else was fixed, including four prose lines that began with an
+issue reference (`#126 already fixes...`) which a naive `--fix` rewrote
+into H1 headings before the corruption was caught and reverted.
+
+**Reversed in #362, once a formatter made it a machine edit.**
+`.markdownlint.yaml`'s `MD060: false` is gone; `default: true` now covers
+it like everything else. `markdownlint-cli2 --fix` closed 825 of the
+(re-measured) 850 findings in one symmetric, 58-file diff -- no diff
+touching every table by hand, because the tool now does that pass. The
+remaining 25 findings, across three tables in three files, didn't
+auto-fix, for two different reasons:
+
+- `docs/CONFIG.md`'s `[logging]` table and `docs/PACKAGING.md`'s `enrich`
+  table each have one data row containing a `\|` -- an escaped literal
+  pipe, an enum-of-values cell in one, a CLI flag's own `host|docker`
+  syntax in the other. `MD060`'s own width arithmetic counts an escaped
+  pipe as the two characters it is in the source rather than the one it
+  renders as, so a naive hand-fix (treating it as one character, the more
+  natural reading) undercounts and still fails. `CONFIG.md`'s cell was
+  prose, not syntax, so it was rewritten to a comma list instead of
+  escaped at all; `PACKAGING.md`'s is a real flag spelling, kept and
+  recomputed at the escape's actual width.
+- `docs/LADDERS.md`'s CUDA fallback-ladder table has no escaped pipe at
+  all and still didn't auto-fix, for a reason this adoption didn't
+  isolate -- `--fix` left it exactly as untouched as the two escaped
+  ones, with no shared trait found between it and them beyond "small
+  table". Recomputed by hand from each cell's real length, the same
+  arithmetic `--fix` uses everywhere else, and it passed once the
+  padding was exact. The fix these three needed is recorded here; the
+  fixer's own remaining bug is not diagnosed.
 
 One inherited config bug fell out of the adoption: the `overrides:` block
 was **inert**. It is a markdownlint-**cli2** feature read from
@@ -281,7 +309,7 @@ over this repository's own prose -- root `*.md`, `docs/**/*.md`,
 **927 findings**, of which:
 
 | Rule | Count | Note |
-|---|---|---|
+| --- | --- | --- |
 | `MD060/table-column-style` | 827 | Table cell padding. Cosmetic, and 89% of the total |
 | `MD013/line-length` | 37 | Genuinely low -- this repository already wraps prose short |
 | `MD040/fenced-code-language` | 30 | Real: fenced blocks with no language tag |
@@ -292,11 +320,9 @@ The distribution is the finding. Strip `MD060` and the repository is at
 enough to adopt. `MD060` alone would either produce a 827-line diff that
 touches every table in the documentation or be disabled; that is a
 judgement for whoever adopts it, not something to decide inside a debt
-register. Adoption is otherwise cheap and should follow 5.2.
-
-**This judgement is tracked in #362**, alongside the `line-too-long`
-residue above -- both are the remaining half of
-[build order](CODE-STANDARDS.md#-build-order) item 1.
+register. Adoption is otherwise cheap and should follow 5.2. **Taken in
+issue #362, above** -- this measurement itself stays as the historical
+record of the question as it stood before that judgement was made.
 
 ### ✅ 5.3 Checks that came back clean
 
@@ -352,7 +378,7 @@ the register into one list, which is what build order item 2 asked for.
 `chitragupta/` and `scripts/`.**
 
 | Rule | Count | Disposition |
-|---|---|---|
+| --- | --- | --- |
 | `F401` unused-import | 41 | All in six `__init__.py` re-exports (`registry/`, `spec/`, `unit/`, `dossier/`, `render_output/`, `review/figure_layout/`) -- `per-file-ignores` |
 | `E402` module-import-not-at-top | 11 | Same four of those six `__init__.py` files, importing late on purpose to dodge a circular import -- `per-file-ignores` |
 | `F821` undefined-name | 4 | `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated three fields `"array[int]"` with no `array` import in the module -- real, fixed by adding it |
@@ -395,6 +421,54 @@ looks on its own -- an unpinned bump could move that verdict and redden
 `.markdownlint.yaml` don't carry this risk the same way; `ruff`'s pin in
 `ci.yml` is where the next reader bumping it will meet the reason.
 
+### 📊 5.5 `ruff format`: the whole-tree reformat
+
+**Adopted and enforced in #362.** `ci.yml`'s `lint` job runs
+`ruff format --check chitragupta scripts tests bench .claude/hooks` at the
+same binary bar, closing [build order](CODE-STANDARDS.md#-build-order)
+item 1's other half -- the formatter the linter landed without.
+
+**Wider roots than either linter.** `tests/` and `bench/` are formatted
+though neither is linted (`bench/` stays outside every check by its own
+standing decision, #356). A style rule and a suppression check are
+different things: `pylint`/`ruff check` read for correctness and
+per-site decisions a `bench/` script's exclusion is specifically about,
+while indentation and wrapping are cheap enough, and disruptive enough
+to leave inconsistent, that narrowing the roots would only relocate the
+same gap this item names rather than close it.
+
+**The reformat measured far larger than 5.1's line-wrap precedent, and
+the register absorbed it the same way anyway.** This codebase's existing
+style hand-aligns a wrapped call's continuation lines to the opening
+paren's column; `ruff format` (`black`'s style, which it is built to
+match) never does -- it always uses a fixed hanging indent instead, one
+level, regardless of where the call opened. That is a wholesale
+mismatch with almost every multi-line construct in the tree, not a
+config knob (`skip-magic-trailing-comma` was tried; it changed the diff
+by under 3%). The real numbers: **222 of 259 Python files, +9,052/-5,153
+lines**, against 5.1's 31 lines hand-wrapped into ten registered files.
+Six modules crossed the C2 250-code-line limit from the reformat alone
+-- `chitragupta/render_output/__init__.py`, `chitragupta/enrich/__main__.py`,
+`chitragupta/review/citation_coverage.py`,
+`chitragupta/review/verbatim_check/__init__.py`, `chitragupta/passages.py`,
+`chitragupta/dossier/_retrieval.py` -- none of them a real complexity
+increase, all of them the same trade 5.1 already made at a tenth the
+scale: `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` grew by
+six rather than the change being papered over or the check disabled.
+Every existing entry's trailing count also moved, because the same
+paren-alignment-to-hanging-indent rewrite touches files already on the
+register too.
+
+**`.git-blame-ignore-revs` lands with this**, at the repository root, so
+`git blame` (and GitHub's own blame view, which reads the file with no
+config needed) skips the reformat commit rather than attributing every
+line it touched to it. Empty of entries in this PR and filled in a small
+follow-up once the squash-merge SHA exists -- see the file's own header
+for why a squash-merge repository cannot record that SHA in the same PR
+that creates the commit. Added to `scripts/release.py`'s
+`EXCLUDE_TOP_LEVEL`: meaningful only against this repository's own commit
+history, which an unzipped release doesn't carry.
+
 ## 💰 The standing-instruction budget
 
 An assessment, requested rather than found: **are the developer-facing
@@ -403,7 +477,7 @@ documents too long to be followed?**
 ### 🎒 What a session actually carries
 
 | Document | Words | ~Tokens | When loaded |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CLAUDE.md` | 533 | 710 | Always -- it is the router |
 | `SOUL.md` | 613 | 820 | As the stated tie-breaker |
 | `AGENTS.md` | 1,529 | 2,040 | Drafting sessions only |
@@ -428,7 +502,7 @@ the sections of `DEVELOPER-AGENTS.md` by where they sit, then by whether
 they are actually obeyed:
 
 | Section | Depth into file | Adhered to |
-|---|---|---|
+| --- | --- | --- |
 | Behavioural rules, module boundaries, the probe pattern | 5-38% | Yes, visibly and consistently |
 | Conventions a new stage follows, test-driven process | 50-65% | Yes |
 | Commit messages | 73% | Body shape: 22 of 30 |
@@ -485,7 +559,7 @@ explanations rather than by moving the rules.
 Measured over the **last 30 commits on `main`**:
 
 | Rule | Violations | Cause |
-|---|---|---|
+| --- | --- | --- |
 | Squash-merged through a PR | 4 of 28 have no `(#N)` | Pushed to `main` directly |
 | PR number not added by hand | 1 reads `(#144) (#148)` | Authoring |
 | Title in imperative mood | 1 noun phrase | Authoring |
@@ -578,7 +652,7 @@ with its reasoning attached. Changing any of them makes the codebase
 worse.
 
 | Looks like | Actually |
-|---|---|
+| --- | --- |
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
 | `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:128`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval.py` and `enrich/docling_parse.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |

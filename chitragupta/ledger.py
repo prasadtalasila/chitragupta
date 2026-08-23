@@ -183,10 +183,27 @@ def _stat_pdf(path: str) -> tuple[int, int]:
 # fields) that nothing formats and that would churn the ledger on every
 # re-export. `title`/`year`/`doi` are omitted -- they have real columns.
 _BIB_FIELDS_KEPT = (
-    "author", "editor", "journal", "journaltitle", "booktitle", "series",
-    "volume", "number", "pages", "publisher", "institution", "school",
-    "address", "location", "edition", "howpublished", "organization",
-    "eprint", "eprinttype", "archiveprefix", "primaryclass",
+    "author",
+    "editor",
+    "journal",
+    "journaltitle",
+    "booktitle",
+    "series",
+    "volume",
+    "number",
+    "pages",
+    "publisher",
+    "institution",
+    "school",
+    "address",
+    "location",
+    "edition",
+    "howpublished",
+    "organization",
+    "eprint",
+    "eprinttype",
+    "archiveprefix",
+    "primaryclass",
 )
 
 
@@ -210,7 +227,8 @@ def _bib_fields_json(ref: Reference) -> str | None:
     title/year columns, which is the same output either way.
     """
     kept = {
-        key: value for key, value in ref.fields.items()
+        key: value
+        for key, value in ref.fields.items()
         if key.lower() in _BIB_FIELDS_KEPT and str(value).strip()
     }
     # sort_keys so a re-sync of an unchanged entry writes a byte-identical
@@ -269,9 +287,7 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
     if ref.pdf_path:
         pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
         stat_unchanged = (
-            row is not None
-            and row[0] is not None
-            and (row[1], row[2]) == (pdf_size, pdf_mtime_ns)
+            row is not None and row[0] is not None and (row[1], row[2]) == (pdf_size, pdf_mtime_ns)
         )
         # Trust an unchanged (size, mtime) instead of re-hashing -- a
         # deliberate trade-off (PR #8 review): always-hashing *would*
@@ -300,9 +316,22 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
                  bib_fields, collections)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (ref.citekey, ref.item_type, ref.title, ref.year,
-             ref.doi, ref.url, ref.pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, status, now,
-             _bib_fields_json(ref), _collections_json(ref)),
+            (
+                ref.citekey,
+                ref.item_type,
+                ref.title,
+                ref.year,
+                ref.doi,
+                ref.url,
+                ref.pdf_path,
+                pdf_hash,
+                pdf_size,
+                pdf_mtime_ns,
+                status,
+                now,
+                _bib_fields_json(ref),
+                _collections_json(ref),
+            ),
         )
     else:
         new_status, must_reparse = _next_status(row, pdf_hash, force, ref.citekey)
@@ -315,9 +344,22 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
                 status = ?, last_synced = ?, bib_fields = ?, collections = ?
             WHERE citekey = ?
             """,
-            (ref.item_type, ref.title, ref.year, ref.doi,
-             ref.url, ref.pdf_path, pdf_hash, pdf_size, pdf_mtime_ns, new_status, now,
-             _bib_fields_json(ref), _collections_json(ref), ref.citekey),
+            (
+                ref.item_type,
+                ref.title,
+                ref.year,
+                ref.doi,
+                ref.url,
+                ref.pdf_path,
+                pdf_hash,
+                pdf_size,
+                pdf_mtime_ns,
+                new_status,
+                now,
+                _bib_fields_json(ref),
+                _collections_json(ref),
+                ref.citekey,
+            ),
         )
     con.commit()
     return needs_parse
@@ -359,10 +401,9 @@ def _next_status(row, pdf_hash, force, citekey) -> tuple[str, bool]:
     if pdf_hash != old_hash:
         return ("discovered" if pdf_hash else "no_pdf"), pdf_hash is not None
     if pdf_hash is not None and (
-            (old_status == "parsed"
-             and not _parse_outputs_present(citekey, old_parsed_path))
-            or (old_status == "parse_failed"
-                and old_kind != "deterministic")):
+        (old_status == "parsed" and not _parse_outputs_present(citekey, old_parsed_path))
+        or (old_status == "parse_failed" and old_kind != "deterministic")
+    ):
         return "discovered", True
     return old_status, False
 
@@ -509,8 +550,17 @@ _STATUS_LABELS = {
 
 def _print_item(row) -> None:
     print(f"  {row['citekey']}")
-    for field in ("status", "failure_kind", "item_type", "year", "doi",
-                  "pdf_path", "parsed_path", "parse_error", "last_synced"):
+    for field in (
+        "status",
+        "failure_kind",
+        "item_type",
+        "year",
+        "doi",
+        "pdf_path",
+        "parsed_path",
+        "parse_error",
+        "last_synced",
+    ):
         value = row[field] if field in row.keys() else None
         if value:
             print(f"      {field:<13} {value}")
@@ -522,17 +572,23 @@ def main(argv: "list[str] | None" = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.corpus ledger",
         description="Show what the corpus layer holds. Read-only, takes no lock, "
-                    "and runs with the bare system python3.",
+        "and runs with the bare system python3.",
     )
     parser.add_argument("--list", action="store_true", help="List every item")
-    parser.add_argument("--status", help="List only items with this status "
-                                         f"({', '.join(_STATUS_LABELS)})")
+    parser.add_argument(
+        "--status", help=f"List only items with this status ({', '.join(_STATUS_LABELS)})"
+    )
     parser.add_argument("--citekey", help="Show one item in full")
-    parser.add_argument("--collection", metavar="NAME",
-                        help="List only items in this Zotero collection, or one "
-                             "beneath it (docs/ZOTERO.md)")
-    parser.add_argument("--collections", action="store_true",
-                        help="List every collection the corpus holds, and stop")
+    parser.add_argument(
+        "--collection",
+        metavar="NAME",
+        help="List only items in this Zotero collection, or one beneath it (docs/ZOTERO.md)",
+    )
+    parser.add_argument(
+        "--collections",
+        action="store_true",
+        help="List every collection the corpus holds, and stop",
+    )
     args = parser.parse_args(argv)
 
     if not config.LEDGER_PATH.exists():
@@ -563,9 +619,7 @@ def main(argv: "list[str] | None" = None) -> int:
 
 def _show_item(con, citekey) -> int:
     """`--citekey`: one item in full, or exit 1 for a key the ledger lacks."""
-    row = con.execute(
-        "SELECT * FROM items WHERE citekey = ?", (citekey,)
-    ).fetchone()
+    row = con.execute("SELECT * FROM items WHERE citekey = ?", (citekey,)).fetchone()
     if row is None:
         print(f"{citekey} is not in the ledger.")
         return 1
@@ -586,12 +640,13 @@ def _list_items(con, status, collection=None) -> int:
         (status, status),
     ).fetchall()
     if collection is not None:
-        rows = [r for r in rows
-                if bib_collections.matches(bib_collections.of_row(r), collection)]
+        rows = [r for r in rows if bib_collections.matches(bib_collections.of_row(r), collection)]
     if not rows:
-        print(f"No items with status {status!r}."
-              if collection is None else
-              f"No items in collection {collection!r}.")
+        print(
+            f"No items with status {status!r}."
+            if collection is None
+            else f"No items in collection {collection!r}."
+        )
     else:
         for row in rows:
             _print_item(row)
@@ -620,8 +675,7 @@ def _show_summary(con) -> int:
 
 
 def _print_summary_counts(con, counts, total) -> None:
-    print(f"Ledger: {config.LEDGER_PATH}   ({total} item(s) from "
-          f"{config.BIB_FILE_PATH.name})\n")
+    print(f"Ledger: {config.LEDGER_PATH}   ({total} item(s) from {config.BIB_FILE_PATH.name})\n")
     for status, label in _STATUS_LABELS.items():
         if counts.get(status):
             print(f"  {counts[status]:>4}  {label}")
@@ -633,12 +687,16 @@ def _print_summary_counts(con, counts, total) -> None:
         # it cannot be migrated here -- `python -m chitragupta.corpus sync` does that.
         kinds = {"deterministic": 0, "transient": 0}
     if kinds["deterministic"]:
-        print(f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
-              "automatically.\n  Fix or remove the PDF, or re-run "
-              "`python -m chitragupta.corpus sync --reparse`.")
+        print(
+            f"\n  {kinds['deterministic']} item(s) need attention -- not retried "
+            "automatically.\n  Fix or remove the PDF, or re-run "
+            "`python -m chitragupta.corpus sync --reparse`."
+        )
         print("  See which: python -m chitragupta.corpus ledger --status parse_failed")
     elif kinds["transient"]:
-        print(f"\n  {kinds['transient']} item(s) failed for a transient reason "
-              "and will be retried on the next sync.")
+        print(
+            f"\n  {kinds['transient']} item(s) failed for a transient reason "
+            "and will be retried on the next sync."
+        )
     else:
         print("\n  Nothing needs attention.")

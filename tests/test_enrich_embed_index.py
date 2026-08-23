@@ -50,9 +50,14 @@ class FakeCollection:
         self._store = {}  # id -> {"document":..., "embedding":..., "metadata":...}
 
     def upsert(self, ids, documents, embeddings, metadatas):
-        self.upserted.append({
-            "ids": ids, "documents": documents, "embeddings": embeddings, "metadatas": metadatas,
-        })
+        self.upserted.append(
+            {
+                "ids": ids,
+                "documents": documents,
+                "embeddings": embeddings,
+                "metadatas": metadatas,
+            }
+        )
         for i, doc, emb, meta in zip(ids, documents, embeddings, metadatas):
             self._store[i] = {"document": doc, "embedding": emb, "metadata": meta}
 
@@ -119,7 +124,9 @@ class TestChunkText:
         assert embed_index.chunk_text("") == []
 
     def test_short_text_single_chunk(self):
-        assert embed_index.chunk_text("one two three", chunk_words=200, overlap_words=40) == ["one two three"]
+        assert embed_index.chunk_text("one two three", chunk_words=200, overlap_words=40) == [
+            "one two three"
+        ]
 
     def test_overlap_arithmetic(self):
         text = " ".join(str(i) for i in range(10))  # "0 1 2 ... 9"
@@ -214,15 +221,13 @@ class TestGetClientAndModel:
 
 
 class TestBuildIndex:
-    def test_indexes_docs_with_text_and_counts_chunks(self, isolated_config, fake_enrich_deps, tmp_path):
+    def test_indexes_docs_with_text_and_counts_chunks(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
         parsed = tmp_path / "a.txt"
         parsed.write_text(" ".join(["word"] * 10))
-        doc_with_text = CorpusDoc(
-            citekey="a2024", title="A", pdf_path=None, text_path=str(parsed)
-        )
-        doc_without_text = CorpusDoc(
-            citekey="b2024", title="B", pdf_path=None
-        )
+        doc_with_text = CorpusDoc(citekey="a2024", title="A", pdf_path=None, text_path=str(parsed))
+        doc_without_text = CorpusDoc(citekey="b2024", title="B", pdf_path=None)
 
         counts = embed_index.build_index([doc_with_text, doc_without_text])
 
@@ -235,11 +240,14 @@ class TestBuildIndex:
         upsert_call = collection.upserted[0]
         assert upsert_call["ids"] == ["a2024::0"]
         assert upsert_call["metadatas"][0] == {
-            "citekey": "a2024", "title": "A",
+            "citekey": "a2024",
+            "title": "A",
             "text_hash": embed_index.hash_text(" ".join(["word"] * 10)),
         }
 
-    def test_empty_chunks_from_whitespace_only_text(self, isolated_config, fake_enrich_deps, tmp_path):
+    def test_empty_chunks_from_whitespace_only_text(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
         parsed = tmp_path / "empty.txt"
         parsed.write_text("   ")
         doc = CorpusDoc(citekey="a2024", title="A", pdf_path=None, text_path=str(parsed))
@@ -253,7 +261,9 @@ class TestBuildIndexIncremental:
         parsed.write_text(text)
         return CorpusDoc(citekey=citekey, title="A", pdf_path=None, text_path=str(parsed))
 
-    def test_a_pre_57_collection_is_not_re_embedded(self, isolated_config, fake_enrich_deps, tmp_path):
+    def test_a_pre_57_collection_is_not_re_embedded(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
         """Collections written before #57 carry a `doc_id` metadata key
         that build_index no longer writes or queries. They must still hit
         the unchanged-text skip: re-embedding an existing corpus because
@@ -272,13 +282,15 @@ class TestBuildIndexIncremental:
             ids=["a2024::0"],
             documents=[" ".join(text.split())],
             embeddings=[[1.0]],
-            metadatas=[{
-                "doc_id": "a2024",          # the retired key, as v3.3.0 wrote it
-                "citekey": "a2024",
-                "source": "bib",            # retired even earlier, in #56
-                "title": "A",
-                "text_hash": embed_index.hash_text(text),
-            }],
+            metadatas=[
+                {
+                    "doc_id": "a2024",  # the retired key, as v3.3.0 wrote it
+                    "citekey": "a2024",
+                    "source": "bib",  # retired even earlier, in #56
+                    "title": "A",
+                    "text_hash": embed_index.hash_text(text),
+                }
+            ],
         )
         upserts_before = len(collection.upserted)
 
@@ -287,7 +299,9 @@ class TestBuildIndexIncremental:
         assert counts["a2024"] == 1
         assert len(collection.upserted) == upserts_before  # no re-encode
 
-    def test_second_call_with_unchanged_text_skips_encode(self, isolated_config, fake_enrich_deps, tmp_path):
+    def test_second_call_with_unchanged_text_skips_encode(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
         doc = self.make_doc(tmp_path, "word " * 10)
         embed_index.build_index([doc])
 
@@ -300,7 +314,9 @@ class TestBuildIndexIncremental:
         assert counts["a2024"] == 1
         assert len(collection.upserted) == upserts_before  # no new upsert -- encode was skipped
 
-    def test_changed_text_re_embeds_and_replaces_chunks(self, isolated_config, fake_enrich_deps, tmp_path):
+    def test_changed_text_re_embeds_and_replaces_chunks(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
         doc = self.make_doc(tmp_path, "word " * 10)
         embed_index.build_index([doc])
 
@@ -314,9 +330,14 @@ class TestBuildIndexIncremental:
 
         assert counts["a2024"] == len(remaining["ids"]) > 1
         # No stale chunks left over from the first, shorter version.
-        assert all(m["text_hash"] == embed_index.hash_text("different word " * 300) for m in remaining["metadatas"])
+        assert all(
+            m["text_hash"] == embed_index.hash_text("different word " * 300)
+            for m in remaining["metadatas"]
+        )
 
-    def test_shrinking_chunk_count_leaves_no_orphaned_chunks(self, isolated_config, fake_enrich_deps, tmp_path):
+    def test_shrinking_chunk_count_leaves_no_orphaned_chunks(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
         doc_long = self.make_doc(tmp_path, "word " * 300)
         embed_index.build_index([doc_long])
         client = FakeChromaClient.instances[-1]
@@ -344,8 +365,10 @@ class TestBuildIndexReporting:
     def test_names_each_document_with_its_position_and_outcome(
         self, isolated_config, fake_enrich_deps, tmp_path, capsys
     ):
-        docs = [self.make_doc(tmp_path, "word " * 10, citekey="a2024"),
-                self.make_doc(tmp_path, "word " * 10, citekey="b2024")]
+        docs = [
+            self.make_doc(tmp_path, "word " * 10, citekey="a2024"),
+            self.make_doc(tmp_path, "word " * 10, citekey="b2024"),
+        ]
 
         embed_index.build_index(docs)
 
@@ -406,21 +429,26 @@ class TestBuildIndexReporting:
         embed_index.build_index([unchanged])
         capsys.readouterr()
 
-        embed_index.build_index([
-            unchanged,
-            self.make_doc(tmp_path, "word " * 300, citekey="b2024"),
-            CorpusDoc(citekey="c2024", title="C", pdf_path=None),
-        ])
+        embed_index.build_index(
+            [
+                unchanged,
+                self.make_doc(tmp_path, "word " * 300, citekey="b2024"),
+                CorpusDoc(citekey="c2024", title="C", pdf_path=None),
+            ]
+        )
 
         out = capsys.readouterr().out
-        assert ("  3 document(s): 1 embedded, 1 unchanged, 1 with no text "
-                "-- 3 chunk(s) in the index") in out
+        assert (
+            "  3 document(s): 1 embedded, 1 unchanged, 1 with no text -- 3 chunk(s) in the index"
+        ) in out
 
     def test_interrupt_says_how_far_it_got_and_that_the_work_is_kept(
         self, isolated_config, fake_enrich_deps, tmp_path, monkeypatch, capsys
     ):
-        docs = [self.make_doc(tmp_path, "word " * 10, citekey="a2024"),
-                self.make_doc(tmp_path, "word " * 10, citekey="b2024")]
+        docs = [
+            self.make_doc(tmp_path, "word " * 10, citekey="a2024"),
+            self.make_doc(tmp_path, "word " * 10, citekey="b2024"),
+        ]
 
         calls = []
 
@@ -446,7 +474,9 @@ class TestBuildIndexReporting:
 
 
 class TestCollectionName:
-    def test_sanitizes_model_name_into_a_valid_chroma_collection_name(self, isolated_config, monkeypatch):
+    def test_sanitizes_model_name_into_a_valid_chroma_collection_name(
+        self, isolated_config, monkeypatch
+    ):
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
         name = embed_index.collection_name()
         assert name == "corpus-sentence-transformers-all-MiniLM-L6-v2"
@@ -530,13 +560,15 @@ class TestSearchCapsPerSource:
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
         client, _ = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
-        collection.query_response = self.make_response([
-            ("a2024", "A", "chunk a1", 0.1),
-            ("a2024", "A", "chunk a2", 0.2),
-            ("a2024", "A", "chunk a3", 0.3),
-            ("a2024", "A", "chunk a4", 0.4),
-            ("b2024", "B", "chunk b1", 0.5),
-        ])
+        collection.query_response = self.make_response(
+            [
+                ("a2024", "A", "chunk a1", 0.1),
+                ("a2024", "A", "chunk a2", 0.2),
+                ("a2024", "A", "chunk a3", 0.3),
+                ("a2024", "A", "chunk a4", 0.4),
+                ("b2024", "B", "chunk b1", 0.5),
+            ]
+        )
 
         results = embed_index.search("query", k=3)
 
@@ -550,12 +582,14 @@ class TestSearchCapsPerSource:
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 3)
         client, _ = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
-        collection.query_response = self.make_response([
-            ("a2024", "A", "chunk a1", 0.1),
-            ("a2024", "A", "chunk a2", 0.2),
-            ("a2024", "A", "chunk a3", 0.3),
-            ("a2024", "A", "chunk a4", 0.4),
-        ])
+        collection.query_response = self.make_response(
+            [
+                ("a2024", "A", "chunk a1", 0.1),
+                ("a2024", "A", "chunk a2", 0.2),
+                ("a2024", "A", "chunk a3", 0.3),
+                ("a2024", "A", "chunk a4", 0.4),
+            ]
+        )
 
         # k is deliberately not the binding constraint here -- only the
         # cap is -- so a 0-based-counter-with-`>` bug (admits 4) is
@@ -570,10 +604,12 @@ class TestSearchCapsPerSource:
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 1)
         client, _ = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
-        collection.query_response = self.make_response([
-            ("a2024", "", "chunk a1", 0.1),
-            ("b2024", "", "chunk b1", 0.2),
-        ])
+        collection.query_response = self.make_response(
+            [
+                ("a2024", "", "chunk a1", 0.1),
+                ("b2024", "", "chunk b1", 0.2),
+            ]
+        )
 
         results = embed_index.search("query", k=10)
 

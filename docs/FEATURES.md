@@ -113,7 +113,7 @@ flowchart TB
 ```
 
 | Layer | Generative? | Blocks you? | Takes the corpus write lock? |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 · Corpus | No -- no LLM, no judgement calls | Only the gate, which lives in layer 2 | **Yes** |
 | 2 · Drafting | Yes | The gate does, and only the gate | No -- read-only over the corpus |
 | 3 · Enrichment | No | No | **Yes**, same lock as `sync` |
@@ -129,7 +129,7 @@ Deterministic and safe to run unattended: no LLM, no judgement calls,
 same bibliography in, same citekeys out.
 
 | Feature | What it gives you | Detail |
-|---|---|---|
+| --- | --- | --- |
 | `corpus sync` | bib read, ledger update, PDF text extraction, duplicate-citekey check, stale-citekey report | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | `corpus ledger` | inspect what the corpus holds, by citekey, collection or status | [CLI.md](CLI.md) |
 | `corpus topics` | the topic clustering, once the enrichment layer has built it | [TOPIC-MODELLING.md](TOPIC-MODELLING.md) |
@@ -164,7 +164,7 @@ name -- each declares its triggers, and asking in ordinary words selects
 one ([GENRE.md](GENRE.md)).
 
 | Skill | Writes | Reader |
-|---|---|---|
+| --- | --- | --- |
 | `survey-writer` | literature survey, related work, "state of the art" | someone entering a field who needs the map and the gaps |
 | `thesis-chapter-writer` | a `.tex` chapter fragment, RQ-driven | an examiner reading adversarially |
 | `textbook-chapter-writer` | undergraduate chapter with worked examples | a student studying, not typing |
@@ -253,7 +253,7 @@ copyrighted sources.
 ### 🔎 Retrieval, references and rendering
 
 | Feature | What it gives you | Detail |
-|---|---|---|
+| --- | --- | --- |
 | `draft retrieve` | BM25 search and evidence windows over the parsed corpus | [RETRIEVAL.md](RETRIEVAL.md) |
 | `draft references` | an IEEE reference list built only from citekeys the draft already cites | [CLI.md](CLI.md) |
 | `draft render` | `.md`, `.tex`, `.pdf`, `.docx` via Pandoc, numbered IEEE-style | [CLI.md](CLI.md) |
@@ -276,7 +276,7 @@ produces evidence for a human judgement, never a verdict, and each exits
 0 whether it finds something or not.
 
 | Aid | Answers |
-|---|---|
+| --- | --- |
 | `review provenance` | what in each cited source actually supports the claim citing it, quoting a real passage |
 | `review verbatim` | how much wording the draft shares with its sources -- and with **any** parsed source, cited or not |
 | `review coverage` | retrieval surfaced these sources; did the draft cite them? |
@@ -306,7 +306,7 @@ it is expensive, and cost a skill may incur unasked is not a decision it
 gets to make.
 
 | Stage | What it adds |
-|---|---|
+| --- | --- |
 | `docling` | layout-aware parsing, and per-passage sidecars |
 | `embed` | a semantic index for retrieval and the verbatim embedding tier |
 | `bertopic` | topic clustering over the corpus |
@@ -319,7 +319,7 @@ topic stages; [PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
 ## 🧩 Cross-cutting features
 
 | Feature | What it gives you | Detail |
-|---|---|---|
+| --- | --- | --- |
 | One CLI, one level deep | `chitragupta <layer> <verb>`, four layers plus `init`/`doctor`/`install` | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta init` | scaffolds a project directory to draft in | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |

@@ -110,8 +110,11 @@ def resolve_workers(n_docs: int) -> tuple[int, str | None]:
         complaint = (
             f"  WARNING [parser].workers={requested} exceeds what this host can "
             f"sustain ({cpus} CPUs available to this process"
-            + (f", ~{_CPUS_PER_DOCLING_WORKER} per docling worker"
-               if config.PARSER == "docling" else "")
+            + (
+                f", ~{_CPUS_PER_DOCLING_WORKER} per docling worker"
+                if config.PARSER == "docling"
+                else ""
+            )
             + f") -- using {workers}."
         )
     return workers, complaint

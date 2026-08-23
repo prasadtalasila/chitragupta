@@ -151,9 +151,15 @@ def _gh(*args: str, input_text: "str | None" = None) -> str:
     """`gh`'s stdout, decoded as UTF-8 rather than the host locale -- the
     same reasoning `check_version_bump.py::_git` documents, and this reads
     PR titles and descriptions, which are not guaranteed ASCII."""
-    result = subprocess.run(["gh", *args], input=input_text, check=True,
-                            capture_output=True, text=True, encoding="utf-8",
-                            cwd=REPO_ROOT)
+    result = subprocess.run(
+        ["gh", *args],
+        input=input_text,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        cwd=REPO_ROOT,
+    )
     return result.stdout
 
 
@@ -162,8 +168,9 @@ def _pr_body(pr_number: int) -> str:
 
 
 def _pr_commit_subjects(pr_number: int) -> list[str]:
-    output = _gh("pr", "view", str(pr_number), "--json", "commits",
-                 "--jq", ".commits[].messageHeadline")
+    output = _gh(
+        "pr", "view", str(pr_number), "--json", "commits", "--jq", ".commits[].messageHeadline"
+    )
     return [line for line in output.splitlines() if line.strip()]
 
 
@@ -177,33 +184,33 @@ def _merge(pr_number: int, body: str) -> None:
     before being treated as real.
     """
     try:
-        _gh("pr", "merge", str(pr_number), "--squash", "--body-file", "-",
-            input_text=body)
+        _gh("pr", "merge", str(pr_number), "--squash", "--body-file", "-", input_text=body)
     except subprocess.CalledProcessError:
-        state = _gh("pr", "view", str(pr_number), "--json", "state",
-                    "--jq", ".state").strip()
+        state = _gh("pr", "view", str(pr_number), "--json", "state", "--jq", ".state").strip()
         if state != "MERGED":
             raise
-        print("gh pr merge reported an error, but the PR is already merged "
-              "-- a cosmetic worktree-cleanup failure seen on this host. "
-              "Not re-running it.")
+        print(
+            "gh pr merge reported an error, but the PR is already merged "
+            "-- a cosmetic worktree-cleanup failure seen on this host. "
+            "Not re-running it."
+        )
 
 
 def main(argv: "list[str] | None" = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python scripts/merge_pr.py",
         description="Compose the squash-commit body DEVELOPER-AGENTS.md's "
-                    "Merging section documents, from the PR's Description "
-                    "(or its commits, as a fallback), and merge with "
-                    "gh pr merge --squash.",
+        "Merging section documents, from the PR's Description "
+        "(or its commits, as a fallback), and merge with "
+        "gh pr merge --squash.",
     )
     parser.add_argument("pr_number", type=int, help="the PR number to merge")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="print the composed body without merging")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="print the composed body without merging"
+    )
     args = parser.parse_args(argv)
 
-    text, source = compose_body(_pr_body(args.pr_number),
-                                _pr_commit_subjects(args.pr_number))
+    text, source = compose_body(_pr_body(args.pr_number), _pr_commit_subjects(args.pr_number))
     print(text)
     print(f"(composed from the PR's {source})")
     if args.dry_run:

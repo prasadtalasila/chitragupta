@@ -203,7 +203,7 @@ corpus and not a build failure.
 ### ⚖ Two findings, and they are not the same kind of thing
 
 | Finding | What it is | What it costs to ignore |
-|---|---|---|
+| --- | --- | --- |
 | **Missing** -- a cited citekey that has left the ledger | a defect | the draft cites a paper the corpus no longer has; the citation gate will fail on it |
 | **Candidate** -- a newly reachable paper the dossier never weighed | a decision | nothing, until the sub-theme it bears on is revised |
 

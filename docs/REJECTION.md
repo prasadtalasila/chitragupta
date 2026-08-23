@@ -91,7 +91,7 @@ backwards -- these are the numbers that were supposed to justify it.
 Per sub-theme at `k=15`, in characters of payload reaching the caller:
 
 | | Payload | vs one-stage |
-|---|---|---|
+| --- | --- | --- |
 | One-stage `search` | 15 x 500 = **7,500** | -- |
 | Two-stage, 3 survive triage | 2,400 + 3 x 1,200 = **6,000** | -20% |
 | Two-stage, 5 survive | 2,400 + 5 x 1,200 = **8,400** | +12% |
@@ -164,7 +164,7 @@ Two-stage was designed against `survey-writer`'s profile -- over-fetch at
 shape.
 
 | Genre | Citekeys in the shipped example | Fit | Dominant problem |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `tutorial-writer` | 1 | **Poor** | Pure overhead |
 | `textbook-chapter-writer` | 6 | Neutral | Neither helps nor hurts |
 | `survey-writer` | 36 | **Best** | A false rejection becomes a false *gap claim* |
@@ -264,7 +264,7 @@ cannot silently invert again.
 magnitude:
 
 | Rejection made at | Evidence behind it | Invalidated by |
-|---|---|---|
+| --- | --- | --- |
 | **scope** ("adoption economics is out of scope") | none needed -- it is about the draft, not the paper | a scope change |
 | **triage** | ~160 characters, one window | nothing, currently |
 | one-stage `search` | ~500 characters | nothing, currently |

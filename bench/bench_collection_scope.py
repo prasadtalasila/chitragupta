@@ -78,7 +78,7 @@ def _body(draft_path):
     """
     text = draft_path.read_text(encoding="utf-8")
     match = REFERENCES_RE.search(text)
-    return text[:match.start()] if match else text
+    return text[: match.start()] if match else text
 
 
 def _cited_citekeys(draft_path):
@@ -141,8 +141,11 @@ def _collection_size(collection):
         return None
     con = ledger.connect()
     try:
-        return sum(1 for row in ledger.all_items(con)
-                   if bib_collections.matches(bib_collections.of_row(row), collection))
+        return sum(
+            1
+            for row in ledger.all_items(con)
+            if bib_collections.matches(bib_collections.of_row(row), collection)
+        )
     finally:
         con.close()
 
@@ -153,8 +156,10 @@ def _hash_check(hashes_path):
     what the arms saw, and every surfaced-set figure here is void.
     """
     if not hashes_path or not hashes_path.is_file():
-        return {"checked": False,
-                "note": "no hashes.jsonl given -- the replay's precondition is unverified"}
+        return {
+            "checked": False,
+            "note": "no hashes.jsonl given -- the replay's precondition is unverified",
+        }
     lines = hashes_path.read_text(encoding="utf-8").splitlines()
     rows = [json.loads(line) for line in lines if line.strip()]
     index_hashes = {r["retrieval_index"]["md5"] for r in rows}
@@ -198,9 +203,10 @@ def _shared_runs(path_a, path_b, n=WORD_RUN):
     to lowercase words with punctuation stripped, so it will over-report
     shared boilerplate like table headers.
     """
+
     def grams(path):
         words = re.findall(r"[a-z0-9]+", _body(path).lower())
-        return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)}, words
+        return {tuple(words[i : i + n]) for i in range(len(words) - n + 1)}, words
 
     a_grams, a_words = grams(path_a)
     b_grams, _ = grams(path_b)
@@ -210,9 +216,9 @@ def _shared_runs(path_a, path_b, n=WORD_RUN):
     if shared:
         i = 0
         while i < len(a_words) - n + 1:
-            if tuple(a_words[i:i + n]) in shared:
+            if tuple(a_words[i : i + n]) in shared:
                 j = i
-                while j < len(a_words) - n + 1 and tuple(a_words[j:j + n]) in shared:
+                while j < len(a_words) - n + 1 and tuple(a_words[j : j + n]) in shared:
                     j += 1
                 longest = max(longest, (j - i) + n - 1)
                 i = j
@@ -221,8 +227,8 @@ def _shared_runs(path_a, path_b, n=WORD_RUN):
     return {
         "measure": f"shared word runs of >= {n} words, lowercased, punctuation stripped",
         "caveat": "crude by design -- over-reports shared table headers and the "
-                  "pre-registered section titles, which are identical by construction. "
-                  "Not a substitute for the per-arm corpus scan.",
+        "pre-registered section titles, which are identical by construction. "
+        "Not a substitute for the per-arm corpus scan.",
         "shared_ngrams": len(shared),
         "arm_f_ngrams": len(a_grams),
         "arm_c_ngrams": len(b_grams),
@@ -253,8 +259,7 @@ def _pool_usage(session_file, start, end):
     models = {}
     entries = 0
     if not session_file or not session_file.is_file():
-        return {"turns": 0, "input_tokens": 0, "output_tokens": 0,
-                "note": "transcript not found"}
+        return {"turns": 0, "input_tokens": 0, "output_tokens": 0, "note": "transcript not found"}
     with session_file.open(encoding="utf-8") as f:
         for line in f:
             try:
@@ -271,8 +276,12 @@ def _pool_usage(session_file, start, end):
             entries += 1
             rid = entry.get("requestId")
             fields = per_request.setdefault(rid, {})
-            for key in ("input_tokens", "cache_read_input_tokens",
-                        "cache_creation_input_tokens", "output_tokens"):
+            for key in (
+                "input_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
+                "output_tokens",
+            ):
                 fields[key] = max(fields.get(key, 0), usage.get(key, 0))
             # What docs/TOKENS.md's recipe would have read, kept only so
             # the two can be compared below.
@@ -280,9 +289,12 @@ def _pool_usage(session_file, start, end):
             model = message.get("model")
             if model:
                 models[model] = models.get(model, 0) + 1
-    tokens_in = sum(f.get("input_tokens", 0) + f.get("cache_read_input_tokens", 0)
-                    + f.get("cache_creation_input_tokens", 0)
-                    for f in per_request.values())
+    tokens_in = sum(
+        f.get("input_tokens", 0)
+        + f.get("cache_read_input_tokens", 0)
+        + f.get("cache_creation_input_tokens", 0)
+        for f in per_request.values()
+    )
     tokens_out = sum(f.get("output_tokens", 0) for f in per_request.values())
     naive_out = sum(first_seen.values())
     return {
@@ -301,8 +313,8 @@ def _pool_usage(session_file, start, end):
         "streaming_partials_present": naive_out != tokens_out,
         "self_check": (
             "ok -- one usage entry per request, both readings agree"
-            if naive_out == tokens_out else
-            f"streaming partials present: first-per-request would report "
+            if naive_out == tokens_out
+            else f"streaming partials present: first-per-request would report "
             f"{naive_out:,} against {tokens_out:,}. The max reading is the "
             f"correct one; see bench/RESULTS.md 2026-08-19."
         ),
@@ -359,13 +371,22 @@ def self_check() -> None:
     import tempfile
 
     lines = [
-        json.dumps({"timestamp": "2026-01-01T00:00:00Z", "requestId": "r1",
-                    "message": {"model": "m", "usage": {"output_tokens": 10}}}),
-        json.dumps({"timestamp": "2026-01-01T00:00:01Z", "requestId": "r1",
-                    "message": {"model": "m", "usage": {"output_tokens": 50}}}),
+        json.dumps(
+            {
+                "timestamp": "2026-01-01T00:00:00Z",
+                "requestId": "r1",
+                "message": {"model": "m", "usage": {"output_tokens": 10}},
+            }
+        ),
+        json.dumps(
+            {
+                "timestamp": "2026-01-01T00:00:01Z",
+                "requestId": "r1",
+                "message": {"model": "m", "usage": {"output_tokens": 50}},
+            }
+        ),
     ]
-    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
-                                     encoding="utf-8") as fh:
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
         path = Path(fh.name)
     try:
@@ -376,16 +397,21 @@ def self_check() -> None:
         path.unlink()
     assert usage["output_tokens"] == 50, (
         f"a streaming request's usage must be read from its final (max) entry, "
-        f"not its first -- got {usage['output_tokens']}, the documented undercount bug")
+        f"not its first -- got {usage['output_tokens']}, the documented undercount bug"
+    )
     assert usage["streaming_partials_present"] is True, (
         "two usage entries for one requestId must be flagged as streaming "
-        "partials, not silently agreeing")
+        "partials, not silently agreeing"
+    )
 
-    same = {"point": "p", "retrieval_index": {"md5": "a", "bytes": 1},
-            "ledger": {"md5": "x"}, "utc": "t"}
+    same = {
+        "point": "p",
+        "retrieval_index": {"md5": "a", "bytes": 1},
+        "ledger": {"md5": "x"},
+        "utc": "t",
+    }
     moved = {**same, "retrieval_index": {"md5": "b", "bytes": 1}}
-    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
-                                     encoding="utf-8") as fh:
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8") as fh:
         fh.write(json.dumps(same) + "\n" + json.dumps(moved) + "\n")
         hash_path = Path(fh.name)
     try:
@@ -394,7 +420,8 @@ def self_check() -> None:
         hash_path.unlink()
     assert checked["replay_sound"] is False, (
         "a run whose retrieval_index hash changed between checkpoints must not "
-        "be reported as a sound replay")
+        "be reported as a sound replay"
+    )
 
 
 def run(args):
@@ -402,10 +429,18 @@ def run(args):
     dossiers = config.CONTENT_DIR / "dossiers" / args.topic
     review = config.CONTENT_DIR / "review" / args.topic
 
-    arm_f = {"draft": drafts / f"{args.arm_f}.md", "dossier": dossiers / args.arm_f,
-             "verbatim": review / f"{args.arm_f}.verbatim.json", "collection": None}
-    arm_c = {"draft": drafts / f"{args.arm_c}.md", "dossier": dossiers / args.arm_c,
-             "verbatim": review / f"{args.arm_c}.verbatim.json", "collection": args.collection}
+    arm_f = {
+        "draft": drafts / f"{args.arm_f}.md",
+        "dossier": dossiers / args.arm_f,
+        "verbatim": review / f"{args.arm_f}.verbatim.json",
+        "collection": None,
+    }
+    arm_c = {
+        "draft": drafts / f"{args.arm_c}.md",
+        "dossier": dossiers / args.arm_c,
+        "verbatim": review / f"{args.arm_c}.verbatim.json",
+        "collection": args.collection,
+    }
 
     cited_f = _cited_citekeys(arm_f["draft"])
     cited_c = _cited_citekeys(arm_c["draft"])
@@ -443,9 +478,9 @@ def run(args):
             "arm_c_queries": len(replay_c),
             "chars_delta_pct": round(100 * (chars_c - chars_f) / chars_f, 2) if chars_f else None,
             "note": "near-parity is the expected result, not a null one: at a fixed "
-                    "--k the filter still returns k results, drawn from a smaller "
-                    "pool. The filter changes WHICH papers arrive, not how many "
-                    "characters do.",
+            "--k the filter still returns k results, drawn from a smaller "
+            "pool. The filter changes WHICH papers arrive, not how many "
+            "characters do.",
         },
         "words": {
             "arm_f_words": words_f,
@@ -454,13 +489,17 @@ def run(args):
         },
         "surfaced_selected_rejected": {
             "arm_f": ratios(cited_f, surfaced_f),
-            "arm_c": ratios(cited_c, surfaced_c, {
-                "collection_size": size_c,
-                "collection_coverage": round(len(surfaced_c) / size_c, 4) if size_c else None,
-                "caveat": "surfaced is capped at collection_size by construction, so "
-                          "arm_c's selection_ratio has a denominator that cannot grow. "
-                          "Compare ratios, never raw surfaced counts.",
-            }),
+            "arm_c": ratios(
+                cited_c,
+                surfaced_c,
+                {
+                    "collection_size": size_c,
+                    "collection_coverage": round(len(surfaced_c) / size_c, 4) if size_c else None,
+                    "caveat": "surfaced is capped at collection_size by construction, so "
+                    "arm_c's selection_ratio has a denominator that cannot grow. "
+                    "Compare ratios, never raw surfaced counts.",
+                },
+            ),
         },
         "common_papers": {
             "cited_in_both": sorted(cited_f & cited_c),
@@ -480,12 +519,15 @@ def run(args):
     }
 
     if args.arm_r:
-        arm_r = {"draft": drafts / f"{args.arm_r}.md",
-                 "dossier": dossiers / args.arm_r,
-                 "verbatim": review / f"{args.arm_r}.verbatim.json"}
+        arm_r = {
+            "draft": drafts / f"{args.arm_r}.md",
+            "dossier": dossiers / args.arm_r,
+            "verbatim": review / f"{args.arm_r}.verbatim.json",
+        }
         cited_r = _cited_citekeys(arm_r["draft"])
         replay_all, replay_pass = _replay_queries_split(
-            arm_r["dossier"], args.collection, args.arm_r_inherited_scoped_rows)
+            arm_r["dossier"], args.collection, args.arm_r_inherited_scoped_rows
+        )
         surfaced_r = set().union(*replay_all.values()) if replay_all else set()
         surfaced_pass = set().union(*replay_pass.values()) if replay_pass else set()
         rows_r = _retrieval_rows(arm_r["dossier"])
@@ -500,12 +542,16 @@ def run(args):
             "surfaced_distinct_citekeys_all_history": len(surfaced_r),
             "surfaced_distinct_citekeys_revision_pass_only": len(surfaced_pass),
             "cited": len(cited_r),
-            "selection_ratio_vs_all_history": round(len(cited_r) / len(surfaced_r), 4) if surfaced_r else None,
-            "rejection_ratio_vs_all_history": round(1 - len(cited_r) / len(surfaced_r), 4) if surfaced_r else None,
+            "selection_ratio_vs_all_history": round(len(cited_r) / len(surfaced_r), 4)
+            if surfaced_r
+            else None,
+            "rejection_ratio_vs_all_history": round(1 - len(cited_r) / len(surfaced_r), 4)
+            if surfaced_r
+            else None,
             "verbatim": _verbatim_summary(arm_r["verbatim"]),
             "note": "Its log mixes scoped and unscoped calls and does not say which is "
-                    "which (#254); the split is provenance, supplied via "
-                    "--arm-r-inherited-scoped-rows, not inferred from the log.",
+            "which (#254); the split is provenance, supplied via "
+            "--arm-r-inherited-scoped-rows, not inferred from the log.",
         }
         result["three_way_papers"] = {
             "cited_in_all_three": sorted(cited_f & cited_c & cited_r),
@@ -521,12 +567,13 @@ def run(args):
             "whole_corpus_vs_revised": _shared_runs(arm_f["draft"], arm_r["draft"]),
             "scoped_vs_revised": _shared_runs(arm_c["draft"], arm_r["draft"]),
             "note": "scoped_vs_revised is high BY CONSTRUCTION -- the revised draft is a "
-                    "copy of the scoped one that was then edited. It measures how much "
-                    "the revision changed, not independence.",
+            "copy of the scoped one that was then edited. It measures how much "
+            "the revision changed, not independence.",
         }
         if args.arm_r_session:
             result.setdefault("tokens_extra", {})["arm R -- whole agent"] = _pool_usage(
-                args.arm_r_session, "", "~")
+                args.arm_r_session, "", "~"
+            )
 
     if args.arm_f_session and args.arm_c_session:
         # Isolated arms: one subagent, one transcript, one context pool
@@ -538,6 +585,7 @@ def run(args):
             "arm C -- whole agent": _pool_usage(args.arm_c_session, "", "~"),
         }
         result["tokens"] = windows
+
         def _per_1k(window, words):
             """None rather than a crash when a draft body is empty.
 
@@ -547,17 +595,15 @@ def run(args):
             return round(1000 * window["output_tokens"] / words, 1) if words else None
 
         result["tokens_per_1k_words"] = {
-            "arm_f_output_tokens_per_1k_words":
-                _per_1k(windows["arm F -- whole agent"], words_f),
-            "arm_c_output_tokens_per_1k_words":
-                _per_1k(windows["arm C -- whole agent"], words_c),
+            "arm_f_output_tokens_per_1k_words": _per_1k(windows["arm F -- whole agent"], words_f),
+            "arm_c_output_tokens_per_1k_words": _per_1k(windows["arm C -- whole agent"], words_c),
             "arm_f_words_drafted_total": words_f,
             "arm_c_words_drafted_total": words_c,
             "note": "Each arm drafted once, in its own agent, so words drafted "
-                    "equals the finished body and needs no discarded-draft "
-                    "correction. Both pools still contain non-drafting output "
-                    "(dossier, gate, renders, style, verbatim), so this remains "
-                    "an upper bound on the cost of drafting 1,000 words.",
+            "equals the finished body and needs no discarded-draft "
+            "correction. Both pools still contain non-drafting output "
+            "(dossier, gate, renders, style, verbatim), so this remains "
+            "an upper bound on the cost of drafting 1,000 words.",
         }
         result["tokens_note"] = (
             "One context pool per arm, measured over each subagent's own "
@@ -570,18 +616,23 @@ def run(args):
     elif args.session and args.hashes and args.hashes.is_file():
         b = _boundaries(args.hashes, args.session)
         windows = {
-            "setup (orientation + preregistration, shared)":
-                _pool_usage(args.session, b["session_start"], b["arm_f_start"]),
-            "arm F -- total (retrieval + first draft + rewrite + pipeline)":
-                _pool_usage(args.session, b["arm_f_start"], b["arm_f_end"]),
-            "arm C -- total (retrieval + draft + pipeline)":
-                _pool_usage(args.session, b["arm_f_end"], b["arm_c_end"]),
+            "setup (orientation + preregistration, shared)": _pool_usage(
+                args.session, b["session_start"], b["arm_f_start"]
+            ),
+            "arm F -- total (retrieval + first draft + rewrite + pipeline)": _pool_usage(
+                args.session, b["arm_f_start"], b["arm_f_end"]
+            ),
+            "arm C -- total (retrieval + draft + pipeline)": _pool_usage(
+                args.session, b["arm_f_end"], b["arm_c_end"]
+            ),
         }
         if args.steering_at:
-            windows["arm F -- before the steering (retrieval + first draft)"] = \
-                _pool_usage(args.session, b["arm_f_start"], args.steering_at)
-            windows["arm F -- after the steering (rewrite + pipeline, QUARANTINED)"] = \
-                _pool_usage(args.session, args.steering_at, b["arm_f_end"])
+            windows["arm F -- before the steering (retrieval + first draft)"] = _pool_usage(
+                args.session, b["arm_f_start"], args.steering_at
+            )
+            windows["arm F -- after the steering (rewrite + pipeline, QUARANTINED)"] = _pool_usage(
+                args.session, args.steering_at, b["arm_f_end"]
+            )
         result["boundaries"] = b
         result["tokens"] = windows
         drafted_f = words_f + (args.arm_f_discarded_words or 0)
@@ -590,20 +641,24 @@ def run(args):
         arm_c_total = windows["arm C -- total (retrieval + draft + pipeline)"]
         if drafted_f:
             per_k["arm_f_output_tokens_per_1k_words"] = round(
-                1000 * arm_f_total["output_tokens"] / drafted_f, 1)
+                1000 * arm_f_total["output_tokens"] / drafted_f, 1
+            )
         if words_c:
             per_k["arm_c_output_tokens_per_1k_words"] = round(
-                1000 * arm_c_total["output_tokens"] / words_c, 1)
+                1000 * arm_c_total["output_tokens"] / words_c, 1
+            )
         per_k["arm_f_words_drafted_total"] = drafted_f
         per_k["arm_c_words_drafted_total"] = words_c
-        per_k["note"] = ("Count each word an arm actually emitted, once. Where an arm "
-                         "redrafted, the overwritten passes are not on disk and are "
-                         "passed in via --arm-f-discarded-words; a pass that was written "
-                         "once and then patched in place is counted once, not once per "
-                         "assembly it appears in. Both windows also contain non-drafting "
-                         "output -- gate, references, renders, style, verbatim -- so this "
-                         "is an upper bound on the cost of drafting 1,000 words, not a "
-                         "clean measure of it.")
+        per_k["note"] = (
+            "Count each word an arm actually emitted, once. Where an arm "
+            "redrafted, the overwritten passes are not on disk and are "
+            "passed in via --arm-f-discarded-words; a pass that was written "
+            "once and then patched in place is counted once, not once per "
+            "assembly it appears in. Both windows also contain non-drafting "
+            "output -- gate, references, renders, style, verbatim -- so this "
+            "is an upper bound on the cost of drafting 1,000 words, not a "
+            "clean measure of it."
+        )
         result["tokens_per_1k_words"] = per_k
         result["tokens_note"] = (
             "Windowed by the hash checkpoints, which were written at the arm "
@@ -619,41 +674,75 @@ def run(args):
 
 def _build_parser():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", maxsplit=1)[0])
-    parser.add_argument("--topic", required=True,
-                        help="Path under content/drafts/, e.g. "
-                             "book-chapters/digital-twin-life-cycle-considerations")
+    parser.add_argument(
+        "--topic",
+        required=True,
+        help="Path under content/drafts/, e.g. "
+        "book-chapters/digital-twin-life-cycle-considerations",
+    )
     parser.add_argument("--arm-f", required=True, help="Whole-corpus draft stem")
     parser.add_argument("--arm-c", required=True, help="Collection-scoped draft stem")
     parser.add_argument("--collection", required=True, help="Zotero collection name")
-    parser.add_argument("--preregistration", default=None,
-                        help="Path to this run's preregistration.md, recorded in the output")
-    parser.add_argument("--hashes", type=Path, default=None,
-                        help="hashes.jsonl from the three checkpoints. Supplies the arm "
-                             "boundaries and checks the replay's precondition.")
-    parser.add_argument("--arm-r", default=None,
-                        help="Optional third draft stem: the collection-scoped draft "
-                             "after a whole-corpus revision pass")
-    parser.add_argument("--arm-r-session", type=Path, default=None,
-                        help="Third arm's subagent transcript JSONL")
-    parser.add_argument("--arm-r-inherited-scoped-rows", type=int, default=0,
-                        help="How many leading search rows in the third arm's log were "
-                             "inherited from the scoped draft. Needed because the log "
-                             "does not record scope (#254); this is provenance, not "
-                             "inference.")
-    parser.add_argument("--arm-f-session", type=Path, default=None,
-                        help="Arm F's own subagent transcript JSONL. Use with "
-                             "--arm-c-session when each arm ran in its own agent; "
-                             "no windowing is then needed or applied.")
-    parser.add_argument("--arm-c-session", type=Path, default=None,
-                        help="Arm C's own subagent transcript JSONL")
-    parser.add_argument("--session", type=Path, default=None,
-                        help="Session transcript JSONL for the token accounting")
-    parser.add_argument("--steering-at", default=None,
-                        help="ISO timestamp of a mid-arm-F steering change, to split "
-                             "and quarantine the rewrite it caused")
-    parser.add_argument("--arm-f-discarded-words", type=int, default=0,
-                        help="Word count of an Arm F draft that was written and then "
-                             "overwritten, for the per-1k-words normalisation")
+    parser.add_argument(
+        "--preregistration",
+        default=None,
+        help="Path to this run's preregistration.md, recorded in the output",
+    )
+    parser.add_argument(
+        "--hashes",
+        type=Path,
+        default=None,
+        help="hashes.jsonl from the three checkpoints. Supplies the arm "
+        "boundaries and checks the replay's precondition.",
+    )
+    parser.add_argument(
+        "--arm-r",
+        default=None,
+        help="Optional third draft stem: the collection-scoped draft "
+        "after a whole-corpus revision pass",
+    )
+    parser.add_argument(
+        "--arm-r-session", type=Path, default=None, help="Third arm's subagent transcript JSONL"
+    )
+    parser.add_argument(
+        "--arm-r-inherited-scoped-rows",
+        type=int,
+        default=0,
+        help="How many leading search rows in the third arm's log were "
+        "inherited from the scoped draft. Needed because the log "
+        "does not record scope (#254); this is provenance, not "
+        "inference.",
+    )
+    parser.add_argument(
+        "--arm-f-session",
+        type=Path,
+        default=None,
+        help="Arm F's own subagent transcript JSONL. Use with "
+        "--arm-c-session when each arm ran in its own agent; "
+        "no windowing is then needed or applied.",
+    )
+    parser.add_argument(
+        "--arm-c-session", type=Path, default=None, help="Arm C's own subagent transcript JSONL"
+    )
+    parser.add_argument(
+        "--session",
+        type=Path,
+        default=None,
+        help="Session transcript JSONL for the token accounting",
+    )
+    parser.add_argument(
+        "--steering-at",
+        default=None,
+        help="ISO timestamp of a mid-arm-F steering change, to split "
+        "and quarantine the rewrite it caused",
+    )
+    parser.add_argument(
+        "--arm-f-discarded-words",
+        type=int,
+        default=0,
+        help="Word count of an Arm F draft that was written and then "
+        "overwritten, for the per-1k-words normalisation",
+    )
     parser.add_argument("--out", type=Path, help="Write JSON here as well as stdout")
     return parser
 

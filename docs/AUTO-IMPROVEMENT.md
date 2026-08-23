@@ -117,7 +117,7 @@ bucket within a class, then position in the draft.
 ### 🏷 Item classes
 
 | Class | Source | Kind | Unattended? |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
 | `prose` | `style_check` (#107), `steering.md` | no evidence delta | only the mechanically re-checkable subset -- [HOUSE-STYLE.md](HOUSE-STYLE.md) |
@@ -177,7 +177,7 @@ met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-mapping-the-
 says where each comes from.
 
 | | Requirement |
-|---|---|
+| --- | --- |
 | **R1** | The skill's write-set is exactly the draft and `revisions.md`. It may *execute* an aid, the gate and `style_check`; it may not edit them, nor #128's allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. |
 | **R2** | Every finding carries an identity stable across runs. |
 | **R3** | An unattended item's check is **binary**. No continuous score is ever the thing being optimised. |
@@ -229,7 +229,7 @@ reached by a different mechanism, and a piece that is built but not
 registered is dead code.
 
 | Piece | How it is found | Consequence of omitting it |
-|---|---|---|
+| --- | --- | --- |
 | The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `__main__.AIDS` | `chitragupta/review/__main__.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import rather than writing a report nothing can find |
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
 | Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |

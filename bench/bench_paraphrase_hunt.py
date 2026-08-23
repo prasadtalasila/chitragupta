@@ -90,8 +90,7 @@ PASSAGES_PER_CLAIM = 5
 # checkable assertion about the source.
 MIN_CLAIM_WORDS = 12
 
-_POINTER = re.compile(
-    r"where to go next|further reading|see also|^\s*\[\d+\]", re.I)
+_POINTER = re.compile(r"where to go next|further reading|see also|^\s*\[\d+\]", re.I)
 _WORD = re.compile(r"[a-z]{3,}")
 # Tokens a restatement usually keeps even when it rewrites everything
 # around them, and which a bag-of-words score can miss.
@@ -124,8 +123,9 @@ def extract(drafts_dir, out_dir):
                 continue
             rows.append(_record(chapter, line, citekey, claim, source))
 
-    shortlisted = [r for r in rows if r["lexical"]
-                   and r["lexical"][0]["score"] >= SHORTLIST_SUPPORT]
+    shortlisted = [
+        r for r in rows if r["lexical"] and r["lexical"][0]["score"] >= SHORTLIST_SUPPORT
+    ]
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "pairs.json").write_text(json.dumps(rows, indent=1), encoding="utf-8")
     print(f"citations with a readable cited source: {len(rows)}")
@@ -137,16 +137,23 @@ def extract(drafts_dir, out_dir):
 
 
 def _record(chapter, line, citekey, claim, source):
-    scored = sorted(((cp.score_claim(claim, [p])[0], p) for p in source),
-                    key=lambda pair: -pair[0])[:PASSAGES_PER_CLAIM]
+    scored = sorted(
+        ((cp.score_claim(claim, [p])[0], p) for p in source), key=lambda pair: -pair[0]
+    )[:PASSAGES_PER_CLAIM]
     hard = set(_HARD.findall(claim))
-    token_hits = [p for p in source
-                  if hard & set(_HARD.findall(p.text))
-                  and all(p is not other for _score, other in scored)]
+    token_hits = [
+        p
+        for p in source
+        if hard & set(_HARD.findall(p.text)) and all(p is not other for _score, other in scored)
+    ]
     return {
-        "chapter": chapter.name, "line": line, "citekey": citekey, "claim": claim,
-        "lexical": [{"score": round(s, 3), "page": p.page, "text": p.text}
-                    for s, p in scored if s > 0],
+        "chapter": chapter.name,
+        "line": line,
+        "citekey": citekey,
+        "claim": claim,
+        "lexical": [
+            {"score": round(s, 3), "page": p.page, "text": p.text} for s, p in scored if s > 0
+        ],
         "token_hits": [{"page": p.page, "text": p.text} for p in token_hits[:3]],
     }
 
@@ -170,8 +177,9 @@ def lexical_findings(drafts_dir):
         newlines = vc._newline_offsets(text)
         found = []
         for finder in (vc._exact_tier_findings, vc._skipgram_tier_findings):
-            rows, _suppressed = finder(words, word_strs, paragraph_citekeys,
-                                       newlines, text, overlap_index.DEFAULT_N, 1, [])
+            rows, _suppressed = finder(
+                words, word_strs, paragraph_citekeys, newlines, text, overlap_index.DEFAULT_N, 1, []
+            )
             found += rows
         out[chapter.name] = found
         print(f"  {chapter.name}: {len(found)} lexical finding(s)", flush=True)
@@ -189,10 +197,14 @@ def crosscheck(drafts_dir, out_dir, embed_record):
     lexical = lexical_findings(drafts_dir)
 
     for row in payload["candidates"]:
-        tiers = {f["tier"] for f in lexical.get(row["chapter"], [])
-                 if f["citekey"] == row["citekey"]}
-        tiers |= {f["tier"] for f in embed
-                  if f["citekey"] == row["citekey"] and f["draft"] == row["chapter"]}
+        tiers = {
+            f["tier"] for f in lexical.get(row["chapter"], []) if f["citekey"] == row["citekey"]
+        }
+        tiers |= {
+            f["tier"]
+            for f in embed
+            if f["citekey"] == row["citekey"] and f["draft"] == row["chapter"]
+        }
         row["tiers"] = sorted(tiers)
 
     para = [r for r in payload["candidates"] if r["judgment"] == "paraphrase"]
@@ -200,8 +212,7 @@ def crosscheck(drafts_dir, out_dir, embed_record):
     payload["close_paraphrase_by_tier"] = dict(sorted(by_tier.items()))
     labels_path.write_text(json.dumps(payload, indent=1), encoding="utf-8")
 
-    print(f"\nclose-paraphrase candidates: {len(para)} of "
-          f"{len(payload['candidates'])} judged")
+    print(f"\nclose-paraphrase candidates: {len(para)} of {len(payload['candidates'])} judged")
     for tiers, n in by_tier.most_common():
         print(f"  {n:2d}  caught by: {tiers}")
     print(f"Record: {labels_path}")
@@ -217,31 +228,37 @@ def self_check():
     self-check exists for.
     """
     assert is_pointer("and [@singh_digital_2023] for a small-manufacturer case"), (
-        "the pointer filter no longer catches a further-reading pointer")
+        "the pointer filter no longer catches a further-reading pointer"
+    )
     assert not is_pointer(
         "A case study of a small-to-medium roll-to-roll label-printing manufacturer "
-        "reports a deliberate strategy of protecting return on investment"), (
-        "the pointer filter is swallowing checkable claims")
+        "reports a deliberate strategy of protecting return on investment"
+    ), "the pointer filter is swallowing checkable claims"
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--extract", action="store_true",
-                    help="write the claim/passage pairs to judge")
-    ap.add_argument("--crosscheck", action="store_true",
-                    help="merge judgments with which tiers fired")
+    ap.add_argument("--extract", action="store_true", help="write the claim/passage pairs to judge")
+    ap.add_argument(
+        "--crosscheck", action="store_true", help="merge judgments with which tiers fired"
+    )
     ap.add_argument("--drafts", required=True, help="directory of chapters")
-    ap.add_argument("--tag", required=True,
-                    help="names bench/results/<tag>/ (path components stripped)")
-    ap.add_argument("--embed-record",
-                    default="bench/results/2026-08-15-embed/embed_precision.json",
-                    help="where the embedding tier's finding population was recorded")
+    ap.add_argument(
+        "--tag", required=True, help="names bench/results/<tag>/ (path components stripped)"
+    )
+    ap.add_argument(
+        "--embed-record",
+        default="bench/results/2026-08-15-embed/embed_precision.json",
+        help="where the embedding tier's finding population was recorded",
+    )
     args = ap.parse_args(argv)
 
     self_check()
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync`",
-              file=sys.stderr)
+        print(
+            f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync`",
+            file=sys.stderr,
+        )
         return 1
     out_dir = BENCH_DIR / "results" / Path(args.tag).name
     if args.extract:

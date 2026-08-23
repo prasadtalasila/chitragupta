@@ -18,9 +18,11 @@ def add_item(con, citekey, author=None, bib_fields=...):
     rather than left to the caller of every test below."""
     if bib_fields is ...:
         bib_fields = json.dumps({"author": author}) if author is not None else None
-    con.execute("INSERT INTO items (citekey, item_type, title, status, last_synced, "
-                "bib_fields) VALUES (?, 'article', 't', 'discovered', '2026-01-01', ?)",
-                (citekey, bib_fields))
+    con.execute(
+        "INSERT INTO items (citekey, item_type, title, status, last_synced, "
+        "bib_fields) VALUES (?, 'article', 't', 'discovered', '2026-01-01', ?)",
+        (citekey, bib_fields),
+    )
     con.commit()
 
 
@@ -41,8 +43,9 @@ class TestAuthorNames:
         assert {"kritzinger", "drath", "rainer"} <= names
 
     def test_multiple_authors_split_on_bibtex_and(self, ledger_con):
-        add_item(ledger_con, "a_2020",
-                 "Kapteyn, Michael G. and Knezevic, David J. and Willcox, Karen")
+        add_item(
+            ledger_con, "a_2020", "Kapteyn, Michael G. and Knezevic, David J. and Willcox, Karen"
+        )
         names = topic_labels.author_names(ledger_con)
         assert {"kapteyn", "knezevic", "willcox", "karen"} <= names
 
@@ -126,8 +129,12 @@ class TestVectorizer:
         bigram must be absent from the fitted vocabulary."""
         add_item(ledger_con, "a_2020", "Kritzinger, Werner")
         vec = topic_labels.vectorizer(ledger_con)
-        vec.fit(["werner kritzinger proposed a digital twin taxonomy",
-                 "a digital twin taxonomy needs a digital twin definition"])
+        vec.fit(
+            [
+                "werner kritzinger proposed a digital twin taxonomy",
+                "a digital twin taxonomy needs a digital twin definition",
+            ]
+        )
         vocabulary = set(vec.vocabulary_)
         assert "digital twin" in vocabulary
         assert not any("kritzinger" in term or "werner" in term for term in vocabulary)

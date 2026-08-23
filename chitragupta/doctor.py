@@ -37,8 +37,10 @@ import sys
 
 from chitragupta.progname import prog_for
 
-DESCRIPTION = ("Report the toolchain's state -- OS binaries, the enrich "
-               "extra, torch vs. the GPU driver, a competing distribution.")
+DESCRIPTION = (
+    "Report the toolchain's state -- OS binaries, the enrich "
+    "extra, torch vs. the GPU driver, a competing distribution."
+)
 
 # What python -m chitragupta.draft render/style already probe for
 # themselves, per call. Doctor probes the same four, once, up front.
@@ -62,8 +64,7 @@ def _check_binaries() -> list[str]:
 def _check_enrich_extra() -> str:
     if importlib.util.find_spec("sentence_transformers") is not None:
         return "[ok] the enrich extra is importable"
-    return ("[missing] the enrich extra is not installed -- "
-            "pip install chitragupta-cli[enrich]")
+    return "[missing] the enrich extra is not installed -- pip install chitragupta-cli[enrich]"
 
 
 def _check_gpu_torch() -> str:
@@ -75,8 +76,10 @@ def _check_gpu_torch() -> str:
         return "[skipped] nvidia-smi is present but torch is not installed"
     if torch.cuda.is_available():
         return "[ok] torch sees the GPU"
-    return ("[gpu-mismatch] nvidia-smi reports a GPU but torch cannot see it -- "
-            "run: chitragupta install gpu-torch")
+    return (
+        "[gpu-mismatch] nvidia-smi reports a GPU but torch cannot see it -- "
+        "run: chitragupta install gpu-torch"
+    )
 
 
 def _competing_distributions() -> set[str]:
@@ -98,8 +101,10 @@ def _check_competing_distribution() -> str:
     others = _competing_distributions()
     if not others:
         return "[ok] no competing chitragupta/cg distribution found"
-    return (f"[collision] {', '.join(sorted(others))} also provides chitragupta/cg -- "
-            "install into separate virtualenvs")
+    return (
+        f"[collision] {', '.join(sorted(others))} also provides chitragupta/cg -- "
+        "install into separate virtualenvs"
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

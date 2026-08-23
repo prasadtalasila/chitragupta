@@ -62,7 +62,9 @@ def test_the_register_names_only_classes_and_paths_that_still_exist():
     `unversioned_reads()`'s lookup both promise."""
     for key in scan.REGISTER:
         path, qualified = key.split("::")
-        assert (scan.REPO_ROOT / path).exists(), f"register entry for a file that no longer exists: {key}"
+        assert (scan.REPO_ROOT / path).exists(), (
+            f"register entry for a file that no longer exists: {key}"
+        )
         tree = ast.parse((scan.REPO_ROOT / path).read_text(encoding="utf-8"))
         classes = {c.name: c for c in ast.iter_child_nodes(tree) if isinstance(c, ast.ClassDef)}
         methods = {
@@ -72,10 +74,14 @@ def test_the_register_names_only_classes_and_paths_that_still_exist():
             if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))
         }
         functions = {
-            n.name for n in ast.iter_child_nodes(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+            n.name
+            for n in ast.iter_child_nodes(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
         }
         known = set(classes) | methods | functions
-        assert qualified in known, f"register entry names no class, method or function in {path}: {key}"
+        assert qualified in known, (
+            f"register entry names no class, method or function in {path}: {key}"
+        )
 
 
 def test_the_register_holds_no_entry_that_is_already_fixed():
@@ -134,22 +140,22 @@ class _Snippets:
     reconstructions of the two fixed bugs (git history, pre-#161), plus
     the shapes that must NOT be flagged."""
 
-    ORIGINAL_PARSER_OCR_BUG = '''
+    ORIGINAL_PARSER_OCR_BUG = """
 def test_parser_ocr_defaults_off(self, monkeypatch):
     monkeypatch.delenv("PARSER_OCR", raising=False)
     importlib.reload(config)
     assert config.PARSER_OCR is False
-'''
+"""
 
-    ORIGINAL_BIB_SMOKE_BUG = '''
+    ORIGINAL_BIB_SMOKE_BUG = """
 def test_real_bib_file_parses_without_error(self, isolated_config, monkeypatch):
     real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
     monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
     refs = bib_reader.read_library()
     assert len(refs) == 646
-'''
+"""
 
-    PINNED_RELOAD = '''
+    PINNED_RELOAD = """
 def test_parser_ocr_defaults_off(self, monkeypatch, tmp_path):
     empty_toml = tmp_path / "config.toml"
     empty_toml.write_text("", encoding="utf-8")
@@ -157,9 +163,9 @@ def test_parser_ocr_defaults_off(self, monkeypatch, tmp_path):
     monkeypatch.delenv("PARSER_OCR", raising=False)
     importlib.reload(config)
     assert config.PARSER_OCR is False
-'''
+"""
 
-    PINNED_VIA_FIXTURE = '''
+    PINNED_VIA_FIXTURE = """
 class TestModuleReloadWithEnvOverrides:
     @pytest.fixture
     def _empty_config_toml(self, tmp_path, monkeypatch):
@@ -171,33 +177,33 @@ class TestModuleReloadWithEnvOverrides:
         monkeypatch.setenv("BIB_FILE", "/tmp/other.bib")
         importlib.reload(config)
         assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "/tmp/other.bib"
-'''
+"""
 
-    HOME_CALL = '''
+    HOME_CALL = """
 def test_something(self):
     p = Path.home()
     assert p.exists()
-'''
+"""
 
-    HOME_CALL_EVEN_IF_CONFIG_PATH_PINNED = '''
+    HOME_CALL_EVEN_IF_CONFIG_PATH_PINNED = """
 def test_something(self, monkeypatch, tmp_path):
     monkeypatch.setenv("CONFIG_PATH", str(tmp_path / "config.toml"))
     p = Path.home()
     assert p.exists()
-'''
+"""
 
-    READ_WITH_NO_ASSERT = '''
+    READ_WITH_NO_ASSERT = """
 def test_reload_does_not_raise(self):
     importlib.reload(config)
-'''
+"""
 
-    BIB_LITERAL_EVEN_IF_PINNED = '''
+    BIB_LITERAL_EVEN_IF_PINNED = """
 def test_real_bib_smoke(self, isolated_config, monkeypatch):
     real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
     monkeypatch.setattr(config, "CONFIG_PATH", real_bib)
     refs = bib_reader.read_library()
     assert len(refs) == 2
-'''
+"""
 
 
 def _snippet_offense(source, fixtures=None):
@@ -222,7 +228,9 @@ def test_a_pin_factored_into_a_same_module_fixture_is_still_honoured():
     tree = ast.parse(_Snippets.PINNED_VIA_FIXTURE)
     fixtures = scan.fixture_defs(tree)
     _, _, func_node = next(
-        (q, c, n) for q, c, n in scan.test_functions(tree) if q.endswith("test_bib_file_env_override")
+        (q, c, n)
+        for q, c, n in scan.test_functions(tree)
+        if q.endswith("test_bib_file_env_override")
     )
     assert scan.offense_reason(func_node, fixtures) is None
 

@@ -29,7 +29,7 @@ class TestGramHashes:
         words = "the quick brown fox jumps over the lazy dog repeatedly".split()
         hashes = overlap_index.gram_hashes(words, 4)
         for j in range(len(hashes)):
-            assert overlap_index.gram_hashes(words[j:j + 4], 4) == [hashes[j]]
+            assert overlap_index.gram_hashes(words[j : j + 4], 4) == [hashes[j]]
 
     def test_length_is_word_count_minus_n_plus_one(self):
         words = list("abcdefgh")
@@ -86,7 +86,9 @@ class TestFingerprintDocument:
         assert data["n"] == 4
         assert data["key"][0] == "hash1"
 
-    def test_unchanged_key_reuses_cache_without_rebuilding(self, isolated_config, tmp_path, monkeypatch):
+    def test_unchanged_key_reuses_cache_without_rebuilding(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
         parsed = tmp_path / "smith_2024.txt"
         parsed.write_text("alpha beta gamma delta epsilon")
         first = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
@@ -138,9 +140,16 @@ class TestFingerprintDocument:
         key = overlap_index._fingerprint_key("hash1", str(parsed))
         cache_path = config.OVERLAP_DIR / "docs" / "smith_2024.fpr"
         cache_path.parent.mkdir(parents=True)
-        cache_path.write_text(json.dumps(
-            {"tokenizer_version": overlap_index._TOKENIZER_VERSION, "n": 4, "key": key, "postings": "nope"}
-        ))
+        cache_path.write_text(
+            json.dumps(
+                {
+                    "tokenizer_version": overlap_index._TOKENIZER_VERSION,
+                    "n": 4,
+                    "key": key,
+                    "postings": "nope",
+                }
+            )
+        )
         fp = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert len(fp.postings) == 1
 
@@ -150,10 +159,16 @@ class TestFingerprintDocument:
         key = overlap_index._fingerprint_key("hash1", str(parsed))
         cache_path = config.OVERLAP_DIR / "docs" / "smith_2024.fpr"
         cache_path.parent.mkdir(parents=True)
-        cache_path.write_text(json.dumps(
-            {"tokenizer_version": overlap_index._TOKENIZER_VERSION, "n": 4, "key": key,
-             "postings": [["not-an-int", 1, 0]]}
-        ))
+        cache_path.write_text(
+            json.dumps(
+                {
+                    "tokenizer_version": overlap_index._TOKENIZER_VERSION,
+                    "n": 4,
+                    "key": key,
+                    "postings": [["not-an-int", 1, 0]],
+                }
+            )
+        )
         fp = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert len(fp.postings) == 1
 
@@ -202,7 +217,9 @@ class TestLedgerItem:
 
     def test_recorded_but_missing_file_returns_none(self, ledger_con, tmp_path):
         _add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
-        row = ledger_con.execute("SELECT parsed_path FROM items WHERE citekey = ?", ("smith_2024",)).fetchone()
+        row = ledger_con.execute(
+            "SELECT parsed_path FROM items WHERE citekey = ?", ("smith_2024",)
+        ).fetchone()
         Path(row[0]).unlink()
         assert overlap_index.ledger_item("smith_2024") is None
 
@@ -261,6 +278,7 @@ class TestBuildCorpusIndex:
         # key is guaranteed to change even on a filesystem with coarse
         # mtime resolution.
         import os
+
         st = parsed_a.stat()
         os.utime(parsed_a, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))
 
@@ -336,7 +354,9 @@ class TestPagesForGram:
         # "alpha beta gamma delta" occurs twice on page 1 -- two postings,
         # same page, must collapse to one entry.
         _add_parsed_item(
-            ledger_con, tmp_path, "smith_2024",
+            ledger_con,
+            tmp_path,
+            "smith_2024",
             "alpha beta gamma delta filler words alpha beta gamma delta",
         )
         index = overlap_index.build_corpus_index(n=4)
@@ -350,7 +370,9 @@ class TestPagesForGram:
         # alone would come back [2, 1]; pages_for_gram must still return
         # [1, 2].
         _add_parsed_item(ledger_con, tmp_path, "doe_2023", "zzz filler\falpha beta gamma delta")
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta\funrelated content here")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta\funrelated content here"
+        )
 
         index = overlap_index.build_corpus_index(n=4)
         shared_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
@@ -373,12 +395,16 @@ class TestPostingsForGram:
         gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
         assert overlap_index.postings_for_gram(index, gram_hash) == [("smith_2024", 1, 0)]
 
-    def test_repeated_gram_on_one_page_yields_one_posting_per_occurrence(self, ledger_con, tmp_path):
+    def test_repeated_gram_on_one_page_yields_one_posting_per_occurrence(
+        self, ledger_con, tmp_path
+    ):
         # Unlike pages_for_gram, nothing here is deduplicated: scan mode
         # needs every occurrence (and its own token_position) to align a
         # run, not just "this page has a match".
         _add_parsed_item(
-            ledger_con, tmp_path, "smith_2024",
+            ledger_con,
+            tmp_path,
+            "smith_2024",
             "alpha beta gamma delta filler words alpha beta gamma delta",
         )
         index = overlap_index.build_corpus_index(n=4)

@@ -146,7 +146,8 @@ _REFERENCES_HEADING = re.compile(
 # own vocabulary as if they had typed it. Lowercase after the hyphen
 # only, so "Digital Twin-Based" keeps its existing reading as two words.
 _BODY_ACRONYM = re.compile(
-    r"(?P<name>(?:\b[A-Z][a-z]+(?:-[a-z]+)*[\s-]){1,5})\((?P<acronym>[A-Z]{2,6})\)")
+    r"(?P<name>(?:\b[A-Z][a-z]+(?:-[a-z]+)*[\s-]){1,5})\((?P<acronym>[A-Z]{2,6})\)"
+)
 
 
 def body_candidates(text: str) -> dict[str, str]:

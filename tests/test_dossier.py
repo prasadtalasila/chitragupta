@@ -21,8 +21,16 @@ import pytest
 
 from chitragupta import acronyms, config, dossier
 from chitragupta.dossier import (
-    _acronyms, _archive, _brief, _citekeys, _create, _drift, _evidence_check,
-    _retrieval, _sections, _status,
+    _acronyms,
+    _archive,
+    _brief,
+    _citekeys,
+    _create,
+    _drift,
+    _evidence_check,
+    _retrieval,
+    _sections,
+    _status,
 )
 
 
@@ -143,14 +151,7 @@ class TestSections:
 
     def test_a_hash_comment_inside_a_fenced_block_is_not_a_heading(self):
         text = (
-            "# Tutorial\n"
-            "\n"
-            "```bash\n"
-            "# Step 1: make the folder\n"
-            "mkdir pot\n"
-            "```\n"
-            "\n"
-            "## Real heading\n"
+            "# Tutorial\n\n```bash\n# Step 1: make the folder\nmkdir pot\n```\n\n## Real heading\n"
         )
         assert [s.title for s in dossier.sections(text)] == ["Tutorial", "Real heading"]
 
@@ -162,7 +163,9 @@ class TestSections:
         text = "\\chapter{Ch}\ntext\n\\section{Sec}\nmore\n\\subsection{Sub}\n"
         outline = dossier.sections(text)
         assert [(s.title, s.level) for s in outline] == [
-            ("Ch", 1), ("Sec", 2), ("Sub", 3),
+            ("Ch", 1),
+            ("Sec", 2),
+            ("Sub", 3),
         ]
 
     def test_a_latex_title_containing_braces_keeps_its_whole_title(self):
@@ -199,8 +202,7 @@ class TestSections:
         example tutorial is mostly shell and Python whose comments start
         with `#`."""
         example = (
-            config.PROJECT_ROOT
-            / "content/drafts/digital-twins-for-software-engineers/tutorial.md"
+            config.PROJECT_ROOT / "content/drafts/digital-twins-for-software-engineers/tutorial.md"
         )
         if not example.is_file():  # pragma: no cover - example content is optional
             pytest.skip("example content not present in this checkout")
@@ -304,17 +306,14 @@ class TestGlossaryTerms:
         dossier.init(draft, "survey")
         _write_glossary(
             draft,
-            "- **DTaaS** --\n"
-            "- **FMU** -- Functional Mock-up Unit.",
+            "- **DTaaS** --\n- **FMU** -- Functional Mock-up Unit.",
         )
         assert _citekeys.glossary_terms(draft) == {"FMU": "Functional Mock-up Unit."}
 
     def test_parses_a_single_bullet(self, draft):
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert _citekeys.glossary_terms(draft) == {
-            "DTaaS": "Digital Twin as a Service."
-        }
+        assert _citekeys.glossary_terms(draft) == {"DTaaS": "Digital Twin as a Service."}
 
     def test_parses_several_bullets(self, draft):
         dossier.init(draft, "survey")
@@ -337,9 +336,7 @@ class TestGlossaryTerms:
             "  *reading*: it may include quantities no sensor measures.",
         )
         terms = _citekeys.glossary_terms(draft)
-        assert terms["Twin state"].startswith(
-            "the digital object's current best"
-        )
+        assert terms["Twin state"].startswith("the digital object's current best")
         assert "*Estimate*, not" in terms["Twin state"]
 
     def test_a_hand_typed_line_that_does_not_match_is_skipped_not_an_error(self, draft):
@@ -355,12 +352,9 @@ class TestGlossaryTerms:
         scope = dossier.dossier_dir(draft) / "scope.md"
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
         scope.write_text(
-            scope.read_text()
-            + "\n## Not glossary\n\n- **Not a term** -- should not appear.\n"
+            scope.read_text() + "\n## Not glossary\n\n- **Not a term** -- should not appear.\n"
         )
-        assert _citekeys.glossary_terms(draft) == {
-            "DTaaS": "Digital Twin as a Service."
-        }
+        assert _citekeys.glossary_terms(draft) == {"DTaaS": "Digital Twin as a Service."}
 
 
 class TestSuggestAcronyms:
@@ -381,22 +375,17 @@ class TestSuggestAcronyms:
     def test_returns_empty_without_a_dossier(self, draft):
         assert _acronyms.suggest_acronyms(draft) == {}
 
-    def test_delegates_to_acronyms_suggest_with_this_drafts_glossary(
-        self, draft, monkeypatch
-    ):
+    def test_delegates_to_acronyms_suggest_with_this_drafts_glossary(self, draft, monkeypatch):
         monkeypatch.setattr(
-            acronyms, "load_vocabulary",
+            acronyms,
+            "load_vocabulary",
             lambda: {"PDF": "Portable Document Format"},
         )
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert _acronyms.suggest_acronyms(draft) == {
-            "DTaaS": "Digital Twin as a Service."
-        }
+        assert _acronyms.suggest_acronyms(draft) == {"DTaaS": "Digital Twin as a Service."}
 
-    def test_finds_a_candidate_only_present_in_the_drafts_own_prose(
-        self, draft, monkeypatch
-    ):
+    def test_finds_a_candidate_only_present_in_the_drafts_own_prose(self, draft, monkeypatch):
         # The real gap this closes: DTP/DTI/DTA are defined inline in
         # the real book's chapter 2 but glossaried nowhere at all.
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
@@ -406,9 +395,7 @@ class TestSuggestAcronyms:
             + "\nThe **Digital Twin Prototype (DTP)** is introduced here.\n",
             encoding="utf-8",
         )
-        assert _acronyms.suggest_acronyms(draft) == {
-            "DTP": "Digital Twin Prototype"
-        }
+        assert _acronyms.suggest_acronyms(draft) == {"DTP": "Digital Twin Prototype"}
 
     def test_the_glossary_wins_over_conflicting_body_prose(self, draft, monkeypatch):
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
@@ -450,9 +437,7 @@ class TestApplySuggestions:
     writing there would commit one user's domain vocabulary into what
     every clone shares (#190)."""
 
-    def test_refuses_to_write_when_the_user_path_is_unset(
-        self, draft, tmp_path, monkeypatch
-    ):
+    def test_refuses_to_write_when_the_user_path_is_unset(self, draft, tmp_path, monkeypatch):
         # The "unset" condition -- ACRONYMS_PATH is ACRONYMS_DEFAULT_PATH --
         # is established here, in tmp_path, rather than assumed of the
         # host's own config.toml: isolated_config does not patch either
@@ -491,9 +476,7 @@ class TestApplySuggestions:
         assert "[style].acronyms is not set" in out
         assert vendored.read_text(encoding="utf-8") == vocab_before
 
-    def test_creates_the_user_file_and_writes_new_candidates(
-        self, draft, tmp_path, monkeypatch
-    ):
+    def test_creates_the_user_file_and_writes_new_candidates(self, draft, tmp_path, monkeypatch):
         user_path = tmp_path / "content" / "acronyms.toml"
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
@@ -506,21 +489,16 @@ class TestApplySuggestions:
         assert user_path.is_file()
         assert 'DTaaS = "Digital Twin as a Service."' in user_path.read_text()
 
-    def test_appends_without_duplicating_an_existing_entry(
-        self, draft, tmp_path, monkeypatch
-    ):
+    def test_appends_without_duplicating_an_existing_entry(self, draft, tmp_path, monkeypatch):
         user_path = tmp_path / "content" / "acronyms.toml"
         user_path.parent.mkdir(parents=True, exist_ok=True)
         user_path.write_text('FMU = "Functional Mock-up Unit"\n', encoding="utf-8")
-        monkeypatch.setattr(
-            acronyms, "load_vocabulary", lambda: {"FMU": "Functional Mock-up Unit"}
-        )
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"FMU": "Functional Mock-up Unit"})
         monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
         dossier.init(draft, "survey")
         _write_glossary(
             draft,
-            "- **FMU** -- Functional Mock-up Unit.\n"
-            "- **DTaaS** -- Digital Twin as a Service.",
+            "- **FMU** -- Functional Mock-up Unit.\n- **DTaaS** -- Digital Twin as a Service.",
         )
 
         written = _acronyms.apply_suggestions(draft)
@@ -530,9 +508,7 @@ class TestApplySuggestions:
         assert text.count("FMU") == 1
         assert 'DTaaS = "Digital Twin as a Service."' in text
 
-    def test_a_second_apply_with_nothing_new_writes_nothing(
-        self, draft, tmp_path, monkeypatch
-    ):
+    def test_a_second_apply_with_nothing_new_writes_nothing(self, draft, tmp_path, monkeypatch):
         user_path = tmp_path / "content" / "acronyms.toml"
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
@@ -562,9 +538,7 @@ class TestApplySuggestions:
         assert "No new acronyms" in capsys.readouterr().out
         assert not user_path.exists()
 
-    def test_escapes_a_quote_or_backslash_in_the_expansion(
-        self, draft, tmp_path, monkeypatch
-    ):
+    def test_escapes_a_quote_or_backslash_in_the_expansion(self, draft, tmp_path, monkeypatch):
         """A written entry must round-trip through tomllib -- apply_suggestions
         checks this itself, but only a definition containing the two
         characters a TOML basic string cannot hold unescaped actually
@@ -573,9 +547,7 @@ class TestApplySuggestions:
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
         dossier.init(draft, "survey")
-        _write_glossary(
-            draft, r'- **JIT** -- the "just-in-time" pattern, C:\path style.'
-        )
+        _write_glossary(draft, r'- **JIT** -- the "just-in-time" pattern, C:\path style.')
 
         written = _acronyms.apply_suggestions(draft)
 
@@ -657,7 +629,9 @@ class TestStatus:
     def test_the_outline_comes_back_with_the_status(self, draft):
         dossier.init(draft, "survey")
         assert [s.title for s in _status.status(draft).outline] == [
-            "A survey", "1. First", "2. Second",
+            "A survey",
+            "1. First",
+            "2. Second",
         ]
 
     def test_drift_is_flagged_when_the_corpus_moves(self, draft):
@@ -773,8 +747,7 @@ class TestExport:
         rendered.mkdir(parents=True)
         (rendered / "survey.pdf").write_bytes(b"%PDF")
         names = {
-            name
-            for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=True)
+            name for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=True)
         }
         assert "rendered/dt-for-engineers/survey.pdf" in names
 
@@ -791,8 +764,7 @@ class TestExport:
         (rendered / "survey.evidence.md").write_text("# Evidence\n")
         names = {
             name
-            for _, name in _archive.bundle_members(["dt-for-engineers/survey"],
-                                                   with_rendered=True)
+            for _, name in _archive.bundle_members(["dt-for-engineers/survey"], with_rendered=True)
         }
         assert "rendered/dt-for-engineers/survey.evidence.pdf" in names
         assert "rendered/dt-for-engineers/survey.evidence.md" in names
@@ -807,8 +779,9 @@ class TestExport:
         (rendered / "survey.v2.pdf").write_bytes(b"%PDF")
         names = {
             name
-            for _, name in _archive.bundle_members(["dt-for-engineers/survey.v2"],
-                                                   with_rendered=True)
+            for _, name in _archive.bundle_members(
+                ["dt-for-engineers/survey.v2"], with_rendered=True
+            )
         }
         assert "rendered/dt-for-engineers/survey.v2.pdf" in names
 
@@ -818,8 +791,7 @@ class TestExport:
         dossier.init(draft, "survey")
         dossier.init(other, "tutorial")
         names = {
-            name
-            for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=False)
+            name for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=False)
         }
         assert "drafts/dt-for-engineers/survey.md" in names
         assert "dossiers/dt-for-engineers/survey/scope.md" in names
@@ -884,8 +856,7 @@ class TestExport:
         (directory / "figure.png").write_bytes(b"\x89PNG")
 
         names = {
-            name
-            for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=True)
+            name for _, name in _archive.bundle_members(["dt-for-engineers"], with_rendered=True)
         }
 
         assert "review/dt-for-engineers/figure.png" in names
@@ -1100,7 +1071,9 @@ class TestCli:
         assert dossier.main(["restore", "nope.tar.gz"]) == 1
         assert "No such archive" in capsys.readouterr().err
 
-    def test_init_on_a_draft_outside_drafts_reports_the_rule(self, isolated_config, tmp_path, capsys):
+    def test_init_on_a_draft_outside_drafts_reports_the_rule(
+        self, isolated_config, tmp_path, capsys
+    ):
         stray = tmp_path / "stray.md"
         stray.write_text("# x\n")
         assert dossier.main(["init", str(stray), "--genre", "survey"]) == 1
@@ -1159,9 +1132,7 @@ class TestRetrievalLog:
         dossier.main(["status", str(draft)])
         assert "call(s) returned" not in capsys.readouterr().out
 
-    def test_a_stale_existence_check_cannot_truncate_another_writers_row(
-        self, draft, monkeypatch
-    ):
+    def test_a_stale_existence_check_cannot_truncate_another_writers_row(self, draft, monkeypatch):
         """Two writers reaching this function at once both see the file
         as absent; the one that loses the create must not destroy the
         winner's row.
@@ -1260,8 +1231,7 @@ class TestRetrievalLog:
 
     def test_a_scoped_call_records_its_collection(self, draft):
         dossier.init(draft, "survey")
-        dossier.log_retrieval(
-            draft, "search", "q", 15, 15, 100, collection="Digital twins")
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100, collection="Digital twins")
         text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
         assert "| Digital twins |" in text
 
@@ -1388,9 +1358,7 @@ class TestRevisionMarker:
         assert len(segments) == 1
         assert segments[0].label == "shorten | tighten"
 
-    def test_status_prints_the_breakdown_once_there_is_more_than_one_segment(
-        self, draft, capsys
-    ):
+    def test_status_prints_the_breakdown_once_there_is_more_than_one_segment(self, draft, capsys):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
         _retrieval.mark_revision(draft, "shorten intro")
@@ -1472,8 +1440,12 @@ def _seed_corpus(entries):
             con.execute(
                 "INSERT INTO items (citekey, title, parsed_path, status, last_synced, "
                 "collections) VALUES (?, ?, ?, 'parsed', '2026-01-01', ?)",
-                (citekey, title, str(parsed),
-                 json.dumps(list(collections)) if collections else None),
+                (
+                    citekey,
+                    title,
+                    str(parsed),
+                    json.dumps(list(collections)) if collections else None,
+                ),
             )
         con.commit()
     finally:
@@ -1508,7 +1480,8 @@ class TestRecordedQueries:
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         dossier.log_retrieval(draft, "evidence", "co-simulation", 2, 2, 100)
         assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == [
-            "digital twin", "co-simulation",
+            "digital twin",
+            "co-simulation",
         ]
 
     def test_a_repeated_query_is_reported_once_in_first_seen_order(self, draft):
@@ -1553,7 +1526,8 @@ class TestRecordedQueries:
         _retrieval.mark_revision(draft, "shorten the introduction")
         dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100)
         assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == [
-            "digital twin", "co-simulation",
+            "digital twin",
+            "co-simulation",
         ]
 
     def test_an_unlabelled_revision_marker_contributes_no_empty_query(self, draft):
@@ -1578,7 +1552,8 @@ class TestRecordedQueriesWithCollection:
     def test_a_scoped_call_pairs_with_its_collection(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins")
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+        )
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
             ("digital twin", "Digital twins"),
         ]
@@ -1586,17 +1561,16 @@ class TestRecordedQueriesWithCollection:
     def test_the_same_query_scoped_and_unscoped_are_two_distinct_pairs(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "twin", 15, 15, 100)
-        dossier.log_retrieval(
-            draft, "search", "twin", 15, 15, 100, collection="Digital twins")
+        dossier.log_retrieval(draft, "search", "twin", 15, 15, 100, collection="Digital twins")
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
-            ("twin", ""), ("twin", "Digital twins"),
+            ("twin", ""),
+            ("twin", "Digital twins"),
         ]
 
     def test_a_repeated_scoped_pair_is_reported_once(self, draft):
         dossier.init(draft, "survey")
         for _ in range(2):
-            dossier.log_retrieval(
-                draft, "search", "twin", 15, 15, 100, collection="Digital twins")
+            dossier.log_retrieval(draft, "search", "twin", 15, 15, 100, collection="Digital twins")
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
             ("twin", "Digital twins"),
         ]
@@ -1604,8 +1578,7 @@ class TestRecordedQueriesWithCollection:
     def test_a_row_written_before_the_collection_column_pairs_with_empty(self, draft):
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
-        path.write_text(
-            path.read_text() + "| 2026-01-01 | search | old query | 15 | 15 | 100 |\n")
+        path.write_text(path.read_text() + "| 2026-01-01 | search | old query | 15 | 15 | 100 |\n")
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
             ("old query", ""),
         ]
@@ -1616,7 +1589,8 @@ class TestRecordedQueriesWithCollection:
         _retrieval.mark_revision(draft, "shorten the introduction")
         dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100)
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
-            ("digital twin", ""), ("co-simulation", ""),
+            ("digital twin", ""),
+            ("co-simulation", ""),
         ]
 
     def test_no_retrieval_file_means_no_pairs(self, draft):
@@ -1675,8 +1649,7 @@ class TestSectionCitekeys:
         """The separator requirement is what keeps prose out, and it has
         to keep doing so now that a bare `@` opens a match."""
         (grounded / "sections.md").write_text(
-            "# Sections\n\n| section | citekeys |\n|---|---|\n"
-            "| 1. First | ask @someone, see @2 |\n"
+            "# Sections\n\n| section | citekeys |\n|---|---|\n| 1. First | ask @someone, see @2 |\n"
         )
         assert _citekeys.section_citekeys(grounded) == {}
 
@@ -1693,28 +1666,34 @@ class TestDrift:
         assert report.missing == {}
 
     def test_a_new_paper_matching_a_recorded_query_is_a_candidate(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin architecture"),
-            ("fresh_twin_2026", "A fresh twin paper", "digital twin co-simulation study"),
-            ("unrelated_2026", "Baking bread", "sourdough starter hydration"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin architecture"),
+                ("fresh_twin_2026", "A fresh twin paper", "digital twin co-simulation study"),
+                ("unrelated_2026", "Baking bread", "sourdough starter hydration"),
+            ]
+        )
         report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
         assert report.candidates[0].queries == ["digital twin"]
 
     def test_a_paper_already_rejected_is_never_offered_again(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("turned_down_2023", "Turned down", "digital twin everywhere"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("turned_down_2023", "Turned down", "digital twin everywhere"),
+            ]
+        )
         report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == []
 
     def test_the_candidate_carries_why_it_was_reachable(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("fresh_twin_2026", "Fresh", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("fresh_twin_2026", "Fresh", "digital twin"),
+            ]
+        )
         report = _drift.drift(grounded)
         assert report.candidates[0].title == "Fresh"
 
@@ -1757,12 +1736,19 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins")
-        _seed_corpus([
-            ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
-            ("outside_shelf_2025", "Outside shelf", "digital twin simulation",
-             ("Other shelf",)),
-        ])
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+        )
+        _seed_corpus(
+            [
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                (
+                    "outside_shelf_2025",
+                    "Outside shelf",
+                    "digital twin simulation",
+                    ("Other shelf",),
+                ),
+            ]
+        )
         report = _drift.drift(target)
         assert [c.citekey for c in report.candidates] == ["in_shelf_2024"]
 
@@ -1770,11 +1756,18 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins")
-        _seed_corpus([
-            ("nested_2024", "Nested", "digital twin architecture",
-             ("Digital twins > Modelling",)),
-        ])
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+        )
+        _seed_corpus(
+            [
+                (
+                    "nested_2024",
+                    "Nested",
+                    "digital twin architecture",
+                    ("Digital twins > Modelling",),
+                ),
+            ]
+        )
         report = _drift.drift(target)
         assert [c.citekey for c in report.candidates] == ["nested_2024"]
 
@@ -1782,14 +1775,21 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
-        _seed_corpus([
-            ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
-            ("outside_shelf_2025", "Outside shelf", "digital twin simulation",
-             ("Other shelf",)),
-        ])
+        _seed_corpus(
+            [
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                (
+                    "outside_shelf_2025",
+                    "Outside shelf",
+                    "digital twin simulation",
+                    ("Other shelf",),
+                ),
+            ]
+        )
         report = _drift.drift(target)
         assert {c.citekey for c in report.candidates} == {
-            "in_shelf_2024", "outside_shelf_2025",
+            "in_shelf_2024",
+            "outside_shelf_2025",
         }
 
     def test_a_row_predating_the_collection_column_behaves_as_corpus_wide(self, draft):
@@ -1797,15 +1797,23 @@ class TestDriftCollectionScoping:
         target = dossier.dossier_dir(draft)
         path = target / "retrieval.md"
         path.write_text(
-            path.read_text() + "| 2026-01-01 | search | digital twin | 15 | 15 | 100 |\n")
-        _seed_corpus([
-            ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
-            ("outside_shelf_2025", "Outside shelf", "digital twin simulation",
-             ("Other shelf",)),
-        ])
+            path.read_text() + "| 2026-01-01 | search | digital twin | 15 | 15 | 100 |\n"
+        )
+        _seed_corpus(
+            [
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                (
+                    "outside_shelf_2025",
+                    "Outside shelf",
+                    "digital twin simulation",
+                    ("Other shelf",),
+                ),
+            ]
+        )
         report = _drift.drift(target)
         assert {c.citekey for c in report.candidates} == {
-            "in_shelf_2024", "outside_shelf_2025",
+            "in_shelf_2024",
+            "outside_shelf_2025",
         }
 
 
@@ -1820,18 +1828,22 @@ class TestEphemeralIndex:
     """
 
     def test_no_retrieval_index_is_written(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("fresh_twin_2026", "Fresh", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("fresh_twin_2026", "Fresh", "digital twin"),
+            ]
+        )
         _drift.drift(grounded)
         assert not config.RETRIEVAL_INDEX_PATH.exists()
 
     def test_an_existing_retrieval_index_is_left_byte_for_byte(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("fresh_twin_2026", "Fresh", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("fresh_twin_2026", "Fresh", "digital twin"),
+            ]
+        )
         config.RETRIEVAL_INDEX_PATH.write_text('{"version": 1, "items": {}}')
         before = config.RETRIEVAL_INDEX_PATH.read_bytes()
         _drift.drift(grounded)
@@ -1849,27 +1861,39 @@ class TestEphemeralIndex:
         (row,) = con.execute("SELECT * FROM items").fetchall()
         fingerprint = retrieval._fingerprint(row)
         con.close()
-        config.RETRIEVAL_INDEX_PATH.write_text(__import__("json").dumps({
-            "version": 1,
-            "items": {"cached_paper_2026": {
-                "fingerprint": fingerprint,
-                "length": 2,
-                "term_freqs": {"digital": 1, "twin": 1},
-            }},
-        }))
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            __import__("json").dumps(
+                {
+                    "version": 1,
+                    "items": {
+                        "cached_paper_2026": {
+                            "fingerprint": fingerprint,
+                            "length": 2,
+                            "term_freqs": {"digital": 1, "twin": 1},
+                        }
+                    },
+                }
+            )
+        )
         report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["cached_paper_2026"]
 
     def test_a_stale_cache_entry_is_re_tokenized_in_memory(self, grounded):
         _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
-        config.RETRIEVAL_INDEX_PATH.write_text(__import__("json").dumps({
-            "version": 1,
-            "items": {"fresh_twin_2026": {
-                "fingerprint": ["stale"],
-                "length": 2,
-                "term_freqs": {"sourdough": 1},
-            }},
-        }))
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            __import__("json").dumps(
+                {
+                    "version": 1,
+                    "items": {
+                        "fresh_twin_2026": {
+                            "fingerprint": ["stale"],
+                            "length": 2,
+                            "term_freqs": {"sourdough": 1},
+                        }
+                    },
+                }
+            )
+        )
         report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
 
@@ -1915,15 +1939,17 @@ class TestDriftAll:
 
 class TestStatusAllCLI:
     def test_exits_zero_and_names_the_findings(self, grounded, capsys):
-        _seed_corpus([
-            ("other_paper_2025", "Other", "text"),
-            ("fresh_twin_2026", "A fresh twin", "digital twin co-simulation"),
-        ])
+        _seed_corpus(
+            [
+                ("other_paper_2025", "Other", "text"),
+                ("fresh_twin_2026", "A fresh twin", "digital twin co-simulation"),
+            ]
+        )
         assert dossier.main(["status", "--all"]) == 0
         out = capsys.readouterr().out
-        assert "kept_paper_2024" in out          # cited, now gone
-        assert "fresh_twin_2026" in out          # new, matches a logged query
-        assert "1. First" in out                 # the section to edit
+        assert "kept_paper_2024" in out  # cited, now gone
+        assert "fresh_twin_2026" in out  # new, matches a logged query
+        assert "1. First" in out  # the section to edit
 
     def test_exits_zero_with_no_dossiers_at_all(self, isolated_config, capsys):
         assert dossier.main(["status", "--all"]) == 0
@@ -1960,10 +1986,12 @@ class TestStatusAllCLI:
         assert "no drift" in capsys.readouterr().out.lower()
 
     def test_json_is_machine_readable_for_the_reviser(self, grounded, capsys):
-        _seed_corpus([
-            ("other_paper_2025", "Other", "text"),
-            ("fresh_twin_2026", "A fresh twin", "digital twin co-simulation"),
-        ])
+        _seed_corpus(
+            [
+                ("other_paper_2025", "Other", "text"),
+                ("fresh_twin_2026", "A fresh twin", "digital twin co-simulation"),
+            ]
+        )
         assert dossier.main(["status", "--all", "--json"]) == 0
         payload = __import__("json").loads(capsys.readouterr().out)
         (entry,) = payload["dossiers"]
@@ -2071,8 +2099,7 @@ class TestRejectedReasons:
 
     def test_a_row_naming_no_citekey_contributes_nothing(self, grounded):
         (grounded / "rejected.md").write_text(
-            "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n"
-            "| none yet | q | r |\n"
+            "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n| none yet | q | r |\n"
         )
         assert _citekeys.rejected_reasons(grounded) == {}
 
@@ -2087,27 +2114,33 @@ class TestReconsider:
     order to decide whether the decision still holds."""
 
     def test_a_still_matching_rejection_is_offered_back_with_its_reason(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("turned_down_2023", "Turned down", "digital twin everywhere"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("turned_down_2023", "Turned down", "digital twin everywhere"),
+            ]
+        )
         (entry,) = _drift.drift(grounded).reconsider
         assert (entry.citekey, entry.reason) == ("turned_down_2023", "off topic")
         assert entry.queries == ["digital twin"]
 
     def test_a_rejection_the_queries_no_longer_reach_is_not_offered(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("turned_down_2023", "Turned down", "sourdough starter hydration"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("turned_down_2023", "Turned down", "sourdough starter hydration"),
+            ]
+        )
         assert _drift.drift(grounded).reconsider == []
 
     def test_it_never_duplicates_a_candidate(self, grounded):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("turned_down_2023", "Turned down", "digital twin"),
-            ("fresh_twin_2026", "Fresh", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("turned_down_2023", "Turned down", "digital twin"),
+                ("fresh_twin_2026", "Fresh", "digital twin"),
+            ]
+        )
         report = _drift.drift(grounded)
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
         assert [r.citekey for r in report.reconsider] == ["turned_down_2023"]
@@ -2125,10 +2158,12 @@ class TestReconsider:
         Counting it as drift would mark every dossier that ever declined a
         paper permanently stale, which is the signal this command exists
         to give."""
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("turned_down_2023", "Turned down", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("turned_down_2023", "Turned down", "digital twin"),
+            ]
+        )
         report = _drift.drift(grounded)
         assert report.reconsider
         assert report.clean
@@ -2138,28 +2173,34 @@ class TestReconsider:
         assert "turned_down_2023" not in out
 
     def test_it_is_printed_once_the_dossier_is_already_drifting(self, grounded, capsys):
-        _seed_corpus([
-            ("turned_down_2023", "Turned down", "digital twin"),
-            ("fresh_twin_2026", "Fresh", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("turned_down_2023", "Turned down", "digital twin"),
+                ("fresh_twin_2026", "Fresh", "digital twin"),
+            ]
+        )
         dossier.main(["status", "--all"])
         out = capsys.readouterr().out
         assert "turned_down_2023" in out
         assert "off topic" in out
 
     def test_json_always_carries_it_for_the_reviser(self, grounded, capsys):
-        _seed_corpus([
-            ("kept_paper_2024", "Kept", "digital twin"),
-            ("turned_down_2023", "Turned down", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin"),
+                ("turned_down_2023", "Turned down", "digital twin"),
+            ]
+        )
         dossier.main(["status", "--all", "--json"])
         (entry,) = __import__("json").loads(capsys.readouterr().out)["dossiers"]
-        assert entry["reconsider"] == [{
-            "citekey": "turned_down_2023",
-            "title": "Turned down",
-            "queries": ["digital twin"],
-            "reason": "off topic",
-        }]
+        assert entry["reconsider"] == [
+            {
+                "citekey": "turned_down_2023",
+                "title": "Turned down",
+                "queries": ["digital twin"],
+                "reason": "off topic",
+            }
+        ]
 
     def test_the_reconsider_list_is_capped_with_a_visible_remainder(self, grounded, capsys):
         (grounded / "rejected.md").write_text(
@@ -2176,12 +2217,14 @@ class TestReconsider:
         assert "... and 2 more" in out
 
     def test_the_trailer_does_not_contradict_the_reconsider_list(self, grounded, capsys):
-        """"nothing here was turned down before" is false the moment a
+        """ "nothing here was turned down before" is false the moment a
         reconsider list is on screen."""
-        _seed_corpus([
-            ("turned_down_2023", "Turned down", "digital twin"),
-            ("fresh_twin_2026", "Fresh", "digital twin"),
-        ])
+        _seed_corpus(
+            [
+                ("turned_down_2023", "Turned down", "digital twin"),
+                ("fresh_twin_2026", "Fresh", "digital twin"),
+            ]
+        )
         dossier.main(["status", "--all"])
         out = capsys.readouterr().out
         assert "turned down before" not in out
@@ -2203,18 +2246,19 @@ class TestReconsider:
 
 class TestPathsOutsideTheContentTree:
     def test_draft_name_of_a_draft_outside_drafts_falls_back_to_its_stem(
-            self, isolated_config, tmp_path):
+        self, isolated_config, tmp_path
+    ):
         stray = tmp_path / "elsewhere.md"
         assert dossier.draft_name(stray) == "elsewhere"
 
     def test_find_draft_of_a_dossier_outside_dossiers_finds_nothing(
-            self, isolated_config, tmp_path):
+        self, isolated_config, tmp_path
+    ):
         assert dossier.find_draft(tmp_path / "not-a-dossier") is None
 
 
 class TestUnreadableLedger:
-    def test_a_ledger_that_cannot_be_opened_reports_unavailable(
-            self, isolated_config, monkeypatch):
+    def test_a_ledger_that_cannot_be_opened_reports_unavailable(self, isolated_config, monkeypatch):
         """`exists()` is not `openable()`. A directory where the ledger
         should be is the cheap way to prove the difference, and the scan
         has to survive it rather than raise into a report."""
@@ -2253,14 +2297,14 @@ class TestStatusCLIOutput:
         assert "steering.md   absent" in capsys.readouterr().out.replace("  ", "  ")
 
     def test_the_kept_and_rejected_tally_appears_beside_the_retrieval_cost(
-            self, grounded, draft, capsys):
+        self, grounded, draft, capsys
+    ):
         dossier.main(["status", str(draft)])
         out = capsys.readouterr().out
         assert "1 call(s) returned" in out
         assert "1 kept, 1 rejected" in out
 
-    def test_a_dossier_with_no_fingerprint_reports_the_current_corpus_instead(
-            self, draft, capsys):
+    def test_a_dossier_with_no_fingerprint_reports_the_current_corpus_instead(self, draft, capsys):
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "scope.md").write_text("# Scope\n\n- genre: survey\n")
         _seed_ledger(["a_paper_2024", "b_paper_2024"])
@@ -2285,8 +2329,7 @@ class TestStatusCLIOutput:
         assert "b_paper_2025" in out
         assert "Drift is not itself a reason to redraft" in out
 
-    def test_the_never_considered_list_is_capped_with_a_visible_remainder(
-            self, draft, capsys):
+    def test_the_never_considered_list_is_capped_with_a_visible_remainder(self, draft, capsys):
         _seed_ledger(["a_paper_2024"])
         dossier.init(draft, "survey")
         _seed_ledger([f"new_{n}_paper_2025" for n in range(12)])
@@ -2319,14 +2362,16 @@ class TestListCLIOutput:
 
 class TestRestoreCLIOutput:
     def test_an_archive_that_is_not_a_tarball_is_refused_without_a_traceback(
-            self, isolated_config, tmp_path, capsys):
+        self, isolated_config, tmp_path, capsys
+    ):
         junk = tmp_path / "not-really.tar.gz"
         junk.write_bytes(b"this is not a gzip stream")
         assert dossier.main(["restore", str(junk)]) == 1
         assert "[error]" in capsys.readouterr().err
 
     def test_an_unsafe_member_is_refused_without_a_traceback(
-            self, isolated_config, tmp_path, capsys):
+        self, isolated_config, tmp_path, capsys
+    ):
         archive = tmp_path / "hostile.tar.gz"
         payload = tmp_path / "payload.md"
         payload.write_text("x")
@@ -2336,7 +2381,8 @@ class TestRestoreCLIOutput:
         assert "escapes the extraction directory" in capsys.readouterr().err
 
     def test_a_directory_member_is_carried_but_not_counted_as_a_file(
-            self, isolated_config, tmp_path, capsys):
+        self, isolated_config, tmp_path, capsys
+    ):
         """`export` only ever adds files, but a hand-rolled or
         hand-edited bundle can carry directory entries, and the plan
         counts files -- an empty directory is not something to warn about
@@ -2353,7 +2399,8 @@ class TestRestoreCLIOutput:
         assert "Dry run" in out
 
     def test_the_overwrite_list_is_capped_with_a_visible_remainder(
-            self, isolated_config, tmp_path, capsys):
+        self, isolated_config, tmp_path, capsys
+    ):
         config.DRAFTS_DIR.mkdir(parents=True)
         for n in range(12):
             (config.DRAFTS_DIR / f"draft{n}.md").write_text(f"# {n}\n")
@@ -2364,8 +2411,7 @@ class TestRestoreCLIOutput:
         assert "12 existing file(s) would be OVERWRITTEN" in out
         assert "... and 2 more" in out
 
-    def test_a_corpus_that_only_shrank_reports_drift_with_nothing_to_look_at(
-            self, draft, capsys):
+    def test_a_corpus_that_only_shrank_reports_drift_with_nothing_to_look_at(self, draft, capsys):
         """Drift is a digest comparison, so losing a paper moves it just
         as gaining one does -- but there is then nothing "never
         considered" to list, and the report must not print an empty
@@ -2376,6 +2422,7 @@ class TestRestoreCLIOutput:
             "# Kept evidence\n\n## `a_paper_2024`\n\nkept.\n\n## `b_paper_2024`\n\nkept.\n"
         )
         from chitragupta import ledger
+
         con = ledger.connect()
         con.execute("DELETE FROM items WHERE citekey = 'b_paper_2024'")
         con.commit()
@@ -2406,21 +2453,21 @@ def _fill_dossier(draft, evidence="", sections_rows=""):
     dossier.init(draft, "deep-research")
     target = dossier.dossier_dir(draft)
     if evidence:
-        (target / "evidence.md").write_text(
-            _create._EVIDENCE_TEMPLATE + evidence, encoding="utf-8")
+        (target / "evidence.md").write_text(_create._EVIDENCE_TEMPLATE + evidence, encoding="utf-8")
     if sections_rows:
         (target / "sections.md").write_text(
-            dossier._SECTIONS_TEMPLATE + sections_rows, encoding="utf-8")
+            dossier._SECTIONS_TEMPLATE + sections_rows, encoding="utf-8"
+        )
     return target
 
 
 _TWO_BLOCKS = (
     "## `ferko_architecting_2022`\n\n"
     "- relevance: names the service layer this section is about\n"
-    "- support: \"a digital twin is composed of services\"\n\n"
+    '- support: "a digital twin is composed of services"\n\n'
     "## `talasila_composable_2025`\n\n"
     "- relevance: the composition rule the section leans on\n"
-    "- support: \"twins compose from tool-agnostic parts\"\n"
+    '- support: "twins compose from tool-agnostic parts"\n'
 )
 
 
@@ -2434,7 +2481,8 @@ class TestEvidenceBlocks:
 
     def test_a_heading_that_carries_prose_still_keys_on_the_citekey(self, draft):
         target = _fill_dossier(
-            draft, evidence="## `ferko_architecting_2022` -- kept for section 3\n\nbody\n")
+            draft, evidence="## `ferko_architecting_2022` -- kept for section 3\n\nbody\n"
+        )
         assert "ferko_architecting_2022" in _citekeys.evidence_blocks(target)
 
     def test_a_heading_without_backticks_keys_on_its_text(self, draft):
@@ -2452,10 +2500,13 @@ class TestEvidenceBlocks:
 
 class TestCitekeysBySection:
     def test_reads_rows_in_order_and_skips_the_header(self, draft):
-        target = _fill_dossier(draft, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022`, `talasila_composable_2025` |\n"
-            "| 3. Adoption | `zech_digital-twins-as--service_2024` |\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            sections_rows=(
+                "| 2. Failure modes | `ferko_architecting_2022`, `talasila_composable_2025` |\n"
+                "| 3. Adoption | `zech_digital-twins-as--service_2024` |\n"
+            ),
+        )
         assert _citekeys.citekeys_by_section(target) == {
             "2. Failure modes": ["ferko_architecting_2022", "talasila_composable_2025"],
             "3. Adoption": ["zech_digital-twins-as--service_2024"],
@@ -2474,10 +2525,13 @@ class TestCitekeysBySection:
         assert _citekeys.citekeys_by_section(target) == {}
 
     def test_a_hand_mangled_row_is_skipped_rather_than_fatal(self, draft):
-        target = _fill_dossier(draft, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-            "| 3. Adoption | `a_b_2024` | stray fourth cell |\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            sections_rows=(
+                "| 2. Failure modes | `ferko_architecting_2022` |\n"
+                "| 3. Adoption | `a_b_2024` | stray fourth cell |\n"
+            ),
+        )
         assert list(_citekeys.citekeys_by_section(target)) == ["2. Failure modes"]
 
 
@@ -2485,9 +2539,12 @@ class TestBrief:
     def test_resolves_the_citekeys_it_is_given_in_order(self, draft):
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
         report = _brief.brief(
-            target, citekeys=["talasila_composable_2025", "ferko_architecting_2022"])
+            target, citekeys=["talasila_composable_2025", "ferko_architecting_2022"]
+        )
         assert [key for key, _ in report.blocks] == [
-            "talasila_composable_2025", "ferko_architecting_2022"]
+            "talasila_composable_2025",
+            "ferko_architecting_2022",
+        ]
         assert report.missing == []
 
     def test_a_citekey_with_no_block_is_reported_not_dropped(self, draft):
@@ -2497,48 +2554,62 @@ class TestBrief:
         assert report.missing == ["never_seen_2020"]
 
     def test_resolves_a_section_through_sections_md(self, draft):
-        target = _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-            "| 3. Adoption | `talasila_composable_2025` |\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows=(
+                "| 2. Failure modes | `ferko_architecting_2022` |\n"
+                "| 3. Adoption | `talasila_composable_2025` |\n"
+            ),
+        )
         report = _brief.brief(target, section="2. Failure modes")
         assert report.section == "2. Failure modes"
         assert [key for key, _ in report.blocks] == ["ferko_architecting_2022"]
 
     def test_a_section_matches_on_its_title_without_its_numbering(self, draft):
-        target = _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows=("| 2. Failure modes | `ferko_architecting_2022` |\n"),
+        )
         report = _brief.brief(target, section="failure modes")
         assert report.section == "2. Failure modes"
 
     def test_an_ambiguous_section_matches_nothing_and_offers_the_candidates(self, draft):
         """Guessing between two sections would hand a writer someone
         else's evidence, which reads as a plausible section and is wrong."""
-        target = _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
-            "| 2. Failure modes in practice | `ferko_architecting_2022` |\n"
-            "| 3. Failure modes in theory | `talasila_composable_2025` |\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows=(
+                "| 2. Failure modes in practice | `ferko_architecting_2022` |\n"
+                "| 3. Failure modes in theory | `talasila_composable_2025` |\n"
+            ),
+        )
         report = _brief.brief(target, section="failure modes")
         assert report.section is None
         assert len(report.known_sections) == 2
 
     def test_a_section_and_citekeys_together_are_the_union_without_repeats(self, draft):
-        target = _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows=("| 2. Failure modes | `ferko_architecting_2022` |\n"),
+        )
         report = _brief.brief(
             target,
             citekeys=["ferko_architecting_2022", "talasila_composable_2025"],
             section="2. Failure modes",
         )
         assert [key for key, _ in report.blocks] == [
-            "ferko_architecting_2022", "talasila_composable_2025"]
+            "ferko_architecting_2022",
+            "talasila_composable_2025",
+        ]
 
     def test_a_section_with_no_evidence_transcribed_resolves_to_nothing(self, draft):
-        target = _fill_dossier(draft, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-        ))
+        target = _fill_dossier(
+            draft, sections_rows=("| 2. Failure modes | `ferko_architecting_2022` |\n")
+        )
         report = _brief.brief(target, section="2. Failure modes")
         assert report.blocks == []
         assert report.missing == ["ferko_architecting_2022"]
@@ -2557,8 +2628,7 @@ class TestBriefCli:
         the rows are there, and reading them into its own context is the
         cost the whole mechanism exists to avoid."""
         _fill_dossier(draft, evidence=_TWO_BLOCKS)
-        assert dossier.main(
-            ["brief", str(draft), "ferko_architecting_2022", "--check"]) == 0
+        assert dossier.main(["brief", str(draft), "ferko_architecting_2022", "--check"]) == 0
         captured = capsys.readouterr()
         assert "1 of 1" in captured.err
         assert "service layer" not in captured.out + captured.err
@@ -2569,18 +2639,22 @@ class TestBriefCli:
         assert "service layer" in capsys.readouterr().out
 
     def test_a_section_is_resolved_and_named_in_the_header(self, draft, capsys):
-        _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-        ))
+        _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows=("| 2. Failure modes | `ferko_architecting_2022` |\n"),
+        )
         assert dossier.main(["brief", str(draft), "--section", "failure modes"]) == 0
         captured = capsys.readouterr()
         assert "2. Failure modes" in captured.err, "the header names the row it matched"
         assert "service layer" in captured.out, "stdout carries only the evidence"
 
     def test_an_unknown_section_exits_nonzero_and_lists_the_known_ones(self, draft, capsys):
-        _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows=(
-            "| 2. Failure modes | `ferko_architecting_2022` |\n"
-        ))
+        _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows=("| 2. Failure modes | `ferko_architecting_2022` |\n"),
+        )
         assert dossier.main(["brief", str(draft), "--section", "adoption"]) == 1
         err = capsys.readouterr().err
         assert "2. Failure modes" in err
@@ -2601,8 +2675,9 @@ class TestBriefCli:
 
     def test_a_partial_result_still_prints_what_it_has_and_warns(self, draft, capsys):
         _fill_dossier(draft, evidence=_TWO_BLOCKS)
-        assert dossier.main(
-            ["brief", str(draft), "ferko_architecting_2022", "never_seen_2020"]) == 0
+        assert (
+            dossier.main(["brief", str(draft), "ferko_architecting_2022", "never_seen_2020"]) == 0
+        )
         captured = capsys.readouterr()
         assert "service layer" in captured.out
         assert "never_seen_2020" in captured.err
@@ -2619,17 +2694,16 @@ class TestBriefCli:
         assert dossier.main(["brief", str(draft), "a_b_2024"]) == 1
         assert "init" in capsys.readouterr().err
 
-    def test_a_planned_section_with_no_evidence_assigned_says_which_gap(
-            self, draft, capsys):
+    def test_a_planned_section_with_no_evidence_assigned_says_which_gap(self, draft, capsys):
         """Distinct from a section name that matched nothing: this row
         exists, and it is Phase 4's plan that is incomplete."""
-        _fill_dossier(draft, evidence=_TWO_BLOCKS,
-                      sections_rows="| 4. Open questions |  |\n")
+        _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows="| 4. Open questions |  |\n")
         assert dossier.main(["brief", str(draft), "--section", "Open questions"]) == 1
         assert "planned but has no citekeys" in capsys.readouterr().err
 
     def test_a_mistyped_dossier_path_gets_the_mirroring_rule_not_init(
-            self, isolated_config, capsys):
+        self, isolated_config, capsys
+    ):
         """`brief` takes either a draft path or a dossier directory, and
         the two wrong-path cases have to say different things. A draft
         with no dossier yet gets `init <that draft>`, which is the right
@@ -2753,9 +2827,7 @@ class TestSectionsMarkdown:
         escaped on the way out and unescaped on the way back, so the
         section name matches what `sections()` reports for the draft."""
         text = "## Results | caveats\n\nA claim [@a_one_2024].\n"
-        (tmp_path / "sections.md").write_text(
-            _sections.sections_markdown(text), encoding="utf-8"
-        )
+        (tmp_path / "sections.md").write_text(_sections.sections_markdown(text), encoding="utf-8")
         assert r"| Results \| caveats |" in (tmp_path / "sections.md").read_text()
         assert _citekeys.citekeys_by_section(tmp_path) == {
             "Results | caveats": ["a_one_2024"],
@@ -2815,14 +2887,17 @@ class TestSectionsCitekeysCli:
 
 class TestEvidenceBlocksCoexistence:
     def test_a_new_shape_block_round_trips(self, draft):
-        target = _fill_dossier(draft, evidence=(
-            "## `talasila_realising_2024`\n\n"
-            "- relevance: names the synchronization requirement\n"
-            "- claim: a digital twin must stay synchronized with its physical "
-            "counterpart to remain valid\n"
-            "- quote: \"a digital twin that drifts from its physical counterpart "
-            "is no longer trustworthy\"\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            evidence=(
+                "## `talasila_realising_2024`\n\n"
+                "- relevance: names the synchronization requirement\n"
+                "- claim: a digital twin must stay synchronized with its physical "
+                "counterpart to remain valid\n"
+                '- quote: "a digital twin that drifts from its physical counterpart '
+                'is no longer trustworthy"\n'
+            ),
+        )
         block = _citekeys.evidence_blocks(target)["talasila_realising_2024"]
         assert "claim:" in block
         assert "quote:" in block
@@ -2852,14 +2927,20 @@ class TestOverlapScore:
     fixture tried.
     """
 
-    QUOTE = ("digital twins for software engineers require continuous "
-             "synchronization between the physical system and its virtual "
-             "counterpart to remain valid")
-    REWORDED = ("continuous synchronization between the physical system and its "
-                "virtual counterpart is required for digital twins for software "
-                "engineers to remain valid")
-    RESTATED = ("the paper argues that a digital twin only stays useful if it is "
-                "kept in sync with the real system it mirrors")
+    QUOTE = (
+        "digital twins for software engineers require continuous "
+        "synchronization between the physical system and its virtual "
+        "counterpart to remain valid"
+    )
+    REWORDED = (
+        "continuous synchronization between the physical system and its "
+        "virtual counterpart is required for digital twins for software "
+        "engineers to remain valid"
+    )
+    RESTATED = (
+        "the paper argues that a digital twin only stays useful if it is "
+        "kept in sync with the real system it mirrors"
+    )
 
     def test_a_reworded_quote_scores_at_or_above_the_threshold(self):
         score = _evidence_check.overlap_score(self.REWORDED, self.QUOTE)
@@ -2879,10 +2960,8 @@ class TestOverlapScore:
         # scores possible are 0.0 and 1.0 -- never a fraction. A
         # one-clause quote is a realistic input, not an edge case to
         # special-case away.
-        assert _evidence_check.overlap_score(
-            "the twins compose from parts", "twins compose") == 1.0
-        assert _evidence_check.overlap_score(
-            "a reusable module design", "twins compose") == 0.0
+        assert _evidence_check.overlap_score("the twins compose from parts", "twins compose") == 1.0
+        assert _evidence_check.overlap_score("a reusable module design", "twins compose") == 0.0
 
 
 _REWORDED_BLOCK = (
@@ -2900,12 +2979,10 @@ _RESTATED_BLOCK = (
 _LEGACY_SUPPORT_ONLY_BLOCK = (
     "## `talasila_composable_2025`\n\n"
     "- relevance: the composition rule the section leans on\n"
-    "- support: \"twins compose from tool-agnostic parts\"\n"
+    '- support: "twins compose from tool-agnostic parts"\n'
 )
 _CLAIM_WITHOUT_QUOTE_BLOCK = (
-    "## `smith_x_2024`\n\n"
-    "- relevance: why this matters\n"
-    "- claim: a claim with no quote recorded\n"
+    "## `smith_x_2024`\n\n- relevance: why this matters\n- claim: a claim with no quote recorded\n"
 )
 
 
@@ -2934,11 +3011,12 @@ class TestRewordedClaims:
         rather than kept as an empty string that happens to be falsy --
         so a block with a blank claim: has nothing to compare its
         quote: against, the same as a block with no claim: line at all."""
-        target = _fill_dossier(draft, evidence=(
-            "## `talasila_realising_2024`\n\n"
-            "- claim:\n"
-            f"- quote: {TestOverlapScore.QUOTE}\n"
-        ))
+        target = _fill_dossier(
+            draft,
+            evidence=(
+                f"## `talasila_realising_2024`\n\n- claim:\n- quote: {TestOverlapScore.QUOTE}\n"
+            ),
+        )
         assert _evidence_check.reworded_claims(target) == {}
 
     def test_no_evidence_file_flags_nothing(self, draft):

@@ -92,10 +92,12 @@ def _gpu_free_mib_nvidia_smi() -> "dict[int, int] | None":
         return None
     try:
         result = subprocess.run(
-            [smi, "--query-gpu=index,memory.free",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True,
-            timeout=_NVIDIA_SMI_TIMEOUT, check=False)
+            [smi, "--query-gpu=index,memory.free", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=_NVIDIA_SMI_TIMEOUT,
+            check=False,
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     if result.returncode != 0:
@@ -163,15 +165,16 @@ def usable_devices() -> "tuple[list[int], str | None]":
         return usable, (
             f"  WARNING skipping {detail} -- under "
             f"{_GPU_MIN_FREE_MIB / 1024:.1f} GiB free, which is not enough for a "
-            f"docling worker. Parsing on cuda:"
-            + ",".join(str(d) for d in usable) + ".")
+            f"docling worker. Parsing on cuda:" + ",".join(str(d) for d in usable) + "."
+        )
     # Every card is full. The CPU is slower -- measured 4.7x over 100
     # documents with OCR off, and 1.8x with it on, since OCR is CPU work
     # either way -- but it is a run that finishes, which is more than the
     # alternative.
     return [], (
         f"  WARNING every GPU is busy ({detail}) -- parsing on the CPU. "
-        "Free a card or wait, then re-run to get the GPUs back.")
+        "Free a card or wait, then re-run to get the GPUs back."
+    )
 
 
 def _gpu_count_nvidia_smi() -> "int | None":
@@ -188,8 +191,12 @@ def _gpu_count_nvidia_smi() -> "int | None":
         return None
     try:
         result = subprocess.run(
-            [smi, "--list-gpus"], capture_output=True, text=True,
-            timeout=_NVIDIA_SMI_TIMEOUT, check=False)
+            [smi, "--list-gpus"],
+            capture_output=True,
+            text=True,
+            timeout=_NVIDIA_SMI_TIMEOUT,
+            check=False,
+        )
     except (OSError, subprocess.SubprocessError):
         # A driver mismatch makes nvidia-smi hang or die rather than
         # print an empty list, and neither is a reason to fail a sync.

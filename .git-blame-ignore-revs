@@ -1,0 +1,28 @@
+# Commits `git blame` should skip: whole-tree reformats and other
+# mechanical, no-behaviour-change diffs, so a blame on a line inside one
+# still surfaces the commit that last changed its content, not the
+# commit that merely reflowed it.
+#
+# Use it with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (per-clone, not committed to any git config -- this file is the shared
+# part, the `git config` line is each developer's own opt-in) or, for a
+# one-off:
+#   git blame --ignore-revs-file .git-blame-ignore-revs <path>
+#
+# GitHub's own blame view reads this file automatically, with no config
+# needed on either side, if it sits at the repository root under this
+# exact name.
+#
+# Squash-merging (this repository's only merge method -- DEVELOPER-AGENTS.md's
+# "Merging") means the commit a PR branch lands as on `main` is one GitHub
+# composes at merge time, so its SHA cannot be known before the merge and
+# so cannot be recorded in the same PR that creates it. Each entry below
+# lands in a small follow-up PR instead, immediately after the reformat it
+# names merges, and the two are described together in that follow-up's
+# body rather than split silently.
+
+# #362: the ruff format adoption over chitragupta/, scripts/, tests/,
+# bench/ and .claude/hooks -- 222 files, mechanical, no behaviour change.
+# Recorded in the follow-up that closed #362 once its squash-merge SHA
+# was known.

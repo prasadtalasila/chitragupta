@@ -148,7 +148,7 @@ an inspectable mechanism. None publishes its enforcement code; none runs
 locally.
 
 | Tool | Core model | Grounding claim | Plagiarism check | Long-form ceiling |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Paperguide** | Full research workspace: 200M+ paper search, reference manager (Zotero/Mendeley import), AI Paper Writer, PDF Q&A with page-level citations, systematic reviews (PRISMA), data extraction, team workspaces | "Citations applied automatically against the actual library"; "every cited paper verified against the actual reference" (own marketing) | Yes (paid plans) -- but **web/academic-scale**, Turnitin-style, not local-corpus | Thesis chapters; markets "multi-chapter consistency" |
 | **SciSpace** | Paperguide's closest competitor: 280M paper search, PDF reading/Q&A, data extraction, literature review generation, reference management, AI Writer | Library + index grounded drafting | Not a differentiator | Paper/section scale |
 | **Jenni AI** | Writing-first: upload your own PDFs (~50), grounded autocomplete and citation suggestions from that uploaded library; "Claim Confidence" flags unsupported claims | "Zero hallucinated references -- all autocomplete suggestions grounded in your actual source library" (marketing). Closest commercial tool in spirit to a bring-your-own-corpus model | **No** (conceded even by competitors' comparisons) | Chapter-by-chapter autocomplete |
@@ -524,7 +524,7 @@ Every principle in §3 that does not depend on book scale is built and in
 production, not just designed. As of v5.29.0:
 
 | Principle | Status |
-|---|---|
+| --- | --- |
 | Two-plane separation (deterministic parse-and-ledger corpus layer, LLM-free) | Built |
 | Closed-world gate (`chitragupta.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built -- and, per #130 below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
 | Bibliography as sole source-admission point | Built |

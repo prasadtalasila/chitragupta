@@ -51,13 +51,13 @@ from chitragupta.enrich import corpus, doc_vectors, embed_index  # noqa: E402
 # (n_neighbors, n_components, min_cluster_size, min_samples). min_samples
 # None leaves HDBSCAN's own default, which is min_cluster_size.
 GRID = [
-    (15, 5, 10, None),   # the values hardcoded until 6.9.0
+    (15, 5, 10, None),  # the values hardcoded until 6.9.0
     (15, 5, 5, None),
     (15, 5, 3, None),
     (10, 5, 10, None),
     (10, 5, 5, None),
     (10, 5, 3, None),
-    (10, 5, 3, 2),       # the 6.9.0 defaults
+    (10, 5, 3, 2),  # the 6.9.0 defaults
     (5, 5, 5, 3),
     (5, 5, 3, 2),
     (5, 10, 3, 2),
@@ -68,8 +68,12 @@ def fit_labels(reduced, min_cluster_size, min_samples):
     """One HDBSCAN fit's labels, and the fitted clusterer."""
     from hdbscan import HDBSCAN
 
-    kwargs = dict(min_cluster_size=min_cluster_size, metric="euclidean",
-                  cluster_selection_method="eom", prediction_data=True)
+    kwargs = dict(
+        min_cluster_size=min_cluster_size,
+        metric="euclidean",
+        cluster_selection_method="eom",
+        prediction_data=True,
+    )
     if min_samples is not None:
         kwargs["min_samples"] = min_samples
     clusterer = HDBSCAN(**kwargs).fit(reduced)
@@ -154,21 +158,27 @@ def self_check() -> None:
     """
     all_outliers = _summarize_labels([-1, -1, -1])
     assert all_outliers == {"topics": 0, "outlier_share": 1.0, "median_size": 0}, (
-        f"an all-outlier fit must report zero topics explicitly, got {all_outliers}")
+        f"an all-outlier fit must report zero topics explicitly, got {all_outliers}"
+    )
 
     mixed = _summarize_labels([0, 0, 1, 1, 1, -1])
     assert mixed["topics"] == 2, f"did not count both real clusters: {mixed}"
     assert mixed["outlier_share"] == 1 / 6, f"outlier share miscomputed: {mixed}"
     assert mixed["median_size"] == 3, (
-        f"median of cluster sizes [2, 3] should be 3 (the upper of the pair), got {mixed}")
+        f"median of cluster sizes [2, 3] should be 3 (the upper of the pair), got {mixed}"
+    )
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--tag", required=True, help="names the results directory")
-    parser.add_argument("--repeats", type=int, default=1,
-                        help="fit each setting this many times and report the "
-                             "agreement between fits (adjusted Rand index)")
+    parser.add_argument(
+        "--repeats",
+        type=int,
+        default=1,
+        help="fit each setting this many times and report the "
+        "agreement between fits (adjusted Rand index)",
+    )
     args = parser.parse_args(argv)
     self_check()
 
@@ -183,37 +193,57 @@ def main(argv=None):
     embed_seconds = time.time() - started
     citekeys = [c for c in doc_texts if c in vectors]
     embeddings = np.array([vectors[c] for c in citekeys])
-    print(f"{len(citekeys)} documents, embedded in {embed_seconds:.0f}s "
-          f"(0s means the cache was warm)", flush=True)
+    print(
+        f"{len(citekeys)} documents, embedded in {embed_seconds:.0f}s "
+        f"(0s means the cache was warm)",
+        flush=True,
+    )
 
     rows = []
     # UMAP is the expensive half and depends only on (n_neighbors,
     # n_components), so it is fitted once per pair and reused across every
     # HDBSCAN setting underneath it.
     reductions = {}
-    print(f"\n{'n_nbr':>5} {'n_cmp':>5} {'mcs':>4} {'ms':>4} | {'topics':>6} "
-          f"{'outliers':>9} {'median':>7} {'topics/doc':>10}", flush=True)
+    print(
+        f"\n{'n_nbr':>5} {'n_cmp':>5} {'mcs':>4} {'ms':>4} | {'topics':>6} "
+        f"{'outliers':>9} {'median':>7} {'topics/doc':>10}",
+        flush=True,
+    )
     for n_neighbors, n_components, min_cluster_size, min_samples in GRID:
         key = (n_neighbors, n_components)
         if key not in reductions:
-            reductions[key] = UMAP(n_neighbors=n_neighbors, n_components=n_components,
-                                   min_dist=0.0, metric="cosine",
-                                   random_state=42).fit_transform(embeddings)
-        got = measure(reductions[key], min_cluster_size, min_samples,
-                      args.repeats)
-        rows.append(dict(n_neighbors=n_neighbors, n_components=n_components,
-                         min_cluster_size=min_cluster_size, min_samples=min_samples, **got))
+            reductions[key] = UMAP(
+                n_neighbors=n_neighbors,
+                n_components=n_components,
+                min_dist=0.0,
+                metric="cosine",
+                random_state=42,
+            ).fit_transform(embeddings)
+        got = measure(reductions[key], min_cluster_size, min_samples, args.repeats)
+        rows.append(
+            dict(
+                n_neighbors=n_neighbors,
+                n_components=n_components,
+                min_cluster_size=min_cluster_size,
+                min_samples=min_samples,
+                **got,
+            )
+        )
         stable = "-" if got["stability"] is None else f"{got['stability']:.2f}"
-        print(f"{n_neighbors:>5} {n_components:>5} {min_cluster_size:>4} "
-              f"{str(min_samples or '-'):>4} | {got['topics']:>6} "
-              f"{100 * got['outlier_share']:>8.0f}% {got['median_size']:>7} "
-              f"{got['topics_per_doc']:>10.2f} {stable:>10}", flush=True)
+        print(
+            f"{n_neighbors:>5} {n_components:>5} {min_cluster_size:>4} "
+            f"{str(min_samples or '-'):>4} | {got['topics']:>6} "
+            f"{100 * got['outlier_share']:>8.0f}% {got['median_size']:>7} "
+            f"{got['topics_per_doc']:>10.2f} {stable:>10}",
+            flush=True,
+        )
 
     out = Path(__file__).resolve().parent / "results" / args.tag
     out.mkdir(parents=True, exist_ok=True)
     (out / "depth.json").write_text(
-        json.dumps({"n_docs": len(citekeys), "repeats": args.repeats, "rows": rows},
-                   indent=2), encoding="utf-8")
+        json.dumps({"n_docs": len(citekeys), "repeats": args.repeats, "rows": rows}, indent=2),
+        encoding="utf-8",
+    )
     print(f"\nwrote {out / 'depth.json'}")
     return 0
 

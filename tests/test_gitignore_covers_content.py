@@ -45,10 +45,13 @@ EXCEPTION_PARENTS = {path.rsplit("/", 1)[0] for path in TRACKED}
 
 def _ignored(relative_path: str) -> bool:
     """What git itself says about a path, which need not exist."""
-    return subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "check-ignore", "-q", relative_path],
-        check=False,
-    ).returncode == 0
+    return (
+        subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "check-ignore", "-q", relative_path],
+            check=False,
+        ).returncode
+        == 0
+    )
 
 
 def _content_paths() -> list[str]:
@@ -77,8 +80,11 @@ def test_every_content_artefact_path_is_ignored(relative_path):
     # For the two directories holding a tracked example, the claim is
     # about what they contain rather than about them: any other topic
     # written there is per-host data like everything else.
-    checked = (f"{relative_path}/some-other-topic/draft.md"
-               if relative_path in EXCEPTION_PARENTS else relative_path)
+    checked = (
+        f"{relative_path}/some-other-topic/draft.md"
+        if relative_path in EXCEPTION_PARENTS
+        else relative_path
+    )
     assert _ignored(checked), (
         f"{checked} is not gitignored, so everything the pipeline writes "
         "there shows up as untracked -- and is one `git add -A` from being "

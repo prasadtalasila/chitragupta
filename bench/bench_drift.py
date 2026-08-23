@@ -99,8 +99,9 @@ def build_corpus(docs: int, seed: int = 0) -> int:
     con = ledger.connect()
     for n in range(docs):
         # One outsized document, as the real corpus has.
-        pages = BOOK_PAGES if n == 0 else max(1, int(rng.lognormvariate(
-            math.log(MEDIAN_PAGES), 0.7)))
+        pages = (
+            BOOK_PAGES if n == 0 else max(1, int(rng.lognormvariate(math.log(MEDIAN_PAGES), 0.7)))
+        )
         citekey = f"author{n}_paper_20{n % 30:02d}"
         text = _document(rng, pages)
         path = config.PARSED_DIR / f"{citekey}.txt"
@@ -135,9 +136,12 @@ def build_dossiers(count: int, queries_each: int) -> None:
         )
         for q in range(queries_each):
             dossier.log_retrieval(
-                draft, "search",
+                draft,
+                "search",
                 f"{QUERY_TERMS[q % len(QUERY_TERMS)]} {QUERY_TERMS[(q + 1) % len(QUERY_TERMS)]}",
-                15, 15, 2400,
+                15,
+                15,
+                2400,
             )
 
 
@@ -155,8 +159,12 @@ def _time(fn, repeats: int, clock=time.perf_counter) -> dict:
         fn()
         times.append(clock() - start)
     times.sort()
-    return {"best": times[0], "median": times[len(times) // 2], "worst": times[-1],
-            "repeats": repeats}
+    return {
+        "best": times[0],
+        "median": times[len(times) // 2],
+        "worst": times[-1],
+        "repeats": repeats,
+    }
 
 
 def _sweep_target():
@@ -214,7 +222,8 @@ def self_check() -> None:
     ticks = iter((0.0, 3.0, 10.0, 11.0, 20.0, 22.0))
     stats = _time(lambda: None, 3, clock=lambda: next(ticks))
     assert stats == {"best": 1.0, "median": 2.0, "worst": 3.0, "repeats": 3}, (
-        f"_time does not report the median of 3s, 1s and 2s as 2s: {stats}")
+        f"_time does not report the median of 3s, 1s and 2s as 2s: {stats}"
+    )
 
     def raise_marker():
         raise _Narrowed
@@ -232,7 +241,8 @@ def self_check() -> None:
     assert reached, (
         "drift_all() did not call the all_dossiers this script overrides, so "
         "narrowing the sweep to a subset does nothing and every dossier count "
-        "below would measure the same whole set -- see _sweep_target")
+        "below would measure the same whole set -- see _sweep_target"
+    )
 
 
 def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
@@ -264,8 +274,13 @@ def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
     return len(rows), total
 
 
-def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
-        real_ledger: Path | None = None) -> dict:
+def run(
+    docs: int,
+    dossier_counts: list[int],
+    queries_each: int,
+    repeats: int,
+    real_ledger: Path | None = None,
+) -> dict:
     """Time a sweep at each dossier count, cold and warm.
 
     `docs` is the size of the corpus to generate, and is **ignored when
@@ -329,8 +344,7 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
         for path in every:
             (path / "retrieval.md").unlink(missing_ok=True)
         config.RETRIEVAL_INDEX_PATH.unlink(missing_ok=True)
-        result["no_queries"][str(max(dossier_counts))] = _time(
-            lambda: sweep(every), repeats)
+        result["no_queries"][str(max(dossier_counts))] = _time(lambda: sweep(every), repeats)
     finally:
         target.all_dossiers = real_all_dossiers
     return result
@@ -338,21 +352,26 @@ def run(docs: int, dossier_counts: list[int], queries_each: int, repeats: int,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--real", action="store_true",
-                        help="Use this host's own ledger and parsed text instead of "
-                             "a generated corpus (read-only: the ledger is copied)")
-    parser.add_argument("--docs", type=int, default=DEFAULT_DOCS,
-                        help=f"Documents to generate (default {DEFAULT_DOCS}); "
-                             "ignored with --real, which takes the count from the "
-                             "ledger it copies")
+    parser.add_argument(
+        "--real",
+        action="store_true",
+        help="Use this host's own ledger and parsed text instead of "
+        "a generated corpus (read-only: the ledger is copied)",
+    )
+    parser.add_argument(
+        "--docs",
+        type=int,
+        default=DEFAULT_DOCS,
+        help=f"Documents to generate (default {DEFAULT_DOCS}); "
+        "ignored with --real, which takes the count from the "
+        "ledger it copies",
+    )
     parser.add_argument("--dossiers", type=int, nargs="*", default=[1, 10, 50])
     parser.add_argument("--queries-each", type=int, default=4)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--out", help="Write the raw result JSON here")
-    parser.add_argument("--real-ledger",
-                        help=f"Ledger to copy for --real (default: {REAL_LEDGER})")
-    parser.add_argument("--keep", action="store_true",
-                        help="Leave the generated corpus on disk")
+    parser.add_argument("--real-ledger", help=f"Ledger to copy for --real (default: {REAL_LEDGER})")
+    parser.add_argument("--keep", action="store_true", help="Leave the generated corpus on disk")
     args = parser.parse_args(argv)
 
     # Validated before anything is created, so a bad --real cannot leave a
@@ -361,8 +380,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.real:
         real_ledger = Path(args.real_ledger) if args.real_ledger else REAL_LEDGER
         if not real_ledger.is_file():
-            print(f"No ledger at {real_ledger} -- run `python -m chitragupta.corpus sync` first, "
-                  "or drop --real to generate a corpus.", file=sys.stderr)
+            print(
+                f"No ledger at {real_ledger} -- run `python -m chitragupta.corpus sync` first, "
+                "or drop --real to generate a corpus.",
+                file=sys.stderr,
+            )
             return 1
 
     # Never touch the host's real content/: everything is generated into a
@@ -394,8 +416,7 @@ def main(argv: list[str] | None = None) -> int:
         # host's `content/`. Run against the ambient config it would read
         # the host's real ledger and dossiers to check itself.
         self_check()
-        result = run(args.docs, sorted(args.dossiers), args.queries_each, args.repeats,
-                     real_ledger)
+        result = run(args.docs, sorted(args.dossiers), args.queries_each, args.repeats, real_ledger)
     finally:
         for name, value in original.items():
             setattr(config, name, value)
@@ -405,17 +426,21 @@ def main(argv: list[str] | None = None) -> int:
             shutil.rmtree(root, ignore_errors=True)
 
     mb = result["parsed_bytes"] / 1e6
-    print(f"corpus ({result['corpus']}): {result['docs']} documents, {mb:.1f} MB of parsed text, "
-          f"{args.queries_each} queries per dossier\n")
+    print(
+        f"corpus ({result['corpus']}): {result['docs']} documents, {mb:.1f} MB of parsed text, "
+        f"{args.queries_each} queries per dossier\n"
+    )
     print(f"{'dossiers':>9}  {'cold (s)':>10}  {'warm (s)':>10}  {'ratio':>7}")
     for count in result["dossier_counts"]:
         cold = result["cold"][str(count)]["median"]
         warm = result["warm"][str(count)]["median"]
         print(f"{count:>9}  {cold:>10.3f}  {warm:>10.3f}  {cold / warm:>6.1f}x")
     biggest = str(max(result["dossier_counts"]))
-    print(f"\nno logged queries, {biggest} dossiers: "
-          f"{result['no_queries'][biggest]['median']:.3f}s "
-          "(no index is built at all)")
+    print(
+        f"\nno logged queries, {biggest} dossiers: "
+        f"{result['no_queries'][biggest]['median']:.3f}s "
+        "(no index is built at all)"
+    )
 
     if args.out:
         out = Path(args.out)

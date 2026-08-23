@@ -87,7 +87,7 @@ Classify a hook once, at the point of proposing it, and every subsequent
 question is already answered:
 
 | | **Gate class** | **Advisory class** |
-|---|---|---|
+| --- | --- | --- |
 | Members | `citation_gate_hook.py` | `session_start_hook.py`, `style_check_hook.py` (#185) |
 | What it protects | the citekey invariant | a recorded preference, or the operator's attention |
 | May emit a blocking decision | yes -- the only one that may | never |
@@ -115,7 +115,7 @@ guarantees anything about what the agent then does.
 ## 🗄 The registry
 
 | Event | Matcher | Script | Class | Status |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `PostToolUse` | `Write\|Edit` | `citation_gate_hook.py` | gate | built |
 | `PostToolUse` | `Write\|Edit` | `style_check_hook.py` | advisory | built |
 | `SessionStart` | `startup\|clear` | `session_start_hook.py` | advisory | built |
@@ -160,7 +160,7 @@ The two reporters share one implementation.
 It makes three checks, of which **only the first two are faults**:
 
 | Checked | How | Verdict |
-|---|---|---|
+| --- | --- | --- |
 | Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
@@ -438,7 +438,7 @@ are not in the documentation and one contradicts a reasonable reading of
 it:
 
 | Trial | Tool | Hook stdout | Outcome |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | `Write` | plain text **then** JSON | nothing arrived |
 | 1a | `Edit` | JSON only | `additionalContext` arrived |
 | 1b | `Edit` | plain text only | nothing arrived |
@@ -532,7 +532,7 @@ run by the harness as `python <path>` and **a spawned process contributes
 no coverage**:
 
 | | subprocess tests | module tests |
-|---|---|---|
+| --- | --- | --- |
 | Files | `test_citation_gate_hook.py`, `test_session_start_hook.py` | `test_hook_modules.py` |
 | Run the hook as | the harness does | an imported module |
 | Prove | the stdin/stdout contract | every branch |

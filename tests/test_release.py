@@ -25,11 +25,11 @@ def make_repo(tmp_path):
         encoding="utf-8",
     )
     (repo / "README.md").write_text(
-        'hello\n'
+        "hello\n"
         '<img src="docs/logo.svg" alt="logo">\n'
-        '[See GENRE.md](docs/GENRE.md)\n'
-        '[already absolute](https://example.com/elsewhere)\n'
-        '[in-page anchor](#hello)\n',
+        "[See GENRE.md](docs/GENRE.md)\n"
+        "[already absolute](https://example.com/elsewhere)\n"
+        "[in-page anchor](#hello)\n",
         encoding="utf-8",
     )
     (repo / "chitragupta").mkdir()
@@ -42,9 +42,7 @@ def make_repo(tmp_path):
     (repo / ".gitignore").write_text("content/parsed/\n")
     (repo / "sonar-project.properties").write_text("sonar.projectKey=x\n")
     (repo / "codecov.yml").write_text("codecov:\n  notify:\n    after_n_builds: 2\n")
-    (repo / "coveragerc-windows.toml").write_text(
-        "[tool.coverage.run]\nsource = [\"chitragupta\"]\n"
-    )
+    (repo / "coveragerc-windows.toml").write_text('[tool.coverage.run]\nsource = ["chitragupta"]\n')
     (repo / "AGENTS.md").write_text("agent guidance")
     (repo / "DEVELOPER-AGENTS.md").write_text("agent guidance for developing this repo")
     (repo / "SOUL.md").write_text("why this exists")
@@ -86,13 +84,17 @@ class TestRenderPypiReadme:
 
     def test_an_image_src_becomes_an_absolute_raw_url(self, repo):
         rendered = release.render_pypi_readme("9.9.9")
-        assert ('src="https://raw.githubusercontent.com/example-owner/'
-                'example-repo/v9.9.9/docs/logo.svg"') in rendered
+        assert (
+            'src="https://raw.githubusercontent.com/example-owner/'
+            'example-repo/v9.9.9/docs/logo.svg"'
+        ) in rendered
 
     def test_a_relative_markdown_link_becomes_an_absolute_blob_url(self, repo):
         rendered = release.render_pypi_readme("9.9.9")
-        assert ("[See GENRE.md](https://github.com/example-owner/example-repo/"
-                "blob/v9.9.9/docs/GENRE.md)") in rendered
+        assert (
+            "[See GENRE.md](https://github.com/example-owner/example-repo/"
+            "blob/v9.9.9/docs/GENRE.md)"
+        ) in rendered
 
     def test_an_already_absolute_link_is_left_alone(self, repo):
         rendered = release.render_pypi_readme("9.9.9")
@@ -222,8 +224,14 @@ class TestBuildRelease:
         assert "chitragupta-9.9.9/papers/" in names
         # The directory placeholder is present, but none of the real,
         # per-host tracked files that used to live under it are.
-        assert not any(n.startswith("chitragupta-9.9.9/content/") and n != "chitragupta-9.9.9/content/" for n in names)
-        assert not any(n.startswith("chitragupta-9.9.9/papers/") and n != "chitragupta-9.9.9/papers/" for n in names)
+        assert not any(
+            n.startswith("chitragupta-9.9.9/content/") and n != "chitragupta-9.9.9/content/"
+            for n in names
+        )
+        assert not any(
+            n.startswith("chitragupta-9.9.9/papers/") and n != "chitragupta-9.9.9/papers/"
+            for n in names
+        )
 
         # Staging directory is cleaned up; only the zip remains under release/.
         assert list((repo / "release").iterdir()) == [zip_path]

@@ -22,20 +22,23 @@ from tests.conftest import make_reference
 
 
 class TestParse:
-    @pytest.mark.parametrize("value,expected", [
-        (None, ()),
-        ("", ()),
-        ("   ", ()),
-        ("Modelling", ("Modelling",)),
-        ("A, B", ("A", "B")),
-        ("Digital twins > Modelling", ("Digital twins > Modelling",)),
-        ("Digital twins>Modelling", ("Digital twins > Modelling",)),
-        ("  Digital twins   >   Modelling  ", ("Digital twins > Modelling",)),
-        ("A > > B", ("A > B",)),
-        ("A >", ("A",)),
-        ("A, A", ("A",)),
-        ("A, , B", ("A", "B")),
-    ])
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            (None, ()),
+            ("", ()),
+            ("   ", ()),
+            ("Modelling", ("Modelling",)),
+            ("A, B", ("A", "B")),
+            ("Digital twins > Modelling", ("Digital twins > Modelling",)),
+            ("Digital twins>Modelling", ("Digital twins > Modelling",)),
+            ("  Digital twins   >   Modelling  ", ("Digital twins > Modelling",)),
+            ("A > > B", ("A > B",)),
+            ("A >", ("A",)),
+            ("A, A", ("A",)),
+            ("A, , B", ("A", "B")),
+        ],
+    )
     def test_normalisation(self, value, expected):
         assert bib_collections.parse(value) == expected
 
@@ -46,17 +49,20 @@ class TestParse:
 
 
 class TestMatches:
-    @pytest.mark.parametrize("wanted,expected", [
-        ("Digital twins", True),          # the parent selects the subtree
-        ("digital TWINS", True),          # a label typed in a GUI, not a token
-        ("Digital twins > Modelling", True),
-        ("Digital twins>Modelling", True),
-        ("Modelling", False),             # a subcollection is not a top-level one
-        ("Digital", False),               # not a substring match
-        ("Digital twins > Mod", False),   # nor within a segment
-        ("", False),
-        (">", False),
-    ])
+    @pytest.mark.parametrize(
+        "wanted,expected",
+        [
+            ("Digital twins", True),  # the parent selects the subtree
+            ("digital TWINS", True),  # a label typed in a GUI, not a token
+            ("Digital twins > Modelling", True),
+            ("Digital twins>Modelling", True),
+            ("Modelling", False),  # a subcollection is not a top-level one
+            ("Digital", False),  # not a substring match
+            ("Digital twins > Mod", False),  # nor within a segment
+            ("", False),
+            (">", False),
+        ],
+    )
     def test_against_one_nested_path(self, wanted, expected):
         assert bib_collections.matches(("Digital twins > Modelling",), wanted) is expected
 
@@ -75,9 +81,11 @@ class TestNames:
         assert bib_collections.names({"a": ("X > Y > Z",)}) == ["X", "X > Y", "X > Y > Z"]
 
     def test_paths_are_deduplicated_across_items(self):
-        assert bib_collections.names(
-            {"a": ("X > Y",), "b": ("X > Z",), "c": ("X",)}
-        ) == ["X", "X > Y", "X > Z"]
+        assert bib_collections.names({"a": ("X > Y",), "b": ("X > Z",), "c": ("X",)}) == [
+            "X",
+            "X > Y",
+            "X > Z",
+        ]
 
     def test_a_corpus_with_none_lists_none(self):
         assert bib_collections.names({"a": (), "b": ()}) == []
@@ -88,11 +96,18 @@ class TestTheBibField:
         """A user whose exporter writes them elsewhere should not have to
         patch the parser to be read."""
         from chitragupta import bib_reader
+
         monkeypatch.setattr(config, "BIB_COLLECTIONS_FIELD", "keywords")
-        entry = {"ID": "k_2024", "ENTRYTYPE": "article", "title": "T",
-                 "keywords": "Shelf > Sub", "groups": "Ignored"}
-        assert bib_collections.parse(
-            entry.get(bib_reader.config.BIB_COLLECTIONS_FIELD)) == ("Shelf > Sub",)
+        entry = {
+            "ID": "k_2024",
+            "ENTRYTYPE": "article",
+            "title": "T",
+            "keywords": "Shelf > Sub",
+            "groups": "Ignored",
+        }
+        assert bib_collections.parse(entry.get(bib_reader.config.BIB_COLLECTIONS_FIELD)) == (
+            "Shelf > Sub",
+        )
 
 
 class TestTheLedgerColumn:
@@ -107,9 +122,9 @@ class TestTheLedgerColumn:
 
     def test_a_reference_with_collections_round_trips(self, ledger_con):
         ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a_2024", collections=("X > Y",)))
-        row = ledger_con.execute(
-            "SELECT * FROM items WHERE citekey = 'a_2024'").fetchone()
+            ledger_con, make_reference(citekey="a_2024", collections=("X > Y",))
+        )
+        row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'a_2024'").fetchone()
         assert json.loads(row["collections"]) == ["X > Y"]
         assert bib_collections.of_row(row) == ("X > Y",)
 
@@ -118,31 +133,24 @@ class TestTheLedgerColumn:
         pre-migration row already holds, and writing "[]" into every row
         instead would churn the ledger for no reader's benefit."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="b_2024"))
-        row = ledger_con.execute(
-            "SELECT * FROM items WHERE citekey = 'b_2024'").fetchone()
+        row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'b_2024'").fetchone()
         assert row["collections"] is None
         assert bib_collections.of_row(row) == ()
 
     def test_an_update_rewrites_them(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="c_2024", collections=("Old",)))
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="c_2024", collections=("New",)))
-        row = ledger_con.execute(
-            "SELECT * FROM items WHERE citekey = 'c_2024'").fetchone()
+        ledger.upsert_reference(ledger_con, make_reference(citekey="c_2024", collections=("Old",)))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="c_2024", collections=("New",)))
+        row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'c_2024'").fetchone()
         assert bib_collections.of_row(row) == ("New",)
 
     @pytest.mark.parametrize("stored", ["not json", "{}", '"a string"', "7"])
-    def test_an_unreadable_value_narrows_a_filter_rather_than_raising(
-            self, ledger_con, stored):
+    def test_an_unreadable_value_narrows_a_filter_rather_than_raising(self, ledger_con, stored):
         """A ledger is not a place to raise from. A row written by a future
         version, or hand-edited, should cost a search some candidates
         rather than stop it."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="d_2024"))
-        ledger_con.execute("UPDATE items SET collections = ? WHERE citekey = 'd_2024'",
-                           (stored,))
-        row = ledger_con.execute(
-            "SELECT * FROM items WHERE citekey = 'd_2024'").fetchone()
+        ledger_con.execute("UPDATE items SET collections = ? WHERE citekey = 'd_2024'", (stored,))
+        row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'd_2024'").fetchone()
         assert bib_collections.of_row(row) == ()
 
     def test_a_tuple_row_reads_as_none_rather_than_raising(self, ledger_con):
@@ -183,16 +191,17 @@ class TestRetrievalFilter:
             parsed.write_text("digital twin modelling and simulation " * 20)
             ledger_con.execute(
                 "UPDATE items SET parsed_path = ?, status = 'parsed' WHERE citekey = ?",
-                (str(parsed), citekey))
+                (str(parsed), citekey),
+            )
         ledger_con.commit()
         retrieval._load_cache.cache_clear() if hasattr(
-            retrieval._load_cache, "cache_clear") else None
+            retrieval._load_cache, "cache_clear"
+        ) else None
         return isolated_config
 
     def test_unfiltered_search_returns_everything(self, corpus):
         found = retrieval.search("modelling", k=10)
-        assert {r.citekey for r in found} == {
-            "in_sub_2024", "in_other_2024", "uncollected_2024"}
+        assert {r.citekey for r in found} == {"in_sub_2024", "in_other_2024", "uncollected_2024"}
 
     def test_a_parent_collection_selects_the_subtree(self, corpus):
         found = retrieval.search("modelling", k=10, collection="Digital twins")
@@ -225,7 +234,8 @@ class TestTheLedgerCLI:
             ("bare_2024", ()),
         ):
             ledger.upsert_reference(
-                ledger_con, make_reference(citekey=citekey, collections=collections))
+                ledger_con, make_reference(citekey=citekey, collections=collections)
+            )
         ledger_con.commit()
         return isolated_config
 
@@ -238,7 +248,8 @@ class TestTheLedgerCLI:
         assert "3 collection(s)." in out
 
     def test_collections_on_a_corpus_without_any_explains_why(
-            self, isolated_config, ledger_con, capsys):
+        self, isolated_config, ledger_con, capsys
+    ):
         """The likeliest cause of an empty list is the export, not the
         library, so the empty case is guidance rather than a result."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="none_2024"))
@@ -248,16 +259,14 @@ class TestTheLedgerCLI:
         assert "No collections recorded." in out
         assert "Better BibTeX" in out
 
-    def test_collection_filters_the_listing_and_includes_the_subtree(
-            self, corpus, capsys):
+    def test_collection_filters_the_listing_and_includes_the_subtree(self, corpus, capsys):
         assert ledger.main(["--collection", "Digital twins"]) == 0
         out = capsys.readouterr().out
         assert "shelved_2024" in out
         assert "elsewhere_2024" not in out
         assert "bare_2024" not in out
 
-    def test_an_empty_collection_says_so_rather_than_naming_a_status(
-            self, corpus, capsys):
+    def test_an_empty_collection_says_so_rather_than_naming_a_status(self, corpus, capsys):
         """`--list` reports "no items with status None" when empty, which
         would be a confusing thing to print at someone who asked about a
         collection."""

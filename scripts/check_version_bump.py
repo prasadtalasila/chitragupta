@@ -154,8 +154,13 @@ def unreleased(base: str, tags: "list[str] | tuple[str, ...]") -> "str | None":
         f"main is at {base}, and there is no v{base} tag -- so that "
         "version has never been released and its archive does not exist. "
         "release.yml runs on a pushed tag and on nothing else. If the "
-        "release for it is still owed, cut it: `git tag -a v" + base +
-        " <commit> -m v" + base + " && git push origin v" + base + "` "
+        "release for it is still owed, cut it: `git tag -a v"
+        + base
+        + " <commit> -m v"
+        + base
+        + " && git push origin v"
+        + base
+        + "` "
         "(DEVELOPER-AGENTS.md, 'Versioning and releases')."
     )
 
@@ -168,8 +173,9 @@ def _git(*args: str) -> str:
     not just tag names, so a non-ASCII byte anywhere in `pyproject.toml`
     would mangle or raise there and nowhere else.
     """
-    return subprocess.run(["git", *args], check=True, capture_output=True,
-                          text=True, encoding="utf-8", cwd=REPO_ROOT).stdout
+    return subprocess.run(
+        ["git", *args], check=True, capture_output=True, text=True, encoding="utf-8", cwd=REPO_ROOT
+    ).stdout
 
 
 def main(argv: "list[str] | None" = None) -> int:
@@ -177,10 +183,16 @@ def main(argv: "list[str] | None" = None) -> int:
         prog="python scripts/check_version_bump.py",
         description="Fail when a PR's version bump has been lost to a collision.",
     )
-    parser.add_argument("--base-ref", default="origin/main",
-                        help="What this branch must out-rank (default origin/main)")
-    parser.add_argument("--offline", action="store_true",
-                        help="Skip the PyPI check (no network in this environment)")
+    parser.add_argument(
+        "--base-ref",
+        default="origin/main",
+        help="What this branch must out-rank (default origin/main)",
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip the PyPI check (no network in this environment)",
+    )
     args = parser.parse_args(argv)
 
     # The working tree is the *merge* commit on a pull_request event, so
@@ -195,9 +207,12 @@ def main(argv: "list[str] | None" = None) -> int:
         # Say that, rather than letting a CalledProcessError traceback
         # stand in for it -- this runs in CI, where the traceback would be
         # the whole of what a reader sees.
-        print(f"::error::cannot read {args.base_ref}. Fetch it first: "
-              "`git fetch --depth=1 origin main`, and the tags with "
-              "`+refs/tags/*:refs/tags/*`.", file=sys.stderr)
+        print(
+            f"::error::cannot read {args.base_ref}. Fetch it first: "
+            "`git fetch --depth=1 origin main`, and the tags with "
+            "`+refs/tags/*:refs/tags/*`.",
+            file=sys.stderr,
+        )
         return 1
 
     # Emitted before the errors and regardless of them: it is about the
@@ -212,14 +227,20 @@ def main(argv: "list[str] | None" = None) -> int:
     # are kept distinct.
     published = on_pypi(current, _fetch_json) if not args.offline else None
     if published is True:
-        print(f"::error::{current} is already published as chitragupta-cli "
-              f"{current} on PyPI, and a published version can never be "
-              "re-uploaded -- not after a deletion, and yanking does not free "
-              "the number. Choose the next version.", file=sys.stderr)
+        print(
+            f"::error::{current} is already published as chitragupta-cli "
+            f"{current} on PyPI, and a published version can never be "
+            "re-uploaded -- not after a deletion, and yanking does not free "
+            "the number. Choose the next version.",
+            file=sys.stderr,
+        )
         return 1
     if published is None and not args.offline:
-        print("::warning::could not reach PyPI to check whether "
-              f"{current} is already published; continuing.", file=sys.stderr)
+        print(
+            "::warning::could not reach PyPI to check whether "
+            f"{current} is already published; continuing.",
+            file=sys.stderr,
+        )
 
     found = problems(current, base, tags)
     for problem in found:

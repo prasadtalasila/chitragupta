@@ -36,9 +36,7 @@ def recheck_findings(
     persisting -- understating progress, which is the direction an
     acceptance test should err in.
     """
-    findings, _, _, _ = scan_findings(
-        draft, baseline["min_run"], baseline["gap"], None
-    )
+    findings, _, _, _ = scan_findings(draft, baseline["min_run"], baseline["gap"], None)
     payload_now = [published(f) for f in findings]
     before = baseline["findings"]
 
@@ -68,8 +66,19 @@ def recheck_command(draft: str | Path, baseline: str | Path) -> str:
     is shared with the Markdown report, which the text form of a
     comparison has no counterpart to.
     """
-    return shlex.join(["python", "-m", "chitragupta.review", "verbatim", "recheck",
-                       str(draft), "--baseline", str(baseline), "--json"])
+    return shlex.join(
+        [
+            "python",
+            "-m",
+            "chitragupta.review",
+            "verbatim",
+            "recheck",
+            str(draft),
+            "--baseline",
+            str(baseline),
+            "--json",
+        ]
+    )
 
 
 def recheck_payload(
@@ -90,18 +99,20 @@ def recheck_payload(
     resolved, persisting, new = groups
     before, after = counts
     payload = review.envelope(Path(draft), "verbatim", command)
-    payload.update({
-        "baseline": str(baseline_path),
-        "baseline_version": baseline.get("version"),
-        "min_run": baseline["min_run"],
-        "gap": baseline["gap"],
-        "objective_before": before,
-        "objective_after": after,
-        "objective_delta": after - before,
-        "resolved": resolved,
-        "persisting": persisting,
-        "new": new,
-    })
+    payload.update(
+        {
+            "baseline": str(baseline_path),
+            "baseline_version": baseline.get("version"),
+            "min_run": baseline["min_run"],
+            "gap": baseline["gap"],
+            "objective_before": before,
+            "objective_after": after,
+            "objective_delta": after - before,
+            "resolved": resolved,
+            "persisting": persisting,
+            "new": new,
+        }
+    )
     return payload
 
 
@@ -129,9 +140,7 @@ def format_recheck(
                 f"{f['citekey']} {_page_range(f)} line {f['line']}"
             )
         lines.append("")
-    lines.append(
-        f"objective findings (long + short): {before} -> {after} ({after - before:+d})"
-    )
+    lines.append(f"objective findings (long + short): {before} -> {after} ({after - before:+d})")
     return "\n".join(lines)
 
 
@@ -154,6 +163,4 @@ def cmd_recheck(draft: str | Path, baseline: str | Path, as_json: bool = False) 
         return
 
     command = recheck_command(draft, baseline)
-    print(json.dumps(
-        recheck_payload(draft, baseline, loaded, groups, counts, command), indent=2
-    ))
+    print(json.dumps(recheck_payload(draft, baseline, loaded, groups, counts, command), indent=2))

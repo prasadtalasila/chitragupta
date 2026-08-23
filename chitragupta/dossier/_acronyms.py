@@ -131,8 +131,10 @@ def _cmd_acronyms_suggest(args) -> int:
         if not written:
             print("  No new acronyms to suggest.")
             return 0
-        print(f"  Wrote {len(written)} new entr{'y' if len(written) == 1 else 'ies'} "
-              f"to {config.ACRONYMS_PATH}:\n")
+        print(
+            f"  Wrote {len(written)} new entr{'y' if len(written) == 1 else 'ies'} "
+            f"to {config.ACRONYMS_PATH}:\n"
+        )
         for term, definition in sorted(written.items()):
             print(f'  {term} = "{definition}"')
         return 0

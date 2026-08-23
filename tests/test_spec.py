@@ -300,8 +300,7 @@ def test_status_refuses_a_spec_that_does_not_parse(book, capsys):
 
 def test_a_signoff_file_nothing_wrote_a_digest_into_reads_as_unsigned(book, capsys):
     write_spec(book)
-    spec.signoff_path(book).write_text("# Sign-off\n\nnothing machine-readable\n",
-                                       encoding="utf-8")
+    spec.signoff_path(book).write_text("# Sign-off\n\nnothing machine-readable\n", encoding="utf-8")
     assert spec.main(["status", str(book)]) == 1
     assert "not signed off" in capsys.readouterr().out
 

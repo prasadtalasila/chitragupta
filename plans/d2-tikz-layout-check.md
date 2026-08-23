@@ -79,7 +79,7 @@ what produced all three corrections above.
 ## What it checks
 
 | Check | Kind | From |
-|---|---|---|
+| --- | --- | --- |
 | Node overlap | **binary** | pairwise box intersection, excluding containment |
 | Node text overload | **binary** | word count per node, ~15 words |
 | Content protrusion | **binary** | the largest empty horizontal band |
@@ -168,7 +168,7 @@ places, and the one that drifts is the one nothing renders.
 ## Files
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `chitragupta/review/figure_layout.py` | new: probe emitter, log parser, the five checks. Split into a package if it crosses `MAX_CODE_LINES = 250` -- a new offender is never added to the register |
 | `chitragupta/review/__init__.py` | register in `AIDS`; its docstring says "Three commands" twice |
 | `chitragupta/review/__main__.py` | register in `AIDS`, wire the subcommand; docstring and `DESCRIPTION` both say "three aids" |

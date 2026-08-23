@@ -168,7 +168,7 @@ around it, do not sync, do not cite. Tell the user to run
 ## When to invoke
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | User asks for "deep research", a multi-perspective analysis, or an in-depth report with contradiction mapping / peer review | Invoke this skill |
 | User asks for a standard literature survey / background section | Use `survey-writer` instead -- faster, single-pass |
 | User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
@@ -204,7 +204,7 @@ apart in ways a single-author draft doesn't:
 ## Depth presets
 
 | Depth | Perspectives | Interview rounds | Section writers |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | quick | 3 + basic | 2 | inline (no subagents) |
 | **standard** (default) | **5 + basic** | **3** | parallel subagents |
 | deep | 6-7 + basic | 4 | parallel subagents |

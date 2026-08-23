@@ -82,22 +82,42 @@ from pathlib import Path
 
 from chitragupta import config, references
 from chitragupta.render_output._assets import (
-    _MD_IMAGE_RE, _URI_SCHEME_RE, _copy_local_images, _copy_local_tex_includes,
+    _MD_IMAGE_RE,
+    _URI_SCHEME_RE,
+    _copy_local_images,
+    _copy_local_tex_includes,
     _local_image_refs,
 )
 from chitragupta.render_output._citeproc import (
-    _REFS_ANCHOR, _alias_for, _safe_render_inputs, _swap_manual_refs_for_citeproc,
+    _REFS_ANCHOR,
+    _alias_for,
+    _safe_render_inputs,
+    _swap_manual_refs_for_citeproc,
 )
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figures import (
-    _FIGURE_MARKER_MD_RE, _FIGURE_MARKER_TEX_RE, _INPUT_WITH_MARKER_RE, _LATEX_CITE_RE,
-    _LATEX_INCLUDE_RE, _TEX_FORMATS, _ascii_alt_refs, _ascii_path,
-    _figure_has_citekey, _tikz_path,
-    _figure_refs, _figure_warnings, _local_tex_include_refs, _markdown_ascii_refs,
-    _require_tikz, _resolve_sibling, _substitute_ascii_for_marker,
-    _substitute_ascii_for_tikz, _substitute_tikz_for_ascii,
-    _tikz_alt_refs, _with_figures_for,
+    _FIGURE_MARKER_MD_RE,
+    _FIGURE_MARKER_TEX_RE,
+    _INPUT_WITH_MARKER_RE,
+    _LATEX_CITE_RE,
+    _LATEX_INCLUDE_RE,
+    _TEX_FORMATS,
+    _ascii_alt_refs,
+    _ascii_path,
+    _figure_has_citekey,
+    _tikz_path,
+    _figure_refs,
+    _figure_warnings,
+    _local_tex_include_refs,
+    _markdown_ascii_refs,
+    _require_tikz,
+    _resolve_sibling,
+    _substitute_ascii_for_marker,
+    _substitute_ascii_for_tikz,
+    _substitute_tikz_for_ascii,
+    _tikz_alt_refs,
+    _with_figures_for,
 )
 from chitragupta.render_output._cli import main
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
@@ -173,9 +193,18 @@ def _render_csl(  # pragma: no cover-windows
 
 
 def _pandoc_command(
-    safe_md: Path, safe_bib: Path, csl_path: Path, out_path: Path, input_path: Path,
-    output_format: str, documentclass: str, fontsize: str, papersize: str, margin: str,
-    figure_refs: list[str], fragment: bool = False,
+    safe_md: Path,
+    safe_bib: Path,
+    csl_path: Path,
+    out_path: Path,
+    input_path: Path,
+    output_format: str,
+    documentclass: str,
+    fontsize: str,
+    papersize: str,
+    margin: str,
+    figure_refs: list[str],
+    fragment: bool = False,
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in."""
     # A fragment is for `\input` into a larger document, so it gets no
@@ -192,10 +221,11 @@ def _pandoc_command(
     # fails to compile in the book that \input-s it. Plain `verbatim` is
     # what a fragment can promise. The citeproc macros are the one
     # exception a book must supply itself -- see docs/BOOKS.md.
-    shape = (["--top-level-division=chapter", "--no-highlight"]
-             if fragment else ["--standalone"])
+    shape = ["--top-level-division=chapter", "--no-highlight"] if fragment else ["--standalone"]
     cmd = [
-        "pandoc", str(safe_md), *shape,
+        "pandoc",
+        str(safe_md),
+        *shape,
         # Local image references (`![...](figure.png)`) in the draft are
         # relative to input_path's own directory, not whatever directory
         # this CLI happened to be invoked from. Without this, pandoc's
@@ -204,18 +234,26 @@ def _pandoc_command(
         # path) can't find it, and silently replace the image with its
         # alt-text caption instead of erroring -- a wrong-but-successful
         # render that's easy to miss without diffing file sizes.
-        "--resource-path", str(input_path.resolve().parent),
-        "--variable", f"documentclass={documentclass}",
-        "--variable", f"fontsize={fontsize}",
+        "--resource-path",
+        str(input_path.resolve().parent),
+        "--variable",
+        f"documentclass={documentclass}",
+        "--variable",
+        f"fontsize={fontsize}",
         # Pandoc's own default LaTeX template appends "paper" itself
         # (papersize=a4 -> "...,a4paper,..."); passing "a4paper" here
         # would double up to "a4paperpaper" -- verified empirically
         # against pandoc 3.1.3's default template, not documented
         # anywhere obvious, so don't "fix" this back to "a4paper".
-        "--variable", f"papersize={papersize}",
-        "--variable", f"geometry:margin={margin}",
-        "--citeproc", "--bibliography", str(safe_bib),
-        "--csl", str(csl_path),
+        "--variable",
+        f"papersize={papersize}",
+        "--variable",
+        f"geometry:margin={margin}",
+        "--citeproc",
+        "--bibliography",
+        str(safe_bib),
+        "--csl",
+        str(csl_path),
     ]
     # Loaded only for a draft that actually has a figure (#222) --
     # pandoc's default LaTeX template has no \usepackage{tikz}, so a bare
@@ -319,7 +357,9 @@ def render(
         # reference list of its own.
         _copy_local_assets(input_path, out_dir)
         return references.write_numbered(
-            input_path, out_dir, _with_figures_for(draft_text, input_path, output_format),
+            input_path,
+            out_dir,
+            _with_figures_for(draft_text, input_path, output_format),
         )
 
     # Everything from here on needs the real pandoc/pdflatex/TeX Live
@@ -339,13 +379,24 @@ def render(
 
     with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows
         safe_md, safe_bib = _safe_render_inputs(
-            input_path, config.BIB_FILE_PATH, Path(tmp),
+            input_path,
+            config.BIB_FILE_PATH,
+            Path(tmp),
             _with_figures_for(draft_text, input_path, output_format),
         )
         cmd, env = _pandoc_command(
-            safe_md, safe_bib, _render_csl(csl, collapse_citations, Path(tmp)),
-            out_path, input_path, output_format, documentclass, fontsize,
-            papersize, margin, figure_refs, fragment,
+            safe_md,
+            safe_bib,
+            _render_csl(csl, collapse_citations, Path(tmp)),
+            out_path,
+            input_path,
+            output_format,
+            documentclass,
+            fontsize,
+            papersize,
+            margin,
+            figure_refs,
+            fragment,
         )
         subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
 

@@ -12,16 +12,23 @@ from chitragupta import sentences
 class TestSplit:
     def test_splits_on_terminal_punctuation_before_a_capital(self):
         assert sentences.split("One thing. Then another! And a third?") == [
-            "One thing.", "Then another!", "And a third?"
+            "One thing.",
+            "Then another!",
+            "And a third?",
         ]
 
     def test_does_not_split_inside_the_abbreviations_these_drafts_contain(self):
         # The whole reason the regex carries lookbehinds: splitting at
         # "Fig." or "e.g." reintroduces the fragment problem one level
         # down, which is what `citation_provenance` wrote them for.
-        for text in ("See Fig. 2 for the layout.", "See Sect. 1.2 for detail.",
-                     "Written e.g. Smith or i.e. Jones.", "Compare cf. Brown here.",
-                     "Solve Eq. 4 first.", "Read Ref. 9 next."):
+        for text in (
+            "See Fig. 2 for the layout.",
+            "See Sect. 1.2 for detail.",
+            "Written e.g. Smith or i.e. Jones.",
+            "Compare cf. Brown here.",
+            "Solve Eq. 4 first.",
+            "Read Ref. 9 next.",
+        ):
             assert len(sentences.split(text)) == 1, text
 
     def test_does_not_split_after_a_single_initial(self):
@@ -33,7 +40,8 @@ class TestSplit:
         # Drafts open sentences with a citation marker, so the character
         # after the space is not always a capital letter.
         assert sentences.split("A claim. [@key_2024] supports it.") == [
-            "A claim.", "[@key_2024] supports it."
+            "A claim.",
+            "[@key_2024] supports it.",
         ]
 
     def test_a_text_with_no_terminator_is_one_sentence(self):
@@ -52,8 +60,8 @@ class TestSpans:
         # be wrong by the leading whitespace for every sentence.
         text = "\n\n  First one. Second one.\n"
         first, second = sentences.spans(text)
-        assert text[first[0]:first[1]] == "First one."
-        assert text[second[0]:second[1]] == "Second one."
+        assert text[first[0] : first[1]] == "First one."
+        assert text[second[0] : second[1]] == "Second one."
 
     def test_a_whitespace_only_text_has_no_sentences(self):
         assert sentences.spans("   \n\n  ") == []

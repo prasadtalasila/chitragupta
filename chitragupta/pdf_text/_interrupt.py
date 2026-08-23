@@ -99,7 +99,11 @@ class interrupt_guard:
         # project has already measured exiting in 0.0s (see the class
         # docstring) -- not a call site to introduce the logging module's
         # own locking/formatting machinery into for a marginal gain.
-        print(f"\n  interrupted -- {self._describe()}. Work already "
-              "finished is kept; re-run to continue.", file=sys.stderr, flush=True)
+        print(
+            f"\n  interrupted -- {self._describe()}. Work already "
+            "finished is kept; re-run to continue.",
+            file=sys.stderr,
+            flush=True,
+        )
         terminate_workers(self._executor)
         os._exit(130)

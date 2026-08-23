@@ -115,7 +115,8 @@ class FakeDocumentConverter:
         if "explode" in str(pdf_path):
             raise RuntimeError("simulated docling failure")
         return FakeConversionResult(
-            f"# Parsed content of {pdf_path}", FakeDocumentConverter.pictures,
+            f"# Parsed content of {pdf_path}",
+            FakeDocumentConverter.pictures,
             FakeDocumentConverter.texts,
         )
 
@@ -140,8 +141,11 @@ def fake_docling(monkeypatch):
     base_models.InputFormat = types.SimpleNamespace(PDF="pdf")
     pipeline_options = types.ModuleType("docling.datamodel.pipeline_options")
     pipeline_options.PdfPipelineOptions = lambda: types.SimpleNamespace(
-        generate_picture_images=False, images_scale=1.0, do_ocr=True,
-        accelerator_options=None, document_timeout=None,
+        generate_picture_images=False,
+        images_scale=1.0,
+        do_ocr=True,
+        accelerator_options=None,
+        document_timeout=None,
     )
     accelerator = types.ModuleType("docling.datamodel.accelerator_options")
     accelerator.AcceleratorOptions = lambda num_threads=None, device=None: types.SimpleNamespace(
@@ -197,15 +201,24 @@ class TestImageExtraction:
     def test_images_off_uses_export_and_writes_no_figure_index(
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
-        monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=3)])
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=3)]
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         assert FakeDocument.last_image_mode is None  # save_as_markdown never called
         # Pipeline options are always passed now (they carry do_ocr), so
         # "images off" is asserted on the option itself rather than on the
         # converter having been built bare.
-        assert FakeDocumentConverter.last_format_options["pdf"].pipeline_options.generate_picture_images is False
-        assert not (isolated_config.DOCLING_DIR / "richstein_characterizing_2024.figures.json").exists()
+        assert (
+            FakeDocumentConverter.last_format_options[
+                "pdf"
+            ].pipeline_options.generate_picture_images
+            is False
+        )
+        assert not (
+            isolated_config.DOCLING_DIR / "richstein_characterizing_2024.figures.json"
+        ).exists()
 
     def test_ocr_is_off_by_default(self, isolated_config, fake_docling, tmp_path):
         docling_parse.parse_doc(self._doc(tmp_path))
@@ -216,8 +229,12 @@ class TestImageExtraction:
         docling_parse.parse_doc(self._doc(tmp_path))
         assert FakeDocumentConverter.last_format_options["pdf"].pipeline_options.do_ocr is True
 
-    def test_images_on_requests_bitmaps_and_referenced_mode(self, images_on, fake_docling, tmp_path, monkeypatch):
-        monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=3)])
+    def test_images_on_requests_bitmaps_and_referenced_mode(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=3)]
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
@@ -225,10 +242,16 @@ class TestImageExtraction:
         assert opts.images_scale == images_on.DOCLING_IMAGE_SCALE
         assert FakeDocument.last_image_mode == "referenced"
 
-    def test_figure_index_cites_by_the_papers_own_number(self, images_on, fake_docling, tmp_path, monkeypatch):
-        monkeypatch.setattr(FakeDocumentConverter, "pictures", [
-            FakePicture("Figure 3. Sensor placement", page=7),
-        ])
+    def test_figure_index_cites_by_the_papers_own_number(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [
+                FakePicture("Figure 3. Sensor placement", page=7),
+            ],
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         records = json.loads(
@@ -238,21 +261,26 @@ class TestImageExtraction:
         assert records[0]["page"] == 7
         assert records[0]["caption"] == "Figure 3. Sensor placement"
 
-    @pytest.mark.parametrize("caption,expected", [
-        # Chapter-scoped numbering. Real captions from
-        # larsen_engineering_2024, which first exposed this: matching only
-        # the leading integer collapsed all four onto "Fig 1".
-        ("Fig. 1.1: A CPS composed of Physical and Computational parts", "Figure 1.1"),
-        ("Fig. 1.2: Overview of a DT-Enabled System concept.", "Figure 1.2"),
-        ("Fig. 1.4: Fields related to Digital Twins.", "Figure 1.4"),
-        # Plain, sub-figure, deeper nesting, and the other label words.
-        ("Figure 3. Sensor placement", "Figure 3"),
-        ("Figure 2a. Detail view", "Figure 2a"),
-        ("Fig 10.2.3 Something nested", "Figure 10.2.3"),
-        ("Table 2: Comparison of approaches", "Table 2"),
-        ("Scheme 4 - reaction pathway", "Scheme 4"),
-    ])
-    def test_caption_number_is_captured_whole(self, images_on, fake_docling, tmp_path, caption, expected, monkeypatch):
+    @pytest.mark.parametrize(
+        "caption,expected",
+        [
+            # Chapter-scoped numbering. Real captions from
+            # larsen_engineering_2024, which first exposed this: matching only
+            # the leading integer collapsed all four onto "Fig 1".
+            ("Fig. 1.1: A CPS composed of Physical and Computational parts", "Figure 1.1"),
+            ("Fig. 1.2: Overview of a DT-Enabled System concept.", "Figure 1.2"),
+            ("Fig. 1.4: Fields related to Digital Twins.", "Figure 1.4"),
+            # Plain, sub-figure, deeper nesting, and the other label words.
+            ("Figure 3. Sensor placement", "Figure 3"),
+            ("Figure 2a. Detail view", "Figure 2a"),
+            ("Fig 10.2.3 Something nested", "Figure 10.2.3"),
+            ("Table 2: Comparison of approaches", "Table 2"),
+            ("Scheme 4 - reaction pathway", "Scheme 4"),
+        ],
+    )
+    def test_caption_number_is_captured_whole(
+        self, images_on, fake_docling, tmp_path, caption, expected, monkeypatch
+    ):
         monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture(caption, page=3)])
         docling_parse.parse_doc(self._doc(tmp_path))
 
@@ -278,11 +306,15 @@ class TestImageExtraction:
         assert records[0]["cite"] == "an unplaced figure in [@richstein_characterizing_2024]"
         assert records[0]["page"] is None
 
-    def test_distinct_subfigures_do_not_collapse_onto_one_number(self, images_on, fake_docling, tmp_path, monkeypatch):
+    def test_distinct_subfigures_do_not_collapse_onto_one_number(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
         """The actual regression: four figures, four distinct citations."""
-        monkeypatch.setattr(FakeDocumentConverter, "pictures", [
-            FakePicture(f"Fig. 1.{n}: caption {n}", page=n + 2) for n in (1, 2, 3, 4)
-        ])
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [FakePicture(f"Fig. 1.{n}: caption {n}", page=n + 2) for n in (1, 2, 3, 4)],
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         records = json.loads(
@@ -292,23 +324,35 @@ class TestImageExtraction:
         assert len(set(cites)) == 4, cites
         assert "Figure 1.3 of [@richstein_characterizing_2024], p.5" in cites
 
-
-    def test_image_field_names_the_file_and_never_inlines_base64(self, images_on, fake_docling, tmp_path, monkeypatch):
+    def test_image_field_names_the_file_and_never_inlines_base64(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
         """The regression: pic.image.uri is a base64 data: URI that
         save_as_markdown does not rewrite, so reading it put the whole
         PNG in the JSON (~17MB across one real corpus)."""
-        monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=2)])
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=2)]
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         raw = (images_on.DOCLING_DIR / "richstein_characterizing_2024.figures.json").read_text()
         assert "base64" not in raw
         records = json.loads(raw)
-        assert records[0]["image"] == f"richstein_characterizing_2024_artifacts/{FAKE_IMAGE_NAME.format(i=0)}"
+        assert (
+            records[0]["image"]
+            == f"richstein_characterizing_2024_artifacts/{FAKE_IMAGE_NAME.format(i=0)}"
+        )
 
-    def test_markdown_image_refs_are_relative_to_the_md(self, images_on, fake_docling, tmp_path, monkeypatch):
+    def test_markdown_image_refs_are_relative_to_the_md(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
         """Docling writes absolute paths, which bake this host's layout
         into content/docling/ and break if the folder moves."""
-        monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture("Figure 1", page=1), FakePicture("Figure 2", page=2)])
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [FakePicture("Figure 1", page=1), FakePicture("Figure 2", page=2)],
+        )
         out_path = docling_parse.parse_doc(self._doc(tmp_path))
 
         refs = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", out_path.read_text())
@@ -351,7 +395,9 @@ class TestImageExtraction:
         assert names == [str(outside)]
         assert str(outside) in md.read_text()
 
-    def test_image_is_dropped_when_ref_count_disagrees_with_picture_count(self, images_on, fake_docling, tmp_path):
+    def test_image_is_dropped_when_ref_count_disagrees_with_picture_count(
+        self, images_on, fake_docling, tmp_path
+    ):
         """Rather than pair a figure with someone else's image."""
         names = ["only_one.png"]
         pics = [FakePicture("Figure 1", page=1), FakePicture("Figure 2", page=2)]
@@ -393,8 +439,7 @@ class TestReusingTheCorpusLayersParse:
             text_path = config.PARSED_DIR / f"{citekey}.txt"
             text_path.write_text(parsed_text, encoding="utf-8")
             text_path = str(text_path)
-        return CorpusDoc(citekey=citekey, title="t",
-                         pdf_path=str(pdf), text_path=text_path)
+        return CorpusDoc(citekey=citekey, title="t", pdf_path=str(pdf), text_path=text_path)
 
     def _corpus_parsed(self, tmp_path, citekey="a2024", pages=("page one", "page two")):
         """A citekey the corpus layer has already parsed with docling.
@@ -404,9 +449,12 @@ class TestReusingTheCorpusLayersParse:
         flush against the text (checked against docling_core 2.89.0).
         """
         doc = self._doc(tmp_path, citekey, parsed_text="\n\n\f\n\n".join(pages))
-        passages.write_sidecar(citekey, [
-            {"text": "A reading-ordered paragraph.", "label": "text", "page": 1},
-        ])
+        passages.write_sidecar(
+            citekey,
+            [
+                {"text": "A reading-ordered paragraph.", "label": "text", "page": 1},
+            ],
+        )
         return doc
 
     def test_no_second_parse_happens(self, isolated_config, fake_docling, tmp_path):
@@ -454,14 +502,18 @@ class TestReusingTheCorpusLayersParse:
         docling_parse.parse_doc(doc)
         assert FakeDocumentConverter.call_count == 1
 
-    def test_a_doc_with_no_corpus_text_is_never_reused(self, isolated_config, fake_docling, tmp_path):
+    def test_a_doc_with_no_corpus_text_is_never_reused(
+        self, isolated_config, fake_docling, tmp_path
+    ):
         """A bib entry the corpus layer hasn't parsed -- no attachment, or
         a parse that failed -- has no artefact to adopt."""
         doc = self._doc(tmp_path, parsed_text=None)
         docling_parse.parse_doc(doc)
         assert FakeDocumentConverter.call_count == 1
 
-    def test_images_on_forces_a_real_parse(self, isolated_config, monkeypatch, fake_docling, tmp_path):
+    def test_images_on_forces_a_real_parse(
+        self, isolated_config, monkeypatch, fake_docling, tmp_path
+    ):
         """The corpus layer writes no figure bitmaps, so adopting its
         parse would leave this stage's own output incomplete."""
         monkeypatch.setattr(config, "DOCLING_IMAGES", True)
@@ -510,8 +562,10 @@ class TestReusingTheCorpusLayersParse:
         # so force the read to fail on a sidecar that does exist.
         passages.sidecar_path(doc.citekey).mkdir()
 
-        assert docling_parse._reuse_corpus_parse(
-            doc, config.DOCLING_DIR / "a2024.md", "a2024") is False
+        assert (
+            docling_parse._reuse_corpus_parse(doc, config.DOCLING_DIR / "a2024.md", "a2024")
+            is False
+        )
         assert not (config.DOCLING_DIR / "a2024.md").exists()
 
     def test_reused_docs_never_reach_a_worker(
@@ -531,8 +585,11 @@ class TestReusingTheCorpusLayersParse:
             dispatched.extend(d.citekey for d, _threads in jobs)
             return [(d.citekey, "ok: parsed", [1, 2]) for d, _threads in jobs]
 
-        monkeypatch.setattr(docling_parse, "_executor_for", lambda workers: types.SimpleNamespace(
-            map=fake_map, shutdown=lambda **kw: None))
+        monkeypatch.setattr(
+            docling_parse,
+            "_executor_for",
+            lambda workers: types.SimpleNamespace(map=fake_map, shutdown=lambda **kw: None),
+        )
         monkeypatch.setattr(pdf_text, "resolve_workers", lambda n: (4, None))
 
         reusable = self._corpus_parsed(tmp_path)
@@ -540,8 +597,7 @@ class TestReusingTheCorpusLayersParse:
         for i in range(3):
             pdf = tmp_path / f"other{i}.pdf"
             pdf.write_bytes(b"%PDF-1.4")
-            others.append(CorpusDoc(citekey=f"other{i}",
-                                    title="t", pdf_path=str(pdf)))
+            others.append(CorpusDoc(citekey=f"other{i}", title="t", pdf_path=str(pdf)))
 
         status = docling_parse.parse_corpus([reusable, *others])
 
@@ -556,11 +612,17 @@ class TestPassageSidecar:
         pdf.write_bytes(b"%PDF-1.4")
         return CorpusDoc(citekey="a2024", title="t", pdf_path=str(pdf))
 
-    def test_written_for_every_doc_with_page_and_bbox(self, isolated_config, fake_docling, tmp_path, monkeypatch):
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [
-            FakeTextItem("Body paragraph one.", label="text", page=2),
-            FakeTextItem("2 Related Work", label="section_header", page=3),
-        ])
+    def test_written_for_every_doc_with_page_and_bbox(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "texts",
+            [
+                FakeTextItem("Body paragraph one.", label="text", page=2),
+                FakeTextItem("2 Related Work", label="section_header", page=3),
+            ],
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         records = json.loads((isolated_config.DOCLING_DIR / "a2024.passages.json").read_text())
@@ -568,28 +630,42 @@ class TestPassageSidecar:
         assert records[0]["page"] == 2
         assert records[0]["bbox"] == [1.0, 2.0, 3.0, 4.0]
 
-    def test_excludes_running_heads_and_captions(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+    def test_excludes_running_heads_and_captions(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
         """A journal name repeated on every page would otherwise let a
         claim 'match' seventeen times over."""
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [
-            FakeTextItem("Designs 2024, 8, 8", label="page_header", page=1),
-            FakeTextItem("Figure 1. A plot", label="caption", page=1),
-            FakeTextItem("17", label="page_footer", page=1),
-            FakeTextItem("Real prose.", label="text", page=1),
-        ])
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "texts",
+            [
+                FakeTextItem("Designs 2024, 8, 8", label="page_header", page=1),
+                FakeTextItem("Figure 1. A plot", label="caption", page=1),
+                FakeTextItem("17", label="page_footer", page=1),
+                FakeTextItem("Real prose.", label="text", page=1),
+            ],
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         records = json.loads((isolated_config.DOCLING_DIR / "a2024.passages.json").read_text())
         assert [r["text"] for r in records] == ["Real prose."]
 
-    def test_written_even_with_images_off(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+    def test_written_even_with_images_off(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
         assert isolated_config.DOCLING_IMAGES is False
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)])
+        monkeypatch.setattr(
+            FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)]
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
         assert (isolated_config.DOCLING_DIR / "a2024.passages.json").exists()
 
-    def test_item_without_provenance_still_recorded(self, isolated_config, fake_docling, tmp_path, monkeypatch):
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=None)])
+    def test_item_without_provenance_still_recorded(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=None)]
+        )
         docling_parse.parse_doc(self._doc(tmp_path))
         records = json.loads((isolated_config.DOCLING_DIR / "a2024.passages.json").read_text())
         assert records[0]["page"] is None
@@ -597,7 +673,9 @@ class TestPassageSidecar:
 
 
 class TestIncrementalSkip:
-    def test_second_call_with_unchanged_pdf_skips_docling(self, isolated_config, fake_docling, tmp_path):
+    def test_second_call_with_unchanged_pdf_skips_docling(
+        self, isolated_config, fake_docling, tmp_path
+    ):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 v1")
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(pdf))
@@ -623,7 +701,9 @@ class TestIncrementalSkip:
         docling_parse.parse_doc(doc)
         assert FakeDocumentConverter.call_count == 2
 
-    def test_deleted_output_forces_reparse_even_if_cache_matches(self, isolated_config, fake_docling, tmp_path):
+    def test_deleted_output_forces_reparse_even_if_cache_matches(
+        self, isolated_config, fake_docling, tmp_path
+    ):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 v1")
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(pdf))
@@ -635,11 +715,15 @@ class TestIncrementalSkip:
         assert FakeDocumentConverter.call_count == 2
         assert out_path.exists()
 
-    def test_deleted_passages_sidecar_forces_reparse(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+    def test_deleted_passages_sidecar_forces_reparse(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
         """The .md alone isn't proof the run's outputs are intact -- a
         deleted sidecar would otherwise stay missing forever, since the
         fingerprint only says the input PDF is unchanged."""
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)])
+        monkeypatch.setattr(
+            FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)]
+        )
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(pdf))
@@ -659,7 +743,9 @@ class TestIncrementalSkip:
     ):
         monkeypatch.setattr(isolated_config, "DOCLING_IMAGES", True)
         monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture("Figure 1", page=1)])
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)])
+        monkeypatch.setattr(
+            FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)]
+        )
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(pdf))
@@ -672,10 +758,14 @@ class TestIncrementalSkip:
 
         assert FakeDocumentConverter.call_count == 2
 
-    def test_figures_sidecar_not_required_when_images_off(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+    def test_figures_sidecar_not_required_when_images_off(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
         """Images off never writes figures.json, so requiring it would
         re-parse the whole corpus on every run."""
-        monkeypatch.setattr(FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)])
+        monkeypatch.setattr(
+            FakeDocumentConverter, "texts", [FakeTextItem("Prose.", label="text", page=1)]
+        )
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(pdf))
@@ -791,17 +881,21 @@ class TestCacheLoading:
         isolated_config.DOCLING_CACHE_PATH.write_text(json.dumps(payload))
 
     def test_malformed_entries_are_dropped_not_raised(self, isolated_config):
-        self._write_cache(isolated_config, {
-            "good2024": [123, 456],
-            "bad_not_a_list": "oops",
-            "bad_wrong_length": [1, 2, 3],
-            "bad_non_int": [1, "two"],
-        })
+        self._write_cache(
+            isolated_config,
+            {
+                "good2024": [123, 456],
+                "bad_not_a_list": "oops",
+                "bad_wrong_length": [1, 2, 3],
+                "bad_non_int": [1, "two"],
+            },
+        )
         assert docling_parse._load_cache() == {"good2024": [123, 456]}
 
     def test_stale_schema_version_invalidates_whole_cache(self, isolated_config):
         self._write_cache(
-            isolated_config, {"good2024": [123, 456]},
+            isolated_config,
+            {"good2024": [123, 456]},
             version=docling_parse._CACHE_VERSION + 1,
         )
         assert docling_parse._load_cache() == {}
@@ -885,7 +979,9 @@ class TestSaveCacheFailureIsNonFatal:
 
 
 class TestParseCorpus:
-    def test_reports_per_doc_status_without_aborting_batch(self, isolated_config, fake_docling, tmp_path):
+    def test_reports_per_doc_status_without_aborting_batch(
+        self, isolated_config, fake_docling, tmp_path
+    ):
         (tmp_path / "a.pdf").write_bytes(b"%PDF a")
         (tmp_path / "explode.pdf").write_bytes(b"%PDF explode")
         good = CorpusDoc(citekey="a2024", title="t", pdf_path=str(tmp_path / "a.pdf"))
@@ -923,8 +1019,7 @@ class TestParseCorpusParallel:
         for i in range(n):
             pdf = tmp_path / f"p{i}.pdf"
             pdf.write_bytes(b"%PDF" + b"x" * (50 * i))
-            docs.append(CorpusDoc(citekey=f"d{i}",
-                                  title="t", pdf_path=str(pdf)))
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
         return docs
 
     def test_every_document_is_parsed(self, isolated_config, fake_docling, tmp_path):
@@ -933,7 +1028,9 @@ class TestParseCorpusParallel:
         assert all(v.startswith("ok:") for v in status.values())
         assert FakeDocumentConverter.call_count == 5
 
-    def test_the_parent_owns_every_cache_write(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+    def test_the_parent_owns_every_cache_write(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
         """Workers can't share the parent's cache dict, so they hand back
         a fingerprint and the parent records it -- the same shape as
         chitragupta/sync.py keeping every ledger write on the main process."""
@@ -959,7 +1056,8 @@ class TestParseCorpusParallel:
         submitted = []
         real_parse_one = docling_parse.parse_one
         monkeypatch.setattr(
-            docling_parse, "parse_one",
+            docling_parse,
+            "parse_one",
             lambda job: submitted.append(job[0].citekey) or real_parse_one(job),
         )
         status = docling_parse.parse_corpus(docs)
@@ -970,8 +1068,7 @@ class TestParseCorpusParallel:
         docs = self._docs(tmp_path)
         bad = tmp_path / "explode.pdf"
         bad.write_bytes(b"%PDF")
-        docs.append(CorpusDoc(citekey="bad",
-                              title="t", pdf_path=str(bad)))
+        docs.append(CorpusDoc(citekey="bad", title="t", pdf_path=str(bad)))
 
         status = docling_parse.parse_corpus(docs)
         assert status["bad"].startswith("error:")
@@ -986,11 +1083,14 @@ class TestParseCorpusParallel:
         opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
         assert opts.accelerator_options.num_threads == pdf_text.docling_threads(4)
 
-    def test_biggest_document_is_submitted_first(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+    def test_biggest_document_is_submitted_first(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
         submitted = []
         real_parse_one = docling_parse.parse_one
         monkeypatch.setattr(
-            docling_parse, "parse_one",
+            docling_parse,
+            "parse_one",
             lambda job: submitted.append(job[0].citekey) or real_parse_one(job),
         )
         docling_parse.parse_corpus(self._docs(tmp_path))
@@ -1002,8 +1102,7 @@ class TestParallelHelpers:
         """A PDF that vanished can't be fingerprinted. Treat it as
         not-cached so the parse runs and reports the real error, rather
         than crashing the dispatch loop."""
-        doc = CorpusDoc(citekey="gone", title="t",
-                        pdf_path=str(tmp_path / "gone.pdf"))
+        doc = CorpusDoc(citekey="gone", title="t", pdf_path=str(tmp_path / "gone.pdf"))
         assert docling_parse._is_cached(doc, {"gone": [1, 2]}) is False
 
     def test_pdf_size_of_a_missing_file_sorts_last(self, tmp_path):
@@ -1024,8 +1123,7 @@ class TestParallelHelpers:
             captured.update(kwargs)
             return contextlib.nullcontext()
 
-        monkeypatch.setattr(
-            pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor", record)
         with docling_parse._executor_for(2):
             pass
@@ -1044,8 +1142,10 @@ class TestParallelHelpers:
         captured = {}
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([1, 2], "  WARNING"))
         monkeypatch.setattr(
-            pdf_text._pool, "ProcessPoolExecutor",
-            lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext())
+            pdf_text._pool,
+            "ProcessPoolExecutor",
+            lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext(),
+        )
         with docling_parse._executor_for(2):
             pass
 
@@ -1060,8 +1160,10 @@ class TestParallelHelpers:
         captured = {}
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([2, 3], None))
         monkeypatch.setattr(
-            pdf_text._pool, "ProcessPoolExecutor",
-            lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext())
+            pdf_text._pool,
+            "ProcessPoolExecutor",
+            lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext(),
+        )
         with docling_parse._executor_for(2):
             pass
 
@@ -1074,26 +1176,28 @@ class TestParallelHelpers:
 
     def test_a_skipped_card_is_reported_not_swallowed(self, monkeypatch, capsys):
         monkeypatch.setattr(
-            pdf_text._pool, "usable_devices",
-            lambda: ([1], "  WARNING skipping cuda:0"))
-        monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor",
-                            lambda **kwargs: contextlib.nullcontext())
+            pdf_text._pool, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0")
+        )
+        monkeypatch.setattr(
+            pdf_text._pool, "ProcessPoolExecutor", lambda **kwargs: contextlib.nullcontext()
+        )
         with docling_parse._executor_for(2):
             pass
 
         assert "WARNING skipping cuda:0" in capsys.readouterr().out
 
-    def test_a_start_method_complaint_is_printed_not_swallowed(
-        self, monkeypatch, capsys
-    ):
+    def test_a_start_method_complaint_is_printed_not_swallowed(self, monkeypatch, capsys):
         """A pool that quietly falls back to spawn looks identical to one
         that got what was configured, and is ~1.5s slower to start."""
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
         monkeypatch.setattr(
-            pdf_text._pool, "process_pool_context",
-            lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"))
-        monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor",
-                            lambda **kwargs: contextlib.nullcontext())
+            pdf_text._pool,
+            "process_pool_context",
+            lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"),
+        )
+        monkeypatch.setattr(
+            pdf_text._pool, "ProcessPoolExecutor", lambda **kwargs: contextlib.nullcontext()
+        )
         with docling_parse._executor_for(2):
             pass
 
@@ -1105,8 +1209,7 @@ class TestParallelHelpers:
         """A single-worker run must reach Docling with its own defaults."""
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
-        docling_parse.parse_doc(CorpusDoc(citekey="a",
-                                          title="t", pdf_path=str(pdf)))
+        docling_parse.parse_doc(CorpusDoc(citekey="a", title="t", pdf_path=str(pdf)))
         opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
         assert opts.accelerator_options is None
 
@@ -1116,8 +1219,7 @@ class TestParallelHelpers:
         monkeypatch.setattr(pdf_text._worker, "_WORKER_DEVICE", "cuda:3")
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
-        docling_parse.parse_doc(CorpusDoc(citekey="a",
-                                          title="t", pdf_path=str(pdf)))
+        docling_parse.parse_doc(CorpusDoc(citekey="a", title="t", pdf_path=str(pdf)))
         opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
         assert opts.accelerator_options.device == "cuda:3"
 
@@ -1139,8 +1241,7 @@ class TestParseCorpusParallelEdges:
         for i in range(5):
             pdf = tmp_path / f"p{i}.pdf"
             pdf.write_bytes(b"%PDF" + b"x" * i)
-            docs.append(CorpusDoc(citekey=f"d{i}",
-                                  title="t", pdf_path=str(pdf)))
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
         docling_parse.parse_corpus(docs[:2])  # warm the cache for d0, d1
 
         # Three still to parse, so the resolved worker count stays above
@@ -1161,10 +1262,12 @@ class TestParseCorpusParallelEdges:
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
-        docling_parse.parse_corpus([
-            CorpusDoc(citekey="a", title="t", pdf_path=str(pdf)),
-            CorpusDoc(citekey="b", title="t", pdf_path=str(pdf)),
-        ])
+        docling_parse.parse_corpus(
+            [
+                CorpusDoc(citekey="a", title="t", pdf_path=str(pdf)),
+                CorpusDoc(citekey="b", title="t", pdf_path=str(pdf)),
+            ]
+        )
         assert "[parser].workers=64" in capsys.readouterr().out
 
     def test_a_doc_with_no_pdf_is_reported_not_raised_in_a_parallel_run(
@@ -1175,13 +1278,11 @@ class TestParseCorpusParallelEdges:
         must be reported there rather than taking down the batch."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        docs = [CorpusDoc(citekey="nopdf",
-                          title="t", pdf_path=None)]
+        docs = [CorpusDoc(citekey="nopdf", title="t", pdf_path=None)]
         for i in range(3):
             pdf = tmp_path / f"p{i}.pdf"
             pdf.write_bytes(b"%PDF" + b"x" * i)
-            docs.append(CorpusDoc(citekey=f"d{i}",
-                                  title="t", pdf_path=str(pdf)))
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
 
         status = docling_parse.parse_corpus(docs)
         assert status["nopdf"].startswith("error:")
@@ -1206,8 +1307,7 @@ class TestWorkerConverterReuse:
     def _doc(self, tmp_path, name):
         pdf = tmp_path / f"{name}.pdf"
         pdf.write_bytes(b"%PDF")
-        return CorpusDoc(citekey=name, title="t",
-                         pdf_path=str(pdf))
+        return CorpusDoc(citekey=name, title="t", pdf_path=str(pdf))
 
     def test_one_converter_serves_every_document_a_worker_handles(
         self, isolated_config, fake_docling, tmp_path
@@ -1258,8 +1358,7 @@ class TestParseCorpusInterrupt:
         for i in range(n):
             pdf = tmp_path / f"p{i}.pdf"
             pdf.write_bytes(b"%PDF" + b"x" * (50 * i))
-            docs.append(CorpusDoc(citekey=f"d{i}",
-                                  title="t", pdf_path=str(pdf)))
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
         return docs
 
     def test_interrupt_keeps_finished_work_and_says_so(
@@ -1309,12 +1408,14 @@ class TestEnrichPartialSuccess:
     def _doc(self, tmp_path):
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
-        return CorpusDoc(citekey="a", title="t",
-                         pdf_path=str(pdf))
+        return CorpusDoc(citekey="a", title="t", pdf_path=str(pdf))
 
-    def test_partial_success_is_rejected(self, isolated_config, fake_docling, monkeypatch, tmp_path):
+    def test_partial_success_is_rejected(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
         monkeypatch.setattr(
-            FakeDocumentConverter, "convert",
+            FakeDocumentConverter,
+            "convert",
             lambda self, p: _PartialResult("PARTIAL_SUCCESS", ["timeout after 10s"]),
         )
         doc = self._doc(tmp_path)
@@ -1325,7 +1426,8 @@ class TestEnrichPartialSuccess:
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
         monkeypatch.setattr(
-            FakeDocumentConverter, "convert",
+            FakeDocumentConverter,
+            "convert",
             lambda self, p: _PartialResult("PARTIAL_SUCCESS", []),
         )
         doc = self._doc(tmp_path)
@@ -1339,7 +1441,8 @@ class TestEnrichPartialSuccess:
         """It must come back for retry on the next run, not be recorded
         as done."""
         monkeypatch.setattr(
-            FakeDocumentConverter, "convert",
+            FakeDocumentConverter,
+            "convert",
             lambda self, p: _PartialResult("PARTIAL_SUCCESS", ["bad page 3"]),
         )
         status = docling_parse.parse_corpus([self._doc(tmp_path)])

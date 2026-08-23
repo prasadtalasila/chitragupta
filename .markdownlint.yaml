@@ -15,14 +15,16 @@ default: true
 # block for the dark-mode logo, which has no Markdown spelling.
 MD033: false
 
-# Table cell padding, and 89% of the baseline on its own (839 of 947).
-# This is the judgement docs/TECHNICAL-DEBT.md's 5.3 left to whoever
-# adopted the linter, and it is declined: the alternative is a 839-line
-# diff that touches every table in the documentation to move spaces
-# around, changing no rendered output and burying the substantive history
-# of those files. The tables here are hand-aligned and read well already.
-# Everything else in the baseline is enforced.
-MD060: false
+# Table cell padding, 89% of the original adoption baseline (839 of
+# 947) -- declined then (docs/TECHNICAL-DEBT.md's 5.3) because the
+# alternative was a diff moving spaces around every table in the
+# documentation by hand, burying the substantive history of those
+# files. #362 makes it a machine edit instead:
+# `markdownlint-cli2 --fix` pads every table in one pass, so the
+# judgement changes to **enabled**. A handful of tables containing a
+# pipe inside cell content (an inline code span, mostly) don't
+# auto-fix and are wrapped by hand instead -- see those tables' own
+# history for why.
 
 MD013:
   code_blocks: false

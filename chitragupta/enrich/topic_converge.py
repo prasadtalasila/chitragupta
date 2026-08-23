@@ -63,25 +63,26 @@ from chitragupta import config, seed_topics
 from chitragupta.enrich import doc_vectors, embed_index, topic_model, topic_seeding
 
 
-def converge(descriptors: dict, seed_vectors: dict,
-             min_similarity: "float | None" = None) -> dict:
+def converge(descriptors: dict, seed_vectors: dict, min_similarity: "float | None" = None) -> dict:
     """`{emergent_topic_id: seed_phrase}` for every topic a seed names.
 
     Free of the corpus and the model so it can be driven with vectors
     chosen by hand: everything above decides what to embed, this is
     arithmetic on the result.
     """
-    floor = (config.TOPIC_CONVERGE_SIMILARITY if min_similarity is None
-             else min_similarity)
+    floor = config.TOPIC_CONVERGE_SIMILARITY if min_similarity is None else min_similarity
     # Every (phrase, topic) pair above the floor, best first. Sorting the
     # whole set rather than deciding per topic is what lets a phrase be
     # claimed once: the walk below hands each phrase to its closest topic
     # and each topic to its closest unclaimed phrase.
     candidates = sorted(
-        ((topic_seeding.cosine(descriptor, vector), phrase, topic_id)
-         for topic_id, descriptor in descriptors.items()
-         for phrase, vector in seed_vectors.items()),
-        key=lambda triple: (-triple[0], triple[1], triple[2]))
+        (
+            (topic_seeding.cosine(descriptor, vector), phrase, topic_id)
+            for topic_id, descriptor in descriptors.items()
+            for phrase, vector in seed_vectors.items()
+        ),
+        key=lambda triple: (-triple[0], triple[1], triple[2]),
+    )
 
     named, spoken_for = {}, set()
     for score, phrase, topic_id in candidates:
@@ -102,20 +103,34 @@ def build(memberships: dict, citekeys: list, named: dict, seed_report: dict) -> 
     topics = []
     for topic_id in sorted({int(t) for row in memberships.values() for t in row}):
         members = sorted(
-            ({"citekey": citekey, "score": row[str(topic_id)]}
-             for citekey, row in memberships.items() if str(topic_id) in row),
-            key=lambda member: (-member["score"], member["citekey"]))
+            (
+                {"citekey": citekey, "score": row[str(topic_id)]}
+                for citekey, row in memberships.items()
+                if str(topic_id) in row
+            ),
+            key=lambda member: (-member["score"], member["citekey"]),
+        )
         phrase = named.get(topic_id)
-        topics.append({"label": phrase or f"topic-{topic_id}",
-                       "provenance": "seed" if phrase else "emergent",
-                       "topic_id": topic_id, "members": members})
+        topics.append(
+            {
+                "label": phrase or f"topic-{topic_id}",
+                "provenance": "seed" if phrase else "emergent",
+                "topic_id": topic_id,
+                "members": members,
+            }
+        )
 
     for entry in seed_report.get("topics", []):
         if entry["phrase"] in set(named.values()):
             continue
-        topics.append({"label": entry["phrase"], "provenance": "seed",
-                       "topic_id": None,
-                       "members": [dict(match) for match in entry["matches"]]})
+        topics.append(
+            {
+                "label": entry["phrase"],
+                "provenance": "seed",
+                "topic_id": None,
+                "members": [dict(match) for match in entry["matches"]],
+            }
+        )
 
     covered = {member["citekey"] for topic in topics for member in topic["members"]}
     return {
@@ -179,11 +194,17 @@ def run_stage(docs, seed_phrases: tuple) -> dict:
     docling stage reports for a binary that is not installed.
     """
     if not config.TOPICS_PATH.exists():
-        return {"status": "skipped",
-                "detail": {"reason": f"no {config.TOPICS_PATH}; run bertopic first"}}
+        return {
+            "status": "skipped",
+            "detail": {"reason": f"no {config.TOPICS_PATH}; run bertopic first"},
+        }
     result = run_topic_converge(docs, seed_phrases)
-    return {"status": "ok",
-            "detail": {"n_docs": result["n_docs"],
-                       "seed_named": result["n_seed_named"],
-                       "emergent": result["n_emergent"],
-                       "uncovered": len(result["uncovered"])}}
+    return {
+        "status": "ok",
+        "detail": {
+            "n_docs": result["n_docs"],
+            "seed_named": result["n_seed_named"],
+            "emergent": result["n_emergent"],
+            "uncovered": len(result["uncovered"]),
+        },
+    }

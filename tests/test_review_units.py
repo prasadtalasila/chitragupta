@@ -46,8 +46,9 @@ class TestGenreOf:
         draft = draft_at()
         scope_dir = dossier.dossier_dir(draft)
         scope_dir.mkdir(parents=True, exist_ok=True)
-        (scope_dir / dossier.SCOPE_MD).write_text("# Scope\n\n- language: en-GB\n",
-                                                  encoding="utf-8")
+        (scope_dir / dossier.SCOPE_MD).write_text(
+            "# Scope\n\n- language: en-GB\n", encoding="utf-8"
+        )
         assert _units.genre_of(draft) is None
 
     def test_an_empty_genre_value_has_no_genre(self, isolated_config):
@@ -144,8 +145,9 @@ class TestMarkers:
         every finding id churns the moment someone explains one."""
         plain = "Body text [@Foo2019].\n"
         declared = "Body text [@Foo2019].\n<!-- single-source: because -->\n"
-        assert _units.units(plain, "paragraph")[0].text == \
-            _units.units(declared, "paragraph")[0].text
+        assert (
+            _units.units(plain, "paragraph")[0].text == _units.units(declared, "paragraph")[0].text
+        )
 
     def test_a_marker_naming_a_citekey_is_not_itself_a_citation(self, isolated_config):
         text = "Body text [@Foo2019].\n<!-- single-source: Bar2020 does not cover X -->\n"
@@ -156,8 +158,7 @@ class TestMarkers:
 class TestParagraphUnits:
     def test_each_blank_line_separated_block_is_a_unit(self, isolated_config):
         text = "One [@A].\n\nTwo [@B].\n\nThree [@C].\n"
-        assert [u.citekeys for u in _units.units(text, "paragraph")] == \
-            [("A",), ("B",), ("C",)]
+        assert [u.citekeys for u in _units.units(text, "paragraph")] == [("A",), ("B",), ("C",)]
 
     def test_citekeys_are_distinct_and_sorted(self, isolated_config):
         text = "Fuses [@Beta] and [@Alpha] and [@Beta] again.\n"
@@ -207,8 +208,7 @@ class TestSectionUnits:
         assert [u.citekeys for u in _units.units(text, "section")] == [("A",), ("B",)]
 
     def test_a_latex_heading_opens_a_section(self, isolated_config):
-        text = ("\\section{One}\n\nText \\citep{A}.\n\n"
-                "\\section{Two}\n\nText \\citep{B}.\n")
+        text = "\\section{One}\n\nText \\citep{A}.\n\n\\section{Two}\n\nText \\citep{B}.\n"
         assert [u.citekeys for u in _units.units(text, "section")] == [("A",), ("B",)]
 
     def test_prose_before_the_first_heading_is_its_own_section(self, isolated_config):
@@ -218,8 +218,7 @@ class TestSectionUnits:
     def test_blank_lines_before_the_first_heading_open_no_section(self, isolated_config):
         """Otherwise a draft that happens to start with a blank line
         reports one more unit than it has, and that unit cites nothing."""
-        assert [u.line for u in _units.units("\n\n## One\n\nText [@A].\n", "section")] \
-            == [3]
+        assert [u.line for u in _units.units("\n\n## One\n\nText [@A].\n", "section")] == [3]
 
     def test_a_draft_with_no_headings_is_one_section(self, isolated_config):
         text = "One [@A].\n\nTwo [@B].\n"
@@ -232,15 +231,19 @@ class TestTheLongestSingleKeyRun:
     tells the two apart."""
 
     def test_a_block_structured_section_reports_its_run(self, isolated_config):
-        text = ("## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n\n"
-                "Four [@B].\n\nFive [@B].\n\nSix [@B].\n")
+        text = (
+            "## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n\n"
+            "Four [@B].\n\nFive [@B].\n\nSix [@B].\n"
+        )
         (unit,) = _units.units(text, "section")
         assert unit.citekeys == ("A", "B")
         assert unit.longest_run == 3
 
     def test_its_interleaved_counterpart_reports_a_run_of_one(self, isolated_config):
-        text = ("## S\n\nOne [@A].\n\nTwo [@B].\n\nThree [@A].\n\n"
-                "Four [@B].\n\nFive [@A].\n\nSix [@B].\n")
+        text = (
+            "## S\n\nOne [@A].\n\nTwo [@B].\n\nThree [@A].\n\n"
+            "Four [@B].\n\nFive [@A].\n\nSix [@B].\n"
+        )
         (unit,) = _units.units(text, "section")
         assert unit.citekeys == ("A", "B")
         assert unit.longest_run == 1

@@ -108,11 +108,17 @@ SAMPLE = {
     "min_similarity": 0.5,
     "n_docs": 3,
     "topics": [
-        {"phrase": "digital twin",
-         "matches": [{"citekey": "alpha_2020", "score": 0.81},
-                     {"citekey": "beta_2021", "score": 0.62}]},
-        {"phrase": "structural health monitoring",
-         "matches": [{"citekey": "alpha_2020", "score": 0.55}]},
+        {
+            "phrase": "digital twin",
+            "matches": [
+                {"citekey": "alpha_2020", "score": 0.81},
+                {"citekey": "beta_2021", "score": 0.62},
+            ],
+        },
+        {
+            "phrase": "structural health monitoring",
+            "matches": [{"citekey": "alpha_2020", "score": 0.55}],
+        },
     ],
     "unmatched": ["gamma_2022"],
 }
@@ -207,15 +213,31 @@ class TestTruncationIsVisible:
     raise [enrich].seed_topic_max_papers."""
 
     def test_a_truncated_topic_says_how_many_were_considered(self, isolated_config):
-        data = {"n_docs": 300, "topics": [
-            {"phrase": "digital twin", "considered": 238,
-             "matches": [{"citekey": "a_2020", "score": 0.61}]}], "unmatched": []}
+        data = {
+            "n_docs": 300,
+            "topics": [
+                {
+                    "phrase": "digital twin",
+                    "considered": 238,
+                    "matches": [{"citekey": "a_2020", "score": 0.61}],
+                }
+            ],
+            "unmatched": [],
+        }
         assert "digital twin  (1 of 238 papers)" in seed_topics.report(data)
 
     def test_an_untruncated_topic_says_only_the_count(self, isolated_config):
-        data = {"n_docs": 3, "topics": [
-            {"phrase": "digital twin", "considered": 1,
-             "matches": [{"citekey": "a_2020", "score": 0.61}]}], "unmatched": []}
+        data = {
+            "n_docs": 3,
+            "topics": [
+                {
+                    "phrase": "digital twin",
+                    "considered": 1,
+                    "matches": [{"citekey": "a_2020", "score": 0.61}],
+                }
+            ],
+            "unmatched": [],
+        }
         text = seed_topics.report(data)
         assert "digital twin  (1 papers)" in text
         assert " of " not in text
@@ -223,7 +245,11 @@ class TestTruncationIsVisible:
     def test_a_report_without_considered_still_renders(self, isolated_config):
         """`considered` arrived after the first artefacts were written;
         a report from before it must not crash the reader."""
-        data = {"n_docs": 3, "topics": [
-            {"phrase": "digital twin",
-             "matches": [{"citekey": "a_2020", "score": 0.61}]}], "unmatched": []}
+        data = {
+            "n_docs": 3,
+            "topics": [
+                {"phrase": "digital twin", "matches": [{"citekey": "a_2020", "score": 0.61}]}
+            ],
+            "unmatched": [],
+        }
         assert "digital twin  (1 papers)" in seed_topics.report(data)

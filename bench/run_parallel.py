@@ -50,9 +50,11 @@ def self_check() -> None:
     shards = lpt_shards(items, 4)
     loads = [sum(item["pages"] for item in shard) for shard in shards]
     assert loads == [100, 3, 2, 2], (
-        f"LPT shard loads drifted from the known trace for this fixture: {loads}")
+        f"LPT shard loads drifted from the known trace for this fixture: {loads}"
+    )
     assert sum(len(shard) for shard in shards) == len(items), (
-        "a shard split must not drop or duplicate items")
+        "a shard split must not drop or duplicate items"
+    )
 
 
 def main() -> None:
@@ -76,10 +78,18 @@ def main() -> None:
     for i, shard in enumerate(shards):
         shard_path = outdir / f"shard{i}.json"
         shard_path.write_text(json.dumps(shard))
-        cmd = [PY, str(REPO / "bench" / "bench_docling.py"),
-               "--sample", str(shard_path),
-               "--out", str(outdir / f"w{i}.jsonl"),
-               "--device", args.device, "--mode", "reused"]
+        cmd = [
+            PY,
+            str(REPO / "bench" / "bench_docling.py"),
+            "--sample",
+            str(shard_path),
+            "--out",
+            str(outdir / f"w{i}.jsonl"),
+            "--device",
+            args.device,
+            "--mode",
+            "reused",
+        ]
         if args.images:
             cmd.append("--images")
         # Pinned for every GPU-capable device, not just the literal
@@ -91,9 +101,15 @@ def main() -> None:
         env_gpu = "" if args.device == "cpu" else str(i % args.gpus)
         log = (outdir / f"w{i}.log").open("w")
         logs.append(log)
-        procs.append(subprocess.Popen(
-            cmd, stdout=log, stderr=subprocess.STDOUT, cwd=str(REPO),
-            env={**os.environ, "CUDA_VISIBLE_DEVICES": env_gpu}))
+        procs.append(
+            subprocess.Popen(
+                cmd,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                cwd=str(REPO),
+                env={**os.environ, "CUDA_VISIBLE_DEVICES": env_gpu},
+            )
+        )
     # Exit codes are checked before any .jsonl is read. A worker that died
     # (Docling import failure, OOM kill, unreadable PDF) leaves a missing
     # or truncated file, and reading it first turns a clear "worker 3
@@ -105,7 +121,7 @@ def main() -> None:
     if failed:
         raise SystemExit(
             f"worker(s) {failed} exited non-zero -- see "
-            + ", ".join(str(outdir / f'w{i}.log') for i in failed)
+            + ", ".join(str(outdir / f"w{i}.log") for i in failed)
         )
 
     pages, docs, cold = 0, 0, []
@@ -118,9 +134,14 @@ def main() -> None:
                 pages += rec["pages"]
                 docs += 1
     summary = {
-        "tag": args.tag, "workers": args.workers, "gpus": args.gpus,
-        "device": args.device, "images": args.images,
-        "wall_s": round(wall, 1), "docs": docs, "pages": pages,
+        "tag": args.tag,
+        "workers": args.workers,
+        "gpus": args.gpus,
+        "device": args.device,
+        "images": args.images,
+        "wall_s": round(wall, 1),
+        "docs": docs,
+        "pages": pages,
         "pages_per_s": round(pages / wall, 2),
         "s_per_page_effective": round(wall / pages, 3),
         "max_cold_start_s": max(cold) if cold else None,

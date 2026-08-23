@@ -56,16 +56,13 @@ def _skill_and_agent_files(claude_dir=CLAUDE_DIR):
     # against a fixture rather than by writing one into the live
     # `.claude/worktrees/`, which on this host holds 26 real checkouts.
     excluded = claude_dir / _WORKTREES
-    return sorted(
-        path for path in claude_dir.glob("**/*.md")
-        if excluded not in path.parents
-    )
+    return sorted(path for path in claude_dir.glob("**/*.md") if excluded not in path.parents)
 
 
 def _invocations_missing_log(text: str):
     missing = []
     for match in _INVOCATION.finditer(text):
-        window = text[match.start(): match.start() + _LOOKAHEAD_CHARS]
+        window = text[match.start() : match.start() + _LOOKAHEAD_CHARS]
         if "--log" not in window:
             line_no = text.count("\n", 0, match.start()) + 1
             missing.append((line_no, match.group(0)))

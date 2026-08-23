@@ -107,9 +107,7 @@ def test_every_entry_carries_exactly_the_fields_ocr_reads():
 
 def test_no_rule_glob_matches_nothing():
     """The failure this file exists for: an orphaned glob is invisible."""
-    orphaned = [
-        entry["path"] for entry in _rules()["rules"] if not _matches(entry["path"])
-    ]
+    orphaned = [entry["path"] for entry in _rules()["rules"] if not _matches(entry["path"])]
     assert not orphaned, (
         "these .opencodereview/rule.json path globs match no file in the "
         f"working tree, so OCR reviews those files with its generic built-in "
@@ -130,9 +128,14 @@ def test_the_globs_reach_every_tree_a_rule_claims():
     would be the wrong thing to assert: see `REVIEWABLE_EXTENSIONS`.
     """
     covered = {path for entry in _rules()["rules"] for path in _matches(entry["path"])}
-    for wanted in ("chitragupta/sync.py", "tests/conftest.py", "scripts/release.py",
-                   "scripts/install_full_pipeline.sh", "bench/repro_check.py",
-                   ".github/workflows/ci.yml"):
+    for wanted in (
+        "chitragupta/sync.py",
+        "tests/conftest.py",
+        "scripts/release.py",
+        "scripts/install_full_pipeline.sh",
+        "bench/repro_check.py",
+        ".github/workflows/ci.yml",
+    ):
         assert wanted in covered, f"no rule covers {wanted}"
 
 
@@ -151,8 +154,7 @@ def test_no_rule_targets_an_extension_ocr_will_not_review():
     unreviewable = [
         entry["path"]
         for entry in _rules()["rules"]
-        if (suffix := PurePosixPath(entry["path"]).suffix)
-        and suffix not in REVIEWABLE_EXTENSIONS
+        if (suffix := PurePosixPath(entry["path"]).suffix) and suffix not in REVIEWABLE_EXTENSIONS
     ]
     assert not unreviewable, (
         "these rules target extensions OCR reports as `unsupported_ext` and "
@@ -215,6 +217,5 @@ def test_the_users_own_work_is_excluded():
     excluded = set(_rules()["exclude"])
     for tree in ("content/**", "papers/**"):
         assert tree in excluded, (
-            f"{tree} must stay excluded: it is the user's own work, not "
-            "this repository's code."
+            f"{tree} must stay excluded: it is the user's own work, not this repository's code."
         )

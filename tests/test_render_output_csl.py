@@ -39,7 +39,9 @@ class TestResolveCsl:
         local.mkdir(parents=True)
         (local / "ieee.csl").write_text("<style>local</style>")
         monkeypatch.chdir(tmp_path)
-        assert render_output._resolve_csl("assets/csl/ieee.csl").read_text() == "<style>local</style>"
+        assert (
+            render_output._resolve_csl("assets/csl/ieee.csl").read_text() == "<style>local</style>"
+        )
 
     def test_unresolvable_path_is_returned_as_typed(self, tmp_path, monkeypatch):
         # So the error message names what the user wrote, not a repo-root
@@ -51,14 +53,14 @@ class TestResolveCsl:
 class TestCollapsedCsl:
     def test_adds_the_collapse_attribute_to_a_temp_copy(self, tmp_path):
         csl = tmp_path / "style.csl"
-        csl.write_text('<style>\n  <citation>\n    <layout/>\n  </citation>\n</style>\n')
+        csl.write_text("<style>\n  <citation>\n    <layout/>\n  </citation>\n</style>\n")
         out_dir = tmp_path / "render-tmp"
         out_dir.mkdir()
         out = render_output._collapsed_csl(csl, out_dir)
 
         assert out != csl, "must not edit the vendored style in place"
         assert '<citation collapse="citation-number">' in out.read_text()
-        assert 'collapse=' not in csl.read_text(), "original left untouched"
+        assert "collapse=" not in csl.read_text(), "original left untouched"
 
     def test_keeps_existing_attributes_on_the_citation_tag(self, tmp_path):
         csl = tmp_path / "style.csl"
@@ -94,4 +96,4 @@ class TestVendoredIeeeStyle:
         # The one deviation this project needs lives in _collapsed_csl, so
         # an edit here would mean that promise had quietly been broken.
         style = Path(__file__).resolve().parent.parent / "assets" / "csl" / "ieee.csl"
-        assert 'collapse=' not in style.read_text()
+        assert "collapse=" not in style.read_text()

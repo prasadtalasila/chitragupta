@@ -44,8 +44,16 @@ ARCHITECTURE = REPO_ROOT / "docs" / "ARCHITECTURE.md"
 # expected value so the failure message can say what the prose *should*
 # read, and so this does not have to change when an aid is added.
 _NUMBER_WORDS = {
-    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five",
-    6: "Six", 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten",
+    1: "One",
+    2: "Two",
+    3: "Three",
+    4: "Four",
+    5: "Five",
+    6: "Six",
+    7: "Seven",
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
 }
 
 _SECTION_HEADING = "## Layer 4: the review layer"
@@ -120,7 +128,8 @@ class TestTheStatedCount:
         """
         current = _NUMBER_WORDS[len(review.AIDS)]
         stale = [
-            word for size, word in _NUMBER_WORDS.items()
+            word
+            for size, word in _NUMBER_WORDS.items()
             if size != len(review.AIDS) and f"{word} aids" in section
         ]
         assert not stale, f"Layer 4 says '{current} aids' and also {stale} -- one is wrong."

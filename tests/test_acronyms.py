@@ -19,8 +19,7 @@ def test_defaults_to_the_vendored_file_when_no_override_is_set(monkeypatch, tmp_
 def test_a_user_file_is_merged_over_the_vendored_one(monkeypatch, tmp_path):
     vendored = tmp_path / "vendored.toml"
     vendored.write_text(
-        'PDF = "Portable Document Format"\n'
-        'API = "Application Programming Interface"\n',
+        'PDF = "Portable Document Format"\nAPI = "Application Programming Interface"\n',
         encoding="utf-8",
     )
     user = tmp_path / "user.toml"
@@ -75,7 +74,8 @@ class TestSuggest:
 
     def test_suggests_an_acronym_shaped_term_not_in_the_vocabulary(self, monkeypatch):
         monkeypatch.setattr(
-            acronyms, "load_vocabulary",
+            acronyms,
+            "load_vocabulary",
             lambda: {"PDF": "Portable Document Format"},
         )
         glossary = {"DTaaS": "Digital Twin as a Service."}
@@ -83,7 +83,8 @@ class TestSuggest:
 
     def test_does_not_suggest_a_term_already_in_the_vocabulary(self, monkeypatch):
         monkeypatch.setattr(
-            acronyms, "load_vocabulary",
+            acronyms,
+            "load_vocabulary",
             lambda: {"DTaaS": "Digital Twin as a Service"},
         )
         glossary = {"DTaaS": "Digital Twin as a Service."}
@@ -103,15 +104,13 @@ class TestSuggest:
             "Digital twin (DT)": (
                 'was, in Chapter 1: "software that keeps a model of one '
                 "specific physical system in step with that system's "
-                'actual state, and uses it to answer questions that '
+                "actual state, and uses it to answer questions that "
                 'measurement alone cannot answer."'
             )
         }
         assert acronyms.suggest(glossary) == {"DT": "Digital twin"}
 
-    def test_does_not_suggest_a_parenthetical_acronym_already_in_the_vocabulary(
-        self, monkeypatch
-    ):
+    def test_does_not_suggest_a_parenthetical_acronym_already_in_the_vocabulary(self, monkeypatch):
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
         glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
         assert acronyms.suggest(glossary) == {}
@@ -129,19 +128,16 @@ class TestStaleExpansions:
         assert acronyms.stale_expansions(glossary) == {}
 
     def test_finds_a_parenthetical_expansion_that_has_drifted(self, monkeypatch):
-        monkeypatch.setattr(
-            acronyms, "load_vocabulary", lambda: {"DT": "Digital Twin System"}
-        )
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital Twin System"})
         glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
         assert acronyms.stale_expansions(glossary) == {
             "DT": ("Digital twin", "Digital Twin System")
         }
 
-    def test_comparison_is_case_insensitive_and_ignores_trailing_punctuation(
-        self, monkeypatch
-    ):
+    def test_comparison_is_case_insensitive_and_ignores_trailing_punctuation(self, monkeypatch):
         monkeypatch.setattr(
-            acronyms, "load_vocabulary",
+            acronyms,
+            "load_vocabulary",
             lambda: {"DTaaS": "Digital Twin as a Service"},
         )
         glossary = {"DTaaS": "digital twin as a service."}
@@ -177,7 +173,7 @@ class TestBodyCandidates:
         text = (
             "The **Digital Twin Prototype (DTP)** is introduced here.\n\n"
             "## References\n\n"
-            "[1] Author, \"Title,\" in *Some Conference (ICSA)*, 2023.\n"
+            '[1] Author, "Title," in *Some Conference (ICSA)*, 2023.\n'
         )
         assert acronyms.body_candidates(text) == {
             "Digital Twin Prototype (DTP)": "Digital Twin Prototype"
@@ -187,7 +183,7 @@ class TestBodyCandidates:
         text = (
             "The **Digital Twin Prototype (DTP)** is introduced here.\n\n"
             "## 6.15 References\n\n"
-            "[1] Author, \"Title,\" in *Some Conference (ICSA)*, 2023.\n"
+            '[1] Author, "Title," in *Some Conference (ICSA)*, 2023.\n'
         )
         found = acronyms.body_candidates(text)
         assert "ICSA" not in "".join(found)
@@ -213,7 +209,9 @@ class TestBodyCandidates:
         }
 
     def test_a_real_paragraph_break_is_not_reflowed_into_the_match(self):
-        text = "Some unrelated sentence ends here.\n\nHere is the Model Registry (MR), new paragraph."
+        text = (
+            "Some unrelated sentence ends here.\n\nHere is the Model Registry (MR), new paragraph."
+        )
         assert acronyms.body_candidates(text) == {"Model Registry (MR)": "Model Registry"}
 
     def test_first_occurrence_per_acronym_wins(self):

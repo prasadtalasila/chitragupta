@@ -31,10 +31,17 @@ class TestUsedCitekeys:
 
 
 class TestHasSection:
-    @pytest.mark.parametrize("heading", [
-        "## References", "# References", "###### References",
-        "## 6. References", "## 6) References", "## references",
-    ])
+    @pytest.mark.parametrize(
+        "heading",
+        [
+            "## References",
+            "# References",
+            "###### References",
+            "## 6. References",
+            "## 6) References",
+            "## references",
+        ],
+    )
     def test_matches_various_heading_styles(self, heading):
         assert references.has_section(f"Some text\n\n{heading}\n\nmore\n")
 
@@ -56,33 +63,39 @@ class TestHasSection:
         lines = draft.splitlines(keepends=True)
         assert lines[references.section_start(lines)].strip() == "## References"
 
-    @pytest.mark.parametrize("heading", [
-        "## References",
-        "# References",
-        "###### References",
-        "## 6. References",
-        "## 6) References",
-        # A book numbers headings per chapter, so every chapter of a
-        # book-length draft ends in one of these. Before multi-level
-        # numbers were matched, section_start returned None for all of
-        # them and the whole bibliography stayed in the draft.
-        "## 1.14 References",
-        "### 12.14 References",
-        "## 1.2.3.4 References",
-    ])
+    @pytest.mark.parametrize(
+        "heading",
+        [
+            "## References",
+            "# References",
+            "###### References",
+            "## 6. References",
+            "## 6) References",
+            # A book numbers headings per chapter, so every chapter of a
+            # book-length draft ends in one of these. Before multi-level
+            # numbers were matched, section_start returned None for all of
+            # them and the whole bibliography stayed in the draft.
+            "## 1.14 References",
+            "### 12.14 References",
+            "## 1.2.3.4 References",
+        ],
+    )
     def test_matches_bare_and_numbered_headings(self, heading):
         assert references.has_section(f"# Draft\n\n{heading}\n\n[1] X. `k`\n")
 
-    @pytest.mark.parametrize("heading", [
-        "## Introduction",
-        # Ends in the word but is not the bibliography. apply() replaces
-        # everything below the index and render_output strips it, so an
-        # over-matching pattern silently truncates a document.
-        "## 3.5 The published reference architectures",
-        "## Further References",
-        "## References and notes",
-        "## Reference",
-    ])
+    @pytest.mark.parametrize(
+        "heading",
+        [
+            "## Introduction",
+            # Ends in the word but is not the bibliography. apply() replaces
+            # everything below the index and render_output strips it, so an
+            # over-matching pattern silently truncates a document.
+            "## 3.5 The published reference architectures",
+            "## Further References",
+            "## References and notes",
+            "## Reference",
+        ],
+    )
     def test_does_not_match_a_heading_that_is_not_the_bibliography(self, heading):
         assert not references.has_section(f"# Draft\n\n{heading}\n\nProse.\n")
 
@@ -90,7 +103,9 @@ class TestHasSection:
 class TestFormatEntry:
     def test_article_is_quoted_inside_an_italic_journal(self):
         entry = references.format_entry(
-            "k", "A Study", "2024",
+            "k",
+            "A Study",
+            "2024",
             {"author": "Doe, Jane", "journal": "J. Things", "volume": "2", "pages": "1--9"},
         )
         # One comma between title and journal, not two -- IEEE's comma
@@ -98,26 +113,35 @@ class TestFormatEntry:
         assert entry == 'J. Doe, "A Study," *J. Things*, vol. 2, pp. 1–9, 2024.'
 
     def test_work_with_no_container_is_italic_and_unquoted(self):
-        entry = references.format_entry("k", "A Whole Book", "2020", {"author": "Doe, Jane", "publisher": "MIT Press"})
+        entry = references.format_entry(
+            "k", "A Whole Book", "2020", {"author": "Doe, Jane", "publisher": "MIT Press"}
+        )
         assert entry == "J. Doe, *A Whole Book*, MIT Press, 2020."
 
     def test_proceedings_paper_gets_in_prefix(self):
-        entry = references.format_entry("k", "A Paper", "2021", {"author": "Doe, Jane", "booktitle": "Proc. Conf."})
-        assert 'in *Proc. Conf.*' in entry
+        entry = references.format_entry(
+            "k", "A Paper", "2021", {"author": "Doe, Jane", "booktitle": "Proc. Conf."}
+        )
+        assert "in *Proc. Conf.*" in entry
 
-    @pytest.mark.parametrize("author,expected", [
-        ("Doe, Jane", "J. Doe"),
-        ("Jane Doe", "J. Doe"),
-        ("Doe, Jane Mary", "J. M. Doe"),
-        # IEEE initializes both halves of a hyphenated given name.
-        ("Smith, Jean-Paul", "J.-P. Smith"),
-        ("A, X and B, Y", "X. A and Y. B"),
-        ("A, X and B, Y and C, Z", "X. A, Y. B, and Z. C"),
-        # A braced corporate author is one unit, never initialized.
-        ("{IEEE Standards Association}", "IEEE Standards Association"),
-    ])
+    @pytest.mark.parametrize(
+        "author,expected",
+        [
+            ("Doe, Jane", "J. Doe"),
+            ("Jane Doe", "J. Doe"),
+            ("Doe, Jane Mary", "J. M. Doe"),
+            # IEEE initializes both halves of a hyphenated given name.
+            ("Smith, Jean-Paul", "J.-P. Smith"),
+            ("A, X and B, Y", "X. A and Y. B"),
+            ("A, X and B, Y and C, Z", "X. A, Y. B, and Z. C"),
+            # A braced corporate author is one unit, never initialized.
+            ("{IEEE Standards Association}", "IEEE Standards Association"),
+        ],
+    )
     def test_author_lists(self, author, expected):
-        assert references.format_entry("k", "T", "2024", {"author": author, "journal": "J"}).startswith(expected + ",")
+        assert references.format_entry(
+            "k", "T", "2024", {"author": author, "journal": "J"}
+        ).startswith(expected + ",")
 
     def test_more_than_six_authors_collapses_to_et_al(self):
         author = " and ".join(f"Last{i}, First{i}" for i in range(7))
@@ -125,7 +149,9 @@ class TestFormatEntry:
         assert entry.startswith("F. Last0 et al.,")
 
     def test_editor_is_used_when_there_is_no_author(self):
-        entry = references.format_entry("k", "A Volume", "2015", {"editor": "Ed, One", "publisher": "Springer"})
+        entry = references.format_entry(
+            "k", "A Volume", "2015", {"editor": "Ed, One", "publisher": "Springer"}
+        )
         assert entry.startswith("O. Ed, Eds.,")
 
     def test_single_page_uses_p_not_pp(self):
@@ -143,19 +169,22 @@ class TestFormatEntry:
 
 
 class TestFormatNumbers:
-    @pytest.mark.parametrize("numbers,expected", [
-        ([1], "[1]"),
-        # A run of two is NOT contracted -- IEEE, and the CSL style's own
-        # collapse, only contract three or more. This is what keeps the
-        # numbered Markdown byte-identical to the PDF's markers.
-        ([1, 2], "[1], [2]"),
-        ([3, 4, 5], "[3]–[5]"),
-        ([3, 4, 5, 6], "[3]–[6]"),
-        ([1, 3, 4, 5, 7], "[1], [3]–[5], [7]"),
-        # Out of order and duplicated in the source, sorted and deduped here.
-        ([5, 3, 4, 3], "[3]–[5]"),
-        ([9, 1], "[1], [9]"),
-    ])
+    @pytest.mark.parametrize(
+        "numbers,expected",
+        [
+            ([1], "[1]"),
+            # A run of two is NOT contracted -- IEEE, and the CSL style's own
+            # collapse, only contract three or more. This is what keeps the
+            # numbered Markdown byte-identical to the PDF's markers.
+            ([1, 2], "[1], [2]"),
+            ([3, 4, 5], "[3]–[5]"),
+            ([3, 4, 5, 6], "[3]–[6]"),
+            ([1, 3, 4, 5, 7], "[1], [3]–[5], [7]"),
+            # Out of order and duplicated in the source, sorted and deduped here.
+            ([5, 3, 4, 3], "[3]–[5]"),
+            ([9, 1], "[1], [9]"),
+        ],
+    )
     def test_ieee_contraction_rules(self, numbers, expected):
         assert references._format_numbers(numbers) == expected
 
@@ -163,20 +192,23 @@ class TestFormatNumbers:
 class TestRenumber:
     NUMBERS = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "g": 7}
 
-    @pytest.mark.parametrize("text,expected", [
-        ("Claim [@a].", "Claim [1]."),
-        ("Pair [@a; @b].", "Pair [1], [2]."),
-        ("Run [@c; @d; @e].", "Run [3]–[5]."),
-        ("Mixed [@a; @c; @d; @e; @g].", "Mixed [1], [3]–[5], [7]."),
-        # Suppressed-author and bare forms are still citations.
-        ("Suppressed [-@a].", "Suppressed [1]."),
-        ("Bare @a here.", "Bare [1] here."),
-        # A group carrying a prefix or locator keeps its words: only the
-        # key itself is replaced, because collapsing the whole bracket
-        # would silently delete "see" and "p. 33".
-        ("Locator [see @a, p. 33].", "Locator [see [1], p. 33]."),
-        ("Spaces [ @a ; @b ].", "Spaces [1], [2]."),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("Claim [@a].", "Claim [1]."),
+            ("Pair [@a; @b].", "Pair [1], [2]."),
+            ("Run [@c; @d; @e].", "Run [3]–[5]."),
+            ("Mixed [@a; @c; @d; @e; @g].", "Mixed [1], [3]–[5], [7]."),
+            # Suppressed-author and bare forms are still citations.
+            ("Suppressed [-@a].", "Suppressed [1]."),
+            ("Bare @a here.", "Bare [1] here."),
+            # A group carrying a prefix or locator keeps its words: only the
+            # key itself is replaced, because collapsing the whole bracket
+            # would silently delete "see" and "p. 33".
+            ("Locator [see @a, p. 33].", "Locator [see [1], p. 33]."),
+            ("Spaces [ @a ; @b ].", "Spaces [1], [2]."),
+        ],
+    )
     def test_marker_forms(self, text, expected):
         assert references.renumber(text, self.NUMBERS) == expected
 
@@ -192,8 +224,10 @@ class TestRenumber:
         # regex precisely so it can never rewrite the address.
         numbers = dict(self.NUMBERS, gmail=9, example=8)
         text = "Write to <prasad.talasila@gmail.com> or name@example.com about [@a]."
-        assert references.renumber(text, numbers) == \
-            "Write to <prasad.talasila@gmail.com> or name@example.com about [1]."
+        assert (
+            references.renumber(text, numbers)
+            == "Write to <prasad.talasila@gmail.com> or name@example.com about [1]."
+        )
 
     def test_renumbers_exactly_what_the_gate_counts(self):
         # The two must agree: a marker the gate verified but this left
@@ -210,26 +244,37 @@ class TestRenumber:
         # A tutorial showing `[@citekey]` in an example is teaching the
         # syntax; the gate ignores it, and so must this.
         text = "Write:\n\n```markdown\n[@a]\n```\n\nReal [@b].\n"
-        assert references.renumber(text, self.NUMBERS) == "Write:\n\n```markdown\n[@a]\n```\n\nReal [2].\n"
+        assert (
+            references.renumber(text, self.NUMBERS)
+            == "Write:\n\n```markdown\n[@a]\n```\n\nReal [2].\n"
+        )
 
     def test_a_citation_inside_an_inline_code_span_is_untouched(self):
-        assert references.renumber("Use `[@a]` for this. Real [@b].", self.NUMBERS) == \
-            "Use `[@a]` for this. Real [2]."
+        assert (
+            references.renumber("Use `[@a]` for this. Real [@b].", self.NUMBERS)
+            == "Use `[@a]` for this. Real [2]."
+        )
 
 
 class TestNumberedMarkdown:
     def _seed(self, con):
         for key, title, year in [("b2024", "B Paper", "2024"), ("a2023", "A Paper", "2023")]:
-            ledger.upsert_reference(con, make_reference(
-                citekey=key, title=title, year=year, fields={"author": "Doe, Jane", "journal": "J. Things"}))
+            ledger.upsert_reference(
+                con,
+                make_reference(
+                    citekey=key,
+                    title=title,
+                    year=year,
+                    fields={"author": "Doe, Jane", "journal": "J. Things"},
+                ),
+            )
 
     def test_numbers_body_and_rebuilds_the_list_without_citekey_labels(self, ledger_con):
         self._seed(ledger_con)
-        out = references.numbered_markdown(
-            "# T\n\nOne [@b2024]. Two [@a2023].\n", ledger_con)
+        out = references.numbered_markdown("# T\n\nOne [@b2024]. Two [@a2023].\n", ledger_con)
 
         assert "One [1]. Two [2]." in out
-        assert "[1] J. Doe, \"B Paper,\" *J. Things*, 2024." in out
+        assert '[1] J. Doe, "B Paper," *J. Things*, 2024.' in out
         # No citekey labels: the numbers already index the list, and the
         # inline markers are no longer keys, so a label would be noise.
         assert "`b2024`" not in out
@@ -237,8 +282,10 @@ class TestNumberedMarkdown:
 
     def test_replaces_an_existing_section_and_keeps_its_heading(self, ledger_con):
         self._seed(ledger_con)
-        draft = ("One [@b2024].\n\n## 6. References\n\n"
-                 "[1] J. Doe, \"B Paper,\" *J. Things*, 2024. `b2024`\n")
+        draft = (
+            "One [@b2024].\n\n## 6. References\n\n"
+            '[1] J. Doe, "B Paper," *J. Things*, 2024. `b2024`\n'
+        )
         out = references.numbered_markdown(draft, ledger_con)
 
         assert out.count("References") == 1
@@ -253,7 +300,10 @@ class TestNumberedMarkdown:
         assert "6. References" not in out
 
     def test_a_draft_with_no_citations_is_returned_unchanged(self, ledger_con):
-        assert references.numbered_markdown("# T\n\nJust prose.\n", ledger_con) == "# T\n\nJust prose.\n"
+        assert (
+            references.numbered_markdown("# T\n\nJust prose.\n", ledger_con)
+            == "# T\n\nJust prose.\n"
+        )
 
     def test_an_uncited_draft_keeps_a_references_section_it_already_had(self, ledger_con):
         # Nothing to number means nothing to rebuild. Stripping the
@@ -270,9 +320,13 @@ class TestNumberedMarkdown:
 
 
 class TestWriteNumbered:
-    def test_writes_into_the_output_directory_and_leaves_the_draft_alone(self, isolated_config, tmp_path):
+    def test_writes_into_the_output_directory_and_leaves_the_draft_alone(
+        self, isolated_config, tmp_path
+    ):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -286,9 +340,13 @@ class TestWriteNumbered:
         assert "Body [1]." in out_path.read_text()
         assert draft.read_text() == original, "the gated source must not be rewritten"
 
-    def test_a_text_override_is_numbered_instead_of_the_file_on_disk(self, isolated_config, tmp_path):
+    def test_a_text_override_is_numbered_instead_of_the_file_on_disk(
+        self, isolated_config, tmp_path
+    ):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -302,8 +360,12 @@ class TestWriteNumbered:
 
 class TestBuildSection:
     def test_builds_formatted_entries_in_given_order(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="B Paper", year="2024"))
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="A Paper", year="2023"))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="B Paper", year="2024")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="A Paper", year="2023")
+        )
 
         section = references.build_section(["b2024", "a2024"], ledger_con)
         lines = section.splitlines()
@@ -314,16 +376,23 @@ class TestBuildSection:
         assert section.index("b2024") < section.index("a2024")
 
     def test_entry_uses_the_full_bib_fields_when_the_ledger_has_them(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(
-            citekey="doe2024", title="Digital Twins as a Service", year="2024",
-            fields={
-                "author": "Doe, Jane and Roe, Richard",
-                "journal": "IEEE Trans. Testing",
-                "volume": "3", "number": "2", "pages": "11--20",
-                # Dropped by ledger._BIB_FIELDS_KEPT rather than formatted.
-                "abstract": "Not part of a reference entry.",
-            },
-        ))
+        ledger.upsert_reference(
+            ledger_con,
+            make_reference(
+                citekey="doe2024",
+                title="Digital Twins as a Service",
+                year="2024",
+                fields={
+                    "author": "Doe, Jane and Roe, Richard",
+                    "journal": "IEEE Trans. Testing",
+                    "volume": "3",
+                    "number": "2",
+                    "pages": "11--20",
+                    # Dropped by ledger._BIB_FIELDS_KEPT rather than formatted.
+                    "abstract": "Not part of a reference entry.",
+                },
+            ),
+        )
         section = references.build_section(["doe2024"], ledger_con)
         assert (
             '[1] J. Doe and R. Roe, "Digital Twins as a Service," '
@@ -334,13 +403,17 @@ class TestBuildSection:
     def test_entry_falls_back_to_title_and_year_without_bib_fields(self, ledger_con):
         # A row synced before the bib_fields column existed: thinner, but
         # still a true entry, and the next sync fills it in.
-        ledger.upsert_reference(ledger_con, make_reference(citekey="bare2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="bare2024", title="A Paper", year="2024")
+        )
         ledger_con.execute("UPDATE items SET bib_fields = NULL WHERE citekey = 'bare2024'")
         section = references.build_section(["bare2024"], ledger_con)
         assert "[1] *A Paper*, 2024. `bare2024`" in section
 
     def test_entry_survives_unparseable_bib_fields(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="bad2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="bad2024", title="A Paper", year="2024")
+        )
         ledger_con.execute("UPDATE items SET bib_fields = 'not json' WHERE citekey = 'bad2024'")
         section = references.build_section(["bad2024"], ledger_con)
         assert "[1] *A Paper*, 2024. `bad2024`" in section
@@ -366,7 +439,9 @@ class TestApply:
 
     def test_appends_section_when_none_exists(self, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -381,13 +456,13 @@ class TestApply:
 
     def test_replaces_existing_section_idempotently(self, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
-        draft.write_text(
-            "Body text citing [@smith2024].\n\n## References\n\n- stale entry\n"
-        )
+        draft.write_text("Body text citing [@smith2024].\n\n## References\n\n- stale entry\n")
         references.apply(draft)
         first_pass = draft.read_text()
         assert first_pass.count("## References") == 1
@@ -401,7 +476,9 @@ class TestApply:
 
 
 class TestMainCli:
-    def test_success_prints_result_and_returns_0(self, isolated_config, tmp_path, capsys, monkeypatch):
+    def test_success_prints_result_and_returns_0(
+        self, isolated_config, tmp_path, capsys, monkeypatch
+    ):
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
@@ -415,7 +492,9 @@ class TestMainCli:
         assert rc == 0
         assert "wrote References section" in out
 
-    def test_missing_citekey_prints_error_and_returns_1(self, isolated_config, tmp_path, capsys, monkeypatch):
+    def test_missing_citekey_prints_error_and_returns_1(
+        self, isolated_config, tmp_path, capsys, monkeypatch
+    ):
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@fabricated2024]\n")
 
@@ -428,7 +507,9 @@ class TestMainCli:
 
     def test_runs_with_bare_system_python3(self, system_python, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024", title="A Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -438,7 +519,8 @@ class TestMainCli:
         result = subprocess.run(
             [system_python, "-m", "chitragupta.draft", "references", str(draft)],
             cwd=str(repo_root),
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},
         )
         assert result.returncode == 0, result.stderr
@@ -464,7 +546,9 @@ class TestInputsAreConfinedToContent:
 
         assert "a_2024" in scratch.read_text()
 
-    def test_the_cli_reports_it_rather_than_raising(self, isolated_config, tmp_path, monkeypatch, capsys):
+    def test_the_cli_reports_it_rather_than_raising(
+        self, isolated_config, tmp_path, monkeypatch, capsys
+    ):
         loose = tmp_path / "loose.md"
         loose.write_text("A claim [@a_2024].\n")
         monkeypatch.setattr(sys, "argv", ["references.py", str(loose)])

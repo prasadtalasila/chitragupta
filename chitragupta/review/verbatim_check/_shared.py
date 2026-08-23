@@ -57,9 +57,7 @@ def finding_id(citekey: str, page: int, fragment: str) -> str:
     return digest.hexdigest()[:12]
 
 
-def _citekeys_at_positions(
-    groups: dict[tuple[str, int], dict[int, int]]
-) -> dict[int, set[str]]:
+def _citekeys_at_positions(groups: dict[tuple[str, int], dict[int, int]]) -> dict[int, set[str]]:
     """Draft position -> every citekey with a posting there, across
     *every* `(citekey, diagonal)` group a tier produced -- not just the
     one a given finding is reported against. Built once per tier and

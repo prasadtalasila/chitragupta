@@ -106,7 +106,7 @@ used as given.
 ### 📁 Paths
 
 | Key | Env var | Accepts | Default |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `[bib] path` | `BIB_FILE` | path | `papers/bibliography.bib` |
 | `[bib] collections_field` | `BIB_COLLECTIONS_FIELD` | field name | `groups` |
 | `[content] dir` | `CONTENT_DIR` | path | `content` |
@@ -162,7 +162,7 @@ Used only by `chitragupta/render_output.py`, never by `sync` or the
 citation gate.
 
 | Key | Env var | Accepts | Default |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `csl` | `CSL_STYLE` | path | `assets/csl/ieee.csl` |
 | `collapse_citations` | `RENDER_COLLAPSE_CITATIONS` | boolean | `true` |
 
@@ -198,7 +198,7 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
 `chitragupta.draft style`.
 
 | Key | Env var | Accepts | Default |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `vale_config` | `VALE_CONFIG` | path | `assets/vale/vale.ini` |
 | `language` | `STYLE_LANGUAGE` | BCP-47 tag | unset |
 | `acronyms` | `ACRONYMS` | path | `assets/style/acronyms.toml` |
@@ -257,7 +257,7 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
 ### 📄 `[parser]` -- PDF text extraction
 
 | Key | Env var | Accepts | Default |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `backend` | `PARSER` | `"pdftotext"` \| `"docling"` | `"pdftotext"` |
 | `ocr` | `PARSER_OCR` | boolean | `false` |
 | `workers` | `PARSER_WORKERS` | positive integer, or `"auto"` | `1` |
@@ -305,8 +305,8 @@ The values in full:
 ### 🪵 `[logging]` -- the pipeline log file
 
 | Key | Env var | Accepts | Default |
-|---|---|---|---|
-| `level` | `LOGGING_LEVEL` | `"DEBUG"` \| `"INFO"` \| `"WARNING"` \| `"ERROR"` \| `"CRITICAL"` | `"INFO"` |
+| --- | --- | --- | --- |
+| `level` | `LOGGING_LEVEL` | `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`, `"CRITICAL"` | `"INFO"` |
 
 - **`level`** -- how much the pipeline writes to `logs/pipeline.log`
   (rotated at 5 MB, 5 backups kept -- fixed in code, not configurable).
@@ -336,7 +336,7 @@ script (or a test) that needs it somewhere else.
 ### 📖 `[provenance]` -- citation-support bands
 
 | Key | Env var | Accepts | Default |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `weak_score` | `PROVENANCE_WEAK_SCORE` | number, a fraction 0.0-1.0 | `0.20` |
 | `good_score` | `PROVENANCE_GOOD_SCORE` | number, a fraction 0.0-1.0 | `0.50` |
 
@@ -359,7 +359,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 `sync` or the citation gate.
 
 | Key | Env var | Accepts | Default in code | In `config.toml.example` |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
 | `embed_max_passages_per_source` | `EMBED_MAX_PASSAGES_PER_SOURCE` | integer | `3` | `3` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
@@ -422,7 +422,7 @@ function plus one entry -- and two candidates were added and later
 removed through that same seam.
 
 | Backend | Dependency | Page boundaries? | Quotable passages? | Speed |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `pdftotext` (default) | `poppler-utils` on `PATH` | **Yes** -- form feeds between pages | No -- reading order is lost | Fastest |
 | `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#-parserbackend----pdftotext-or-docling) |
 
@@ -497,7 +497,7 @@ on** -- not the machine's total, which on a shared or containerised
 machine can be far larger. For `docling` that count is divided by 4:
 
 | CPUs available to the process | 4 | 8 | 16 | 48 |
-|---|---|---|---|---|
+| -------------------------------- | - | - | -- | -- |
 | `workers = "auto"` resolves to | 1 | 2 | 4 | 12 |
 
 **That divisor of 4 is measurably too conservative.** It models a docling
@@ -669,7 +669,7 @@ That one fact decides which models are drop-in and which are not.
 ### ✅ Drop-in
 
 | Model | Dimensions | Relative cost | Best for | Tradeoff |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `sentence-transformers/all-MiniLM-L6-v2` (code default) | 384 | Lowest -- ~22M params, fast even on CPU | Small corpora, quick iteration, CPU-only machines | Least semantic nuance of the three; general-purpose training data, nothing science-specific |
 | `sentence-transformers/all-mpnet-base-v2` (example default) | 768 | ~4-5x MiniLM -- comfortable on a GPU, noticeably slower CPU-only | Meaningfully better general-purpose semantic quality | More RAM/VRAM and slower indexing/search, for a gain that may not matter at a small corpus size |
 | `sentence-transformers/multi-qa-mpnet-base-dot-v1` | 768 | Same class as `all-mpnet-base-v2` | Trained specifically on short-query-vs-long-passage retrieval -- the closest match to what `search()` actually does | Slightly weaker on generic sentence similarity outside retrieval |
@@ -804,7 +804,7 @@ forced it. Measured over 497 documents against 14 real Zotero collection
 names, every phrase had its own score scale:
 
 | phrase | corpus-wide max | median |
-|---|---|---|
+| --- | --- | --- |
 | `Standards` | 0.295 | 0.069 |
 | `Digital Twin` | 0.669 | 0.338 |
 
@@ -943,7 +943,7 @@ corpus would have received them too. Measured on this project's own
 corpus, holding everything else fixed:
 
 | `topic_min_cluster_size` | topics | outliers | median topic size |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 10 (the old hardcoded value) | 13 | 27% | 19 |
 | 5 | 25 | 19% | 13 |
 | 3 | 50 | 12% | 6 |

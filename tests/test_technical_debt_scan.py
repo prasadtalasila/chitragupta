@@ -83,8 +83,7 @@ _HEADING_EMOJI_RE = re.compile(r"^[^\x00-\x7F]+\s+")
 def _section(text: str, heading_prefix: str) -> str:
     """The `## `-level section starting with `heading_prefix`, to the next."""
     parts = re.split(r"^## ", text, flags=re.MULTILINE)
-    matching = [p for p in parts
-                if _HEADING_EMOJI_RE.sub("", p).startswith(heading_prefix)]
+    matching = [p for p in parts if _HEADING_EMOJI_RE.sub("", p).startswith(heading_prefix)]
     assert len(matching) == 1, f"expected exactly one '## {heading_prefix}' section"
     return matching[0]
 
@@ -297,8 +296,7 @@ Freezes **2 functions** over C1 (25 statements) and **1 modules** over C2
 
 _RESOLVED_ITEM_DOC = _OPEN_ITEM_DOC.replace(
     "1. **[Tier 1] `chitragupta/gone.py`.** The largest module in the tree.",
-    "1. ~~**[Tier 1] `chitragupta/gone.py`.** The largest module in the tree.~~ "
-    "**Done**, in #1.",
+    "1. ~~**[Tier 1] `chitragupta/gone.py`.** The largest module in the tree.~~ **Done**, in #1.",
 )
 
 _REGISTERS = ({"chitragupta/kept.py::held"}, {"chitragupta/kept.py"})
@@ -356,7 +354,8 @@ class TestTheChecksActuallyFire:
     def test_a_stated_size_that_does_not_match_is_reported(self):
         assert _stated_sizes(_OPEN_HEADING_DOC) == (2, 1)
         assert _stated_sizes(_OPEN_HEADING_DOC) != (
-            len(_REGISTERS[0]), len(_REGISTERS[1]),
+            len(_REGISTERS[0]),
+            len(_REGISTERS[1]),
         )
 
     def test_a_reworded_size_sentence_fails_loudly_rather_than_silently(self):
@@ -431,8 +430,7 @@ def _pyproject_coverage_source() -> list[str]:
     text = PYPROJECT_TOML.read_text(encoding="utf-8")
     match = re.search(r"^source = (\[.*\])", text, re.MULTILINE)
     assert match, (
-        "pyproject.toml no longer states [tool.coverage.run].source in the "
-        "shape this test reads"
+        "pyproject.toml no longer states [tool.coverage.run].source in the shape this test reads"
     )
     return ast.literal_eval(match.group(1))
 
@@ -538,4 +536,6 @@ class TestTheNewPinsFailLoudlyWhenReworded:
 
     def test_a_reworded_bench_self_check_count_sentence_fails_loudly(self):
         with pytest.raises(AssertionError, match="no longer states this fact"):
-            _regex_pin(_BENCH_SELF_CHECK_COUNT_RE, "20 scripts have one, out of 22 total.", "the doc")
+            _regex_pin(
+                _BENCH_SELF_CHECK_COUNT_RE, "20 scripts have one, out of 22 total.", "the doc"
+            )

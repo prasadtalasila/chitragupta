@@ -64,8 +64,9 @@ class TestQuotable:
 class TestSourcePassages:
     def test_prefers_the_docling_sidecar(self, isolated_config):
         _add_item("a_2024", parsed_text="page one\fpage two")
-        _sidecar("a_2024", [{"text": "A real reading-ordered paragraph.",
-                             "label": "text", "page": 4}])
+        _sidecar(
+            "a_2024", [{"text": "A real reading-ordered paragraph.", "label": "text", "page": 4}]
+        )
         con = ledger.connect()
         try:
             found, reason = passages.source_passages(con, "a_2024")
@@ -162,11 +163,13 @@ class TestPassageRecords:
     def test_drops_labels_that_are_not_prose(self, isolated_config):
         """A running head repeated on every page would otherwise let a
         claim "match" the journal's name seventeen times."""
-        doc = types.SimpleNamespace(texts=[
-            self._item("Journal of Things, Vol 3", label="page_header"),
-            self._item("Real prose.", label="text"),
-            self._item("Figure 1. A diagram.", label="caption"),
-        ])
+        doc = types.SimpleNamespace(
+            texts=[
+                self._item("Journal of Things, Vol 3", label="page_header"),
+                self._item("Real prose.", label="text"),
+                self._item("Figure 1. A diagram.", label="caption"),
+            ]
+        )
         assert [r["text"] for r in passages.passage_records(doc)] == ["Real prose."]
 
     def test_accepts_a_dotted_enum_label(self, isolated_config):
@@ -192,9 +195,12 @@ class TestCorpusLayerSidecar:
 
     def test_is_used_when_the_enrichment_layer_has_not_run(self, isolated_config):
         _add_item("smith_2024", parsed_text="page one\fpage two")
-        passages.write_sidecar("smith_2024", [
-            {"text": "A reading-ordered paragraph.", "label": "text", "page": 7},
-        ])
+        passages.write_sidecar(
+            "smith_2024",
+            [
+                {"text": "A reading-ordered paragraph.", "label": "text", "page": 7},
+            ],
+        )
         con = ledger.connect()
         try:
             found, reason = passages.source_passages(con, "smith_2024")
@@ -237,9 +243,7 @@ class TestCorpusLayerSidecar:
         assert not passages.sidecar_path("smith_2024").exists()
         passages.clear_sidecar("smith_2024")  # second call must not raise
 
-    def test_lives_beside_the_parsed_text_not_in_the_enrichment_directory(
-        self, isolated_config
-    ):
+    def test_lives_beside_the_parsed_text_not_in_the_enrichment_directory(self, isolated_config):
         """The two writers must not share a path: the corpus layer
         invalidates its own sidecar on every re-parse, and doing that to
         an enrichment sidecar would delete a parse it cannot reproduce."""
@@ -250,9 +254,17 @@ class TestCorpusLayerSidecar:
 class TestSidecarRobustness:
     """A hand-edited or partially-written sidecar must degrade, not crash."""
 
-    @pytest.mark.parametrize("payload", ['{"not": "a list"}', "[]", '["not a dict"]',
-                                         '[{"text": "   "}]', '[{"no_text_key": 1}]',
-                                         '[{"text": 7}]'])
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            '{"not": "a list"}',
+            "[]",
+            '["not a dict"]',
+            '[{"text": "   "}]',
+            '[{"no_text_key": 1}]',
+            '[{"text": 7}]',
+        ],
+    )
     def test_unusable_sidecar_shapes_fall_through_to_pages(self, isolated_config, payload):
         _add_item("a_2024", parsed_text="page one\fpage two")
         config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
@@ -339,8 +351,7 @@ class TestPdfFallback:
         all be 1 -- go back to the PDF rather than report that."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="one continuous document, no form feeds",
-                  pdf_path=str(pdf))
+        _add_item("a_2024", parsed_text="one continuous document, no form feeds", pdf_path=str(pdf))
 
         class FakeRun:
             stdout = "page one hysteresis\fpage two relay"

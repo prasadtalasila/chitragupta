@@ -84,8 +84,9 @@ def strip_image_refs(markdown: str) -> str:
     text, so they're real prose about the figure and worth embedding.
     """
     without_refs = re.sub(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*$", "", markdown, flags=re.MULTILINE)
-    without_placeholders = re.sub(r"^[ \t]*<!--\s*image\s*-->[ \t]*$", "",
-                                  without_refs, flags=re.MULTILINE)
+    without_placeholders = re.sub(
+        r"^[ \t]*<!--\s*image\s*-->[ \t]*$", "", without_refs, flags=re.MULTILINE
+    )
     # Collapse the blank runs those deletions leave behind, so chunking
     # doesn't see paragraph gaps where a figure used to sit.
     return re.sub(r"\n{3,}", "\n\n", without_placeholders)
@@ -116,7 +117,8 @@ def get_text(doc: CorpusDoc) -> str | None:
         try:
             subprocess.run(
                 ["pdftotext", "-layout", doc.pdf_path, tmp_name],
-                check=True, capture_output=True,
+                check=True,
+                capture_output=True,
             )
             return Path(tmp_name).read_text(encoding="utf-8", errors="ignore")
         finally:
@@ -129,7 +131,7 @@ def chunk_text(text: str, chunk_words: int = 200, overlap_words: int = 40) -> li
     if not words:
         return []
     step = chunk_words - overlap_words
-    return [" ".join(words[i:i + chunk_words]) for i in range(0, len(words), step)]
+    return [" ".join(words[i : i + chunk_words]) for i in range(0, len(words), step)]
 
 
 def get_client_and_model() -> tuple[Any, Any]:
@@ -166,8 +168,7 @@ def _embed_doc(doc: CorpusDoc, position: int, total: int, collection, model) -> 
     # carries -- the retired `doc_id` key held the same value alongside it --
     # so an index built before #57 keeps working without a rebuild.
     existing = collection.get(where={"citekey": doc.citekey})
-    if existing["ids"] and all(m.get("text_hash") == text_hash
-                               for m in existing["metadatas"]):
+    if existing["ids"] and all(m.get("text_hash") == text_hash for m in existing["metadatas"]):
         print(f" -- unchanged, {len(existing['ids'])} chunk(s)", flush=True)
         return len(existing["ids"]), "unchanged"
     if existing["ids"]:
@@ -185,8 +186,7 @@ def _embed_doc(doc: CorpusDoc, position: int, total: int, collection, model) -> 
     embeddings = model.encode(chunks, show_progress_bar=False).tolist()
     ids = [f"{doc.citekey}::{i}" for i in range(len(chunks))]
     metadatas = [
-        {"citekey": doc.citekey, "title": doc.title, "text_hash": text_hash}
-        for _ in chunks
+        {"citekey": doc.citekey, "title": doc.title, "text_hash": text_hash} for _ in chunks
     ]
     collection.upsert(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
     print(f" -- embedded, {len(chunks)} chunk(s)", flush=True)
@@ -291,9 +291,9 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
 
     results = []
     per_source = {}
-    for doc_text, metadata, distance in zip(raw["documents"][0],
-                                            raw["metadatas"][0],
-                                            raw["distances"][0]):
+    for doc_text, metadata, distance in zip(
+        raw["documents"][0], raw["metadatas"][0], raw["distances"][0]
+    ):
         citekey = metadata["citekey"]
         if per_source.get(citekey, 0) >= config.EMBED_MAX_PASSAGES_PER_SOURCE:
             continue

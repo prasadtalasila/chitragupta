@@ -31,7 +31,7 @@ single change most likely to fix sprawl at its source. Each metaphor
 maps onto a TikZ idiom to actually use:
 
 | Metaphor | TikZ idiom |
-|---|---|
+| --- | --- |
 | Pipeline | a chain, via the `positioning` library |
 | Map | `matrix` |
 | Layered stack | stacked `fit` layers |

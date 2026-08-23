@@ -10,7 +10,10 @@ from chitragupta.review.verbatim_check._allowlist import _mask_allowlisted_stemm
 from chitragupta.review.verbatim_check._masking import _DraftWord
 from chitragupta.review.verbatim_check._merge import _merge_spans
 from chitragupta.review.verbatim_check._shared import (
-    _cites_source, _line_at, _run_is_quoted, finding_id,
+    _cites_source,
+    _line_at,
+    _run_is_quoted,
+    finding_id,
 )
 
 
@@ -60,8 +63,16 @@ def _skipgram_tier_findings(
 
     citekeys_at_position = _skipgram_citekeys_at_positions(groups)
     return _skipgram_findings_from_groups(
-        groups, gap, min_run, allowlist, words, word_strs,
-        newlines, text, paragraph_citekeys, citekeys_at_position,
+        groups,
+        gap,
+        min_run,
+        allowlist,
+        words,
+        word_strs,
+        newlines,
+        text,
+        paragraph_citekeys,
+        citekeys_at_position,
     )
 
 
@@ -110,8 +121,17 @@ def _skipgram_findings_from_groups(
                     suppressed += 1
                     continue
             finding = _skipgram_finding(
-                start, end, members, span_words, citekey, words, word_strs,
-                newlines, text, paragraph_citekeys, citekeys_at_position,
+                start,
+                end,
+                members,
+                span_words,
+                citekey,
+                words,
+                word_strs,
+                newlines,
+                text,
+                paragraph_citekeys,
+                citekeys_at_position,
             )
             if finding["id"] in seen_ids:
                 continue
@@ -121,7 +141,7 @@ def _skipgram_findings_from_groups(
 
 
 def _skipgram_citekeys_at_positions(
-    groups: dict[tuple[str, int], list[tuple[int, int, int]]]
+    groups: dict[tuple[str, int], list[tuple[int, int, int]]],
 ) -> dict[int, set[str]]:
     """Same purpose as `_citekeys_at_positions` (tier 1), reshaped for
     tier 2's `(start, end, page)` span postings instead of single
@@ -198,7 +218,7 @@ def _skipgram_finding(
         "char_end": char_end,
         "draft_text": text[char_start:char_end],
         "fragment": fragment,
-        "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
+        "context": " ".join(word_strs[max(0, start - 6) : min(len(word_strs), end + 6)]),
         "cites_source": cites_source,
         "quoted": _run_is_quoted(run_words),
         "tier": "skip-gram",

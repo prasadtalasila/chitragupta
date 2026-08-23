@@ -89,11 +89,9 @@ def resolve(draft: Path, genre: str | None) -> tuple[str, str | None, str]:
     return _units.resolve_standing(draft, genre)
 
 
-def build_report(draft: Path, standing: str, genre: str | None,
-                 genre_source: str) -> Report:
+def build_report(draft: Path, standing: str, genre: str | None, genre_source: str) -> Report:
     text = Path(draft).read_text(encoding="utf-8")
-    return Report(Path(draft), genre, genre_source, standing,
-                  _claims.claim_sentences(text))
+    return Report(Path(draft), genre, genre_source, standing, _claims.claim_sentences(text))
 
 
 def finding_id(sentence: str) -> str:
@@ -120,8 +118,10 @@ def findings(report: Report) -> list[dict]:
     """
     if report.standing == "ordinary":
         return []
-    found = [{"id": finding_id(s.text), "line": s.line, "sentence": s.text,
-              "block_cites": s.block_cites} for s in report.uncited]
+    found = [
+        {"id": finding_id(s.text), "line": s.line, "sentence": s.text, "block_cites": s.block_cites}
+        for s in report.uncited
+    ]
     return sorted(found, key=lambda f: (f["block_cites"], f["line"]))
 
 
@@ -143,15 +143,17 @@ def uncited_payload(report: Report, command: str) -> dict:
     """The same findings the report prints, as data -- an additional
     serialisation, never a second computation."""
     payload = review.envelope(report.draft, "uncited", command)
-    payload.update({
-        "genre": report.genre,
-        "genre_source": report.genre_source,
-        "standing": report.standing,
-        "sentences_total": len(report.sentences),
-        "uncited": len(report.uncited),
-        "bare": len(report.bare),
-        "findings": findings(report),
-    })
+    payload.update(
+        {
+            "genre": report.genre,
+            "genre_source": report.genre_source,
+            "standing": report.standing,
+            "sentences_total": len(report.sentences),
+            "uncited": len(report.uncited),
+            "bare": len(report.bare),
+            "findings": findings(report),
+        }
+    )
     return payload
 
 
@@ -169,23 +171,35 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
             description="Report which sentences of a draft carry no citation.",
         )
     parser.add_argument("draft", help="Path to the draft to check")
-    parser.add_argument("--genre", choices=sorted(_units.UNCITED_PROSE),
-                        help="Read the draft under this genre instead of the one "
-                             "its dossier records. The genre decides whether "
-                             "uncited prose raises findings at all; this is for a "
-                             "draft with no dossier, or to read one strictly on "
-                             "purpose.")
-    parser.add_argument("--json", action="store_true",
-                        help="Print the findings as JSON instead of as text. "
-                             "--write files it beside the report either way.")
-    parser.add_argument("--write", action="store_true",
-                        help="Also write the report to content/review/, mirroring the "
-                             "draft's path. Off by default: printing is the usual use.")
-    parser.add_argument("--formats", default="md,tex,pdf",
-                        help="Additional formats to render beside the Markdown "
-                             "report (default: md,tex,pdf). The .md is always "
-                             "written -- it is the report; tex/pdf are renders "
-                             "of it, and need pandoc/pdflatex on PATH.")
+    parser.add_argument(
+        "--genre",
+        choices=sorted(_units.UNCITED_PROSE),
+        help="Read the draft under this genre instead of the one "
+        "its dossier records. The genre decides whether "
+        "uncited prose raises findings at all; this is for a "
+        "draft with no dossier, or to read one strictly on "
+        "purpose.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of as text. "
+        "--write files it beside the report either way.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Also write the report to content/review/, mirroring the "
+        "draft's path. Off by default: printing is the usual use.",
+    )
+    parser.add_argument(
+        "--formats",
+        default="md,tex,pdf",
+        help="Additional formats to render beside the Markdown "
+        "report (default: md,tex,pdf). The .md is always "
+        "written -- it is the report; tex/pdf are renders "
+        "of it, and need pandoc/pdflatex on PATH.",
+    )
     return parser
 
 
@@ -217,14 +231,15 @@ def run(args: argparse.Namespace) -> int:
 
     command = _command(draft_path, args.genre, args.json, args.write)
     payload = uncited_payload(report, command)
-    print(json.dumps(payload, indent=2) if args.json
-          else _uncited_render.format_report(report, found))
+    print(
+        json.dumps(payload, indent=2) if args.json else _uncited_render.format_report(report, found)
+    )
 
     if args.write:
         formats = [f.strip() for f in args.formats.split(",") if f.strip()]
         written = review.write(
-            draft_path, "uncited",
-            _uncited_render.render_markdown(report, command, found), formats)
+            draft_path, "uncited", _uncited_render.render_markdown(report, command, found), formats
+        )
         written["json"] = review.write_json(draft_path, "uncited", payload)
         review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
     return 0

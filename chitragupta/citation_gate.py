@@ -205,10 +205,12 @@ def run(paths: list[str]) -> int:
     # being dead. When the hook is what invoked this, the launcher plainly
     # resolved and nothing is printed.
     for fault in hook_launchers.faults():
-        print(f"WARNING: {fault} This gate ran because something invoked it, but "
-              "it is no longer running automatically after every write to a "
-              "draft -- see docs/HOOKS.md.",
-              file=sys.stderr)
+        print(
+            f"WARNING: {fault} This gate ran because something invoked it, but "
+            "it is no longer running automatically after every write to a "
+            "draft -- see docs/HOOKS.md.",
+            file=sys.stderr,
+        )
 
     with ledger.connection() as con:
         known = ledger.known_citekeys(con)
@@ -236,14 +238,17 @@ def run(paths: list[str]) -> int:
             continue
         result = check_document(checked, known)
         if result.ok:
-            print(f"OK    {p}: {result.total_citations} citation(s), "
-                  f"all verified against the ledger.")
+            print(
+                f"OK    {p}: {result.total_citations} citation(s), all verified against the ledger."
+            )
         else:
             all_ok = False
             print(f"FAIL  {p}: {len(result.unknown)} unresolved citekey(s):")
             for line_no, key in result.unknown:
-                print(f"        {p}:{line_no}: @{key} not found in ledger "
-                      f"-- not sourced from bib sync")
+                print(
+                    f"        {p}:{line_no}: @{key} not found in ledger "
+                    f"-- not sourced from bib sync"
+                )
 
     return 0 if all_ok else 1
 

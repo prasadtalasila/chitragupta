@@ -333,8 +333,9 @@ def entries(citekeys: list[str], con) -> dict[str, str]:
     return built
 
 
-def build_section(citekeys: list[str], con, heading: str = "References",
-                  label_citekeys: bool = True) -> str:
+def build_section(
+    citekeys: list[str], con, heading: str = "References", label_citekeys: bool = True
+) -> str:
     """The References section for `citekeys`, numbered in the given order.
 
     `label_citekeys` appends each entry's key in a code span. On by
@@ -523,13 +524,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft references",
         description="Append/replace a References section built from a "
-                    "Markdown draft's own cited citekeys.",
+        "Markdown draft's own cited citekeys.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown)")
     parser.add_argument(
-        "--heading", default="References",
+        "--heading",
+        default="References",
         help='Heading text, e.g. "6. References" to match a draft\'s own '
-             'numbered headings (default: "References")',
+        'numbered headings (default: "References")',
     )
     args = parser.parse_args(argv)
 

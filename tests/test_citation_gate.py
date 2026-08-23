@@ -14,19 +14,35 @@ from tests.conftest import content_draft, make_reference
 
 
 class TestExtractLatexCitations:
-    @pytest.mark.parametrize("cmd", [
-        "cite", "citep", "citet", "parencite", "textcite", "autocite", "citeauthor", "citeyear",
-        # These were silently missed by an earlier, enumerated version of
-        # the regex: ordered alternation tried "cite" first, matched as a
-        # prefix of e.g. "citealp", then failed to find the "{" that must
-        # immediately follow and never backed off to try the longer
-        # alternatives -- a false negative on the invariant this gate
-        # exists to enforce (a fabricated key in one of these read as "0
-        # citations" instead of "unresolved"). Regression coverage for
-        # that fix, not just the already-working subset above.
-        "citealp", "citealt", "footcite", "smartcite", "fullcite", "nocite", "citenum",
-        "citeyearpar",
-    ])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "cite",
+            "citep",
+            "citet",
+            "parencite",
+            "textcite",
+            "autocite",
+            "citeauthor",
+            "citeyear",
+            # These were silently missed by an earlier, enumerated version of
+            # the regex: ordered alternation tried "cite" first, matched as a
+            # prefix of e.g. "citealp", then failed to find the "{" that must
+            # immediately follow and never backed off to try the longer
+            # alternatives -- a false negative on the invariant this gate
+            # exists to enforce (a fabricated key in one of these read as "0
+            # citations" instead of "unresolved"). Regression coverage for
+            # that fix, not just the already-working subset above.
+            "citealp",
+            "citealt",
+            "footcite",
+            "smartcite",
+            "fullcite",
+            "nocite",
+            "citenum",
+            "citeyearpar",
+        ],
+    )
     def test_all_recognized_commands(self, cmd):
         assert citation_gate.extract_citekeys_from_line(f"\\{cmd}{{smith2024}}") == ["smith2024"]
 
@@ -43,10 +59,15 @@ class TestExtractLatexCitations:
         assert citation_gate.extract_citekeys_from_line("\\cite{a2024,b2024}") == ["a2024", "b2024"]
 
     def test_multiple_keys_with_spaces(self):
-        assert citation_gate.extract_citekeys_from_line("\\cite{a2024, b2024}") == ["a2024", "b2024"]
+        assert citation_gate.extract_citekeys_from_line("\\cite{a2024, b2024}") == [
+            "a2024",
+            "b2024",
+        ]
 
     def test_optional_bracket_args_before_key(self):
-        assert citation_gate.extract_citekeys_from_line("\\citep[see][p.\\ 5]{smith2024}") == ["smith2024"]
+        assert citation_gate.extract_citekeys_from_line("\\citep[see][p.\\ 5]{smith2024}") == [
+            "smith2024"
+        ]
 
     def test_unrelated_command_not_matched(self):
         assert citation_gate.extract_citekeys_from_line("\\section{Introduction}") == []
@@ -54,20 +75,23 @@ class TestExtractLatexCitations:
     def test_plain_text_no_match(self):
         assert citation_gate.extract_citekeys_from_line("Just some prose.") == []
 
-    @pytest.mark.parametrize("text", [
-        # TeX itself skips whitespace between a control word and its
-        # arguments -- \citep {key} is valid and equivalent to
-        # \citep{key}. Without \s* in the regex, any of these silently
-        # missed a real (or fabricated) citekey -- same false-negative
-        # class as test_all_recognized_commands above. Cases where the
-        # whitespace itself contains a newline (\citep\n{key}) are covered
-        # separately in TestExtractCitekeysWholeDocument, since a per-line
-        # caller like citation_coverage.py never hands this wrapper a
-        # string spanning two real lines in the first place.
-        "\\citep {smith2024}",
-        "\\citep [see]{smith2024}",
-        "\\citep *{smith2024}",
-    ])
+    @pytest.mark.parametrize(
+        "text",
+        [
+            # TeX itself skips whitespace between a control word and its
+            # arguments -- \citep {key} is valid and equivalent to
+            # \citep{key}. Without \s* in the regex, any of these silently
+            # missed a real (or fabricated) citekey -- same false-negative
+            # class as test_all_recognized_commands above. Cases where the
+            # whitespace itself contains a newline (\citep\n{key}) are covered
+            # separately in TestExtractCitekeysWholeDocument, since a per-line
+            # caller like citation_coverage.py never hands this wrapper a
+            # string spanning two real lines in the first place.
+            "\\citep {smith2024}",
+            "\\citep [see]{smith2024}",
+            "\\citep *{smith2024}",
+        ],
+    )
     def test_whitespace_between_command_and_arguments(self, text):
         assert citation_gate.extract_citekeys_from_line(text) == ["smith2024"]
 
@@ -83,12 +107,14 @@ class TestExtractPandocCitations:
         assert citation_gate.extract_citekeys_from_line("As @smith2024 showed...") == ["smith2024"]
 
     def test_suppress_author_form(self):
-        assert citation_gate.extract_citekeys_from_line("Smith (-@smith2024) showed...") == ["smith2024"]
+        assert citation_gate.extract_citekeys_from_line("Smith (-@smith2024) showed...") == [
+            "smith2024"
+        ]
 
     def test_key_with_hyphens_and_underscores(self):
-        assert citation_gate.extract_citekeys_from_line(
-            "[@jacoby_open-source_2023]"
-        ) == ["jacoby_open-source_2023"]
+        assert citation_gate.extract_citekeys_from_line("[@jacoby_open-source_2023]") == [
+            "jacoby_open-source_2023"
+        ]
 
     def test_key_with_double_hyphen(self):
         assert citation_gate.extract_citekeys_from_line(
@@ -96,9 +122,10 @@ class TestExtractPandocCitations:
         ) == ["zech_digital-twins-as--service_2024"]
 
     def test_email_address_not_mistaken_for_citation(self):
-        assert citation_gate.extract_citekeys_from_line(
-            "Contact us at name@example.com for details."
-        ) == []
+        assert (
+            citation_gate.extract_citekeys_from_line("Contact us at name@example.com for details.")
+            == []
+        )
 
     def test_email_alongside_real_citation(self):
         line = "See [@smith2024] or email name@example.com."
@@ -164,7 +191,9 @@ class TestExtractCitekeysWholeDocument:
         # to locate by reading top-to-bottom.
         text = "[@later_pandoc]\nprose\n\\citep{earlier_latex}\nmore\n[@even_later]\n"
         assert citation_gate.extract_citekeys(text) == [
-            (1, "later_pandoc"), (3, "earlier_latex"), (5, "even_later"),
+            (1, "later_pandoc"),
+            (3, "earlier_latex"),
+            (5, "even_later"),
         ]
 
 
@@ -195,11 +224,7 @@ class TestCodeAndVerbatimExclusion:
         # would push the blocking PostToolUse hook to reject a draft on
         # invented grounds.
         text = (
-            "Refer to \\nocite\n"
-            "\\begin{verbatim}\n"
-            "anything\n"
-            "\\end{verbatim}\n"
-            "{\\bfseries note}\n"
+            "Refer to \\nocite\n\\begin{verbatim}\nanything\n\\end{verbatim}\n{\\bfseries note}\n"
         )
         assert citation_gate.extract_citekeys(text) == []
 
@@ -306,9 +331,13 @@ class TestDeadLauncherWarning:
         return str(path)
 
     def test_a_dead_launcher_is_warned_about_without_changing_the_verdict(
-            self, isolated_config, monkeypatch, capsys):
-        monkeypatch.setattr(citation_gate.hook_launchers, "faults",
-                            lambda: ["`python` is not on PATH, so a hook cannot start."])
+        self, isolated_config, monkeypatch, capsys
+    ):
+        monkeypatch.setattr(
+            citation_gate.hook_launchers,
+            "faults",
+            lambda: ["`python` is not on PATH, so a hook cannot start."],
+        )
         rc = citation_gate.run([self.draft(isolated_config)])
         captured = capsys.readouterr()
 
@@ -329,7 +358,8 @@ class TestCliEntrypoint:
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.draft", "gate"],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "usage:" in result.stderr
@@ -344,13 +374,16 @@ class TestCliEntrypoint:
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.draft", "gate", flag],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0
         assert "usage:" in result.stdout
         assert "Traceback" not in result.stderr
 
-    def test_runs_with_bare_system_python3_no_bibtexparser(self, system_python, isolated_config, tmp_path):
+    def test_runs_with_bare_system_python3_no_bibtexparser(
+        self, system_python, isolated_config, tmp_path
+    ):
         """AGENTS.md's hard requirement: citation_gate must run with the
         bare system interpreter, no bibtexparser/venv needed."""
         con = ledger.connect()
@@ -364,7 +397,8 @@ class TestCliEntrypoint:
         result = subprocess.run(
             [system_python, "-m", "chitragupta.draft", "gate", str(draft)],
             cwd=str(repo_root),
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},
         )
         assert "bibtexparser" not in (result.stderr or "").lower()

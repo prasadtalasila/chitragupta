@@ -82,8 +82,7 @@ class Report:
 
     @property
     def declared(self) -> int:
-        return len([unit for unit in self.citing
-                    if len(unit.citekeys) == 1 and unit.declared])
+        return len([unit for unit in self.citing if len(unit.citekeys) == 1 and unit.declared])
 
     @property
     def undeclared(self) -> int:
@@ -165,10 +164,12 @@ def findings(report: Report) -> list[dict]:
     already done what the rule asks, and the report should not make them
     read past their own declarations to find what they have not looked at.
     """
-    found = [_finding(unit, "single_source")
-             for unit in report.citing if len(unit.citekeys) == 1]
-    found += [_finding(unit, "single_key_run") for unit in report.citing
-              if len(unit.citekeys) > 1 and unit.longest_run >= RUN_REPORTED_AT]
+    found = [_finding(unit, "single_source") for unit in report.citing if len(unit.citekeys) == 1]
+    found += [
+        _finding(unit, "single_key_run")
+        for unit in report.citing
+        if len(unit.citekeys) > 1 and unit.longest_run >= RUN_REPORTED_AT
+    ]
     return sorted(found, key=lambda f: (f["declared"] is not None, f["line"]))
 
 
@@ -191,19 +192,21 @@ def synthesis_payload(report: Report, command: str) -> dict:
     """The same findings the report prints, as data -- an additional
     serialisation, never a second computation."""
     payload = review.envelope(report.draft, "synthesis", command)
-    payload.update({
-        "genre": report.genre,
-        "unit": report.kind,
-        "unit_source": report.source,
-        "units_total": len(report.units),
-        "uncited": report.uncited,
-        "single_source": report.single_source,
-        "multi_source": report.multi_source,
-        "declared": report.declared,
-        "undeclared": report.undeclared,
-        "single_source_pct": report.single_source_pct,
-        "findings": findings(report),
-    })
+    payload.update(
+        {
+            "genre": report.genre,
+            "unit": report.kind,
+            "unit_source": report.source,
+            "units_total": len(report.units),
+            "uncited": report.uncited,
+            "single_source": report.single_source,
+            "multi_source": report.multi_source,
+            "declared": report.declared,
+            "undeclared": report.undeclared,
+            "single_source_pct": report.single_source_pct,
+            "findings": findings(report),
+        }
+    )
     return payload
 
 
@@ -221,21 +224,33 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
             description="Report how many sources each unit of a draft rests on.",
         )
     parser.add_argument("draft", help="Path to the draft to check")
-    parser.add_argument("--unit", choices=_units.KINDS,
-                        help="Measure at this unit instead of the one this draft's "
-                             "genre binds at. The genre is read from the dossier's "
-                             "scope.md; this is for a draft that has none.")
-    parser.add_argument("--json", action="store_true",
-                        help="Print the findings as JSON instead of as text. "
-                             "--write files it beside the report either way.")
-    parser.add_argument("--write", action="store_true",
-                        help="Also write the report to content/review/, mirroring the "
-                             "draft's path. Off by default: printing is the usual use.")
-    parser.add_argument("--formats", default="md,tex,pdf",
-                        help="Additional formats to render beside the Markdown "
-                             "report (default: md,tex,pdf). The .md is always "
-                             "written -- it is the report; tex/pdf are renders "
-                             "of it, and need pandoc/pdflatex on PATH.")
+    parser.add_argument(
+        "--unit",
+        choices=_units.KINDS,
+        help="Measure at this unit instead of the one this draft's "
+        "genre binds at. The genre is read from the dossier's "
+        "scope.md; this is for a draft that has none.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of as text. "
+        "--write files it beside the report either way.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Also write the report to content/review/, mirroring the "
+        "draft's path. Off by default: printing is the usual use.",
+    )
+    parser.add_argument(
+        "--formats",
+        default="md,tex,pdf",
+        help="Additional formats to render beside the Markdown "
+        "report (default: md,tex,pdf). The .md is always "
+        "written -- it is the report; tex/pdf are renders "
+        "of it, and need pandoc/pdflatex on PATH.",
+    )
     return parser
 
 
@@ -268,14 +283,20 @@ def run(args: argparse.Namespace) -> int:
 
     command = _command(draft_path, args.unit, args.json, args.write)
     payload = synthesis_payload(report, command)
-    print(json.dumps(payload, indent=2) if args.json
-          else _synthesis_render.format_report(report, found))
+    print(
+        json.dumps(payload, indent=2)
+        if args.json
+        else _synthesis_render.format_report(report, found)
+    )
 
     if args.write:
         formats = [f.strip() for f in args.formats.split(",") if f.strip()]
         written = review.write(
-            draft_path, "synthesis",
-            _synthesis_render.render_markdown(report, command, found), formats)
+            draft_path,
+            "synthesis",
+            _synthesis_render.render_markdown(report, command, found),
+            formats,
+        )
         written["json"] = review.write_json(draft_path, "synthesis", payload)
         review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
     return 0

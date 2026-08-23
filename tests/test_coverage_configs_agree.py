@@ -47,7 +47,5 @@ class TestTheTwoConfigsAgreeOnWhatTheyMeasure:
         with open(PYPROJECT, "rb") as f:
             linux_exclude = set(tomllib.load(f)["tool"]["coverage"]["report"]["exclude_lines"])
         with open(WINDOWS_CONFIG, "rb") as f:
-            windows_exclude = set(
-                tomllib.load(f)["tool"]["coverage"]["report"]["exclude_lines"]
-            )
+            windows_exclude = set(tomllib.load(f)["tool"]["coverage"]["report"]["exclude_lines"])
         assert linux_exclude < windows_exclude

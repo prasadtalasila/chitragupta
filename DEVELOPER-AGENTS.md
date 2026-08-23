@@ -329,14 +329,15 @@ Before saying so, actually run, in this repo:
   Windows leg -- which installs no `os-deps` and so self-skips the render
   and pdf tests -- holds 95, low enough not to need re-tuning whenever
   toolchain-only code is added and high enough to catch a real collapse.
-- **All three linters, at their full paths** (see "The linters, which
-  are enforced" below). They are not optional and not CI's job alone --
-  `markdownlint` in particular fails on prose that no test touches, so a
-  green suite says nothing about it:
+- **All three linters and the formatter, at their full paths** (see "The
+  linters, which are enforced" below). They are not optional and not
+  CI's job alone -- `markdownlint` in particular fails on prose that no
+  test touches, so a green suite says nothing about it:
 
   ```bash
   pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
   ruff check chitragupta scripts .claude/hooks
+  ruff format --check chitragupta scripts tests bench .claude/hooks
   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
   ```
 
@@ -391,14 +392,19 @@ than post a wrong number.
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
 from. `pyproject.toml`'s `[tool.ruff]` is not: DTaaS carries no ruff
 config to inherit, so its `select` and `per-file-ignores` were decided
-fresh, the way the paragraph below states. Run all three before you push;
+fresh, the way the paragraph below states. Run all four before you push;
 `ci.yml`'s `lint` job runs exactly these, and the paths are part of the
 command rather than a detail -- a narrower glob is how a tree stops being
-checked without anyone deciding it should:
+checked without anyone deciding it should. `ruff format --check`'s roots
+are wider than the other three's, deliberately: `tests/` and `bench/`
+are formatted though neither is linted, see
+[docs/TECHNICAL-DEBT.md](docs/TECHNICAL-DEBT.md)'s 5.5 for why narrowing
+to match would only relocate the gap:
 
 ```bash
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
+ruff format --check chitragupta scripts tests bench .claude/hooks
 markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"   # npm i -g markdownlint-cli2
 ```
 
@@ -407,14 +413,14 @@ reports `tail`'s status, so a real finding passes for a clean run. That is
 not hypothetical: it put a `line-too-long` through a local check and into
 CI on 2026-08-15.
 
-**All three are blocking, at a binary zero-messages bar** -- never a
+**All four are blocking, at a binary zero-messages bar** -- never a
 `fail-under` score, because
 [R3](docs/AUTO-IMPROVEMENT.md#-the-requirements) rules out driving a
 number, and a score can improve while the thing you cared about gets
 worse. There is no backlog left to avoid: the pylint/markdownlint
-adoption in 5.8.0 cleared both to zero first, and ruff's own adoption
-did the same, which is this file's own rule that **a check that has not
-been made to pass must not ship.**
+adoption in 5.8.0 cleared both to zero first, and ruff check's and ruff
+format's own adoptions did the same, which is this file's own rule that
+**a check that has not been made to pass must not ship.**
 
 What that adoption had to settle, since each is a decision a later reader
 will otherwise have to re-derive:
@@ -426,9 +432,12 @@ will otherwise have to re-derive:
 - **Wrapping long lines grew ten registered files.** `line-too-long` and
   the C2 file-length ratchet pull against each other; C0301 won, and the
   counts in `tests/test_code_standards_scan.py` moved with it.
-- **`MD060` is off.** Table cell padding, 839 of the 947-finding
-  baseline, and the alternative was a diff touching every table in the
-  documentation to move spaces around. Everything else is enforced.
+- **`MD060` was off**, at adoption -- table cell padding, 839 of the
+  947-finding baseline, declined because the alternative was a diff
+  touching every table in the documentation to move spaces around. **On
+  now**, since #362 made `markdownlint-cli2 --fix` do that pass instead
+  of a person; see [docs/TECHNICAL-DEBT.md's
+  5.2](docs/TECHNICAL-DEBT.md#-52-markdownlint-a-measured-baseline).
 - **The enrich group's imports are in `ignored-modules`** rather than
   installed in CI. They are lazy imports inside the functions that need
   them; pylint resolves imports statically wherever they sit, so without
@@ -473,6 +482,34 @@ no DTaaS config to inherit it from:
   `BLE001` looks, so an unpinned bump could move that verdict and redden
   the job on a rule this project never touched.
 
+**What `ruff format`'s adoption (#362) had to settle:**
+
+- **Roots are `chitragupta scripts tests bench .claude/hooks`**, wider
+  than either linter's -- `tests/` and `bench/` are formatted though
+  neither is linted. Style and per-site suppression are different axes;
+  narrowing the formatter's roots to match the linters' would relocate
+  the same "inconsistent, unformatted tree" gap this item exists to
+  close rather than close it.
+- **The reformat is an order of magnitude past 5.1's line-wrap
+  precedent, and was accepted at that scale rather than reduced.** This
+  codebase hand-aligns wrapped arguments to the opening paren; `ruff
+  format` always uses a hanging indent instead, with no config knob to
+  reconcile the two (`skip-magic-trailing-comma` was tried; negligible
+  effect). 222 of 259 Python files, +9,052/-5,153 lines, six new C2
+  offenders from the reformat alone -- see [docs/TECHNICAL-DEBT.md's
+  5.5](docs/TECHNICAL-DEBT.md#-55-ruff-format-the-whole-tree-reformat)
+  for the full accounting. Registered in
+  `tests/test_code_standards_scan.py`'s `LEGACY_LONG_FILES` the same way
+  5.1's ten were, not papered over or exempted.
+- **`.git-blame-ignore-revs` lands empty of entries in this PR.** This
+  repository squash-merges every PR (see "Merging" below), so the commit
+  the reformat becomes on `main` is one GitHub composes at merge time --
+  its SHA cannot be known before the merge and so cannot be written into
+  the same PR that creates it. The entry for #362's reformat commit lands
+  in a small follow-up PR immediately after, once that SHA exists; the
+  file's own header states the mechanism so the next reformat's author
+  does not have to re-derive it.
+
 `.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
 runner: it normalises line endings so CI's Windows leg reads
 byte-identical files to the Linux leg, which matters because four tests
@@ -500,7 +537,7 @@ It provides two skills, both of them plugin skills; what differs is who
 does the thinking.
 
 | Skill | Who reviews | Needs an LLM endpoint |
-|---|---|---|
+| --- | --- | --- |
 | `/open-code-review:delegate-review` | **You do.** The skill has OCR select the files and resolve the rules, then hands you each diff to review yourself | **No** |
 | `/open-code-review:review` | **A separate model call.** The skill drives `ocr review`, which sends each file to a configured endpoint and returns comments | **Yes** |
 

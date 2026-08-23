@@ -13,7 +13,6 @@ keeps them separate functions so a caller cannot accidentally treat the
 proportion as a verdict.
 """
 
-
 # The name the picture's own bounding box is reported under. TikZ's
 # `current bounding box` is a real pseudo-node, so it is read through the
 # identical mechanism as a real node -- but it is not one, and every
@@ -36,6 +35,7 @@ _TOLERANCE_PT = 1.0
 _PROTRUSION_BAND_FRACTION = 1 / 3
 
 Box = tuple[float, float, float, float]
+
 
 def _without_bbox(boxes: dict[str, Box]) -> dict[str, Box]:
     """`boxes` minus the picture's own extent -- the real nodes only."""
@@ -62,7 +62,7 @@ def overlaps(boxes: dict[str, Box]) -> list[tuple[str, str]]:
     nodes = sorted(_without_bbox(boxes).items())
     found = []
     for index, (name, box) in enumerate(nodes):
-        for other_name, other in nodes[index + 1:]:
+        for other_name, other in nodes[index + 1 :]:
             if _intersects(box, other) and not _either_contains(box, other):
                 found.append((name, other_name))
     return found
@@ -91,8 +91,10 @@ def _contains(outer: Box, inner: Box) -> bool:
     ox1, oy1, ox2, oy2 = outer
     ix1, iy1, ix2, iy2 = inner
     return (
-        ox1 - ix1 <= _TOLERANCE_PT and oy1 - iy1 <= _TOLERANCE_PT
-        and ix2 - ox2 <= _TOLERANCE_PT and iy2 - oy2 <= _TOLERANCE_PT
+        ox1 - ix1 <= _TOLERANCE_PT
+        and oy1 - iy1 <= _TOLERANCE_PT
+        and ix2 - ox2 <= _TOLERANCE_PT
+        and iy2 - oy2 <= _TOLERANCE_PT
     )
 
 

@@ -76,6 +76,7 @@ MIN_ALIGNMENT_SCORE = 0.0
 # report with progressively weaker tails of the same passage.
 MAX_ALIGNMENTS_PER_PAIR = 3
 
+
 @dataclass(frozen=True)
 class Alignment:
     """One local alignment: half-open sentence-index ranges on each side,
@@ -88,6 +89,7 @@ class Alignment:
     source sentences into one leaves the second draft sentence on a gap
     step, inside the reported span but not itself matched.
     """
+
     draft_start: int
     draft_end: int
     source_start: int
@@ -155,8 +157,12 @@ def _trace(table: list[list[float]], pointers: dict, cell: tuple[int, int]) -> A
             matched.append(i - 1)
         i, j = i - di, j - dj
     return Alignment(
-        draft_start=i, draft_end=cell[0], source_start=j, source_end=cell[1],
-        score=table[cell[0]][cell[1]], matched=tuple(reversed(matched)),
+        draft_start=i,
+        draft_end=cell[0],
+        source_start=j,
+        source_end=cell[1],
+        score=table[cell[0]][cell[1]],
+        matched=tuple(reversed(matched)),
     )
 
 
@@ -224,5 +230,7 @@ def align(
 
 
 def _overlaps(alignment: Alignment, found: list[Alignment]) -> bool:
-    return any(alignment.draft_start < other.draft_end
-               and other.draft_start < alignment.draft_end for other in found)
+    return any(
+        alignment.draft_start < other.draft_end and other.draft_start < alignment.draft_end
+        for other in found
+    )

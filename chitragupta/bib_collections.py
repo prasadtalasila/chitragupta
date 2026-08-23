@@ -84,8 +84,7 @@ def matches(collections: "tuple[str, ...] | list[str]", wanted: str) -> bool:
         return False
     prefix = target + _JOINED.casefold()
     return any(
-        path == target or path.startswith(prefix)
-        for path in (c.casefold() for c in collections)
+        path == target or path.startswith(prefix) for path in (c.casefold() for c in collections)
     )
 
 
@@ -135,7 +134,9 @@ def report(rows) -> list[str]:
     """
     paths = names({row["citekey"]: of_row(row) for row in rows})
     if not paths:
-        return ["No collections recorded.",
-                "Zotero's own BibTeX export drops them; see docs/ZOTERO.md for "
-                "the Better BibTeX option that keeps them."]
+        return [
+            "No collections recorded.",
+            "Zotero's own BibTeX export drops them; see docs/ZOTERO.md for "
+            "the Better BibTeX option that keeps them.",
+        ]
     return [f"  {path}" for path in paths] + ["", f"  {len(paths)} collection(s)."]

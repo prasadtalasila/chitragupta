@@ -54,7 +54,7 @@ is watching.
 them and what they are allowed to do*.
 
 | Layer | What it is | Runs when |
-|---|---|---|
+| --- | --- | --- |
 | **1. Corpus** | `python -m chitragupta.corpus sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
 | **3. Enrichment** | `python -m chitragupta.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
@@ -259,7 +259,7 @@ Which stages it reaches is the part worth being precise about, because it
 is fewer than it sounds:
 
 | Stage | Under `--for-draft` | Why |
-|---|---|---|
+| --- | --- | --- |
 | `docling` | scoped | Per-document by nature. Its artefacts are keyed by citekey and its cache is per-document, so eleven of them is a subset of the corpus-wide result, not a different one |
 | `embed` | **refused** | The Chroma collection records nothing about how much of the corpus it covers, and every skill that reads it decides by asking only whether `content/chroma/` exists. A partial index would answer as though it were complete |
 | `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus -- one added document can move every assignment -- so a scoped run would replace a topic model with something that isn't one |
@@ -310,7 +310,7 @@ read by
 `chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`.
 
 | # | Rung | Written by | Quotable? |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | `content/docling/<citekey>.passages.json` | enrichment layer's `docling` stage | **yes** |
 | 2 | `content/parsed/<citekey>.passages.json` | corpus layer, when `[parser].backend = "docling"` | **yes** |
 | 3 | `content/parsed/<citekey>.txt` split on form feeds | corpus layer, either backend | no -- page only |
@@ -359,7 +359,7 @@ also used by
 `chitragupta/enrich/topic_model.py`.
 
 | # | Rung | Note |
-|---|---|---|
+| --- | --- | --- |
 | 1 | `content/docling/<citekey>.md` | the enrichment layer's own parse; image references are stripped before embedding |
 | 2 | the ledger's `parsed_path` `.txt` | whatever the corpus layer produced, verbatim |
 | 3 | `pdftotext -layout` into a temp file | for a bib item the corpus layer has not parsed -- a parse that failed, or one not re-run since the PDF was attached |
@@ -389,9 +389,9 @@ that, once.
 for both the corpus
 layer's docling backend and the enrichment layer's docling stage.
 
-| # | Rung | Falls when |
-|---|---|---|
-| 1 | one CUDA device per worker, round-robin | -- |
+| # | Rung                                            | Falls when                           |
+| - | ----------------------------------------------- | ------------------------------------ |
+| 1 | one CUDA device per worker, round-robin         | --                                   |
 | 2 | that worker on the CPU, permanently for the run | the device raises CUDA out-of-memory |
 
 Two checks run *before* the ladder and decide what its top rung even is,
@@ -438,7 +438,7 @@ unavailable.
 **Set by:** `[parser].backend` in `config.toml`, or the `PARSER` env var.
 
 | Option | Needs | Page breaks | Quotable passages | Speed |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `pdftotext` (default) | `poppler-utils` on `PATH` | yes -- form feeds | no | fastest |
 | `docling` | the `enrich` Poetry group, in a venv | yes -- form feeds | **yes**, writes ladder 1's rung 2 | ~6.65s/PDF serial |
 
@@ -457,7 +457,7 @@ because nothing degrades: a module either imports or raises
 `ModuleNotFoundError`.
 
 | # | Needs | Commands |
-|---|---|---|
+| --- | --- | --- |
 | 1 | bare `python`, stdlib only | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids), `chitragupta.passages` |
 | 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
@@ -474,7 +474,7 @@ through `getattr` and never imports the library. See
 **Set by:** `--format` on `python -m chitragupta.draft render`.
 
 | Format | Needs | Note |
-|---|---|---|
+| --- | --- | --- |
 | `md` from a `.md`/`.markdown` draft | nothing | done in-process; citation numbering is not a format conversion, and pandoc's Markdown writer mangles it |
 | `md` from a `.tex` draft | pandoc | a real conversion, so it goes to pandoc after all |
 | `tex`, `docx` | pandoc | |
@@ -585,7 +585,7 @@ The same thing as a table. Read a row as: *this decision selects this
 thing, is made here, is implemented there, and shows up on disk as that.*
 
 | Decision | Kind | Selects | Decided | Implemented in | Artefact |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Evidence passages | ladder, 4 rungs | what may be quoted | at read time, per citekey | `chitragupta/passages.py` | `*.passages.json`, else nothing |
 | Enrichment text source | ladder, 3 rungs | what gets embedded | at index time, per doc | `chitragupta/enrich/embed_index.py` | `content/chroma/` |
 | Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `chitragupta/pdf_text.py` | none -- affects time only |
@@ -596,7 +596,7 @@ thing, is made here, is implemented there, and shows up on disk as that.*
 And the same decisions against the layer that makes them:
 
 | Layer | Ladders it walks | Tiers it obeys | Lock |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1. Corpus (`chitragupta.corpus sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
 | 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
 | 3. Enrichment (`python -m chitragupta.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |

@@ -75,26 +75,51 @@ from pathlib import Path
 
 from chitragupta import config, review
 from chitragupta.review.verbatim_check._allowlist import (
-    _load_allowlist_phrases, _mask_allowlisted, _mask_allowlisted_stemmed,
+    _load_allowlist_phrases,
+    _mask_allowlisted,
+    _mask_allowlisted_stemmed,
 )
 from chitragupta.review.verbatim_check._baseline import _BASELINE_FIELDS, load_baseline
 from chitragupta.review.verbatim_check._corpus import (
-    BIB, PARSED_DIR, bib_entry, norm, pages, pdf_path, sentences_citing,
+    BIB,
+    PARSED_DIR,
+    bib_entry,
+    norm,
+    pages,
+    pdf_path,
+    sentences_citing,
 )
 from chitragupta.review.verbatim_check._masking import (
-    _lower_offsets, _mask_for_scan, _paragraphs, _quote_char_spans, _tokenize_draft,
+    _lower_offsets,
+    _mask_for_scan,
+    _paragraphs,
+    _quote_char_spans,
+    _tokenize_draft,
 )
 from chitragupta.review.verbatim_check._merge import _merge_runs, _merge_spans
 from chitragupta.review.verbatim_check._overlap import cmd_locate, cmd_overlap
 from chitragupta.review.verbatim_check._recheck import (
-    cmd_recheck, format_recheck, recheck_command, recheck_findings, recheck_payload,
+    cmd_recheck,
+    format_recheck,
+    recheck_command,
+    recheck_findings,
+    recheck_payload,
 )
 from chitragupta.review.verbatim_check._scan import (
-    LONG_RUN_WORDS, _PAYLOAD_FIELDS, _bucket, _bucket_title, _flags,
-    _tier_note, published, scan_findings,
+    LONG_RUN_WORDS,
+    _PAYLOAD_FIELDS,
+    _bucket,
+    _bucket_title,
+    _flags,
+    _tier_note,
+    published,
+    scan_findings,
 )
 from chitragupta.review.verbatim_check._scan_cmd import (
-    cmd_scan, format_scan, scan_command, scan_payload,
+    cmd_scan,
+    format_scan,
+    scan_command,
+    scan_payload,
 )
 from chitragupta.review.verbatim_check._scan_render import render_scan_markdown
 from chitragupta.review.verbatim_check._shared import _line_at, _newline_offsets, finding_id
@@ -111,6 +136,7 @@ def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
     arithmetic degrade silently rather than raising) -- both look like
     "nothing to report" instead of the usage error they actually are.
     """
+
     def parse(raw: str) -> int:
         try:
             value = int(raw)
@@ -119,6 +145,7 @@ def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
         if value < minimum:
             raise argparse.ArgumentTypeError(f"{name} must be >= {minimum}")
         return value
+
     return parse
 
 
@@ -141,39 +168,67 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     p_overlap = sub.add_parser("overlap", help="per-citekey verbatim runs")
     p_overlap.add_argument("draft", help="Markdown draft to check")
     p_overlap.add_argument("citekey", help="The cited source to compare against")
-    p_overlap.add_argument("--n", type=_bounded_int(1, "--n"), default=8,
-                           help="Minimum run length in words (default: 8)")
+    p_overlap.add_argument(
+        "--n",
+        type=_bounded_int(1, "--n"),
+        default=8,
+        help="Minimum run length in words (default: 8)",
+    )
 
     p_scan = sub.add_parser("scan", help="whole-draft x whole-corpus scan")
     p_scan.add_argument("draft", help="Markdown draft to scan")
-    p_scan.add_argument("--min-run", type=_bounded_int(1, "--min-run"), default=None,
-                        help="Reporting length floor in words (default: the corpus "
-                             "index's own n-gram size)")
-    p_scan.add_argument("--gap", type=_bounded_int(0, "--gap"), default=1,
-                        help="Non-matching words tolerated inside a run (default: 1)")
-    p_scan.add_argument("--limit", type=_bounded_int(1, "--limit"), default=None,
-                        help="Cap how many findings print (default: all of them)")
-    p_scan.add_argument("--json", action="store_true",
-                        help="Print the findings as JSON instead of as text, for a "
-                             "caller that would otherwise parse the printed form. "
-                             "--write files it beside the report either way.")
-    p_scan.add_argument("--write", action="store_true",
-                        help="Also write the report to content/review/, mirroring the "
-                             "draft's path. Off by default: printing is the usual use.")
-    p_scan.add_argument("--formats", default="md,tex,pdf",
-                        help="Additional formats to render beside the Markdown "
-                             "report (default: md,tex,pdf). The .md is always "
-                             "written -- it is the report; tex/pdf are renders "
-                             "of it, and need pandoc/pdflatex on PATH.")
+    p_scan.add_argument(
+        "--min-run",
+        type=_bounded_int(1, "--min-run"),
+        default=None,
+        help="Reporting length floor in words (default: the corpus index's own n-gram size)",
+    )
+    p_scan.add_argument(
+        "--gap",
+        type=_bounded_int(0, "--gap"),
+        default=1,
+        help="Non-matching words tolerated inside a run (default: 1)",
+    )
+    p_scan.add_argument(
+        "--limit",
+        type=_bounded_int(1, "--limit"),
+        default=None,
+        help="Cap how many findings print (default: all of them)",
+    )
+    p_scan.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of as text, for a "
+        "caller that would otherwise parse the printed form. "
+        "--write files it beside the report either way.",
+    )
+    p_scan.add_argument(
+        "--write",
+        action="store_true",
+        help="Also write the report to content/review/, mirroring the "
+        "draft's path. Off by default: printing is the usual use.",
+    )
+    p_scan.add_argument(
+        "--formats",
+        default="md,tex,pdf",
+        help="Additional formats to render beside the Markdown "
+        "report (default: md,tex,pdf). The .md is always "
+        "written -- it is the report; tex/pdf are renders "
+        "of it, and need pandoc/pdflatex on PATH.",
+    )
 
     p_recheck = sub.add_parser("recheck", help="this scan against a recorded one")
     p_recheck.add_argument("draft", help="Markdown draft to re-scan")
-    p_recheck.add_argument("--baseline", required=True,
-                           help="A scan payload to compare against, as written by "
-                                "`scan --write`. Its --min-run and --gap are reused, "
-                                "so the two scans are comparable.")
-    p_recheck.add_argument("--json", action="store_true",
-                           help="Print the comparison as JSON instead of as text.")
+    p_recheck.add_argument(
+        "--baseline",
+        required=True,
+        help="A scan payload to compare against, as written by "
+        "`scan --write`. Its --min-run and --gap are reused, "
+        "so the two scans are comparable.",
+    )
+    p_recheck.add_argument(
+        "--json", action="store_true", help="Print the comparison as JSON instead of as text."
+    )
 
     p_locate = sub.add_parser("locate", help="which page a phrase is on")
     p_locate.add_argument("citekey", help="The source to search")
@@ -229,7 +284,10 @@ def run(args: argparse.Namespace) -> int:
             cmd_recheck(str(draft), args.baseline, as_json=args.json)
         else:
             cmd_scan(
-                str(draft), args.min_run, args.gap, args.limit,
+                str(draft),
+                args.min_run,
+                args.gap,
+                args.limit,
                 write=args.write,
                 formats=[f.strip() for f in args.formats.split(",") if f.strip()],
                 as_json=args.json,

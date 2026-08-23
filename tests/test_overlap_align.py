@@ -76,7 +76,7 @@ class TestAlign:
         found = overlap_align.align(scores)
         spans = [(a.draft_start, a.draft_end) for a in found]
         for i, (start, end) in enumerate(spans):
-            for other_start, other_end in spans[i + 1:]:
+            for other_start, other_end in spans[i + 1 :]:
                 assert end <= other_start or other_end <= start
 
     def test_it_never_reports_more_than_the_limit(self):
@@ -97,7 +97,7 @@ class TestAlign:
         spans = [(a.draft_start, a.draft_end) for a in found]
         assert len(spans) == len(set(spans))
         for i, (start, end) in enumerate(spans):
-            for other_start, other_end in spans[i + 1:]:
+            for other_start, other_end in spans[i + 1 :]:
                 assert end <= other_start or other_end <= start
 
     def test_nothing_positive_gives_no_alignment(self):
@@ -137,10 +137,12 @@ class TestAlign:
 def pytest_approx(value):
     """Local rather than `pytest.approx`, so this module keeps its "no
     imports beyond the thing under test" shape."""
+
     class _Approx:
         def __eq__(self, other):
             return abs(other - value) < 1e-9
 
         def __repr__(self):
             return f"~{value}"
+
     return _Approx()

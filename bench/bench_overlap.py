@@ -70,7 +70,8 @@ def self_check() -> None:
     sample = "tier=exact span=12 words\ntier=skip-gram span=9 words\ntier=exact span=5 words\n"
     assert _count_exact_findings(sample) == 2, "did not count both tier=exact findings"
     assert _count_exact_findings("tier=skip-gram span=9 words\n") == 0, (
-        "a sample with no tier=exact line must count zero, not raise or miscount")
+        "a sample with no tier=exact line must count zero, not raise or miscount"
+    )
 
 
 def run(draft: Path) -> dict:
@@ -118,7 +119,10 @@ def main(argv: "list[str] | None" = None) -> int:
         print(f"No draft at {draft}", file=sys.stderr)
         return 1
     if not config.LEDGER_PATH.exists():
-        print(f"No ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first.", file=sys.stderr)
+        print(
+            f"No ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first.",
+            file=sys.stderr,
+        )
         return 1
 
     root = Path(tempfile.mkdtemp(prefix="bench-overlap-"))

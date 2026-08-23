@@ -16,33 +16,35 @@ from chitragupta.enrich import topic_converge
 
 class TestConverge:
     def test_a_close_topic_takes_the_seed_phrase(self, isolated_config):
-        named = topic_converge.converge({0: [1.0, 0.0]},
-                                        {"digital twin": [1.0, 0.05]},
-                                        min_similarity=0.4)
+        named = topic_converge.converge(
+            {0: [1.0, 0.0]}, {"digital twin": [1.0, 0.05]}, min_similarity=0.4
+        )
         assert named == {0: "digital twin"}
 
     def test_a_distant_topic_keeps_its_own_identity(self, isolated_config):
-        assert topic_converge.converge({0: [1.0, 0.0]},
-                                       {"digital twin": [0.0, 1.0]},
-                                       min_similarity=0.4) == {}
+        assert (
+            topic_converge.converge(
+                {0: [1.0, 0.0]}, {"digital twin": [0.0, 1.0]}, min_similarity=0.4
+            )
+            == {}
+        )
 
     def test_the_closest_of_several_seeds_wins(self, isolated_config):
         named = topic_converge.converge(
-            {0: [1.0, 0.0]},
-            {"far": [1.0, 0.9], "near": [1.0, 0.05]},
-            min_similarity=0.4)
+            {0: [1.0, 0.0]}, {"far": [1.0, 0.9], "near": [1.0, 0.05]}, min_similarity=0.4
+        )
         assert named == {0: "near"}
 
     def test_a_tie_breaks_on_the_phrase_so_runs_are_diffable(self, isolated_config):
         """Two seeds equidistant from one cluster would otherwise resolve
         by dict order, and a topic set whose names shuffle between runs is
         one nobody can diff."""
-        forward = topic_converge.converge({0: [1.0, 0.0]},
-                                          {"alpha": [1.0, 0.0], "zulu": [1.0, 0.0]},
-                                          min_similarity=0.4)
-        reverse = topic_converge.converge({0: [1.0, 0.0]},
-                                          {"zulu": [1.0, 0.0], "alpha": [1.0, 0.0]},
-                                          min_similarity=0.4)
+        forward = topic_converge.converge(
+            {0: [1.0, 0.0]}, {"alpha": [1.0, 0.0], "zulu": [1.0, 0.0]}, min_similarity=0.4
+        )
+        reverse = topic_converge.converge(
+            {0: [1.0, 0.0]}, {"zulu": [1.0, 0.0], "alpha": [1.0, 0.0]}, min_similarity=0.4
+        )
         # Which of the two wins is arbitrary; that both input orders agree
         # is the property. Sorting ascending on the phrase makes it "alpha".
         assert forward == reverse == {0: "alpha"}
@@ -54,17 +56,17 @@ class TestConverge:
         architecture` -- nineteen seed-named topics from nine phrases,
         none distinguishable from its namesakes. A label that does not
         distinguish is not a label."""
-        named = topic_converge.converge({0: [1.0, 0.0], 1: [1.0, 0.3]},
-                                        {"platform": [1.0, 0.05]},
-                                        min_similarity=0.4)
+        named = topic_converge.converge(
+            {0: [1.0, 0.0], 1: [1.0, 0.3]}, {"platform": [1.0, 0.05]}, min_similarity=0.4
+        )
         assert named == {0: "platform"}
 
     def test_the_losing_topic_keeps_its_own_identity(self, isolated_config):
         """Not lost, just not renamed: it stays emergent with its derived
         label and its own members."""
-        named = topic_converge.converge({0: [1.0, 0.0], 1: [1.0, 0.3]},
-                                        {"platform": [1.0, 0.05]},
-                                        min_similarity=0.4)
+        named = topic_converge.converge(
+            {0: [1.0, 0.0], 1: [1.0, 0.3]}, {"platform": [1.0, 0.05]}, min_similarity=0.4
+        )
         assert 1 not in named
 
     def test_two_phrases_can_name_two_topics(self, isolated_config):
@@ -72,7 +74,8 @@ class TestConverge:
         named = topic_converge.converge(
             {0: [1.0, 0.0], 1: [0.0, 1.0]},
             {"alpha": [1.0, 0.05], "beta": [0.05, 1.0]},
-            min_similarity=0.4)
+            min_similarity=0.4,
+        )
         assert named == {0: "alpha", 1: "beta"}
 
     def test_the_threshold_defaults_to_config(self, isolated_config, monkeypatch):
@@ -80,16 +83,13 @@ class TestConverge:
         assert topic_converge.converge({0: [1.0, 0.3]}, {"x": [1.0, 0.0]}) == {}
 
 
-MEMBERSHIPS = {"a_2020": {"0": 0.8, "1": 0.5},
-               "b_2021": {"0": 0.6},
-               "c_2022": {"1": 0.7}}
+MEMBERSHIPS = {"a_2020": {"0": 0.8, "1": 0.5}, "b_2021": {"0": 0.6}, "c_2022": {"1": 0.7}}
 CITEKEYS = ["a_2020", "b_2021", "c_2022", "d_2023"]
 
 
 class TestBuild:
     def test_a_named_topic_carries_the_phrase_and_its_provenance(self, isolated_config):
-        got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {0: "digital twin"},
-                                   {"topics": []})
+        got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {0: "digital twin"}, {"topics": []})
         named = [t for t in got["topics"] if t["topic_id"] == 0][0]
         assert named["label"] == "digital twin"
         assert named["provenance"] == "seed"
@@ -103,8 +103,7 @@ class TestBuild:
         """The many-to-many view, not the single assignment -- which is
         the whole reason `memberships` exists."""
         got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {}, {"topics": []})
-        under = {t["topic_id"]: [m["citekey"] for m in t["members"]]
-                 for t in got["topics"]}
+        under = {t["topic_id"]: [m["citekey"] for m in t["members"]] for t in got["topics"]}
         assert under[0] == ["a_2020", "b_2021"]
         assert "a_2020" in under[1]
 
@@ -118,8 +117,9 @@ class TestBuild:
         """The useful case, not a leftover: the author named something the
         clustering did not separate out, and an empty topic_id is the
         signal that the corpus does not organise the way they assumed."""
-        report = {"topics": [{"phrase": "fidelity",
-                              "matches": [{"citekey": "d_2023", "score": 0.5}]}]}
+        report = {
+            "topics": [{"phrase": "fidelity", "matches": [{"citekey": "d_2023", "score": 0.5}]}]
+        }
         got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {}, report)
         orphan = [t for t in got["topics"] if t["label"] == "fidelity"][0]
         assert orphan["topic_id"] is None
@@ -136,8 +136,7 @@ class TestBuild:
         assert got["uncovered"] == ["d_2023"]
 
     def test_the_counts_distinguish_named_from_discovered(self, isolated_config):
-        got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {0: "digital twin"},
-                                   {"topics": []})
+        got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {0: "digital twin"}, {"topics": []})
         assert got["n_seed_named"] == 1
         assert got["n_emergent"] == 1
 
@@ -159,11 +158,17 @@ class TestRunStage:
 
     def test_the_stage_reports_both_kinds_of_topic(self, isolated_config, monkeypatch):
         isolated_config.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        isolated_config.TOPICS_PATH.write_text(json.dumps({"assignments": {}}),
-                                               encoding="utf-8")
-        monkeypatch.setattr(topic_converge, "run_topic_converge",
-                            lambda docs, phrases: {"n_docs": 3, "n_seed_named": 1,
-                                                   "n_emergent": 2, "uncovered": ["x"]})
+        isolated_config.TOPICS_PATH.write_text(json.dumps({"assignments": {}}), encoding="utf-8")
+        monkeypatch.setattr(
+            topic_converge,
+            "run_topic_converge",
+            lambda docs, phrases: {
+                "n_docs": 3,
+                "n_seed_named": 1,
+                "n_emergent": 2,
+                "uncovered": ["x"],
+            },
+        )
         detail = topic_converge.run_stage([], ())["detail"]
         assert detail == {"n_docs": 3, "seed_named": 1, "emergent": 2, "uncovered": 1}
 
@@ -190,24 +195,29 @@ class TestRunTopicConverge:
 
         cfg.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
         cfg.TOPICS_PATH.write_text(
-            json.dumps({"assignments": assignments, "memberships": memberships}),
-            encoding="utf-8")
-        monkeypatch.setattr(doc_vectors, "corpus_texts",
-                            lambda docs: {c: "text" for c in assignments})
-        monkeypatch.setattr(doc_vectors, "document_embeddings",
-                            lambda texts, model: vectors)
-        monkeypatch.setattr(embed_index, "get_client_and_model",
-                            lambda: (None, FakeModel()))
+            json.dumps({"assignments": assignments, "memberships": memberships}), encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            doc_vectors, "corpus_texts", lambda docs: {c: "text" for c in assignments}
+        )
+        monkeypatch.setattr(doc_vectors, "document_embeddings", lambda texts, model: vectors)
+        monkeypatch.setattr(embed_index, "get_client_and_model", lambda: (None, FakeModel()))
         monkeypatch.setattr(seed_topics_module, "load_report", lambda: {"topics": []})
 
     def test_a_seed_renames_the_cluster_it_matches(self, isolated_config, monkeypatch):
         FakeModel.VECTORS = {"digital twin": [1.0, 0.0, 0.0]}
-        self.prepare(isolated_config, monkeypatch,
-                     assignments={"a": 0, "b": 0, "c": 1, "d": 1},
-                     memberships={"a": {"0": 0.9}, "b": {"0": 0.8},
-                                  "c": {"1": 0.9}, "d": {"1": 0.8}},
-                     vectors={"a": [1.0, 0.0, 0.0], "b": [1.0, 0.1, 0.0],
-                              "c": [0.0, 0.0, 1.0], "d": [0.0, 0.1, 1.0]})
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 0, "c": 1, "d": 1},
+            memberships={"a": {"0": 0.9}, "b": {"0": 0.8}, "c": {"1": 0.9}, "d": {"1": 0.8}},
+            vectors={
+                "a": [1.0, 0.0, 0.0],
+                "b": [1.0, 0.1, 0.0],
+                "c": [0.0, 0.0, 1.0],
+                "d": [0.0, 0.1, 1.0],
+            },
+        )
         result = topic_converge.run_topic_converge([], ("digital twin",))
         labels = {t["label"] for t in result["topics"]}
         assert "digital twin" in labels
@@ -215,25 +225,35 @@ class TestRunTopicConverge:
 
     def test_it_writes_the_artefact(self, isolated_config, monkeypatch):
         FakeModel.VECTORS = {"digital twin": [1.0, 0.0, 0.0]}
-        self.prepare(isolated_config, monkeypatch,
-                     assignments={"a": 0, "b": 0, "c": 1, "d": 1},
-                     memberships={"a": {"0": 0.9}, "b": {"0": 0.8},
-                                  "c": {"1": 0.9}, "d": {"1": 0.8}},
-                     vectors={"a": [1.0, 0.0, 0.0], "b": [1.0, 0.1, 0.0],
-                              "c": [0.0, 0.0, 1.0], "d": [0.0, 0.1, 1.0]})
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 0, "c": 1, "d": 1},
+            memberships={"a": {"0": 0.9}, "b": {"0": 0.8}, "c": {"1": 0.9}, "d": {"1": 0.8}},
+            vectors={
+                "a": [1.0, 0.0, 0.0],
+                "b": [1.0, 0.1, 0.0],
+                "c": [0.0, 0.0, 1.0],
+                "d": [0.0, 0.1, 1.0],
+            },
+        )
         result = topic_converge.run_topic_converge([], ("digital twin",))
         assert isolated_config.TOPIC_SET_PATH.exists()
-        assert json.loads(
-            isolated_config.TOPIC_SET_PATH.read_text(encoding="utf-8")) == result
+        assert json.loads(isolated_config.TOPIC_SET_PATH.read_text(encoding="utf-8")) == result
 
-    def test_with_no_seeds_every_topic_stays_emergent(self, isolated_config,
-                                                      monkeypatch):
-        self.prepare(isolated_config, monkeypatch,
-                     assignments={"a": 0, "b": 0, "c": 1, "d": 1},
-                     memberships={"a": {"0": 0.9}, "b": {"0": 0.8},
-                                  "c": {"1": 0.9}, "d": {"1": 0.8}},
-                     vectors={"a": [1.0, 0.0, 0.0], "b": [1.0, 0.1, 0.0],
-                              "c": [0.0, 0.0, 1.0], "d": [0.0, 0.1, 1.0]})
+    def test_with_no_seeds_every_topic_stays_emergent(self, isolated_config, monkeypatch):
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 0, "c": 1, "d": 1},
+            memberships={"a": {"0": 0.9}, "b": {"0": 0.8}, "c": {"1": 0.9}, "d": {"1": 0.8}},
+            vectors={
+                "a": [1.0, 0.0, 0.0],
+                "b": [1.0, 0.1, 0.0],
+                "c": [0.0, 0.0, 1.0],
+                "d": [0.0, 0.1, 1.0],
+            },
+        )
         result = topic_converge.run_topic_converge([], ())
         assert result["n_seed_named"] == 0
         assert result["n_emergent"] == 2

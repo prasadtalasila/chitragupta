@@ -149,10 +149,7 @@ def _this_project_only(record: logging.LogRecord) -> bool:
     is therefore still a tuple and this still loops, so a second root
     outside `chitragupta` costs one entry rather than a rewrite.
     """
-    return any(
-        record.name == root or record.name.startswith(root + ".")
-        for root in _TREES
-    )
+    return any(record.name == root or record.name.startswith(root + ".") for root in _TREES)
 
 
 def say(
@@ -271,11 +268,12 @@ def configure() -> None:
 
     config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
     file_handler = logging.handlers.RotatingFileHandler(
-        target, maxBytes=5_000_000, backupCount=5, encoding="utf-8",
+        target,
+        maxBytes=5_000_000,
+        backupCount=5,
+        encoding="utf-8",
     )
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s %(levelname)s %(name)s: %(message)s"
-    ))
+    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     file_handler.setLevel(config.LOGGING_LEVEL)
 
     console_handler = logging.StreamHandler(sys.stderr)

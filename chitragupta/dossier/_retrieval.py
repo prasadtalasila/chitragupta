@@ -18,8 +18,14 @@ from pathlib import Path
 from chitragupta.dossier import RETRIEVAL_MD, _ROW_SPLIT, dossier_dir, draft_relpath
 from chitragupta.dossier._create import _RETRIEVAL_TEMPLATE
 
+
 def log_retrieval(
-    draft: Path, mode: str, query: str, k: int, results: int, chars: int,
+    draft: Path,
+    mode: str,
+    query: str,
+    k: int,
+    results: int,
+    chars: int,
     collection: str | None = None,
 ) -> Path:
     """Append one retrieval call to the dossier's `retrieval.md`.
@@ -92,8 +98,10 @@ def log_retrieval(
     path = target / RETRIEVAL_MD
     safe_query = " ".join(query.split()).replace("|", "\\|")
     safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
-    row = (f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
-           f"{chars} | {safe_collection} |\n")
+    row = (
+        f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
+        f"{chars} | {safe_collection} |\n"
+    )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
             handle.write(_RETRIEVAL_TEMPLATE)
@@ -130,8 +138,7 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
-    row = (f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | "
-           "0 | 0 | 0 | |\n")
+    row = f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 | |\n"
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
             handle.write(_RETRIEVAL_TEMPLATE)
@@ -297,6 +304,9 @@ def recorded_queries_with_collection(dossier: Path) -> list[tuple[str, str]]:
 
 def _cmd_mark_revision(args: argparse.Namespace) -> int:
     path = mark_revision(Path(args.draft), args.label)
-    print(f"Marked a revision boundary in {draft_relpath(path)}"
-          + (f" ({args.label!r})" if args.label else "") + ".")
+    print(
+        f"Marked a revision boundary in {draft_relpath(path)}"
+        + (f" ({args.label!r})" if args.label else "")
+        + "."
+    )
     return 0

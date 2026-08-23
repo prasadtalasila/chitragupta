@@ -82,16 +82,18 @@ def test_a_rendered_reference_list_is_not_a_register_of_claims():
     """Every line of a reference list cites something. Reading them as
     claims would fill the register with bibliography -- the same
     exclusion chitragupta/acronyms.py measured against the real book."""
-    text = ("A real claim [@smith_2024].\n\n"
-            "## References\n\n[1] Smith, J. Something [@smith_2024].\n")
-    assert [claim for claim, _ in registry.claims(text)] == [
-        "A real claim [@smith_2024]."]
+    text = (
+        "A real claim [@smith_2024].\n\n## References\n\n[1] Smith, J. Something [@smith_2024].\n"
+    )
+    assert [claim for claim, _ in registry.claims(text)] == ["A real claim [@smith_2024]."]
 
 
 def test_a_cross_reference_is_read_in_both_markdown_and_latex():
     assert registry.references("See [it](#sec-data).\n") == ["sec-data"]
     assert registry.references("See \\cref{sec-data} and \\ref{fig-one}.\n") == [
-        "sec-data", "fig-one"]
+        "sec-data",
+        "fig-one",
+    ]
 
 
 def test_a_cross_reference_is_never_readable_as_a_citekey():
@@ -104,8 +106,7 @@ def test_a_cross_reference_is_never_readable_as_a_citekey():
 
 
 def test_a_unit_may_define_its_own_anchor_for_others_to_reference():
-    assert registry.labels("A figure {#fig-one}\n\n\\label{tab-two}\n") == {
-        "fig-one", "tab-two"}
+    assert registry.labels("A figure {#fig-one}\n\n\\label{tab-two}\n") == {"fig-one", "tab-two"}
 
 
 # --- building over accepted units ----------------------------------------
@@ -125,8 +126,10 @@ def test_a_term_defined_in_two_units_is_a_finding(book):
     accept(book, "sec-model", MODEL_UNIT)
     accept(book, "sec-data", "- **digital twin** -- something else entirely\n")
     findings = registry.findings(registry.build(book))
-    assert any("digital twin" in text and "sec-model" in text and "sec-data" in text
-               for _, text in findings)
+    assert any(
+        "digital twin" in text and "sec-model" in text and "sec-data" in text
+        for _, text in findings
+    )
 
 
 def test_the_same_claim_made_in_two_units_is_a_finding(book):
@@ -138,8 +141,7 @@ def test_the_same_claim_made_in_two_units_is_a_finding(book):
 
 def test_a_claim_is_matched_regardless_of_case_and_spacing(book):
     accept(book, "sec-model", MODEL_UNIT)
-    accept(book, "sec-data",
-           "A  TWIN pairs a model  with a link [@smith_example_2024]!\n")
+    accept(book, "sec-data", "A  TWIN pairs a model  with a link [@smith_example_2024]!\n")
     assert "claim" in [kind for kind, _ in registry.findings(registry.build(book))]
 
 
@@ -149,7 +151,7 @@ def test_a_cross_reference_to_a_unit_the_outline_holds_resolves(book):
 
 
 def test_a_cross_reference_to_a_chapter_resolves(book):
-    """"See Chapter 1" is an ordinary cross-reference. Reporting it
+    """ "See Chapter 1" is an ordinary cross-reference. Reporting it
     unresolved because a chapter generates no prose of its own would be a
     finding about the registry rather than about the book."""
     accept(book, "sec-model", "As \\cref{ch-what} sets out.\n")

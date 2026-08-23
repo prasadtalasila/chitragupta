@@ -14,7 +14,7 @@ two files for drafting; which one applies past that changes the moment
 they start editing `chitragupta/`.
 
 | If you are... | Read | Then stop |
-|---|---|---|
+| --- | --- | --- |
 | **Drafting content** with this pipeline -- a survey, thesis chapter, textbook chapter, tutorial, deep-research report -- or revising one | **[AGENTS.md](AGENTS.md)** | That file and the skill you are running are the whole contract. You do not need anything below |
 | **Changing this repository's own code** -- anything under `chitragupta/`, `scripts/`, `tests/`, `bench/`, `.github/` | **`DEVELOPER-AGENTS.md`**, which governs, then **[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)** for what the code must look like | -- |
 | **Changing this repository's prose** -- `docs/`, `README.md`, or these files | `DEVELOPER-AGENTS.md` for the commit/PR conventions | -- |

@@ -30,7 +30,8 @@ def make_real_pdf(md_path, pdf_path, body):
     md_path.write_text(body)
     subprocess.run(
         ["pandoc", str(md_path), "-o", str(pdf_path), "--pdf-engine=pdflatex"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
 
 
@@ -46,7 +47,11 @@ class TestFullPipelineNoMocks:
     def test_full_chain_with_real_binaries(self, isolated_config, tmp_path):
         pdf_md = tmp_path / "source.md"
         pdf_path = tmp_path / "paper.pdf"
-        make_real_pdf(pdf_md, pdf_path, "# A Paper\n\nThis paper discusses distinctive digital twin content.\n")
+        make_real_pdf(
+            pdf_md,
+            pdf_path,
+            "# A Paper\n\nThis paper discusses distinctive digital twin content.\n",
+        )
 
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_realpaper_2024,\n"
@@ -66,7 +71,10 @@ class TestFullPipelineNoMocks:
         finally:
             con.close()
         assert row["status"] == "parsed"
-        assert "distinctive digital twin content" in (config.PARSED_DIR / "smith_realpaper_2024.txt").read_text()
+        assert (
+            "distinctive digital twin content"
+            in (config.PARSED_DIR / "smith_realpaper_2024.txt").read_text()
+        )
 
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
@@ -93,7 +101,9 @@ class TestFullPipelineNoMocks:
         assert sync.run() == 0
 
         draft = content_draft(isolated_config, "draft.md")
-        draft.write_text("Citing a real source [@real_key_2024] and a fabricated one [@invented_2024].\n")
+        draft.write_text(
+            "Citing a real source [@real_key_2024] and a fabricated one [@invented_2024].\n"
+        )
 
         rc = citation_gate.run([str(draft)])
         assert rc == 1  # must fail -- @invented_2024 was never synced from the bib file
@@ -110,7 +120,7 @@ real_bib_available = real_bibliography_path().exists()
 @pytest.mark.skipif(
     not real_bib_available,
     reason="papers/bibliography.bib is gitignored, per-host data (AGENTS.md) -- "
-           "absent on a fresh clone/CI checkout until someone exports their own",
+    "absent on a fresh clone/CI checkout until someone exports their own",
 )
 class TestRealBibliographySmoke:
     """Parses this repo's actual bibliography.bib (read-only) -- catches
@@ -227,7 +237,9 @@ class TestReparseReproducibility:
     def test_reparse_changes_only_last_synced(self, isolated_config, tmp_path):
         pdf_md = tmp_path / "source.md"
         pdf_path = tmp_path / "stable.pdf"
-        make_real_pdf(pdf_md, pdf_path, "# Stable\n\nText that must survive a re-parse unchanged.\n")
+        make_real_pdf(
+            pdf_md, pdf_path, "# Stable\n\nText that must survive a re-parse unchanged.\n"
+        )
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{roe_stable_2024,\n"
             "  title = {A Stable Paper},\n"
@@ -319,10 +331,16 @@ class TestReGroundingAfterTheCorpusMoves:
         """A draft that cites one paper, turned another down, and logged
         the query that found both -- written against the corpus as it
         stood at the time, so `scope.md` records that fingerprint."""
-        _add_paper("kept_paper_2024", "Digital twin architectures",
-                   "Digital twin architectures for engineering systems.")
-        _add_paper("turned_down_2023", "Digital twin adoption economics",
-                   "Digital twin adoption economics and cost recovery.")
+        _add_paper(
+            "kept_paper_2024",
+            "Digital twin architectures",
+            "Digital twin architectures for engineering systems.",
+        )
+        _add_paper(
+            "turned_down_2023",
+            "Digital twin adoption economics",
+            "Digital twin adoption economics and cost recovery.",
+        )
 
         draft = config.DRAFTS_DIR / "dt-for-engineers" / "survey.md"
         draft.parent.mkdir(parents=True)
@@ -354,8 +372,11 @@ class TestReGroundingAfterTheCorpusMoves:
         """`missing` is a defect the gate agrees with; `candidates` are new;
         a paper already turned down is held back in `reconsider`."""
         _drop_paper("kept_paper_2024")
-        _add_paper("fresh_twin_2026", "Digital twin fidelity",
-                   "Digital twin fidelity metrics for engineering models.")
+        _add_paper(
+            "fresh_twin_2026",
+            "Digital twin fidelity",
+            "Digital twin fidelity metrics for engineering models.",
+        )
 
         report = dossier.drift(dossier.dossier_dir(grounded))
 
@@ -382,8 +403,11 @@ class TestReGroundingAfterTheCorpusMoves:
         """One envelope, one element, exit 0 -- the contract #85 added for
         this mode. The skill branches on the payload, never the code."""
         _drop_paper("kept_paper_2024")
-        _add_paper("fresh_twin_2026", "Digital twin fidelity",
-                   "Digital twin fidelity metrics for engineering models.")
+        _add_paper(
+            "fresh_twin_2026",
+            "Digital twin fidelity",
+            "Digital twin fidelity metrics for engineering models.",
+        )
 
         assert dossier.main(["status", str(grounded), "--json"]) == 0
         (entry,) = __import__("json").loads(capsys.readouterr().out)["dossiers"]
@@ -399,16 +423,17 @@ class TestReGroundingAfterTheCorpusMoves:
         empty and the gate back to OK -- with nothing in `chitragupta/` beyond the
         files the skill already writes, and no fingerprint change."""
         _drop_paper("kept_paper_2024")
-        _add_paper("fresh_twin_2026", "Digital twin fidelity",
-                   "Digital twin fidelity metrics for engineering models.")
+        _add_paper(
+            "fresh_twin_2026",
+            "Digital twin fidelity",
+            "Digital twin fidelity metrics for engineering models.",
+        )
         target = dossier.dossier_dir(grounded)
         before = dossier.recorded_corpus(target)
 
         # Exactly what the skill does: edit inside the one section the
         # report named, then write the dossier back.
-        grounded.write_text(
-            grounded.read_text().replace("@kept_paper_2024", "@fresh_twin_2026")
-        )
+        grounded.write_text(grounded.read_text().replace("@kept_paper_2024", "@fresh_twin_2026"))
         (target / "evidence.md").write_text(
             "# Kept evidence\n\n## `fresh_twin_2026`\n\nHow twins are structured.\n"
         )
@@ -441,17 +466,22 @@ class TestReGroundingAfterTheCorpusMoves:
         that the line it writes is one the parser accepts.
         """
         _drop_paper("kept_paper_2024")
-        _add_paper("fresh_twin_2026", "Digital twin fidelity",
-                   "Digital twin fidelity metrics for engineering models.")
+        _add_paper(
+            "fresh_twin_2026",
+            "Digital twin fidelity",
+            "Digital twin fidelity metrics for engineering models.",
+        )
         target = dossier.dossier_dir(grounded)
         scope = target / "scope.md"
 
         (count, digest) = dossier.drift(target).current
         old = dossier.recorded_corpus(target)
-        scope.write_text(scope.read_text().replace(
-            f"- corpus: {old[0]} citekeys, digest `{old[1]}`",
-            f"- corpus: {count} citekeys, digest `{digest}`",
-        ))
+        scope.write_text(
+            scope.read_text().replace(
+                f"- corpus: {old[0]} citekeys, digest `{old[1]}`",
+                f"- corpus: {count} citekeys, digest `{digest}`",
+            )
+        )
 
         assert dossier.recorded_corpus(target) == (count, digest), (
             "the re-stamped line must still match what `init` wrote"
@@ -470,15 +500,19 @@ class TestReGroundingAfterTheCorpusMoves:
         cheaply. Re-grounding therefore promises `missing`, not `clean`.
         """
         _drop_paper("kept_paper_2024")
-        _add_paper("fresh_twin_2026", "Digital twin fidelity",
-                   "Digital twin fidelity metrics for engineering models.")
-        _add_paper("other_twin_2026", "Digital twin calibration",
-                   "Digital twin calibration under drift in engineering use.")
+        _add_paper(
+            "fresh_twin_2026",
+            "Digital twin fidelity",
+            "Digital twin fidelity metrics for engineering models.",
+        )
+        _add_paper(
+            "other_twin_2026",
+            "Digital twin calibration",
+            "Digital twin calibration under drift in engineering use.",
+        )
         target = dossier.dossier_dir(grounded)
 
-        grounded.write_text(
-            grounded.read_text().replace("@kept_paper_2024", "@fresh_twin_2026")
-        )
+        grounded.write_text(grounded.read_text().replace("@kept_paper_2024", "@fresh_twin_2026"))
         (target / "evidence.md").write_text(
             "# Kept evidence\n\n## `fresh_twin_2026`\n\nHow twins are structured.\n"
         )
@@ -594,14 +628,16 @@ def _findings(stdout):
     for i, line in enumerate(lines):
         match = _FINDING_RE.fullmatch(line)
         if match:
-            parsed.append({
-                "span": int(match["span"]),
-                "page": int(match["page"]),
-                "citekey": match["citekey"],
-                "tier": match["tier"],
-                "flags": match["flags"].strip(),
-                "fragment": lines[i + 1].strip(),
-            })
+            parsed.append(
+                {
+                    "span": int(match["span"]),
+                    "page": int(match["page"]),
+                    "citekey": match["citekey"],
+                    "tier": match["tier"],
+                    "flags": match["flags"].strip(),
+                    "fragment": lines[i + 1].strip(),
+                }
+            )
     return parsed
 
 
@@ -629,7 +665,8 @@ def _run_verbatim(mode, *args):
     environment discipline (see its docstring for why the coverage
     variables are stripped)."""
     env = {
-        key: value for key, value in os.environ.items()
+        key: value
+        for key, value in os.environ.items()
         if not key.startswith("COV_CORE_")
         and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
     }
@@ -637,7 +674,9 @@ def _run_verbatim(mode, *args):
     return subprocess.run(
         [sys.executable, "-m", "chitragupta.review", "verbatim", mode, *args],
         cwd=str(Path(__file__).resolve().parent.parent),
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
@@ -656,19 +695,29 @@ class TestVerbatimScanEndToEnd:
     @pytest.fixture
     def corpus(self, isolated_config):
         """Three parsed sources, each with its planted run on page 2."""
-        _add_scan_paper("dt_arch_2024", _scan_source_text(
-            "This opening page reviews how twins are checked before release. "
-            + SCAN_PARAPHRASE_IN_SOURCE + ".",
-            SCAN_RUN_CITED + ". A later remark on module boundaries follows it.",
-        ))
-        _add_scan_paper("cloud_infra_2023", _scan_source_text(
-            "An opening page about billing models for rented hardware.",
-            SCAN_RUN_UNCITED + ". Costs are then compared across three vendors.",
-        ))
-        _add_scan_paper("calib_2025", _scan_source_text(
-            "An opening page about sensor drift in long-lived deployments.",
-            SCAN_RUN_CONNECTIVE + ". Two thresholds are then derived empirically.",
-        ))
+        _add_scan_paper(
+            "dt_arch_2024",
+            _scan_source_text(
+                "This opening page reviews how twins are checked before release. "
+                + SCAN_PARAPHRASE_IN_SOURCE
+                + ".",
+                SCAN_RUN_CITED + ". A later remark on module boundaries follows it.",
+            ),
+        )
+        _add_scan_paper(
+            "cloud_infra_2023",
+            _scan_source_text(
+                "An opening page about billing models for rented hardware.",
+                SCAN_RUN_UNCITED + ". Costs are then compared across three vendors.",
+            ),
+        )
+        _add_scan_paper(
+            "calib_2025",
+            _scan_source_text(
+                "An opening page about sensor drift in long-lived deployments.",
+                SCAN_RUN_CONNECTIVE + ". Two thresholds are then derived empirically.",
+            ),
+        )
         return isolated_config
 
     @pytest.fixture
@@ -704,9 +753,7 @@ class TestVerbatimScanEndToEnd:
         )
         return draft
 
-    def test_planted_runs_from_cited_uncited_and_connective_prose_all_report(
-        self, planted_draft
-    ):
+    def test_planted_runs_from_cited_uncited_and_connective_prose_all_report(self, planted_draft):
         """The three cases the scan exists for, through the real CLI.
 
         The `UNCITED SOURCE` flag is the discriminator a reviewer acts
@@ -724,7 +771,9 @@ class TestVerbatimScanEndToEnd:
         # first.
         findings = {(f["citekey"], f["page"]): f for f in _findings(result.stdout)}
         assert {citekey for citekey, _page in findings} == {
-            "dt_arch_2024", "cloud_infra_2023", "calib_2025"
+            "dt_arch_2024",
+            "cloud_infra_2023",
+            "calib_2025",
         }
 
         # (a) The paragraph cites the source it borrowed from: reported,
@@ -747,9 +796,7 @@ class TestVerbatimScanEndToEnd:
         assert connective["page"] == 2
         assert "UNCITED SOURCE" in connective["flags"]
 
-    def test_lightly_paraphrased_run_is_missed_by_the_exact_tier_alone(
-        self, planted_draft
-    ):
+    def test_lightly_paraphrased_run_is_missed_by_the_exact_tier_alone(self, planted_draft):
         """The exact tier's own boundary, still pinned after #133: taken
         on its own, `_exact_tier_findings` cannot see this passage.
 
@@ -788,13 +835,12 @@ class TestVerbatimScanEndToEnd:
 
         assert result.returncode == 0, result.stderr
         assert not [
-            f for f in _findings(result.stdout)
+            f
+            for f in _findings(result.stdout)
             if f["citekey"] == "dt_arch_2024" and f["page"] == 1 and f["tier"] == "exact"
         ], "the exact tier reported the paraphrased passage on the source's first page"
 
-    def test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier(
-        self, planted_draft
-    ):
+    def test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier(self, planted_draft):
         """The flip discussion #115 and #133 promised: the deterministic
         skip-gram tier (`chitragupta/overlap_skipgram.py`) catches the same
         every-fourth-word paraphrase the test above shows the exact tier
@@ -812,12 +858,9 @@ class TestVerbatimScanEndToEnd:
 
         assert result.returncode == 0, result.stderr
         skipgram_findings = [
-            f for f in _findings(result.stdout)
-            if f["citekey"] == "dt_arch_2024" and f["page"] == 1
+            f for f in _findings(result.stdout) if f["citekey"] == "dt_arch_2024" and f["page"] == 1
         ]
-        assert skipgram_findings, (
-            "the skip-gram tier did not report the paraphrased passage"
-        )
+        assert skipgram_findings, "the skip-gram tier did not report the paraphrased passage"
         assert all(f["tier"] == "skip-gram" for f in skipgram_findings)
         assert "validation" in result.stdout
 
@@ -837,9 +880,7 @@ class TestVerbatimScanEndToEnd:
         assert "no verbatim run" in result.stdout
         assert _findings(result.stdout) == []
 
-    def test_the_embedding_tier_says_it_did_not_run_rather_than_going_quiet(
-        self, planted_draft
-    ):
+    def test_the_embedding_tier_says_it_did_not_run_rather_than_going_quiet(self, planted_draft):
         """The end-to-end half of tier 3's availability contract (#134).
 
         This corpus has no `content/chroma/`, no Docling sidecars and no
@@ -862,9 +903,7 @@ class TestVerbatimScanEndToEnd:
         assert [entry["tier"] for entry in not_run] == ["embedding"]
         assert not_run[0]["reason"], "a tier that did not run must say why"
 
-    def test_every_finding_carries_the_score_field_even_where_it_is_null(
-        self, planted_draft
-    ):
+    def test_every_finding_carries_the_score_field_even_where_it_is_null(self, planted_draft):
         """`published()` projects `_PAYLOAD_FIELDS` with a hard
         `KeyError`, so a field added for one tier has to be carried by
         all of them. `score` is `None` on the two deterministic tiers
@@ -896,9 +935,7 @@ class TestVerbatimScanEndToEnd:
         for citekey in ("dt_arch_2024", "cloud_infra_2023", "calib_2025"):
             assert (config.OVERLAP_DIR / "docs" / f"{citekey}.fpr").is_file()
 
-    def test_rescanning_an_unchanged_corpus_reuses_the_merged_index(
-        self, planted_draft
-    ):
+    def test_rescanning_an_unchanged_corpus_reuses_the_merged_index(self, planted_draft):
         """The "re-scans are near-instant" contract docs/CLI.md states.
 
         `index.bin` is the artifact to watch, and the `.fpr` files are
@@ -955,17 +992,12 @@ class TestVerbatimScanEndToEnd:
         after = _run_scan(draft)
 
         assert after.returncode == 0, after.stderr
-        assert [f["fragment"] for f in _findings(after.stdout)] == [
-            SCAN_RUN_AFTER_RESYNC
-        ], "the scan served fingerprints of text the corpus no longer holds"
-        assert (
-            json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"]
-            != key_before
+        assert [f["fragment"] for f in _findings(after.stdout)] == [SCAN_RUN_AFTER_RESYNC], (
+            "the scan served fingerprints of text the corpus no longer holds"
         )
+        assert json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"] != key_before
 
-    def test_scan_runs_on_the_bare_system_interpreter(
-        self, planted_draft, system_python
-    ):
+    def test_scan_runs_on_the_bare_system_interpreter(self, planted_draft, system_python):
         """docs/CLI.md files `scan` in interpreter tier 1 -- bare
         `python`, stdlib only, no venv. Everything above runs it on
         `sys.executable`, which is the venv's interpreter and so cannot
@@ -974,7 +1006,8 @@ class TestVerbatimScanEndToEnd:
         to the command this change is adding to that list.
         """
         env = {
-            key: value for key, value in os.environ.items()
+            key: value
+            for key, value in os.environ.items()
             if not key.startswith("COV_CORE_")
             and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
         }
@@ -983,12 +1016,16 @@ class TestVerbatimScanEndToEnd:
         result = subprocess.run(
             [system_python, "-m", "chitragupta.review", "verbatim", "scan", str(planted_draft)],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True, env=env,
+            capture_output=True,
+            text=True,
+            env=env,
         )
 
         assert result.returncode == 0, result.stderr
         assert {f["citekey"] for f in _findings(result.stdout)} == {
-            "dt_arch_2024", "cloud_infra_2023", "calib_2025"
+            "dt_arch_2024",
+            "cloud_infra_2023",
+            "calib_2025",
         }
 
 
@@ -1007,14 +1044,20 @@ class TestOverlapRemediationEndToEnd:
 
     @pytest.fixture
     def corpus(self, isolated_config):
-        _add_scan_paper("cloud_infra_2023", _scan_source_text(
-            "An opening page about billing models for rented hardware.",
-            SCAN_RUN_UNCITED + ". Costs are then compared across three vendors.",
-        ))
-        _add_scan_paper("calib_2025", _scan_source_text(
-            "An opening page about sensor drift in long-lived deployments.",
-            SCAN_RUN_CONNECTIVE + ". Two thresholds are then derived empirically.",
-        ))
+        _add_scan_paper(
+            "cloud_infra_2023",
+            _scan_source_text(
+                "An opening page about billing models for rented hardware.",
+                SCAN_RUN_UNCITED + ". Costs are then compared across three vendors.",
+            ),
+        )
+        _add_scan_paper(
+            "calib_2025",
+            _scan_source_text(
+                "An opening page about sensor drift in long-lived deployments.",
+                SCAN_RUN_CONNECTIVE + ". Two thresholds are then derived empirically.",
+            ),
+        )
         return isolated_config
 
     @pytest.fixture
@@ -1042,11 +1085,9 @@ class TestOverlapRemediationEndToEnd:
         text = draft.read_text(encoding="utf-8")
         for finding in payload["findings"]:
             assert finding["draft_text"] in text
-            assert text[finding["char_start"]:finding["char_end"]] == finding["draft_text"]
+            assert text[finding["char_start"] : finding["char_end"]] == finding["draft_text"]
 
-    def test_repairing_one_finding_reports_it_resolved_and_the_other_persisting(
-        self, draft
-    ):
+    def test_repairing_one_finding_reports_it_resolved_and_the_other_persisting(self, draft):
         path, payload = self._baseline(draft)
         target = next(f for f in payload["findings"] if f["citekey"] == "cloud_infra_2023")
         other = next(f for f in payload["findings"] if f["citekey"] == "calib_2025")
@@ -1086,26 +1127,35 @@ class TestOverlapRemediationEndToEnd:
         gate in the pipeline is `python -m chitragupta.draft gate`."""
         path, _ = self._baseline(draft)
 
-        assert _run_verbatim(
-            "recheck", str(draft), "--baseline", str(path)
-        ).returncode == 0
+        assert _run_verbatim("recheck", str(draft), "--baseline", str(path)).returncode == 0
 
     def test_recheck_runs_on_the_bare_system_interpreter(self, draft, system_python):
         """docs/CLI.md files the whole verbatim aid in interpreter tier 1,
         and a mode added to it inherits that claim."""
         path, _ = self._baseline(draft)
         env = {
-            key: value for key, value in os.environ.items()
+            key: value
+            for key, value in os.environ.items()
             if not key.startswith("COV_CORE_")
             and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
         }
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
         result = subprocess.run(
-            [system_python, "-m", "chitragupta.review", "verbatim", "recheck",
-             str(draft), "--baseline", str(path)],
+            [
+                system_python,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "recheck",
+                str(draft),
+                "--baseline",
+                str(path),
+            ],
             cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True, text=True, env=env,
+            capture_output=True,
+            text=True,
+            env=env,
         )
 
         assert result.returncode == 0, result.stderr
@@ -1129,10 +1179,13 @@ class TestOneDraftsReviewArtefactsLandTogether:
     """
 
     def _draft(self, isolated_config):
-        _add_scan_paper("dt_arch_2024", _scan_source_text(
-            "Front matter and abstract.",
-            "A digital twin architecture couples a physical asset to its model.",
-        ))
+        _add_scan_paper(
+            "dt_arch_2024",
+            _scan_source_text(
+                "Front matter and abstract.",
+                "A digital twin architecture couples a physical asset to its model.",
+            ),
+        )
         draft = content_draft(isolated_config, "drafts/dt/survey.md")
         draft.write_text(
             "# Survey\n\n"
@@ -1149,8 +1202,9 @@ class TestOneDraftsReviewArtefactsLandTogether:
 
         citation_provenance.write_report(draft, ["md"])
         vc.cmd_scan(str(draft), write=True, formats=["md"])
-        citation_coverage.main([str(draft), "--query", "digital twin", "--write",
-                                "--formats", "md"])
+        citation_coverage.main(
+            [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
+        )
 
         review_dir = config.REVIEW_DIR / "dt"
         assert sorted(p.name for p in review_dir.iterdir()) == [
@@ -1160,8 +1214,11 @@ class TestOneDraftsReviewArtefactsLandTogether:
             # `provenance` writes only through its CLI's `run()`, not
             # through `write_report()` called directly above, so it has
             # no `.json` here.
-            "survey.coverage.json", "survey.coverage.md", "survey.provenance.md",
-            "survey.verbatim.json", "survey.verbatim.md",
+            "survey.coverage.json",
+            "survey.coverage.md",
+            "survey.provenance.md",
+            "survey.verbatim.json",
+            "survey.verbatim.md",
         ]
 
     def test_nothing_lands_in_the_drafting_layers_output(self, isolated_config, capsys):
@@ -1187,8 +1244,9 @@ class TestOneDraftsReviewArtefactsLandTogether:
         draft = self._draft(isolated_config)
         citation_provenance.write_report(draft, ["md"])
         vc.cmd_scan(str(draft), write=True, formats=["md"])
-        citation_coverage.main([str(draft), "--query", "digital twin", "--write",
-                                "--formats", "md"])
+        citation_coverage.main(
+            [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
+        )
 
         for report in (config.REVIEW_DIR / "dt").iterdir():
             assert "Review aid, not a gate" in report.read_text(), report.name
@@ -1215,5 +1273,6 @@ class TestOneDraftsReviewArtefactsLandTogether:
             # The payload travels with the report it serialises: a
             # restored draft whose findings only a person can read would
             # be a bundle that lost half of what it carried (#127).
-            "survey.verbatim.json", "survey.verbatim.md",
+            "survey.verbatim.json",
+            "survey.verbatim.md",
         ]

@@ -139,7 +139,7 @@ def unguarded(text):
     """
     found = []
     for match in _NESTED.finditer(text):
-        window = text[max(0, match.start() - _GUARD_WINDOW): match.start()]
+        window = text[max(0, match.start() - _GUARD_WINDOW) : match.start()]
         if any(guard in window for guard in _GUARDS):
             continue
         start = max(0, match.start() - _SNIPPET_CHARS)
@@ -267,7 +267,7 @@ def test_a_deeper_path_is_flagged_and_reported_in_full():
 def test_an_offender_is_reported_with_enough_context_to_find_it():
     """Offsets are into the collapsed text and match nothing greppable,
     so the snippet is the part that makes a CI failure actionable."""
-    (_, _, snippet), = unguarded(
+    ((_, _, snippet),) = unguarded(
         "The dossier is the working state behind a draft. "
         "Run `python -m chitragupta.draft.dossier init` to create one."
     )

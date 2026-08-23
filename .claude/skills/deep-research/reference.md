@@ -13,7 +13,7 @@ SKILL.md, under `# deep-research`, for what every claim must resolve to.
 ## 1. Defaults (mirrored from claude-storm/STORM)
 
 | Parameter | Value | Note |
-|---|---|---|
+| --- | --- | --- |
 | Generated perspectives | 5 + Basic fact writer | adapt names to the topic; drop one if it genuinely doesn't fit an academic corpus |
 | Interview rounds / persona | 2 / **3** / 4 (quick/standard/deep) | |
 | Search queries / question | up to 3 | reformulations, not parallel identical calls |
@@ -190,7 +190,7 @@ asked to "review this critically."
 spec in `.claude/agents/peer-reviewer.md`):
 
 | Role | Mandate |
-|---|---|
+| --- | --- |
 | `domain-accuracy` | Re-check every cited claim against the actual source text. The one check `citation_gate.py` and academic-research-skills' external-database triangulation both skip: neither verifies the *claim* matches the *source*, only that the citekey/reference exists somewhere. |
 | `methodology-rigor` | Does the argument hold together; do conclusions overreach the evidence; is the contradiction-map/synthesis logic internally consistent? |
 | `clarity-completeness` | Is it well organized; are thin-coverage gaps or missing citations left unflagged? |

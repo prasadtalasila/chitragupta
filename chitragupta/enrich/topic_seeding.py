@@ -72,9 +72,12 @@ def cosine(left, right) -> float:
     return float(np.dot(left_vec, right_vec) / denominator)
 
 
-def assign(doc_embeddings: dict, phrase_embeddings: dict,
-           min_similarity: "float | None" = None,
-           max_papers: "int | None" = None) -> dict:
+def assign(
+    doc_embeddings: dict,
+    phrase_embeddings: dict,
+    min_similarity: "float | None" = None,
+    max_papers: "int | None" = None,
+) -> dict:
     """The many-to-many map, as `content/topic_seeds.json`'s payload.
 
     **Each phrase is ranked against its own scores, then truncated.** The
@@ -109,8 +112,10 @@ def assign(doc_embeddings: dict, phrase_embeddings: dict,
     topics = []
     matched: set[str] = set()
     for phrase, phrase_vec in phrase_embeddings.items():
-        scored = [{"citekey": citekey, "score": round(cosine(phrase_vec, doc_vec), 6)}
-                  for citekey, doc_vec in doc_embeddings.items()]
+        scored = [
+            {"citekey": citekey, "score": round(cosine(phrase_vec, doc_vec), 6)}
+            for citekey, doc_vec in doc_embeddings.items()
+        ]
         scored = [match for match in scored if match["score"] >= floor]
         scored.sort(key=lambda match: (-match["score"], match["citekey"]))
         matches = scored[:limit]
@@ -167,8 +172,7 @@ def run_topic_seeding(docs: list[CorpusDoc], seed_phrases: tuple) -> dict:
     # cache-write makes of the same call: sentence-transformers returns
     # numpy rows, and a fallback for a shape this seam never receives
     # would be untestable except by faking the model into producing it.
-    phrase_embeddings = {phrase: vec.tolist()
-                         for phrase, vec in zip(seed_phrases, phrase_vecs)}
+    phrase_embeddings = {phrase: vec.tolist() for phrase, vec in zip(seed_phrases, phrase_vecs)}
 
     result = assign(doc_embeddings, phrase_embeddings)
     config.TOPIC_SEEDS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -193,13 +197,18 @@ def run_stage(docs: list[CorpusDoc], seed_phrases: tuple) -> dict:
     docling stage reports for a binary that is not installed.
     """
     if not seed_phrases:
-        return {"status": "skipped",
-                "detail": {"reason": f"no seed topics in {config.SEED_TOPICS_PATH}"}}
+        return {
+            "status": "skipped",
+            "detail": {"reason": f"no seed topics in {config.SEED_TOPICS_PATH}"},
+        }
     result = run_topic_seeding(docs, seed_phrases)
     # Counts, not the matches: this is the one-line-per-stage run report,
     # and content/topic_seeds.json is where the papers themselves live.
-    return {"status": "ok",
-            "detail": {"n_docs": result["n_docs"],
-                       "matched": {topic["phrase"]: len(topic["matches"])
-                                   for topic in result["topics"]},
-                       "unmatched": len(result["unmatched"])}}
+    return {
+        "status": "ok",
+        "detail": {
+            "n_docs": result["n_docs"],
+            "matched": {topic["phrase"]: len(topic["matches"]) for topic in result["topics"]},
+            "unmatched": len(result["unmatched"]),
+        },
+    }

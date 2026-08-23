@@ -171,9 +171,7 @@ def _is_home_call(node):
 def _has_ambient_config_trigger(func_node):
     """CONFIG_PATH-driven reads -- safe once CONFIG_PATH is pinned to a
     tmp_path file, since everything they compute flows through it."""
-    return any(
-        _is_config_path_read(n) or _is_reload_config_call(n) for n in ast.walk(func_node)
-    )
+    return any(_is_config_path_read(n) or _is_reload_config_call(n) for n in ast.walk(func_node))
 
 
 def _has_unconditional_trigger(func_node):
@@ -201,11 +199,15 @@ def test_functions(tree):
     """`(qualified_name, class_name_or_None, FunctionDef)` for every
     `def test_*`/`async def test_*`, one level of class nesting deep."""
     for node in ast.iter_child_nodes(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
+            "test_"
+        ):
             yield node.name, None, node
         elif isinstance(node, ast.ClassDef):
             for child in node.body:
-                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.startswith("test_"):
+                if isinstance(
+                    child, (ast.FunctionDef, ast.AsyncFunctionDef)
+                ) and child.name.startswith("test_"):
                     yield f"{node.name}.{child.name}", node.name, child
 
 
@@ -222,7 +224,9 @@ def unversioned_reads(paths):
         fixtures = fixture_defs(tree)
         rel = _relative(path)
         for qualified, class_name, func_node in test_functions(tree):
-            if f"{rel}::{qualified}" in REGISTER or (class_name and f"{rel}::{class_name}" in REGISTER):
+            if f"{rel}::{qualified}" in REGISTER or (
+                class_name and f"{rel}::{class_name}" in REGISTER
+            ):
                 continue
             reason = offense_reason(func_node, fixtures)
             if reason:

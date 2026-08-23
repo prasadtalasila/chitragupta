@@ -60,8 +60,18 @@ from chitragupta import config, dossier, overlap_embed  # noqa: E402
 # bench_overlap_skipgram.py, plus `score`, which is this tier's own
 # published field and the thing a ranking is ranked by.
 KEPT_FIELDS = (
-    "id", "citekey", "page", "end_page", "tier", "span_words",
-    "matched_words", "line", "cites_source", "quoted", "severity", "score",
+    "id",
+    "citekey",
+    "page",
+    "end_page",
+    "tier",
+    "span_words",
+    "matched_words",
+    "line",
+    "cites_source",
+    "quoted",
+    "severity",
+    "score",
 )
 
 FIXTURE = BENCH_DIR / "fixtures" / "graded-paraphrase-of-singh-offload-2022.md"
@@ -134,14 +144,15 @@ def capability_run(out_dir):
     rows = []
     for title, citekey in GRADES:
         start, end = lines[title]
-        tiers = sorted({
-            f["tier"] for f in findings
-            if f["citekey"] == citekey and start <= f["line"] <= end
-        })
+        tiers = sorted(
+            {f["tier"] for f in findings if f["citekey"] == citekey and start <= f["line"] <= end}
+        )
         rows.append({"grade": title.split(":")[0], "citekey": citekey, "tiers": tiers})
 
-    print(f"  reporting cap: {overlap_embed.SECTION_LIMIT} alignment(s) per section, "
-          f"shortlist {overlap_embed.SHORTLIST_SOURCES} source(s) per section")
+    print(
+        f"  reporting cap: {overlap_embed.SECTION_LIMIT} alignment(s) per section, "
+        f"shortlist {overlap_embed.SHORTLIST_SOURCES} source(s) per section"
+    )
     print(f"{'grade':>20}  caught by")
     for row in rows:
         print(f"{row['grade']:>20}  {', '.join(row['tiers']) or 'NOTHING'}")
@@ -151,13 +162,19 @@ def capability_run(out_dir):
     if out_dir is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
         record = out_dir / "embed_capability.json"
-        record.write_text(json.dumps({
-            "fixture": FIXTURE.name,
-            "section_limit": overlap_embed.SECTION_LIMIT,
-            "shortlist_sources": overlap_embed.SHORTLIST_SOURCES,
-            "grades": rows,
-            "tiers_not_run": not_run,
-        }, indent=1), encoding="utf-8")
+        record.write_text(
+            json.dumps(
+                {
+                    "fixture": FIXTURE.name,
+                    "section_limit": overlap_embed.SECTION_LIMIT,
+                    "shortlist_sources": overlap_embed.SHORTLIST_SOURCES,
+                    "grades": rows,
+                    "tiers_not_run": not_run,
+                },
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
         print(f"Record: {record}")
     return 0
 
@@ -201,24 +218,32 @@ def integrity_complaints(drafts, findings, labels, unavailable):
         out.append("no drafts matched -- every count below is zero for that reason alone")
     if unavailable:
         names = ", ".join(sorted({entry["draft"] for entry in unavailable})[:3])
-        out.append(f"tier 3 did not run on {len(unavailable)} draft(s) (e.g. {names}) -- "
-                   f"first reason: {unavailable[0]['reason']}")
+        out.append(
+            f"tier 3 did not run on {len(unavailable)} draft(s) (e.g. {names}) -- "
+            f"first reason: {unavailable[0]['reason']}"
+        )
     missing = [f["id"] for f in findings if f["id"] not in labels]
     if missing:
-        out.append(f"{len(missing)} of {len(findings)} embedding finding(s) are unlabelled "
-                   f"(e.g. {', '.join(missing[:3])})")
+        out.append(
+            f"{len(missing)} of {len(findings)} embedding finding(s) are unlabelled "
+            f"(e.g. {', '.join(missing[:3])})"
+        )
     if labels:
         stale = [i for i in labels if i not in {f["id"] for f in findings}]
         if stale:
-            out.append(f"{len(stale)} label(s) match no current finding (e.g. "
-                       f"{', '.join(stale[:3])}) -- stale corpus or re-parse")
+            out.append(
+                f"{len(stale)} label(s) match no current finding (e.g. "
+                f"{', '.join(stale[:3])}) -- stale corpus or re-parse"
+            )
     return out
 
 
 def precision_run(drafts_dir, labels_path, out_dir):
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
-              file=sys.stderr)
+        print(
+            f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
+            file=sys.stderr,
+        )
         return 1
     drafts = sorted(p for p in Path(drafts_dir).glob("*.md") if p.name[0].isdigit())
     if not drafts:
@@ -227,8 +252,11 @@ def precision_run(drafts_dir, labels_path, out_dir):
 
     out_dir.mkdir(parents=True, exist_ok=True)
     labels_file = Path(labels_path) if labels_path else out_dir / "labels.json"
-    labels = (json.loads(labels_file.read_text(encoding="utf-8"))["labels"]
-              if labels_file.exists() else {})
+    labels = (
+        json.loads(labels_file.read_text(encoding="utf-8"))["labels"]
+        if labels_file.exists()
+        else {}
+    )
 
     print(f"  scanning {len(drafts)} draft(s) for embedding findings ...", flush=True)
     findings, suppressed, unavailable = scan_all(drafts)
@@ -257,9 +285,11 @@ def precision_run(drafts_dir, labels_path, out_dir):
 
     for complaint in complaints:
         print(f"\n  WARNING {complaint}")
-    print(f"\nembedding findings: {len(findings)} (capped at "
-          f"{overlap_embed.SECTION_LIMIT} per section)  tp: {tp}  fp: {fp}  "
-          f"precision: {payload['precision']}")
+    print(
+        f"\nembedding findings: {len(findings)} (capped at "
+        f"{overlap_embed.SECTION_LIMIT} per section)  tp: {tp}  fp: {fp}  "
+        f"precision: {payload['precision']}"
+    )
     print(f"Record: {record}")
     return 0
 
@@ -278,24 +308,34 @@ def self_check():
     for title, citekey in GRADES:
         assert title in lines, f"the fixture has no section titled {title!r}"
         start, end = lines[title]
-        assert any(citekey in line for line in body[start - 1:end]), (
+        assert any(citekey in line for line in body[start - 1 : end]), (
             f"the fixture's {title!r} section does not cite {citekey}"
         )
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--fixture", action="store_true",
-                    help="run the capability arm over the graded fixture")
-    ap.add_argument("--drafts", default=None,
-                    help="directory of drafts to scan for the precision arm "
-                         "(*.md, chapters first). Needs a synced corpus.")
-    ap.add_argument("--tag", default=None,
-                    help="names bench/results/<tag>/ for output (path components "
-                         "are stripped: only the final name is used)")
-    ap.add_argument("--labels", default=None,
-                    help="hand-authored ground truth for the precision arm "
-                         "(default: bench/results/<tag>/labels.json)")
+    ap.add_argument(
+        "--fixture", action="store_true", help="run the capability arm over the graded fixture"
+    )
+    ap.add_argument(
+        "--drafts",
+        default=None,
+        help="directory of drafts to scan for the precision arm "
+        "(*.md, chapters first). Needs a synced corpus.",
+    )
+    ap.add_argument(
+        "--tag",
+        default=None,
+        help="names bench/results/<tag>/ for output (path components "
+        "are stripped: only the final name is used)",
+    )
+    ap.add_argument(
+        "--labels",
+        default=None,
+        help="hand-authored ground truth for the precision arm "
+        "(default: bench/results/<tag>/labels.json)",
+    )
     args = ap.parse_args(argv)
 
     self_check()

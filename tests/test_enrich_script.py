@@ -21,14 +21,21 @@ import pytest
 
 from chitragupta.enrich import __main__ as enrich_script
 from chitragupta import config
-from chitragupta.enrich import (docling_parse, embed_index, topic_converge,
-                                topic_model, topic_seeding)
+from chitragupta.enrich import (
+    docling_parse,
+    embed_index,
+    topic_converge,
+    topic_model,
+    topic_seeding,
+)
 from chitragupta.enrich.corpus import CorpusDoc
 
 
 def make_args(**overrides):
     ns = types.SimpleNamespace(
-        target="host", stages=",".join(enrich_script.STAGE_ORDER), for_draft=None,
+        target="host",
+        stages=",".join(enrich_script.STAGE_ORDER),
+        for_draft=None,
     )
     for k, v in overrides.items():
         setattr(ns, k, v)
@@ -42,7 +49,9 @@ class TestStageDocling:
         assert result["status"] == "ok"
 
     def test_partial_when_any_error(self, monkeypatch):
-        monkeypatch.setattr(docling_parse, "parse_corpus", lambda docs: {"a": "ok: /x", "b": "error: boom"})
+        monkeypatch.setattr(
+            docling_parse, "parse_corpus", lambda docs: {"a": "ok: /x", "b": "error: boom"}
+        )
         result = enrich_script.stage_docling([], make_args())
         assert result["status"] == "partial"
 
@@ -57,28 +66,28 @@ class TestStageEmbed:
 class TestStageBertopic:
     def test_ok_shapes_detail(self, isolated_config, monkeypatch):
         monkeypatch.setattr(
-            topic_model, "run_topic_model",
-            lambda docs: {"n_docs": 2, "assignments": {"a": -1, "b": -1},
-                          "topic_info": [1, 2, 3]},
+            topic_model,
+            "run_topic_model",
+            lambda docs: {"n_docs": 2, "assignments": {"a": -1, "b": -1}, "topic_info": [1, 2, 3]},
         )
         result = enrich_script.stage_bertopic([], make_args())
         assert result["status"] == "ok"
         assert result["detail"] == {"n_docs": 2, "assignments": {"a": -1, "b": -1}}
         assert "topic_info" not in result["detail"]
 
-    def test_the_seed_list_never_reaches_the_clustering(self, isolated_config,
-                                                        monkeypatch):
+    def test_the_seed_list_never_reaches_the_clustering(self, isolated_config, monkeypatch):
         """Seeds are the seed-topics stage's business. Routing them here
         would trade emergent topics away for named ones -- 81 down to 53,
         measured -- which is the whole reason the zero-shot path is gone."""
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        isolated_config.SEED_TOPICS_PATH.write_text(
-            'topics = ["digital twin"]', encoding="utf-8")
+        isolated_config.SEED_TOPICS_PATH.write_text('topics = ["digital twin"]', encoding="utf-8")
         seen = {}
         monkeypatch.setattr(
-            topic_model, "run_topic_model",
-            lambda docs, **kw: seen.update(kw=kw) or {
-                "n_docs": 0, "assignments": {}, "topic_info": []},
+            topic_model,
+            "run_topic_model",
+            lambda docs, **kw: (
+                seen.update(kw=kw) or {"n_docs": 0, "assignments": {}, "topic_info": []}
+            ),
         )
         enrich_script.stage_bertopic([], make_args())
         assert seen["kw"] == {}
@@ -96,22 +105,24 @@ class TestStageSeedTopics:
         """Per-phrase counts, not the matches themselves: the run report
         is a summary and the artefact holds the papers."""
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        isolated_config.SEED_TOPICS_PATH.write_text(
-            'topics = ["digital twin"]', encoding="utf-8")
+        isolated_config.SEED_TOPICS_PATH.write_text('topics = ["digital twin"]', encoding="utf-8")
         monkeypatch.setattr(
-            topic_seeding, "run_topic_seeding",
+            topic_seeding,
+            "run_topic_seeding",
             lambda docs, phrases: {
                 "n_docs": 3,
-                "topics": [{"phrase": "digital twin",
-                            "matches": [{"citekey": "a", "score": 0.9},
-                                        {"citekey": "b", "score": 0.7}]}],
+                "topics": [
+                    {
+                        "phrase": "digital twin",
+                        "matches": [{"citekey": "a", "score": 0.9}, {"citekey": "b", "score": 0.7}],
+                    }
+                ],
                 "unmatched": ["c"],
             },
         )
         result = enrich_script.stage_seed_topics([], make_args())
         assert result["status"] == "ok"
-        assert result["detail"] == {"n_docs": 3, "matched": {"digital twin": 2},
-                                    "unmatched": 1}
+        assert result["detail"] == {"n_docs": 3, "matched": {"digital twin": 2}, "unmatched": 1}
 
 
 class TestParseArgs:
@@ -127,7 +138,9 @@ class TestParseArgs:
         assert args.for_draft is None
 
     def test_custom_stages(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed,bertopic", "--target", "docker"])
+        monkeypatch.setattr(
+            sys, "argv", ["enrich.py", "--stages", "embed,bertopic", "--target", "docker"]
+        )
         args = enrich_script.parse_args()
         assert args.stages == "embed,bertopic"
         assert args.target == "docker"
@@ -153,9 +166,21 @@ class TestMain:
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "docling,embed"])
 
         called = []
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "docling", lambda d, a: called.append("docling") or {"status": "ok", "detail": "d"})
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "embed", lambda d, a: called.append("embed") or {"status": "ok", "detail": "e"})
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "bertopic", lambda d, a: called.append("bertopic") or {"status": "ok", "detail": "b"})
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS,
+            "docling",
+            lambda d, a: called.append("docling") or {"status": "ok", "detail": "d"},
+        )
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS,
+            "embed",
+            lambda d, a: called.append("embed") or {"status": "ok", "detail": "e"},
+        )
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS,
+            "bertopic",
+            lambda d, a: called.append("bertopic") or {"status": "ok", "detail": "b"},
+        )
 
         rc = enrich_script.main()
         out = capsys.readouterr().out
@@ -179,7 +204,8 @@ class TestMain:
         called = []
         for name in enrich_script.STAGE_ORDER:
             monkeypatch.setitem(
-                enrich_script.STAGE_FUNCS, name,
+                enrich_script.STAGE_FUNCS,
+                name,
                 lambda d, a, _n=name: called.append(_n) or {"status": "ok", "detail": _n},
             )
 
@@ -193,7 +219,8 @@ class TestMain:
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
         monkeypatch.setitem(
-            enrich_script.STAGE_FUNCS, "embed",
+            enrich_script.STAGE_FUNCS,
+            "embed",
             lambda d, a: {"status": "ok", "detail": "e"},
         )
 
@@ -211,7 +238,9 @@ class TestMain:
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "retired-stage,embed"])
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"})
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"}
+        )
 
         rc = enrich_script.main()
         out = capsys.readouterr().out
@@ -229,8 +258,16 @@ class TestMain:
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "docling, embed,"])
 
         called = []
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "docling", lambda d, a: called.append("docling") or {"status": "ok", "detail": "d"})
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "embed", lambda d, a: called.append("embed") or {"status": "ok", "detail": "e"})
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS,
+            "docling",
+            lambda d, a: called.append("docling") or {"status": "ok", "detail": "d"},
+        )
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS,
+            "embed",
+            lambda d, a: called.append("embed") or {"status": "ok", "detail": "e"},
+        )
 
         rc = enrich_script.main()
         out = capsys.readouterr().out
@@ -248,7 +285,9 @@ class TestMain:
             raise RuntimeError("stage exploded")
 
         monkeypatch.setitem(enrich_script.STAGE_FUNCS, "docling", raise_boom)
-        monkeypatch.setitem(enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"})
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"}
+        )
 
         rc = enrich_script.main()
         out = capsys.readouterr().out
@@ -296,6 +335,7 @@ class TestForDraftScope:
             def stage(docs, args):
                 calls[name] = [doc.citekey for doc in docs]
                 return {"status": "ok", "detail": name}
+
             return stage
 
         for name in enrich_script.STAGE_ORDER:
@@ -319,7 +359,7 @@ class TestForDraftScope:
     def test_the_count_says_what_was_left_out_not_only_what_was_kept(
         self, corpus_of_three, recorded_stages, draft, monkeypatch, capsys
     ):
-        """"Corpus: 2 doc(s)" would read as a two-paper corpus. The
+        """ "Corpus: 2 doc(s)" would read as a two-paper corpus. The
         denominator is what tells a reader the run was narrowed, and the
         draft path is what tells them by what."""
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
@@ -350,11 +390,14 @@ class TestForDraftScope:
         you. Running the stage corpus-wide instead would be an hour of
         work the flag exists to avoid, and running it scoped would leave
         an artefact that answers as though it covered the corpus."""
+
         def never(*_a, **_k):
             raise AssertionError("the corpus must not be built for a refused run")
 
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", never)
-        monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", stage])
+        monkeypatch.setattr(
+            sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", stage]
+        )
 
         rc = enrich_script.main()
         out = capsys.readouterr().out
@@ -364,13 +407,12 @@ class TestForDraftScope:
         assert f"--stages {stage}" in out  # the corpus-wide command to run instead
         assert recorded_stages == {}
 
-    def test_refusing_names_every_offending_stage_at_once(
-        self, draft, monkeypatch, capsys
-    ):
+    def test_refusing_names_every_offending_stage_at_once(self, draft, monkeypatch, capsys):
         """Reporting one at a time would make the user re-run to
         discover the second."""
         monkeypatch.setattr(
-            sys, "argv",
+            sys,
+            "argv",
             ["enrich.py", "--for-draft", str(draft), "--stages", "docling,embed,bertopic"],
         )
 
@@ -427,7 +469,9 @@ class TestForDraftScope:
         draft = tmp_path / "stale.md"
         draft.write_text("Nothing here is in the ledger [@gone2019].\n")
         monkeypatch.setattr(
-            sys, "argv", ["enrich.py", "--for-draft", str(draft), "--stages", "docling"],
+            sys,
+            "argv",
+            ["enrich.py", "--for-draft", str(draft), "--stages", "docling"],
         )
 
         assert enrich_script.main() == enrich_script.EXIT_BAD_SCOPE
@@ -463,6 +507,7 @@ class TestForDraftScope:
         belonged to, so the tolerant read would scope the run to a
         quietly wrong set of papers instead of stopping.
         """
+
         def never(*_a, **_k):
             raise AssertionError("the corpus must not be built for an undecodable draft")
 
@@ -484,6 +529,7 @@ class TestForDraftScope:
         """An empty scope from an uncited draft is not "enrich nothing"
         and not "enrich everything" -- neither is obviously what was
         meant, so the run stops and names the flag to drop."""
+
         def never(*_a, **_k):
             raise AssertionError("the corpus must not be built for an uncited draft")
 
@@ -550,7 +596,8 @@ class TestLogging:
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
         monkeypatch.setitem(
-            enrich_script.STAGE_FUNCS, "embed",
+            enrich_script.STAGE_FUNCS,
+            "embed",
             lambda d, a: {"status": "ok", "detail": "e"},
         )
         return enrich_script.main(**kwargs)
@@ -582,7 +629,8 @@ class TestLogging:
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
         monkeypatch.setitem(
-            enrich_script.STAGE_FUNCS, "embed",
+            enrich_script.STAGE_FUNCS,
+            "embed",
             lambda d, a: {"status": "ok", "detail": {"a": 3, "b": {"c": 1}}},
         )
 
@@ -592,9 +640,7 @@ class TestLogging:
             assert re.match(r"^\d{4}-\d{2}-\d{2} ", line), (
                 f"every record must start its own timestamped line: {line!r}"
             )
-        assert '[ok] {"a": 3, "b": {"c": 1}}' in (
-            config.LOGS_DIR / "pipeline.log"
-        ).read_text()
+        assert '[ok] {"a": 3, "b": {"c": 1}}' in (config.LOGS_DIR / "pipeline.log").read_text()
 
     def test_calling_main_directly_leaves_no_handler_or_logs_directory(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
@@ -636,11 +682,12 @@ class TestStageConverge:
 
     def test_it_passes_the_seed_list_through(self, isolated_config, monkeypatch):
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        isolated_config.SEED_TOPICS_PATH.write_text(
-            'topics = ["digital twin"]', encoding="utf-8")
+        isolated_config.SEED_TOPICS_PATH.write_text('topics = ["digital twin"]', encoding="utf-8")
         seen = {}
         monkeypatch.setattr(
-            topic_converge, "run_stage",
-            lambda docs, phrases: seen.update(phrases=phrases) or {"status": "ok"})
+            topic_converge,
+            "run_stage",
+            lambda docs, phrases: seen.update(phrases=phrases) or {"status": "ok"},
+        )
         assert enrich_script.stage_converge([], make_args()) == {"status": "ok"}
         assert seen["phrases"] == ("digital twin",)

@@ -101,8 +101,13 @@ def gate_is_live() -> bool:
         draft.write_text(f"A claim [@{FABRICATED}].\n")
         config = Path(tmp) / "config.toml"
         config.write_text(f'[content]\ndir = "{content.as_posix()}"\n')
-        result = _run("chitragupta.draft", "gate", str(draft),
-                      CONFIG_PATH=str(config), CONTENT_DIR=str(content))
+        result = _run(
+            "chitragupta.draft",
+            "gate",
+            str(draft),
+            CONFIG_PATH=str(config),
+            CONTENT_DIR=str(content),
+        )
     return result.returncode != 0 and FABRICATED in result.stdout + result.stderr
 
 
@@ -110,10 +115,12 @@ def corpus_stage() -> str | None:
     """Where the user is in clone -> config -> sync -> draft, or None if ready."""
     result = _run("chitragupta.corpus", "ledger")
     if result.returncode != 0:
-        return ("The corpus layer will not start, so no draft can be grounded. The\n"
-                "usual cause is a fresh clone with no config file:\n"
-                "    cp config.toml.example config.toml\n\n"
-                f"{result.stderr.strip()[-400:]}")
+        return (
+            "The corpus layer will not start, so no draft can be grounded. The\n"
+            "usual cause is a fresh clone with no config file:\n"
+            "    cp config.toml.example config.toml\n\n"
+            f"{result.stderr.strip()[-400:]}"
+        )
     # Two distinct pre-sync states -- no ledger file at all, and one with no
     # rows in it -- and the corpus layer prints a different sentence for
     # each. Matching the instruction they share, rather than either
@@ -121,36 +128,49 @@ def corpus_stage() -> str | None:
     # other; it also means the corpus layer stays the one deciding when a
     # sync is needed.
     if "chitragupta.corpus sync" in result.stdout:
-        return ("No synced corpus yet: the ledger is absent or holds nothing. That is\n"
-                "the expected state before a first sync, not a fault -- but every\n"
-                "genre skill needs it, so run this before asking for a draft:\n"
-                "    python -m chitragupta.corpus sync")
+        return (
+            "No synced corpus yet: the ledger is absent or holds nothing. That is\n"
+            "the expected state before a first sync, not a fault -- but every\n"
+            "genre skill needs it, so run this before asking for a draft:\n"
+            "    python -m chitragupta.corpus sync"
+        )
     return None
 
 
 def _run(module: str, *args: str, **overrides: str):
     return subprocess.run(
-        [sys.executable, "-m", module, *args], check=False,
-        cwd=REPO, capture_output=True, text=True, env={**os.environ, **overrides},
+        [sys.executable, "-m", module, *args],
+        check=False,
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **overrides},
     )
 
 
 def main() -> int:
     notes = [f"BROKEN: {fault}" for fault in launcher_faults()]
     if not gate_is_live():
-        notes.append("BROKEN: `python -m chitragupta.draft gate` did not refuse a fabricated "
-                     "citekey. CLAUDE.md's one invariant is unenforced until that is "
-                     "fixed -- do not trust a draft written in this state.")
+        notes.append(
+            "BROKEN: `python -m chitragupta.draft gate` did not refuse a fabricated "
+            "citekey. CLAUDE.md's one invariant is unenforced until that is "
+            "fixed -- do not trust a draft written in this state."
+        )
     stage = corpus_stage()
     if stage:
         notes.append(stage)
     if notes:
-        body = ("chitragupta preflight, at session start:\n\n"
-                + "\n\n".join(notes)
-                + "\n\nAdvisory, and measured once at startup: it will not re-run when "
-                  "you fix it.")
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "SessionStart", "additionalContext": body}}))
+        body = (
+            "chitragupta preflight, at session start:\n\n"
+            + "\n\n".join(notes)
+            + "\n\nAdvisory, and measured once at startup: it will not re-run when "
+            "you fix it."
+        )
+        print(
+            json.dumps(
+                {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": body}}
+            )
+        )
     return 0
 
 

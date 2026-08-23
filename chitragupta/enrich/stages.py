@@ -17,8 +17,13 @@ against which are better read from the artefact it wrote.
 import logging
 
 from chitragupta import seed_topics
-from chitragupta.enrich import (docling_parse, embed_index, topic_converge,
-                                topic_model, topic_seeding)
+from chitragupta.enrich import (
+    docling_parse,
+    embed_index,
+    topic_converge,
+    topic_model,
+    topic_seeding,
+)
 
 logger = logging.getLogger("chitragupta.enrich")
 
@@ -35,9 +40,10 @@ def stage_embed(docs, args) -> dict:
 
 def stage_bertopic(docs, args) -> dict:
     result = topic_model.run_topic_model(docs)
-    return {"status": "ok",
-            "detail": {"n_docs": result["n_docs"],
-                       "assignments": result["assignments"]}}
+    return {
+        "status": "ok",
+        "detail": {"n_docs": result["n_docs"], "assignments": result["assignments"]},
+    }
 
 
 # Unlike the three above, this stage's ok/skipped shaping lives in

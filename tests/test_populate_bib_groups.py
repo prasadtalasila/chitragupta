@@ -58,11 +58,9 @@ def make_db():
         field_ids = {}
         for row_id, (item_id, field_name, value) in enumerate(items, start=1):
             field_id = field_ids.setdefault(field_name, len(field_ids) + 1)
-            con.execute("insert into fieldsCombined values (?, ?)",
-                        (field_id, field_name))
+            con.execute("insert into fieldsCombined values (?, ?)", (field_id, field_name))
             con.execute("insert into itemDataValues values (?, ?)", (row_id, value))
-            con.execute("insert into itemData values (?, ?, ?)",
-                        (item_id, field_id, row_id))
+            con.execute("insert into itemData values (?, ?, ?)", (item_id, field_id, row_id))
         con.executemany("insert into collections values (?, ?)", collections)
         con.executemany("insert into collectionItems values (?, ?)", memberships)
         return con
@@ -80,14 +78,17 @@ def bib(body, key="smith2020", entry_type="article"):
 class TestStripDoi:
     """DOIs arrive with trailing punctuation when they were scraped out of prose."""
 
-    @pytest.mark.parametrize("raw,expected", [
-        ("10.1234/ABC", "10.1234/abc"),
-        ("  10.1234/abc  ", "10.1234/abc"),
-        ("10.1234/abc.", "10.1234/abc"),
-        ("10.1234/abc),", "10.1234/abc"),
-        ("10.1234/abc]", "10.1234/abc"),
-        ("10.1234/abc>", "10.1234/abc"),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("10.1234/ABC", "10.1234/abc"),
+            ("  10.1234/abc  ", "10.1234/abc"),
+            ("10.1234/abc.", "10.1234/abc"),
+            ("10.1234/abc),", "10.1234/abc"),
+            ("10.1234/abc]", "10.1234/abc"),
+            ("10.1234/abc>", "10.1234/abc"),
+        ],
+    )
     def test_punctuation_and_case_are_normalised(self, raw, expected):
         assert pbg.strip_doi(raw) == expected
 
@@ -172,8 +173,7 @@ class TestBuildIndexes:
     def test_a_doi_buried_in_extra_is_found_too(self, make_db):
         # Older conferencePaper records have no DOI field and stash it in
         # `extra`; scanning every field value is the only way to see it.
-        indexes = pbg.build_indexes(make_db(
-            items=[(7, "extra", "PMID: 99\nDOI: 10.1234/xyz")]))
+        indexes = pbg.build_indexes(make_db(items=[(7, "extra", "PMID: 99\nDOI: 10.1234/xyz")]))
         assert indexes.doi["10.1234/xyz"] == {7}
 
     def test_a_non_text_field_value_is_skipped_not_crashed_on(self, make_db):
@@ -183,8 +183,9 @@ class TestBuildIndexes:
         assert not indexes.doi
 
     def test_duplicate_items_sharing_a_doi_both_land_under_it(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/A")]))
+        indexes = pbg.build_indexes(
+            make_db(items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/A")])
+        )
         assert indexes.doi["10.1234/a"] == {1, 2}
 
     def test_url_is_indexed_exactly_but_stripped(self, make_db):
@@ -198,9 +199,12 @@ class TestBuildIndexes:
     def test_collections_are_the_leaf_name_only(self, make_db):
         # Zotero nests collections, but Better BibTeX writes only the leaf
         # name and this script matches that convention deliberately.
-        indexes = pbg.build_indexes(make_db(
-            collections=[(10, "Digital Twin"), (11, "Theoretical Concepts")],
-            memberships=[(11, 5)]))
+        indexes = pbg.build_indexes(
+            make_db(
+                collections=[(10, "Digital Twin"), (11, "Theoretical Concepts")],
+                memberships=[(11, 5)],
+            )
+        )
         assert indexes.collections[5] == {"Theoretical Concepts"}
 
     def test_an_item_in_no_collection_is_absent_rather_than_empty(self, make_db):
@@ -213,11 +217,15 @@ class TestMatchItemIds:
 
     @pytest.fixture
     def indexes(self, make_db):
-        return pbg.build_indexes(make_db(items=[
-            (1, "DOI", "10.1234/a"),
-            (2, "url", "http://x/b"),
-            (3, "title", "A Plain Title"),
-        ]))
+        return pbg.build_indexes(
+            make_db(
+                items=[
+                    (1, "DOI", "10.1234/a"),
+                    (2, "url", "http://x/b"),
+                    (3, "title", "A Plain Title"),
+                ]
+            )
+        )
 
     def test_doi_wins_when_present(self, indexes):
         fields = {"doi": "10.1234/A", "url": "http://x/b", "title": "A Plain Title"}
@@ -256,34 +264,46 @@ class TestPopulate:
     """The splice: what lands in the file, and where."""
 
     def test_a_matched_entry_gains_a_groups_field_before_its_closing_brace(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a")],
-            collections=[(10, "Digital Twin")], memberships=[(10, 1)]))
+        indexes = pbg.build_indexes(
+            make_db(
+                items=[(1, "DOI", "10.1234/a")],
+                collections=[(10, "Digital Twin")],
+                memberships=[(10, 1)],
+            )
+        )
         text = bib("\tdoi = {10.1234/a},")
         out, _ = pbg.populate(text, indexes)
         assert out == "@article{smith2020,\n\tdoi = {10.1234/a},\n\tgroups = {Digital Twin},\n}\n"
 
     def test_several_collections_are_sorted_and_comma_joined(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a")],
-            collections=[(10, "Standards"), (11, "Digital Twin")],
-            memberships=[(10, 1), (11, 1)]))
+        indexes = pbg.build_indexes(
+            make_db(
+                items=[(1, "DOI", "10.1234/a")],
+                collections=[(10, "Standards"), (11, "Digital Twin")],
+                memberships=[(10, 1), (11, 1)],
+            )
+        )
         out, _ = pbg.populate(bib("\tdoi = {10.1234/a},"), indexes)
         assert "\tgroups = {Digital Twin,Standards},\n" in out
 
     def test_duplicate_zotero_items_union_their_collections(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/a")],
-            collections=[(10, "Standards"), (11, "Digital Twin")],
-            memberships=[(10, 1), (11, 2)]))
+        indexes = pbg.build_indexes(
+            make_db(
+                items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/a")],
+                collections=[(10, "Standards"), (11, "Digital Twin")],
+                memberships=[(10, 1), (11, 2)],
+            )
+        )
         out, stats = pbg.populate(bib("\tdoi = {10.1234/a},"), indexes)
         assert "\tgroups = {Digital Twin,Standards},\n" in out
         assert stats["matched_multiple_items"] == 1
 
     def test_an_entry_that_already_has_groups_is_left_alone(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a")],
-            collections=[(10, "Other")], memberships=[(10, 1)]))
+        indexes = pbg.build_indexes(
+            make_db(
+                items=[(1, "DOI", "10.1234/a")], collections=[(10, "Other")], memberships=[(10, 1)]
+            )
+        )
         text = bib("\tdoi = {10.1234/a},\n\tgroups = {Kept},")
         out, stats = pbg.populate(text, indexes)
         assert out == text
@@ -304,19 +324,22 @@ class TestPopulate:
         assert stats["matched_no_collection_via_doi"] == 1
 
     def test_text_between_and_after_entries_is_preserved_verbatim(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a")],
-            collections=[(10, "G")], memberships=[(10, 1)]))
+        indexes = pbg.build_indexes(
+            make_db(items=[(1, "DOI", "10.1234/a")], collections=[(10, "G")], memberships=[(10, 1)])
+        )
         text = "% a comment\n" + bib("\tdoi = {10.1234/a},") + "\n% trailing\n"
         out, _ = pbg.populate(text, indexes)
         assert out.startswith("% a comment\n")
         assert out.endswith("\n% trailing\n")
 
     def test_two_matched_entries_are_both_spliced_in_order(self, make_db):
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/b")],
-            collections=[(10, "First"), (11, "Second")],
-            memberships=[(10, 1), (11, 2)]))
+        indexes = pbg.build_indexes(
+            make_db(
+                items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/b")],
+                collections=[(10, "First"), (11, "Second")],
+                memberships=[(10, 1), (11, 2)],
+            )
+        )
         text = bib("\tdoi = {10.1234/a},", key="a") + bib("\tdoi = {10.1234/b},", key="b")
         out, _ = pbg.populate(text, indexes)
         assert out.index("First") < out.index("Second")
@@ -326,9 +349,9 @@ class TestPopulate:
         # @comment blocks carry no fields to match on. The scan sees them
         # and the parser does not, so the splice must tolerate the gap
         # rather than mis-aligning every entry after it.
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a")],
-            collections=[(10, "G")], memberships=[(10, 1)]))
+        indexes = pbg.build_indexes(
+            make_db(items=[(1, "DOI", "10.1234/a")], collections=[(10, "G")], memberships=[(10, 1)])
+        )
         text = "@comment{jabref-meta,\n}\n" + bib("\tdoi = {10.1234/a},")
         out, stats = pbg.populate(text, indexes)
         assert out.count("groups = {") == 1
@@ -339,24 +362,32 @@ class TestPopulate:
         # The buckets are what the summary reports, so a block falling
         # through all of them would under-report the file silently. This
         # is the property that keeps `groups added + skipped == total`.
-        indexes = pbg.build_indexes(make_db(
-            items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/b")],
-            collections=[(10, "G")], memberships=[(10, 1)]))
-        text = ("@comment{meta,\n}\n"
-                + bib("\tdoi = {10.1234/a},", key="filed")
-                + bib("\tdoi = {10.1234/b},", key="unfiled")
-                + bib("\tdoi = {10.9999/nope},", key="missing")
-                + bib("\tdoi = {10.1234/a},\n\tgroups = {Kept},", key="kept"))
+        indexes = pbg.build_indexes(
+            make_db(
+                items=[(1, "DOI", "10.1234/a"), (2, "DOI", "10.1234/b")],
+                collections=[(10, "G")],
+                memberships=[(10, 1)],
+            )
+        )
+        text = (
+            "@comment{meta,\n}\n"
+            + bib("\tdoi = {10.1234/a},", key="filed")
+            + bib("\tdoi = {10.1234/b},", key="unfiled")
+            + bib("\tdoi = {10.9999/nope},", key="missing")
+            + bib("\tdoi = {10.1234/a},\n\tgroups = {Kept},", key="kept")
+        )
         _, stats = pbg.populate(text, indexes)
-        counted = sum(value for key, value in stats.items()
-                      if key not in ("entries_total", "matched_multiple_items"))
+        counted = sum(
+            value
+            for key, value in stats.items()
+            if key not in ("entries_total", "matched_multiple_items")
+        )
         assert counted == stats["entries_total"] == 5
 
 
 class TestFormatStats:
     def test_the_summary_names_the_total_and_each_bucket(self):
-        lines = pbg.format_stats(
-            {"entries_total": 3, "matched_via_doi": 2, "unmatched": 1})
+        lines = pbg.format_stats({"entries_total": 3, "matched_via_doi": 2, "unmatched": 1})
         assert "entries total:            3" in lines
         assert any("matched_via_doi" in line and "2" in line for line in lines)
 
@@ -367,8 +398,9 @@ class TestFormatStats:
     def test_only_matched_via_buckets_count_toward_the_added_total(self):
         # `matched_no_collection_via_doi` starts with "matched" but adds no
         # field, so a prefix test on "matched" would overcount.
-        lines = pbg.format_stats({"entries_total": 2, "matched_via_doi": 1,
-                                  "matched_no_collection_via_doi": 1})
+        lines = pbg.format_stats(
+            {"entries_total": 2, "matched_via_doi": 1, "matched_no_collection_via_doi": 1}
+        )
         assert "groups field added to:    1 / 2 entries" in lines
 
 
@@ -376,15 +408,19 @@ class TestMain:
     @pytest.fixture
     def library(self, tmp_path, make_db):
         db_path = tmp_path / "zotero.sqlite"
-        source = make_db(items=[(1, "DOI", "10.1234/a")],
-                         collections=[(10, "Digital Twin")], memberships=[(10, 1)])
+        source = make_db(
+            items=[(1, "DOI", "10.1234/a")],
+            collections=[(10, "Digital Twin")],
+            memberships=[(10, 1)],
+        )
         source.commit()
         with closing(sqlite3.connect(db_path)) as on_disk:
             source.backup(on_disk)
         return db_path
 
     def test_it_writes_the_output_file_and_leaves_the_input_untouched(
-            self, tmp_path, library, capsys):
+        self, tmp_path, library, capsys
+    ):
         in_path = tmp_path / "in.bib"
         in_path.write_text(bib("\tdoi = {10.1234/a},"), encoding="utf-8")
         out_path = tmp_path / "out.bib"

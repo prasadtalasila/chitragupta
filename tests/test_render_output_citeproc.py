@@ -47,18 +47,23 @@ class TestSwapManualRefsForCiteproc:
 
 class TestAliasFor:
     def test_replaces_double_hyphen(self):
-        assert render_output._alias_for("zech_digital-twins-as--service_2024") == \
-            "zech_digital-twins-as-x2d-service_2024"
+        assert (
+            render_output._alias_for("zech_digital-twins-as--service_2024")
+            == "zech_digital-twins-as-x2d-service_2024"
+        )
 
-    @pytest.mark.parametrize("citekey", [
-        "zech_digital-twins-as--service_2024",
-        # This project's own corpus has a 3-hyphen key. A single
-        # replace("--", "-x2d-") leaves "state-x2d--art" -- still
-        # truncating, so the citation resolves to nothing and the source
-        # silently disappears from the rendered bibliography.
-        "tygesen_state---art_2019",
-        "a----b",
-    ])
+    @pytest.mark.parametrize(
+        "citekey",
+        [
+            "zech_digital-twins-as--service_2024",
+            # This project's own corpus has a 3-hyphen key. A single
+            # replace("--", "-x2d-") leaves "state-x2d--art" -- still
+            # truncating, so the citation resolves to nothing and the source
+            # silently disappears from the rendered bibliography.
+            "tygesen_state---art_2019",
+            "a----b",
+        ],
+    )
     def test_alias_never_leaves_a_double_hyphen_behind(self, citekey):
         assert "--" not in render_output._alias_for(citekey)
 

@@ -61,7 +61,7 @@ skill.
 **Otherwise: what is the reader doing while they read?**
 
 | The reader is... | Genre | Skill |
-|---|---|---|
+| --- | --- | --- |
 | entering a field and needs the map of it, and the gaps | organising literature | `survey-writer` |
 | an examiner, reading adversarially for the claim that outruns its evidence | arguing toward a research question | `thesis-chapter-writer` |
 | a student, studying the topic -- reading, not typing | explaining with worked examples | `textbook-chapter-writer` |
@@ -80,7 +80,7 @@ document that fails at both.
 ## 🔭 At a glance
 
 | | Output | Citation density | Subagents | Cost |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `survey-writer` | `content/drafts/<slug>.md` | every claim | none | one run |
 | `thesis-chapter-writer` | `content/drafts/<slug>.tex` fragment | every claim | none | one run |
 | `textbook-chapter-writer` | `content/drafts/<slug>.md` | sparse -- background only | none | one run |
@@ -102,7 +102,7 @@ rather than inheriting one switch, and the two answers that produce
 nothing are decisions on the record, not omissions:
 
 | Skill | Emits one? | Why |
-|---|---|---|
+| --- | --- | --- |
 | `deep-research` | **yes** -- the strongest case | Showing its work is the product. A reader checking where the corpus disagrees with itself wants what each source actually said |
 | `survey-writer` | **yes** | Citation-dense, and its reader is mapping a field |
 | `thesis-chapter-writer` | **yes** | An examiner reading adversarially is the ideal reader for one. A sidecar is standalone and is never `\input` into the thesis, so none of the objections that keep a References section out of the fragment apply |
@@ -220,7 +220,7 @@ Four things no other genre produces:
 Three depth presets trade cost against breadth:
 
 | Depth | Perspectives | Interview rounds | Section writers |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `quick` | 3 + basic | 2 | inline, no subagents |
 | `standard` (default) | 5 + basic | 3 | parallel subagents |
 | `deep` | 6-7 + basic | 4 | parallel subagents |
@@ -516,7 +516,7 @@ Named here so a skill can tell you plainly rather than writing the wrong
 thing:
 
 | Genre | Reader's state | What happens |
-|---|---|---|
+| --- | --- | --- |
 | **How-to guide** | already competent, has a specific goal | No skill. Say so, and write it as a short procedure |
 | **Reference** | needs a fact, fast | No skill |
 

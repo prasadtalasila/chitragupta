@@ -28,7 +28,10 @@ def _alias_for(citekey: str) -> str:
 
 
 def _safe_render_inputs(
-    input_path: Path, bib_path: Path, tmp_dir: Path, text: str | None = None,
+    input_path: Path,
+    bib_path: Path,
+    tmp_dir: Path,
+    text: str | None = None,
 ) -> tuple[Path, Path]:
     """Returns (markdown_path, bib_path) safe to hand to `pandoc --citeproc`.
 

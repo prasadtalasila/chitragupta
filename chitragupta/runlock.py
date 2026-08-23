@@ -60,6 +60,7 @@ from chitragupta import config
 # something to alert on other than exit 2, which is normal.
 _STUCK_AFTER_SECONDS = 6 * 60 * 60
 
+
 class AlreadyRunning(RuntimeError):
     """Another sync or enrichment run holds the lock."""
 
@@ -82,8 +83,12 @@ def _describe_holder(path) -> "tuple[int, str, str, float] | None":
     try:
         data = json.loads(Path(str(path) + ".holder").read_text(encoding="utf-8"))
         started = datetime.fromisoformat(data["started_at"])
-        return (data["pid"], data["host"], data["started_at"],
-                (datetime.now(timezone.utc) - started).total_seconds())
+        return (
+            data["pid"],
+            data["host"],
+            data["started_at"],
+            (datetime.now(timezone.utc) - started).total_seconds(),
+        )
     except Exception:  # noqa: BLE001 -- see docstring
         return None
 
@@ -147,11 +152,16 @@ class pipeline_lock:
         write them must never cost the lock we just won.
         """
         try:
-            self._holder_path().write_text(json.dumps({
-                "pid": os.getpid(),
-                "host": socket.gethostname(),
-                "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            }), encoding="utf-8")
+            self._holder_path().write_text(
+                json.dumps(
+                    {
+                        "pid": os.getpid(),
+                        "host": socket.gethostname(),
+                        "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    }
+                ),
+                encoding="utf-8",
+            )
         except OSError:
             pass
 

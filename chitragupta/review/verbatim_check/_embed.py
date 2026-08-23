@@ -11,7 +11,10 @@ from chitragupta import overlap_embed, overlap_segments
 from chitragupta.review.verbatim_check._allowlist import _mask_allowlisted
 from chitragupta.review.verbatim_check._masking import _DraftWord
 from chitragupta.review.verbatim_check._shared import (
-    _cites_source, _line_at, _run_is_quoted, finding_id,
+    _cites_source,
+    _line_at,
+    _run_is_quoted,
+    finding_id,
 )
 
 
@@ -62,10 +65,14 @@ def _embed_tier_findings(
         # a release whose heading convention differed. Nothing to scope
         # to, and the tier says so rather than reporting a clean scan of
         # a draft it never compared against anything.
-        return [], 0, (
-            "the draft's headings and its dossier's sections.md do not agree on a "
-            "single section -- regenerate it with `python -m chitragupta.dossier sections "
-            "<draft> --citekeys --write`"
+        return (
+            [],
+            0,
+            (
+                "the draft's headings and its dossier's sections.md do not agree on a "
+                "single section -- regenerate it with `python -m chitragupta.dossier sections "
+                "<draft> --citekeys --write`"
+            ),
         )
 
     alignments = overlap_embed.align_draft(scope, sections)
@@ -87,20 +94,28 @@ def _embed_tier_findings(
             continue
         if allowlist:
             mask = _mask_allowlisted(
-                word_strs[alignment.word_start:alignment.word_end], allowlist
+                word_strs[alignment.word_start : alignment.word_end], allowlist
             )
             if span_words - sum(mask) < min_run:
                 suppressed += 1
                 continue
-        findings.append(_embed_finding(
-            alignment, span_words, words, word_strs, newlines, text,
-            paragraph_citekeys, citekeys_at_position,
-        ))
+        findings.append(
+            _embed_finding(
+                alignment,
+                span_words,
+                words,
+                word_strs,
+                newlines,
+                text,
+                paragraph_citekeys,
+                citekeys_at_position,
+            )
+        )
     return findings, suppressed, None
 
 
 def _embed_citekeys_at_positions(
-    alignments: list[overlap_embed.SectionAlignment]
+    alignments: list[overlap_embed.SectionAlignment],
 ) -> dict[int, set[str]]:
     """The tier-3 analogue of `_citekeys_at_positions`: every draft word
     position an alignment covers, mapped to the citekeys aligned there.
@@ -152,7 +167,7 @@ def _embed_finding(
         "char_end": char_end,
         "draft_text": text[char_start:char_end],
         "fragment": fragment,
-        "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
+        "context": " ".join(word_strs[max(0, start - 6) : min(len(word_strs), end + 6)]),
         "cites_source": _cites_source(
             start, end, run_paragraphs, paragraph_citekeys, citekeys_at_position
         ),

@@ -21,8 +21,9 @@ class FakeDistribution(SimpleNamespace):
 
 class TestCheckBinaries:
     def test_a_present_binary_is_ok(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which",
-                            lambda b: f"/usr/bin/{b}" if b == "pandoc" else None)
+        monkeypatch.setattr(
+            doctor.shutil, "which", lambda b: f"/usr/bin/{b}" if b == "pandoc" else None
+        )
         lines = doctor._check_binaries()
         assert any(line.startswith("[ok] pandoc") for line in lines)
 
@@ -89,19 +90,28 @@ class TestCheckGpuTorch:
 
 class TestCompetingDistribution:
     def test_no_other_distribution_is_ok(self, monkeypatch):
-        mine = FakeDistribution(name="chitragupta-cli", entry_points=[
-            FakeEntryPoint(group="console_scripts", name="chitragupta"),
-        ])
+        mine = FakeDistribution(
+            name="chitragupta-cli",
+            entry_points=[
+                FakeEntryPoint(group="console_scripts", name="chitragupta"),
+            ],
+        )
         monkeypatch.setattr(importlib.metadata, "distributions", lambda: [mine])
         assert "[ok] no competing" in doctor._check_competing_distribution()
 
     def test_another_distribution_owning_chitragupta_is_a_collision(self, monkeypatch):
-        mine = FakeDistribution(name="chitragupta-cli", entry_points=[
-            FakeEntryPoint(group="console_scripts", name="chitragupta"),
-        ])
-        theirs = FakeDistribution(name="chitragupta", entry_points=[
-            FakeEntryPoint(group="console_scripts", name="chitragupta"),
-        ])
+        mine = FakeDistribution(
+            name="chitragupta-cli",
+            entry_points=[
+                FakeEntryPoint(group="console_scripts", name="chitragupta"),
+            ],
+        )
+        theirs = FakeDistribution(
+            name="chitragupta",
+            entry_points=[
+                FakeEntryPoint(group="console_scripts", name="chitragupta"),
+            ],
+        )
         monkeypatch.setattr(importlib.metadata, "distributions", lambda: [mine, theirs])
         result = doctor._check_competing_distribution()
         assert "[collision]" in result
@@ -109,9 +119,12 @@ class TestCompetingDistribution:
 
     def test_a_distribution_with_no_console_scripts_is_not_a_collision(self, monkeypatch):
         mine = FakeDistribution(name="chitragupta-cli", entry_points=[])
-        unrelated = FakeDistribution(name="some-other-package", entry_points=[
-            FakeEntryPoint(group="console_scripts", name="something-else"),
-        ])
+        unrelated = FakeDistribution(
+            name="some-other-package",
+            entry_points=[
+                FakeEntryPoint(group="console_scripts", name="something-else"),
+            ],
+        )
         monkeypatch.setattr(importlib.metadata, "distributions", lambda: [mine, unrelated])
         assert "[ok] no competing" in doctor._check_competing_distribution()
 

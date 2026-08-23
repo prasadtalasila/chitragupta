@@ -64,7 +64,9 @@ _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 def _run(*argv):
     return subprocess.run(
         [sys.executable, *argv],
-        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
     )
 
 
@@ -81,7 +83,7 @@ class TestTheVerbsAreTheCorpusLayersCommands:
         assert f"chitragupta.corpus {verb}" in result.stdout
 
     def test_no_verb_prints_the_layers_usage_and_exits_zero(self):
-        """"Tell me how to use this" is not an error -- the same rule
+        """ "Tell me how to use this" is not an error -- the same rule
         chitragupta/draft.py and chitragupta/review/__main__.py already apply."""
         result = _run("-m", "chitragupta.corpus")
         assert result.returncode == 0
@@ -170,20 +172,25 @@ class TestLedgerKeepsItsBarePythonTier:
     """
 
     def test_importing_the_dispatcher_imports_neither_verb(self):
-        result = _run("-c", "import sys; from chitragupta import corpus; "
-                            "print('chitragupta.sync' in sys.modules, 'chitragupta.ledger' in sys.modules)")
+        result = _run(
+            "-c",
+            "import sys; from chitragupta import corpus; "
+            "print('chitragupta.sync' in sys.modules, 'chitragupta.ledger' in sys.modules)",
+        )
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == "False False"
 
     def test_dispatching_ledger_does_not_drag_in_syncs_dependency(self):
-        result = _run("-c",
-                      "import sys\n"
-                      "from chitragupta import corpus\n"
-                      "try:\n"
-                      "    corpus.main(['ledger', '--help'])\n"
-                      "except SystemExit:\n"
-                      "    pass\n"
-                      "print('bibtexparser' in sys.modules, 'chitragupta.sync' in sys.modules)\n")
+        result = _run(
+            "-c",
+            "import sys\n"
+            "from chitragupta import corpus\n"
+            "try:\n"
+            "    corpus.main(['ledger', '--help'])\n"
+            "except SystemExit:\n"
+            "    pass\n"
+            "print('bibtexparser' in sys.modules, 'chitragupta.sync' in sys.modules)\n",
+        )
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip().endswith("False False")
 
@@ -222,9 +229,7 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         with runlock.pipeline_lock(isolated_config.PIPELINE_LOCK_PATH):
             assert entrypoint.main(["ledger"]) == 0
 
-    def test_sync_forwards_its_flags_and_returns_runs_exit_code(
-        self, isolated_config, monkeypatch
-    ):
+    def test_sync_forwards_its_flags_and_returns_runs_exit_code(self, isolated_config, monkeypatch):
         from chitragupta import logging_setup, sync
 
         seen = {}

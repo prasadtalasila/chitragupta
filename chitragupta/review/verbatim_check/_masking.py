@@ -92,7 +92,7 @@ def _paragraphs(text: str) -> list[tuple[int, str]]:
     out = []
     pos = 0
     for m in _PARA_SPLIT_RE.finditer(text):
-        out.append((pos, text[pos:m.start()]))
+        out.append((pos, text[pos : m.start()]))
         pos = m.end()
     out.append((pos, text[pos:]))
     return out
@@ -174,8 +174,13 @@ def _tokenize_draft(text: str) -> tuple[list[_DraftWord], list[set[str]]]:
         for m in WORD.finditer(lowered):
             start = _original_index(offsets, m.start())
             end = _original_index(offsets, m.end() - 1) + 1
-            words.append(_DraftWord(
-                m.group(0), p_idx, _char_in_spans(start, quote_spans),
-                para_start + start, para_start + end,
-            ))
+            words.append(
+                _DraftWord(
+                    m.group(0),
+                    p_idx,
+                    _char_in_spans(start, quote_spans),
+                    para_start + start,
+                    para_start + end,
+                )
+            )
     return words, paragraph_citekeys

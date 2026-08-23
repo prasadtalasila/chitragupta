@@ -223,17 +223,19 @@ def build_sample(n: int, keep_outliers: bool, outliers_only: bool, out_bib: Path
             f"{corpus_path.name} is empty"
             + (f"; Tukey fence is {fence:.1f} pages" if fence is not None else "")
             + "). Nothing to compare -- widen the selection or re-run "
-              "make_corpus.py."
+            "make_corpus.py."
         )
     # Minimal entries: this bib exists to name PDFs for the parser, and
     # nothing downstream of the parse is being measured. The `file` field
     # carries an absolute path, which is what bib_reader resolves.
-    out_bib.write_text("\n".join(
-        "@article{%s,\n  title = {Bench document %s},\n  author = {Bench, A},\n"
-        "  year = {2024},\n  file = {x.pdf:%s:application/pdf},\n}\n"
-        % (r["citekey"], r["citekey"], r["path"])
-        for r in sample
-    ))
+    out_bib.write_text(
+        "\n".join(
+            "@article{%s,\n  title = {Bench document %s},\n  author = {Bench, A},\n"
+            "  year = {2024},\n  file = {x.pdf:%s:application/pdf},\n}\n"
+            % (r["citekey"], r["citekey"], r["path"])
+            for r in sample
+        )
+    )
     return {
         "requested": n,
         "documents": len(sample),
@@ -247,8 +249,9 @@ def build_sample(n: int, keep_outliers: bool, outliers_only: bool, out_bib: Path
         # otherwise emit bare `Infinity`, which is not valid JSON and
         # which a strict reader of this record would reject outright --
         # `outliers_excluded: 0` already says nothing was trimmed.
-        "outlier_fence_pages": (round(fence, 1)
-                                if fence is not None and math.isfinite(fence) else None),
+        "outlier_fence_pages": (
+            round(fence, 1) if fence is not None and math.isfinite(fence) else None
+        ),
         "outliers_excluded": excluded,
         # The citekeys themselves, not just a path to a generated bib.
         # rank_sample is deterministic, so a reader could in principle
@@ -270,9 +273,15 @@ def gpu_state() -> "list[dict] | None":
     """
     try:
         out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=index,memory.used,utilization.gpu",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=30, check=True,
+            [
+                "nvidia-smi",
+                "--query-gpu=index,memory.used,utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return None
@@ -285,8 +294,13 @@ def gpu_state() -> "list[dict] | None":
         # function's except clause does not catch, so a card in that
         # state would take down the whole benchmark from inside an
         # advisory metadata call.
-        cards.append({"index": _as_int(index), "memory_used_mib": _as_int(used),
-                      "utilisation_pct": _as_int(util)})
+        cards.append(
+            {
+                "index": _as_int(index),
+                "memory_used_mib": _as_int(used),
+                "utilisation_pct": _as_int(util),
+            }
+        )
     return cards
 
 
@@ -298,8 +312,9 @@ def _as_int(value: str) -> "int | None":
         return None
 
 
-def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
-             content_dir: Path, python: str) -> dict:
+def run_once(
+    bib: Path, workers: int, gpus: int, cpus: "str | None", content_dir: Path, python: str
+) -> dict:
     """One `python -m chitragupta.corpus sync` over `bib`, into `content_dir`, kept.
 
     The environment is set per run rather than via config.toml so that a
@@ -327,7 +342,10 @@ def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
     started = time.perf_counter()
     proc = subprocess.run(
         [*prefix, python, "-m", "chitragupta.corpus", "sync"],
-        cwd=str(REPO_ROOT), env=env, capture_output=True, text=True,
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
     )
     wall = time.perf_counter() - started
     combined = proc.stdout + proc.stderr
@@ -356,8 +374,9 @@ def run_once(bib: Path, workers: int, gpus: int, cpus: "str | None",
         # usable_devices() complains to stderr when it drops a card it
         # cannot fit on; keeping the line is what makes a surprising arm
         # explicable afterwards instead of merely surprising.
-        "device_complaints": [line for line in proc.stderr.splitlines()
-                              if "GPU" in line or "device" in line.lower()],
+        "device_complaints": [
+            line for line in proc.stderr.splitlines() if "GPU" in line or "device" in line.lower()
+        ],
         "gpu_state_before": before,
         "content_dir": _portable(content_dir),
     }
@@ -391,17 +410,24 @@ def fingerprint(content_dir: Path) -> dict:
         spans = _spans(sidecar) if sidecar.exists() else None
         out[citekey] = {
             "txt_sha": hashlib.sha256(txt.read_bytes()).hexdigest(),
-            "sidecar_sha": (hashlib.sha256(sidecar.read_bytes()).hexdigest()
-                            if sidecar.exists() else None),
-            "spans_sha": (hashlib.sha256(
-                json.dumps(spans, sort_keys=True).encode()).hexdigest()
-                if spans is not None else None),
+            "sidecar_sha": (
+                hashlib.sha256(sidecar.read_bytes()).hexdigest() if sidecar.exists() else None
+            ),
+            "spans_sha": (
+                hashlib.sha256(json.dumps(spans, sort_keys=True).encode()).hexdigest()
+                if spans is not None
+                else None
+            ),
             # Texts alone: what a reviewer would actually be shown. Kept
             # apart from spans_sha so a label flip on identical text is
             # not reported as a changed quotation.
-            "texts_sha": (hashlib.sha256(
-                json.dumps([s[0] for s in spans], sort_keys=True).encode()).hexdigest()
-                if spans is not None else None),
+            "texts_sha": (
+                hashlib.sha256(
+                    json.dumps([s[0] for s in spans], sort_keys=True).encode()
+                ).hexdigest()
+                if spans is not None
+                else None
+            ),
             "n_spans": len(spans) if spans is not None else None,
         }
     return out
@@ -424,11 +450,9 @@ def compare(left: dict, right: dict) -> dict:
         if a["sidecar_sha"] != b["sidecar_sha"]:
             sidecar_diff.append(citekey)
         if a["spans_sha"] != b["spans_sha"]:
-            spans_diff.append({"citekey": citekey,
-                               "n_spans": [a["n_spans"], b["n_spans"]]})
+            spans_diff.append({"citekey": citekey, "n_spans": [a["n_spans"], b["n_spans"]]})
         if a["texts_sha"] != b["texts_sha"]:
-            texts_diff.append({"citekey": citekey,
-                               "n_spans": [a["n_spans"], b["n_spans"]]})
+            texts_diff.append({"citekey": citekey, "n_spans": [a["n_spans"], b["n_spans"]]})
     return {
         "compared": len(shared),
         "only_in_left": sorted(set(left) - set(right)),
@@ -455,10 +479,12 @@ def self_check() -> None:
     runs on every invocation instead: it costs microseconds, and it means
     a printed zero has been earned rather than assumed.
     """
-    present = {"k": {"txt_sha": "a", "sidecar_sha": "b", "spans_sha": "c",
-                     "texts_sha": "d", "n_spans": 3}}
-    changed = {"k": {"txt_sha": "a", "sidecar_sha": "z", "spans_sha": "z",
-                     "texts_sha": "z", "n_spans": 4}}
+    present = {
+        "k": {"txt_sha": "a", "sidecar_sha": "b", "spans_sha": "c", "texts_sha": "d", "n_spans": 3}
+    }
+    changed = {
+        "k": {"txt_sha": "a", "sidecar_sha": "z", "spans_sha": "z", "texts_sha": "z", "n_spans": 4}
+    }
     hit = compare(present, changed)
     assert len(hit["sidecar_bytes_differ"]) == 1, "detector missed a sidecar difference"
     assert len(hit["spans_differ"]) == 1, "detector missed a span difference"
@@ -466,8 +492,15 @@ def self_check() -> None:
     assert not hit["txt_differ"], "detector invented a .txt difference"
     # A label flip on identical text: spans move, texts must not. This is
     # a real case, not a hypothetical -- see the module docstring.
-    label_only = {"k": {"txt_sha": "a", "sidecar_sha": "b", "spans_sha": "SHIFTED",
-                        "texts_sha": "d", "n_spans": 3}}
+    label_only = {
+        "k": {
+            "txt_sha": "a",
+            "sidecar_sha": "b",
+            "spans_sha": "SHIFTED",
+            "texts_sha": "d",
+            "n_spans": 3,
+        }
+    }
     flip = compare(present, label_only)
     assert len(flip["spans_differ"]) == 1, "detector missed a label flip"
     assert not flip["texts_differ"], "label flip wrongly reported as changed quotation"
@@ -479,8 +512,15 @@ def self_check() -> None:
     # `compare(absent, absent)["compared"] == 1` and called it the check,
     # which was vacuous: `compared` counts citekeys found by the .txt
     # glob and is 1 whether or not a single sidecar exists.
-    absent = {"k": {"txt_sha": "a", "sidecar_sha": None, "spans_sha": None,
-                    "texts_sha": None, "n_spans": None}}
+    absent = {
+        "k": {
+            "txt_sha": "a",
+            "sidecar_sha": None,
+            "spans_sha": None,
+            "texts_sha": None,
+            "n_spans": None,
+        }
+    }
     assert not compare(absent, absent)["sidecar_bytes_differ"]
     assert require_sidecars([{"name": "t", "fingerprint": absent}]), (
         "a run with no passage records must be flagged -- otherwise it "
@@ -489,9 +529,13 @@ def self_check() -> None:
     assert require_sidecars([{"name": "t", "fingerprint": present}]) is None
 
 
-def integrity_complaints(runs: "list[dict]", comparisons: "list[dict]",
-                         expected_docs: int, repeat: int,
-                         gpu_counts: "list[int]") -> "list[str]":
+def integrity_complaints(
+    runs: "list[dict]",
+    comparisons: "list[dict]",
+    expected_docs: int,
+    repeat: int,
+    gpu_counts: "list[int]",
+) -> "list[str]":
     """Everything that would make the table below a lie, in one place.
 
     Each item here is the same failure shape as the missing-sidecar case
@@ -510,27 +554,32 @@ def integrity_complaints(runs: "list[dict]", comparisons: "list[dict]",
         if run["exit_code"] != 0:
             complaints.append(
                 f"{run['name']}: sync exited {run['exit_code']} -- some documents "
-                f"failed to parse, so this arm's corpus is incomplete")
+                f"failed to parse, so this arm's corpus is incomplete"
+            )
         if run["parsed"] is None:
             complaints.append(
                 f"{run['name']}: could not read a parsed count from sync's output "
-                f"(its summary wording may have changed)")
+                f"(its summary wording may have changed)"
+            )
         elif run["parsed"] != expected_docs:
             complaints.append(
                 f"{run['name']}: parsed {run['parsed']} of {expected_docs} "
-                f"document(s) -- the comparison below covers only what both arms got")
+                f"document(s) -- the comparison below covers only what both arms got"
+            )
         missing = [k for k, v in run["fingerprint"].items() if not v["n_spans"]]
         if missing:
             complaints.append(
                 f"{run['name']}: {len(missing)} of {len(run['fingerprint'])} "
                 f"document(s) have no passage records (e.g. {', '.join(missing[:3])}) "
-                f"-- the sidecar/spans/texts columns are not evidence for those")
+                f"-- the sidecar/spans/texts columns are not evidence for those"
+            )
     for c in comparisons:
         if c["only_in_left"] or c["only_in_right"]:
             complaints.append(
                 f"{c['left']}~{c['right']}: {len(c['only_in_left'])} document(s) only "
                 f"in the first and {len(c['only_in_right'])} only in the second; "
-                f"{c['compared']} compared. The arms parsed different corpora")
+                f"{c['compared']} compared. The arms parsed different corpora"
+            )
     # Not data problems, but the two ways to run this and learn nothing.
     # The docstring says --repeat 1 makes a result uninterpretable; better
     # to say it at the point of use than to trust anyone read that far.
@@ -538,11 +587,13 @@ def integrity_complaints(runs: "list[dict]", comparisons: "list[dict]",
         complaints.append(
             "--repeat 1: no same-configuration control, so a difference between "
             "arms cannot be attributed to the varied axis rather than to the "
-            "parser being unstable run to run")
+            "parser being unstable run to run"
+        )
     if len(gpu_counts) < 2:
         complaints.append(
             "one --gpus value: nothing varies between arms, so this measures "
-            "same-configuration stability only")
+            "same-configuration stability only"
+        )
     return complaints
 
 
@@ -557,39 +608,61 @@ def require_sidecars(runs: "list[dict]") -> "str | None":
     for run in runs:
         missing = [k for k, v in run["fingerprint"].items() if not v["n_spans"]]
         if missing:
-            return (f"{run['name']}: {len(missing)} of {len(run['fingerprint'])} "
-                    f"document(s) have no passage records "
-                    f"(e.g. {', '.join(missing[:3])}) -- the sidecar and span "
-                    f"columns below are not evidence for those documents")
+            return (
+                f"{run['name']}: {len(missing)} of {len(run['fingerprint'])} "
+                f"document(s) have no passage records "
+                f"(e.g. {', '.join(missing[:3])}) -- the sidecar and span "
+                f"columns below are not evidence for those documents"
+            )
     return None
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--sample", type=int, required=True,
-                    help="documents to draw from bench/corpus.json, by page rank")
+    ap.add_argument(
+        "--sample",
+        type=int,
+        required=True,
+        help="documents to draw from bench/corpus.json, by page rank",
+    )
     # Mutually exclusive: build_sample would otherwise let --outliers-only
     # win silently, recording a sampling rule the caller did not ask for.
     outliers = ap.add_mutually_exclusive_group()
-    outliers.add_argument("--keep-outliers", action="store_true",
-                          help="do not exclude page-count outliers (Tukey Q3+1.5*IQR)")
-    outliers.add_argument("--outliers-only", action="store_true",
-                          help="parse ONLY the excluded outliers -- the arm that checks "
-                               "whether trimming removed the population the effect lives in")
-    ap.add_argument("--workers", type=int, default=12,
-                    help="held fixed across arms (default: 12)")
-    ap.add_argument("--gpus", default="1,4",
-                    help="comma-separated GPU counts -- the varied axis (default: 1,4)")
-    ap.add_argument("--repeat", type=int, default=2,
-                    help="runs per configuration; >1 gives the same-config control")
-    ap.add_argument("--cpus", default=None,
-                    help="taskset CPU list, e.g. 0-23,48-71 -- pins allowed_cpus()")
-    ap.add_argument("--tag", required=True,
-                    help="names the output directory, bench/results/<tag>/, "
-                         "whose record is always repro.json")
+    outliers.add_argument(
+        "--keep-outliers",
+        action="store_true",
+        help="do not exclude page-count outliers (Tukey Q3+1.5*IQR)",
+    )
+    outliers.add_argument(
+        "--outliers-only",
+        action="store_true",
+        help="parse ONLY the excluded outliers -- the arm that checks "
+        "whether trimming removed the population the effect lives in",
+    )
+    ap.add_argument("--workers", type=int, default=12, help="held fixed across arms (default: 12)")
+    ap.add_argument(
+        "--gpus", default="1,4", help="comma-separated GPU counts -- the varied axis (default: 1,4)"
+    )
+    ap.add_argument(
+        "--repeat",
+        type=int,
+        default=2,
+        help="runs per configuration; >1 gives the same-config control",
+    )
+    ap.add_argument(
+        "--cpus", default=None, help="taskset CPU list, e.g. 0-23,48-71 -- pins allowed_cpus()"
+    )
+    ap.add_argument(
+        "--tag",
+        required=True,
+        help="names the output directory, bench/results/<tag>/, whose record is always repro.json",
+    )
     ap.add_argument("--python", default=".venv-full/bin/python")
-    ap.add_argument("--keep", action="store_true",
-                    help="keep every run's CONTENT_DIR (default: delete after fingerprinting)")
+    ap.add_argument(
+        "--keep",
+        action="store_true",
+        help="keep every run's CONTENT_DIR (default: delete after fingerprinting)",
+    )
     ap.add_argument("--out", default=None, help="output directory (default: bench/results/<tag>)")
     args = ap.parse_args()
 
@@ -601,7 +674,8 @@ def main() -> int:
         raise SystemExit(
             "--cpus needs `taskset` (util-linux), which is not on PATH. Drop "
             "--cpus to run on the ambient CPU mask -- but note the arms are "
-            "then only comparable if nothing else changes that mask mid-matrix.")
+            "then only comparable if nothing else changes that mask mid-matrix."
+        )
 
     gpu_counts = [int(g) for g in args.gpus.split(",")]
     out_dir = Path(args.out) if args.out else BENCH_DIR / "results" / args.tag
@@ -609,8 +683,9 @@ def main() -> int:
     work_root = out_dir / "runs"
     work_root.mkdir(exist_ok=True)
 
-    sample = build_sample(args.sample, args.keep_outliers, args.outliers_only,
-                          out_dir / "sample.bib")
+    sample = build_sample(
+        args.sample, args.keep_outliers, args.outliers_only, out_dir / "sample.bib"
+    )
     # Worded per mode: "N outliers excluded" is actively wrong in
     # --outliers-only, where the outliers are the sample. Comparing a
     # trimmed arm's log against an outliers-only arm's is exactly when
@@ -623,9 +698,12 @@ def main() -> int:
         selection = "no outlier trimming"
     else:
         selection = f"{sample['outliers_excluded']} outlier(s) excluded{above}"
-    print(f"  sample: {sample['documents']} docs, {sample['pages']} pages "
-          f"({sample['pages_per_doc']}/doc, max {sample['max_pages']}), "
-          f"{selection}", flush=True)
+    print(
+        f"  sample: {sample['documents']} docs, {sample['pages']} pages "
+        f"({sample['pages_per_doc']}/doc, max {sample['max_pages']}), "
+        f"{selection}",
+        flush=True,
+    )
     bib_path = Path(sample["bib"])
 
     runs = []
@@ -635,15 +713,16 @@ def main() -> int:
             content_dir = work_root / name
             if content_dir.exists():
                 shutil.rmtree(content_dir)
-            print(f"  running {name}: {args.workers} workers, {gpus} GPU(s) ...",
-                  flush=True)
-            record = run_once(bib_path, args.workers, gpus, args.cpus,
-                              content_dir, args.python)
+            print(f"  running {name}: {args.workers} workers, {gpus} GPU(s) ...", flush=True)
+            record = run_once(bib_path, args.workers, gpus, args.cpus, content_dir, args.python)
             record["name"] = name
             record["fingerprint"] = fingerprint(content_dir)
             runs.append(record)
-            print(f"    {record['wall_seconds']}s, {record['parsed']} parsed, "
-                  f"{record['workers_resolved']} workers resolved", flush=True)
+            print(
+                f"    {record['wall_seconds']}s, {record['parsed']} parsed, "
+                f"{record['workers_resolved']} workers resolved",
+                flush=True,
+            )
             if not args.keep:
                 shutil.rmtree(content_dir, ignore_errors=True)
 
@@ -654,21 +733,32 @@ def main() -> int:
     for gpus in gpu_counts:
         for rep in range(1, args.repeat):
             left, right = f"g{gpus}-r0", f"g{gpus}-r{rep}"
-            comparisons.append({"kind": "same-config", "left": left, "right": right,
-                                **compare(by_name[left]["fingerprint"],
-                                          by_name[right]["fingerprint"])})
+            comparisons.append(
+                {
+                    "kind": "same-config",
+                    "left": left,
+                    "right": right,
+                    **compare(by_name[left]["fingerprint"], by_name[right]["fingerprint"]),
+                }
+            )
     for i, gpus in enumerate(gpu_counts):
-        for other in gpu_counts[i + 1:]:
+        for other in gpu_counts[i + 1 :]:
             left, right = f"g{gpus}-r0", f"g{other}-r0"
-            comparisons.append({"kind": "across-config", "left": left, "right": right,
-                                **compare(by_name[left]["fingerprint"],
-                                          by_name[right]["fingerprint"])})
+            comparisons.append(
+                {
+                    "kind": "across-config",
+                    "left": left,
+                    "right": right,
+                    **compare(by_name[left]["fingerprint"], by_name[right]["fingerprint"]),
+                }
+            )
 
     # Computed before the record is written, and stored in it: a reader
     # coming back to repro.json months later needs to know the columns
     # below were evidence, without re-deriving it from the fingerprints.
-    complaints = integrity_complaints(runs, comparisons, sample["documents"],
-                                      args.repeat, gpu_counts)
+    complaints = integrity_complaints(
+        runs, comparisons, sample["documents"], args.repeat, gpu_counts
+    )
     payload = {
         "sample": sample,
         "workers": args.workers,
@@ -685,13 +775,14 @@ def main() -> int:
     for complaint in complaints:
         print(f"\n  WARNING {complaint}")
 
-    print(f"\n{'comparison':<28} {'docs':>5} {'.txt':>6} {'sidecar':>8} "
-          f"{'spans':>6} {'texts':>6}")
+    print(f"\n{'comparison':<28} {'docs':>5} {'.txt':>6} {'sidecar':>8} {'spans':>6} {'texts':>6}")
     for c in comparisons:
         label = f"{c['kind']}: {c['left']}~{c['right']}"
-        print(f"{label:<28} {c['compared']:>5} {len(c['txt_differ']):>6} "
-              f"{len(c['sidecar_bytes_differ']):>8} {len(c['spans_differ']):>6} "
-              f"{len(c['texts_differ']):>6}")
+        print(
+            f"{label:<28} {c['compared']:>5} {len(c['txt_differ']):>6} "
+            f"{len(c['sidecar_bytes_differ']):>8} {len(c['spans_differ']):>6} "
+            f"{len(c['texts_differ']):>6}"
+        )
     print(f"\nRecord: {record_path}")
     return 0
 

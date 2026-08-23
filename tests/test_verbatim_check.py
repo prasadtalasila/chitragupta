@@ -78,8 +78,7 @@ class TestPdfPath:
         html = fixture_repo / "page.html"
         html.write_text("<html></html>")
         vc._corpus.BIB.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {page.html:page.html:text/html},\n}\n"
+            "@article{smith_2024,\n  title = {T},\n  file = {page.html:page.html:text/html},\n}\n"
         )
         assert vc.pdf_path("smith_2024") is None
 
@@ -222,7 +221,11 @@ class TestPages:
         md = fixture_repo / "doc.md"
         md.write_text("# Title\n\nSome distinctive verbatim content here.\n")
         pdf = fixture_repo / "paper.pdf"
-        subprocess.run(["pandoc", str(md), "-o", str(pdf), "--pdf-engine=pdflatex"], check=True, capture_output=True)
+        subprocess.run(
+            ["pandoc", str(md), "-o", str(pdf), "--pdf-engine=pdflatex"],
+            check=True,
+            capture_output=True,
+        )
 
         vc._corpus.BIB.write_text(
             "@article{smith_2024,\n  title = {T},\n  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
@@ -277,7 +280,9 @@ class TestCmdOverlap:
 
     def test_detects_verbatim_overlap_run(self, ledger_con, tmp_path, capsys):
         shared_phrase = "the quick brown fox jumps over the lazy dog repeatedly"
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", f"Intro text. {shared_phrase}. More text.")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", f"Intro text. {shared_phrase}. More text."
+        )
 
         draft = tmp_path / "draft.md"
         draft.write_text(f"As discussed [@smith_2024], {shared_phrase} in the study.\n")
@@ -301,7 +306,9 @@ class TestCmdOverlap:
         assert "words, pdf p." in out
 
     def test_no_overlap_found(self, ledger_con, tmp_path, capsys):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "completely different vocabulary entirely")
+        _add_parsed_item(
+            ledger_con, tmp_path, "smith_2024", "completely different vocabulary entirely"
+        )
 
         draft = tmp_path / "draft.md"
         draft.write_text("An original sentence mentioning smith_2024 with unrelated words.\n")
@@ -310,7 +317,9 @@ class TestCmdOverlap:
         out = capsys.readouterr().out
         assert "no verbatim run of >= 8 words found" in out
 
-    def test_matches_output_captured_from_the_pre_index_implementation(self, ledger_con, tmp_path, capsys):
+    def test_matches_output_captured_from_the_pre_index_implementation(
+        self, ledger_con, tmp_path, capsys
+    ):
         """Pinned literal output, captured from `cmd_overlap` *before* it
         was ported onto chitragupta/overlap_index.py (same fixture: a 4-gram
         shared between page 1 and page 3 of the source, to also confirm
@@ -337,7 +346,9 @@ class TestCmdLocate:
         vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         parsed_dir = fixture_repo / "content" / "parsed"
         parsed_dir.mkdir(parents=True)
-        (parsed_dir / "smith_2024.txt").write_text("nothing relevant\fdigital twin simulation platform")
+        (parsed_dir / "smith_2024.txt").write_text(
+            "nothing relevant\fdigital twin simulation platform"
+        )
 
         vc.cmd_locate("smith_2024", "digital twin simulation")
         out = capsys.readouterr().out
@@ -383,9 +394,7 @@ class TestSkipgramTierPrecision:
     """The two tier-2 defects #180 measured against a real corpus, each
     reproduced against the mechanism the issue traced them to."""
 
-    def test_a_repeating_source_block_reports_one_finding_not_several(
-        self, ledger_con, tmp_path
-    ):
+    def test_a_repeating_source_block_reports_one_finding_not_several(self, ledger_con, tmp_path):
         # The duplicate-emission mechanism, minimally: the source repeats
         # one block on one page, so the draft's single matching window
         # sits at two different `src_pos` and therefore in two different
@@ -397,10 +406,13 @@ class TestSkipgramTierPrecision:
         # cannot match (and so cannot mask the bug by suppressing tier 2
         # under `scan_findings`' containment rule); the even family
         # survives intact and does the matching.
-        block = ("alpha bexo gamov delka epsilo zenith etaro thelos iotara "
-                 "kappor lambdo muvex").split()
+        block = (
+            "alpha bexo gamov delka epsilo zenith etaro thelos iotara kappor lambdo muvex"
+        ).split()
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             " ".join(block + ["filler"] * 3 + block),
         )
         swapped = [w if i % 2 == 0 else f"z{i}" for i, w in enumerate(block)]
@@ -436,21 +448,19 @@ class TestSkipgramTierQuoting:
     skip-gram window is wider than the quotation it evidences and starts
     outside it."""
 
-    def test_a_window_straddling_the_opening_quote_mark_is_still_quoted(
-        self, ledger_con, tmp_path
-    ):
+    def test_a_window_straddling_the_opening_quote_mark_is_still_quoted(self, ledger_con, tmp_path):
         # Same odd-index-swap construction as the precision tests above,
         # so the exact tier cannot match and mask tier 2 -- with the
         # opening mark placed after the window's first two words, which
         # is the straddle `77a6a3a6ac03` and `b1f7848c8965` both have.
-        block = ("alpha bexo gamov delka epsilo zenith etaro thelos iotara "
-                 "kappor lambdo muvex").split()
+        block = (
+            "alpha bexo gamov delka epsilo zenith etaro thelos iotara kappor lambdo muvex"
+        ).split()
         _add_parsed_item(ledger_con, tmp_path, "cited_2024", " ".join(block))
         swapped = [w if i % 2 == 0 else f"z{i}" for i, w in enumerate(block)]
         draft = tmp_path / "draft.md"
         draft.write_text(
-            "[@cited_2024] " + " ".join(swapped[:2])
-            + ' "' + " ".join(swapped[2:]) + '" end.\n'
+            "[@cited_2024] " + " ".join(swapped[:2]) + ' "' + " ".join(swapped[2:]) + '" end.\n'
         )
 
         findings, _min_run, _suppressed, _ = vc.scan_findings(draft, min_run=8)
@@ -510,7 +520,14 @@ class TestTokenizeDraft:
     def test_flat_word_list_spans_paragraphs(self):
         text = "First paragraph words.\n\nSecond paragraph words.\n"
         words, _ = vc._tokenize_draft(text)
-        assert [w.text for w in words] == ["first", "paragraph", "words", "second", "paragraph", "words"]
+        assert [w.text for w in words] == [
+            "first",
+            "paragraph",
+            "words",
+            "second",
+            "paragraph",
+            "words",
+        ]
 
     def test_paragraph_citekeys_tracks_citations_per_paragraph(self):
         text = "Cites [@smith_2024] here.\n\nCites nothing here.\n"
@@ -540,7 +557,7 @@ class TestParagraphs:
     def test_each_paragraph_knows_where_it_starts(self):
         text = "one\n\ntwo\n  \nthree"
         for offset, para in vc._paragraphs(text):
-            assert text[offset:offset + len(para)] == para
+            assert text[offset : offset + len(para)] == para
 
     def test_a_single_paragraph_starts_at_zero(self):
         assert vc._paragraphs("just one") == [(0, "just one")]
@@ -611,17 +628,21 @@ class TestDraftWordOffsets:
 
     def _spans(self, text):
         words, _ = vc._tokenize_draft(text)
-        return [(w.text, text[w.char:w.char_end]) for w in words]
+        return [(w.text, text[w.char : w.char_end]) for w in words]
 
     def test_offsets_slice_the_original_casing_back_out(self):
         assert self._spans("Digital Twin here.\n") == [
-            ("digital", "Digital"), ("twin", "Twin"), ("here", "here"),
+            ("digital", "Digital"),
+            ("twin", "Twin"),
+            ("here", "here"),
         ]
 
     def test_offsets_survive_a_paragraph_break(self):
         assert self._spans("First para.\n\nSecond Para.\n") == [
-            ("first", "First"), ("para", "para"),
-            ("second", "Second"), ("para", "Para"),
+            ("first", "First"),
+            ("para", "para"),
+            ("second", "Second"),
+            ("para", "Para"),
         ]
 
     def test_offsets_survive_a_blanked_citation_marker(self):
@@ -629,7 +650,8 @@ class TestDraftWordOffsets:
         character after it, which is the second place the position of a
         word in the file was lost."""
         assert self._spans("Twins [@smith_2024] matter.\n") == [
-            ("twins", "Twins"), ("matter", "matter"),
+            ("twins", "Twins"),
+            ("matter", "matter"),
         ]
 
     def test_a_marker_with_no_space_around_it_no_longer_welds_two_words(self):
@@ -644,7 +666,9 @@ class TestDraftWordOffsets:
 
     def test_offsets_survive_a_length_changing_lowercase(self):
         assert self._spans("The İstanbul result.\n") == [
-            ("the", "The"), ("i", "İ"), ("stanbul", "stanbul"),
+            ("the", "The"),
+            ("i", "İ"),
+            ("stanbul", "stanbul"),
             ("result", "result"),
         ]
 
@@ -662,11 +686,15 @@ class TestCmdScan:
     def test_planted_verbatim_run_from_cited_source_is_flagged(self, ledger_con, tmp_path, capsys):
         # (a) per issue #111's fixture set.
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
-        draft.write_text("As shown [@cited_2024], alpha beta gamma delta epsilon zeta eta theta appears here.\n")
+        draft.write_text(
+            "As shown [@cited_2024], alpha beta gamma delta epsilon zeta eta theta appears here.\n"
+        )
 
         vc.cmd_scan(str(draft))
         out = capsys.readouterr().out
@@ -699,7 +727,9 @@ class TestCmdScan:
         # cannot see this -- it never looks at a source the paragraph
         # doesn't cite.
         _add_parsed_item(
-            ledger_con, tmp_path, "uncited_2024",
+            ledger_con,
+            tmp_path,
+            "uncited_2024",
             "lorem ipsum dolor sit amet consectetur adipiscing elit sed do",
         )
         draft = tmp_path / "draft.md"
@@ -719,7 +749,9 @@ class TestCmdScan:
         # (c) per issue #111's fixture set: reuse in a paragraph that
         # cites no one at all -- overlap mode never even runs on it.
         _add_parsed_item(
-            ledger_con, tmp_path, "connective_2024",
+            ledger_con,
+            tmp_path,
+            "connective_2024",
             "the quick brown fox jumps over the lazy dog while running",
         )
         draft = tmp_path / "draft.md"
@@ -739,7 +771,9 @@ class TestCmdScan:
         # (d) per issue #111's fixture set: must stay quiet at the
         # default n=8 floor.
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "structural health monitoring relies on continuous sensor data acquisition "
             "combined with periodic model recalibration to remain trustworthy",
         )
@@ -756,7 +790,9 @@ class TestCmdScan:
 
     def test_quoted_run_is_flagged_quoted(self, ledger_con, tmp_path, capsys):
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -778,7 +814,9 @@ class TestCmdScan:
         # correctly quoted and correctly credited passage. See
         # `_run_is_quoted` for why `any` and not a proportion of the span.
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -790,13 +828,13 @@ class TestCmdScan:
         out = capsys.readouterr().out
         assert "quoted" in out
 
-    def test_a_run_touching_no_quotation_at_all_is_not_quoted(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_a_run_touching_no_quotation_at_all_is_not_quoted(self, ledger_con, tmp_path, capsys):
         # The other side of `_run_is_quoted`: loosening `all` to `any`
         # must not make every finding read as a quotation.
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -816,7 +854,9 @@ class TestCmdScan:
         # does cite the matched source, so it must not be flagged
         # UNCITED SOURCE.
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta",
         )
         draft = tmp_path / "draft.md"
@@ -831,7 +871,9 @@ class TestCmdScan:
         assert "UNCITED SOURCE" not in out
 
     def test_tier_is_exact(self, ledger_con, tmp_path, capsys):
-        _add_parsed_item(ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta")
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta"
+        )
         draft = tmp_path / "draft.md"
         draft.write_text("[@cited_2024] alpha beta gamma delta epsilon zeta eta theta end.\n")
 
@@ -858,7 +900,9 @@ class TestCmdScan:
         # A real, matching 8-word run exists, but --min-run 20 asks for
         # more than that -- exercises the length-floor continue, distinct
         # from "no candidate groups existed at all".
-        _add_parsed_item(ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta")
+        _add_parsed_item(
+            ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta eta theta"
+        )
         draft = tmp_path / "draft.md"
         draft.write_text("[@cited_2024] alpha beta gamma delta epsilon zeta eta theta end.\n")
 
@@ -867,7 +911,9 @@ class TestCmdScan:
         assert "no verbatim run of >= 20 words found" in out
 
     def test_limit_truncates_findings(self, ledger_con, tmp_path, capsys):
-        _add_parsed_item(ledger_con, tmp_path, "a_2024", "alpha beta gamma delta epsilon zeta eta theta")
+        _add_parsed_item(
+            ledger_con, tmp_path, "a_2024", "alpha beta gamma delta epsilon zeta eta theta"
+        )
         _add_parsed_item(ledger_con, tmp_path, "b_2024", "one two three four five six seven eight")
         draft = tmp_path / "draft.md"
         draft.write_text(
@@ -879,9 +925,7 @@ class TestCmdScan:
         out = capsys.readouterr().out
         assert out.count("tier=exact") == 1
 
-    def test_run_spanning_a_page_break_merges_into_one_finding(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_run_spanning_a_page_break_merges_into_one_finding(self, ledger_con, tmp_path, capsys):
         # #131: global (not per-page) token position means a run merges
         # across a page break instead of splitting. A 15/15 split used to
         # report as two 15-word findings; it is now one 30-word finding
@@ -998,9 +1042,7 @@ class TestMaskAllowlistedStemmed:
 
     def test_a_phrase_longer_than_the_span_is_skipped_not_erroring(self):
         words = ["alpha", "beta"]
-        assert vc._mask_allowlisted_stemmed(
-            words, [("alpha", "beta", "gamma")]
-        ) == [False, False]
+        assert vc._mask_allowlisted_stemmed(words, [("alpha", "beta", "gamma")]) == [False, False]
 
     def test_no_match_returns_all_false(self):
         words = ["alpha", "beta", "gamma"]
@@ -1081,7 +1123,9 @@ class TestAllowlistSuppression:
         self, ledger_con, tmp_path, capsys
     ):
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta",
         )
         draft = tmp_path / "draft.md"
@@ -1152,10 +1196,15 @@ class TestBucket:
         }
 
     def test_a_run_at_or_above_the_threshold_is_long(self):
-        assert vc._bucket(self._finding(vc.LONG_RUN_WORDS, quoted=False, cites_source=True)) == "long"
+        assert (
+            vc._bucket(self._finding(vc.LONG_RUN_WORDS, quoted=False, cites_source=True)) == "long"
+        )
 
     def test_a_run_below_the_threshold_is_short(self):
-        assert vc._bucket(self._finding(vc.LONG_RUN_WORDS - 1, quoted=False, cites_source=True)) == "short"
+        assert (
+            vc._bucket(self._finding(vc.LONG_RUN_WORDS - 1, quoted=False, cites_source=True))
+            == "short"
+        )
 
     def test_quoted_and_cited_is_the_quoted_bucket_regardless_of_length(self):
         assert vc._bucket(self._finding(50, quoted=True, cites_source=True)) == "quoted"
@@ -1187,7 +1236,9 @@ class TestScanWrite:
 
     def _planted(self, ledger_con, tmp_path, name="dt/survey.md"):
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = config.DRAFTS_DIR / name
@@ -1202,7 +1253,9 @@ class TestScanWrite:
         vc.cmd_scan(str(draft))
         assert not config.REVIEW_DIR.exists()
 
-    def test_write_lands_in_the_mirrored_review_dir(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_write_lands_in_the_mirrored_review_dir(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         draft = self._planted(ledger_con, tmp_path)
 
         vc.cmd_scan(str(draft), write=True, formats=["md"])
@@ -1217,7 +1270,9 @@ class TestScanWrite:
         # looks like it does.
         assert "not a clean bill of health" in text
 
-    def test_a_clean_draft_still_writes_a_report(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_a_clean_draft_still_writes_a_report(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         """Nothing found is a finding worth keeping -- and worth diffing
         against the next revision, which is the point of writing at all."""
         _add_parsed_item(ledger_con, tmp_path, "cited_2024", "wholly unrelated source text here")
@@ -1230,7 +1285,9 @@ class TestScanWrite:
         text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
         assert "No verbatim run" in text
 
-    def test_limit_is_recorded_in_the_command_line(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_limit_is_recorded_in_the_command_line(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         """The header has to reproduce the invocation exactly: a report
         capped at one finding reads very differently from an uncapped
         one, and the difference is invisible without the flag."""
@@ -1241,7 +1298,9 @@ class TestScanWrite:
         text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
         assert "--limit 1" in text
 
-    def test_the_recorded_command_regenerates_the_file(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_the_recorded_command_regenerates_the_file(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         """Same as the coverage report: the header is only useful as a
         re-run if it includes the flag that produced the file."""
         draft = self._planted(ledger_con, tmp_path)
@@ -1290,7 +1349,9 @@ class TestScanWrite:
 
     def test_a_quoted_and_cited_run_lands_under_the_quoted_heading(self, ledger_con, tmp_path):
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta",
         )
         draft = config.DRAFTS_DIR / "survey.md"
@@ -1375,7 +1436,9 @@ class TestScanPayload:
 
     def _planted(self, ledger_con, tmp_path):
         _add_parsed_item(
-            ledger_con, tmp_path, "uncited_2024",
+            ledger_con,
+            tmp_path,
+            "uncited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -1427,10 +1490,24 @@ class TestScanPayload:
 
         finding = json.loads(capsys.readouterr().out)["findings"][0]
         assert list(finding) == [
-            "id", "citekey", "page", "end_page", "tier", "span_words",
-            "matched_words", "start", "line", "char_start", "char_end",
-            "draft_text", "fragment", "context", "cites_source", "quoted",
-            "score", "severity",
+            "id",
+            "citekey",
+            "page",
+            "end_page",
+            "tier",
+            "span_words",
+            "matched_words",
+            "start",
+            "line",
+            "char_start",
+            "char_end",
+            "draft_text",
+            "fragment",
+            "context",
+            "cites_source",
+            "quoted",
+            "score",
+            "severity",
         ]
 
     def test_the_flags_are_booleans_not_the_printed_labels(self, ledger_con, tmp_path, capsys):
@@ -1450,7 +1527,9 @@ class TestScanPayload:
         """The other corner of the same two bits, so neither is pinned
         only in its `False` state."""
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -1487,9 +1566,7 @@ class TestScanPayload:
             assert (not serialised["cites_source"]) == ("UNCITED SOURCE" in expected)
             assert serialised["quoted"] == ("quoted" in expected)
 
-    def test_start_is_a_word_offset_into_the_normalised_stream(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_start_is_a_word_offset_into_the_normalised_stream(self, ledger_con, tmp_path, capsys):
         """Documented in `scan_payload` and docs/CLI.md, and pinned here
         because a consumer that reads it as a character offset or a line
         number edits the wrong part of the draft."""
@@ -1514,7 +1591,9 @@ class TestFindingLocators:
 
     def _planted(self, ledger_con, tmp_path, prefix="Connective prose citing nobody: "):
         _add_parsed_item(
-            ledger_con, tmp_path, "uncited_2024",
+            ledger_con,
+            tmp_path,
+            "uncited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -1527,7 +1606,7 @@ class TestFindingLocators:
         finding = self._payload(draft, capsys)["findings"][0]
 
         text = draft.read_text()
-        assert text[finding["char_start"]:finding["char_end"]] == finding["draft_text"]
+        assert text[finding["char_start"] : finding["char_end"]] == finding["draft_text"]
 
     def test_draft_text_keeps_the_casing_the_normalised_fragment_lost(
         self, ledger_con, tmp_path, capsys
@@ -1546,7 +1625,9 @@ class TestFindingLocators:
         `Edit` built from `fragment` would not match. This is the case the
         locators exist for."""
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -1557,20 +1638,18 @@ class TestFindingLocators:
         assert "[@cited_2024]" in finding["draft_text"]
         assert "cited_2024" not in finding["fragment"]
 
-    def test_line_is_the_one_based_line_of_the_runs_first_word(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_line_is_the_one_based_line_of_the_runs_first_word(self, ledger_con, tmp_path, capsys):
         draft = self._planted(ledger_con, tmp_path, prefix="Heading line.\n\nSecond line: ")
 
         finding = self._payload(draft, capsys)["findings"][0]
 
         assert finding["line"] == 3
 
-    def test_a_run_spanning_a_line_break_carries_the_break(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_a_run_spanning_a_line_break_carries_the_break(self, ledger_con, tmp_path, capsys):
         _add_parsed_item(
-            ledger_con, tmp_path, "uncited_2024",
+            ledger_con,
+            tmp_path,
+            "uncited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
@@ -1579,9 +1658,9 @@ class TestFindingLocators:
         finding = self._payload(draft, capsys)["findings"][0]
 
         assert "\n" in finding["draft_text"]
-        assert draft.read_text()[
-            finding["char_start"]:finding["char_end"]
-        ] == finding["draft_text"]
+        assert (
+            draft.read_text()[finding["char_start"] : finding["char_end"]] == finding["draft_text"]
+        )
 
     def test_the_span_covers_interior_punctuation_but_stops_at_the_last_word(
         self, ledger_con, tmp_path, capsys
@@ -1592,19 +1671,19 @@ class TestFindingLocators:
         behaviour a reviser wants -- a rewrite substituted for
         `draft_text` must leave the sentence's own punctuation alone."""
         _add_parsed_item(
-            ledger_con, tmp_path, "uncited_2024",
+            ledger_con,
+            tmp_path,
+            "uncited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = tmp_path / "draft.md"
-        draft.write_text(
-            'Prose: "Alpha beta-gamma, delta epsilon zeta eta theta." End.\n'
-        )
+        draft.write_text('Prose: "Alpha beta-gamma, delta epsilon zeta eta theta." End.\n')
 
         finding = self._payload(draft, capsys)["findings"][0]
 
         text = draft.read_text()
         assert finding["draft_text"] == "Alpha beta-gamma, delta epsilon zeta eta theta"
-        assert text[finding["char_end"]:finding["char_end"] + 2] == '."'
+        assert text[finding["char_end"] : finding["char_end"] + 2] == '."'
         assert text[finding["char_start"] - 1] == '"'
 
     def test_the_id_is_stable_across_an_edit_elsewhere_in_the_draft(
@@ -1622,9 +1701,7 @@ class TestFindingLocators:
         assert before["id"] == after["id"]
         assert before["start"] != after["start"]
 
-    def test_the_id_changes_when_the_matched_wording_changes(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_the_id_changes_when_the_matched_wording_changes(self, ledger_con, tmp_path, capsys):
         """A long enough run survives a one-word edit as one finding (the
         default `--gap` recovers it), so this pins that the id tracks the
         wording rather than merely the run's existence."""
@@ -1700,7 +1777,9 @@ class TestScanJsonSibling:
 
     def _planted(self, ledger_con, tmp_path, name="dt/survey.md"):
         _add_parsed_item(
-            ledger_con, tmp_path, "cited_2024",
+            ledger_con,
+            tmp_path,
+            "cited_2024",
             "alpha beta gamma delta epsilon zeta eta theta iota kappa",
         )
         draft = config.DRAFTS_DIR / name
@@ -1710,7 +1789,9 @@ class TestScanJsonSibling:
         )
         return draft
 
-    def test_written_without_json_being_asked_for(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_written_without_json_being_asked_for(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         draft = self._planted(ledger_con, tmp_path)
 
         vc.cmd_scan(str(draft), write=True, formats=["md"])
@@ -1718,7 +1799,9 @@ class TestScanJsonSibling:
         sibling = config.REVIEW_DIR / "dt" / "survey.verbatim.json"
         assert json.loads(sibling.read_text())["findings"][0]["citekey"] == "cited_2024"
 
-    def test_it_is_reported_like_the_report_itself(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_it_is_reported_like_the_report_itself(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         draft = self._planted(ledger_con, tmp_path)
 
         vc.cmd_scan(str(draft), write=True, formats=["md"])
@@ -1803,7 +1886,9 @@ class TestScanJsonSibling:
         sibling = config.REVIEW_DIR / "dt" / "survey.verbatim.json"
         assert json.loads(sibling.read_text())["aid"] == "verbatim"
 
-    def test_a_clean_draft_still_files_a_payload(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_a_clean_draft_still_files_a_payload(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         """Same reason the Markdown report is written for a clean draft:
         nothing found is a finding worth diffing against next time."""
         _add_parsed_item(ledger_con, tmp_path, "cited_2024", "wholly unrelated source text here")
@@ -1813,9 +1898,13 @@ class TestScanJsonSibling:
 
         vc.cmd_scan(str(draft), write=True, formats=["md"])
 
-        assert json.loads((config.REVIEW_DIR / "survey.verbatim.json").read_text())["findings"] == []
+        assert (
+            json.loads((config.REVIEW_DIR / "survey.verbatim.json").read_text())["findings"] == []
+        )
 
-    def test_the_payload_says_it_is_not_a_verdict(self, ledger_con, isolated_config, tmp_path, capsys):
+    def test_the_payload_says_it_is_not_a_verdict(
+        self, ledger_con, isolated_config, tmp_path, capsys
+    ):
         """The layer's rule reaches the payload too: a file found on disk
         months later is the case the docs cannot reach, and no less so
         when its likeliest reader is an agent acting on it."""
@@ -1855,8 +1944,13 @@ class TestRecheck:
             str(draft), min_run, kwargs.get("gap", 1), kwargs.get("limit"), False, True
         )
         payload = vc.scan_payload(
-            str(draft), findings, min_run, kwargs.get("gap", 1),
-            kwargs.get("limit"), suppressed, command,
+            str(draft),
+            findings,
+            min_run,
+            kwargs.get("gap", 1),
+            kwargs.get("limit"),
+            suppressed,
+            command,
         )
         path = tmp_path / "baseline.json"
         path.write_text(json.dumps(payload, indent=2))
@@ -1882,20 +1976,24 @@ class TestRecheck:
     def test_a_repaired_finding_reports_as_resolved(self, ledger_con, tmp_path, capsys):
         draft = self._planted(ledger_con, tmp_path)
         baseline = self._baseline(draft, tmp_path)
-        target = next(f for f in json.loads(baseline.read_text())["findings"]
-                      if f["citekey"] == "uncited_2024")
+        target = next(
+            f
+            for f in json.loads(baseline.read_text())["findings"]
+            if f["citekey"] == "uncited_2024"
+        )
 
-        draft.write_text(draft.read_text().replace(
-            target["draft_text"], "a wholly unrelated sentence of our own"))
+        draft.write_text(
+            draft.read_text().replace(
+                target["draft_text"], "a wholly unrelated sentence of our own"
+            )
+        )
         result = self._recheck(draft, baseline, capsys)
 
         assert [f["id"] for f in result["resolved"]] == [target["id"]]
         assert target["id"] not in [f["id"] for f in result["persisting"]]
         assert result["objective_delta"] == -1
 
-    def test_the_edit_can_be_built_from_the_baselines_own_draft_text(
-        self, ledger_con, tmp_path
-    ):
+    def test_the_edit_can_be_built_from_the_baselines_own_draft_text(self, ledger_con, tmp_path):
         """The loop this serves reads `draft_text` out of the baseline and
         hands it straight to `Edit` -- so it has to still match the file
         the baseline was taken from."""
@@ -1917,8 +2015,11 @@ class TestRecheck:
         draft = self._planted(ledger_con, tmp_path)
         _add_parsed_item(ledger_con, tmp_path, "third_2024", third)
         baseline = self._baseline(draft, tmp_path)
-        target = next(f for f in json.loads(baseline.read_text())["findings"]
-                      if f["citekey"] == "uncited_2024")
+        target = next(
+            f
+            for f in json.loads(baseline.read_text())["findings"]
+            if f["citekey"] == "uncited_2024"
+        )
 
         draft.write_text(draft.read_text().replace(target["draft_text"], third))
         result = self._recheck(draft, baseline, capsys)
@@ -1944,9 +2045,7 @@ class TestRecheck:
         assert result["resolved"] == []
         assert result["objective_delta"] == -1
 
-    def test_the_floor_comes_from_the_baseline_not_from_a_flag(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_the_floor_comes_from_the_baseline_not_from_a_flag(self, ledger_con, tmp_path, capsys):
         """Two scans are only comparable at the same floor, and the
         baseline is the one that already happened."""
         draft = self._planted(ledger_con, tmp_path)
@@ -1958,9 +2057,7 @@ class TestRecheck:
         # Only the 20-word run clears a floor of 18; the 16-word one does not.
         assert [f["citekey"] for f in result["persisting"]] == ["uncited_2024"]
 
-    def test_objective_counts_exclude_the_quoted_bucket(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_objective_counts_exclude_the_quoted_bucket(self, ledger_con, tmp_path, capsys):
         """R4 counts defects. A run that is both quoted and cited is the
         one bucket that is not one."""
         _add_parsed_item(ledger_con, tmp_path, "cited_2024", self.SOURCE)
@@ -2006,11 +2103,17 @@ class TestRecheck:
         remedy rather than crashing on the missing key."""
         draft = self._planted(ledger_con, tmp_path)
         baseline = tmp_path / "baseline.json"
-        baseline.write_text(json.dumps({
-            "aid": "verbatim", "min_run": 8, "gap": 1, "limit": None,
-            "findings": [{"citekey": "uncited_2024", "span_words": 20,
-                          "severity": "long"}],
-        }))
+        baseline.write_text(
+            json.dumps(
+                {
+                    "aid": "verbatim",
+                    "min_run": 8,
+                    "gap": 1,
+                    "limit": None,
+                    "findings": [{"citekey": "uncited_2024", "span_words": 20, "severity": "long"}],
+                }
+            )
+        )
 
         with pytest.raises(ValueError) as exc:
             vc.cmd_recheck(str(draft), str(baseline))
@@ -2021,33 +2124,27 @@ class TestRecheck:
         defaulting them would compare a strict run against a lax one."""
         draft = self._planted(ledger_con, tmp_path)
         baseline = tmp_path / "baseline.json"
-        baseline.write_text(json.dumps(
-            {"aid": "verbatim", "limit": None, "findings": []}
-        ))
+        baseline.write_text(json.dumps({"aid": "verbatim", "limit": None, "findings": []}))
 
         with pytest.raises(ValueError) as exc:
             vc.cmd_recheck(str(draft), str(baseline))
         assert "predates" in str(exc.value)
 
-    def test_an_empty_baseline_is_not_mistaken_for_an_old_one(
-        self, ledger_con, tmp_path, capsys
-    ):
-        """"No findings" is a legitimate baseline -- a draft repaired to
+    def test_an_empty_baseline_is_not_mistaken_for_an_old_one(self, ledger_con, tmp_path, capsys):
+        """ "No findings" is a legitimate baseline -- a draft repaired to
         clean, then re-checked -- and has no findings to carry an `id`."""
         draft = self._planted(ledger_con, tmp_path)
         baseline = tmp_path / "baseline.json"
-        baseline.write_text(json.dumps(
-            {"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []}
-        ))
+        baseline.write_text(
+            json.dumps({"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []})
+        )
 
         result = self._recheck(draft, baseline, capsys)
 
         assert result["objective_before"] == 0
         assert len(result["new"]) == 2
 
-    def test_a_baseline_missing_a_field_recheck_prints_is_refused(
-        self, ledger_con, tmp_path
-    ):
+    def test_a_baseline_missing_a_field_recheck_prints_is_refused(self, ledger_con, tmp_path):
         """`resolved` findings are printed straight out of the baseline,
         never rescanned, so every field the output line reads has to be
         there. `end_page` is the live case: a payload written between
@@ -2100,10 +2197,17 @@ class TestRecheck:
         non-dict for a key."""
         draft = self._planted(ledger_con, tmp_path)
         baseline = tmp_path / "baseline.json"
-        baseline.write_text(json.dumps({
-            "aid": "verbatim", "min_run": 8, "gap": 1, "limit": None,
-            "findings": [42],
-        }))
+        baseline.write_text(
+            json.dumps(
+                {
+                    "aid": "verbatim",
+                    "min_run": 8,
+                    "gap": 1,
+                    "limit": None,
+                    "findings": [42],
+                }
+            )
+        )
 
         with pytest.raises(ValueError) as exc:
             vc.cmd_recheck(str(draft), str(baseline))
@@ -2120,15 +2224,19 @@ class TestRecheck:
             vc.cmd_recheck(str(draft), str(baseline))
         assert "not a verbatim scan payload" in str(exc.value)
 
-    def test_the_text_form_names_every_bucket_of_the_comparison(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_the_text_form_names_every_bucket_of_the_comparison(self, ledger_con, tmp_path, capsys):
         draft = self._planted(ledger_con, tmp_path)
         baseline = self._baseline(draft, tmp_path)
-        target = next(f for f in json.loads(baseline.read_text())["findings"]
-                      if f["citekey"] == "uncited_2024")
-        draft.write_text(draft.read_text().replace(
-            target["draft_text"], "a wholly unrelated sentence of our own"))
+        target = next(
+            f
+            for f in json.loads(baseline.read_text())["findings"]
+            if f["citekey"] == "uncited_2024"
+        )
+        draft.write_text(
+            draft.read_text().replace(
+                target["draft_text"], "a wholly unrelated sentence of our own"
+            )
+        )
 
         vc.cmd_recheck(str(draft), str(baseline))
 
@@ -2138,9 +2246,7 @@ class TestRecheck:
         assert "new (0)" in out
         assert target["id"] in out
 
-    def test_the_text_form_states_the_objective_delta(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_the_text_form_states_the_objective_delta(self, ledger_con, tmp_path, capsys):
         draft = self._planted(ledger_con, tmp_path)
         baseline = self._baseline(draft, tmp_path)
 
@@ -2155,9 +2261,7 @@ class TestRecheck:
         baseline.write_text(json.dumps(payload, indent=2))
         return baseline
 
-    def test_a_baseline_from_an_earlier_release_series_is_refused(
-        self, ledger_con, tmp_path
-    ):
+    def test_a_baseline_from_an_earlier_release_series_is_refused(self, ledger_con, tmp_path):
         """What counts as one finding changes between releases -- a scan
         that learns to merge two runs into one produces a different `id`
         for wording nobody touched -- and a comparison across that reads
@@ -2172,9 +2276,7 @@ class TestRecheck:
         assert "5.4.0" in str(exc.value)
         assert "Re-scan" in str(exc.value)
 
-    def test_a_patch_level_difference_is_accepted_silently(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_a_patch_level_difference_is_accepted_silently(self, ledger_con, tmp_path, capsys):
         """A patch release is defined as changing nothing about what the
         pipeline does, so a baseline from one is still comparable -- and
         refusing it would force a re-scan for no reason."""
@@ -2187,9 +2289,7 @@ class TestRecheck:
         assert result["baseline_version"] == f"{current}.99"
         assert len(result["persisting"]) == 2
 
-    def test_an_unknowable_version_is_not_treated_as_a_mismatch(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_an_unknowable_version_is_not_treated_as_a_mismatch(self, ledger_con, tmp_path, capsys):
         """`review.version()` falls back to `"unknown"` when pyproject
         cannot be read. Refusing on that would turn one unreadable file
         into a second, unrelated failure."""
@@ -2200,9 +2300,7 @@ class TestRecheck:
 
         assert result["baseline_version"] == "unknown"
 
-    def test_a_non_string_version_is_not_treated_as_a_mismatch(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_a_non_string_version_is_not_treated_as_a_mismatch(self, ledger_con, tmp_path, capsys):
         """A hand-edited or corrupted baseline can put anything under
         `version` -- `_series` must not crash trying to `.split(".")` a
         non-string, and a malformed `version` is not this check's refusal
@@ -2215,9 +2313,7 @@ class TestRecheck:
 
         assert result["baseline_version"] == 5
 
-    def test_it_publishes_findings_in_the_same_shape_scan_does(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_it_publishes_findings_in_the_same_shape_scan_does(self, ledger_con, tmp_path, capsys):
         """`recheck` compares its own freshly-scanned findings against a
         baseline `scan` wrote, so the two must agree about what a
         published finding looks like -- both go through `published`."""
@@ -2230,9 +2326,7 @@ class TestRecheck:
         for finding in result["persisting"] + result["new"]:
             assert list(finding) == expected
 
-    def test_the_payload_carries_the_envelope_every_aid_shares(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_the_payload_carries_the_envelope_every_aid_shares(self, ledger_con, tmp_path, capsys):
         draft = self._planted(ledger_con, tmp_path)
         baseline = self._baseline(draft, tmp_path)
 
@@ -2313,9 +2407,9 @@ class TestMainInProcess:
     def test_dispatches_recheck(self, isolated_config, tmp_path, capsys):
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
         baseline = tmp_path / "baseline.json"
-        baseline.write_text(json.dumps(
-            {"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []}
-        ))
+        baseline.write_text(
+            json.dumps({"aid": "verbatim", "min_run": 8, "gap": 1, "limit": None, "findings": []})
+        )
 
         assert vc.main(["recheck", str(draft), "--baseline", str(baseline)]) == 0
         assert "objective findings (long + short): 0 -> 0 (+0)" in capsys.readouterr().out
@@ -2342,8 +2436,18 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Some claim citing nonexistent_key_2024.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", str(draft), "nonexistent_key_2024"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "overlap",
+                str(draft),
+                "nonexistent_key_2024",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 0
@@ -2359,8 +2463,21 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(draft), "--min-run", "8", "--gap", "1"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "scan",
+                str(draft),
+                "--min-run",
+                "8",
+                "--gap",
+                "1",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 0
@@ -2376,7 +2493,9 @@ class TestCliDispatch:
 
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(draft), "--json"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 0, result.stderr
@@ -2387,9 +2506,18 @@ class TestCliDispatch:
         returns before `require_reviewable`, which has nothing to check."""
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "locate",
-             "nonexistent_key_2024", "a phrase"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "locate",
+                "nonexistent_key_2024",
+                "a phrase",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 0, result.stderr
@@ -2405,7 +2533,9 @@ class TestCliDispatch:
 
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(outside)],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 1
@@ -2415,7 +2545,9 @@ class TestCliDispatch:
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "bogus-mode"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "invalid choice: 'bogus-mode'" in result.stderr
@@ -2432,7 +2564,9 @@ class TestCliDispatch:
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0
         assert "usage: python -m chitragupta.review verbatim" in result.stdout
@@ -2441,7 +2575,9 @@ class TestCliDispatch:
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", "only-one-arg"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "usage: python -m chitragupta.review verbatim overlap" in result.stderr
@@ -2450,7 +2586,9 @@ class TestCliDispatch:
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "scan"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "usage: python -m chitragupta.review verbatim scan" in result.stderr
@@ -2461,8 +2599,19 @@ class TestCliDispatch:
         # reported as the typo it almost certainly is.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", "draft.md", "citekey", "extra"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "overlap",
+                "draft.md",
+                "citekey",
+                "extra",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "unrecognized arguments: extra" in result.stderr
@@ -2475,8 +2624,20 @@ class TestCliDispatch:
         # in front of that).
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "overlap", "draft.md", "citekey", "--n", "0"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "overlap",
+                "draft.md",
+                "citekey",
+                "--n",
+                "0",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "--n must be >= 1" in result.stderr
@@ -2485,7 +2646,9 @@ class TestCliDispatch:
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", "draft.md", "extra"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "unrecognized arguments: extra" in result.stderr
@@ -2496,8 +2659,19 @@ class TestCliDispatch:
         # rather than raising) instead of being reported as nonsensical.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", "draft.md", "--gap", "-1"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "scan",
+                "draft.md",
+                "--gap",
+                "-1",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "--gap must be >= 0" in result.stderr
@@ -2509,8 +2683,19 @@ class TestCliDispatch:
         # usage error it is.
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", "draft.md", "--limit", "0"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "scan",
+                "draft.md",
+                "--limit",
+                "0",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "--limit must be >= 1" in result.stderr
@@ -2526,8 +2711,19 @@ class TestCliDispatch:
         draft = _content_draft(tmp_path, "Anything.\n")
 
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.review", "verbatim", "scan", str(draft), "--min-run", "4"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "chitragupta.review",
+                "verbatim",
+                "scan",
+                str(draft),
+                "--min-run",
+                "4",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
             env={**os.environ, "CONTENT_DIR": str(tmp_path / "content")},
         )
         assert result.returncode == 2
@@ -2537,7 +2733,9 @@ class TestCliDispatch:
         repo_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta.review", "verbatim", "locate", "only-one-arg"],
-            cwd=str(repo_root), capture_output=True, text=True,
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "usage: python -m chitragupta.review verbatim locate" in result.stderr
@@ -2566,9 +2764,16 @@ class FakeScopeEmbedder:
         return [[float(len(text))] for text in texts]
 
     def similarity(self, left, right):
-        return [[max((score for (a, b), score in self.scores.items()
-                      if a in first and b in second), default=0.0)
-                 for second in right] for first in left]
+        return [
+            [
+                max(
+                    (score for (a, b), score in self.scores.items() if a in first and b in second),
+                    default=0.0,
+                )
+                for second in right
+            ]
+            for first in left
+        ]
 
 
 @pytest.fixture
@@ -2576,6 +2781,7 @@ def tier3(monkeypatch, ledger_con):
     """Put tier 3 in a state where it runs, with a scored pair supplied
     by the caller. Returns a function taking `{(draft_fragment,
     source_fragment): cosine}`."""
+
     def install(scores, sections=None):
         class FakeCollection:
             def query(self, query_embeddings, n_results, where):
@@ -2583,10 +2789,13 @@ def tier3(monkeypatch, ledger_con):
 
         scope = overlap_embed.Scope(
             sections if sections is not None else {"Section": ["source_2024"]},
-            FakeCollection(), ledger_con, FakeScopeEmbedder(scores),
+            FakeCollection(),
+            ledger_con,
+            FakeScopeEmbedder(scores),
         )
         monkeypatch.setattr(overlap_embed, "open_scope", lambda draft: (scope, None))
         return scope
+
     return install
 
 
@@ -2606,15 +2815,19 @@ def _add_sidecar(citekey, records):
 
 
 class TestEmbeddingTier:
-    def test_a_restatement_is_reported_with_its_tier_and_score(
-        self, ledger_con, tmp_path, tier3
-    ):
+    def test_a_restatement_is_reported_with_its_tier_and_score(self, ledger_con, tmp_path, tier3):
         _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
-        _add_sidecar("source_2024", [
-            {"text": "Firms save their return on investment while adapting to "
-                     "modern technologies with minimal risk.",
-             "label": "text", "page": 9},
-        ])
+        _add_sidecar(
+            "source_2024",
+            [
+                {
+                    "text": "Firms save their return on investment while adapting to "
+                    "modern technologies with minimal risk.",
+                    "label": "text",
+                    "page": 9,
+                },
+            ],
+        )
         tier3({("protecting", "save their"): 0.95})
         draft = _tier3_draft(
             "# Section\n\nThe study reports a strategy of protecting profit "
@@ -2629,16 +2842,17 @@ class TestEmbeddingTier:
         assert found["score"] > 0
         assert not_run == []
 
-    def test_the_finding_locates_itself_in_the_draft_as_written(
-        self, ledger_con, tmp_path, tier3
-    ):
+    def test_the_finding_locates_itself_in_the_draft_as_written(self, ledger_con, tmp_path, tier3):
         # The same `draft[char_start:char_end] == draft_text` contract
         # #129 needs from every tier, so a remediation loop can hand this
         # one to `Edit` like any other.
         _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
-        _add_sidecar("source_2024", [
-            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
-        ])
+        _add_sidecar(
+            "source_2024",
+            [
+                {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+            ],
+        )
         tier3({("protecting", "restated claim"): 0.95})
         body = "# Section\n\nThe study reports a strategy of protecting profit here.\n"
         draft = _tier3_draft(body)
@@ -2646,7 +2860,7 @@ class TestEmbeddingTier:
         findings, _, _, _ = vc.scan_findings(str(draft))
 
         [found] = [f for f in findings if f["tier"] == "embedding"]
-        assert body[found["char_start"]:found["char_end"]] == found["draft_text"]
+        assert body[found["char_start"] : found["char_end"]] == found["draft_text"]
 
     def test_a_passage_a_deterministic_tier_already_found_is_not_reported_twice(
         self, ledger_con, tmp_path, tier3
@@ -2656,9 +2870,12 @@ class TestEmbeddingTier:
         # other way round, so containment would never fire.
         shared = "alpha beta gamma delta epsilon zeta eta theta iota kappa"
         _add_parsed_item(ledger_con, tmp_path, "source_2024", shared)
-        _add_sidecar("source_2024", [
-            {"text": shared + ".", "label": "text", "page": 1},
-        ])
+        _add_sidecar(
+            "source_2024",
+            [
+                {"text": shared + ".", "label": "text", "page": 1},
+            ],
+        )
         tier3({("alpha", "alpha"): 0.95})
         draft = _tier3_draft(f"# Section\n\n{shared} and then some more prose.\n")
 
@@ -2671,11 +2888,15 @@ class TestEmbeddingTier:
         self, ledger_con, tmp_path, tier3, monkeypatch
     ):
         _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
-        _add_sidecar("source_2024", [
-            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
-        ])
-        boilerplate = ("the digital twin consistency framework applies here as "
-                       "described in the standard")
+        _add_sidecar(
+            "source_2024",
+            [
+                {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+            ],
+        )
+        boilerplate = (
+            "the digital twin consistency framework applies here as described in the standard"
+        )
         tier3({("digital twin", "restated claim"): 0.95})
         draft = _tier3_draft(f"# Section\n\n{boilerplate}.\n")
         config.VERBATIM_ALLOWLIST_PATH.write_text(
@@ -2687,15 +2908,16 @@ class TestEmbeddingTier:
         assert [f for f in findings if f["tier"] == "embedding"] == []
         assert suppressed == 1
 
-    def test_an_alignment_shorter_than_the_floor_is_not_reported(
-        self, ledger_con, tmp_path, tier3
-    ):
+    def test_an_alignment_shorter_than_the_floor_is_not_reported(self, ledger_con, tmp_path, tier3):
         # `--min-run` is a reporting floor for every tier, not only the
         # two that measure a run of words.
         _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
-        _add_sidecar("source_2024", [
-            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
-        ])
+        _add_sidecar(
+            "source_2024",
+            [
+                {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+            ],
+        )
         tier3({("brief", "restated claim"): 0.95})
         draft = _tier3_draft("# Section\n\nA brief note.\n")
 
@@ -2710,17 +2932,18 @@ class TestEmbeddingTier:
         # The same rule tier 1 follows: a real lift that merely contains
         # a defined term is not excused by the term being allowlisted.
         _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
-        _add_sidecar("source_2024", [
-            {"text": "A restated claim about the subject.", "label": "text", "page": 2},
-        ])
+        _add_sidecar(
+            "source_2024",
+            [
+                {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+            ],
+        )
         tier3({("digital twin", "restated claim"): 0.95})
         draft = _tier3_draft(
             "# Section\n\nthe digital twin consistency framework applies here as "
             "described in the standard.\n"
         )
-        config.VERBATIM_ALLOWLIST_PATH.write_text(
-            'acronyms = ["digital twin"]\n', encoding="utf-8"
-        )
+        config.VERBATIM_ALLOWLIST_PATH.write_text('acronyms = ["digital twin"]\n', encoding="utf-8")
 
         findings, _, suppressed, _ = vc.scan_findings(str(draft))
 
@@ -2735,11 +2958,17 @@ class TestEmbeddingTier:
         # sit inside one -- the bug had no label of its own here only
         # because tier 3 postdates the run that found it.
         _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
-        _add_sidecar("source_2024", [
-            {"text": "Firms save their return on investment while adapting to "
-                     "modern technologies with minimal risk.",
-             "label": "text", "page": 9},
-        ])
+        _add_sidecar(
+            "source_2024",
+            [
+                {
+                    "text": "Firms save their return on investment while adapting to "
+                    "modern technologies with minimal risk.",
+                    "label": "text",
+                    "page": 9,
+                },
+            ],
+        )
         tier3({("protecting", "save their"): 0.95})
         draft = _tier3_draft(
             '# Section\n\nThe study reports a strategy of "protecting profit '
@@ -2786,11 +3015,22 @@ class TestReportingWhatDidNotRun:
 
     def test_the_written_report_distinguishes_never_ran_from_found_nothing(self):
         incomplete = vc.render_scan_markdown(
-            Path("content/drafts/d.md"), [], 8, None, "cmd", 0,
+            Path("content/drafts/d.md"),
+            [],
+            8,
+            None,
+            "cmd",
+            0,
             [{"tier": "embedding", "reason": "no dossier"}],
         )
         complete = vc.render_scan_markdown(
-            Path("content/drafts/d.md"), [], 8, None, "cmd", 0, [],
+            Path("content/drafts/d.md"),
+            [],
+            8,
+            None,
+            "cmd",
+            0,
+            [],
         )
         assert "this run was" in incomplete and "not complete" in incomplete
         assert "The tier that can see one did" in incomplete
@@ -2808,6 +3048,4 @@ class TestReportingWhatDidNotRun:
 
     def test_a_score_rides_inside_the_tier_note_only_when_there_is_one(self):
         assert vc._tier_note({"tier": "exact", "score": None}) == "tier=exact"
-        assert vc._tier_note({"tier": "embedding", "score": 0.41}) == (
-            "tier=embedding, score=0.41"
-        )
+        assert vc._tier_note({"tier": "embedding", "score": 0.41}) == ("tier=embedding, score=0.41")

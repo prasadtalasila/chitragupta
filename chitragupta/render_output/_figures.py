@@ -205,6 +205,7 @@ def _substitute_tikz_for_ascii(text: str, draft_dir: Path) -> str:
     renders (without that figure). `_figure_warnings` is what tells the
     user, rather than this failing the render over a figure.
     """
+
     def replace(match: re.Match) -> str:
         ref = _tikz_path(match.group(1))
         if _resolve_sibling(draft_dir, ref) is None:
@@ -223,6 +224,7 @@ def _substitute_ascii_for_marker(text: str, draft_dir: Path) -> str:
     native format the way it once was. A marker naming a missing file is
     left alone, same reasoning as `_substitute_tikz_for_ascii`.
     """
+
     def replace(match: re.Match) -> str:
         target = _resolve_sibling(draft_dir, _ascii_path(match.group(1)))
         if target is None:
@@ -246,6 +248,7 @@ def _substitute_ascii_for_tikz(text: str, draft_dir: Path) -> str:
     takes the indented form. Relative alignment and `^ \\ < >` all
     survive, which is what the diagram actually needs.
     """
+
     def replace(match: re.Match) -> str:
         target = _resolve_sibling(draft_dir, _ascii_path(match.group(2)))
         if target is None:
@@ -312,7 +315,8 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
         paired = {ref for ref, _ in _INPUT_WITH_MARKER_RE.findall(text)}
         found += [
             f"{ref}: no `%figure:` marker, so every non-LaTeX render omits this figure"
-            for ref in _local_tex_include_refs(text) if ref not in paired
+            for ref in _local_tex_include_refs(text)
+            if ref not in paired
         ]
     return found
 

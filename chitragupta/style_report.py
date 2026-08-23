@@ -24,17 +24,23 @@ def _dialect_lines(payload: dict) -> list[str]:
     if language and language in DIALECT_RULES:
         return [f"  dialect: {language} (from {source})"]
     if language:
-        return [f"  dialect: {language} (from {source}) -- no rules for that tag "
-                "in this style, so nothing was checked"]
-    lines = ["  dialect: not checked -- no `language:` in scope.md and no "
-             "[style].language in config.toml (WRITING-STANDARDS.md section 8)"]
+        return [
+            f"  dialect: {language} (from {source}) -- no rules for that tag "
+            "in this style, so nothing was checked"
+        ]
+    lines = [
+        "  dialect: not checked -- no `language:` in scope.md and no "
+        "[style].language in config.toml (WRITING-STANDARDS.md section 8)"
+    ]
     proposal = payload.get("proposed_language")
     if proposal:
         measured = sorted(proposal["findings_by_language"].items())
         counts = ", ".join(f"{tag}: {n}" for tag, n in measured)
         lines.append(f"  it reads as {proposal['language']} ({counts}). To record that:")
-        lines.append(f"    python -m chitragupta.draft dossier set-language "
-                     f"{proposal['language']} {payload['draft']}")
+        lines.append(
+            f"    python -m chitragupta.draft dossier set-language "
+            f"{proposal['language']} {payload['draft']}"
+        )
     return lines
 
 
@@ -53,8 +59,10 @@ def report(draft: Path, payload: dict) -> list[str]:
         return lines
     for finding in findings:
         times = "" if finding["count"] == 1 else f" (x{finding['count']})"
-        lines.append(f"  {finding['line']:>5}  {finding['severity']:<10} "
-                     f"{finding['message']}{times}")
-    lines.append(f"  {len(findings)} finding(s). A review aid, not a gate: "
-                 "nothing here blocks the draft.")
+        lines.append(
+            f"  {finding['line']:>5}  {finding['severity']:<10} {finding['message']}{times}"
+        )
+    lines.append(
+        f"  {len(findings)} finding(s). A review aid, not a gate: nothing here blocks the draft."
+    )
     return lines

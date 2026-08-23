@@ -29,13 +29,17 @@ import time
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from concurrent.futures import (FIRST_COMPLETED, Future, ProcessPoolExecutor,
-                                ThreadPoolExecutor, wait)
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    Future,
+    ProcessPoolExecutor,
+    ThreadPoolExecutor,
+    wait,
+)
 from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
-from chitragupta import (bib_reader, config, dedup, ledger, logging_setup, pdf_text,
-                 runlock)
+from chitragupta import bib_reader, config, dedup, ledger, logging_setup, pdf_text, runlock
 
 # A fixed name, not __name__. Until 5.2.0 this module was itself the CLI
 # entrypoint (python -m chitragupta.sync), and Python sets __name__ to
@@ -152,7 +156,9 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
                 "this host is simply slow (CPU-only, OCR on, large scans), "
                 "raise or disable that setting rather than letting the run be "
                 "abandoned.",
-                half, config.PARSER_STALL_TIMEOUT, len(pending),
+                half,
+                config.PARSER_STALL_TIMEOUT,
+                len(pending),
             )
             continue
         if done:
@@ -164,7 +170,8 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
                 "WARNING no document finished in %ss ([parser].stall_timeout) -- "
                 "giving up on the %d still outstanding. They are reported as "
                 "failures below and retried on the next run.",
-                config.PARSER_STALL_TIMEOUT, len(pending),
+                config.PARSER_STALL_TIMEOUT,
+                len(pending),
             )
             return
         yield from done
@@ -211,9 +218,7 @@ def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
     broken = None
     done = 0
     try:
-        with pdf_text.interrupt_guard(
-            executor, lambda: f"{done}/{len(jobs)} document(s) parsed"
-        ):
+        with pdf_text.interrupt_guard(executor, lambda: f"{done}/{len(jobs)} document(s) parsed"):
             futures = [executor.submit(pdf_text.extract_one, job) for job in jobs]
             for future in _as_they_land(futures, executor, stalled):
                 try:
@@ -242,7 +247,8 @@ def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
         logger.warning(
             "interrupted after %d/%d document(s) -- work already finished "
             "is kept; re-run to continue.",
-            done, len(jobs),
+            done,
+            len(jobs),
         )
         raise
     finally:
@@ -271,10 +277,12 @@ def _account_for_unfinished(refs, results: dict, broken, stalled) -> None:
             "[parser].workers is the usual fix.",
             broken,
         )
-    unfinished = ("gave up waiting: no document finished within "
-                  f"{config.PARSER_STALL_TIMEOUT}s ([parser].stall_timeout)"
-                  if stalled else
-                  "parse worker died before this document was parsed")
+    unfinished = (
+        "gave up waiting: no document finished within "
+        f"{config.PARSER_STALL_TIMEOUT}s ([parser].stall_timeout)"
+        if stalled
+        else "parse worker died before this document was parsed"
+    )
     for ref in refs:
         if ref.citekey not in results:
             error = pdf_text.ExtractionError(unfinished)
@@ -291,8 +299,9 @@ def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseR
     rather than page count on purpose -- counting pages needs a PDF
     library, and the corpus layer deliberately has no such dependency.
     """
-    jobs = [(r.pdf_path, r.citekey, threads)
-            for r in sorted(refs, key=lambda r: -_pdf_size(r.pdf_path))]
+    jobs = [
+        (r.pdf_path, r.citekey, threads) for r in sorted(refs, key=lambda r: -_pdf_size(r.pdf_path))
+    ]
     stalled = []
     executor = _executor_for(workers)
     results, broken = _drain_pool(executor, jobs, stalled)
@@ -305,6 +314,7 @@ class _Tally:
     """One sync run's counters, threaded through the helpers below so
     each phase mutates one object instead of `run` juggling a dozen
     locals. Plain fields, no behaviour -- the summary reads them out."""
+
     parsed: int = 0
     failed: int = 0
     skipped: int = 0
@@ -322,19 +332,23 @@ def _preflight_warnings(references) -> None:
     """The two bibliography-quality warnings a sync leads with."""
     incomplete = [r for r in references if not r.authors]
     if incomplete:
-        print(f"  WARNING: {len(incomplete)} item(s) have no author metadata in the bib file "
-              f"(likely a page saved as 'webpage' rather than proper item type) -- "
-              f"citing them will produce a low-quality reference:")
+        print(
+            f"  WARNING: {len(incomplete)} item(s) have no author metadata in the bib file "
+            f"(likely a page saved as 'webpage' rather than proper item type) -- "
+            f"citing them will produce a low-quality reference:"
+        )
         for ref in incomplete:
             print(f"    {ref.citekey}: {ref.title[:80]!r}")
         print("  Fix the item type/metadata in your reference manager, re-export, and re-run sync.")
 
     duplicate_groups = dedup.find_duplicates(references)
     if duplicate_groups:
-        print(f"  WARNING: {len(duplicate_groups)} possible duplicate group(s) -- same DOI or "
-              f"near-identical title under different citekeys. A shared title doesn't always "
-              f"mean the same source (e.g. a blog post and a webinar about the same named "
-              f"report) -- check by hand before merging or removing either citekey:")
+        print(
+            f"  WARNING: {len(duplicate_groups)} possible duplicate group(s) -- same DOI or "
+            f"near-identical title under different citekeys. A shared title doesn't always "
+            f"mean the same source (e.g. a blog post and a webinar about the same named "
+            f"report) -- check by hand before merging or removing either citekey:"
+        )
         for group in duplicate_groups:
             citekeys = " / ".join(ref.citekey for ref in group)
             print(f"    {citekeys}: {group[0].title[:80]!r}")
@@ -445,9 +459,7 @@ def _record_result(con, citekey, out_path, exc, tally) -> None:
         # getattr, not isinstance: the marker rides on the
         # exception instance because it is set by whoever knows
         # the *cause*, which is the pool, not the raiser.
-        ledger.mark_parse_failed(
-            con, citekey, str(exc), transient=getattr(exc, "transient", False)
-        )
+        ledger.mark_parse_failed(con, citekey, str(exc), transient=getattr(exc, "transient", False))
         tally.failed += 1
         # Collected rather than marked transient above: what
         # expired is a *setting*, so a document that ran out of
@@ -534,12 +546,12 @@ def _summary_line(tally, kinds, stale_count, stale_label) -> str:
         # the per-cause WARNING below whenever this run produced one --
         # the summary keeps saying what the state is, and the thing that
         # knows the cause says what to do about it.
-        remedy = ("see the WARNING below for the fix, or re-run with --reparse"
-                  if tally.timed_out else "fix or remove the PDF, or re-run with --reparse")
-        summary += (
-            f" {kinds['deterministic']} needs attention (will not be retried -- "
-            f"{remedy})."
+        remedy = (
+            "see the WARNING below for the fix, or re-run with --reparse"
+            if tally.timed_out
+            else "fix or remove the PDF, or re-run with --reparse"
         )
+        summary += f" {kinds['deterministic']} needs attention (will not be retried -- {remedy})."
     if kinds["transient"]:
         summary += f" {kinds['transient']} will be retried next run."
     if tally.backend_unavailable:
@@ -671,24 +683,26 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     # exactly the double-printing "stdout stays untouched" was meant to
     # avoid. Confirmed against a real run, not assumed.
     logger.log(
-        logging.WARNING if (tally.failed or tally.backend_unavailable
-                            or kinds["deterministic"])
+        logging.WARNING
+        if (tally.failed or tally.backend_unavailable or kinds["deterministic"])
         else logging.INFO,
-        "%s", summary,
+        "%s",
+        summary,
         extra={"file_only": True},
     )
     _print_parse_warnings(tally)
     if stale_count and not remove_stale and not suspicious:
-        print(f"Review the {stale_count} stale item(s) above, then re-run with "
-              "--remove-stale to delete them from the ledger.")
+        print(
+            f"Review the {stale_count} stale item(s) above, then re-run with "
+            "--remove-stale to delete them from the ledger."
+        )
     print(f"Ledger:      {config.LEDGER_PATH}")
     print(f"Parsed text: {config.PARSED_DIR}/")
     # A deterministic failure keeps the run nonzero on *every* run until
     # it is resolved, not just the run that produced it. It is not
     # retried, so `failed` (which counts this run's attempts) is zero for
     # it -- and a corpus with a hole in it must never report success.
-    return 1 if (tally.failed or tally.backend_unavailable
-                 or kinds["deterministic"]) else 0
+    return 1 if (tally.failed or tally.backend_unavailable or kinds["deterministic"]) else 0
 
 
 def main(argv: "list[str] | None" = None) -> int:
@@ -697,17 +711,19 @@ def main(argv: "list[str] | None" = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.corpus sync",
         description="Sync content/ledger.sqlite from the bib file "
-                    "(the corpus layer -- deterministic)."
+        "(the corpus layer -- deterministic).",
     )
     parser.add_argument(
-        "--reparse", action="store_true",
+        "--reparse",
+        action="store_true",
         help="Re-extract every PDF, ignoring the ledger's record of what is already parsed "
-             "(use when output is recorded as fine but you have reason to doubt it)",
+        "(use when output is recorded as fine but you have reason to doubt it)",
     )
     parser.add_argument(
-        "--remove-stale", action="store_true",
+        "--remove-stale",
+        action="store_true",
         help="Delete ledger rows for citekeys no longer in the bib file "
-             "(default: report only, don't delete)",
+        "(default: report only, don't delete)",
     )
     args = parser.parse_args(argv)
     # Held for the whole run, and only at the entrypoint: run() itself

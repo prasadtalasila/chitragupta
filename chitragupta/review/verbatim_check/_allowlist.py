@@ -50,8 +50,7 @@ def _load_allowlist_phrases() -> list[tuple[str, ...]]:
     unknown = sorted(set(data) - set(_ALLOWLIST_KEYS))
     if unknown:
         raise ValueError(
-            f"{path}: unknown key(s) {unknown} -- expected only "
-            f"{list(_ALLOWLIST_KEYS)}"
+            f"{path}: unknown key(s) {unknown} -- expected only {list(_ALLOWLIST_KEYS)}"
         )
 
     phrases = []
@@ -84,7 +83,7 @@ def _mask_allowlisted(
         if length == 0 or length > n:
             continue
         for i in range(n - length + 1):
-            if tuple(span_word_strs[i:i + length]) == phrase:
+            if tuple(span_word_strs[i : i + length]) == phrase:
                 for j in range(i, i + length):
                     masked[j] = True
     return masked
@@ -117,7 +116,7 @@ def _mask_allowlisted_stemmed(
         if length == 0 or length > m:
             continue
         for i in range(m - length + 1):
-            if tuple(span_stems[i:i + length]) == tuple(stems):
+            if tuple(span_stems[i : i + length]) == tuple(stems):
                 first, last = span_positions[i], span_positions[i + length - 1]
                 for j in range(first, last + 1):
                     masked[j] = True

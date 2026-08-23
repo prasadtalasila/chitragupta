@@ -34,20 +34,25 @@ def _print_drift(report: Drift) -> None:
     if report.missing:
         _print_capped(
             f"    {len(report.missing)} cited citekey(s) no longer in the ledger:",
-            list(report.missing.items()), _render_missing)
+            list(report.missing.items()),
+            _render_missing,
+        )
     if report.candidates:
         _print_capped(
             f"    {len(report.candidates)} new candidate(s) matching this "
             "dossier's recorded queries:",
-            report.candidates, _render_candidate)
+            report.candidates,
+            _render_candidate,
+        )
     # Only alongside a real finding. On its own this is true on every
     # sweep forever, so printing it unconditionally would bury the drift
     # it is meant to help act on.
     if report.reconsider:
         _print_capped(
-            f"    {len(report.reconsider)} previously rejected paper(s) these "
-            "queries still reach:",
-            report.reconsider, _render_reconsider)
+            f"    {len(report.reconsider)} previously rejected paper(s) these queries still reach:",
+            report.reconsider,
+            _render_reconsider,
+        )
 
 
 def _print_capped(header: str, items: list, render) -> None:
@@ -105,10 +110,13 @@ def _print_drift_summary(reports: list[Drift]) -> None:
     unknown = [r for r in reports if not r.corpus_available]
     print()
     if unknown:
-        print(f"  {len(unknown)} of {len(reports)} dossier(s) could not be checked: "
-              f"no readable ledger at {config.LEDGER_PATH}.")
-        print("  Run `python -m chitragupta.corpus sync` to build one; "
-              "until then drift is unknown,")
+        print(
+            f"  {len(unknown)} of {len(reports)} dossier(s) could not be checked: "
+            f"no readable ledger at {config.LEDGER_PATH}."
+        )
+        print(
+            "  Run `python -m chitragupta.corpus sync` to build one; until then drift is unknown,"
+        )
         print("  not absent.")
     if not stale:
         if not unknown:
@@ -122,5 +130,4 @@ def _print_drift_summary(reports: list[Drift]) -> None:
         print("  Candidates exclude everything in `rejected.md`; the reconsider list is")
         print("  the exception, shown with its reason so you can judge whether it holds.")
     else:
-        print("  `rejected.md` was already subtracted, so nothing here was turned "
-              "down before.")
+        print("  `rejected.md` was already subtracted, so nothing here was turned down before.")

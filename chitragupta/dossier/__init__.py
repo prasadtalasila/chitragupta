@@ -151,11 +151,7 @@ def all_dossiers() -> list[Path]:
     """Every dossier directory, nearest-first by name."""
     if not config.DOSSIERS_DIR.is_dir():
         return []
-    found = {
-        path.parent
-        for path in config.DOSSIERS_DIR.rglob("*.md")
-        if path.name in FILES
-    }
+    found = {path.parent for path in config.DOSSIERS_DIR.rglob("*.md") if path.name in FILES}
     return sorted(found)
 
 
@@ -185,8 +181,7 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
         return None
     try:
         con.row_factory = sqlite3.Row
-        return con.execute(
-            "SELECT citekey, title, parsed_path, collections FROM items").fetchall()
+        return con.execute("SELECT citekey, title, parsed_path, collections FROM items").fetchall()
     except sqlite3.DatabaseError:
         return None
     finally:
