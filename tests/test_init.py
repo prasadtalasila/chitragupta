@@ -29,6 +29,8 @@ def make_source(tmp_path: Path) -> Path:
     (src / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
     (src / "docs").mkdir()
     (src / "docs" / "CLI.md").write_text("# CLI", encoding="utf-8")
+    (src / "assets" / "style").mkdir(parents=True)
+    (src / "assets" / "style" / "acronyms.toml").write_text("PDF = []", encoding="utf-8")
     (src / "AGENTS.md").write_text("agent guidance", encoding="utf-8")
     (src / "CLAUDE.md").write_text("router", encoding="utf-8")
     (src / "SOUL.md").write_text("why", encoding="utf-8")

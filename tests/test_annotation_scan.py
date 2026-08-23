@@ -112,7 +112,7 @@ def test_the_scan_reaches_the_source_tree():
     # silently dropping every module enrich/ and review/ hold, which is
     # where most of #355's 55 gaps were.
     assert "chitragupta/enrich/docling_parse.py" in scanned
-    assert "chitragupta/review/verbatim_check.py" in scanned
+    assert "chitragupta/review/citation_provenance.py" in scanned
 
 
 def test_a_missing_return_annotation_is_detected():

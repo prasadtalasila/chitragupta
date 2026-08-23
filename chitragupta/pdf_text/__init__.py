@@ -2,7 +2,7 @@
 names (config.toml's [parser].backend, or the PARSER env var) --
 "pdftotext" (default) or "docling". Both write into
 the same place, content/parsed/<citekey>.txt, so every downstream
-consumer (chitragupta/ledger.py, chitragupta/retrieval.py, chitragupta/review/verbatim_check.py)
+consumer (chitragupta/ledger.py, chitragupta/retrieval.py, chitragupta/review/verbatim_check/)
 stays backend-agnostic; only this module needs to know which one is
 configured.
 
