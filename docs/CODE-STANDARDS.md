@@ -245,7 +245,7 @@ excludes from the release archive, and its scripts are one-shot analysis
 code whose `main()` reads top to bottom on purpose. Stating that plainly
 is better than the alternative reading, which is that its long
 functions were quietly not counted -- see
-[bench/README.md](../bench/README.md) for the current self-check count
+`bench/README.md` for the current self-check count
 and the reasoning behind each of the four things `bench/` sits outside.
 
 ### 📊 Cognitive complexity: the bar is 25, not SonarQube's default 15
