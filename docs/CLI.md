@@ -637,7 +637,7 @@ that genre emits one rather than declining.
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<input>` | required | The draft file (Markdown or LaTeX) |
-| `--format FORMAT` | `md` | Output format, passed to `render` for anything but `md` |
+| `--format FORMAT` | `md` | Output format, passed to `render` for anything but `md`. Exactly one -- a comma-separated list is a usage error (`exit 2`) |
 | `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`; confined to `content/` |
 
 ```bash
@@ -1532,7 +1532,7 @@ redirected:
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<input>` | required | The draft file (Markdown or LaTeX) |
-| `--format FORMAT` | `pdf` | Output format -- e.g. `pdf`, `tex`, `docx`, `md` |
+| `--format FORMAT` | `pdf` | Output format -- e.g. `pdf`, `tex`, `docx`, `md`. Exactly one -- a comma-separated list is a usage error (`exit 2`), not rendered as several formats. Render each needed format with its own `--format`; a review aid's plural `--formats` is the one that takes a list |
 | `--documentclass CLASS` | `article` | LaTeX documentclass |
 | `--fontsize SIZE` | `12pt` | LaTeX font size |
 | `--papersize SIZE` | `a4` | LaTeX paper size, **without** the `paper` suffix pandoc appends itself -- so `a4`, `letter` |

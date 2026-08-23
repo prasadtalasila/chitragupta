@@ -504,6 +504,17 @@ class TestMain:
         assert evidence_appendix.main([str(outside)]) == 1
         assert "[error]" in capsys.readouterr().err
 
+    def test_a_comma_list_format_is_a_usage_error(self, isolated_config, tmp_path, capsys):
+        # Same hole as chitragupta/render_output/_cli.py's --format (#389):
+        # a comma list built a `<stem>.md,tex,pdf` file and exited 0.
+        draft = tmp_path / "survey.md"
+        draft.write_text("Body.\n", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as exc:
+            evidence_appendix.main([str(draft), "--format", "md,tex,pdf"])
+        assert exc.value.code == 2
+        assert "md,tex,pdf" in capsys.readouterr().err
+
 
 class TestTheSidecarIsNeverCommitted:
     """A sidecar carries verbatim spans from copyrighted sources.
