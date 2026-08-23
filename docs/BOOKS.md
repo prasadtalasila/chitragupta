@@ -1,4 +1,4 @@
-# Book-scale drafting: the outline, the units, and the registries
+# ✍ Book-scale drafting: the outline, the units, and the registries
 
 Status: **built.** All four pieces of the track are here -- the outline
 (#136), the generation unit (#137), the three registries (#138) and the
@@ -15,30 +15,30 @@ run it, with a real book's output at each step. The second half is the
 reasoning: each step links to the argument behind it, so a decision is
 stated once and read where you need it.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The constraint everything here answers](#the-constraint-everything-here-answers)
-- [The steps, at a glance](#the-steps-at-a-glance)
-- [Before you start](#before-you-start)
-- [Step 1: write the outline](#step-1-write-the-outline)
-- [Step 2: sign the outline off](#step-2-sign-the-outline-off)
-- [Step 3: generate one unit](#step-3-generate-one-unit)
-- [Step 4: accept the unit](#step-4-accept-the-unit)
-- [Step 5: build and read the registries](#step-5-build-and-read-the-registries)
-- [Step 6: assemble the book](#step-6-assemble-the-book)
-- [Step 7: build the PDF](#step-7-build-the-pdf)
-- [Step 8: the second sign-off](#step-8-the-second-sign-off)
-- [What one real book looked like](#what-one-real-book-looked-like)
-- [Retrofitting a book drafted before this track](#retrofitting-a-book-drafted-before-this-track)
-- [Why an id is required on every heading](#why-an-id-is-required-on-every-heading)
-- [Why sign-off is a sibling file](#why-sign-off-is-a-sibling-file)
-- [What `status`'s exit code is, and is not](#what-statuss-exit-code-is-and-is-not)
-- [What the input digest covers, and what it must not](#what-the-input-digest-covers-and-what-it-must-not)
-- [Why `registry check` exits 0, when the two `status` commands do not](#why-registry-check-exits-0-when-the-two-status-commands-do-not)
-- [What the registries cannot see](#what-the-registries-cannot-see)
-- [Why a registry excerpt is not hashed into a unit's contract](#why-a-registry-excerpt-is-not-hashed-into-a-units-contract)
+- [The constraint everything here answers](#-the-constraint-everything-here-answers)
+- [The steps, at a glance](#-the-steps-at-a-glance)
+- [Before you start](#-before-you-start)
+- [Step 1: write the outline](#-step-1-write-the-outline)
+- [Step 2: sign the outline off](#-step-2-sign-the-outline-off)
+- [Step 3: generate one unit](#-step-3-generate-one-unit)
+- [Step 4: accept the unit](#-step-4-accept-the-unit)
+- [Step 5: build and read the registries](#-step-5-build-and-read-the-registries)
+- [Step 6: assemble the book](#-step-6-assemble-the-book)
+- [Step 7: build the PDF](#-step-7-build-the-pdf)
+- [Step 8: the second sign-off](#-step-8-the-second-sign-off)
+- [What one real book looked like](#-what-one-real-book-looked-like)
+- [Retrofitting a book drafted before this track](#-retrofitting-a-book-drafted-before-this-track)
+- [Why an id is required on every heading](#-why-an-id-is-required-on-every-heading)
+- [Why sign-off is a sibling file](#-why-sign-off-is-a-sibling-file)
+- [What `status`'s exit code is, and is not](#-what-statuss-exit-code-is-and-is-not)
+- [What the input digest covers, and what it must not](#-what-the-input-digest-covers-and-what-it-must-not)
+- [Why `registry check` exits 0, when the two `status` commands do not](#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
+- [What the registries cannot see](#-what-the-registries-cannot-see)
+- [Why a registry excerpt is not hashed into a unit's contract](#-why-a-registry-excerpt-is-not-hashed-into-a-units-contract)
 
-## The constraint everything here answers
+## 🔑 The constraint everything here answers
 
 > A book does not fit in a context window, and generation quality
 > degrades long before the limit.
@@ -55,7 +55,7 @@ book**. No automated check verifies that an argument is good -- only that
 it is grounded, consistent and complete. Everything between the two
 sign-offs is mechanical.
 
-## The steps, at a glance
+## 🔭 The steps, at a glance
 
 | Step | Command | Who runs it |
 |---|---|---|
@@ -71,7 +71,7 @@ sign-offs is mechanical.
 Steps 3 and 4 repeat per section. Steps 5 to 7 are what
 `.claude/skills/book-assembler/` does in one run.
 
-## Before you start
+## 🔧 Before you start
 
 You need a synced corpus, because every unit is grounded in it:
 
@@ -98,7 +98,7 @@ content/specs/twins/registries/*.md   terminology, claims, xrefs -- step 5
 *directory* of drafts, so its own path carries over. Everything under
 `content/` is gitignored: it is your data, not the pipeline's.
 
-## Step 1: write the outline
+## ▶ Step 1: write the outline
 
 ```bash
 python -m chitragupta.draft spec init content/drafts/twins --title "Composable Twins"
@@ -123,7 +123,7 @@ file.
 
 Every part, chapter and section needs an explicit `{#id}`, and a heading
 without one is refused rather than guessed at --
-[why](#why-an-id-is-required-on-every-heading). Check what you wrote:
+[why](#-why-an-id-is-required-on-every-heading). Check what you wrote:
 
 ```bash
 python -m chitragupta.draft spec show content/drafts/twins
@@ -141,7 +141,7 @@ not parse, and print **every** problem rather than the first: someone
 fixing an outline wants the whole list, not one round trip per missing
 id.
 
-## Step 2: sign the outline off
+## ▶ Step 2: sign the outline off
 
 The first of the two human gates. Nothing generates prose from an
 unsigned outline, and no command can do this for you:
@@ -158,7 +158,7 @@ content/specs/twins/spec.md: Composable Twins
 ```
 
 `sign` records a twelve-hex digest of `spec.md` in a sibling file --
-[why a sibling](#why-sign-off-is-a-sibling-file) -- so `status` can tell
+[why a sibling](#-why-sign-off-is-a-sibling-file) -- so `status` can tell
 three states apart:
 
 | State | Exit | Means |
@@ -168,9 +168,9 @@ three states apart:
 | changed since sign-off | 1 | approved at one digest, now another |
 
 That non-zero exit is not a new gate --
-[what it is](#what-statuss-exit-code-is-and-is-not).
+[what it is](#-what-statuss-exit-code-is-and-is-not).
 
-## Step 3: generate one unit
+## ▶ Step 3: generate one unit
 
 Ask for the contract, which is what the unit is generated *from*:
 
@@ -201,10 +201,10 @@ The contract is explicit in both directions:
 
 `--source` is repeatable and is part of the input digest, so grounding a
 unit in a different set of papers is a different unit to generate --
-[what else the digest covers](#what-the-input-digest-covers-and-what-it-must-not).
+[what else the digest covers](#-what-the-input-digest-covers-and-what-it-must-not).
 Registry excerpts are handed to the generator but deliberately left out
 of that digest --
-[why](#why-a-registry-excerpt-is-not-hashed-into-a-units-contract).
+[why](#-why-a-registry-excerpt-is-not-hashed-into-a-units-contract).
 
 Then write the unit. This is the one step this track does not own: a
 genre skill drafts it (`thesis-chapter-writer` for a `.tex` fragment,
@@ -220,7 +220,7 @@ A part or a chapter has no contract, and asking for one is refused rather
 than answered with an empty contract: those levels name no prose of their
 own.
 
-## Step 4: accept the unit
+## ▶ Step 4: accept the unit
 
 ```bash
 python -m chitragupta.draft unit accept content/drafts/twins sec-1 --source smith_2024
@@ -268,7 +268,7 @@ It re-derives all three digests rather than trusting them, and exits 0
 only when every unit is accepted and current -- the same standing as
 `spec status`.
 
-## Step 5: build and read the registries
+## ▶ Step 5: build and read the registries
 
 ```bash
 python -m chitragupta.draft registry build content/drafts/twins
@@ -315,11 +315,11 @@ pins that the citation gate reads neither supported reference syntax as a
 citekey.
 
 `check` exits 0 however much it finds --
-[why](#why-registry-check-exits-0-when-the-two-status-commands-do-not) --
+[why](#-why-registry-check-exits-0-when-the-two-status-commands-do-not) --
 and there are things it structurally cannot see --
-[which](#what-the-registries-cannot-see).
+[which](#-what-the-registries-cannot-see).
 
-## Step 6: assemble the book
+## ▶ Step 6: assemble the book
 
 Ask for the book and `.claude/skills/book-assembler/` runs steps 5 to 7:
 it confirms both `status` commands, prints every registry finding, and
@@ -382,7 +382,7 @@ which is the guaranteed *invocation* ARCHITECTURE.md permits, in place of
 the conformance it does not. `tests/test_skill_book_assembly.py` pins
 that, so a hand edit dropping either half fails the suite.
 
-## Step 7: build the PDF
+## ▶ Step 7: build the PDF
 
 A book is built directly, from its own directory -- the `\input` paths
 are relative to it:
@@ -419,7 +419,7 @@ Which numbering a book shows is a composition decision and belongs in
 `book.tex`; renumbering your headings does not, and is `draft-reviser`'s
 call.
 
-## Step 8: the second sign-off
+## ▶ Step 8: the second sign-off
 
 The assembler presents what it composed -- the unit count, what the
 registries could not read, every finding, and what the gate and the two
@@ -443,7 +443,7 @@ block. The scan sees verbatim and near-verbatim reuse only -- genuine
 restatement is only detected where the embedding tier can run, so a clean
 scan is not a clean bill of health ([PLAGIARISM.md](PLAGIARISM.md)).
 
-## What one real book looked like
+## 📝 What one real book looked like
 
 The first book assembled by this track, so the numbers are measured
 rather than illustrative -- a 15-chapter textbook, 22,155 lines of
@@ -464,7 +464,7 @@ conversion step named the wrong command, and three citekeys containing
 `---` were being silently truncated -- 10 citations that would have
 rendered as `[?]` in a finished book.
 
-## Retrofitting a book drafted before this track
+## 🛠 Retrofitting a book drafted before this track
 
 A book whose chapters already exist can be brought under the track
 without rewriting a word. The outline is *derived*, not invented:
@@ -486,7 +486,7 @@ Say in the spec that the outline was retrofitted, and from what. A
 sign-off records a person's decision; one recorded on an outline nobody
 has read is a record of the wrong thing.
 
-## Why an id is required on every heading
+## 💡 Why an id is required on every heading
 
 Every part, chapter and section carries an explicit `{#some-id}`, and a
 heading without one is a parse problem rather than something the parser
@@ -499,7 +499,7 @@ person notices; across 300 pages nobody does. The same ids are what the
 cross-reference graph resolves against, so they have to outlive an edit
 to the words around them.
 
-## Why sign-off is a sibling file
+## 💡 Why sign-off is a sibling file
 
 `spec sign` records a twelve-hex digest of `spec.md` -- the same shape as
 the dossier's corpus fingerprint, and for the same reason: enough to
@@ -514,7 +514,7 @@ reports follow: two sign-offs of an unchanged outline produce
 byte-identical files, so "did this change?" is a diff. *When* it was
 approved is not a question any check asks; *what* was approved is.
 
-## What `status`'s exit code is, and is not
+## ✅ What `status`'s exit code is, and is not
 
 `spec status` and `unit status` exit non-zero on an outline nobody has
 signed or a unit nobody has accepted. That is not a new gate, and the
@@ -536,7 +536,7 @@ parsing prose. What it does with the answer -- stop and ask you to
 approve the outline first -- is the human gate itself, not a machine
 outranking anybody.
 
-## What the input digest covers, and what it must not
+## 🔒 What the input digest covers, and what it must not
 
 `input_digest` is what makes an unchanged unit free to re-run. It covers
 the spec slice, the sorted set of sources, and the registry excerpts
@@ -555,7 +555,7 @@ field -- and deliberately nothing else:
 Each part is labelled before hashing (`sources:`, `registries:`), so a
 citekey and a registry line cannot collide into the same text.
 
-## Why `registry check` exits 0, when the two `status` commands do not
+## 💡 Why `registry check` exits 0, when the two `status` commands do not
 
 `spec status` and `unit status` exit non-zero. `registry check` never
 does, however much it finds -- and the difference is not inconsistency.
@@ -581,7 +581,7 @@ That is a stronger reading of the requirement than an exit code would be,
 not a weaker one -- an exit code can be ignored by a caller; a sign-off
 cannot be given by one.
 
-## What the registries cannot see
+## 🚫 What the registries cannot see
 
 **Contradiction.** #138 asks for "duplicate and contradicting claims
 across chapters flagged". Duplicates are decidable and are flagged; two
@@ -595,7 +595,7 @@ the bullet shape is not registered, and "used consistently" is checked
 only in the sense that a term is *defined* once -- no attempt is made to
 decide whether a later paragraph used it the way the definition meant.
 
-## Why a registry excerpt is not hashed into a unit's contract
+## 💡 Why a registry excerpt is not hashed into a unit's contract
 
 `registry excerpt <book> <unit-id>` prints what a unit's generation
 should be told about the rest of the book: the terminology the *other*

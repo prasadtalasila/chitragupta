@@ -1,4 +1,4 @@
-# PDF parser tradeoffs for chitragupta
+# 📄 PDF parser tradeoffs for chitragupta
 
 Status: **reasoning document.** Written 2026-08-02.
 
@@ -7,7 +7,7 @@ choice. **Assumed:** [CONFIG.md](CONFIG.md) for how to set it. **Not
 covered here:** the measured cost of each backend, which is
 [PERFORMANCE.md](PERFORMANCE.md).
 
-## Short summary
+## 🔭 Short summary
 
 This repository needs PDF processing that balances speed, text quality,
 structure preservation, and portability.
@@ -15,21 +15,21 @@ structure preservation, and portability.
 The main candidates are:
 
 - `pdftotext`
-- `markitdown` -- **removed 2026-08-01**, see ["Why markitdown was removed"](#why-markitdown-was-removed)
+- `markitdown` -- **removed 2026-08-01**, see ["Why markitdown was removed"](#-why-markitdown-was-removed)
 - `docling`
 
 `grobid` was evaluated as a fourth candidate and **removed from the repo on
 2026-08-01**. It is kept in the comparison below as a record of that decision,
 not as an available backend -- see ["Why GROBID was
-removed"](#why-grobid-was-removed). A separate proposal to bring it back in a
+removed"](#-why-grobid-was-removed). A separate proposal to bring it back in a
 *different* role -- alongside docling rather than instead of it, for a citation
 graph -- is in [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md).
 
 Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**) were
 surveyed in 2026-08 and none adopted; the analysis is in ["Four newer backends,
-evaluated and not adopted"](#four-newer-backends-evaluated-and-not-adopted).
+evaluated and not adopted"](#-four-newer-backends-evaluated-and-not-adopted).
 
-## Comparison table
+## ⚖ Comparison table
 
 | Tool | Best at | Strengths | Weaknesses | Relative speed vs `pdftotext` | Fit for this repo |
 |---|---|---|---|---|---|
@@ -38,22 +38,22 @@ evaluated and not adopted"](#four-newer-backends-evaluated-and-not-adopted).
 | `docling` | Layout-aware PDF parsing | Better reading order, sections, tables, and structured Markdown -- and the only backend whose reading order is *kept*, as the passage sidecar a claim can be quoted from | Heavy, slower, model/runtime complexity | ~42x slower (measured, 5 real bib PDFs, OCR on -- see note below) | Best quality parser for either layer; required if you want quotable passages |
 | `grobid` | Scholarly structure and references | Excellent for title, abstract, sections, and references | Not a general-purpose plain-text extractor; needs a JDK 21 build and a long-running service | Separate from the main speed scale | **Removed 2026-08-01** -- see below |
 
-## Likely behavior in practice
+## 🔬 Likely behavior in practice
 
-### `pdftotext`
+### ⌨ `pdftotext`
 
 This is the fastest option and the easiest to operate. It is well suited to the
 repo's lightweight corpus layer when the goal is to get searchable text into the
 ledger and retrieval index.
 
-### `markitdown`
+### 📝 `markitdown`
 
 A general conversion tool rather than a scholarly parser, and meaningfully
 slower than `pdftotext` (~17x measured). Measurement on this repo's own corpus
 later showed it loses word boundaries here, which is why it is no longer a
 backend -- see below.
 
-### `docling`
+### 🧱 `docling`
 
 This is the best fit when the PDF's structure matters: headings, tables, reading
 order, and section boundaries. It is much slower and heavier (~42x measured),
@@ -85,7 +85,7 @@ setting. `pdftotext` does not have this property; its output is
 byte-identical across runs.
 
 The artifact-by-artifact contract is in
-[ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not),
+[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not),
 with the measurement in `bench/RESULTS.md` (developer-only, in the
 repository).
 
@@ -93,19 +93,19 @@ Turning OCR off is a trade-off, not a free win: it drops text that the
 PDF stores as a bitmap rather than as characters, which on this sample
 was mostly publisher furniture and figure sub-captions but on one
 document included two whole tables. See
-[PERFORMANCE.md](PERFORMANCE.md#parserocr----the-largest-single-lever-and-a-trade).
+[PERFORMANCE.md](PERFORMANCE.md#-parserocr----the-largest-single-lever-and-a-trade).
 
 It also carries a system dependency nothing else in this repository has,
 and one that announces itself in a thoroughly misleading way -- see
-["docling fails every document with an OpenCV recursion error"](#docling-fails-every-document-with-an-opencv-recursion-error).
+["docling fails every document with an OpenCV recursion error"](#-docling-fails-every-document-with-an-opencv-recursion-error).
 
-### `grobid`
+### 📖 `grobid`
 
 GROBID is most valuable for reference extraction and scholarly structure. It was
 never a drop-in replacement for the other tools, and is no longer part of this
 repo -- see below.
 
-## Recommended use in this repository
+## 📌 Recommended use in this repository
 
 A practical tiered strategy:
 
@@ -118,23 +118,23 @@ That tiering matches the repository's design philosophy:
 - degrade gracefully
 - keep the corpus layer usable even when the enrich group is absent
 
-## Quality tradeoff for this repo
+## ⚖ Quality tradeoff for this repo
 
-### If speed is the priority
+### ⚡ If speed is the priority
 
 Use `pdftotext`.
 
-### If PDF structure is the priority
+### 🏗 If PDF structure is the priority
 
 Use `docling`.
 
-### If references and scholarly metadata are the priority
+### 📖 If references and scholarly metadata are the priority
 
 `papers/bibliography.bib` already supplies these -- it is the source of truth
 for title, authors, year, and DOI (see [CONFIG.md](CONFIG.md)). No parser needs
 to re-derive them.
 
-## Notes on cross-platform support
+## 🖥 Notes on cross-platform support
 
 - `pdftotext` depends on an external system package, so it is not the most
   portable option.
@@ -145,7 +145,7 @@ If cross-platform support is important, the best approach is to treat these as
 **optional backends** and keep a fallback ladder rather than relying on a single
 tool.
 
-## Suggested architecture
+## 🏗 Suggested architecture
 
 A robust design for this repo would be:
 
@@ -159,7 +159,7 @@ That gives a good balance of:
 - portability
 - downstream retrieval quality
 
-## Conclusion
+## 🏁 Conclusion
 
 For this repository:
 
@@ -169,7 +169,7 @@ For this repository:
 The best overall outcome is not choosing one tool, but combining them in a
 layered backend strategy.
 
-## Four newer backends, evaluated and not adopted
+## 🧪 Four newer backends, evaluated and not adopted
 
 Surveyed 2026-08-05 (originally in
 [issue #22](https://github.com/prasadtalasila/chitragupta/issues/22)) from
@@ -179,7 +179,7 @@ incumbent. Nothing was adopted. This is recorded so the next person asking
 "should we switch parsers?" starts from the analysis rather than repeating
 it -- and so the one finding that would break a naive swap is written down.
 
-### What "fit" means here
+### 🏷 What "fit" means here
 
 The bar is not "does it parse a PDF". This repository depends on specific
 docling behaviours, and a replacement has to supply all of them:
@@ -187,12 +187,12 @@ docling behaviours, and a replacement has to supply all of them:
 | What the repo uses | Where |
 |---|---|
 | Per-item `label`, `text`, `prov[0].page_no`, `prov[0].bbox` | passage provenance, `chitragupta/passages.py` |
-| `pic.caption_text(dl_doc)` -- figure caption matched to "Figure N" in prose | `_figure_records`, see [DEVELOPER.md](../DEVELOPER.md#figures-and-copyright) |
+| `pic.caption_text(dl_doc)` -- figure caption matched to "Figure N" in prose | `_figure_records`, see [DEVELOPER.md](../DEVELOPER.md#-figures-and-copyright) |
 | `export_to_markdown()` | `content/docling/<citekey>.md`, the artefact downstream stages read |
 | `AcceleratorOptions(device="cuda:N", num_threads=...)` set **per worker process** | `init_worker`, one GPU claimed round-robin |
 | A togglable OCR flag, default off | `[parser].ocr` |
 
-### Comparison
+### ⚖ Comparison
 
 | | **docling** (incumbent) | **marker** | **surya** | **xberg** | **unstructured** |
 |---|---|---|---|---|---|
@@ -209,7 +209,7 @@ docling behaviours, and a replacement has to supply all of them:
 | System deps beyond pip | None with OCR off | vLLM + Docker + NVIDIA toolkit, or llama.cpp -- **only if OCR is used** | Same as marker | None (bundles ONNX) | libmagic, poppler, tesseract, libreoffice, pandoc |
 | Maturity | Established, IBM-backed | Established; v2.0 rewrite Jul 2026 | Established; v2 rewrite May 2026 | v1.0 days old at survey time | Established |
 
-### The finding that would break a naive swap
+### ⚠ The finding that would break a naive swap
 
 **marker and surya moved OCR and layout to a locally-spawned inference
 server** (vLLM on GPU, llama.cpp on CPU) in their 2026 rewrites. Workers
@@ -217,7 +217,7 @@ become HTTP clients of one shared server rather than each holding its own
 CUDA context -- so this repository's `ProcessPoolExecutor` +
 `init_worker` GPU round-robin does not carry over. That is an
 architecture change, not a backend substitution. See
-[PARALLELISM.md](PARALLELISM.md#components).
+[PARALLELISM.md](PARALLELISM.md#-components).
 
 **But it is an OCR-only cost.** Under `--disable_ocr` marker starts no
 server at all: layout comes from an in-process `rf-detr` detector, text
@@ -226,7 +226,7 @@ runs with OCR off by default, that is the configuration that matters --
 and in it, marker collapses to something close in shape to docling's own
 architecture.
 
-### Where each one lands
+### 📊 Where each one lands
 
 1. **surya -- do not target directly.** It is the primitive marker is
    built on. Using it means rebuilding page assembly, Markdown emission,
@@ -247,11 +247,11 @@ architecture.
    undocumented caption linking, the heaviest system-dependency
    footprint, and the least certain GPU story.
 
-### Conclusion of the alternatives review
+### 🏁 Conclusion of the alternatives review
 
 **Stay on docling.** Its weaknesses -- speed, and non-determinism under
 concurrency -- are known, measured and written down
-([ARCHITECTURE.md](ARCHITECTURE.md#what-is-reproducible-and-what-is-not)),
+([ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)),
 which is worth more than an unmeasured alternative's undocumented ones.
 The shared blocker across marker, xberg and unstructured is the same:
 **figure↔caption auto-linking is undocumented in all three**, and
@@ -261,7 +261,7 @@ If this is revisited, marker with OCR off is the one to pilot, and the
 pilot must measure against the real 501-PDF corpus -- the same discipline
 that removed markitdown and GROBID.
 
-## Why GROBID was removed
+## 🗑 Why GROBID was removed
 
 GROBID's role here was bibliographic-quality header and reference
 extraction, and it only ever called one endpoint
@@ -291,7 +291,7 @@ If corpus-growth-by-snowballing later becomes a real workflow, the case
 to revisit is for `/api/processFulltextDocument` specifically -- not the
 header endpoint that was here.
 
-## Why markitdown was removed
+## 🗑 Why markitdown was removed
 
 Removed 2026-08-01, after measurement on this repository's own corpus
 rather than on its stated feature set.
@@ -345,7 +345,7 @@ not need precise tuning. Had it existed earlier, this would have been
 reported by `sync` on the first run instead of being noticed by eye in a
 retrieval snippet.
 
-## docling fails every document with an OpenCV recursion error
+## 🐛 docling fails every document with an OpenCV recursion error
 
 Diagnosed 2026-08-09. Fixed in the `os-deps` stage; recorded here because
 the error message points at nothing useful, and because a host provisioned

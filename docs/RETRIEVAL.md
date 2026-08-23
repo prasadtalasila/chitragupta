@@ -1,4 +1,4 @@
-# Retrieval: BM25, embeddings, and topic models
+# 🔎 Retrieval: BM25, embeddings, and topic models
 
 Status: **reference.** Written 2026-08-06.
 
@@ -15,7 +15,7 @@ covered:** how to
 tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 [PERFORMANCE.md](PERFORMANCE.md) for what each costs.
 
-## The short answer
+## 🔭 The short answer
 
 | | **BM25** | **embeddings** | **topic model** |
 |---|---|---|---|
@@ -67,7 +67,7 @@ flowchart TB
   class TOP,CORPUS store
 ```
 
-## BM25 -- the default, and always available
+## 🔎 BM25 -- the default, and always available
 
 `chitragupta/retrieval.py` ranks whole documents by Okapi BM25 over
 whitespace-separated tokens, with the usual constants (`k1 = 1.5`,
@@ -89,14 +89,14 @@ Two properties matter when you compare it with the alternative:
   changes what
   `sync` writes into `content/parsed/`. (That choice also decides whether
   a claim can be quoted from a real paragraph or only located to a page:
-  see [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#what-the-corpus-layer-keeps-when-it-uses-docling).)
+  see [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#-what-the-corpus-layer-keeps-when-it-uses-docling).)
 
 Term-frequency statistics are cached to `content/retrieval_index.json`,
 keyed by a cheap per-document fingerprint (the parsed file's size and
 mtime, not its content), so a call only re-tokenizes documents whose text
 changed.
 
-### One window chooser, shared and deterministic
+### 🪟 One window chooser, shared and deterministic
 
 A snippet used to be the window around the *first* occurrence of
 whichever query term came out of the term set first. Two things were
@@ -120,7 +120,7 @@ removed, in which a short window was the sole basis for *rejecting* a
 source. An irreproducible snippet there meant an irreproducible
 rejection.
 
-### `evidence` -- zooming in on one document
+### 🔍 `evidence` -- zooming in on one document
 
 ```bash
 python -m chitragupta.draft retrieve evidence "<query>" --citekey <key>
@@ -144,7 +144,7 @@ size of its payload to that draft's dossier (`retrieval.md` -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md)). That is what makes the cost of
 retrieval for a given draft a measurement rather than an estimate.
 
-## Embeddings -- a replacement for BM25, not an addition
+## 🧠 Embeddings -- a replacement for BM25, not an addition
 
 `chitragupta/enrich/embed_index.py` chunks each document into 200 words with
 40 words of overlap, encodes each chunk with a sentence-transformers model
@@ -164,7 +164,7 @@ caps each citekey at `[enrich].embed_max_passages_per_source` (default
 3) chunks among the top `k`, applied to the over-fetched ranked list
 before it is truncated -- so dropping a dominant paper's excess chunks
 promotes another paper's chunk into the result, rather than merely
-shortening it (#305, [CONFIG.md](CONFIG.md#enrich----the-optional-enrichment-layer)).
+shortening it (#305, [CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-layer)).
 BM25's `search` needs no such cap: it is already one-per-citekey by
 construction.
 
@@ -196,7 +196,7 @@ alternative to BM25, and `deep-research`'s subagents check that
 `content/chroma/` exists before reaching for it. The other three genre
 skills use BM25 only.
 
-## Topic model -- a different question
+## 🗂 Topic model -- a different question
 
 `chitragupta/enrich/topic_model.py` takes no query. It embeds each document once
 as
@@ -220,7 +220,7 @@ Three things to know before you run it:
   Only the encoding is cached (`content/topic_embed_cache.json`, keyed by
   text hash and model name), never the clustering.
 
-## Which should I build?
+## ⚖ Which should I build?
 
 | If you want to… | Do this |
 |---|---|

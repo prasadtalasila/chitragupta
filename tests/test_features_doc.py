@@ -89,7 +89,12 @@ class TestEverySkillIsListed:
 
     def test_the_stated_skill_count_matches(self):
         expected = _NUMBER_WORDS[len(SKILLS)]
-        assert f"### {expected} skills" in FEATURES_TEXT, (
+        # Headings carry an emoji prefix, so `### ` is followed by an
+        # optional run of non-ASCII before the text. Matched as a pattern
+        # rather than against today's emoji, so re-picking one is a docs
+        # edit and not a test edit.
+        pattern = re.compile(rf"^### (?:[^\x00-\x7F]+ )?{expected} skills$", re.MULTILINE)
+        assert pattern.search(FEATURES_TEXT), (
             f"docs/FEATURES.md's skills heading should read '### {expected} "
             f"skills' -- .claude/skills/ holds {len(SKILLS)}: "
             f"{', '.join(SKILLS)}."

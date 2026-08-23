@@ -1,17 +1,17 @@
-# The workflow, drawn eleven ways
+# 📐 The workflow, drawn eleven ways
 
 Status: **reference.** Written 2026-08-06.
 
 Every diagram here describes the same pipeline. They come in three groups:
 
-- **[The ladder](#the-ladder)** -- six views of the whole workflow, ordered
+- **[The ladder](#-the-ladder)** -- six views of the whole workflow, ordered
   by how much you already know, from one that assumes nothing to one that
   assumes you are about to change the worker pool.
-- **[By genre](#by-genre)** -- three views of how the *writing* skills
+- **[By genre](#-by-genre)** -- three views of how the *writing* skills
   differ in what they ask of the pipeline. The five genre skills are not
   variations on one template; they disagree about how much of it is worth
   running.
-- **[Appendix](#appendix)** -- the same workflow in time order, and the
+- **[Appendix](#-appendix)** -- the same workflow in time order, and the
   ledger's state machine for one citekey.
 
 Read the one that matches your question and ignore the rest.
@@ -27,23 +27,23 @@ The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
 diagram land in the same diff. `docs/diagrams/` carries the same eleven as
 standalone `.mmd` sources and `.svg` exports, for slides, a paper, or a
-viewer that doesn't render Mermaid -- see [Editing these](#editing-these)
+viewer that doesn't render Mermaid -- see [Editing these](#-editing-these)
 at the end.
 
 ---
 
-## The ladder
+## 🪜 The ladder
 
 | # | Diagram | Written for | Answers |
 |---|---|---|---|
-| 1 | [One glance](#1-one-glance) | Someone who has never heard of this | what are the steps, and who does each one? |
-| 2 | [Your first run](#2-your-first-run) | Someone installing it today | what do I type, in what order, and what does each step tell me? |
-| 3 | [The full workflow](#3-the-full-workflow) | Someone reading the source | what actually runs, what does it write, and where does the module I'm looking at fit? |
-| 4 | [Everything on disk](#4-everything-on-disk) | Someone deciding what to back up, or debugging a wrong file | what are all these files, who wrote them, and what is safe to delete? |
-| 5 | [Gates and exit codes](#5-gates-and-exit-codes) | Someone whose run just failed, or who is scripting it | why did this exit 1, and what is safe to retry automatically? |
-| 6 | [Inside one parse](#6-inside-one-parse) | Someone tuning `[parser].workers`, or changing the pool | what does a worker pool actually do here, and what happens when part of it dies? |
+| 1 | [One glance](#-1-one-glance) | Someone who has never heard of this | what are the steps, and who does each one? |
+| 2 | [Your first run](#-2-your-first-run) | Someone installing it today | what do I type, in what order, and what does each step tell me? |
+| 3 | [The full workflow](#-3-the-full-workflow) | Someone reading the source | what actually runs, what does it write, and where does the module I'm looking at fit? |
+| 4 | [Everything on disk](#-4-everything-on-disk) | Someone deciding what to back up, or debugging a wrong file | what are all these files, who wrote them, and what is safe to delete? |
+| 5 | [Gates and exit codes](#-5-gates-and-exit-codes) | Someone whose run just failed, or who is scripting it | why did this exit 1, and what is safe to retry automatically? |
+| 6 | [Inside one parse](#-6-inside-one-parse) | Someone tuning `[parser].workers`, or changing the pool | what does a worker pool actually do here, and what happens when part of it dies? |
 
-### 1. One glance
+### 🔭 1. One glance
 
 **Written for:** Someone who has never heard of this.
 **Answers:** what are the steps, and who does each one?
@@ -51,7 +51,7 @@ at the end.
 Deliberately the least detailed diagram here. Two properties do all the
 work: phase 1 is the only entrance -- citekeys come from your BibTeX
 export and nowhere else -- and phase 4 is the only exit, with no arrow
-around it. This is the version in [the README](../README.md#how-it-works).
+around it. This is the version in [the README](../README.md#-how-it-works).
 
 The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
 gate is normally invisible: the skill discards the unsupported claim,
@@ -62,7 +62,7 @@ going back to phase 1 and adding it.
 It carries no commands and no file paths on purpose -- this is the diagram
 for someone who has not decided to install anything yet, and a reader who
 wants either has [CLI.md](CLI.md) for the commands and
-[the artifacts diagram](#4-everything-on-disk) for the paths.
+[the artifacts diagram](#-4-everything-on-disk) for the paths.
 
 **Two enclosures carry the division of labour.** `LLM` holds drafting,
 the gate and the dossier: the part a model runs, loops over on its own,
@@ -128,12 +128,12 @@ flowchart LR
   class REV side
 ```
 
-### 2. Your first run
+### 🚀 2. Your first run
 
 **Written for:** Someone installing it today.
 **Answers:** what do I type, in what order, and what does each step tell me?
 
-The same path as [the Quickstart](../README.md#quickstart), drawn with
+The same path as [the Quickstart](../README.md#-quickstart), drawn with
 the two checkpoints that actually catch people. The first is the **Export
 Files** tick box, which silently produces a bibliography with no PDFs
 attached. The second is the first `python -m chitragupta.corpus ledger` after a
@@ -194,7 +194,7 @@ flowchart TB
   class DONE done
 ```
 
-### 3. The full workflow
+### 🔄 3. The full workflow
 
 **Written for:** Someone reading the source.
 **Answers:** what actually runs, what does it write, and where does the module
@@ -336,7 +336,7 @@ flowchart TB
   class H1,H2,H3,EMB heavy
 ```
 
-### 4. Everything on disk
+### 📁 4. Everything on disk
 
 **Written for:** Someone deciding what to back up, or debugging a wrong file.
 **Answers:** what are all these files, who wrote them, and what is safe to delete?
@@ -440,7 +440,7 @@ flowchart TB
   class LCK lock
 ```
 
-### 5. Gates and exit codes
+### ✅ 5. Gates and exit codes
 
 **Written for:** Someone whose run just failed, or who is scripting it.
 **Answers:** why did this exit 1, and what is safe to retry automatically?
@@ -524,7 +524,7 @@ flowchart TB
   class GBAD hard
 ```
 
-### 6. Inside one parse
+### 📄 6. Inside one parse
 
 **Written for:** Someone tuning `[parser].workers`, or changing the pool.
 **Answers:** what does a worker pool actually do here, and what happens when
@@ -628,7 +628,7 @@ flowchart TB
 
 ---
 
-## By genre
+## 🎭 By genre
 
 The ladder above draws the pipeline as one thing. It isn't, quite -- the
 five genre skills in `.claude/skills/` use very different amounts of it.
@@ -637,13 +637,13 @@ largely wasted on two others, and reduced to a preview step for the fifth.
 
 | Genre | Skills | Retrieval | Enrichment stages | `chitragupta.draft references` |
 |---|---|---|---|---|
-| [Genre A: corpus-led](#genre-a-corpus-led) | `survey-writer`, `deep-research` | BM25 **or** `embed_index` | `docling` + `embed`, both worth it | yes |
-| [Genre B: teaching](#genre-b-teaching) | `tutorial-writer`, `textbook-chapter-writer` | BM25 only | none | yes (custom heading) |
-| [Genre C: LaTeX-native](#genre-c-latex-native) | `thesis-chapter-writer` | BM25 only | none | **no -- skipped** |
+| [Genre A: corpus-led](#-genre-a-corpus-led) | `survey-writer`, `deep-research` | BM25 **or** `embed_index` | `docling` + `embed`, both worth it | yes |
+| [Genre B: teaching](#-genre-b-teaching) | `tutorial-writer`, `textbook-chapter-writer` | BM25 only | none | yes (custom heading) |
+| [Genre C: LaTeX-native](#-genre-c-latex-native) | `thesis-chapter-writer` | BM25 only | none | **no -- skipped** |
 
 All five run the same gate, in the same loop, with the same wording.
 
-### Genre A: corpus-led
+### 📚 Genre A: corpus-led
 
 **Skills:** `survey-writer`, `deep-research`
 
@@ -715,7 +715,7 @@ flowchart LR
   class AID,BERT aid
 ```
 
-### Genre B: teaching
+### 🎓 Genre B: teaching
 
 **Skills:** `tutorial-writer`, `textbook-chapter-writer`
 
@@ -787,7 +787,7 @@ flowchart LR
   class RISK risk
 ```
 
-### Genre C: LaTeX-native
+### ✍ Genre C: LaTeX-native
 
 **Skills:** `thesis-chapter-writer`
 
@@ -855,12 +855,12 @@ flowchart LR
 
 ---
 
-## Appendix
+## 📎 Appendix
 
 These two answer narrower questions than the groups above, and are kept
 separate for that reason.
 
-### One draft, in time order
+### ⏱ One draft, in time order
 
 The full workflow with time on the vertical axis instead of dependency.
 Useful for two things in particular. The first is seeing that **the gate
@@ -942,7 +942,7 @@ sequenceDiagram
     Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta.review provenance · verbatim · coverage · synthesis<br/>figure · uncited<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
 ```
 
-### The life of a single citekey
+### 📖 The life of a single citekey
 
 The ledger's own state machine, for when the question is "why can't I
 cite this paper?". `parsed` is the only state that makes a citekey
@@ -997,7 +997,7 @@ stateDiagram-v2
 
 ---
 
-## Editing these
+## ✏ Editing these
 
 Each diagram is plain Mermaid in a fenced block above. GitHub renders
 them, and so does any Mermaid-aware editor. **That block is the source of

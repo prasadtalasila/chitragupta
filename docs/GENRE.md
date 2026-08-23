@@ -1,4 +1,4 @@
-# Genres
+# 🎭 Genres
 
 Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
 as it stands.
@@ -35,20 +35,20 @@ Related reading:
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- the drafting layer these sit in,
   and the corpus layer they all read and none of them writes.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Picking one](#picking-one)
-- [At a glance](#at-a-glance)
-- [The five drafting genres](#the-five-drafting-genres)
-- [Assembling a book](#assembling-a-book)
-- [Revising: draft-reviser](#revising-draft-reviser)
-- [Revising widely: corpus-reviser](#revising-widely-corpus-reviser)
-- [Repairing overlap: overlap-reviser](#repairing-overlap-overlap-reviser)
-- [What all nine have in common](#what-all-nine-have-in-common)
-- [The boundaries, and why they are enforced](#the-boundaries-and-why-they-are-enforced)
-- [Genres this project does not have](#genres-this-project-does-not-have)
+- [Picking one](#-picking-one)
+- [At a glance](#-at-a-glance)
+- [The five drafting genres](#-the-five-drafting-genres)
+- [Assembling a book](#-assembling-a-book)
+- [Revising: draft-reviser](#-revising-draft-reviser)
+- [Revising widely: corpus-reviser](#-revising-widely-corpus-reviser)
+- [Repairing overlap: overlap-reviser](#-repairing-overlap-overlap-reviser)
+- [What all nine have in common](#-what-all-nine-have-in-common)
+- [The boundaries, and why they are enforced](#-the-boundaries-and-why-they-are-enforced)
+- [Genres this project does not have](#-genres-this-project-does-not-have)
 
-## Picking one
+## ⚖ Picking one
 
 Two questions settle it almost always.
 
@@ -77,7 +77,7 @@ They have opposite rules about explanation. Digression into *why* is a
 feature of one and a defect in the other, so a wrong guess produces a
 document that fails at both.
 
-## At a glance
+## 🔭 At a glance
 
 | | Output | Citation density | Subagents | Cost |
 |---|---|---|---|---|
@@ -91,12 +91,12 @@ document that fails at both.
 | `overlap-reviser` | edits an existing draft in place | inherits the draft's | none | one scan, then one edit per finding |
 | `book-assembler` | `content/drafts/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
 
-### The evidence sidecar, decided per genre
+### 📖 The evidence sidecar, decided per genre
 
 Four of the five drafting skills also render an **evidence sidecar** --
 `content/rendered/<topic>/<name>.evidence.{md,pdf}`, listing each cited
 source and the verbatim spans its dossier marked quotable
-([CLI.md](CLI.md#python--m-chitraguptadraft-evidence)). It changes what a
+([CLI.md](CLI.md#-python--m-chitraguptadraft-evidence)). It changes what a
 finished document set *looks like*, so each genre answers for itself
 rather than inheriting one switch, and the two answers that produce
 nothing are decisions on the record, not omissions:
@@ -117,12 +117,12 @@ All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
 a machine-readable `provenance.json` in that same directory. Nothing under
 `content/` is tracked by
-git -- see [DRAFT-ITERATION.md](DRAFT-ITERATION.md#backup-and-restore)
+git -- see [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-backup-and-restore)
 for how a draft and its dossier get backed up.
 
-## The five drafting genres
+## ✍ The five drafting genres
 
-### `survey-writer`
+### 📚 `survey-writer`
 
 Topic-clustered literature survey, background section, related-work
 section, "state of the art". Retrieves broadly across two to four
@@ -139,9 +139,9 @@ deliverable, so they are never collapsed for a cleaner narrative.
 
 This is the skill whose retrieval pass dominates its own token cost, and
 the one whose economics are worked through in
-[TOKENS.md](TOKENS.md#example-1-one-rejected-paper-followed-to-the-end-of-the-run).
+[TOKENS.md](TOKENS.md#-example-1-one-rejected-paper-followed-to-the-end-of-the-run).
 
-### `thesis-chapter-writer`
+### 🎓 `thesis-chapter-writer`
 
 A chapter tied to a specific research question, written for an examiner:
 a domain expert reading adversarially. Unlike a survey, this genre **does
@@ -159,7 +159,7 @@ a survey with a chapter heading. If the argument toward the research
 question isn't visible in the section structure, the chapter isn't doing
 its job.
 
-### `textbook-chapter-writer`
+### 📘 `textbook-chapter-writer`
 
 An undergraduate chapter: learning objectives, motivation, worked
 examples, exercises. Diátaxis-wise this is *explanation with worked
@@ -177,7 +177,7 @@ sentence as a candidate for expansion rather than for the chapter.
 Concrete instance first, generalise from it -- which matters more in this
 genre than in any other.
 
-### `tutorial-writer`
+### 🛠 `tutorial-writer`
 
 A Diátaxis tutorial: a lesson a learner follows at a keyboard, start to
 finish, to a working result they can see. The governing analogy in the
@@ -199,7 +199,7 @@ stalls while you explain the architecture) and drifting into a how-to
 (you start offering alternatives, which a learner who doesn't yet know
 the domain cannot evaluate).
 
-### `deep-research`
+### 🔬 `deep-research`
 
 Seven phases and a dozen subagents: perspective discovery, parallel
 grounded interviews, contradiction mapping, outline, parallel cited
@@ -229,9 +229,9 @@ It is the heaviest skill here and says so before it starts. If what you
 want is a single-pass literature survey, `survey-writer` is faster and
 the skill will point you there. Its own cost structure -- and the one
 remaining thing that could reduce it -- is
-[TOKENS.md](TOKENS.md#example-2-six-interview-packets-from-phase-3-to-phase-7f).
+[TOKENS.md](TOKENS.md#-example-2-six-interview-packets-from-phase-3-to-phase-7f).
 
-## Revising: `draft-reviser`
+## ✏ Revising: `draft-reviser`
 
 Not a genre. The skill that changes a draft one of the five already
 wrote, including in a session that has never seen it.
@@ -254,7 +254,7 @@ leaves previously declined papers declined unless their recorded reason
 has stopped holding. Once the gate passes, it re-stamps the corpus
 fingerprint. What that promises is no *missing* citations, not an empty
 candidate list -- see
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md#re-grounding-after-the-corpus-moves).
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
 
 Drafts written before `chitragupta/dossier.py` existed have no dossier, and
 neither do hand-written ones. It bootstraps rather than refusing:
@@ -284,7 +284,7 @@ on a judgment call" under *what you will not do*, and how wide a revision
 should look is exactly such a call. So the way out is a door rather than
 an exception: `corpus-reviser`, below.
 
-## Revising widely: `corpus-reviser`
+## 🔁 Revising widely: `corpus-reviser`
 
 Also not a genre. The same act as `draft-reviser` -- changing a draft
 that already exists -- with one thing different: it re-searches every
@@ -322,7 +322,7 @@ The thing that stays never, in both skills, is re-running the genre
 skill: that discards all of that state and pays to rediscover a worse
 version of it.
 
-## Repairing overlap: `overlap-reviser`
+## 🩹 Repairing overlap: `overlap-reviser`
 
 Not a genre either, and narrower than both revisers above: its input is
 one report rather than a request in prose. `python -m chitragupta.review verbatim
@@ -361,7 +361,7 @@ loop proposes and repairs; you accept the diff.
 Everything else about the draft is `draft-reviser`. A finding this skill
 cannot repair is escalated, not worked around.
 
-## Assembling a book
+## 📕 Assembling a book
 
 `book-assembler` is the ninth skill and the only one that writes no
 prose. It composes units that are already accepted and gate-passed into
@@ -379,7 +379,7 @@ unaccepted or stale sends it back to the genre skill or to
 the registries, and why the consistency check reports rather than
 blocks.
 
-## What all nine have in common
+## 🔑 What all nine have in common
 
 These are not per-skill choices. They are the same rules restated in
 nine `SKILL.md` files, and a skill that broke one would be the bug.
@@ -489,7 +489,7 @@ steps report the finished draft once, to the human.
 [HOOKS.md](HOOKS.md) has that split: invocation is enforced, conformance
 is not.
 
-## The boundaries, and why they are enforced
+## 🚧 The boundaries, and why they are enforced
 
 Every skill carries a "When to invoke" table whose rows are mostly
 *other* skills. That looks like duplication and is not: the genre
@@ -510,7 +510,7 @@ This is [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §5 -- don't let a
 document do two jobs -- enforced at the point where it is easiest to
 break.
 
-## Genres this project does not have
+## 🚫 Genres this project does not have
 
 Named here so a skill can tell you plainly rather than writing the wrong
 thing:

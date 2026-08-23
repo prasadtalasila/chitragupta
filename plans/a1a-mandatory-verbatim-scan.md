@@ -502,7 +502,7 @@ before a whole book is read by somebody else"), and stays per unit.
 for it"*, and `docs/GENRE.md` §"Repairing overlap" says *"Only a person
 starts it. No hook, no scheduled job, no genre skill at the end of its
 run."* Both stay true and both stay written, because
-[A1b is withdrawn](../docs/FEATURE-ROADMAP.md#a1b-auto-route-findings-into-overlap-reviser----declined):
+[A1b is withdrawn](../docs/FEATURE-ROADMAP.md#-a1b-auto-route-findings-into-overlap-reviser----declined):
 the scan runs, the findings are surfaced, and a person decides whether to
 invoke the repair loop. A skill repairing its own output is marking its
 own homework.
@@ -819,7 +819,7 @@ see it. That is worth a minor rather than a patch.
 ## Explicitly not in scope
 
 - **Auto-routing findings into `overlap-reviser`.** Withdrawn as
-  [A1b](../docs/FEATURE-ROADMAP.md#a1b-auto-route-findings-into-overlap-reviser----declined),
+  [A1b](../docs/FEATURE-ROADMAP.md#-a1b-auto-route-findings-into-overlap-reviser----declined),
   and re-declined here.
 - **Any hook.** The rationale's §"Why not a PostToolUse hook" holds: the
   objection is not cost, it is that a review report in the path of a

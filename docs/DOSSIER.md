@@ -1,4 +1,4 @@
-# The dossier
+# 🗂 The dossier
 
 Status: **reference.** Written 2026-08-22, describing the format as it
 stands.
@@ -46,7 +46,7 @@ depth was asked for.
 
 `content/rendered/` mirrors the same path, so a topic directory names a
 draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together --
-[CLI.md](CLI.md#python--m-chitraguptadraft-render) has the detail. That is
+[CLI.md](CLI.md#-python--m-chitraguptadraft-render) has the detail. That is
 what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.
@@ -136,7 +136,7 @@ payload* of each call, not tokens, and nothing records what the drafting
 turns themselves cost. Enough to compare two runs; not enough to price a
 whole draft.
 
-## Why Markdown
+## 💡 Why Markdown
 
 Everything a dossier holds is read by a model or by a human, both of
 which read Markdown natively. Nothing in it is a data structure another
@@ -155,7 +155,7 @@ A malformed dossier makes the next revision less efficient. It cannot
 make a draft wrong, because the citation gate still stands between any
 draft and the user.
 
-## `evidence.md`'s `claim:`/`quote:` contract (A2, #306)
+## 📖 `evidence.md`'s `claim:`/`quote:` contract (A2, #306)
 
 One `## \`citekey\`` block carries three possible fields:
 
@@ -200,7 +200,7 @@ source wording:
 | `chitragupta/evidence_appendix.py` | nothing at all | It is deciding what to put in a rendered document. A legacy `support:` holds a raw 600-character retrieval window (`EVIDENCE_CHARS`), and printing one as an attributed quotation would publish it |
 
 So the evidence sidecar
-([CLI.md](CLI.md#python--m-chitraguptadraft-evidence)) reads `quote:` and
+([CLI.md](CLI.md#-python--m-chitraguptadraft-evidence)) reads `quote:` and
 only `quote:`. A pre-A2 dossier therefore renders no sidecar, which is
 correct rather than a gap: nobody ever decided those windows were worth
 quoting. `claim:` is excluded from it for the mirror-image reason -- it is
@@ -222,7 +222,7 @@ number a drafting step could optimise against, so a bare warning is what
 prints; `--score` opts into the number for a human reading the output by
 hand.
 
-## Why several files rather than one
+## 💡 Why several files rather than one
 
 So that a revision loads only what it needs. `scope.md` and `sections.md`
 are small and almost always relevant; `rejected.md` is the largest and is
@@ -230,7 +230,7 @@ only needed when a change opens a sub-theme up for re-searching. One
 combined file would have to be read whole every time, which is the cost
 this module exists to avoid.
 
-## `sections.md` is derived, not maintained
+## 🔄 `sections.md` is derived, not maintained
 
 Its own template says the file is "rebuildable from the draft", and it is:
 a heading owns a line range, a citekey is cited on a line, and the
@@ -256,7 +256,7 @@ writers from them. There is no draft to derive from at that point, so
 that write stays by hand and the derived form belongs at Phase 7(e),
 where the plan is replaced by what the finished report actually cites.
 
-## Why not merge the provenance JSON into the rest of the dossier
+## 💡 Why not merge the provenance JSON into the rest of the dossier
 
 `thesis-chapter-writer` and `deep-research` also write a
 `provenance.json`, and the thesis genre additionally writes an
@@ -285,7 +285,7 @@ either putting prose a human needs into JSON, or putting a machine record
 into Markdown that nothing parses -- so they stay separate files, and the two
 skills that produce both write both.
 
-## The corpus fingerprint
+## 📚 The corpus fingerprint
 
 `scope.md` records how many citekeys the ledger held when the draft was
 written, plus a 12-character digest of that set:

@@ -30,7 +30,7 @@ against it -- which is what this does to citations.
 
 ---
 
-## The one rule
+## 🔑 The one rule
 
 Fabricated placeholder references have made it into real papers before.
 This pipeline is built to make that impossible rather than unlikely:
@@ -38,14 +38,14 @@ This pipeline is built to make that impossible rather than unlikely:
 > **A citekey may only be used if it appears in your own `.bib` export
 > *and* was picked up into the ledger by a real parse of a real PDF.**
 
-- [How it works](#how-it-works)
-- [Quickstart](#quickstart)
-- [The enrichment layer](#the-enrichment-layer)
-- [Hardware requirements](#hardware-requirements)
-- [Documentation](#documentation)
-- [Acknowledgements](#acknowledgements)
+- [How it works](#-how-it-works)
+- [Quickstart](#-quickstart)
+- [The enrichment layer](#-the-enrichment-layer)
+- [Hardware requirements](#-hardware-requirements)
+- [Documentation](#-documentation)
+- [Acknowledgements](#-acknowledgements)
 
-## How it works
+## 🏗 How it works
 
 Five phases along the spine, and two layers beside it. You own phase 1;
 nothing reaches phase 5 without passing phase 4.
@@ -97,7 +97,7 @@ above needs it.
 by depth, by genre, and in time order -- and is where the figure above
 comes from.
 
-### One thing the corpus layer does not promise
+### 🚫 One thing the corpus layer does not promise
 
 The corpus layer is deterministic in the sense that matters most -- no
 LLM, no judgement calls, same bibliography in, same citekeys out -- but it
@@ -112,9 +112,9 @@ rather than something this pipeline adds, and it cannot be switched off;
 serial parsing (`[parser].workers = 1`, the default) has not been observed
 to vary. The artifact-by-artifact contract, the measured rates and how
 little they can pin down are in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-is-reproducible-and-what-is-not).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
-## Quickstart
+## 🚀 Quickstart
 
 Two ways to get a project directory, and everything from step 2 onward
 is identical either way. Pick whichever matches what you're doing:
@@ -184,10 +184,10 @@ Every command that chain runs, every way to re-run one by hand, and all
 six review-layer commands for checking a finished draft against its
 sources are in
 [docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
-step](docs/CLI.md#the-full-first-run-step-by-step), which walks the whole
+step](docs/CLI.md#-the-full-first-run-step-by-step), which walks the whole
 sequence above and everything that follows it, in order.
 
-## The enrichment layer
+## 🧠 The enrichment layer
 
 Everything above works without it. The enrichment layer is a second,
 optional pass over the same corpus that buys three things: layout-aware
@@ -208,13 +208,13 @@ when it isn't.
 Which stage is worth that cost, and what each one actually answers, is in
 [docs/RETRIEVAL.md](docs/RETRIEVAL.md). How the stages fit into the rest
 of the system, including how to call them from your own script or skill,
-is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#layer-3-the-enrichment-layer).
+is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-layer-3-the-enrichment-layer).
 
 No stage needs an LLM API key -- this repository intentionally has none.
 Every stage probes its own prerequisites and reports `ok`, `skipped` or
 `missing-binary` rather than assuming they are present.
 
-## Hardware requirements
+## 💻 Hardware requirements
 
 What the pipeline needs, not what it was developed on. The split below is
 the one that matters: the **corpus layer** -- `sync`, the citation gate,
@@ -261,7 +261,7 @@ publisher = {GitHub}
 }
 ```
 
-## Documentation
+## 🗂 Documentation
 
 This file is the overview: what the pipeline is, how to get it running,
 and what it needs. Everything else lives in one document per question,
@@ -270,9 +270,9 @@ Which of those you are doing can change within a session, and the split
 follows the task rather than the person; [CLAUDE.md](CLAUDE.md) is the
 one-screen router for exactly that.
 
-### Using it
+### ▶ Using it
 
-#### Getting started
+#### 🚀 Getting started
 
 | Document | Answers |
 |---|---|
@@ -284,7 +284,7 @@ one-screen router for exactly that.
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
 
-#### Understanding the system
+#### 🔭 Understanding the system
 
 | Document | Answers |
 |---|---|
@@ -297,14 +297,14 @@ one-screen router for exactly that.
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model actually contain, layer by layer -- for a single-context genre skill and for the multi-agent `deep-research` skill -- and why don't the two look the same? |
 
-#### Choosing settings
+#### ⚙ Choosing settings
 
 | Document | Answers |
 |---|---|
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | What does each setting *cost*? Every measured figure in one place, organised by setting |
 | [docs/PDF-PARSER.md](docs/PDF-PARSER.md) | Which PDF backend should I use, why were two dropped, and why was each newer candidate not adopted? |
 
-#### Reading the output
+#### 🔍 Reading the output
 
 | Document | Answers |
 |---|---|
@@ -312,7 +312,7 @@ one-screen router for exactly that.
 | [docs/PLAGIARISM.md](docs/PLAGIARISM.md) | How much of a draft's wording came from its sources? What the verbatim `overlap`/`scan` checks catch, and -- just as important -- what they cannot see, since these drafts are LLM-written and the tier that catches a genuine restatement does not run everywhere |
 | [docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) | What prose standards do the genre skills follow, and where in the technical-communication literature do they come from? |
 
-### Working on it
+### 🤝 Working on it
 
 | Document | Answers |
 |---|---|
@@ -336,7 +336,7 @@ and `DEVELOPER.md` -- as do `.claude/`'s genre skills. Only this repo's own
 machinery stays behind: `tests/`, `bench/` (the measurement harness and its
 raw timings), `.github/` and `.gitignore`.
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 This project borrows from several others -- the deep-research skill's
 7-phase method, the clean-code checklist its own code standard is written

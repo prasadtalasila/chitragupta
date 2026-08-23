@@ -1,4 +1,4 @@
-# Iterating on a draft
+# ✍ Iterating on a draft
 
 Status: **implemented.** Written 2026-08-06.
 
@@ -15,7 +15,7 @@ Related reading:
 
 - [TOKENS.md](TOKENS.md) -- where a run's tokens go, the two-pool
   framing this document assumes, and how to measure any of it. It holds
-  the arithmetic behind ["Where the tokens go"](#where-the-tokens-go)
+  the arithmetic behind ["Where the tokens go"](#-where-the-tokens-go)
   below.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- the four layers this sits inside.
 - [RETRIEVAL.md](RETRIEVAL.md) -- how the corpus is ranked, and what a
@@ -27,24 +27,24 @@ Related reading:
   answers "does the cited paper actually say this?", which is a different
   question from anything here.
 - [PERFORMANCE.md](PERFORMANCE.md) -- **measured** costs, including
-  [what a drift sweep costs](PERFORMANCE.md#what-a-drift-sweep-costs),
+  [what a drift sweep costs](PERFORMANCE.md#-what-a-drift-sweep-costs),
   which is the one figure this document quotes rather than estimates.
   That split is the rule here: a stopwatch number lives there and is
   cited from here, and anything derived from file sizes or documented
   defaults is labelled an estimate every time it appears.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The asymmetry](#the-asymmetry)
-- [Where the tokens go](#where-the-tokens-go)
-- [The dossier](#the-dossier)
-- [Dispatching from the dossier](#dispatching-from-the-dossier)
-- [Drift across every dossier](#drift-across-every-dossier)
-- [Revising a draft](#revising-a-draft)
-- [Backup and restore](#backup-and-restore)
-- [What this deliberately does not do](#what-this-deliberately-does-not-do)
+- [The asymmetry](#-the-asymmetry)
+- [Where the tokens go](#-where-the-tokens-go)
+- [The dossier](#-the-dossier)
+- [Dispatching from the dossier](#-dispatching-from-the-dossier)
+- [Drift across every dossier](#-drift-across-every-dossier)
+- [Revising a draft](#-revising-a-draft)
+- [Backup and restore](#-backup-and-restore)
+- [What this deliberately does not do](#-what-this-deliberately-does-not-do)
 
-## The asymmetry
+## ⚖ The asymmetry
 
 Half of this pipeline already survives a session ending, and half of it
 doesn't.
@@ -74,7 +74,7 @@ candidate again, re-cluster, rewrite. **That is a structural cost, not a
 constant factor.** Everything else in this document follows from removing
 it.
 
-## Where the tokens go
+## ⚡ Where the tokens go
 
 The accounting lives in [TOKENS.md](TOKENS.md), together with the same
 argument from [REJECTION.md](REJECTION.md) and two worked examples --
@@ -96,7 +96,7 @@ the four that is *structural* rather than a constant factor. Before
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run Phase 1 through Phase 7 again.
 
-## The dossier
+## 🗂 The dossier
 
 **The format moved to [DOSSIER.md](DOSSIER.md)** -- the seven files, the
 `claim:`/`quote:` contract, why it is Markdown, why it is several files
@@ -107,7 +107,7 @@ usually the model resuming a draft rather than a person.
 This page is the other half: what to *do* with a dossier once it exists.
 Everything below assumes that format and does not restate it.
 
-## Dispatching from the dossier
+## 🤖 Dispatching from the dossier
 
 The dossier was built to be read by the *next* session. `brief` is the
 part that is read by the *current* one -- specifically by a subagent, and
@@ -121,7 +121,7 @@ Written the obvious way, the orchestrator selects those claims from the
 Phase 2 packets it is holding and types them into four prompts. That is
 *output*, at 5x a cached input token, spent once per writer: an estimated
 four writers x ~800 tokens = 3.2k output, or **16k input-token
-equivalents** ([TOKENS.md](TOKENS.md#two-worked-examples) has the
+equivalents** ([TOKENS.md](TOKENS.md#-two-worked-examples) has the
 weights). The same material is already on disk by then, because Phase 2's
 transcription put it there.
 
@@ -142,7 +142,7 @@ Counted rather than estimated, on the shipped example report against the
 real 501-paper corpus: **15,660 characters of evidence become 901
 characters of dispatch line**, 17.4x, across its seven sections. Method
 and caveats in
-[TOKENS.md](TOKENS.md#the-dispatch-payload-measured-on-real-material) --
+[TOKENS.md](TOKENS.md#-the-dispatch-payload-measured-on-real-material) --
 it is a payload size, not a run.
 
 **Addressing by section, not by citekey list.** A prompt carrying the
@@ -166,7 +166,7 @@ write its own file, so the long-form material never enters the
 orchestrator at all. That would cost the invariant which makes a dossier
 trustworthy -- **one writer, one record** -- and it is written down as a
 rejected trade in
-[TOKENS.md](TOKENS.md#the-one-way-to-cut-residency-and-what-it-would-cost)
+[TOKENS.md](TOKENS.md#-the-one-way-to-cut-residency-and-what-it-would-cost)
 rather than implemented here.
 
 The three subagent definitions still declare
@@ -188,7 +188,7 @@ any skill that fans out over sections has the same shape.
 transcribed evidence, so they have nothing to point at yet; when that
 changes, the command is already there.
 
-## Drift across every dossier
+## 📉 Drift across every dossier
 
 `status <draft>` answers "did the corpus move under this one draft?",
 which is only useful if you already suspect it did. The corpus half of
@@ -200,7 +200,7 @@ one report over every dossier under `content/dossiers/`, always exiting
 0, because "some drafts have drifted" is the normal state of a live
 corpus and not a build failure.
 
-### Two findings, and they are not the same kind of thing
+### ⚖ Two findings, and they are not the same kind of thing
 
 | Finding | What it is | What it costs to ignore |
 |---|---|---|
@@ -237,7 +237,7 @@ candidate the draft already read and declined would cost precisely the
 re-judging that `rejected.md` exists to prevent -- the report would
 recreate the bottleneck it is meant to expose.
 
-### The third list, and why it is not drift
+### 💡 The third list, and why it is not drift
 
 Subtracting the rejections throws away something worth keeping, though.
 "Turned down because the corpus had nothing better on this sub-theme"
@@ -262,7 +262,7 @@ real finding -- context for a re-grounding pass that is already
 warranted, rather than a standing reminder. `--json` always carries it,
 because there the consumer reads it at the moment it acts.
 
-### Why the new papers are not found with `search()`
+### 🔎 Why the new papers are not found with `search()`
 
 The obvious implementation -- call `chitragupta.retrieval.search(query, k=15)`
 for each recorded query -- is the one thing this could not do, for two
@@ -305,7 +305,7 @@ as a side effect, which is a much worse thing to owe the reader.
 
 **What that costs is measured, not assumed** -- and unlike the token
 estimates in [TOKENS.md](TOKENS.md), it is a stopwatch figure, so it
-lives in [PERFORMANCE.md](PERFORMANCE.md#what-a-drift-sweep-costs) with
+lives in [PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs) with
 the rest of the measurements. The load-bearing result, on this project's own
 corpus: sweeping 50 dossiers costs **0.19s more than sweeping one**
 (2.227s vs 2.032s cold), because the tokenization is shared. Had it been
@@ -315,14 +315,14 @@ sweep "nearly free"; the measurement says about 0.2-0.4s warm and ~2.1s
 cold -- cheap enough to run after every sync, but not nothing, and the
 wording here was corrected to match.
 
-### Unknown is not the same as absent
+### 🏷 Unknown is not the same as absent
 
 A dossier on a machine with no readable ledger produces no findings, and
 reporting that as "current" would be the one way this command could
 actively mislead -- it would assert the result of a check that never ran.
 The sweep says so explicitly and still exits 0.
 
-### `--json`, and who it is for
+### ⌨ `--json`, and who it is for
 
 `--all --json` emits the same report as data: per dossier, the recorded
 and current fingerprints, `missing` as citekey -> citing sections,
@@ -335,7 +335,7 @@ terminal would be a fragile way to hand over structured facts it already
 knows. Exiting 0 regardless is part of the same contract: the caller
 branches on the contents, not on the status code.
 
-## Revising a draft
+## ✍ Revising a draft
 
 The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
@@ -363,7 +363,7 @@ inside one section replaces an estimated ~4.6k-token whole-file rewrite.
 Steps 1, 2 and 5 are where the input-token saving lives: no retrieval
 pass at all in the common case.
 
-### The copy-edit pass, and the entry it leaves
+### 📝 The copy-edit pass, and the entry it leaves
 
 One class of revision inverts every economy above: a grammar pass, a
 spelling fix, a dialect conversion, a rephrasing to meet a style
@@ -395,7 +395,7 @@ The one dossier file a copy-edit may legitimately write besides the log is
 in the first place. A conversion applied against an unrecorded target
 cannot be repeated or checked by the next session.
 
-### Re-grounding after the corpus moves
+### 📚 Re-grounding after the corpus moves
 
 The sweep above makes drift visible. Re-grounding is the same reviser
 loop entered from that report instead of from a request, and it is
@@ -429,7 +429,7 @@ them would be to write the unpursued ones into `rejected.md`, which would
 turn a title into a permanent judgment that every later revision trusts
 -- the same objection that withdrew `triage` ([REJECTION.md](REJECTION.md)).
 
-### The scoped default, and the way out of it
+### ⚙ The scoped default, and the way out of it
 
 Steps 3-5 above are an economy, and economies have a failure mode: they
 can start reading as rules about what the user is allowed to ask for. A
@@ -473,7 +473,7 @@ Nothing enforces any of this. The only mechanical gate in the pipeline is
 `citation_gate`, and the reason is the same principle: a token-economy
 heuristic is not the kind of claim that earns a gate.
 
-### Section anchors
+### 🔗 Section anchors
 
 `sections` extracts the outline from the draft itself rather than from
 stored state, so it cannot go stale, and it survives a draft that was
@@ -488,7 +488,7 @@ cut a code block in half. Markdown fences (``` and `~~~`) and LaTeX
 `verbatim`/`lstlisting`/`minted` environments are both tracked, since
 `thesis-chapter-writer` emits `.tex`.
 
-## Backup and restore
+## 💾 Backup and restore
 
 `content/dossiers/` is gitignored, like `content/drafts/` and
 `content/rendered/` before it. That is a deliberate choice, not an
@@ -528,7 +528,7 @@ Three properties worth knowing:
   `rendered/`. A partially extracted backup is worse than none, because
   it looks like it worked.
 
-### What a bundle does not carry
+### 🚫 What a bundle does not carry
 
 `content/ledger.sqlite` and `papers/bibliography.bib`. The ledger is
 regenerable with `python -m chitragupta.corpus sync`, and the bib file is your reference
@@ -542,7 +542,7 @@ citation gate cannot verify anything until `sync` has run. That is the
 correct failure -- the gate refusing to confirm a citekey it cannot see
 beats a gate that passes because there is nothing to check against.
 
-## What this deliberately does not do
+## 🚫 What this deliberately does not do
 
 **It is not a gate and it takes no lock.** Nothing in `chitragupta/dossier/`
 blocks a draft, and nothing in it writes to the corpus layer. A dossier

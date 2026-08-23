@@ -1,10 +1,10 @@
-# Chitragupta
+# 🏷 Chitragupta
 
 Status: **reference.** Written 2026-08-05.
 
 A divine record keeper who keeps the ledger of deeds and audits souls against it.
 
-## The figure
+## 🪶 The figure
 
 Chitragupta is the registrar of the Hindu cosmos: the deity who
 maintains the complete record of every action of every being, from
@@ -16,7 +16,7 @@ He is depicted holding a pen (*lekhani*), an inkpot, and the ledger
 itself. His name is usually parsed as *chitra* + *gupta* — "the one in
 whom all the records reside, kept safe."
 
-## Why the name fits this project
+## 💡 Why the name fits this project
 
 This pipeline turns a curated BibTeX bibliography into grounded survey
 papers, thesis chapters, and tutorial chapters, with every citation

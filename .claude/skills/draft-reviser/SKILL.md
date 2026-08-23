@@ -677,7 +677,7 @@ citekey.
 
 The prose standards this skill inherits are documented, with per-principle
 attribution, in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#sources-and-attribution).
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
 What bears on revision specifically is Google's *Technical Writing
 Courses* (CC-BY 4.0) rule that one concept keeps one name: in a fresh
 draft that is a style preference, but a revision touching one section of

@@ -1,4 +1,4 @@
-# House style: the prose axis, and what persists across drafts
+# ✍ House style: the prose axis, and what persists across drafts
 
 Status: **proposal, not a plan.** Written 2026-08-11.
 
@@ -38,21 +38,21 @@ here) and the acronym-shaped slice of the glossary (#190). Genuinely
 unbuilt, and covered by no issue: the cross-draft dialect default,
 plain-term glossary reconciliation, and recurring refusals.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The rule that decides everything](#the-rule-that-decides-everything)
-- [Why a readability index is a trap](#why-a-readability-index-is-a-trap)
-- [The objective function already exists](#the-objective-function-already-exists)
-- [What is binary, and what only looks it](#what-is-binary-and-what-only-looks-it)
-- [What persists across drafts](#what-persists-across-drafts)
-- [Relationship to #102's roadmap](#relationship-to-102s-roadmap)
+- [The rule that decides everything](#-the-rule-that-decides-everything)
+- [Why a readability index is a trap](#-why-a-readability-index-is-a-trap)
+- [The objective function already exists](#-the-objective-function-already-exists)
+- [What is binary, and what only looks it](#-what-is-binary-and-what-only-looks-it)
+- [What persists across drafts](#-what-persists-across-drafts)
+- [Relationship to #102's roadmap](#-relationship-to-102s-roadmap)
 
-## The rule that decides everything
+## 🔑 The rule that decides everything
 
 > **R3:** "An unattended item's check is **binary**. No continuous score
 > is ever the thing being optimised."
 >
-> -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#the-requirements), which
+> -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-requirements), which
 > owns the wording
 
 The reason behind it is that a continuous score invites the loop to
@@ -66,7 +66,7 @@ Applied to language, the rule cuts the axis cleanly in two. "Apply §2" is
 binary -- "obviously" is present or it is not. "Improve the readability" is
 not, and no amount of care in the prompt makes it so.
 
-## Why a readability index is a trap
+## ⚠ Why a readability index is a trap
 
 Flesch-Kincaid and its relatives look like the `val_bpb` this pipeline is
 missing: one number, cheaply computed, no model needed, comparable across
@@ -89,14 +89,14 @@ An index may still be **reported**. A grade level that moves sharply
 between revisions is worth a human's attention. It may never be the thing
 being optimised.
 
-## The objective function already exists
+## 🎯 The objective function already exists
 
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) is it, and it was written that
 way before any of this was contemplated. Its §2 and §4 are not aspirations;
 they are conformance rules with a decidable answer.
 
 **The rule-by-rule triage used to live here and no longer does.** It is
-[WRITING-STANDARDS.md §9](WRITING-STANDARDS.md#9-what-is-checked-mechanically-and-what-is-not),
+[WRITING-STANDARDS.md §9](WRITING-STANDARDS.md#-9-what-is-checked-mechanically-and-what-is-not),
 which names for each rule whether it is decidable and whether a machine
 may act on it unattended. That move was deliberate: this document is a
 proposal, and nothing may be built against a proposal, so the normative
@@ -126,7 +126,7 @@ The apparatus around it, and none of it needs a model:
 Detector, recorded target, re-check, and a sanctioned edit path -- the
 whole loop, and every deterministic part of it costs zero tokens. This is
 also why the language half sits on the cheap rungs of
-[the cost ladder](AUTO-IMPROVEMENT.md#the-cost-ladder), and therefore why
+[the cost ladder](AUTO-IMPROVEMENT.md#-the-cost-ladder), and therefore why
 it is the half worth building first.
 
 **One caution #104 already records.** §2's list is English literals and
@@ -134,7 +134,7 @@ it is the half worth building first.
 them adapted, not transliterated -- so none of this generalises to #108's
 multilingual track for free.
 
-## What is binary, and what only looks it
+## ⚖ What is binary, and what only looks it
 
 Wider than §9, and for a different purpose: §9 is normative over
 `WRITING-STANDARDS.md`'s own rules, and this is the inventory of
@@ -155,9 +155,9 @@ rows below restate its verdicts only so the inventory reads as one list.
 | Sentence length, hedging density, passive-voice ratio | **no -- these are scores** | surfaced only |
 | Readability index | **no** | reported, never optimised |
 | Whether a paragraph leads with its point | heuristic | surfaced |
-| Whether a source supports a claim | no | never -- [why](AUTO-IMPROVEMENT-RATIONALE.md#why-provenance-is-excluded) |
+| Whether a source supports a claim | no | never -- [why](AUTO-IMPROVEMENT-RATIONALE.md#-why-provenance-is-excluded) |
 
-## What persists across drafts
+## 🗄 What persists across drafts
 
 A user of this pipeline writes many documents over years -- a survey, a
 thesis chapter, a textbook chapter, tutorials -- and today each one starts
@@ -195,7 +195,7 @@ artefact that nothing reconciles across drafts:
   that clone drafts. But "auditable" now means "in this host's own
   file,"
   not "visible in the project's git history to every contributor." See
-  [PLAGIARISM.md](PLAGIARISM.md#the-boilerplate-allowlist) for the
+  [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist) for the
   shipped design and why.
 - **Recurring refusals.** A user who declines the same kind of source in
   four drafts has a policy, not four coincidences. `rejected.md` records
@@ -221,7 +221,7 @@ one run. Nothing here runs it on a schedule, inside a revision loop, or
 because a threshold was crossed -- the human typing the flag *is* the
 acceptance this rule requires, not a bypass of it.
 
-## Relationship to #102's roadmap
+## 🗺 Relationship to #102's roadmap
 
 Issue #102 already sequences the language work as six PRs, ranked by who
 is blocked today. Nothing here reorders it; this document adds the reason
@@ -241,7 +241,7 @@ project's review-aid posture". That ranking is right for a human-driven
 workflow and wrong for an unattended one: without #107 there is no binary
 check, and
 without a binary check the prose class of
-[the agenda](AUTO-IMPROVEMENT.md#item-classes) cannot be acted on at all.
+[the agenda](AUTO-IMPROVEMENT.md#-item-classes) cannot be acted on at all.
 Issue #183 takes that reading and moves #107 ahead of #105 and #106.
 
 **One thing #183 settled that this document left open**: the check is

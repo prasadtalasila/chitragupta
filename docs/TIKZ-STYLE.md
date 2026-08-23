@@ -1,4 +1,4 @@
-# TikZ figure style: layout, typography, and the pre-flight checklist
+# 📐 TikZ figure style: layout, typography, and the pre-flight checklist
 
 Status: **standard, not mechanically checked.** Written 2026-08-21. A
 future review-layer aid ([FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s D2)
@@ -21,7 +21,7 @@ originality, all of which stay in
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10; the ASCII form's own
 7-bit alphabet and column limit, also §10.
 
-## Commit to a layout metaphor before you draw
+## 🏗 Commit to a layout metaphor before you draw
 
 TikZ figures out of this pipeline sprawl when nothing asks for a plan
 before the first `\node` -- boxes placed near other boxes, arrows added
@@ -42,7 +42,7 @@ maps onto a TikZ idiom to actually use:
 (The metaphor list is PaperBanana's planner supplement, read and not
 copied -- [INSPIRATION.md](INSPIRATION.md) carries the credit.)
 
-## Check the drawn figure against this list
+## ✅ Check the drawn figure against this list
 
 Concrete defects, not taste:
 
@@ -71,7 +71,7 @@ Concrete defects, not taste:
   [PLAGIARISM.md](PLAGIARISM.md), because a citekey is already kept out
   of figure files and the gate does not follow `\input`.
 
-## Type and line weight
+## 🔤 Type and line weight
 
 Two conventions, both about a figure looking like a native part of the
 document rather than something pasted in:
@@ -97,14 +97,14 @@ document rather than something pasted in:
   border were both gone. `\begin{tikzpicture}[thick]` cannot clobber
   anything, because it never touches `every node` at all.
 
-## Free once you are in TikZ
+## 🎨 Free once you are in TikZ
 
 Style keys unavailable to a raster path, worth using once the layout
 and type are settled: zone fills at 10-15% opacity via the
 `backgrounds` layer, dashed lines for auxiliary flow against solid for
 forward flow, sans-serif labels against serif-italic maths.
 
-## Nothing here is a gate
+## 🚫 Nothing here is a gate
 
 This is a checklist an author checks a figure against, not something
 enforced mechanically today.

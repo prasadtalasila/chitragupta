@@ -314,12 +314,12 @@ never a condition of presenting.**
 
 The prose standards this skill inherits are documented, with
 per-principle attribution, in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#sources-and-attribution).
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
 What the verbatim tiers catch and what they structurally cannot is in
 [`docs/PLAGIARISM.md`](../../../docs/PLAGIARISM.md). The requirements
 this loop is built to satisfy -- the write-set, the binary re-check, the
 two-attempt limit and the rule that only a person may start it -- are
 R1-R11 in
-[`docs/AUTO-IMPROVEMENT.md`](../../../docs/AUTO-IMPROVEMENT.md#the-requirements),
+[`docs/AUTO-IMPROVEMENT.md`](../../../docs/AUTO-IMPROVEMENT.md#-the-requirements),
 with the reasoning in
 [`docs/AUTO-IMPROVEMENT-RATIONALE.md`](../../../docs/AUTO-IMPROVEMENT-RATIONALE.md).

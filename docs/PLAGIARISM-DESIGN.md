@@ -1,4 +1,4 @@
-# Plagiarism detection: how the three tiers work, and what was measured
+# 🔍 Plagiarism detection: how the three tiers work, and what was measured
 
 Status: **three detection tiers, all built; the second and third
 advisory-only.** Written 2026-08-15, splitting the design half out of
@@ -17,7 +17,7 @@ layer sits.
 one a person reaches for before presenting a draft. Nothing is restated
 across the two -- where this document needs a term the other defines, it
 links rather than repeats, for the reason
-[CODE-STANDARDS.md](CODE-STANDARDS.md#where-these-rules-come-from) gives:
+[CODE-STANDARDS.md](CODE-STANDARDS.md#-where-these-rules-come-from) gives:
 a rule stated twice is a rule that will eventually be stated two
 different ways.
 
@@ -30,14 +30,14 @@ together, each reader pages past the other's document -- and the
 measurements are the part most likely to be skimmed and then
 re-litigated.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [Fingerprinting: word n-grams, hashed deterministically](#fingerprinting-word-n-grams-hashed-deterministically)
-- [Measured: what a blocking overlap gate would block (#130)](#measured-what-a-blocking-overlap-gate-would-block-130)
-- [Measured: document frequency, and what a single-field corpus changes](#measured-document-frequency-and-what-a-single-field-corpus-changes)
-- [Where this sits in a bigger plan](#where-this-sits-in-a-bigger-plan)
+- [Fingerprinting: word n-grams, hashed deterministically](#-fingerprinting-word-n-grams-hashed-deterministically)
+- [Measured: what a blocking overlap gate would block (#130)](#-measured-what-a-blocking-overlap-gate-would-block-130)
+- [Measured: document frequency, and what a single-field corpus changes](#-measured-document-frequency-and-what-a-single-field-corpus-changes)
+- [Where this sits in a bigger plan](#-where-this-sits-in-a-bigger-plan)
 
-## Fingerprinting: word n-grams, hashed deterministically
+## 🧬 Fingerprinting: word n-grams, hashed deterministically
 
 Both tools run on top of `chitragupta/overlap_index.py`'s corpus-wide fingerprint
 index. Every parsed document is tokenized into lowercase `[a-z0-9]+`
@@ -65,9 +65,9 @@ regenerable:
 `overlap` only ever needs the first. `scan` builds and reuses the
 second.
 
-## Measured: what a blocking overlap gate would block (#130)
+## 📊 Measured: what a blocking overlap gate would block (#130)
 
-[#130](AUTO-IMPROVEMENT.md#build-order) asks whether a long verbatim run
+[#130](AUTO-IMPROVEMENT.md#-build-order) asks whether a long verbatim run
 should block a draft the way the citation gate blocks an unresolvable
 citekey, and forbids guessing the threshold. `bench/bench_overlap_gate.py`
 measured it against this project's own 15-chapter book
@@ -81,7 +81,7 @@ uncredited reuse; a **false positive** is one no reviewer would act on --
 a standard's own wording, a field's fixed definition, an attributed
 quotation. **T** is the candidate threshold, a run length in words.
 
-### The measurement first had to fix a masking bug
+### 🐛 The measurement first had to fix a masking bug
 
 `_mask_for_scan` blanks the draft's own References section before
 scanning, because two documents citing the same paper share its title and
@@ -94,7 +94,7 @@ the corrected behaviour. It is the first thing to check if a `scan`
 result looks implausibly noisy: findings clustered at the end of the
 draft, all naming different sources, are its reference list.
 
-### The threshold is not a discriminating variable
+### 📉 The threshold is not a discriminating variable
 
 With References masked, the whole book yields **16** runs of 15 words or
 more, of which **14** the predicate could act on. Every one is a false
@@ -111,7 +111,7 @@ The premise of #130 is that a generous span threshold makes a gate
 tolerable. On this evidence, the variable it proposes to tune does not
 discriminate.
 
-### Why the false positives are structural, not tunable
+### 💡 Why the false positives are structural, not tunable
 
 The findings reduce to seven passages, dominated by two canonical
 definitions -- ISO 23247's, and VanDerHorn & Mahadevan's. Several corpus
@@ -125,7 +125,7 @@ other N-1 report as `UNCITED SOURCE`.**
 The sharpest form is a blockquote correctly cited to the work that first
 stated the taxonomy, matched against a second paper reproducing it.
 `quoted` is true but `cites_source` is false, so
-[`_bucket`](PLAGIARISM.md#severity-buckets-and-the-boilerplate-allowlist)
+[`_bucket`](PLAGIARISM.md#-severity-buckets-and-the-boilerplate-allowlist)
 keeps it in `long`, and #130's own `quoted and cites_source` exemption
 does not reach it. **A correctly quoted, correctly credited passage would
 block.**
@@ -137,7 +137,7 @@ and gitignored by design, so a fresh clone has no suppression at all --
 a gate's tolerability would depend on a file that does not exist until
 someone writes it.
 
-### What this does not license
+### 🚫 What this does not license
 
 The exact tier sees no verbatim reuse in this book. It does not follow
 that the book borrows no wording: paraphrase is invisible here, and is an
@@ -149,7 +149,7 @@ book, one topic, one generator; and because it contains no organic true
 positives, the measurement establishes how often the gate fires *wrongly*
 far better than it establishes how often it would fire *rightly*.
 
-## Measured: document frequency, and what a single-field corpus changes
+## 📊 Measured: document frequency, and what a single-field corpus changes
 
 The measurement above ends on an unfinished observation. Having shown
 that span length does not separate the two populations, it notes that
@@ -163,7 +163,7 @@ accounted for 8 of the 14 gateable findings, and no more.
 `bench/bench_overlap_df.py` finishes it, and the result changes the order
 tiers 2 and 3 should be built in.
 
-### The corpus this pipeline is pointed at is single-field by design
+### 📚 The corpus this pipeline is pointed at is single-field by design
 
 That is not incidental to detection; it is the governing fact. This
 project is built to be aimed at a deep corpus on one topic, and the
@@ -188,7 +188,7 @@ writes. A deep single-field corpus is exactly the sample that can tell
 those apart, so the signal *improves* as the corpus grows -- the opposite
 of what corpus depth does to cosine.
 
-### DF is already stored, and it explains 12 of the 14
+### 🗄 DF is already stored, and it explains 12 of the 14
 
 `overlap_index.postings_for_gram` returns every `(citekey, page,
 position)` posting for a gram, so the count of distinct citekeys in those
@@ -227,12 +227,12 @@ verbatim from a single source. That class is already exempt from #130's
 predicate through `quoted and cites_source`, so the two mechanisms cover
 disjoint populations rather than competing for the same one.
 
-### What the DF result does not license
+### 🚫 What the DF result does not license
 
 - **A threshold.** The evidence supports "DF is the discriminating
   feature, at gram granularity"; it does not support shipping a `D`. The
   target is a region measured on one corpus and one book, in the same
-  sense [PARALLELISM.md](PARALLELISM.md#roadmap) means it for
+  sense [PARALLELISM.md](PARALLELISM.md#-roadmap) means it for
   `_CPUS_PER_DOCLING_WORKER`.
 - **A recall claim.** The recall arm is **one planted finding**. "0 of 1
   true positive lost" is the whole of what was measured; it is not a
@@ -254,7 +254,7 @@ not publish. It carries the two profile artefacts that force the median
 rather than the minimum, and the `fragment`-versus-`draft_text` trap that
 makes a wrong implementation of this fail silently.
 
-## Where this sits in a bigger plan
+## 🗺 Where this sits in a bigger plan
 
 The corpus's own contributor discussion ([discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115),
 written before implementing #110) surveyed the plagiarism-detection
@@ -265,7 +265,7 @@ habit. Summary, for anyone deciding what to build next:
 |---|---|---|
 | Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013 winner, quality and runtime) | Contextual n-grams with odd/even skip-grams -- exact-matching family, well-engineered n-gram methods beat fancier ones on speed at comparable quality; skip-grams + stemming tolerate single-word edits | The exact tier here (`overlap`/`scan`) is this family. Skip-grams are the tier-2 upgrade, built in `chitragupta/overlap_skipgram.py` (#133) |
 | Sánchez-Pérez et al., [PAN 2014/2015 winner](https://ceur-ws.org/Vol-1180/CLEF2014wn-Pan-SanchezPerezEt2014.pdf) | TF-IDF sentence similarity + recursive passage extension -- the fuzzy-match family wins only on *obfuscated* reuse | Not used: built for obfuscation the exact tier doesn't target, and competes with skip-grams for tier 2 on determinism-adjacent simplicity |
-| [PAN 2025 generated-plagiarism task](https://arxiv.org/abs/2510.06805) | Measured the LLM case directly: exact-matching approaches miss LLM-paraphrased reuse, and detection degrades further as paraphrase complexity rises; embedding-based alignment (SBERT + local alignment, e.g. Smith-Waterman) is the validated answer for that tier | This is exactly why this document's [scope section](PLAGIARISM.md#what-plagiarism-means-here-and-what-it-deliberately-doesnt) insists a clean `scan` is not "no borrowed wording" |
+| [PAN 2025 generated-plagiarism task](https://arxiv.org/abs/2510.06805) | Measured the LLM case directly: exact-matching approaches miss LLM-paraphrased reuse, and detection degrades further as paraphrase complexity rises; embedding-based alignment (SBERT + local alignment, e.g. Smith-Waterman) is the validated answer for that tier | This is exactly why this document's [scope section](PLAGIARISM.md#-what-plagiarism-means-here-and-what-it-deliberately-doesnt) insists a clean `scan` is not "no borrowed wording" |
 | Schleimer, Wilkerson & Aiken, [winnowing / MOSS](https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf) | Keep the minimum hash per window of size w; detection of any match >= w+n-1 is still *guaranteed*, index shrinks to ~2/(w+1) of full size | Deferred: a real lever at book scale, unnecessary at ~500 papers where the full index already fits in RAM. The cache-key design (`tokenizer_version`) leaves room for it later |
 
 **The dividing line for what may ever block a draft: only deterministic
@@ -314,7 +314,7 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    findings carry
    `tier: "embedding"` and a `score`. **Not** the k-NN-against-the-whole-
    corpus-and-threshold shape this list originally proposed -- that form
-   is the one [the DF measurement](#measured-document-frequency-and-what-a-single-field-corpus-changes)
+   is the one [the DF measurement](#-measured-document-frequency-and-what-a-single-field-corpus-changes)
    argues against, and it was replaced before any of it was written. What
    shipped instead:
 
@@ -385,7 +385,7 @@ paraphrase is their normal failure mode, tiers 2-3 were prioritized
 immediately after the exact tier rather than parked indefinitely.
 
 **Tier 2 went first**, and [the DF
-measurement](#measured-document-frequency-and-what-a-single-field-corpus-changes)
+measurement](#-measured-document-frequency-and-what-a-single-field-corpus-changes)
 is why. Three things followed from it, all recorded in #133 and #134,
 and all three held up when tier 3 was finally built:
 
@@ -429,7 +429,7 @@ checks every source in one lookup. Suffix arrays / Greedy String Tiling
 regardless, so a pairwise method adds cost without adding a capability
 the index doesn't already have.
 
-## See also
+## 🔗 See also
 
 - [PLAGIARISM.md](PLAGIARISM.md) -- the user-facing half: what `overlap`
   and `scan` report, how to read a finding, the severity buckets and the

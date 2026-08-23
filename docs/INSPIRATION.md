@@ -1,4 +1,4 @@
-# Inspiration: what this project borrowed, and from where
+# 💡 Inspiration: what this project borrowed, and from where
 
 Status: **reference.** Written 2026-08-13.
 
@@ -16,15 +16,15 @@ different question entirely and belongs to the review layer
 where the *pipeline's own* ideas came from, not where a draft's claims
 came from.
 
-## Table of contents
+## 🧭 Table of contents
 
-- [The drafting layer's method](#the-drafting-layers-method)
-- [Code standards](#code-standards)
-- [Harness engineering](#harness-engineering)
-- [The feature roadmap](#the-feature-roadmap)
-- [The rule on borrowing](#the-rule-on-borrowing)
+- [The drafting layer's method](#-the-drafting-layers-method)
+- [Code standards](#-code-standards)
+- [Harness engineering](#-harness-engineering)
+- [The feature roadmap](#-the-feature-roadmap)
+- [The rule on borrowing](#-the-rule-on-borrowing)
 
-## The drafting layer's method
+## ✍ The drafting layer's method
 
 - **[hadufer/claude-storm](https://github.com/hadufer/claude-storm)** (MIT
   License) -- the `.claude/skills/deep-research/` skill and its
@@ -51,7 +51,7 @@ came from.
   scratch, adapting only the concept of an independent panel plus a
   Devil's Advocate role, not its implementation.
 
-## Code standards
+## 🤝 Code standards
 
 - **[wojteklu/clean_code.md](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29)**
   -- the widely-circulated summary of Robert C. Martin's *Clean Code:
@@ -70,13 +70,13 @@ came from.
     house style of dense rationale comments. The rule the canon actually
     states is "don't be **redundant**", not "don't comment", and the
     difference is the whole of
-    [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#the-comment-rules-and-the-misreading-to-avoid).
+    [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid).
   - Its **code smells** vocabulary -- rigidity, fragility, immobility,
     needless complexity, needless repetition, opacity -- is adopted
     directly as the review vocabulary, because naming a smell is what
     turns "this feels wrong" into a reviewable claim.
 
-## Harness engineering
+## 🪝 Harness engineering
 
 - **[walkinglabs/awesome-harness-engineering](https://github.com/walkinglabs/awesome-harness-engineering)**
   -- a curated list for *harness engineering*: "the practice of shaping
@@ -116,7 +116,7 @@ came from.
   fail-silent by design, which is right for what they protect and would be
   a silently inert citation gate if copied across.
 
-## The feature roadmap
+## 🗺 The feature roadmap
 
 Two upstreams behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md). Both are
 Apache-2.0, and **copying from both was offered and declined** -- the
@@ -174,7 +174,7 @@ it.
   Its style guide's content is also raster-oriented and does not survive
   translation to TikZ.
 
-## The rule on borrowing
+## 🔑 The rule on borrowing
 
 Stated once, because it is the same rule the pipeline applies to drafts:
 
