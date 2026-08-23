@@ -464,9 +464,9 @@ no DTaaS config to inherit it from:
   `chitragupta/pdf_text.py`'s `_extract_docling` re-raises via `raise ...
   from exc`, which BLE001's own definition of "blind" exempts. `bench/`'s
   two markers were checked the same way and are genuine --
-  [Tier 3.1](docs/TECHNICAL-DEBT.md#-31-bench-is-outside-every-check-in-the-repository)
-  leaves `bench/` outside every check including this one, unchanged, so
-  they stay inert in practice but correct on the evidence.
+  `bench/README.md` records `bench/`'s exclusion from every check
+  including this one as a decision (#356), unchanged, so they stay inert
+  in practice but correct on the evidence.
 - **`ruff`'s own version is pinned exactly**, not only for Sonar S8544:
   `RUF100`'s verdict on a given `except` block depends on carve-outs
   (like the re-raise one above) that are undocumented and narrower than
