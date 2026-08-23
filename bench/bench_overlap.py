@@ -48,6 +48,31 @@ def _timed(fn, *a, **kw):
     return time.perf_counter() - start, buf.getvalue()
 
 
+def _count_exact_findings(scan_output: str) -> int:
+    """Findings `cmd_scan` printed at `tier=exact` -- a plain substring
+    count over another module's printed output, so a wording change in
+    that tier's output would silently read as "0 findings" rather than
+    raise. Factored out so self_check can prove the count still fires
+    before a real 0 is believed.
+    """
+    return scan_output.count("tier=exact")
+
+
+def self_check() -> None:
+    """Prove `_count_exact_findings` still counts before trusting a real
+    scan's 0 to mean "no findings" rather than "the tier's output format
+    moved and the substring stopped matching".
+
+    `bench/` sits outside CI's coverage targets (--cov=chitragupta
+    --cov=scripts), so nothing in the test suite will ever catch a
+    regression here. This runs on every invocation instead.
+    """
+    sample = "tier=exact span=12 words\ntier=skip-gram span=9 words\ntier=exact span=5 words\n"
+    assert _count_exact_findings(sample) == 2, "did not count both tier=exact findings"
+    assert _count_exact_findings("tier=skip-gram span=9 words\n") == 0, (
+        "a sample with no tier=exact line must count zero, not raise or miscount")
+
+
 def run(draft: Path) -> dict:
     from chitragupta.review import verbatim_check as vc
 
@@ -69,7 +94,7 @@ def run(draft: Path) -> dict:
 
     scan_cold, _ = _timed(vc.cmd_scan, str(draft))
     scan_warm, warm_out = _timed(vc.cmd_scan, str(draft))
-    findings = warm_out.count("tier=exact")
+    findings = _count_exact_findings(warm_out)
 
     return {
         "draft": str(draft),
@@ -86,6 +111,7 @@ def main(argv: "list[str] | None" = None) -> int:
     parser.add_argument("--draft", required=True, help="Markdown draft to scan")
     parser.add_argument("--out", help="Write the raw result JSON here")
     args = parser.parse_args(argv)
+    self_check()
 
     draft = Path(args.draft)
     if not draft.is_file():
