@@ -134,6 +134,8 @@ pip install chitragupta-cli[enrich]   # optional, several GB -- only step 4 uses
 ```bash
 # git checkout: for working on the pipeline itself -- see DEVELOPER-AGENTS.md.
 # Same .venv-full; the script creates it if absent, reuses it if not.
+git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
+cp config.toml.example config.toml   # git checkout only
 pipx install poetry
 bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
