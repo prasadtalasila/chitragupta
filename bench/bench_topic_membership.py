@@ -93,10 +93,46 @@ def score(name, weights, labels, columns, ratio=0.5):
     }
 
 
+def self_check() -> None:
+    """Prove `score()` reads doc-to-topic agreement through `columns`,
+    not by assuming `columns == sorted(set(labels))`.
+
+    The documented failure (this module's own docstring): passing the
+    wrong mapping once scored the winning mechanism at 1% agreement
+    instead of its true value, because HDBSCAN's cluster ids and
+    BERTopic's topic ids are renumbered relative to each other. `columns`
+    below is deliberately [5, 2], not sorted to [2, 5], so a regression
+    that assumes sorted order would mis-map every row and this would
+    silently score a real mechanism as disagreeing with the clustering
+    it describes.
+
+    `bench/` sits outside CI's coverage targets, so nothing in the test
+    suite will ever catch a regression here. This runs on every
+    invocation instead.
+    """
+    weights = [[0.9, 0.1], [0.2, 0.8], [0.5, 0.5]]
+    labels = [5, 2, 5]
+    columns = [5, 2]
+    result = score("fixture", weights, labels, columns)
+    assert result["agreement"] == 1.0, (
+        f"a correct column mapping over a clean 3-document fixture must "
+        f"score full agreement, got {result['agreement']}")
+    assert result["is_top"] == 1.0, (
+        f"the top-ranked topic must match the assigned one here, got {result['is_top']}")
+    # The mapping this guards against: sorted(set(labels)) == [2, 5],
+    # not [5, 2] -- using it instead degrades agreement to 1/3 on this
+    # same fixture, verified directly rather than asserted from memory.
+    wrong = score("wrong-mapping", weights, labels, sorted(set(labels)))
+    assert wrong["agreement"] < result["agreement"], (
+        "the wrong column mapping did not degrade agreement on this fixture -- "
+        "the fixture no longer exercises the bug this check exists for")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--tag", required=True)
     args = parser.parse_args(argv)
+    self_check()
 
     import numpy as np
     from hdbscan import all_points_membership_vectors
