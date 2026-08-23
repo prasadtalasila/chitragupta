@@ -45,7 +45,6 @@ document owns the arrears. A thing that was never built is not a debt.
 - [Tier 3: found by review, tracked nowhere](#-tier-3-found-by-review-tracked-nowhere)
 - [Tier 4: the test suite](#-tier-4-the-test-suite)
 - [Tier 5: continuous integration and the linters](#-tier-5-continuous-integration-and-the-linters)
-- [Reviewing with OpenCodeReview](#-reviewing-with-opencodereview)
 - [The standing-instruction budget](#-the-standing-instruction-budget)
 - [Process debt: the formats that are not adhered to](#-process-debt-the-formats-that-are-not-adhered-to)
 - [What is not debt](#-what-is-not-debt)
@@ -547,55 +546,6 @@ looks on its own -- an unpinned bump could move that verdict and redden
 `ci.yml` on a rule this project never touched. `.pylintrc` and
 `.markdownlint.yaml` don't carry this risk the same way; `ruff`'s pin in
 `ci.yml` is where the next reader bumping it will meet the reason.
-
-## 🔍 Reviewing with OpenCodeReview
-
-`.opencodereview/rule.json` carries five per-tree rules, so the
-OpenCodeReview plugin reviews this repository against its own standards
-rather than against generic Python advice.
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-reviewing-before-you-push-the-opencodereview-plugin)
-says when and how to run it. Three limits belong on this list rather than
-in that document, because they are costs rather than instructions.
-**Tracked in #359.**
-
-- **It cannot review Markdown, so it cannot review the documents that
-  govern this project.** OCR opens only extensions it recognises as code
-  and drops the rest before rules are consulted
-  (`exclude_reason: unsupported_ext`). Probed on the installed binary:
-  `.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` in; `.md`, `.txt`,
-  `.rst`, `.cfg` out. `AGENTS.md`, `DEVELOPER-AGENTS.md`,
-  `docs/CODE-STANDARDS.md` and every skill under `.claude/` are therefore
-  outside every review this tool can perform -- which matters more here
-  than in most repositories, because those documents are read as standing
-  instructions and a stale one is followed. Doc drift remains a human's
-  job, and
-  [CODE-STANDARDS.md's build order](CODE-STANDARDS.md#-build-order) item 4
-  is still the only proposal that would touch it.
-
-  This cost was paid before it was noticed: the first revision of the
-  rule file carried two Markdown rules, for the root prose documents and
-  for `docs/`. Both resolved cleanly under `ocr rules check` and neither
-  could ever fire. A rule that cannot fire is worse than no rule, because
-  it implies coverage that does not exist -- so
-  `tests/test_opencodereview_rules.py` now fails on one.
-- **`ocr rules check` and the plugin disagree, and only one of them is
-  about coverage.** `rules check` is a rule *lookup*: it answers for any
-  path, including one OCR would never open. `ocr delegate preview
-  --format json` is what reports whether a file is reachable. Verifying
-  with the first while believing it means the second is exactly how the
-  two dead rules above got shipped.
-- **The schema is undocumented and was established by probing.** The
-  published docs URL 404s, so the two fields OCR reads (`path` and
-  `rule`) were found by feeding its unmarshaller wrong-typed values and
-  reading the Go struct fields it named. Anything else in an entry is
-  ignored without complaint. A future release could rename either and the
-  only symptom would be rules quietly ceasing to match; the pinned field
-  names in that test are what turns it into a failure.
-
-The rules themselves are prose handed to a model, and nothing checks that
-they are obeyed. They are an aid with the same standing as the review
-layer, not a gate, and a run that reports clean is not evidence of
-anything.
 
 ## 💰 The standing-instruction budget
 
