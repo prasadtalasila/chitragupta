@@ -42,6 +42,18 @@ _PAREN_TOKEN_RE = re.compile(r"\(([^)]*)\)")
 # this and reported `\x,-0.12 -> \x,0.12` as an edge.
 _COORDINATE_RE = re.compile(r"^[^)]*,")
 
+# An un-unrolled `\foreach` loop variable used as a coordinate on its
+# own, with no comma to be caught by `_COORDINATE_RE`: `\draw
+# (\p)--(\q);` inside `\foreach \p in {...}`. A TikZ node name is never
+# spelled with a leading backslash -- that syntax is reserved for a
+# macro -- so this token is the same "macro-valued, not a name" case,
+# just without the second axis that gives it a comma. Left unexcluded,
+# it reached a real report as the literal edge `\p -> \q`, which then
+# failed to compile when the report itself was rendered: pandoc passes
+# `\p` through and pdflatex rejects it as an undefined control sequence
+# (#389).
+_MACRO_TOKEN_RE = re.compile(r"^\s*\\")
+
 # A LaTeX control sequence in a node label. Stripped before counting
 # words: `\textbf{alpha}` reads as one word, and counting the macro as a
 # second would flag figures a human would call concise.
@@ -114,8 +126,9 @@ def edge_list(source: str) -> list[tuple[str, str]]:
       named.
     - **A `\\foreach` body is read literally, once.** The loop is not
       unrolled, so an edge drawn n times appears once with its macro
-      names intact -- which is why anything containing a comma is
-      dropped as a coordinate rather than reported.
+      names intact -- which is why anything containing a comma, or
+      starting with a backslash, is dropped as a coordinate rather than
+      reported: a real node name is never spelled either way.
 
     Widening any of these means parsing TikZ's path grammar properly.
     That is a real piece of work and not obviously worth it: the check
@@ -130,7 +143,9 @@ def edge_list(source: str) -> list[tuple[str, str]]:
         names = [
             token.strip()
             for token in _PAREN_TOKEN_RE.findall(statement.group("body"))
-            if token.strip() and not _COORDINATE_RE.match(token)
+            if token.strip()
+            and not _COORDINATE_RE.match(token)
+            and not _MACRO_TOKEN_RE.match(token)
         ]
         edges += list(zip(names, names[1:]))
     return edges

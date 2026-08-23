@@ -174,6 +174,22 @@ class TestEdgeList:
 
         assert figure_layout.edge_list(source) == []
 
+    def test_a_foreach_loop_variable_is_not_a_node(self):
+        """`\\foreach \\p in {A,...,F} \\draw (\\p)--(\\q);` -- unlike
+        `(\\x,-0.12)`, a single unrolled loop variable carries no comma,
+        so it would otherwise read as an ordinary node name and the
+        report would carry the literal `\\p -> \\q`, which pdflatex then
+        rejects as an undefined control sequence when the report itself
+        is rendered (#389). A real node name is never spelled with a
+        leading backslash -- that syntax is TikZ's for a macro, not an
+        identifier -- so this is the same "macro-valued, not a name"
+        exclusion `test_bare_coordinates_are_not_nodes` already applies
+        to a comma-bearing coordinate, widened to the token that has no
+        comma to be caught by."""
+        source = "\\foreach \\p in {A,...,F} \\draw (\\p)--(\\q);"
+
+        assert figure_layout.edge_list(source) == []
+
     def test_a_path_statement_counts_too(self):
         source = "\\path (a) edge (b);"
 

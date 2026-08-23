@@ -17,7 +17,13 @@ that surfaces on this corpus: a double hyphen (`--`) inside a citekey
 truncates the key mid-token, silently losing the citation. `_safe_render_inputs`
 works around this by aliasing just the affected citekey(s) in temporary
 copies of the input and the bib file -- never touching the real
-`bibliography.bib` -- before handing both to pandoc.
+`bibliography.bib` -- before handing both to pandoc. The same function
+also runs `_sanitize_for_latex` over the temp copy: a control character
+or math-alphanumeric Unicode codepoint (both reached via a quoted
+passage straight from `content/parsed/`, which is `pdftotext` output,
+not authored text) is never legitimate content and pdflatex rejects
+outright, so it is stripped/folded before pandoc ever sees it -- never
+in the draft on disk.
 
 Citations render in IEEE style -- numeric `[1]` markers, `[3]-[6]` for a
 consecutive run, over a numbered list of complete entries -- via the CSL
@@ -92,6 +98,7 @@ from chitragupta.render_output._citeproc import (
     _REFS_ANCHOR,
     _alias_for,
     _safe_render_inputs,
+    _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl

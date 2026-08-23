@@ -73,6 +73,33 @@ class TestAliasFor:
         assert render_output._alias_for("plain_key_2024") == "plain_key_2024"
 
 
+class TestSanitizeForLatex:
+    """Control characters and math-alphanumeric Unicode break pdflatex,
+    not pandoc -- both surfaced via a quoted passage straight out of
+    content/parsed/<citekey>.txt (#389)."""
+
+    def test_a_nul_byte_is_stripped(self):
+        assert render_output._sanitize_for_latex("been outlined in ISO 23,247 \x00") == (
+            "been outlined in ISO 23,247 "
+        )
+
+    def test_other_c0_controls_are_stripped_but_whitespace_is_kept(self):
+        assert render_output._sanitize_for_latex("a\x01b\tc\nd\re") == "ab\tc\nd\re"
+
+    def test_math_italic_is_folded_to_its_ascii_letter(self):
+        # U+1D461 MATHEMATICAL ITALIC SMALL T -- pdflatex's default font
+        # has no glyph for it ("Unicode character \U0001d461 not set up").
+        assert render_output._sanitize_for_latex("the \U0001d461 statistic") == "the t statistic"
+
+    def test_ordinary_unicode_is_left_alone(self):
+        text = "an em—dash, café, and an arrow →"
+        assert render_output._sanitize_for_latex(text) == text
+
+    def test_idempotent_on_already_clean_text(self):
+        text = "Nothing unusual here.\n"
+        assert render_output._sanitize_for_latex(text) == text
+
+
 class TestSafeRenderInputs:
     def test_no_bad_keys_returns_original_paths(self, tmp_path):
         md = tmp_path / "in.md"
@@ -83,6 +110,21 @@ class TestSafeRenderInputs:
         safe_md, safe_bib = render_output._safe_render_inputs(md, bib, tmp_path / "tmp")
         assert safe_md == md
         assert safe_bib == bib
+
+    def test_a_nul_byte_in_the_draft_is_sanitized_in_the_safe_copy(self, tmp_path):
+        # The draft's own file on disk is never touched -- only the temp
+        # copy handed to pandoc, same as the other two fixups here.
+        md = tmp_path / "in.md"
+        md.write_text("Quoting ISO 23,247 \x00 verbatim.\n")
+        bib = tmp_path / "bibliography.bib"
+        bib.write_text("")
+        tmp_dir = tmp_path / "tmp"
+        tmp_dir.mkdir()
+
+        safe_md, _ = render_output._safe_render_inputs(md, bib, tmp_dir)
+        assert safe_md != md
+        assert "\x00" not in safe_md.read_text()
+        assert "\x00" in md.read_text()
 
     def test_double_hyphen_key_gets_aliased_in_both_files(self, tmp_path):
         md = tmp_path / "in.md"

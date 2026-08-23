@@ -1,14 +1,47 @@
 """Preparing a draft and the bibliography for `pandoc --citeproc`.
 
-Both fixups here are applied only to temp copies: the draft and the real
-`bibliography.bib` are never modified.
+All three fixups here are applied only to temp copies: the draft and the
+real `bibliography.bib` are never modified.
 """
 
 import re
+import unicodedata
 from pathlib import Path
 
 from chitragupta import references
 from chitragupta.citation_gate import _PANDOC_CITE_RE
+
+# C0 controls other than the whitespace pdflatex accepts (\t \n \r), plus
+# DEL. Never legitimate content in a rendered document, wherever they came
+# from -- see _sanitize_for_latex.
+_UNSAFE_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _sanitize_for_latex(text: str) -> str:
+    r"""`text` with control characters stripped and math-alphanumeric
+    Unicode folded to its ASCII equivalent -- what pandoc's LaTeX writer
+    hands pdflatex verbatim and pdflatex cannot carry through (#389).
+
+    Found via a quoted passage in `chitragupta/review/citation_provenance.py`:
+    `content/parsed/<citekey>.txt` is `pdftotext` output, not authored
+    text, and two real failure modes surfaced there. A NUL byte from the
+    extraction itself -- pdflatex rejects it outright ("Text line
+    contains an invalid character", `^^@` is the NUL). And a source set
+    in LaTeX can extract as Unicode's "Mathematical Alphanumeric Symbols"
+    block (e.g. U+1D461, MATHEMATICAL ITALIC SMALL T) instead of a plain
+    letter, which pdflatex's default font has no glyph for ("Package
+    inputenc Error: Unicode character ... not set up").
+
+    `unicodedata.normalize("NFKC", ...)` folds the second case to its
+    ordinary Latin letter: that block's own compatibility decomposition
+    *is* "the same letter, a different font", so this loses a font
+    annotation LaTeX cannot use anyway, not the letter itself.
+
+    Applied to every render, not only a provenance report: a control
+    character or a stray math-italic letter is never legitimate content
+    in a rendered document, whichever caller's text carries one.
+    """
+    return _UNSAFE_CONTROL_RE.sub("", unicodedata.normalize("NFKC", text))
 
 
 def _alias_for(citekey: str) -> str:
@@ -43,20 +76,24 @@ def _safe_render_inputs(
     in an error message. Defaults to reading the file, which is every
     other caller.
 
-    Two independent fixups, both applied only to temp copies -- the draft
+    Three independent fixups, all applied only to temp copies -- the draft
     and the real bibliography.bib are never modified:
       - a `python -m chitragupta.draft references` References section has its entries
         replaced by citeproc's own placement anchor, keeping the draft's
         heading (see _swap_manual_refs_for_citeproc);
       - a citekey containing "--" is aliased in both files, in the input
         and the bib together, because pandoc's citation tokenizer would
-        otherwise truncate it mid-key and silently drop the citation.
+        otherwise truncate it mid-key and silently drop the citation;
+      - a control character or math-alphanumeric Unicode codepoint --
+        never legitimate content, most often reached by a quoted passage
+        straight from `content/parsed/` -- is sanitized so pdflatex
+        doesn't reject the whole render over it (see _sanitize_for_latex).
 
-    Returns the original paths untouched when neither applies.
+    Returns the original paths untouched when none applies.
     """
     on_disk = input_path.read_text(encoding="utf-8")
     original = on_disk if text is None else text
-    text = _swap_manual_refs_for_citeproc(original)
+    text = _sanitize_for_latex(_swap_manual_refs_for_citeproc(original))
     bad_keys = {m.group(1) for m in _PANDOC_CITE_RE.finditer(text) if "--" in m.group(1)}
     if not bad_keys:
         # Against what is *on disk*, not against `original`. Comparing
