@@ -7,6 +7,7 @@ so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
 """
 
+import argparse
 import shutil
 import sys
 from pathlib import Path
@@ -62,6 +63,27 @@ class TestMainCli:
         out = capsys.readouterr().out
         assert rc == 0
         assert str(isolated_config.RENDERED_DIR / "draft.tex") in out
+
+
+class TestFormatArg:
+    """`--format` takes one format, not a list. `--format md,tex,pdf`
+    used to build the file extension from the whole string and write
+    `<stem>.md,tex,pdf` -- exit 0, and no `.pdf` ever produced (#389)."""
+
+    def test_a_single_format_passes_through(self):
+        assert render_output._cli._format_arg("pdf") == "pdf"
+
+    def test_a_comma_list_is_a_usage_error(self):
+        with pytest.raises(argparse.ArgumentTypeError) as exc:
+            render_output._cli._format_arg("md,tex,pdf")
+        assert "md,tex,pdf" in str(exc.value)
+        assert "--formats" in str(exc.value)
+
+    def test_the_cli_rejects_a_comma_list_with_exit_code_2(self, tmp_path, capsys):
+        with pytest.raises(SystemExit) as exc:
+            render_output._cli.main(["--format", "md,tex,pdf", str(tmp_path / "x.md")])
+        assert exc.value.code == 2
+        assert "md,tex,pdf" in capsys.readouterr().err
 
 
 class TestFigureRepairHint:

@@ -235,6 +235,16 @@ def emit(draft: Path, output_format: str = "md", out_dir: Path | None = None) ->
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Imported here, before the parser is built, rather than at module
+    # scope, for the same reason `emit` defers `render`: chitragupta/
+    # render_output/ imports this package's siblings and is reached from
+    # the same chitragupta/draft.py dispatch, so a module-scope import
+    # here would be circular. `_format_arg` is the same one
+    # chitragupta/render_output/_cli.py's own --format uses (#389): a
+    # comma list silently became a literal `<stem>.md,tex,pdf` extension
+    # here too, and this is the one check, not a second copy of it.
+    from chitragupta.render_output._cli import _format_arg
+
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft evidence",
         description="Render the evidence sidecar beside a draft: each cited "
@@ -242,7 +252,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
     parser.add_argument(
-        "--format", dest="output_format", default="md", help="Output format (default: md)"
+        "--format",
+        dest="output_format",
+        default="md",
+        type=_format_arg,
+        help="Output format (default: md)",
     )
     parser.add_argument(
         "--output-dir",

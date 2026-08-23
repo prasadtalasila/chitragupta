@@ -10,6 +10,29 @@ from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 
 
+def _format_arg(value: str) -> str:
+    """argparse `type=` for `--format`: one format, not a list.
+
+    `--format md,tex,pdf` used to reach render() unexamined, which built
+    the output path as `f"{stem}.{output_format}"` -- so it wrote a file
+    literally named `<stem>.md,tex,pdf`, printed a success path and
+    exited 0, and the real `.pdf` was never touched (#389). Rejected here
+    rather than validated against a fixed list of formats: render() hands
+    this straight to pandoc's `-o`, which infers its writer from the
+    extension and accepts many (docx, html, odt, ...) this project has no
+    reason to enumerate. A comma is never part of one of those, so it is
+    the one shape this can check without inventing an allowlist.
+    """
+    if "," in value:
+        raise argparse.ArgumentTypeError(
+            f"{value!r} looks like a list, not one format. --format takes exactly "
+            "one (e.g. --format pdf, --format tex, --format docx) -- render each "
+            "needed format with its own --format. A review aid's plural --formats "
+            "is the one that takes a comma-separated list."
+        )
+    return value
+
+
 def _figure_repair_hint(input_arg: str) -> str:
     r"""The `draft-reviser` pointer to append to a failed render, or "".
 
@@ -55,7 +78,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
     parser.add_argument(
-        "--format", dest="output_format", default="pdf", help="Output format (default: pdf)"
+        "--format",
+        dest="output_format",
+        default="pdf",
+        type=_format_arg,
+        help="Output format (default: pdf)",
     )
     parser.add_argument(
         "--documentclass", default="article", help="LaTeX documentclass (default: article)"
