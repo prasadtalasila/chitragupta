@@ -1,11 +1,33 @@
 # bench/'s self-check convention and its four exclusions (#356)
 
-Status: **draft**, written 2026-08-23, implementing issue #356.
+Status: **built**, written 2026-08-23, implementing issue #356. See
+"Outcome" below for what changed during execution; PR number to be
+recorded here once opened.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use
 > `superpowers:subagent-driven-development` (recommended) or
 > `superpowers:executing-plans` to run this task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
+
+## Outcome
+
+- The version bump landed as `6.20.14`, not the `6.20.13` this plan
+  assumed -- a sibling PR from the same ten-issue batch took `6.20.13`
+  first. Re-checking tags immediately before the bump, as this plan's
+  own Global Constraints required, caught the collision before it
+  shipped.
+- Task 9's brief specified a markdown link to `bench/README.md`; review
+  changed it to plain backticks instead, since `bench/` is excluded
+  from the built docs site (`mkdocs.yml`'s `exclude_docs`) and every
+  other reference to that file in the doc tree already used backticks.
+- Deleting `docs/TECHNICAL-DEBT.md` §3.1 (Task 8) turned out to break a
+  different, pre-existing test's pin on the coverage-source quote,
+  which had lived in that section. The pin was repointed at
+  `bench/README.md`, its new home, rather than left dangling.
+- Final local-check verification found a markdownlint CI-blocking
+  finding in this plan file itself (42 issues), fixed in that pass; a
+  later whole-branch review folded in a few more small corrections on
+  top.
 
 **Written for** whoever picks up #356: someone who has read
 [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) and

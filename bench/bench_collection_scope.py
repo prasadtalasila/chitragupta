@@ -369,6 +369,8 @@ def self_check() -> None:
         fh.write("\n".join(lines) + "\n")
         path = Path(fh.name)
     try:
+        # "" and "~" bracket every possible ISO timestamp (empty string sorts
+        # first, "~" sorts last in ASCII), so every fixture entry falls in range.
         usage = _pool_usage(path, "", "~")
     finally:
         path.unlink()

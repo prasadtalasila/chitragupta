@@ -63,9 +63,9 @@ def self_check() -> None:
     scan's 0 to mean "no findings" rather than "the tier's output format
     moved and the substring stopped matching".
 
-    `bench/` sits outside CI's coverage targets (--cov=chitragupta
-    --cov=scripts), so nothing in the test suite will ever catch a
-    regression here. This runs on every invocation instead.
+    `bench/` sits outside CI's coverage targets, so nothing in the test
+    suite will ever catch a regression here. This runs on every
+    invocation instead.
     """
     sample = "tier=exact span=12 words\ntier=skip-gram span=9 words\ntier=exact span=5 words\n"
     assert _count_exact_findings(sample) == 2, "did not count both tier=exact findings"

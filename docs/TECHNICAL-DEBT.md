@@ -599,7 +599,7 @@ Ordered by what breaks if it is left, not by size.
 
 Short, and deliberately so. Everything the 2026-08-18 reconciliation
 found open is resolved as of #295's batch (PRs #290, #292, #293, #237
-and #291), and §3.1's "pattern of one" closed in PR #294, which gave
+and #291), and `bench/`'s "pattern of one" closed in PR #294, which gave
 `bench_drift.py` and `sweep_sync.py` a `self_check()` each and wrote the
 convention down in `bench/README.md`, and #356 closed the list's last
 item by reaffirming `bench/`'s exclusions as a decision rather than
