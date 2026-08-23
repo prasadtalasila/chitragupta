@@ -476,11 +476,12 @@ def _assert_coverage_source_matches(doc_name: str, text: str, pyproject_source: 
 
 
 class TestTheOtherDriftProneClaimsArePinned:
-    """Three of the four claims #353's own "What to build" list named,
-    each checked against the real document -- the other two (the
+    """Two of the four claims #353's own "What to build" list named are
+    checked here (lint target, coverage source) -- the other two (the
     annotation ratio and the noqa marker count) are #355's and #354's
-    now, not this file's; the bench self-check count is still pinned
-    here too, relocated by #356 from `docs/TECHNICAL-DEBT.md` to
+    now, not this file's. The bench self-check count, a third claim
+    pinned here beyond #353's original four, is also checked here
+    again, relocated by #356 from `docs/TECHNICAL-DEBT.md` to
     `bench/README.md`; see the comment above."""
 
     def test_the_quoted_lint_target_matches_ci_everywhere_it_appears(
