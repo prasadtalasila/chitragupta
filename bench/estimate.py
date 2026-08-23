@@ -89,6 +89,36 @@ def hms(seconds: float) -> str:
     return f"{h}h {m:02d}m {s:02d}s" if h else f"{m}m {s:02d}s"
 
 
+def self_check() -> None:
+    """Prove `linfit` recovers a known line and `measured_efficiency`
+    interpolates between measured points rather than silently returning
+    a neighbour's value -- both are quoted directly in RESULTS.md and
+    used for capacity planning, so a wrong slope or a wrong efficiency
+    reads as real advice.
+
+    `bench/` sits outside CI's coverage targets, so nothing in the test
+    suite will ever catch a regression here. This runs on every
+    invocation instead.
+    """
+    a, b = linfit([0.0, 1.0, 2.0, 3.0], [1.0, 3.0, 5.0, 7.0])
+    assert abs(a - 1.0) < 1e-9 and abs(b - 2.0) < 1e-9, (
+        f"linfit did not recover y = 2x + 1 from its own points: a={a}, b={b}")
+
+    eff_mid, interpolated_mid = measured_efficiency(6)
+    assert interpolated_mid, "6 workers sits between two measured points and must interpolate"
+    assert abs(eff_mid - 1.005) < 1e-9, (
+        f"expected the midpoint of the measured 4- and 8-worker efficiencies, got {eff_mid}")
+
+    eff_exact, interpolated_exact = measured_efficiency(8)
+    assert not interpolated_exact and eff_exact == 0.97, (
+        "a directly-measured worker count must return its own value, not interpolate")
+
+    eff_over, interpolated_over = measured_efficiency(1000)
+    assert interpolated_over and eff_over == _MEASURED_EFFICIENCY[48], (
+        "a worker count past the measured range must clamp to the highest point, "
+        "not extrapolate past it")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+", help="bench/*.jsonl timing files")
@@ -98,6 +128,8 @@ def main() -> None:
                     help="parallel efficiency override; default uses the measured "
                          "curve below rather than assuming perfect scaling")
     args = ap.parse_args()
+
+    self_check()
 
     # Both are divisors below; a non-positive value is a ZeroDivisionError
     # or a negative estimate rather than an answer.
