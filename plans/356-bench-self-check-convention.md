@@ -11,11 +11,11 @@ recorded here once opened.
 
 ## Outcome
 
-- The version bump landed as `6.20.14`, not the `6.20.13` this plan
-  assumed -- a sibling PR from the same ten-issue batch took `6.20.13`
-  first. Re-checking tags immediately before the bump, as this plan's
-  own Global Constraints required, caught the collision before it
-  shipped.
+- The version bump landed as `6.21.2`, not the `6.20.13` this plan
+  assumed -- three sibling PRs from the same ten-issue batch each took
+  a version first (`6.20.13`, then `6.21.0`, then `6.21.1`), each
+  caught by re-checking tags immediately before bumping and again
+  before each rebase, as this plan's own Global Constraints required.
 - Task 9's brief specified a markdown link to `bench/README.md`; review
   changed it to plain backticks instead, since `bench/` is excluded
   from the built docs site (`mkdocs.yml`'s `exclude_docs`) and every
