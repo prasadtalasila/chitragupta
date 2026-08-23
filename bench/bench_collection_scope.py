@@ -336,6 +336,65 @@ def _boundaries(hashes_path, session_file):
     }
 
 
+def self_check() -> None:
+    """Prove the two aggregations this script's headline figures depend
+    on most.
+
+    `_pool_usage`: a streaming request's usage must be read from its
+    *final* (maximum) entry, not its first. This module's own docstring
+    records the real bug: first-per-requestId once summed to 8,259
+    output tokens against a true 41,573, a silent 5x undercount that
+    nothing caught because a wrong total looks exactly like a right one.
+
+    `_hash_check`: `replay_sound` must go False the moment any checkpoint
+    hash moves, because every surfaced/selected/rejected figure in this
+    script's output is a *replay* and is void if the ledger or index
+    moved underneath it.
+
+    `bench/` sits outside CI's coverage targets, so nothing in the test
+    suite will ever catch a regression here. This runs on every
+    invocation instead: it costs microseconds against a throwaway
+    tempfile, no real transcript or corpus involved.
+    """
+    import tempfile
+
+    lines = [
+        json.dumps({"timestamp": "2026-01-01T00:00:00Z", "requestId": "r1",
+                    "message": {"model": "m", "usage": {"output_tokens": 10}}}),
+        json.dumps({"timestamp": "2026-01-01T00:00:01Z", "requestId": "r1",
+                    "message": {"model": "m", "usage": {"output_tokens": 50}}}),
+    ]
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
+                                     encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+        path = Path(fh.name)
+    try:
+        usage = _pool_usage(path, "", "~")
+    finally:
+        path.unlink()
+    assert usage["output_tokens"] == 50, (
+        f"a streaming request's usage must be read from its final (max) entry, "
+        f"not its first -- got {usage['output_tokens']}, the documented undercount bug")
+    assert usage["streaming_partials_present"] is True, (
+        "two usage entries for one requestId must be flagged as streaming "
+        "partials, not silently agreeing")
+
+    same = {"point": "p", "retrieval_index": {"md5": "a", "bytes": 1},
+            "ledger": {"md5": "x"}, "utc": "t"}
+    moved = {**same, "retrieval_index": {"md5": "b", "bytes": 1}}
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
+                                     encoding="utf-8") as fh:
+        fh.write(json.dumps(same) + "\n" + json.dumps(moved) + "\n")
+        hash_path = Path(fh.name)
+    try:
+        checked = _hash_check(hash_path)
+    finally:
+        hash_path.unlink()
+    assert checked["replay_sound"] is False, (
+        "a run whose retrieval_index hash changed between checkpoints must not "
+        "be reported as a sound replay")
+
+
 def run(args):
     drafts = config.CONTENT_DIR / "drafts" / args.topic
     dossiers = config.CONTENT_DIR / "dossiers" / args.topic
@@ -599,6 +658,7 @@ def _build_parser():
 
 def main(argv=None):
     args = _build_parser().parse_args(argv)
+    self_check()
     result = run(args)
     text = json.dumps(result, indent=2)
     print(text)
