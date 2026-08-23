@@ -50,7 +50,7 @@ REFUSED = {
     "python-deps": "pip install chitragupta-cli[enrich]",
     "dev-deps": "pip install chitragupta-cli[dev]",
     "all": "pip install chitragupta-cli[enrich], plus 'chitragupta install "
-           "os-deps' separately -- 'all' means something different here",
+    "os-deps' separately -- 'all' means something different here",
 }
 
 STAGES = ("os-deps", "gpu-torch", *REFUSED)
@@ -67,15 +67,21 @@ _STAGE_HELP = (
 
 
 def _refuse(stage: str) -> int:
-    print(f"'{stage}' is not reachable from an installed package -- "
-          f"the pip equivalent is: {REFUSED[stage]}", file=sys.stderr)
+    print(
+        f"'{stage}' is not reachable from an installed package -- "
+        f"the pip equivalent is: {REFUSED[stage]}",
+        file=sys.stderr,
+    )
     return 1
 
 
 def _run_os_deps() -> int:
     if not (shutil.which("apt-get") and shutil.which("bash")):
-        print("os-deps is Debian/Ubuntu and bash only. Install by hand: TeX Live, "
-              "Pandoc, poppler-utils, git/curl/unzip, libgl1/libglib2.0.", file=sys.stderr)
+        print(
+            "os-deps is Debian/Ubuntu and bash only. Install by hand: TeX Live, "
+            "Pandoc, poppler-utils, git/curl/unzip, libgl1/libglib2.0.",
+            file=sys.stderr,
+        )
         return 1
     command = ["bash", str(SCRIPT), "os-deps"]
     print(f"About to run (needs root): {' '.join(command)}")
@@ -84,17 +90,22 @@ def _run_os_deps() -> int:
 
 def _run_gpu_torch() -> int:
     if not shutil.which("bash"):
-        print("gpu-torch needs bash. Reinstall by hand from "
-              "https://pytorch.org/get-started/locally/.", file=sys.stderr)
+        print(
+            "gpu-torch needs bash. Reinstall by hand from "
+            "https://pytorch.org/get-started/locally/.",
+            file=sys.stderr,
+        )
         return 1
     # Not .resolve(): a venv's bin/python is a symlink to the base
     # interpreter, and resolving it walks straight out of the venv to the
     # base interpreter's own directory -- sys.executable is already
     # documented absolute, so nothing here needs normalizing (#369).
     bin_dir = Path(sys.executable).parent
-    env = {**os.environ,
-           "CHITRAGUPTA_PIP": str(bin_dir / "pip"),
-           "CHITRAGUPTA_PYTHON": str(bin_dir / "python")}
+    env = {
+        **os.environ,
+        "CHITRAGUPTA_PIP": str(bin_dir / "pip"),
+        "CHITRAGUPTA_PYTHON": str(bin_dir / "python"),
+    }
     command = ["bash", str(SCRIPT), "gpu-torch"]
     return subprocess.run(command, check=False, env=env).returncode
 

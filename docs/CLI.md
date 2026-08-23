@@ -132,7 +132,7 @@ not resolve there fails silently. It says `python`, and
 [HOOKS.md](HOOKS.md#-the-launcher-contract) records why.
 
 | Tier | Interpreter | Commands |
-|---|---|---|
+| --- | --- | --- |
 | 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all four aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
@@ -390,7 +390,7 @@ no equivalent of, or where a checkout's own equivalent is a script this
 package now ships as a runnable command instead.
 
 | Old (git checkout) | New (`pip install chitragupta-cli`) |
-|---|---|
+| --- | --- |
 | `cp config.toml.example config.toml`, then create `.claude/`, `papers/`, `content/` by hand or by cloning | `chitragupta init DIR` -- writes all of it at once (#263) |
 | `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install chitragupta-cli[enrich]` |
 | `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps` -- the same script, reached a different way (#265) |
@@ -421,7 +421,7 @@ write lock, so only one run at a time; a second run exits **2** rather
 than waiting.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `--reparse` | off | Re-extract every PDF, ignoring the ledger's record of what is already parsed. For when output is recorded as fine but you have reason to doubt it |
 | `--remove-stale` | off (report only) | Delete ledger rows for citekeys no longer in the bib file. Without it they are only *reported* |
@@ -461,7 +461,7 @@ Read-only view of the corpus layer. **Takes no lock**, so it works while
 a sync is running. With no flags it prints a summary.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `--list` | off | List every item |
 | `--status STATUS` | -- | List only items with this status: `parsed`, `no_pdf`, `discovered`, `parse_failed` |
@@ -493,7 +493,7 @@ Read-only view of which papers matched each of your seed topics.
 stage that needs both. With no flags it prints every topic.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `--topic PHRASE` | -- | Show only this seed topic's papers |
 
@@ -523,7 +523,7 @@ The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 **Takes no options** -- every argument is a file to check.
 
 | Argument | What it does |
-|---|---|
+| --- | --- |
 | `-h`, `--help` | Show usage and exit 0 |
 | `<file> [<file> ...]` | One or more drafts to check |
 
@@ -575,7 +575,7 @@ that column existed has no fields to format, so its entry degrades to
 title and year until the next `python -m chitragupta.corpus sync`.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<input>` | required | The draft file (Markdown) |
 | `--heading HEADING` | `References` | Heading text, e.g. `"6. References"` to match a draft's own numbered headings |
@@ -634,7 +634,7 @@ with its own preamble, never something a thesis `\input`s, which is why
 that genre emits one rather than declining.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<input>` | required | The draft file (Markdown or LaTeX) |
 | `--format FORMAT` | `md` | Output format, passed to `render` for anything but `md` |
@@ -675,7 +675,7 @@ Two "missing" cases are deliberately different, because one is actionable
 and the other isn't:
 
 | Situation | `status` does |
-|---|---|
+| --- | --- |
 | No ledger, or an unreadable one | Reports the dossier as usual, says the drift check is unavailable, **exits 0** |
 | No dossier for this draft | Prints the `init` command to create one, **exits 1** |
 
@@ -747,7 +747,7 @@ than dropped: the run that found it never transcribed it, so that
 material is gone rather than mislaid.
 
 | Subcommand | What it does |
-|---|---|
+| --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only ever adds missing files -- safe to re-run |
 | `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since |
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
@@ -763,7 +763,7 @@ material is gone rather than mislaid.
 | `restore <archive>` | Unpack a bundle. **Dry run unless `--force`** |
 
 | Flag | Applies to | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research` |
 | `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
 | `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
@@ -830,7 +830,7 @@ BM25 retrieval over the synced corpus. Read-only, takes no lock, needs no
 venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
 
 | Subcommand | What it does |
-|---|---|
+| --- | --- |
 | `search "<query>"` | Rank the corpus and return a snippet per candidate |
 | `evidence "<query>" --citekey KEY` | The passages of that one document that bear on the query (`--windows`, 2 by default) |
 
@@ -850,7 +850,7 @@ which made a cheap first pass mandatory and used it to *reject*, was
 withdrawn.
 
 | Flag | Applies to | Default | What it does |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `--k N` | `search` | 5 | How many candidates to rank |
 | `--chars N` | all | 600 / 500 | Window size (evidence / search) |
 | `--citekey KEY` | `evidence` | required | Which document to read |
@@ -883,7 +883,7 @@ the other five aids nothing it reports can block a draft.
 reaches only the part of that checklist geometry can decide.
 
 | Check | Kind | Needs `pdflatex` |
-|---|---|---|
+| --- | --- | --- |
 | Node text over 15 words | binary | no |
 | Edge list, reported for confirmation | binary | no |
 | Node overlap | binary | yes |
@@ -903,7 +903,7 @@ from node geometry, and a bad approximation would be worse than its
 absence. That one stays a human judgement.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft whose figures to check |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
@@ -935,7 +935,7 @@ reports can block a draft. Stdlib-only, like `citation_gate` and `references` --
 it reuses `chitragupta.retrieval`, which is itself stdlib.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
 | `--query QUERY` | required, repeatable | A retrieval query to check coverage against. Give it more than once |
@@ -977,7 +977,7 @@ with its `.tex`/`.pdf` renders and its `.json` sibling beside it, all
 filed whether or not `--json` is given.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
@@ -1014,13 +1014,13 @@ The unit comes from the genre recorded in the draft's dossier
 `scope.md`, so the usual invocation takes no flags:
 
 | Genre | Unit |
-|---|---|
+| --- | --- |
 | `survey`, `thesis-chapter`, `deep-research` | paragraph |
 | `textbook-chapter` | section -- its paragraphs are free to be single-source, its *consecutive* paragraphs are not free to be the same single source |
 | `tutorial` | document -- the body carries no citations by design, so the floor is on the lesson's derivation |
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
 | `--unit {paragraph,section,document}` | from `scope.md` | Measure at this unit instead. For a draft with no dossier, or to look at one deliberately at another scale |
@@ -1098,13 +1098,13 @@ table that attributes rows that way genuinely rests on nothing.
 **The genre decides whether uncited prose is a finding at all.**
 
 | Genre | Uncited prose is | Findings |
-|---|---|---|
+| --- | --- | --- |
 | `survey`, `thesis-chapter`, `deep-research` | exceptional | one per uncited sentence |
 | `textbook-chapter`, `tutorial` | ordinary -- most prose is original by design, per [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 | none. The counts are still reported |
 | not recorded in `scope.md` | exceptional | raised, and the report says the genre was not recorded |
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
 | `--genre {deep-research,survey,textbook-chapter,thesis-chapter,tutorial}` | from `scope.md` | Read the draft under this genre instead. For a draft with no dossier, or to read one strictly on purpose |
@@ -1158,7 +1158,7 @@ the severity buckets and the allowlist, and a measured
 technique and its literature sources.
 
 | Subcommand | Arguments | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
 | `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--json] [--write] [--formats F]` | Slides the whole draft across the whole corpus index -- catches verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--json` prints the findings as data instead of as text (see below). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report -- the `.md` is always written |
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
@@ -1529,7 +1529,7 @@ redirected:
   off-tree.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<input>` | required | The draft file (Markdown or LaTeX) |
 | `--format FORMAT` | `pdf` | Output format -- e.g. `pdf`, `tex`, `docx`, `md` |
@@ -1667,7 +1667,7 @@ python -m chitragupta.draft spec status content/drafts/<book>
 ```
 
 | Command | Does | Exit |
-|---|---|---|
+| --- | --- | --- |
 | `init` | write an outline skeleton (refuses to overwrite one) | 1 if a spec is already there |
 | `show` | the outline as a tree, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
 | `sign` | record that a human approved this outline, by digest | 1 on a spec that does not parse |
@@ -1698,7 +1698,7 @@ python -m chitragupta.draft unit status   content/drafts/<book>
 ```
 
 | Command | Does | Exit |
-|---|---|---|
+| --- | --- | --- |
 | `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
 | `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the outline is unsigned, the draft is missing, or the gate refuses it |
 | `status` | where every unit in the book stands | 1 while any unit is not accepted and current |
@@ -1724,7 +1724,7 @@ python -m chitragupta.draft registry excerpt content/drafts/<book> <unit-id>
 ```
 
 | Command | Does | Exit |
-|---|---|---|
+| --- | --- | --- |
 | `build` | rebuild `terms.md`, `claims.md`, `xrefs.md` from accepted units | 1 only if the book has no readable outline |
 | `check` | what the registries disagree on | **always 0** |
 | `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
@@ -1752,7 +1752,7 @@ its own prerequisites and reports a real per-stage status. A
 therefore a correct answer rather than a bug.
 
 | Flag | Default | What it does |
-|---|---|---|
+| --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
 | `--stages STAGES` | all five, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics,converge` |
@@ -1852,7 +1852,7 @@ One install path for both a bare machine and the Docker image. Takes
 **stage names as positional arguments**, not flags.
 
 | Stage | What it does |
-|---|---|
+| --- | --- |
 | `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[enrich]` (#265) |
 | `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
 | `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[dev]` |
@@ -1941,7 +1941,7 @@ unattended.
 **Exit codes are the API**, not the printed text:
 
 | Exit code | Meaning | What an unattended caller should do |
-|---|---|---|
+| --- | --- | --- |
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
 | `1` | At least one document failed, or a prior deterministic failure is still unresolved | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |

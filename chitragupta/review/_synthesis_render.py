@@ -55,8 +55,11 @@ def _how_to_read(report) -> list[str]:
 def _summary(report) -> list[str]:
     lines = ["## Summary", ""]
     if report.single_source_pct is None:
-        return lines + [f"This draft cites nothing: {len(report.units)} "
-                        f"{report.kind}s, none of them citing a source.", ""]
+        return lines + [
+            f"This draft cites nothing: {len(report.units)} "
+            f"{report.kind}s, none of them citing a source.",
+            "",
+        ]
     return lines + [
         f"- {len(report.units)} {report.kind}s, of which {report.uncited} cite nothing",
         f"- {report.multi_source} cite two or more sources",
@@ -77,7 +80,8 @@ def _finding_lines(report, found: list[dict]) -> list[str]:
         if entry["kind"] == "single_key_run":
             lines.append(
                 f"- line {entry['line']}: {entry['longest_run']} consecutive "
-                f"paragraphs on one source, in a {report.kind} citing {keys}")
+                f"paragraphs on one source, in a {report.kind} citing {keys}"
+            )
         else:
             lines.append(f"- line {entry['line']}: {keys}")
         if entry["declared"]:
@@ -108,15 +112,18 @@ def format_report(report, found: list[dict]) -> str:
     while a file kept for months sits beside the draft's other review
     reports and should look like them.
     """
-    lines = [f"Multi-source synthesis for {report.draft}",
-             f"Unit: {report.kind} (from {report.source})"]
+    lines = [
+        f"Multi-source synthesis for {report.draft}",
+        f"Unit: {report.kind} (from {report.source})",
+    ]
     if report.single_source_pct is None:
         lines.append(f"This draft cites nothing: {len(report.units)} {report.kind}s.")
         return "\n".join(lines)
     lines.append(
         f"{report.single_source}/{len(report.citing)} citing {report.kind}s rest on "
         f"one source ({report.single_source_pct:.0f}%); "
-        f"{report.declared} of those are declared.")
+        f"{report.declared} of those are declared."
+    )
     for entry in found:
         keys = ", ".join(entry["citekeys"])
         note = " [declared]" if entry["declared"] else ""

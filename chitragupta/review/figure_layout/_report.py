@@ -23,15 +23,14 @@ from chitragupta.review.figure_layout._source import MAX_NODE_WORDS
 # reader of any of the three learns the same thing about the number.
 EMPTINESS_LABEL = "advisory, human-read only -- nothing consumes this"
 
+
 def _figure_lines(result: FigureResult) -> list[str]:
     """One figure's findings, as the report prints them."""
     lines = []
     if result.failed:
         lines.append(f"  - does not compile: {result.failed}")
     for name, count in result.overlong:
-        lines.append(
-            f"  - node `{name}` has {count} words (over {MAX_NODE_WORDS})"
-        )
+        lines.append(f"  - node `{name}` has {count} words (over {MAX_NODE_WORDS})")
     for one, other in result.overlapping:
         lines.append(f"  - nodes `{one}` and `{other}` overlap")
     if result.protruding:
@@ -92,8 +91,7 @@ def render_markdown(draft_path: Path, results: list[FigureResult], command: str)
         return "\n".join(lines)
     for result in results:
         lines += ["## " + str(result.path), ""]
-        said = [f"- {line.strip().removeprefix('- ')}"
-                for line in _figure_lines(result)]
+        said = [f"- {line.strip().removeprefix('- ')}" for line in _figure_lines(result)]
         # Unlike the text report, every figure keeps its heading here: a
         # filed report is read as a record of what was checked, so a
         # figure silently absent from it is indistinguishable from one
@@ -115,14 +113,15 @@ def _findings(results: list[FigureResult]) -> list[dict]:
     for result in results:
         figure = str(result.path)
         if result.failed:
-            findings.append({"figure": figure, "kind": "does-not-compile",
-                             "detail": result.failed})
-        findings += [{"figure": figure, "kind": "node-text-overload",
-                      "node": name, "words": count}
-                     for name, count in result.overlong]
-        findings += [{"figure": figure, "kind": "node-overlap",
-                      "nodes": [one, other]}
-                     for one, other in result.overlapping]
+            findings.append({"figure": figure, "kind": "does-not-compile", "detail": result.failed})
+        findings += [
+            {"figure": figure, "kind": "node-text-overload", "node": name, "words": count}
+            for name, count in result.overlong
+        ]
+        findings += [
+            {"figure": figure, "kind": "node-overlap", "nodes": [one, other]}
+            for one, other in result.overlapping
+        ]
         if result.protruding:
             findings.append({"figure": figure, "kind": "content-protrusion"})
     return findings
@@ -132,17 +131,19 @@ def payload(draft_path: Path, results: list[FigureResult], command: str) -> dict
     """The findings as data -- an additional serialisation of what the
     report prints, never a second computation."""
     body = review.envelope(draft_path, "figure", command)
-    body.update({
-        "findings": _findings(results),
-        "figures": [
-            {
-                "path": str(result.path),
-                "edges": [list(edge) for edge in result.edges],
-                "empty_fraction": result.empty_fraction,
-                "empty_fraction_note": EMPTINESS_LABEL,
-                "geometry_checked": result.boxes is not None,
-            }
-            for result in results
-        ],
-    })
+    body.update(
+        {
+            "findings": _findings(results),
+            "figures": [
+                {
+                    "path": str(result.path),
+                    "edges": [list(edge) for edge in result.edges],
+                    "empty_fraction": result.empty_fraction,
+                    "empty_fraction_note": EMPTINESS_LABEL,
+                    "geometry_checked": result.boxes is not None,
+                }
+                for result in results
+            ],
+        }
+    )
     return body

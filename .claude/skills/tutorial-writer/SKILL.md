@@ -25,7 +25,7 @@ rule below follows from that.
 ## What this genre is not
 
 | Genre | Reader's state | Skill |
-|---|---|---|
+| --- | --- | --- |
 | **Tutorial** (this one) | Doesn't know what they don't know; needs a guided first success | `tutorial-writer` |
 | **Textbook chapter** | Studying the topic; reading, not typing | `textbook-chapter-writer` |
 | **How-to guide** | Already competent; has a specific goal in mind | Not a skill here -- say so, and write it as a short procedure |

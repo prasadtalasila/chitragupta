@@ -409,6 +409,18 @@ jobs:
       - name: ruff
         run: ruff check chitragupta scripts .claude/hooks
 
+      # #362: the formatter build order named alongside the linter (item
+      # 1) and never landed. Wider roots than the two checks above,
+      # deliberately -- `tests/` and `bench/` are unformatted too, and
+      # narrowing to match the lint roots would just relocate the same
+      # gap rather than close it. `--check` only, never `--fix` here: a
+      # CI job that rewrites the tree it is checking is a check that
+      # can't fail. `ruff format` and `ruff check` share `pyproject.toml`'s
+      # `line-length`; the formatter has no rule selection to disagree
+      # with the linter's `select` over.
+      - name: ruff format --check
+        run: ruff format --check chitragupta scripts tests bench .claude/hooks
+
       # scripts/install_full_pipeline.sh is 333 lines with no static check
       # (added in 6.1.0), and CI now depends on a stage inside
       # it. A shell script CI calls deserves the bar the Python and the

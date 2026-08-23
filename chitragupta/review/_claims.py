@@ -165,7 +165,7 @@ def claim_sentences(text: str) -> list[Sentence]:
     found = []
     for start, end, block in _blocks.spans(lines):
         after = lines[end] if end < len(lines) else ""
-        if not block.strip() or _excluded(lines[start - 1:end], after):
+        if not block.strip() or _excluded(lines[start - 1 : end], after):
             continue
         block_cites = bool(citation_gate.extract_citekeys_from_line(block))
         # No empty-sentence guard: `sentences.split` strips first and only
@@ -173,8 +173,12 @@ def claim_sentences(text: str) -> list[Sentence]:
         # block with any content in it yields only non-empty parts. The
         # `block.strip()` test above is what rules out the other case.
         for sentence in sentences.split(block):
-            found.append(Sentence(
-                start, sentence,
-                bool(citation_gate.extract_citekeys_from_line(sentence)),
-                block_cites))
+            found.append(
+                Sentence(
+                    start,
+                    sentence,
+                    bool(citation_gate.extract_citekeys_from_line(sentence)),
+                    block_cites,
+                )
+            )
     return found

@@ -45,7 +45,7 @@ a GPU. The `docker/Dockerfile` build arg `TORCH_VARIANT` controls which
 one you get:
 
 | `TORCH_VARIANT` | Build command | Measured image size | When to use it |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `gpu` (default) | `docker build -t chitragupta -f docker/Dockerfile .` | 11.6GB | `docker run --gpus` deployments -- the bundled CUDA runtime is enough on its own, no host CUDA toolkit needed, only a matching driver |
 | `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 4.38GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
 

@@ -88,7 +88,7 @@ thin result and a thorough one look identical.
 ## ⚖ The two tools, and when each is right
 
 | | `overlap` | `scan` |
-|---|---|---|
+| --- | --- | --- |
 | Compares against | One citekey's own source, in paragraphs citing it | The whole corpus, against the whole draft |
 | Sees an uncited source's wording? | No -- structurally cannot, by design | Yes |
 | Sees connective prose citing nothing? | No | Yes |

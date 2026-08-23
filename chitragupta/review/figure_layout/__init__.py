@@ -57,20 +57,35 @@ from pathlib import Path
 from chitragupta import config, review
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._figures import (
-    _figure_refs, _require_tikz, _resolve_sibling,
+    _figure_refs,
+    _require_tikz,
+    _resolve_sibling,
 )
 from chitragupta.review.figure_layout._geometry import (
-    BBOX_NAME, Box, emptiness, overlaps, protrudes,
+    BBOX_NAME,
+    Box,
+    emptiness,
+    overlaps,
+    protrudes,
 )
 from chitragupta.review.figure_layout._result import FigureResult
 from chitragupta.review.figure_layout._report import (
-    EMPTINESS_LABEL, format_report, payload, render_markdown,
+    EMPTINESS_LABEL,
+    format_report,
+    payload,
+    render_markdown,
 )
 from chitragupta.review.figure_layout._probe import (
-    FigureCompileError, node_boxes, node_names, parse_boxes, scaffold,
+    FigureCompileError,
+    node_boxes,
+    node_names,
+    parse_boxes,
+    scaffold,
 )
 from chitragupta.review.figure_layout._source import (
-    MAX_NODE_WORDS, edge_list, overlong_nodes,
+    MAX_NODE_WORDS,
+    edge_list,
+    overlong_nodes,
 )
 
 # Re-exported so the aid is one import for a caller and one name in
@@ -78,12 +93,29 @@ from chitragupta.review.figure_layout._source import (
 # they need: `_source` compiles nothing, `_geometry` is arithmetic, and
 # only `_probe` shells out to pdflatex.
 __all__ = [
-    "BBOX_NAME", "Box", "EMPTINESS_LABEL", "FigureCompileError", "FigureResult",
-    "MAX_NODE_WORDS", "MissingBinary", "check_draft", "edge_list", "emptiness",
-    "figures_in", "format_report", "node_boxes", "node_names", "overlaps",
-    "overlong_nodes", "parse_boxes", "payload", "protrudes", "render_markdown",
+    "BBOX_NAME",
+    "Box",
+    "EMPTINESS_LABEL",
+    "FigureCompileError",
+    "FigureResult",
+    "MAX_NODE_WORDS",
+    "MissingBinary",
+    "check_draft",
+    "edge_list",
+    "emptiness",
+    "figures_in",
+    "format_report",
+    "node_boxes",
+    "node_names",
+    "overlaps",
+    "overlong_nodes",
+    "parse_boxes",
+    "payload",
+    "protrudes",
+    "render_markdown",
     "scaffold",
 ]
+
 
 def figures_in(draft_path: Path) -> list[Path]:
     """Every TikZ figure file `draft_path` references, as real paths.
@@ -169,17 +201,26 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
             description="Report what a draft's TikZ figures' own geometry says.",
         )
     parser.add_argument("draft", help="Path to the draft whose figures to check")
-    parser.add_argument("--json", action="store_true",
-                        help="Print the findings as JSON instead of as text. "
-                             "--write files it beside the report either way.")
-    parser.add_argument("--write", action="store_true",
-                        help="Also write the report to content/review/, mirroring the "
-                             "draft's path. Off by default: printing is the usual use.")
-    parser.add_argument("--formats", default="md,tex,pdf",
-                        help="Additional formats to render beside the Markdown "
-                             "report (default: md,tex,pdf). The .md is always "
-                             "written -- it is the report; tex/pdf are renders "
-                             "of it, and need pandoc/pdflatex on PATH.")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of as text. "
+        "--write files it beside the report either way.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Also write the report to content/review/, mirroring the "
+        "draft's path. Off by default: printing is the usual use.",
+    )
+    parser.add_argument(
+        "--formats",
+        default="md,tex,pdf",
+        help="Additional formats to render beside the Markdown "
+        "report (default: md,tex,pdf). The .md is always "
+        "written -- it is the report; tex/pdf are renders "
+        "of it, and need pandoc/pdflatex on PATH.",
+    )
     return parser
 
 

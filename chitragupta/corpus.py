@@ -74,8 +74,10 @@ from chitragupta.progname import prog_for
 VERBS = {
     "sync": ("chitragupta.sync", "bib file -> ledger -> PDF text: the deterministic corpus run"),
     "ledger": ("chitragupta.ledger", "read-only view of what that run recorded -- takes no lock"),
-    "topics": ("chitragupta.seed_topics",
-               "read-only view of which papers each seed topic matched -- takes no lock"),
+    "topics": (
+        "chitragupta.seed_topics",
+        "read-only view of which papers each seed topic matched -- takes no lock",
+    ),
 }
 
 # What `--help` prints, deliberately *not* this module's docstring (#152).
@@ -94,7 +96,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=DESCRIPTION,
     )
     parser.add_argument(
-        "verb", choices=sorted(VERBS), nargs="?",
+        "verb",
+        choices=sorted(VERBS),
+        nargs="?",
         help=" / ".join(f"{name} -- {help_text}" for name, (_, help_text) in VERBS.items()),
     )
     # Everything after the verb belongs to that command's own parser, not

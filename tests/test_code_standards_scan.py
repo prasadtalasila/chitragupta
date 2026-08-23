@@ -69,16 +69,30 @@ LEGACY_LONG_FUNCTIONS = {
 # won. The trade is deliberate and one-way -- the wraps are permanent,
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
+#
+# Six more entered on #362's `ruff format` adoption, for the same reason
+# in a different shape: this codebase hand-aligned wrapped arguments to
+# the opening paren, `ruff format` never does, and its hanging-indent
+# style spends more physical lines to say the same thing everywhere that
+# pattern appears. Every existing entry's count also moved with the same
+# reformat; none of the six is a real complexity increase, and the trade
+# is accepted the same way the line-wrap one was.
 LEGACY_LONG_FILES = {
-    "chitragupta/sync.py",  # 533
-    "chitragupta/enrich/docling_parse.py",  # 523
-    "chitragupta/overlap_index.py",  # 511
-    "chitragupta/review/citation_provenance.py",  # 368
-    "chitragupta/ledger.py",  # 444
-    "chitragupta/retrieval.py",  # 402
-    "chitragupta/config.py",  # 388
-    "chitragupta/references.py",  # 387
-    "chitragupta/overlap_skipgram.py",  # 282
+    "chitragupta/sync.py",  # 548
+    "chitragupta/enrich/docling_parse.py",  # 542
+    "chitragupta/overlap_index.py",  # 523
+    "chitragupta/ledger.py",  # 502
+    "chitragupta/config.py",  # 446
+    "chitragupta/retrieval.py",  # 432
+    "chitragupta/references.py",  # 389
+    "chitragupta/review/citation_provenance.py",  # 383
+    "chitragupta/render_output/__init__.py",  # 296
+    "chitragupta/overlap_skipgram.py",  # 288
+    "chitragupta/review/citation_coverage.py",  # 275
+    "chitragupta/enrich/__main__.py",  # 266
+    "chitragupta/passages.py",  # 260
+    "chitragupta/review/verbatim_check/__init__.py",  # 260
+    "chitragupta/dossier/_retrieval.py",  # 256
 }
 
 
@@ -156,9 +170,7 @@ def code_lines(source):
     precise accounting of what fills it.
     """
     return sum(
-        1
-        for line in source.splitlines()
-        if line.strip() and not line.strip().startswith("#")
+        1 for line in source.splitlines() if line.strip() and not line.strip().startswith("#")
     )
 
 
@@ -176,11 +188,7 @@ def _python_files(roots):
     UnicodeDecodeError there while passing on Linux. Same reason
     tests/test_command_depth_scan.py pins it.
     """
-    return sorted(
-        path
-        for root in roots
-        for path in (REPO_ROOT / root).glob("**/*.py")
-    )
+    return sorted(path for root in roots for path in (REPO_ROOT / root).glob("**/*.py"))
 
 
 def _relative(path):
@@ -238,7 +246,7 @@ def test_no_new_module_exceeds_the_code_line_limit():
         "register:"
         + "".join(f"\n  {name} -- {found[name]} code lines" for name in new)
         + "\n\nA module this long is usually holding more than one responsibility; "
-        "see DEVELOPER-AGENTS.md's \"Module boundaries\". Blank lines and comments "
+        'see DEVELOPER-AGENTS.md\'s "Module boundaries". Blank lines and comments '
         "are not counted, so this is not a limit on explaining yourself. If the "
         "split is genuinely wrong, add it to LEGACY_LONG_FILES in this file and "
         "say why in the PR. See docs/CODE-STANDARDS.md."
@@ -323,14 +331,9 @@ def test_every_registered_offender_records_its_current_count():
     counts = long_functions(STATEMENT_ROOTS) | long_files(CODE_LINE_ROOTS)
     recorded = _recorded_counts()
     assert set(recorded) == set(counts), (
-        "the register comments and the registers themselves disagree about "
-        "which entries exist"
+        "the register comments and the registers themselves disagree about which entries exist"
     )
-    drifted = {
-        name: (was, counts[name])
-        for name, was in recorded.items()
-        if was != counts[name]
-    }
+    drifted = {name: (was, counts[name]) for name, was in recorded.items() if was != counts[name]}
     assert not drifted, (
         "register entries whose recorded count is stale (recorded -> actual):"
         + "".join(f"\n  {n}: {w} -> {a}" for n, (w, a) in sorted(drifted.items()))
@@ -371,7 +374,9 @@ def test_a_statement_is_counted_per_statement_not_per_line():
     terse = "def f():\n    a = 1\n    b = 2\n    return a + b\n"
     explained = (
         "def f():\n"
-        + "    # why a is 1: " + "x" * 40 + "\n" * 1
+        + "    # why a is 1: "
+        + "x" * 40
+        + "\n" * 1
         + "    a = 1\n"
         + "    # why b is 2, at length:\n" * 30
         + "    b = 2\n"
@@ -417,12 +422,7 @@ def test_the_methods_of_a_nested_class_are_not_charged_to_the_enclosing_function
 
 
 def test_a_method_is_counted_and_not_charged_to_its_class_body():
-    source = (
-        "class C:\n"
-        "    def m(self):\n"
-        "        a = 1\n"
-        "        return a\n"
-    )
+    source = "class C:\n    def m(self):\n        a = 1\n        return a\n"
     assert dict(functions(source)) == {"C.m": 2}
 
 
@@ -453,11 +453,7 @@ def test_a_function_defined_inside_a_conditional_keeps_its_enclosing_scope():
     but they must still be descended into, or the function inside is
     invisible to the scan."""
     source = (
-        "class A:\n"
-        "    if True:\n"
-        "        def m(self):\n"
-        "            a = 1\n"
-        "            return a\n"
+        "class A:\n    if True:\n        def m(self):\n            a = 1\n            return a\n"
     )
     assert dict(functions(source)) == {"A.m": 2}
 

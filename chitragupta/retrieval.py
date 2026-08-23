@@ -52,8 +52,25 @@ from typing import Any
 from chitragupta import bib_collections, config, ledger
 
 _STOPWORDS = {
-    "a", "an", "the", "of", "on", "in", "for", "and", "to", "with",
-    "is", "are", "be", "this", "that", "as", "by", "from", "at",
+    "a",
+    "an",
+    "the",
+    "of",
+    "on",
+    "in",
+    "for",
+    "and",
+    "to",
+    "with",
+    "is",
+    "are",
+    "be",
+    "this",
+    "that",
+    "as",
+    "by",
+    "from",
+    "at",
 }
 
 # Standard Okapi BM25 constants (term-frequency saturation and length
@@ -74,10 +91,7 @@ class SearchResult:
 
 
 def _tokenize(text: str) -> list[str]:
-    return [
-        w for w in re.findall(r"[a-z0-9]+", text.lower())
-        if len(w) > 2 and w not in _STOPWORDS
-    ]
+    return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2 and w not in _STOPWORDS]
 
 
 # Occurrences of one query term that `_windows` will anchor a candidate
@@ -167,7 +181,8 @@ def _full_text(item: sqlite3.Row) -> str:
     if item["parsed_path"]:
         try:
             text_parts.append(
-                Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore"))
+                Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")
+            )
         except OSError:
             pass
     return "\n".join(text_parts)
@@ -256,13 +271,9 @@ def _bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
 
     term_set = set(terms)
     doc_freq = {
-        t: sum(1 for entry in index.values() if entry["term_freqs"].get(t))
-        for t in term_set
+        t: sum(1 for entry in index.values() if entry["term_freqs"].get(t)) for t in term_set
     }
-    idf = {
-        t: math.log((doc_count - doc_freq[t] + 0.5) / (doc_freq[t] + 0.5) + 1)
-        for t in term_set
-    }
+    idf = {t: math.log((doc_count - doc_freq[t] + 0.5) / (doc_freq[t] + 0.5) + 1) for t in term_set}
 
     scores: dict[str, float] = {}
     for citekey, entry in index.items():
@@ -279,8 +290,9 @@ def _bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
     return scores
 
 
-def search(query: str, k: int = 5, snippet_chars: int = 500,
-           collection: str | None = None) -> list[SearchResult]:
+def search(
+    query: str, k: int = 5, snippet_chars: int = 500, collection: str | None = None
+) -> list[SearchResult]:
     """Rank ledger items by BM25 relevance to `query`. Returns top-k.
 
     `collection` restricts the result to items in that Zotero collection
@@ -317,9 +329,9 @@ def search(query: str, k: int = 5, snippet_chars: int = 500,
     by_citekey = {item["citekey"]: item for item in items}
     if collection is not None:
         scores = {
-            citekey: score for citekey, score in scores.items()
-            if bib_collections.matches(
-                bib_collections.of_row(by_citekey[citekey]), collection)
+            citekey: score
+            for citekey, score in scores.items()
+            if bib_collections.matches(bib_collections.of_row(by_citekey[citekey]), collection)
         }
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:k]
 
@@ -437,39 +449,48 @@ def _build_parser() -> Any:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft retrieve",
         description="BM25 retrieval over the synced corpus. Read-only, takes no "
-                    "lock, and runs with the bare system python3.",
+        "lock, and runs with the bare system python3.",
         epilog="`search` ranks the corpus and hands back a snippet to judge each "
-               "candidate on. `evidence` zooms in on one document you already care "
-               "about. Neither is a stage: nothing has to call evidence.",
+        "candidate on. `evidence` zooms in on one document you already care "
+        "about. Neither is a stage: nothing has to call evidence.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_search = sub.add_parser(
-        "search", help="Rank the corpus and return a snippet per candidate")
+    p_search = sub.add_parser("search", help="Rank the corpus and return a snippet per candidate")
     p_search.add_argument("query")
     p_search.add_argument("--k", type=int, default=5, help="Results to return (default 5)")
     p_search.add_argument("--chars", type=int, default=500, help="Snippet size (default 500)")
     p_search.add_argument(
-        "--collection", metavar="NAME",
+        "--collection",
+        metavar="NAME",
         help="Only items in this Zotero collection, or one beneath it. Needs a "
-             "Better BibTeX export with JabRef fields on (docs/ZOTERO.md); with "
-             "any other export nothing is in any collection and this matches "
-             "nothing")
+        "Better BibTeX export with JabRef fields on (docs/ZOTERO.md); with "
+        "any other export nothing is in any collection and this matches "
+        "nothing",
+    )
 
     p_evidence = sub.add_parser(
-        "evidence", help="The passages of one document that bear on the query")
+        "evidence", help="The passages of one document that bear on the query"
+    )
     p_evidence.add_argument("query")
     p_evidence.add_argument("--citekey", required=True)
-    p_evidence.add_argument("--chars", type=int, default=EVIDENCE_CHARS,
-                            help=f"Window size (default {EVIDENCE_CHARS})")
-    p_evidence.add_argument("--windows", type=int, default=EVIDENCE_WINDOWS,
-                            help=f"Passages to return (default {EVIDENCE_WINDOWS})")
+    p_evidence.add_argument(
+        "--chars", type=int, default=EVIDENCE_CHARS, help=f"Window size (default {EVIDENCE_CHARS})"
+    )
+    p_evidence.add_argument(
+        "--windows",
+        type=int,
+        default=EVIDENCE_WINDOWS,
+        help=f"Passages to return (default {EVIDENCE_WINDOWS})",
+    )
 
     for each in (p_search, p_evidence):
         each.add_argument(
-            "--log", metavar="DRAFT",
+            "--log",
+            metavar="DRAFT",
             help="Record this call in DRAFT's dossier (content/dossiers/...), so the "
-                 "cost of retrieval for this draft is measured rather than estimated")
+            "cost of retrieval for this draft is measured rather than estimated",
+        )
     return parser
 
 
@@ -483,8 +504,10 @@ def _run_evidence(args) -> "tuple[int, int] | None":
         print(f"[error] {exc}", file=sys.stderr)
         return None
     if not passages:
-        print(f"{args.citekey}: no passage matches that query "
-              "(or the corpus layer has no parsed text for it).")
+        print(
+            f"{args.citekey}: no passage matches that query "
+            "(or the corpus layer has no parsed text for it)."
+        )
     for passage in passages:
         print(f"\n  {passage}")
     return len(passages), sum(len(p) for p in passages)
@@ -493,15 +516,16 @@ def _run_evidence(args) -> "tuple[int, int] | None":
 def _run_search(args) -> tuple[int, int]:
     """The search subcommand: prints the ranking and returns
     (results, chars)."""
-    found = search(args.query, k=args.k, snippet_chars=args.chars,
-                   collection=args.collection)
+    found = search(args.query, k=args.k, snippet_chars=args.chars, collection=args.collection)
     if not found:
         print("No results.")
     chars = _print_results(found)
     if found:
-        print("\n  Judge each snippet yourself -- a high score means the query's "
-              "words are in the document, not that it supports your claim. Run "
-              "`evidence --citekey <key>` where a snippet is not enough to decide.")
+        print(
+            "\n  Judge each snippet yourself -- a high score means the query's "
+            "words are in the document, not that it supports your claim. Run "
+            "`evidence --citekey <key>` where a snippet is not enough to decide."
+        )
     return len(found), chars
 
 
@@ -519,8 +543,12 @@ def _log_call(args, results: int, chars: int) -> None:
         # citekey already chosen, not a ranking to narrow), so `evidence`'s
         # args namespace never gets the attribute at all.
         path = dossier.log_retrieval(
-            Path(args.log), args.command, args.query,
-            asked_for, results, chars,
+            Path(args.log),
+            args.command,
+            args.query,
+            asked_for,
+            results,
+            chars,
             collection=getattr(args, "collection", None),
         )
     except (dossier.DossierError, OSError) as exc:
@@ -541,8 +569,10 @@ def main(argv: "list[str] | None" = None) -> int:
 
     if not config.LEDGER_PATH.exists():
         print(f"No ledger at {config.LEDGER_PATH}.", file=sys.stderr)
-        print("Run `python -m chitragupta.corpus sync` to build it from your bib file.",
-              file=sys.stderr)
+        print(
+            "Run `python -m chitragupta.corpus sync` to build it from your bib file.",
+            file=sys.stderr,
+        )
         return 1
 
     if args.command == "evidence":

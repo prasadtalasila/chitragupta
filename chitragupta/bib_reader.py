@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import bibtexparser
+
 # v1 legacy API (BibTexParser/customization/bibtexparser.load|loads), not
 # v2 -- a deliberate pin, not drift: see pyproject.toml's `bibtexparser =
 # ">=1.4,<2.0"` line for the full rationale (v2 replaces this API with an
@@ -193,9 +194,9 @@ def _count_raw_entries(text: str) -> int:
     starts = list(_ENTRY_START_RE.finditer(text))
     ends = [m.start() for m in starts[1:]] + [len(text)]
     return sum(
-        1 for m, end in zip(starts, ends)
-        if m.group(1).lower() not in _NON_ENTRY_TYPES
-        and _block_has_fields(text[m.end():end])
+        1
+        for m, end in zip(starts, ends)
+        if m.group(1).lower() not in _NON_ENTRY_TYPES and _block_has_fields(text[m.end() : end])
     )
 
 
@@ -220,7 +221,10 @@ _CITEKEY_ILLEGAL_RE = re.compile(r'[/\\:*?"<>|\x00-\x1f]')
 
 # Reserved on Windows whatever the extension: `CON.txt` is still CON.
 _WINDOWS_RESERVED = {
-    "CON", "PRN", "AUX", "NUL",
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
@@ -308,8 +312,7 @@ def read_library() -> list[Reference]:
                 doi=entry.get("doi"),
                 url=entry.get("url"),
                 fields=entry,
-                collections=bib_collections.parse(
-                    entry.get(config.BIB_COLLECTIONS_FIELD)),
+                collections=bib_collections.parse(entry.get(config.BIB_COLLECTIONS_FIELD)),
                 pdf_path=pdf_path,
                 pdf_resolution=pdf_resolution,
             )

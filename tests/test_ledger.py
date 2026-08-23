@@ -142,24 +142,38 @@ class TestBibFields:
     file itself."""
 
     def test_kept_fields_round_trip_as_json(self, ledger_con):
-        ref = make_reference(citekey="doe2024", fields={
-            "author": "Doe, Jane", "journal": "J. Things", "pages": "1--9",
-        })
+        ref = make_reference(
+            citekey="doe2024",
+            fields={
+                "author": "Doe, Jane",
+                "journal": "J. Things",
+                "pages": "1--9",
+            },
+        )
         ledger.upsert_reference(ledger_con, ref)
         (stored,) = ledger_con.execute(
             "SELECT bib_fields FROM items WHERE citekey = 'doe2024'"
         ).fetchone()
-        assert json.loads(stored) == {"author": "Doe, Jane", "journal": "J. Things", "pages": "1--9"}
+        assert json.loads(stored) == {
+            "author": "Doe, Jane",
+            "journal": "J. Things",
+            "pages": "1--9",
+        }
 
     def test_export_noise_is_dropped(self, ledger_con):
         # A reference manager's export carries per-host and per-run junk
         # that no entry formats and that would churn this column on every
         # re-export.
-        ref = make_reference(citekey="noisy2024", fields={
-            "author": "Doe, Jane",
-            "file": "/home/someone/Zotero/storage/ABC/paper.pdf",
-            "abstract": "...", "keywords": "a, b", "urldate": "2026-01-01",
-        })
+        ref = make_reference(
+            citekey="noisy2024",
+            fields={
+                "author": "Doe, Jane",
+                "file": "/home/someone/Zotero/storage/ABC/paper.pdf",
+                "abstract": "...",
+                "keywords": "a, b",
+                "urldate": "2026-01-01",
+            },
+        )
         ledger.upsert_reference(ledger_con, ref)
         (stored,) = ledger_con.execute(
             "SELECT bib_fields FROM items WHERE citekey = 'noisy2024'"
@@ -169,15 +183,21 @@ class TestBibFields:
     def test_empty_values_and_no_kept_fields_store_null(self, ledger_con):
         # NULL means the same thing to references.py as "row predates this
         # column": fall back to title/year rather than fail.
-        ledger.upsert_reference(ledger_con, make_reference(citekey="bare2024", fields={"author": "  "}))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="bare2024", fields={"author": "  "})
+        )
         (stored,) = ledger_con.execute(
             "SELECT bib_fields FROM items WHERE citekey = 'bare2024'"
         ).fetchone()
         assert stored is None
 
     def test_update_path_refreshes_the_column(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="doe2024", fields={"author": "Doe, Jane"}))
-        ledger.upsert_reference(ledger_con, make_reference(citekey="doe2024", fields={"author": "Roe, Richard"}))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="doe2024", fields={"author": "Doe, Jane"})
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="doe2024", fields={"author": "Roe, Richard"})
+        )
         (stored,) = ledger_con.execute(
             "SELECT bib_fields FROM items WHERE citekey = 'doe2024'"
         ).fetchone()
@@ -261,9 +281,7 @@ class TestUpsertReference:
 
         assert ledger.upsert_reference(ledger_con, ref) is True
 
-    def test_a_sidecar_is_not_required_of_pdftotext(
-        self, ledger_con, monkeypatch, tmp_path
-    ):
+    def test_a_sidecar_is_not_required_of_pdftotext(self, ledger_con, monkeypatch, tmp_path):
         """pdftotext resolves no reading order and writes no sidecar, so
         demanding one would re-parse the whole corpus on every run."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
@@ -277,9 +295,7 @@ class TestUpsertReference:
 
         assert ledger.upsert_reference(ledger_con, ref) is False
 
-    def test_a_present_sidecar_settles_it_under_docling(
-        self, ledger_con, monkeypatch, tmp_path
-    ):
+    def test_a_present_sidecar_settles_it_under_docling(self, ledger_con, monkeypatch, tmp_path):
         """The steady state after one upgrade run: nothing re-parses
         again. An empty sidecar counts, which is why extract_text writes
         one even for a document with no prose."""
@@ -592,9 +608,7 @@ class TestFailedParseIsRetried:
         # Same bytes, same mtime -- and it must still come back for retry.
         assert ledger.upsert_reference(ledger_con, ref) is True
 
-    def test_a_successful_parse_is_still_not_redone(
-        self, isolated_config, ledger_con, tmp_path
-    ):
+    def test_a_successful_parse_is_still_not_redone(self, isolated_config, ledger_con, tmp_path):
         """The incremental skip is the whole point of the ledger; only
         the failed state is retried."""
         pdf = tmp_path / "paper.pdf"
@@ -672,9 +686,7 @@ class TestFailureKind:
         ref = self._failed(ledger_con, tmp_path, transient=False)
         assert ledger.upsert_reference(ledger_con, ref, force=True) is True
 
-    def test_force_reparses_an_already_parsed_document(
-        self, isolated_config, ledger_con, tmp_path
-    ):
+    def test_force_reparses_an_already_parsed_document(self, isolated_config, ledger_con, tmp_path):
         """The point of --reparse: re-extract text that is recorded as
         fine but that you have reason to doubt."""
         pdf = tmp_path / "paper.pdf"
@@ -693,9 +705,7 @@ class TestFailureKind:
         ref = make_reference(pdf_path=None)
         assert ledger.upsert_reference(ledger_con, ref, force=True) is False
 
-    def test_counts_split_transient_from_deterministic(
-        self, isolated_config, ledger_con, tmp_path
-    ):
+    def test_counts_split_transient_from_deterministic(self, isolated_config, ledger_con, tmp_path):
         for i, transient in enumerate([True, True, False]):
             pdf = tmp_path / f"p{i}.pdf"
             pdf.write_bytes(b"%PDF" + bytes([i]))

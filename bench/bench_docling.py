@@ -56,8 +56,12 @@ def main() -> None:
     ap.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
     ap.add_argument("--mode", default="reused", choices=["fresh", "reused"])
     ap.add_argument("--images", action="store_true", help="match config.toml's docling_images=true")
-    ap.add_argument("--no-ocr", dest="ocr", action="store_false",
-                    help="disable Docling's OCR stage (its default is on)")
+    ap.add_argument(
+        "--no-ocr",
+        dest="ocr",
+        action="store_false",
+        help="disable Docling's OCR stage (its default is on)",
+    )
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
 

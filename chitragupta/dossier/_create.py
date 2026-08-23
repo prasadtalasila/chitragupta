@@ -10,10 +10,21 @@ from pathlib import Path
 
 from chitragupta import config
 from chitragupta.dossier import (
-    EVIDENCE_MD, REJECTED_MD, RETRIEVAL_MD, REVISIONS_MD, SCOPE_MD, SECTIONS_MD,
-    STEERING_MD, _SECTIONS_TEMPLATE, digest, dossier_dir, draft_name, draft_relpath,
+    EVIDENCE_MD,
+    REJECTED_MD,
+    RETRIEVAL_MD,
+    REVISIONS_MD,
+    SCOPE_MD,
+    SECTIONS_MD,
+    STEERING_MD,
+    _SECTIONS_TEMPLATE,
+    digest,
+    dossier_dir,
+    draft_name,
+    draft_relpath,
     known_citekeys,
 )
+
 
 def _readme(name: str, draft: Path, genre: str) -> str:
     return f"""# Dossier: {name}

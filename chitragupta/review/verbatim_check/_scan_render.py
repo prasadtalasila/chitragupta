@@ -9,8 +9,14 @@ from pathlib import Path
 
 from chitragupta import config, review
 from chitragupta.review.verbatim_check._scan import (
-    BUCKET_ORDER, _bucket, _bucket_title, _flags, _matched_note, _not_run_lines,
-    _page_range, _tier_note,
+    BUCKET_ORDER,
+    _bucket,
+    _bucket_title,
+    _flags,
+    _matched_note,
+    _not_run_lines,
+    _page_range,
+    _tier_note,
 )
 
 
@@ -44,8 +50,7 @@ def _how_to_read(not_run: list[dict]) -> list[str]:
         "  inside it -- it can open in the draft's own framing prose -- so this",
         "  reads as overlap, not containment.",
         "",
-        "Each finding names its `tier`: **exact** is a verbatim run; "
-        "**skip-gram**",
+        "Each finding names its `tier`: **exact** is a verbatim run; **skip-gram**",
         "is a tolerant stemmed-subsequence match that also catches a passage",
         "with a handful of words substituted. A skip-gram finding's word count",
         "is `matched words / span`: how many words the tier actually matched,",
@@ -90,20 +95,24 @@ def _completeness_paragraph(not_run: list[dict]) -> list[str]:
     this is where the report itself keeps that promise.
     """
     if not_run:
-        return [
-            "**A clean run is not a clean bill of health**, and this run was",
-            "not complete. Two deterministic tiers checked this draft -- exact",
-            "runs, and skip-gram matches tolerant of a substituted word -- and",
-            "a genuine restatement, reworded well past a word swap, is",
-            "invisible to both by construction. The tier that can see one did",
-            "not run here:",
-            "",
-        ] + [f"- {line}" for line in _not_run_lines(not_run)] + [
-            "",
-            "So this report is silently incomplete rather than wrong. See",
-            "docs/PLAGIARISM.md.",
-            "",
-        ]
+        return (
+            [
+                "**A clean run is not a clean bill of health**, and this run was",
+                "not complete. Two deterministic tiers checked this draft -- exact",
+                "runs, and skip-gram matches tolerant of a substituted word -- and",
+                "a genuine restatement, reworded well past a word swap, is",
+                "invisible to both by construction. The tier that can see one did",
+                "not run here:",
+                "",
+            ]
+            + [f"- {line}" for line in _not_run_lines(not_run)]
+            + [
+                "",
+                "So this report is silently incomplete rather than wrong. See",
+                "docs/PLAGIARISM.md.",
+                "",
+            ]
+        )
     return [
         "**A clean run is not a clean bill of health.** This draft has been",
         "checked against all three tiers, but they do not cover the same",
@@ -140,9 +149,7 @@ def render_scan_markdown(
     if not allowlist_path.exists():
         allowlist_line = f"- Allowlist: none configured (`{allowlist_path}` not found)"
     else:
-        allowlist_line = (
-            f"- Allowlist: `{allowlist_path}` ({suppressed} finding(s) suppressed)"
-        )
+        allowlist_line = f"- Allowlist: `{allowlist_path}` ({suppressed} finding(s) suppressed)"
 
     lines = review.header(Path(draft), "verbatim", command)
     lines = lines[:-1] + [allowlist_line, ""]
@@ -150,8 +157,7 @@ def render_scan_markdown(
 
     if not findings:
         lines += [
-            f"No verbatim run of {min_run} words or more was found anywhere in "
-            "the draft.",
+            f"No verbatim run of {min_run} words or more was found anywhere in the draft.",
             "",
         ]
         return "\n".join(lines)

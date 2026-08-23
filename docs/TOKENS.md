@@ -51,7 +51,7 @@ The useful split is not "input versus output". It is **where a token
 sits**, because that decides how many times it is billed:
 
 | Pool | Billed | Examples |
-|---|---|---|
+| --- | --- | --- |
 | **Orchestrator-resident** | once per turn, for every remaining turn of the run | retrieval snippets read inline, returned interview packets, the assembled draft, every tool result |
 | **Subagent one-shot** | once | anything read or written inside a dispatched subagent, discarded when it returns |
 
@@ -69,7 +69,7 @@ structural ratios -- stable across Claude models, and ratios rather than
 prices so they do not go stale -- are:
 
 | | Multiple of base input |
-|---|---|
+| --- | --- |
 | Uncached input | 1x |
 | Cache write (5-minute TTL) | 1.25x |
 | Cache read | 0.1x |
@@ -185,7 +185,7 @@ those weights, is the specific error these examples exist to avoid.
 A `survey-writer` run on a topic broken into three sub-themes.
 
 | Step | What happens | Tokens |
-|---|---|---|
+| --- | --- | --- |
 | 1 | `search --k 15` x 3 sub-themes | 45 results x ~150 = ~6.7k |
 | 2 | ~3 kept per query, 12 rejected | ~1.4k kept, **~5.4k rejected** |
 | 2-14 | thirteen further numbered steps, an estimated 20+ orchestrator turns | nothing evicted |
@@ -217,7 +217,7 @@ A `standard`-depth `deep-research` run: five personas plus the Basic fact
 writer, packets estimated at ~1k tokens each.
 
 | | Tokens |
-|---|---|
+| --- | --- |
 | Six packets returning into the orchestrator | ~6k |
 | Cache write when they arrive | `6k x 1.25` = 7.5k |
 | Resident across an estimated 22 turns of Phases 3-7 | `6k x 0.1 x 22` = 13.2k |
@@ -266,7 +266,7 @@ So of the resident 20.7k in Example 2, a dossier recovers **none** within
 that run. What it does recover:
 
 | Effect | Pool | Why it is real | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Phase 5 dispatch prompts shrink to a file reference | output, 5x | The orchestrator stops re-emitting packet material once per writer | **implemented** (3.10.0, `dossier brief`) |
 | Subagents read only the rows they need | subagent one-shot | Four writers each receive a command instead of a paste | **implemented** (3.10.0) |
 | Compaction stops being lossy | resident | A compacted run can recover exact packet detail from disk instead of re-dispatching six interviewers -- the single largest cost in the skill | implemented by the transcription (`c4fbd9a`) |
@@ -314,7 +314,7 @@ The claim in [#74](https://github.com/prasadtalasila/chitragupta/issues/74)
 eliminations are each recorded elsewhere:
 
 | Lever | Status for this skill |
-|---|---|
+| --- | --- |
 | Remove the structural cost (no revision path) | Done -- `chitragupta/dossier/` plus `draft-reviser` |
 | Trim what retrieval returns (two-stage triage) | Withdrawn. See [REJECTION.md](REJECTION.md): `deep-research`'s reads already happen inside subagents, so triage optimises the *cheap* pool, adds an estimated 270 further process starts at standard depth, and discards exactly the qualifying passages contradiction mapping exists to find |
 | Move reads behind the subagent boundary | Done -- Phases 2, 5 and 7 all dispatch |
@@ -572,7 +572,7 @@ drafting run -- ordinary feature work using the `Agent` tool, the closest
 real material available to check the fixed recipe against):
 
 | Session | Orchestrator turns | Orchestrator input | Subagent turns (agents) | Subagent input |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | A | 199 | 34,902,281 | 93 (5) | 4,277,676 |
 | B | 268 | 66,634,805 | 69 (4) | 3,555,862 |
 
@@ -657,7 +657,7 @@ section, `dossier brief --section` on one side and the dispatch line that
 replaces it on the other.
 
 | | Characters |
-|---|---|
+| --- | --- |
 | Evidence a Phase 5 dispatch would have pasted, all sections | **15,660** |
 | Dispatch lines that replace it (`Your evidence: python -m chitragupta.draft dossier brief ... --section "..."`) | **901** |
 | Ratio | **17.4x** |
@@ -712,7 +712,7 @@ turned down into `rejected.md` with a reason -- and both files measured
 against the raw retrieval payload `retrieval.md` already recorded.
 
 | | Characters |
-|---|---|
+| --- | --- |
 | Raw candidate snippets, all 3 sub-themes (`retrieval.md`'s own `chars` total) | **22,280** |
 | Judged packet a step 2a subagent returns instead (20 kept + 24 rejected) | **9,084** |
 | Ratio | **2.45x** |
@@ -745,7 +745,7 @@ on the *measured* rejected share here -- 24 of 45 candidates, so
 actually comparable:
 
 | | Input-token equivalents (Example 1's method) |
-|---|---|
+| --- | --- |
 | No boundary | 3,714 + 5,942 = **9,656** |
 | With boundary (subagent's one-time read only, as Example 1 counts it) | **3,714** |
 | Saving | **61.5%** |
@@ -760,7 +760,7 @@ the rejected list re-entering the orchestrator's context, once at 1.25x
 and resident for the same ~20 turns as everything else it holds:
 
 | | Input-token equivalents (rejected list costed both ways) |
-|---|---|
+| --- | --- |
 | With boundary, subagent read + `rejected.md` write-back | 3,714 + 1,190 + 1,904 = **6,808** |
 | Saving, corrected | **29.5%**, not 61.5% |
 
@@ -776,7 +776,7 @@ never computed -- is a different, broader number, not a comparison to
 Example 1's:**
 
 | | Input-token equivalents (kept + rejected together) |
-|---|---|
+| --- | --- |
 | No boundary: full raw payload enters once, resident 20 turns | 5,570 x 1.25 + 5,570 x 0.1 x 20 = **18,103** |
 | With boundary: subagent's one-time read + full judged packet (kept + rejected) enters once, resident 20 turns | 5,570 x 1.25 + 2,271 x 1.25 + 2,271 x 0.1 x 20 = **14,343** |
 | Saving | **21%** |
@@ -851,7 +851,7 @@ have read to write them: `python -m chitragupta.draft retrieve evidence
 names as what `support:` held in practice.
 
 | | Characters |
-|---|---|
+| --- | --- |
 | Raw candidate snippets, all 3 sub-themes | **22,280** |
 | `support:` kept side (23 blocks, `relevance:` + two 600-char evidence windows each) | **30,300** |
 | `claim:`/`quote:` kept side (same 23 blocks, `relevance:` + `claim:` + `quote:` where captured) | **8,383** |

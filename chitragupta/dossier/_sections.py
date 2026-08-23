@@ -93,7 +93,11 @@ _TEX_HEADING = re.compile(r"^\s*\\(chapter|(?:sub){0,2}section|paragraph)\*?\{(.
 
 
 _TEX_LEVELS = {
-    "chapter": 1, "section": 2, "subsection": 3, "subsubsection": 4, "paragraph": 5,
+    "chapter": 1,
+    "section": 2,
+    "subsection": 3,
+    "subsubsection": 4,
+    "paragraph": 5,
 }
 
 
@@ -120,7 +124,7 @@ def _braced(text: str) -> str:
     while index < len(text):
         char = text[index]
         if char == "\\" and index + 1 < len(text):
-            out.append(text[index:index + 2])
+            out.append(text[index : index + 2])
             index += 2
             continue
         if char == "{":
@@ -181,12 +185,14 @@ def sections(text: str) -> list[Section]:
             continue
         tex = _TEX_HEADING.match(line)
         if tex:
-            found.append(Section(
-                _braced(tex.group(2)).strip(),
-                _TEX_LEVELS.get(tex.group(1), 2),
-                number,
-                number,
-            ))
+            found.append(
+                Section(
+                    _braced(tex.group(2)).strip(),
+                    _TEX_LEVELS.get(tex.group(1), 2),
+                    number,
+                    number,
+                )
+            )
 
     for current, following in zip(found, found[1:]):
         current.end = following.start - 1
@@ -242,8 +248,7 @@ def sections_markdown(text: str) -> str:
     """
     per_section, _ = attribute_citekeys(text)
     rows = "".join(
-        f"| {section.title.replace('|', r'\|')} | "
-        f"{', '.join(f'`{key}`' for key in keys)} |\n"
+        f"| {section.title.replace('|', r'\|')} | {', '.join(f'`{key}`' for key in keys)} |\n"
         for section, keys in per_section
     )
     return _SECTIONS_TEMPLATE + rows

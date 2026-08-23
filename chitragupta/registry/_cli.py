@@ -12,16 +12,18 @@ import sys
 
 from chitragupta import spec
 from chitragupta.unit import UnitError
-from chitragupta.registry import (build, excerpt, findings, registry_dir)
+from chitragupta.registry import build, excerpt, findings, registry_dir
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
 # The review layer's rule, applied to an artefact that will be found on
 # disk months later with nobody around to explain it. Same words, same
 # job: a file cannot rely on a reader having read the documentation.
-_BANNER = ("<!-- Derived from the accepted units by a deterministic pass. "
-           "Evidence for a judgement, not a verdict: nothing here blocks "
-           "anything. See docs/BOOKS.md. -->")
+_BANNER = (
+    "<!-- Derived from the accepted units by a deterministic pass. "
+    "Evidence for a judgement, not a verdict: nothing here blocks "
+    "anything. See docs/BOOKS.md. -->"
+)
 
 _FILES = {
     "terms.md": ("term", "kind", "defined in", "definition"),
@@ -44,13 +46,14 @@ def _table(headers, rows) -> str:
 
 def _rows(name: str, built: dict) -> list[tuple]:
     if name == "terms.md":
-        return [(row["term"], row["kind"], row["unit"], row["definition"])
-                for row in built["terms"]]
+        return [
+            (row["term"], row["kind"], row["unit"], row["definition"]) for row in built["terms"]
+        ]
     if name == "claims.md":
-        return [(row["claim"], row["unit"], " ".join(row["citekeys"]))
-                for row in built["claims"]]
-    return [(row["from"], row["target"], "yes" if row["resolves"] else "no")
-            for row in built["xrefs"]]
+        return [(row["claim"], row["unit"], " ".join(row["citekeys"])) for row in built["claims"]]
+    return [
+        (row["from"], row["target"], "yes" if row["resolves"] else "no") for row in built["xrefs"]
+    ]
 
 
 def _coverage(built: dict) -> str:
@@ -70,9 +73,11 @@ def _write(book, built: dict) -> list:
         # No timestamp, the same rule the review layer's reports and the
         # sign-off record follow: rebuilding over unchanged units is
         # byte-identical, so a diff of content/specs/ is a diff of the book.
-        path.write_text(f"# {name.removesuffix('.md')}\n\n{_BANNER}\n\n"
-                        f"{_coverage(built)}\n\n{_table(headers, _rows(name, built))}",
-                        encoding="utf-8")
+        path.write_text(
+            f"# {name.removesuffix('.md')}\n\n{_BANNER}\n\n"
+            f"{_coverage(built)}\n\n{_table(headers, _rows(name, built))}",
+            encoding="utf-8",
+        )
         written.append(path)
     return written
 
@@ -128,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft registry",
         description="Terminology, claims and cross-references over a book's "
-                    "accepted units. A review aid: it never blocks.",
+        "accepted units. A review aid: it never blocks.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -141,7 +146,8 @@ def main(argv: list[str] | None = None) -> int:
     p_check.set_defaults(func=_cmd_check)
 
     p_excerpt = sub.add_parser(
-        "excerpt", help="What one unit's generation should be told about the rest")
+        "excerpt", help="What one unit's generation should be told about the rest"
+    )
     p_excerpt.add_argument("book", help=_BOOK_HELP)
     p_excerpt.add_argument("unit", help="The section's `{#id}` from the outline")
     p_excerpt.set_defaults(func=_cmd_excerpt)

@@ -108,9 +108,7 @@ def format_report(draft_path: Path, queries: list[str], result: CoverageResult) 
     return "\n".join(lines)
 
 
-def _command(
-    draft_path: Path, queries: list[str], k: int, as_json: bool, write: bool
-) -> str:
+def _command(draft_path: Path, queries: list[str], k: int, as_json: bool, write: bool) -> str:
     """The invocation recorded in both the Markdown header and the JSON
     envelope. Queries in full -- "62% covered" means nothing without
     knowing 62% *of what*.
@@ -140,13 +138,21 @@ def _findings(result: CoverageResult) -> list[dict]:
     unlike `format_report`'s "retrieved but not cited" section: an empty
     candidate set still leaves a cited-outside finding to report."""
     findings = [
-        {"id": finding_id(key, "uncited_candidates"), "citekey": key,
-         "title": result.candidates[key], "status": "uncited_candidates"}
+        {
+            "id": finding_id(key, "uncited_candidates"),
+            "citekey": key,
+            "title": result.candidates[key],
+            "status": "uncited_candidates",
+        }
         for key in sorted(result.uncited_candidates)
     ]
     findings += [
-        {"id": finding_id(key, "cited_outside_candidates"), "citekey": key,
-         "title": None, "status": "cited_outside_candidates"}
+        {
+            "id": finding_id(key, "cited_outside_candidates"),
+            "citekey": key,
+            "title": None,
+            "status": "cited_outside_candidates",
+        }
         for key in sorted(result.cited_outside_candidates)
     ]
     return findings
@@ -159,14 +165,16 @@ def coverage_payload(
     serialisation of `result`, never a second computation.
     """
     payload = review.envelope(draft_path, "coverage", command)
-    payload.update({
-        "queries": queries,
-        "k": k,
-        "coverage_pct": result.coverage_pct,
-        "candidates_total": len(result.candidates),
-        "cited_candidates_total": len(result.cited_candidates),
-        "findings": _findings(result),
-    })
+    payload.update(
+        {
+            "queries": queries,
+            "k": k,
+            "coverage_pct": result.coverage_pct,
+            "candidates_total": len(result.candidates),
+            "cited_candidates_total": len(result.cited_candidates),
+            "findings": _findings(result),
+        }
+    )
     return payload
 
 
@@ -243,20 +251,34 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
             description="Report whether a draft cites the sources retrieval surfaces for a query.",
         )
     parser.add_argument("draft", help="Path to the draft to check")
-    parser.add_argument("--query", action="append", required=True, dest="queries",
-                         help="A retrieval query to check coverage for (repeatable)")
+    parser.add_argument(
+        "--query",
+        action="append",
+        required=True,
+        dest="queries",
+        help="A retrieval query to check coverage for (repeatable)",
+    )
     parser.add_argument("--k", type=int, default=5, help="Top-k results per query (default: 5)")
-    parser.add_argument("--json", action="store_true",
-                        help="Print the findings as JSON instead of as text. "
-                             "--write files it beside the report either way.")
-    parser.add_argument("--write", action="store_true",
-                        help="Also write the report to content/review/, mirroring the "
-                             "draft's path. Off by default: printing is the usual use.")
-    parser.add_argument("--formats", default="md,tex,pdf",
-                        help="Additional formats to render beside the Markdown "
-                             "report (default: md,tex,pdf). The .md is always "
-                             "written -- it is the report; tex/pdf are renders "
-                             "of it, and need pandoc/pdflatex on PATH.")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of as text. "
+        "--write files it beside the report either way.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Also write the report to content/review/, mirroring the "
+        "draft's path. Off by default: printing is the usual use.",
+    )
+    parser.add_argument(
+        "--formats",
+        default="md,tex,pdf",
+        help="Additional formats to render beside the Markdown "
+        "report (default: md,tex,pdf). The .md is always "
+        "written -- it is the report; tex/pdf are renders "
+        "of it, and need pandoc/pdflatex on PATH.",
+    )
     return parser
 
 
@@ -288,8 +310,11 @@ def run(args: argparse.Namespace) -> int:
 
     command = _command(draft_path, args.queries, args.k, args.json, args.write)
     payload = coverage_payload(draft_path, args.queries, args.k, result, command)
-    print(json.dumps(payload, indent=2) if args.json
-          else format_report(draft_path, args.queries, result))
+    print(
+        json.dumps(payload, indent=2)
+        if args.json
+        else format_report(draft_path, args.queries, result)
+    )
 
     if args.write:
         formats = [f.strip() for f in args.formats.split(",") if f.strip()]

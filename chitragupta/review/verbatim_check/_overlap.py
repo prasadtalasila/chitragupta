@@ -12,9 +12,7 @@ from chitragupta import overlap_index
 from chitragupta.review.verbatim_check._corpus import norm, pages, sentences_citing
 
 
-def _gram_hit_runs(
-    draft_hashes: list[int], grams: dict[int, int]
-) -> list[list[tuple[int, int]]]:
+def _gram_hit_runs(draft_hashes: list[int], grams: dict[int, int]) -> list[list[tuple[int, int]]]:
     """Consecutive-index runs of `draft_hashes` entries present in `grams`,
     as `[(index, posting), ...]` runs -- broken wherever a hash is absent.
 
@@ -63,7 +61,7 @@ def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
         for r in _gram_hit_runs(draft_hashes, grams):
             start = r[0][0]
             length = r[-1][0] + n - start
-            hits.append((length, r[0][1], " ".join(w[start:start + length]), s[:80]))
+            hits.append((length, r[0][1], " ".join(w[start : start + length]), s[:80]))
     hits.sort(reverse=True)
     if not hits:
         print(f"{citekey}: no verbatim run of >= {n} words found")

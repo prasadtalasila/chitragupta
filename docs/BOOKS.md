@@ -58,7 +58,7 @@ sign-offs is mechanical.
 ## 🔭 The steps, at a glance
 
 | Step | Command | Who runs it |
-|---|---|---|
+| --- | --- | --- |
 | 1 | `spec init`, then edit `spec.md` | you |
 | 2 | `spec sign` | **you, and only you** |
 | 3 | `unit contract` -> a genre skill writes the prose | skill |
@@ -108,7 +108,7 @@ That writes a skeleton. Edit it into the book you mean to write --
 planned top-down, generated bottom-up. Four heading levels, and no more:
 
 | Markdown | Is | Generates |
-|---|---|---|
+| --- | --- | --- |
 | `# Title` | the book | -- |
 | `## Part {#part-i}` | a part | -- |
 | `### Chapter {#ch-1}` | a chapter | -- |
@@ -162,7 +162,7 @@ content/specs/twins/spec.md: Composable Twins
 three states apart:
 
 | State | Exit | Means |
-|---|---|---|
+| --- | --- | --- |
 | signed off at digest `x` | 0 | the approved outline is the one on disk |
 | not signed off | 1 | nobody has approved this outline yet |
 | changed since sign-off | 1 | approved at one digest, now another |
@@ -194,7 +194,7 @@ Establish that a twin is a model plus a live data link.
 The contract is explicit in both directions:
 
 | In | Out |
-|---|---|
+| --- | --- |
 | the spec slice (title, brief, the part and chapter above it) | the unit's prose at `content/drafts/<book>/<unit-id>.md` |
 | the sources it is grounded in, given as `--source <citekey>` | the citekeys it actually cites, recorded |
 | registry excerpts, injected at generation time | the claims the register picks up |
@@ -257,7 +257,7 @@ python -m chitragupta.draft unit status content/drafts/twins
 ```
 
 | State | Means |
-|---|---|
+| --- | --- |
 | `unwritten` | no draft on disk |
 | `drafted` | prose exists, nobody accepted it (also what an unreadable record reads as) |
 | `accepted` | the record matches both the current contract and the prose |
@@ -288,7 +288,7 @@ Three registries, written under `content/specs/<book>/registries/` by a
 deterministic pass over **accepted units only**:
 
 | Registry | Written from | Flags |
-|---|---|---|
+| --- | --- | --- |
 | terminology and notation | `- **Term** -- definition` bullets | a term defined in more than one unit |
 | claims | every sentence that cites something | the same claim made in more than one unit |
 | cross-references | `[text](#id)` and `\ref{id}`/`\cref{id}` | a reference no unit or outline entry defines |
@@ -331,7 +331,7 @@ per unit, so assembly is deterministic composition plus a human sign-off
 and the ids carry through unchanged:
 
 | Outline | LaTeX | Label |
-|---|---|---|
+| --- | --- | --- |
 | `# Title` | `\title{...}` | -- |
 | `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
 | `### Chapter {#ch-1}` | `\chapter{...}` | `\label{ch-1}` |
@@ -450,7 +450,7 @@ rather than illustrative -- a 15-chapter textbook, 22,155 lines of
 Markdown, re-measured on 2026-08-19 after the chapters were revised:
 
 | | |
-|---|---|
+| --- | --- |
 | outline | 3 parts, 15 chapters, 15 units |
 | citations, gate-verified | 864 across the 15 units, 194 distinct citekeys |
 | terminology registry | 15 definitions |

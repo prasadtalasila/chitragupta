@@ -87,7 +87,7 @@ came from.
   you are about to change:
 
   | Its category | Where this project does that |
-  |---|---|
+  | --- | --- |
   | Specs, agent files & workflow design | [CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md), `DEVELOPER-AGENTS.md` (git checkout only), `.claude/skills/` |
   | Constraints, guardrails & safe autonomy | The citation gate and its PostToolUse hook; the review layer's rule that it never blocks ([SOUL.md](../SOUL.md)) |
   | Context, memory & working state | The dossier ([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), and [TOKENS.md](TOKENS.md) for what context costs |
@@ -106,7 +106,7 @@ came from.
   refused, is set out in [HOOKS.md](HOOKS.md); in brief:
 
   | Upstream | Taken | Not taken |
-  |---|---|---|
+  | --- | --- | --- |
   | [obra/superpowers](https://github.com/obra/superpowers) | The fail-silent contract for a context injection, and the caution that the advisory-context field name differs per host | The polyglot `run-hook.cmd`, which needs shell form and so cannot coexist with exec form |
   | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | The standard-envelope rule, and testing that a hook's payload parses | Its `jq` dependency, against the stdlib-only posture |
   | [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) | The survey of hook events, output fields and version-gated options behind this project's `if` and `async` notes | Its per-hook enable/disable config -- the gate must not be individually disableable |

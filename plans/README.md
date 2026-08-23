@@ -63,7 +63,7 @@ guard against that.
 ## What lives here, and what does not
 
 | | Where |
-|---|---|
+| --- | --- |
 | What to build, and in what order | [docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md) |
 | How one item gets built | here |
 | Why the architecture is what it is | [docs/DESIGN.md](../docs/DESIGN.md), [SOUL.md](../SOUL.md) |

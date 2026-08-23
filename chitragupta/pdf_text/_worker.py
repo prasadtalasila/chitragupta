@@ -111,6 +111,9 @@ def _demote_to_cpu() -> None:
     # project has chosen not to build for one rare message. It still
     # reaches the terminal via the worker's inherited stderr fd, same as
     # before; it just won't appear in logs/pipeline.log.
-    print("  WARNING a parse worker ran out of GPU memory -- it has fallen back "
-          "to the CPU for the rest of this run, which is slower but finishes. "
-          "Another process is most likely holding the card.", file=sys.stderr)
+    print(
+        "  WARNING a parse worker ran out of GPU memory -- it has fallen back "
+        "to the CPU for the rest of this run, which is slower but finishes. "
+        "Another process is most likely holding the card.",
+        file=sys.stderr,
+    )

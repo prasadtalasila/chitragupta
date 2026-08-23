@@ -29,9 +29,19 @@ TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install"}
 # docs/PACKAGING.md's "draft" table row lists for it.
 DRAFT_SUBCOMMANDS = {
     "retrieve": {"search", "evidence"},
-    "dossier": {"init", "status", "mark-revision", "sections", "brief",
-                "set-language", "acronyms-suggest", "check-evidence", "list",
-                "export", "restore"},
+    "dossier": {
+        "init",
+        "status",
+        "mark-revision",
+        "sections",
+        "brief",
+        "set-language",
+        "acronyms-suggest",
+        "check-evidence",
+        "list",
+        "export",
+        "restore",
+    },
     "spec": {"init", "show", "sign", "status"},
     "unit": {"contract", "accept", "status"},
     "registry": {"build", "check", "excerpt"},
@@ -100,7 +110,10 @@ def _leaf_terms() -> tuple[int, ...]:
 def _help(*module_args) -> str:
     result = subprocess.run(
         [sys.executable, "-m", "chitragupta", *module_args, "--help"],
-        cwd=str(REPO_ROOT), capture_output=True, text=True, check=False,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 0, result.stderr
     return result.stdout
@@ -182,6 +195,7 @@ class TestInstall:
 
     def test_the_refused_stages_are_real_choices_not_invented(self):
         import chitragupta.install as install
+
         assert _choices(_help("install")) == {"os-deps", "gpu-torch", *install.REFUSED}
 
 

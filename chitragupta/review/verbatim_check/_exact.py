@@ -9,7 +9,11 @@ from chitragupta.review.verbatim_check._allowlist import _mask_allowlisted
 from chitragupta.review.verbatim_check._masking import _DraftWord
 from chitragupta.review.verbatim_check._merge import _merge_runs
 from chitragupta.review.verbatim_check._shared import (
-    _citekeys_at_positions, _cites_source, _line_at, _run_is_quoted, finding_id,
+    _citekeys_at_positions,
+    _cites_source,
+    _line_at,
+    _run_is_quoted,
+    finding_id,
 )
 
 
@@ -72,8 +76,17 @@ def _exact_tier_findings(
 
     citekeys_at_position = _citekeys_at_positions(groups)
     return _exact_findings_from_groups(
-        groups, gap, n, min_run, allowlist, words, word_strs,
-        newlines, text, paragraph_citekeys, citekeys_at_position,
+        groups,
+        gap,
+        n,
+        min_run,
+        allowlist,
+        words,
+        word_strs,
+        newlines,
+        text,
+        paragraph_citekeys,
+        citekeys_at_position,
     )
 
 
@@ -108,10 +121,21 @@ def _exact_findings_from_groups(
                 if span_words - sum(mask) < min_run:
                     suppressed += 1
                     continue
-            findings.append(_exact_finding(
-                run, citekey, pos_pages, span_words, n, words, word_strs,
-                newlines, text, paragraph_citekeys, citekeys_at_position,
-            ))
+            findings.append(
+                _exact_finding(
+                    run,
+                    citekey,
+                    pos_pages,
+                    span_words,
+                    n,
+                    words,
+                    word_strs,
+                    newlines,
+                    text,
+                    paragraph_citekeys,
+                    citekeys_at_position,
+                )
+            )
     return findings, suppressed
 
 
@@ -165,7 +189,7 @@ def _exact_finding(
         "char_end": char_end,
         "draft_text": text[char_start:char_end],
         "fragment": fragment,
-        "context": " ".join(word_strs[max(0, start - 6):min(len(word_strs), end + 6)]),
+        "context": " ".join(word_strs[max(0, start - 6) : min(len(word_strs), end + 6)]),
         "cites_source": cites_source,
         "quoted": _run_is_quoted(run_words),
         "tier": "exact",

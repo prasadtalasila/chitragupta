@@ -114,8 +114,7 @@ def grouped(spans: dict[str, str], dossier: Path) -> list[tuple[str, list[str]]]
     """
     by_section = citekeys_by_section(dossier)
     groups = [
-        (title, [k for k in citekeys if k in spans])
-        for title, citekeys in by_section.items()
+        (title, [k for k in citekeys if k in spans]) for title, citekeys in by_section.items()
     ]
     groups = [(title, keys) for title, keys in groups if keys]
 
@@ -239,15 +238,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft evidence",
         description="Render the evidence sidecar beside a draft: each cited "
-                    "source and the verbatim spans its dossier marked quotable.",
+        "source and the verbatim spans its dossier marked quotable.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")
-    parser.add_argument("--format", dest="output_format", default="md",
-                        help="Output format (default: md)")
     parser.add_argument(
-        "--output-dir", default=None,
+        "--format", dest="output_format", default="md", help="Output format (default: md)"
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=None,
         help="Write the sidecar here instead of content/rendered/<mirrored path>. "
-             "Confined to content/ like every other path this writes",
+        "Confined to content/ like every other path this writes",
     )
     args = parser.parse_args(argv)
     # Imported here rather than at module scope for the same reason

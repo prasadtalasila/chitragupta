@@ -86,7 +86,10 @@ def _venv_python():
         return str(local)
     common_dir = subprocess.run(
         ["git", "rev-parse", "--git-common-dir"],
-        cwd=REPO, capture_output=True, text=True, check=True,
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
     shared = (REPO / common_dir).resolve().parent / ".venv-full" / "bin" / "python"
     if shared.exists():
@@ -103,6 +106,7 @@ def _run(cmd, env_extra=None):
     replacement, which would drop PATH and silently break every
     .venv-full/bin/python call downstream of it."""
     import os
+
     env = dict(os.environ)
     if env_extra:
         env.update(env_extra)
@@ -137,6 +141,7 @@ def run_model(model, tag, out_dir):
     # possibly outside this checkout), not against this checkout's own
     # (mostly empty) content/ directory.
     from chitragupta import config  # noqa: PLC0415 -- deferred so self_check() alone stays import-light
+
     drafts_dir = str(config.CONTENT_DIR.parent / DRAFTS_DIR)
 
     print(f"\n=== {model} ===", flush=True)
@@ -145,8 +150,18 @@ def run_model(model, tag, out_dir):
 
     model_tag = f"{tag}-{slug}"
     print("  running the capability + precision arms ...", flush=True)
-    _run([py, "bench/bench_overlap_embed.py", "--fixture",
-          "--drafts", drafts_dir, "--tag", model_tag], env_extra=env)
+    _run(
+        [
+            py,
+            "bench/bench_overlap_embed.py",
+            "--fixture",
+            "--drafts",
+            drafts_dir,
+            "--tag",
+            model_tag,
+        ],
+        env_extra=env,
+    )
 
     model_out = BENCH_DIR / "results" / model_tag
     capability = json.loads((model_out / "embed_capability.json").read_text(encoding="utf-8"))
@@ -159,13 +174,24 @@ def run_model(model, tag, out_dir):
     organic_labels_copy.write_text(ORGANIC_LABELS.read_text(encoding="utf-8"), encoding="utf-8")
 
     print("  cross-checking against the 22 organic close-paraphrase pairs ...", flush=True)
-    _run([py, "bench/bench_paraphrase_hunt.py", "--crosscheck",
-          "--drafts", drafts_dir, "--tag", organic_tag,
-          "--embed-record", str(model_out / "embed_precision.json")])
+    _run(
+        [
+            py,
+            "bench/bench_paraphrase_hunt.py",
+            "--crosscheck",
+            "--drafts",
+            drafts_dir,
+            "--tag",
+            organic_tag,
+            "--embed-record",
+            str(model_out / "embed_precision.json"),
+        ]
+    )
 
     organic = json.loads(organic_labels_copy.read_text(encoding="utf-8"))
     caught_by_embedding = sum(
-        1 for row in organic["candidates"]
+        1
+        for row in organic["candidates"]
         if row["judgment"] == "paraphrase" and "embedding" in row["tiers"]
     )
     total_paraphrase = sum(1 for row in organic["candidates"] if row["judgment"] == "paraphrase")
@@ -180,9 +206,12 @@ def run_model(model, tag, out_dir):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--tag", required=True,
-                    help="names bench/results/<tag>/ for this run's comparison table "
-                         "(per-model results also land under bench/results/<tag>-<model-slug>/)")
+    ap.add_argument(
+        "--tag",
+        required=True,
+        help="names bench/results/<tag>/ for this run's comparison table "
+        "(per-model results also land under bench/results/<tag>-<model-slug>/)",
+    )
     args = ap.parse_args(argv)
 
     self_check()
@@ -194,8 +223,10 @@ def main(argv=None):
     print(f"\n{'model':40}  {'embedding findings':>19}  organic recall  grades caught")
     for row in rows:
         caught = sum(1 for tiers in row["grades_caught"].values() if tiers)
-        print(f"{row['model']:40}  {row['embedding_findings']:>19}  "
-              f"{row['organic_recall']:>14}  {caught}/4")
+        print(
+            f"{row['model']:40}  {row['embedding_findings']:>19}  "
+            f"{row['organic_recall']:>14}  {caught}/4"
+        )
 
     record = out_dir / "comparison.json"
     record.write_text(json.dumps(rows, indent=1), encoding="utf-8")

@@ -96,7 +96,7 @@ guarantee. Neither is necessary.
 ## The contract
 
 | genre | unit | the rule |
-|---|---|---|
+| --- | --- | --- |
 | `survey` | paragraph | a body paragraph cites two or more citekeys wherever the evidence set allows |
 | `deep-research` | paragraph | same |
 | `thesis-chapter` | paragraph | same |
@@ -307,7 +307,7 @@ that a human reads it, nothing acts on it unattended (R3).
 ## Files
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `docs/WRITING-STANDARDS.md` | **owns** the rule and the genre-to-unit table, appended as **§11** -- see below |
 | `.claude/skills/survey-writer/SKILL.md` | step 6: unit is the paragraph; point at the canonical statement |
 | `.claude/skills/thesis-chapter-writer/SKILL.md` | step 5: same |

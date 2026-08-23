@@ -18,7 +18,8 @@ class TestLocalTexIncludeRefs:
     def test_extracts_input_and_include_paths(self):
         text = "\\input{figures/fig1.tex}\n\nSome text \\include{figures/fig2.tex}.\n"
         assert render_output._local_tex_include_refs(text) == [
-            "figures/fig1.tex", "figures/fig2.tex",
+            "figures/fig1.tex",
+            "figures/fig2.tex",
         ]
 
     def test_matches_inside_a_raw_latex_fenced_block_too(self):
@@ -208,7 +209,8 @@ class TestRequireTikz:
     def test_raises_when_the_probe_reports_tikz_missing(self, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/kpsewhich")
         monkeypatch.setattr(
-            subprocess, "run",
+            subprocess,
+            "run",
             lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 1, b"", b""),
         )
         with pytest.raises(render_output.MissingBinary, match="texlive-pictures"):
@@ -217,7 +219,8 @@ class TestRequireTikz:
     def test_says_nothing_when_the_probe_finds_tikz(self, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/kpsewhich")
         monkeypatch.setattr(
-            subprocess, "run",
+            subprocess,
+            "run",
             lambda *a, **k: subprocess.CompletedProcess(a[0] if a else [], 0, b"ok", b""),
         )
         render_output._require_tikz()

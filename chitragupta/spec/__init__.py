@@ -45,6 +45,7 @@ import re
 from pathlib import Path
 
 from chitragupta import config
+
 # Fence tracking is not re-derived here. `_prose_lines` says in its own
 # docstring that it is "shared so no caller re-derives it", and a brief
 # in a book about software will contain a fenced block sooner or later --
@@ -72,7 +73,6 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*(?:\{#([^}\s]+)\})?\s*$")
 
 # `- spec digest: `a1b2c3d4e5f6`` in signoff.md.
 _DIGEST_LINE = re.compile(r"^-\s*spec digest:\s*`?([0-9a-f]{12})`?", re.MULTILINE)
-
 
 
 class SpecError(Exception):
@@ -145,8 +145,14 @@ def _headings(text: str) -> list[dict]:
     for _, line in _prose_lines(text.splitlines()):
         match = _HEADING.match(line)
         if match:
-            found.append({"level": len(match.group(1)), "title": match.group(2),
-                          "id": match.group(3), "brief": []})
+            found.append(
+                {
+                    "level": len(match.group(1)),
+                    "title": match.group(2),
+                    "id": match.group(3),
+                    "brief": [],
+                }
+            )
         elif found:
             found[-1]["brief"].append(line)
     return found
@@ -155,21 +161,29 @@ def _headings(text: str) -> list[dict]:
 def _unit_problem(head: dict, seen: set[str], stack: list[dict]) -> str | None:
     """Why `head` cannot be a unit, or None if it can."""
     if head["level"] > 4:
-        return (f"`{head['title']}` is deeper than a section. A section is the "
-                "generation unit; there is nothing below it to generate.")
+        return (
+            f"`{head['title']}` is deeper than a section. A section is the "
+            "generation unit; there is nothing below it to generate."
+        )
     if not head["id"]:
-        return (f"`{head['title']}` has no `{{#id}}`. Every part, chapter and "
-                "section needs one, so a reworded heading does not orphan the "
-                "units written against it.")
+        return (
+            f"`{head['title']}` has no `{{#id}}`. Every part, chapter and "
+            "section needs one, so a reworded heading does not orphan the "
+            "units written against it."
+        )
     if head["id"] in seen:
-        return (f"`{head['id']}` is used more than once. An id has to name one "
-                "unit for a cross-reference to resolve.")
+        return (
+            f"`{head['id']}` is used more than once. An id has to name one "
+            "unit for a cross-reference to resolve."
+        )
     above = stack[-1]["level"] if stack else 1
     if head["level"] > above + 1:
         kind = _KINDS[head["level"]]
-        return (f"`{head['title']}` is a {kind} directly under a "
-                f"{_KINDS.get(above, 'book')}: a {kind} needs a "
-                f"{_KINDS[head['level'] - 1]} above it.")
+        return (
+            f"`{head['title']}` is a {kind} directly under a "
+            f"{_KINDS.get(above, 'book')}: a {kind} needs a "
+            f"{_KINDS[head['level'] - 1]} above it."
+        )
     return None
 
 
@@ -189,8 +203,9 @@ def _missing(title: str | None, units: list[dict]) -> list[str]:
     if title is None:
         problems.append("no book title: the spec's first heading should be `# <title>`.")
     if not units:
-        problems.append("no units: an outline with no part, chapter or section "
-                        "names nothing to generate.")
+        problems.append(
+            "no units: an outline with no part, chapter or section names nothing to generate."
+        )
     return problems
 
 
@@ -212,8 +227,10 @@ def parse(text: str) -> dict:
             if title is None:
                 title = head["title"]
             else:
-                problems.append(f"more than one book title: `{head['title']}` is a "
-                                "second `#` heading. A spec describes one book.")
+                problems.append(
+                    f"more than one book title: `{head['title']}` is a "
+                    "second `#` heading. A spec describes one book."
+                )
             continue
         problem = _unit_problem(head, seen, stack)
         if problem:
@@ -238,7 +255,6 @@ def recorded_digest(book: Path) -> str | None:
         return None
     match = _DIGEST_LINE.search(path.read_text(encoding="utf-8"))
     return match.group(1) if match else None
-
 
 
 # Re-exported so `from chitragupta import spec` reaches the entry point by the

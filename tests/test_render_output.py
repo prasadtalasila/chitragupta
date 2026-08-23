@@ -26,9 +26,15 @@ class TestRenderMarkdown:
     def test_produces_plain_numbered_markdown(self, isolated_config, tmp_path, monkeypatch):
         con = ledger.connect()
         for key, title in [("b_2024", "B Paper"), ("a_2023", "A Paper")]:
-            ledger.upsert_reference(con, make_reference(
-                citekey=key, title=title, year="2024",
-                fields={"author": "Doe, Jane", "journal": "J. Things"}))
+            ledger.upsert_reference(
+                con,
+                make_reference(
+                    citekey=key,
+                    title=title,
+                    year="2024",
+                    fields={"author": "Doe, Jane", "journal": "J. Things"},
+                ),
+            )
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -140,13 +146,15 @@ class TestRenderMarkdown:
         assert copied.read_bytes() == b"fake png bytes"
 
 
-@pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
-
-
+@pytest.mark.skipif(
+    not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
+)
 class TestRenderReal:
     def test_renders_markdown_with_citation_to_pdf(self, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
+        )
         con.close()
 
         bib = isolated_config.BIB_FILE_PATH
@@ -174,9 +182,13 @@ class TestRenderReal:
         assert out_path == isolated_config.RENDERED_DIR / "dt" / f"survey.{output_format}"
         assert out_path.exists()
 
-    def test_renders_to_tex_replacing_a_manual_refs_section_with_citeprocs(self, isolated_config, tmp_path):
+    def test_renders_to_tex_replacing_a_manual_refs_section_with_citeprocs(
+        self, isolated_config, tmp_path
+    ):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
+        )
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  author={Smith, Jane},\n  title={An Example Paper},\n"
@@ -186,7 +198,7 @@ class TestRenderReal:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Title\n\nSome claim [@smith_2024].\n\n"
-            "## References\n\n[1] J. Smith, \"An Example Paper,\" *J. Examples*, 2024. `smith_2024`\n"
+            '## References\n\n[1] J. Smith, "An Example Paper," *J. Examples*, 2024. `smith_2024`\n'
         )
         out_path = render_output.render(str(draft), output_format="tex")
         tex = out_path.read_text()
@@ -211,7 +223,9 @@ class TestRenderReal:
         self, isolated_config, tmp_path
     ):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
+        )
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  author={Smith, Jane},\n  title={An Example Paper},\n"
@@ -221,7 +235,7 @@ class TestRenderReal:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
             "# Title\n\nSome claim [@smith_2024].\n\n"
-            "## 6. References\n\n[1] J. Smith, \"An Example Paper,\" 2024. `smith_2024`\n"
+            '## 6. References\n\n[1] J. Smith, "An Example Paper," 2024. `smith_2024`\n'
         )
         out_path = render_output.render(str(draft), output_format="html")
         text = " ".join(out_path.read_text().split())
@@ -237,12 +251,17 @@ class TestRenderReal:
         con = ledger.connect()
         keys = [f"k{i}_2024" for i in range(1, 6)]
         for key in keys:
-            ledger.upsert_reference(con, make_reference(citekey=key, title=f"Paper {key}", year="2024"))
+            ledger.upsert_reference(
+                con, make_reference(citekey=key, title=f"Paper {key}", year="2024")
+            )
         con.close()
-        isolated_config.BIB_FILE_PATH.write_text("\n".join(
-            f"@article{{{key},\n  author={{Doe, Jane}},\n  title={{Paper {key}}},\n"
-            f"  journal={{J. Examples}},\n  year={{2024}},\n}}" for key in keys
-        ))
+        isolated_config.BIB_FILE_PATH.write_text(
+            "\n".join(
+                f"@article{{{key},\n  author={{Doe, Jane}},\n  title={{Paper {key}}},\n"
+                f"  journal={{J. Examples}},\n  year={{2024}},\n}}"
+                for key in keys
+            )
+        )
 
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text(
@@ -269,12 +288,17 @@ class TestRenderReal:
         con = ledger.connect()
         keys = [f"k{i}_2024" for i in range(1, 4)]
         for key in keys:
-            ledger.upsert_reference(con, make_reference(citekey=key, title=f"Paper {key}", year="2024"))
+            ledger.upsert_reference(
+                con, make_reference(citekey=key, title=f"Paper {key}", year="2024")
+            )
         con.close()
-        isolated_config.BIB_FILE_PATH.write_text("\n".join(
-            f"@article{{{key},\n  author={{Doe, Jane}},\n  title={{Paper {key}}},\n"
-            f"  journal={{J. Examples}},\n  year={{2024}},\n}}" for key in keys
-        ))
+        isolated_config.BIB_FILE_PATH.write_text(
+            "\n".join(
+                f"@article{{{key},\n  author={{Doe, Jane}},\n  title={{Paper {key}}},\n"
+                f"  journal={{J. Examples}},\n  year={{2024}},\n}}"
+                for key in keys
+            )
+        )
 
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nA run [@k1_2024; @k2_2024; @k3_2024].\n")
@@ -291,7 +315,10 @@ class TestRenderReal:
     def test_double_hyphen_citekey_survives_render(self, isolated_config, tmp_path):
         con = ledger.connect()
         ledger.upsert_reference(
-            con, make_reference(citekey="zech_digital-twins-as--service_2024", title="Zech Paper", year="2024")
+            con,
+            make_reference(
+                citekey="zech_digital-twins-as--service_2024", title="Zech Paper", year="2024"
+            ),
         )
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
@@ -304,7 +331,9 @@ class TestRenderReal:
         out_path = render_output.render(str(draft), output_format="tex")
         assert out_path.exists()
 
-    def test_local_image_embeds_when_input_is_a_relative_path(self, isolated_config, tmp_path, monkeypatch):
+    def test_local_image_embeds_when_input_is_a_relative_path(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
         # Regression test: pandoc resolves a draft's local image references
         # (`![...](figure.png)`) relative to pandoc's own working directory,
         # not the draft's directory -- so invoking this CLI from anywhere
@@ -315,7 +344,9 @@ class TestRenderReal:
         # this CLI is actually invoked (from the repo root, not
         # content/drafts/).
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
+        )
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title={An Example Paper},\n  year={2024},\n}\n"
@@ -355,7 +386,9 @@ class TestRenderReal:
         # pdflatex pass embed it correctly. A .tex a user can't compile
         # isn't a real deliverable.
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024"))
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
+        )
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title={An Example Paper},\n  year={2024},\n}\n"
@@ -388,11 +421,15 @@ class TestRenderReal:
         # compilable on its own, not just "a file happens to be present".
         compile_result = subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", out_path.name],
-            cwd=out_path.parent, capture_output=True, text=True,
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
         )
         assert compile_result.returncode == 0, compile_result.stdout[-2000:]
 
-    def test_image_reference_outside_the_draft_directory_is_not_copied(self, isolated_config, tmp_path):
+    def test_image_reference_outside_the_draft_directory_is_not_copied(
+        self, isolated_config, tmp_path
+    ):
         # A `../`-escaping or absolute image path must not let a draft
         # write outside content/rendered/ -- skip it and let pandoc's own
         # missing-resource handling surface the problem, same as any other
@@ -473,7 +510,9 @@ class TestRenderReal:
 
         compile_result = subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", out_path.name],
-            cwd=out_path.parent, capture_output=True, text=True,
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
         )
         assert compile_result.returncode == 0, compile_result.stdout[-2000:]
 
@@ -499,9 +538,7 @@ class TestInputsAreConfinedToContent:
         with pytest.raises(render_output.config.OutsideContentDir):
             render_output.render(str(escaping), output_format="md")
 
-    def test_a_symlinked_draft_is_judged_by_where_it_really_lives(
-        self, isolated_config, tmp_path
-    ):
+    def test_a_symlinked_draft_is_judged_by_where_it_really_lives(self, isolated_config, tmp_path):
         # The path says content/drafts/dt/, the file is elsewhere on disk.
         real = tmp_path / "outside" / "survey.md"
         real.parent.mkdir(parents=True)
@@ -538,9 +575,7 @@ class TestOutputDirOverride:
         report.write_text("# T\n\nNo citations.\n")
 
         monkeypatch.setattr(shutil, "which", lambda _: None)
-        out_path = render_output.render(
-            str(report), output_format="md", output_dir=report.parent
-        )
+        out_path = render_output.render(str(report), output_format="md", output_dir=report.parent)
 
         # Beside the report, and nothing mirrored into it: the caller has
         # already decided the whole path.
@@ -564,9 +599,7 @@ class TestOutputDirOverride:
         draft.write_text("# T\n")
 
         with pytest.raises(render_output.OutsideContentDir):
-            render_output.render(
-                str(draft), output_format="md", output_dir=tmp_path / "outside"
-            )
+            render_output.render(str(draft), output_format="md", output_dir=tmp_path / "outside")
 
     def test_a_parent_escaping_output_dir_is_refused(self, isolated_config):
         draft = isolated_config.DRAFTS_DIR / "survey.md"
@@ -575,7 +608,8 @@ class TestOutputDirOverride:
 
         with pytest.raises(render_output.OutsideContentDir):
             render_output.render(
-                str(draft), output_format="md",
+                str(draft),
+                output_format="md",
                 output_dir=isolated_config.REVIEW_DIR / ".." / ".." / "outside",
             )
 
@@ -636,12 +670,15 @@ class TestFigurePairRenderReal:
         assert (out_path.parent / "figures" / "fig1.tex").exists()
         compiled = subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", out_path.name],
-            cwd=out_path.parent, capture_output=True, text=True,
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
         )
         assert compiled.returncode == 0, compiled.stdout[-2000:]
 
     @pytest.mark.skipif(
-        not pandoc_available, reason="pandoc not installed",
+        not pandoc_available,
+        reason="pandoc not installed",
     )
     def test_a_tex_fragment_renders_its_ascii_twin_to_md(
         self, isolated_config, tmp_path, monkeypatch
@@ -682,9 +719,7 @@ class TestFigurePairRenderReal:
         assert "| model | ------> | solver |" in rendered
         assert "<!-- figure:" not in rendered
 
-    def test_a_figure_problem_is_warned_about_not_raised(
-        self, isolated_config, tmp_path, capsys
-    ):
+    def test_a_figure_problem_is_warned_about_not_raised(self, isolated_config, tmp_path, capsys):
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = isolated_config.DRAFTS_DIR / "dt"
         draft_dir.mkdir(parents=True)

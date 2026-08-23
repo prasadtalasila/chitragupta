@@ -51,7 +51,8 @@ def main() -> int:
     # and is the one settings.json chose.
     result = subprocess.run(
         [sys.executable, "-m", "chitragupta.draft", "gate", str(file_path)],
-        check=False, cwd=draft_target.REPO_ROOT,
+        check=False,
+        cwd=draft_target.REPO_ROOT,
         capture_output=True,
         text=True,
     )

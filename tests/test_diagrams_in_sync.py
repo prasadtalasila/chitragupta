@@ -40,9 +40,17 @@ DIAGRAMS_TEXT = DIAGRAMS_MD.read_text(encoding="utf-8")
 # this list fails the count check below rather than silently comparing
 # every later diagram against the wrong export.
 NAMES = [
-    "v1-overview", "v2-first-run", "00-main-workflow", "v3-artifacts",
-    "v4-gates-and-failure", "v5-parallelism", "g1-corpus-led", "g2-teaching",
-    "g3-thesis", "extra-sequence", "extra-ledger-state",
+    "v1-overview",
+    "v2-first-run",
+    "00-main-workflow",
+    "v3-artifacts",
+    "v4-gates-and-failure",
+    "v5-parallelism",
+    "g1-corpus-led",
+    "g2-teaching",
+    "g3-thesis",
+    "extra-sequence",
+    "extra-ledger-state",
 ]
 
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)

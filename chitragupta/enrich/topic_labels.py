@@ -71,10 +71,25 @@ NOT_NAME_CHARS = re.compile(r"[^a-zA-Z\- ]")
 # fragment -- before this list existed. Deliberately short, and only
 # words that carry no subject in any field: `figure` and `table` are not
 # here, because "table" is a real term in a database paper.
-CITATION_NOISE = frozenset({
-    "et", "al", "etc", "ie", "eg", "cf", "ibid",
-    "doi", "http", "https", "www", "com", "org", "arxiv", "isbn",
-})
+CITATION_NOISE = frozenset(
+    {
+        "et",
+        "al",
+        "etc",
+        "ie",
+        "eg",
+        "cf",
+        "ibid",
+        "doi",
+        "http",
+        "https",
+        "www",
+        "com",
+        "org",
+        "arxiv",
+        "isbn",
+    }
+)
 
 # Two characters is an initial, not a name: dropping `J` and `de` keeps
 # the exclusion list from swallowing tokens that carry no person in them.
@@ -106,8 +121,7 @@ def author_names(con=None) -> frozenset:
     """
     con = ledger.connect() if con is None else con
     names = set()
-    for (fields,) in con.execute(
-            "SELECT bib_fields FROM items WHERE bib_fields IS NOT NULL"):
+    for (fields,) in con.execute("SELECT bib_fields FROM items WHERE bib_fields IS NOT NULL"):
         try:
             author = (json.loads(fields) or {}).get("author") or ""
         except (TypeError, ValueError):

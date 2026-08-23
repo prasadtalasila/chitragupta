@@ -76,6 +76,7 @@ class DraftSentence:
     embedder) and the half-open `[word_start, word_end)` range it covers
     in the draft word stream `verbatim_check._tokenize_draft` produced
     (for the finding)."""
+
     text: str
     word_start: int
     word_end: int
@@ -248,8 +249,10 @@ def _sentences_in(
     for block_start, block_end in _blocks(section):
         for sentence_start, sentence_end in sentences.spans(section[block_start:block_end]):
             found += _one_sentence(
-                text, word_spans,
-                start + block_start + sentence_start, start + block_start + sentence_end,
+                text,
+                word_spans,
+                start + block_start + sentence_start,
+                start + block_start + sentence_end,
             )
     return found
 
@@ -277,8 +280,9 @@ def _one_sentence(
     # nothing.
     return [
         DraftSentence(
-            _sentence_text(text[word_spans[span_start][0]:word_spans[span_end - 1][1]]),
-            span_start, span_end,
+            _sentence_text(text[word_spans[span_start][0] : word_spans[span_end - 1][1]]),
+            span_start,
+            span_end,
         )
         for span_start, span_end in _windows(word_start, word_end)
     ]
@@ -334,7 +338,7 @@ def _source_windows(text: str) -> list[str]:
     if len(words) <= WINDOW_WORDS:
         return [text] if text else []
     cuts = range(0, len(words) - WINDOW_WORDS + 1, WINDOW_STRIDE)
-    windows = [" ".join(words[cut:cut + WINDOW_WORDS]) for cut in cuts]
+    windows = [" ".join(words[cut : cut + WINDOW_WORDS]) for cut in cuts]
     if len(words) % WINDOW_STRIDE:
         windows.append(" ".join(words[-WINDOW_WORDS:]))
     return windows

@@ -83,8 +83,17 @@ SWEEP_FLOOR = 15
 # `context` and `draft_text` are verbatim source and draft prose, and
 # this file is committed.
 KEPT_FIELDS = (
-    "id", "citekey", "page", "end_page", "tier", "span_words",
-    "matched_words", "line", "cites_source", "quoted", "severity",
+    "id",
+    "citekey",
+    "page",
+    "end_page",
+    "tier",
+    "span_words",
+    "matched_words",
+    "line",
+    "cites_source",
+    "quoted",
+    "severity",
 )
 
 
@@ -123,21 +132,23 @@ def sweep(findings, labels, thresholds):
         unlabelled = len(blocked) - len(tp) - len(fp)
         cross = [f for f in blocked if f["end_page"] > f["page"]]
         cross_fp = [f for f in cross if labels.get(f["id"], {}).get("label") == "fp"]
-        rows.append({
-            "threshold": t,
-            "blocked": len(blocked),
-            "tp": len(tp),
-            "fp": len(fp),
-            "unlabelled": unlabelled,
-            # None, not 0.0 or 1.0: at a threshold nothing reaches there
-            # is no precision to report, and either number would read as
-            # a measurement.
-            "precision": round(len(tp) / len(blocked), 4) if blocked else None,
-            "missed_tp": total_tp - len(tp),
-            "blocked_cross_page": len(cross),
-            "fp_cross_page": len(cross_fp),
-            "drafts_blocked": len({f["draft"] for f in blocked}),
-        })
+        rows.append(
+            {
+                "threshold": t,
+                "blocked": len(blocked),
+                "tp": len(tp),
+                "fp": len(fp),
+                "unlabelled": unlabelled,
+                # None, not 0.0 or 1.0: at a threshold nothing reaches there
+                # is no precision to report, and either number would read as
+                # a measurement.
+                "precision": round(len(tp) / len(blocked), 4) if blocked else None,
+                "missed_tp": total_tp - len(tp),
+                "blocked_cross_page": len(cross),
+                "fp_cross_page": len(cross_fp),
+                "drafts_blocked": len({f["draft"] for f in blocked}),
+            }
+        )
     return rows
 
 
@@ -199,10 +210,20 @@ def self_check():
     and outside the clean-code ratchet, so nothing in the test suite will
     catch a regression here. This runs on every invocation instead.
     """
-    quoted_cited = {"id": "a", "tier": "exact", "span_words": 99,
-                    "quoted": True, "cites_source": True}
-    quoted_uncited = {"id": "b", "tier": "exact", "span_words": 99,
-                      "quoted": True, "cites_source": False}
+    quoted_cited = {
+        "id": "a",
+        "tier": "exact",
+        "span_words": 99,
+        "quoted": True,
+        "cites_source": True,
+    }
+    quoted_uncited = {
+        "id": "b",
+        "tier": "exact",
+        "span_words": 99,
+        "quoted": True,
+        "cites_source": False,
+    }
     assert not eligible(quoted_cited), "a quoted, cited block quote must never block"
     # The case the predicate is easy to get wrong, and the one this
     # book actually contains: a blockquote citing the work that first
@@ -210,21 +231,40 @@ def self_check():
     # corpus paper quoting the same definition. `_bucket` keeps it in
     # `long` deliberately, so the gate must be able to reach it.
     assert eligible(quoted_uncited), "a quoted but uncited run must stay reachable"
-    assert eligible({"id": "c", "tier": "exact", "span_words": 20,
-                     "quoted": False, "cites_source": False})
-    assert not eligible({"id": "d", "tier": "embedding", "span_words": 99,
-                         "quoted": False, "cites_source": False}), (
-        "only deterministic tiers may gate (docs/PLAGIARISM-DESIGN.md)")
-    assert not eligible({"id": "e", "tier": "skip-gram", "span_words": 99,
-                         "quoted": False, "cites_source": False}), (
+    assert eligible(
+        {"id": "c", "tier": "exact", "span_words": 20, "quoted": False, "cites_source": False}
+    )
+    assert not eligible(
+        {"id": "d", "tier": "embedding", "span_words": 99, "quoted": False, "cites_source": False}
+    ), "only deterministic tiers may gate (docs/PLAGIARISM-DESIGN.md)"
+    assert not eligible(
+        {"id": "e", "tier": "skip-gram", "span_words": 99, "quoted": False, "cites_source": False}
+    ), (
         "skip-gram is deterministic but its precision is unmeasured -- "
-        "not gate-eligible until that call is made deliberately")
+        "not gate-eligible until that call is made deliberately"
+    )
 
     findings = [
-        {"id": "t", "tier": "exact", "span_words": 30, "quoted": False,
-         "cites_source": False, "page": 1, "end_page": 1, "draft": "x.md"},
-        {"id": "f", "tier": "exact", "span_words": 16, "quoted": False,
-         "cites_source": False, "page": 1, "end_page": 2, "draft": "x.md"},
+        {
+            "id": "t",
+            "tier": "exact",
+            "span_words": 30,
+            "quoted": False,
+            "cites_source": False,
+            "page": 1,
+            "end_page": 1,
+            "draft": "x.md",
+        },
+        {
+            "id": "f",
+            "tier": "exact",
+            "span_words": 16,
+            "quoted": False,
+            "cites_source": False,
+            "page": 1,
+            "end_page": 2,
+            "draft": "x.md",
+        },
     ]
     labels = {"t": {"label": "tp"}, "f": {"label": "fp"}}
     rows = {r["threshold"]: r for r in sweep(findings, labels, [16, 20, 40])}
@@ -250,47 +290,63 @@ def integrity_complaints(drafts, arms, labels):
         out.append("no drafts matched -- every count below is zero for that reason alone")
     masked = arms.get("references-masked", [])
     if not masked:
-        out.append("the masked arm found nothing at all -- an empty corpus index and a "
-                   "clean book are indistinguishable here; check the ledger's "
-                   "parsed_path values resolve on this host")
+        out.append(
+            "the masked arm found nothing at all -- an empty corpus index and a "
+            "clean book are indistinguishable here; check the ledger's "
+            "parsed_path values resolve on this host"
+        )
     gateable = [f for f in masked if eligible(f) and f["span_words"] >= SWEEP_FLOOR]
     missing = [f["id"] for f in gateable if f["id"] not in labels]
     if missing:
-        out.append(f"{len(missing)} of {len(gateable)} gateable finding(s) are unlabelled "
-                   f"(e.g. {', '.join(missing[:3])}) -- they are counted as blocked but "
-                   f"score in neither tp nor fp, so precision is not evidence")
+        out.append(
+            f"{len(missing)} of {len(gateable)} gateable finding(s) are unlabelled "
+            f"(e.g. {', '.join(missing[:3])}) -- they are counted as blocked but "
+            f"score in neither tp nor fp, so precision is not evidence"
+        )
     if labels:
         stale = [i for i in labels if i not in {f["id"] for f in masked}]
         if stale:
-            out.append(f"{len(stale)} label(s) match no current finding (e.g. "
-                       f"{', '.join(stale[:3])}) -- the labels file is for a different "
-                       f"corpus or a re-parse moved the fragments its ids are built from")
+            out.append(
+                f"{len(stale)} label(s) match no current finding (e.g. "
+                f"{', '.join(stale[:3])}) -- the labels file is for a different "
+                f"corpus or a re-parse moved the fragments its ids are built from"
+            )
     return out
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--drafts", required=True,
-                    help="directory of drafts to scan (*.md, chapters first)")
-    ap.add_argument("--tag", required=True,
-                    help="names the output directory, bench/results/<tag>/. Passed in "
-                         "rather than derived from the clock, so a re-run over an "
-                         "unchanged corpus reproduces the same record byte for byte.")
-    ap.add_argument("--labels", default=None,
-                    help="hand-authored ground truth, keyed by finding id "
-                         "(default: <out>/labels.json)")
-    ap.add_argument("--allowlist", default=None,
-                    help="a boilerplate allowlist to measure a third arm against "
-                         "(default: <out>/candidate_allowlist.toml, if present)")
-    ap.add_argument("--out", default=None,
-                    help="output directory (default: bench/results/<tag>)")
+    ap.add_argument(
+        "--drafts", required=True, help="directory of drafts to scan (*.md, chapters first)"
+    )
+    ap.add_argument(
+        "--tag",
+        required=True,
+        help="names the output directory, bench/results/<tag>/. Passed in "
+        "rather than derived from the clock, so a re-run over an "
+        "unchanged corpus reproduces the same record byte for byte.",
+    )
+    ap.add_argument(
+        "--labels",
+        default=None,
+        help="hand-authored ground truth, keyed by finding id (default: <out>/labels.json)",
+    )
+    ap.add_argument(
+        "--allowlist",
+        default=None,
+        help="a boilerplate allowlist to measure a third arm against "
+        "(default: <out>/candidate_allowlist.toml, if present)",
+    )
+    ap.add_argument("--out", default=None, help="output directory (default: bench/results/<tag>)")
     args = ap.parse_args(argv)
 
     self_check()
 
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
-              file=sys.stderr)
+        print(
+            f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
+            file=sys.stderr,
+        )
         return 1
     drafts = sorted(p for p in Path(args.drafts).glob("*.md") if p.name[0].isdigit())
     if not drafts:
@@ -303,8 +359,7 @@ def main(argv=None):
     labels = json.loads(labels_path.read_text())["labels"] if labels_path.exists() else {}
 
     allowlist = Path(args.allowlist) if args.allowlist else out_dir / "candidate_allowlist.toml"
-    plan = [("references-masked", True, None),
-            ("references-unmasked", False, None)]
+    plan = [("references-masked", True, None), ("references-unmasked", False, None)]
     if allowlist.exists():
         plan.append(("references-masked+allowlist", True, allowlist))
 
@@ -313,8 +368,7 @@ def main(argv=None):
         print(f"  scanning {len(drafts)} draft(s), {arm} ...", flush=True)
         arms[arm], suppressed_by_arm[arm] = scan_all(drafts, masked, allow)
         longs = [f for f in arms[arm] if f["span_words"] >= SWEEP_FLOOR]
-        print(f"    {len(arms[arm])} finding(s), {len(longs)} at or above "
-              f"{SWEEP_FLOOR} words")
+        print(f"    {len(arms[arm])} finding(s), {len(longs)} at or above {SWEEP_FLOOR} words")
 
     findings = arms["references-masked"]
     spans = [f["span_words"] for f in findings if eligible(f)]
@@ -335,10 +389,12 @@ def main(argv=None):
             arm: {
                 "findings": len(items),
                 "long_bucket": sum(1 for f in items if f["span_words"] >= SWEEP_FLOOR),
-                "gateable_long": sum(1 for f in items
-                                     if eligible(f) and f["span_words"] >= SWEEP_FLOOR),
+                "gateable_long": sum(
+                    1 for f in items if eligible(f) and f["span_words"] >= SWEEP_FLOOR
+                ),
                 "allowlist_suppressed": suppressed_by_arm[arm],
-            } for arm, items in arms.items()
+            }
+            for arm, items in arms.items()
         },
         "sweep": rows,
         "findings": sorted(findings, key=lambda f: (-f["span_words"], f["draft"], f["id"])),
@@ -351,16 +407,22 @@ def main(argv=None):
 
     print(f"\n{'arm':<30} {'findings':>9} {'>=15w':>7} {'gateable':>9} {'suppressed':>11}")
     for arm, stats in payload["arms"].items():
-        print(f"{arm:<30} {stats['findings']:>9} {stats['long_bucket']:>7} "
-              f"{stats['gateable_long']:>9} {stats['allowlist_suppressed']:>11}")
+        print(
+            f"{arm:<30} {stats['findings']:>9} {stats['long_bucket']:>7} "
+            f"{stats['gateable_long']:>9} {stats['allowlist_suppressed']:>11}"
+        )
 
-    print(f"\n{'T':>4} {'blocked':>8} {'tp':>4} {'fp':>4} {'unlab':>6} "
-          f"{'precision':>10} {'missed_tp':>10} {'drafts':>7}")
+    print(
+        f"\n{'T':>4} {'blocked':>8} {'tp':>4} {'fp':>4} {'unlab':>6} "
+        f"{'precision':>10} {'missed_tp':>10} {'drafts':>7}"
+    )
     for r in rows:
         prec = "-" if r["precision"] is None else f"{r['precision']:.2f}"
-        print(f"{r['threshold']:>4} {r['blocked']:>8} {r['tp']:>4} {r['fp']:>4} "
-              f"{r['unlabelled']:>6} {prec:>10} {r['missed_tp']:>10} "
-              f"{r['drafts_blocked']:>7}")
+        print(
+            f"{r['threshold']:>4} {r['blocked']:>8} {r['tp']:>4} {r['fp']:>4} "
+            f"{r['unlabelled']:>6} {prec:>10} {r['missed_tp']:>10} "
+            f"{r['drafts_blocked']:>7}"
+        )
     print(f"\nRecord: {record}")
     return 0
 

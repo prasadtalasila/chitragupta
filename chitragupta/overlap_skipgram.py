@@ -142,7 +142,8 @@ MAX_NUMERIC_SHARE = 0.5
 # that leaks through costs nothing but a slightly wider skip-gram window;
 # a content word wrongly listed here would cost real recall, so the list
 # stays conservative rather than reaching for completeness.
-STOPWORDS = frozenset("""
+STOPWORDS = frozenset(
+    """
 a an the and or but if then else when while as of to in on at by for
 with about against between into through during before after above below
 from up down out off over under again further once here there all any
@@ -153,7 +154,8 @@ must shall this that these those it its it's he she they we you i him
 her them us our your their his ours yours theirs myself yourself
 himself herself itself ourselves yourselves themselves what which who
 whom
-""".split())
+""".split()
+)
 
 
 def stem_filter(words: list[str]) -> tuple[list[str], list[int]]:
@@ -356,8 +358,12 @@ def _load_corpus_index(n: int, corpus_key: str) -> "CorpusSkipgramIndex | None":
         return None
     citekeys, grams, citekey_ids, pages, positions = parsed
     return CorpusSkipgramIndex(
-        n=n, citekeys=citekeys, grams=grams, citekey_ids=citekey_ids,
-        pages=pages, positions=positions
+        n=n,
+        citekeys=citekeys,
+        grams=grams,
+        citekey_ids=citekey_ids,
+        pages=pages,
+        positions=positions,
     )
 
 

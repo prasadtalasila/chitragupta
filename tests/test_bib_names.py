@@ -21,7 +21,7 @@ class TestSplitName:
         assert bib_names.split_name("Jane Doe") == ("Jane", "Doe")
 
     def test_a_single_token_is_all_family(self):
-        """"Cher" is a family name with no given name, not the reverse:
+        """ "Cher" is a family name with no given name, not the reverse:
         the family name is what a bibliography sorts and prints, so a
         one-word name that landed in `first` would render as an initial
         and lose the name entirely."""

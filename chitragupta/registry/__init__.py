@@ -38,6 +38,7 @@ import re
 from pathlib import Path
 
 from chitragupta import spec, unit
+
 # Three conventions borrowed rather than re-derived. Each is private to
 # the module that owns it; a second regex for the same shape is the
 # "second way of doing something the codebase already does" that
@@ -87,7 +88,7 @@ def definitions(text: str) -> list[tuple[str, str, str]]:
     for match in _GLOSSARY_TERM.finditer(text):
         term = match.group("term").strip()
         line_end = text.find("\n", match.end())
-        definition = text[match.end():line_end if line_end != -1 else len(text)].strip()
+        definition = text[match.end() : line_end if line_end != -1 else len(text)].strip()
         kind = "notation" if term[:1] in "`$" and term[-1:] in "`$" else "term"
         found.append((term, kind, definition))
     return found
@@ -103,7 +104,7 @@ def _prose(text: str) -> str:
     definition, already registered as one.
     """
     cut = _REFERENCES_HEADING.search(text)
-    body = text[:cut.start()] if cut else text
+    body = text[: cut.start()] if cut else text
     return "\n".join(line for line in body.splitlines() if not _GLOSSARY_TERM.match(line))
 
 
@@ -152,8 +153,9 @@ def _read_unit(book, unit_id: str, built: dict, anchors: set[str]) -> None:
     """Fold one accepted unit into the registries being built."""
     text = unit.draft_path(book, unit_id).read_text(encoding="utf-8")
     for term, kind, definition in definitions(text):
-        built["terms"].append({"term": term, "kind": kind, "unit": unit_id,
-                               "definition": definition})
+        built["terms"].append(
+            {"term": term, "kind": kind, "unit": unit_id, "definition": definition}
+        )
     for claim, citekeys in claims(text):
         built["claims"].append({"claim": claim, "unit": unit_id, "citekeys": citekeys})
     for target in references(text):
@@ -194,8 +196,9 @@ def _repeats(rows: list[dict], key: str) -> dict[str, list[dict]]:
     grouped: dict[str, list[dict]] = {}
     for row in rows:
         grouped.setdefault(row[key], []).append(row)
-    return {value: found for value, found in grouped.items()
-            if len({row["unit"] for row in found}) > 1}
+    return {
+        value: found for value, found in grouped.items() if len({row["unit"] for row in found}) > 1
+    }
 
 
 def findings(built: dict) -> list[tuple[str, str]]:
@@ -206,17 +209,27 @@ def findings(built: dict) -> list[tuple[str, str]]:
     """
     found = []
     for term, rows in _repeats(built["terms"], "term").items():
-        found.append(("term", f"`{term}` is defined in more than one unit: "
-                              + ", ".join(sorted(row["unit"] for row in rows))))
-    for rows in _repeats([{**row, "key": claim_key(row["claim"])}
-                          for row in built["claims"]], "key").values():
+        found.append(
+            (
+                "term",
+                f"`{term}` is defined in more than one unit: "
+                + ", ".join(sorted(row["unit"] for row in rows)),
+            )
+        )
+    for rows in _repeats(
+        [{**row, "key": claim_key(row["claim"])} for row in built["claims"]], "key"
+    ).values():
         units = ", ".join(sorted({row["unit"] for row in rows}))
-        found.append(("claim", f"the same claim is made in {units}: "
-                               f"\"{rows[0]['claim']}\""))
+        found.append(("claim", f'the same claim is made in {units}: "{rows[0]["claim"]}"'))
     for edge in built["xrefs"]:
         if not edge["resolves"]:
-            found.append(("xref", f"{edge['from']} points at `{edge['target']}`, "
-                                  "which no unit or outline entry defines"))
+            found.append(
+                (
+                    "xref",
+                    f"{edge['from']} points at `{edge['target']}`, "
+                    "which no unit or outline entry defines",
+                )
+            )
     return found
 
 

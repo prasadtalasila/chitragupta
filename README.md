@@ -223,7 +223,7 @@ keyword retrieval -- is light enough for any laptop, and the optional
 **enrichment layer** is what costs real disk and real time.
 
 | Resource | Minimum (corpus layer only) | Recommended (enrichment layer in regular use) |
-|---|---|---|
+| --- | --- | --- |
 | Disk | ~1GB | **10-20GB+** -- the full venv alone is **6.0GB** (torch pulled in twice over via sentence-transformers/docling, plus docling's own layout/OCR models); TeX Live adds several GB more |
 | RAM | ~1-2GB | **8GB minimum, 16GB+ better**. At ~3GB free, Docling on a 17-page PDF pushed the process to 3.6GB RSS and the host swapped 6.3GB -- it finished, just slowly |
 | CPU | 1-2 cores | **4+ cores** -- without a GPU, Docling's layout inference and BERTopic's UMAP/HDBSCAN are CPU-bound, and more cores directly cut wall-clock time |
@@ -276,7 +276,7 @@ one-screen router for exactly that.
 #### 🚀 Getting started
 
 | Document | Answers |
-|---|---|
+| --- | --- |
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
 | [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
 | [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
@@ -288,7 +288,7 @@ one-screen router for exactly that.
 #### 🔭 Understanding the system
 
 | Document | Answers |
-|---|---|
+| --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What actually runs, what does each part write, which parts are optional, and why do some commands need the venv? |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn eleven ways -- six by depth, three by genre, two in an appendix. Pick the one that matches what you already know |
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
@@ -301,14 +301,14 @@ one-screen router for exactly that.
 #### ⚙ Choosing settings
 
 | Document | Answers |
-|---|---|
+| --- | --- |
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | What does each setting *cost*? Every measured figure in one place, organised by setting |
 | [docs/PDF-PARSER.md](docs/PDF-PARSER.md) | Which PDF backend should I use, why were two dropped, and why was each newer candidate not adopted? |
 
 #### 🔍 Reading the output
 
 | Document | Answers |
-|---|---|
+| --- | --- |
 | [docs/CITATION-PROVENANCE.md](docs/CITATION-PROVENANCE.md) | What does the provenance report say, and how do I read it? |
 | [docs/PLAGIARISM.md](docs/PLAGIARISM.md) | How much of a draft's wording came from its sources? What the verbatim `overlap`/`scan` checks catch, and -- just as important -- what they cannot see, since these drafts are LLM-written and the tier that catches a genuine restatement does not run everywhere |
 | [docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) | What prose standards do the genre skills follow, and where in the technical-communication literature do they come from? |
@@ -316,7 +316,7 @@ one-screen router for exactly that.
 ### 🤝 Working on it
 
 | Document | Answers |
-|---|---|
+| --- | --- |
 | [docs/DESIGN.md](docs/DESIGN.md) | Why does this refuse what it refuses? The hard constraints, the conflict policy when two runs collide, and the failure analysis behind both |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how does the closed- and open-source landscape stack up against that bar, and where does this pipeline stand against its own requirement set -- what's built, what was measured and declined, and what's left? |
 | [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse actually work, what is each component for, and what is planned next? |

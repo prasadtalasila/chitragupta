@@ -35,7 +35,7 @@ This repository uses **parallelism** and **concurrency control** for
 different mechanisms, and keeps them apart on purpose.
 
 | Term | What it means here | Where it lives |
-|---|---|---|
+| --- | --- | --- |
 | **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync.py`'s worker pool, `chitragupta/pdf_text.py` |
 | **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `chitragupta/runlock.py` |
 
@@ -320,14 +320,14 @@ Parallelism is for first-time and bulk runs.
 Each backend gets the concurrency it can use:
 
 | Backend | Executor | Why |
-|---|---|---|
+| --- | --- | --- |
 | `docling` | `ProcessPoolExecutor` | in-process, holds the GIL |
 | `pdftotext` | `ThreadPoolExecutor` | external subprocess, releases the GIL |
 
 ## 🐛 Failure and interruption
 
 | Event | Behaviour |
-|---|---|
+| --- | --- |
 | One document fails | Reported, marked `parse_failed` as **deterministic** — the backend read this PDF and could not parse it, so it is **not** retried until the file changes or `--reparse`. The batch continues |
 | One document runs out of time | `[parser].document_timeout` expired: reported, marked `parse_failed`, and **named in the summary on its own line** — the fix is that setting, not the PDF, so it is **not** retried until `--reparse`. The batch continues |
 | A worker dies (OOM killer) | `BrokenProcessPool` is handled: it takes the whole pool, so **every document without a result yet** is marked a transient failure -- the run still writes its ledger, prints its summary, and exits nonzero |

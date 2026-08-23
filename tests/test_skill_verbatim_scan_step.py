@@ -87,8 +87,7 @@ _TIERS = "tiers_not_run"
 # populates the table tier 3 reads. The gap allows the backslash line
 # continuation `deep-research` wraps this command with, but not a
 # backtick, so it cannot span out of one fenced block and into the next.
-_REGEN = re.compile(
-    r"-m chitragupta\.draft dossier sections[^`]{0,160}?--citekeys --write")
+_REGEN = re.compile(r"-m chitragupta\.draft dossier sections[^`]{0,160}?--citekeys --write")
 
 # **The step block is anchored on the regeneration, not on the scan.**
 # Four of the nine files mention `verbatim scan` somewhere other than the
@@ -144,7 +143,7 @@ def test_every_drafting_skill_runs_the_verbatim_scan():
     assert not missing, (
         "these skills never mention `-m chitragupta.review verbatim scan`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
-        "docs/GENRE.md's \"What all nine have in common\" claims otherwise."
+        'docs/GENRE.md\'s "What all nine have in common" claims otherwise.'
     )
 
 
@@ -153,13 +152,11 @@ def test_no_skill_still_only_offers_the_scan():
     pinned as an absence because the regression is silent: a skill that
     goes back to offering still passes every other check in this file,
     and the draft it presents was never scanned."""
-    offenders = sorted(
-        p.parent.name for p in _skill_files() if _OLD_OFFER.search(_normalised(p))
-    )
+    offenders = sorted(p.parent.name for p in _skill_files() if _OLD_OFFER.search(_normalised(p)))
     assert not offenders, (
-        f"these skills still say \"Offer the verbatim scan\": {offenders}. "
-        "The scan runs before presenting -- see docs/GENRE.md, \"The verbatim "
-        "scan is run, reported, and never a gate\"."
+        f'these skills still say "Offer the verbatim scan": {offenders}. '
+        'The scan runs before presenting -- see docs/GENRE.md, "The verbatim '
+        'scan is run, reported, and never a gate".'
     )
 
 
@@ -170,7 +167,7 @@ def test_every_scan_says_what_it_cannot_see():
     for path in _skill_files():
         text = _normalised(path)
         for match in _SCAN.finditer(text):
-            window = text[match.start(): match.start() + _LOOKAHEAD_CHARS]
+            window = text[match.start() : match.start() + _LOOKAHEAD_CHARS]
             if _CAVEAT not in window:
                 offenders.setdefault(path.parent.name, []).append(match.start())
 
@@ -192,7 +189,7 @@ def _step_blocks(text):
     somewhere else in the run.
     """
     for match in _REGEN.finditer(text):
-        head = text[match.start(): match.start() + _STEP_SPAN_CHARS]
+        head = text[match.start() : match.start() + _STEP_SPAN_CHARS]
         if _SCAN.search(head):
             yield match.start(), match.start() + _STEP_TAIL_CHARS
 
@@ -209,8 +206,7 @@ def test_every_skill_rebuilds_the_section_map_before_scanning():
     before it.
     """
     offenders = sorted(
-        path.parent.name for path in _skill_files()
-        if not list(_step_blocks(_normalised(path)))
+        path.parent.name for path in _skill_files() if not list(_step_blocks(_normalised(path)))
     )
     assert not offenders, (
         "no `dossier sections --citekeys --write` immediately before "
@@ -249,7 +245,8 @@ def test_no_skill_makes_the_scan_a_condition_of_presenting():
     versus blocking, not manual versus automatic.
     """
     offenders = sorted(
-        p.parent.name for p in _skill_files()
+        p.parent.name
+        for p in _skill_files()
         if _SCAN.search(_normalised(p)) and _NOT_A_CONDITION not in _normalised(p)
     )
     assert not offenders, (
@@ -272,7 +269,7 @@ def test_genre_doc_still_speaks_for_every_skill_that_exists():
     """
     count = len(_skill_files())
     assert count == 9, (
-        f"{count} skills exist but docs/GENRE.md still says \"all nine\". "
+        f'{count} skills exist but docs/GENRE.md still says "all nine". '
         "Update that section -- and check the new skill carries the gate, "
         "dossier and verbatim-scan conventions it states."
     )

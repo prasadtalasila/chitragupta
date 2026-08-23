@@ -80,9 +80,9 @@ def _collapsed_csl(csl_path: Path, tmp_dir: Path) -> Path:
         return csl_path
 
     patched = (
-        text[:match.start()]
+        text[: match.start()]
         + f'<citation collapse="citation-number"{match.group(1) or ""}{match.group(2)}>'
-        + text[match.end():]
+        + text[match.end() :]
     )
     out = tmp_dir / csl_path.name
     out.write_text(patched, encoding="utf-8")

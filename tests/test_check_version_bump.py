@@ -27,7 +27,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 @pytest.fixture(scope="module")
 def check():
     spec = importlib.util.spec_from_file_location(
-        "check_version_bump", REPO_ROOT / "scripts" / "check_version_bump.py")
+        "check_version_bump", REPO_ROOT / "scripts" / "check_version_bump.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -37,18 +38,21 @@ class TestOrdering:
     """Numeric, not lexical. `5.9.0` sorts above `5.10.0` as a string, and
     that is exactly the comparison this has to get right."""
 
-    @pytest.mark.parametrize("lower,higher", [
-        ("5.9.0", "5.10.0"),
-        ("5.19.0", "5.20.0"),
-        ("5.9.9", "5.10.0"),
-        ("4.99.0", "5.0.0"),
-        ("5.19.0", "5.19.1"),
-    ])
+    @pytest.mark.parametrize(
+        "lower,higher",
+        [
+            ("5.9.0", "5.10.0"),
+            ("5.19.0", "5.20.0"),
+            ("5.9.9", "5.10.0"),
+            ("4.99.0", "5.0.0"),
+            ("5.19.0", "5.19.1"),
+        ],
+    )
     def test_a_higher_version_sorts_higher(self, check, lower, higher):
         assert check.parse(lower) < check.parse(higher)
 
     def test_a_string_comparison_would_have_got_this_wrong(self, check):
-        assert "5.9.0" > "5.10.0"          # the trap
+        assert "5.9.0" > "5.10.0"  # the trap
         assert check.parse("5.9.0") < check.parse("5.10.0")
 
     def test_a_non_numeric_component_sorts_after_the_numbers(self, check):
@@ -115,22 +119,20 @@ def git_repo(root: Path, base_version: str, head_version: str, tag: str | None):
     bump. A test whose result depends on which refs a CI job happens to
     fetch is testing the CI job.
     """
+
     def run(*args):
-        subprocess.run(["git", *args], cwd=root, check=True,
-                       capture_output=True, text=True)
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True)
 
     run("init", "--quiet", "-b", "main")
     run("config", "user.email", "t@example.com")
     run("config", "user.name", "t")
     pyproject = root / "pyproject.toml"
-    pyproject.write_text(f'[tool.poetry]\nversion = "{base_version}"\n',
-                         encoding="utf-8")
+    pyproject.write_text(f'[tool.poetry]\nversion = "{base_version}"\n', encoding="utf-8")
     run("add", "pyproject.toml")
     run("commit", "--quiet", "-m", "base")
     if tag:
         run("tag", tag)
-    pyproject.write_text(f'[tool.poetry]\nversion = "{head_version}"\n',
-                         encoding="utf-8")
+    pyproject.write_text(f'[tool.poetry]\nversion = "{head_version}"\n', encoding="utf-8")
     return root
 
 
@@ -143,6 +145,7 @@ class TestTheCommand:
             git_repo(tmp_path, base, head, tag)
             monkeypatch.setattr(check, "REPO_ROOT", tmp_path)
             return tmp_path
+
         return build
 
     def test_a_real_bump_passes(self, check, in_repo, capsys):
@@ -155,8 +158,7 @@ class TestTheCommand:
         assert check.main(["--base-ref", "main"]) == 1
         assert "::error::" in capsys.readouterr().err
 
-    def test_a_released_version_is_caught_through_real_tags(self, check, in_repo,
-                                                            capsys):
+    def test_a_released_version_is_caught_through_real_tags(self, check, in_repo, capsys):
         in_repo("5.19.0", "5.20.0", tag="v5.20.0")
         assert check.main(["--base-ref", "main"]) == 1
         assert "already released" in capsys.readouterr().err
@@ -183,6 +185,7 @@ class TestItFailsReadably:
         on CI's Windows leg -- and this reads a file out of git, not just
         tag names."""
         import inspect
+
         source = inspect.getsource(check._git)
         assert 'encoding="utf-8"' in source
 
@@ -208,8 +211,11 @@ class TestCIWiring:
         # inside it -- a lookahead regex over the whole file got this
         # wrong (it skipped past blank lines into the *next* step).
         steps = re.split(r"\n(?=      - name:)", ci_yml)
-        matches = [s for s in steps
-                   if s.startswith("      - name: Version bump has not been lost to a collision")]
+        matches = [
+            s
+            for s in steps
+            if s.startswith("      - name: Version bump has not been lost to a collision")
+        ]
         assert matches, "ci.yml no longer has the version-bump step under this name"
         assert "if: github.event_name == 'pull_request'" in matches[0], (
             "the version-bump step lost its pull_request guard -- it will fail "
@@ -274,8 +280,7 @@ class TestTheWarningDoesNotGate:
         reads, which would defeat the point of adding it."""
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
-        monkeypatch.setattr(check, "_git",
-                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
         assert check.main([]) == 0
         assert "::warning::" not in capsys.readouterr().err
 
@@ -296,6 +301,7 @@ class TestOnPyPI:
     def test_a_transport_failure_is_unknown_not_an_answer(self, check):
         def boom(url):
             raise OSError("no network")
+
         assert check.on_pypi("1.0.0", boom) is None
 
     def test_an_unreadable_body_is_unknown(self, check):
@@ -312,8 +318,7 @@ class TestOnPyPI:
 class TestPyPIBlocks:
     def test_a_published_version_fails_the_check(self, check, monkeypatch, capsys):
         monkeypatch.setattr(check, "on_pypi", lambda *a: True)
-        monkeypatch.setattr(check, "_git",
-                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
         assert check.main([]) == 1
         assert "can never be re-uploaded" in capsys.readouterr().err
 
@@ -321,19 +326,18 @@ class TestPyPIBlocks:
         monkeypatch.setattr(check, "on_pypi", lambda *a: None)
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
-        monkeypatch.setattr(check, "_git",
-                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
         assert check.main([]) == 0
         assert "could not reach PyPI" in capsys.readouterr().err
 
     def test_offline_skips_the_network_entirely(self, check, monkeypatch, capsys):
         def boom(*_a):
             raise AssertionError("--offline must not touch the network")
+
         monkeypatch.setattr(check, "on_pypi", boom)
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
-        monkeypatch.setattr(check, "_git",
-                            lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
         assert check.main(["--offline"]) == 0
         assert "could not reach PyPI" not in capsys.readouterr().err
 
@@ -356,6 +360,7 @@ class TestFetchJson:
             if isinstance(result, Exception):
                 raise result
             yield result
+
         monkeypatch.setattr(check.urllib.request, "urlopen", fake)
 
     def test_a_body_is_decoded(self, check, monkeypatch):
@@ -363,6 +368,7 @@ class TestFetchJson:
             @staticmethod
             def read():
                 return b'{"info": {"version": "1.0.0"}}'
+
         self._stub_urlopen(check, monkeypatch, Body())
         assert check._fetch_json("https://example.invalid")["info"]["version"] == "1.0.0"
 
@@ -387,5 +393,6 @@ class TestFetchJson:
             @staticmethod
             def read():
                 return b"not json"
+
         self._stub_urlopen(check, monkeypatch, Body())
         assert check._fetch_json("https://example.invalid") is None

@@ -198,7 +198,7 @@ flowchart TB
 Three roles fill that shape differently:
 
 | Role | Defined in | Gets (step 3) | Returns (step 4) |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `deep-research-interviewer` (Phase 2, one per persona, parallel) | `.claude/agents/deep-research-interviewer.md` | `TOPIC`, `PERSPECTIVE`, `ROUNDS`, `DRAFT PATH` (for `--log`) | Core position, cited key claims, one unique insight, citekeys consulted **and** citekeys discarded with the query and why |
 | `deep-research-writer` (Phase 5, one per section, parallel) | `.claude/agents/deep-research-writer.md` | `TOPIC`, `READER`, `GLOSSARY`, its section's outline fragment, and a `dossier brief --section` command in place of pasted evidence | The section's cited prose, plus `### Sources added` / `### Candidates discarded` blocks |
 | `peer-reviewer` (Phase 7a, one per role, parallel, `standard`/`deep` only) | `.claude/agents/peer-reviewer.md` | The full assembled draft, `DRAFT PATH`, and one assigned lens (`domain-accuracy`, `methodology-rigor`, `clarity-completeness`, `devils-advocate`) -- never another reviewer's critique | A verdict (`ready` / `needs revision` / `reject`) plus severity-rated concerns |
@@ -213,7 +213,7 @@ exactly how a discarded citekey's reasoning gets lost for good.
 ## ⚖ 3. Why the two don't look the same
 
 | | `textbook-chapter-writer` | `deep-research` |
-|---|---|---|
+| --- | --- | --- |
 | Number of contexts | One, for the whole run | One orchestrator + up to ~10 subagents in flight at once (concurrency-capped per `reference.md` §1), several times over across Phases 2/5/7 |
 | Where the citekey invariant lives | Read once, from `AGENTS.md` | Restated locally inside each `.claude/agents/*.md` definition, since a subagent doesn't inherit `AGENTS.md` |
 | How evidence reaches later steps | Stays in the one context that found it | Deliberately **not** pasted forward -- transcribed to the dossier, then handed to later subagents as a `dossier brief` pointer |

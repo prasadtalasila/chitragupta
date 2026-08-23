@@ -85,7 +85,8 @@ def test_no_new_def_lacks_a_return_annotation():
     new = _new_offenders(found, LEGACY_UNANNOTATED_DEFS)
     assert not new, (
         "def's under chitragupta/ with no return annotation that are not in the "
-        "register:" + "".join(f"\n  {name}" for name in new)
+        "register:"
+        + "".join(f"\n  {name}" for name in new)
         + "\n\nAdd a return annotation, or -- if it genuinely cannot carry one -- "
         "say why in the PR and add it to LEGACY_UNANNOTATED_DEFS in this file. "
         "See docs/CODE-STANDARDS.md's build order item 3."
@@ -133,12 +134,7 @@ def test_an_async_function_is_checked_too():
 
 
 def test_a_nested_function_is_qualified_and_checked_on_its_own_account():
-    source = (
-        "def outer():\n"
-        "    def inner() -> None:\n"
-        "        pass\n"
-        "    return inner\n"
-    )
+    source = "def outer():\n    def inner() -> None:\n        pass\n    return inner\n"
     assert dict(functions(source)) == {"outer": True, "outer.inner": False}
 
 
@@ -151,12 +147,7 @@ def test_a_function_defined_inside_a_conditional_keeps_its_enclosing_scope():
     """`if`/`try`/`with` are not scopes, so they must not extend the
     qualified name -- but they must still be descended into, or the
     function inside is invisible to the scan."""
-    source = (
-        "class A:\n"
-        "    if True:\n"
-        "        def m(self) -> None:\n"
-        "            pass\n"
-    )
+    source = "class A:\n    if True:\n        def m(self) -> None:\n            pass\n"
     assert dict(functions(source)) == {"A.m": False}
 
 

@@ -441,13 +441,13 @@ def _unpack_index_arrays(raw: bytes, count: int) -> "tuple[array, array, array, 
     grams.frombytes(raw[: count * 8])
     offset = count * 8
     citekey_ids: "array[int]" = array("I")
-    citekey_ids.frombytes(raw[offset:offset + count * 4])
+    citekey_ids.frombytes(raw[offset : offset + count * 4])
     offset += count * 4
     pages: "array[int]" = array("I")
-    pages.frombytes(raw[offset:offset + count * 4])
+    pages.frombytes(raw[offset : offset + count * 4])
     offset += count * 4
     positions: "array[int]" = array("I")
-    positions.frombytes(raw[offset:offset + count * 4])
+    positions.frombytes(raw[offset : offset + count * 4])
     return grams, citekey_ids, pages, positions
 
 
@@ -502,8 +502,12 @@ def _load_corpus_index(n: int, corpus_key: str) -> "CorpusIndex | None":
         return None
     citekeys, grams, citekey_ids, pages, positions = parsed
     return CorpusIndex(
-        n=n, citekeys=citekeys, grams=grams, citekey_ids=citekey_ids,
-        pages=pages, positions=positions
+        n=n,
+        citekeys=citekeys,
+        grams=grams,
+        citekey_ids=citekey_ids,
+        pages=pages,
+        positions=positions,
     )
 
 
@@ -556,8 +560,12 @@ def _merge_corpus_index(
     index is re-merged from all of them.
     """
     items = _ledger_items()
-    corpus_key = _corpus_key([(citekey, _fingerprint_key(pdf_hash, parsed_path))
-                              for citekey, pdf_hash, parsed_path in items])
+    corpus_key = _corpus_key(
+        [
+            (citekey, _fingerprint_key(pdf_hash, parsed_path))
+            for citekey, pdf_hash, parsed_path in items
+        ]
+    )
     cached = load_cached(n, corpus_key)
     if cached is not None:
         return cached
@@ -572,7 +580,11 @@ def _merge_corpus_index(
     # array('Q'/'I') columns together cost under 200MB -- close to the
     # issue's own "~100MB RAM" estimate for this index.
     unsorted_grams, unsorted_citekey_ids, unsorted_pages, unsorted_positions = (
-        array("Q"), array("I"), array("I"), array("I"))
+        array("Q"),
+        array("I"),
+        array("I"),
+        array("I"),
+    )
     for citekey in citekeys_sorted:
         pdf_hash, parsed_path = by_citekey[citekey]
         fp = fingerprint_fn(citekey, pdf_hash, parsed_path, n)

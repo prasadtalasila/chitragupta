@@ -57,7 +57,7 @@ existing: two were specified but never made durable, and the two that
 were missing entirely are the two that matter most.
 
 | File | What it holds | Status before this |
-|---|---|---|
+| --- | --- | --- |
 | `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
 | `evidence.md` | each kept citekey, why it was kept, and its claim | **specified** (survey-writer step 2) but written as JSON |
 | `rejected.md` | candidates retrieved and turned down, with the reason | **nowhere** |
@@ -195,7 +195,7 @@ questions with opposite safe answers, and conflating them would publish
 source wording:
 
 | | Reads a `support:`-only block as... | Why |
-|---|---|---|
+| --- | --- | --- |
 | A drafting or revising skill | `quote:` | It is deciding whether the block may be quoted at all. Treating unknown provenance as quotable-only is the cautious answer -- it *restricts* what the skill may do with it |
 | `chitragupta/evidence_appendix.py` | nothing at all | It is deciding what to put in a rendered document. A legacy `support:` holds a raw 600-character retrieval window (`EVIDENCE_CHARS`), and printing one as an attributed quotation would publish it |
 
@@ -274,7 +274,7 @@ answer different questions for different readers. The argument for that
 is about Markdown-versus-JSON, not about directories:
 
 | | `provenance.json` | the dossier's Markdown |
-|---|---|---|
+| --- | --- | --- |
 | Shape | JSON, machine-readable | Markdown, human-readable |
 | Holds | section -> citekey, and why that source supports that claim | reader, scope, glossary, kept evidence, **rejected candidates and why**, steering |
 | Read by | tooling, and a reviewer auditing one claim | `draft-reviser`, and a human months later |

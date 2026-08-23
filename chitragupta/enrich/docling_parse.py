@@ -103,15 +103,18 @@ def _load_cache() -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    if (data.get("version") != _CACHE_VERSION
-            or data.get("images") != config.DOCLING_IMAGES
-            or data.get("ocr") != config.PARSER_OCR):
+    if (
+        data.get("version") != _CACHE_VERSION
+        or data.get("images") != config.DOCLING_IMAGES
+        or data.get("ocr") != config.PARSER_OCR
+    ):
         return {}
     items = data.get("items")
     if not isinstance(items, dict):
         return {}
     return {
-        citekey: fp for citekey, fp in items.items()
+        citekey: fp
+        for citekey, fp in items.items()
         if isinstance(fp, list) and len(fp) == 2 and all(isinstance(n, int) for n in fp)
     }
 
@@ -204,7 +207,8 @@ def _build_converter(threads: int | None = None) -> Any:
         opts.generate_picture_images = True
         opts.images_scale = config.DOCLING_IMAGE_SCALE
     return DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
+    )
 
 
 _IMAGE_REF_RE = re.compile(r"(!\[[^\]]*\]\()([^)]+)(\))")
@@ -272,12 +276,14 @@ def _figure_records(doc: CorpusDoc, dl_doc, image_names: list[str] | None = None
     for index, pic in enumerate(dl_doc.pictures):
         caption = (pic.caption_text(dl_doc) or "").strip()
         page = pic.prov[0].page_no if pic.prov else None
-        records.append({
-            "page": page,
-            "caption": caption or None,
-            "cite": _figure_cite(doc.citekey, caption, page),
-            "image": image_names[index] if image_names else None,
-        })
+        records.append(
+            {
+                "page": page,
+                "caption": caption or None,
+                "cite": _figure_cite(doc.citekey, caption, page),
+                "image": image_names[index] if image_names else None,
+            }
+        )
     return records
 
 
@@ -352,8 +358,7 @@ def _corpus_parse_available(doc: CorpusDoc) -> bool:
     sidecar = passages.sidecar_path(doc.citekey)
     try:
         pdf_mtime = os.stat(doc.pdf_path).st_mtime_ns
-        return (min(parsed.stat().st_mtime_ns, sidecar.stat().st_mtime_ns)
-                >= pdf_mtime)
+        return min(parsed.stat().st_mtime_ns, sidecar.stat().st_mtime_ns) >= pdf_mtime
     except OSError:
         # Either artefact missing, or an unreadable PDF -- parse it.
         return False
@@ -404,8 +409,7 @@ def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
     # encoding spelled out on the way back down, not just on the way up:
     # write_text without one encodes with the *platform* encoding, so any
     # non-ASCII paper fails with UnicodeEncodeError under a C-locale host.
-    out_path.write_text(re.sub(r"\n{3,}", "\n\n", markdown.replace("\f", "\n\n")),
-                        encoding="utf-8")
+    out_path.write_text(re.sub(r"\n{3,}", "\n\n", markdown.replace("\f", "\n\n")), encoding="utf-8")
     (config.DOCLING_DIR / f"{stem}.passages.json").write_text(records, encoding="utf-8")
     return True
 
@@ -491,8 +495,8 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
         image_names = _relativise_image_refs(out_path)
         figures_path = config.DOCLING_DIR / f"{stem}.figures.json"
         figures_path.write_text(
-            json.dumps(_figure_records(doc, dl_doc, image_names), indent=2),
-            encoding="utf-8")
+            json.dumps(_figure_records(doc, dl_doc, image_names), indent=2), encoding="utf-8"
+        )
     else:
         out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
 
@@ -505,7 +509,8 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
     # settings and must not overwrite the corpus layer's copy.
     passages_path = config.DOCLING_DIR / f"{stem}.passages.json"
     passages_path.write_text(
-        json.dumps(passages.passage_records(dl_doc), indent=2), encoding="utf-8")
+        json.dumps(passages.passage_records(dl_doc), indent=2), encoding="utf-8"
+    )
 
 
 def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path:
@@ -587,9 +592,14 @@ _WORKER_CONVERTER_KEY = None
 def _worker_converter(threads: int | None) -> Any:
     global _WORKER_CONVERTER, _WORKER_CONVERTER_KEY
 
-    key = (threads, pdf_text.worker_device(), config.PARSER_OCR,
-           config.DOCLING_IMAGES, config.DOCLING_IMAGE_SCALE,
-           config.PARSER_DOCUMENT_TIMEOUT)
+    key = (
+        threads,
+        pdf_text.worker_device(),
+        config.PARSER_OCR,
+        config.DOCLING_IMAGES,
+        config.DOCLING_IMAGE_SCALE,
+        config.PARSER_DOCUMENT_TIMEOUT,
+    )
     if _WORKER_CONVERTER is None or _WORKER_CONVERTER_KEY != key:
         _WORKER_CONVERTER = _build_converter(threads)
         _WORKER_CONVERTER_KEY = key
@@ -652,8 +662,11 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     # compare every doc against every reusable one, which is quadratic in
     # the corpus and compares whole dataclasses to do it. A citekey is
     # unique by construction: it is the ledger's primary key.
-    reusable = {d.citekey for d in docs if d.pdf_path and not _is_cached(d, cache)
-                and _corpus_parse_available(d)}
+    reusable = {
+        d.citekey
+        for d in docs
+        if d.pdf_path and not _is_cached(d, cache) and _corpus_parse_available(d)
+    }
     if reusable:
         logging_setup.say(
             logger,
@@ -661,8 +674,9 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
             f"{len(reusable)} document(s) -- no second parse needed",
         )
 
-    pending = [d for d in docs if d.pdf_path and not _is_cached(d, cache)
-               and d.citekey not in reusable]
+    pending = [
+        d for d in docs if d.pdf_path and not _is_cached(d, cache) and d.citekey not in reusable
+    ]
     workers, complaint = pdf_text.resolve_workers(len(pending))
     if complaint:
         logging_setup.say(logger, complaint, level=logging.WARNING)
@@ -681,8 +695,13 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     return status
 
 
-def _parse_with_pool(docs: list[CorpusDoc], pending: list[CorpusDoc],
-                     cache: dict, status: dict[str, str], workers: int) -> None:
+def _parse_with_pool(
+    docs: list[CorpusDoc],
+    pending: list[CorpusDoc],
+    cache: dict,
+    status: dict[str, str],
+    workers: int,
+) -> None:
     """parse_corpus's parallel leg: the cached docs adopted serially, the
     rest fanned out to a process pool. Mutates `status` and `cache` in
     place -- the caller owns saving the cache, except on interrupt, where

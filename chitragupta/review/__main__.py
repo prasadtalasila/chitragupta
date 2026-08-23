@@ -53,9 +53,14 @@ import argparse
 import sys
 
 from chitragupta import review
-from chitragupta.review import (citation_coverage, citation_provenance,
-                                figure_layout, synthesis, uncited_prose,
-                                verbatim_check)
+from chitragupta.review import (
+    citation_coverage,
+    citation_provenance,
+    figure_layout,
+    synthesis,
+    uncited_prose,
+    verbatim_check,
+)
 from chitragupta.progname import prog_for
 
 # Keyed by review.AIDS, so a new aid cannot appear here without also

@@ -35,10 +35,7 @@ class TestSnippet:
         query term in its front matter and discusses the actual subject
         forty thousand characters later used to be judged on the front
         matter."""
-        text = (
-            "ABSTRACT twin " + "x " * 400
-            + " soil moisture twin controller " + "y " * 400
-        )
+        text = "ABSTRACT twin " + "x " * 400 + " soil moisture twin controller " + "y " * 400
         snippet = retrieval._snippet(text, {"twin", "soil", "moisture"}, window=60)
         assert "soil" in snippet
         assert "moisture" in snippet
@@ -61,11 +58,18 @@ class TestSnippet:
         )
         outputs = set()
         for seed in ("0", "1", "2", "3", "4"):
-            env = {**os.environ, "PYTHONHASHSEED": seed,
-                   "PYTHONPATH": str(config.PACKAGE_ROOT.parent)}
+            env = {
+                **os.environ,
+                "PYTHONHASHSEED": seed,
+                "PYTHONPATH": str(config.PACKAGE_ROOT.parent),
+            }
             result = subprocess.run(
-                [sys.executable, "-c", program], capture_output=True, text=True,
-                env=env, cwd=config.PROJECT_ROOT, check=True,
+                [sys.executable, "-c", program],
+                capture_output=True,
+                text=True,
+                env=env,
+                cwd=config.PROJECT_ROOT,
+                check=True,
             )
             outputs.add(result.stdout.strip())
         assert len(outputs) == 1, f"snippet varied with hash seed: {outputs}"
@@ -124,7 +128,9 @@ class TestSearch:
         assert results[0].citekey == "a2024"
 
     def test_no_matching_terms_excludes_item(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Completely unrelated"))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="Completely unrelated")
+        )
         assert retrieval.search("nonexistentterm12345") == []
 
     def test_length_normalization_prevents_long_docs_from_winning_structurally(
@@ -146,7 +152,9 @@ class TestSearch:
             "irrelevant filler word " * 400 + "blockchain mentioned twice blockchain here"
         )
 
-        ledger.upsert_reference(ledger_con, make_reference(citekey="short2024", title="Short Paper"))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="short2024", title="Short Paper")
+        )
         ledger.mark_parsed(ledger_con, "short2024", short_parsed)
         ledger.upsert_reference(ledger_con, make_reference(citekey="long2024", title="Long Paper"))
         ledger.mark_parsed(ledger_con, "long2024", long_parsed)
@@ -167,7 +175,8 @@ class TestSearch:
         keeps them distinct in the result, only the citekey."""
         for i in range(4):
             ledger.upsert_reference(
-                ledger_con, make_reference(citekey=f"item{i}_2024", title="Digital Twin Digital Twin")
+                ledger_con,
+                make_reference(citekey=f"item{i}_2024", title="Digital Twin Digital Twin"),
             )
 
         results = retrieval.search("digital twin", k=10)
@@ -199,7 +208,9 @@ class TestIndexCaching:
         loser_parsed = tmp_path / "loser2024.txt"
         loser_parsed.write_text("nothing related to the query at all, just filler text")
 
-        ledger.upsert_reference(ledger_con, make_reference(citekey="winner2024", title="Digital Twin"))
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="winner2024", title="Digital Twin")
+        )
         ledger.mark_parsed(ledger_con, "winner2024", winner_parsed)
         ledger.upsert_reference(ledger_con, make_reference(citekey="loser2024", title="Unrelated"))
         ledger.mark_parsed(ledger_con, "loser2024", loser_parsed)
@@ -242,10 +253,14 @@ class TestIndexCaching:
 
     def test_stale_schema_version_cache_is_rebuilt_not_trusted(self, ledger_con, tmp_path):
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-        config.RETRIEVAL_INDEX_PATH.write_text(json.dumps({
-            "version": 0,
-            "items": {"a2024": {"fingerprint": ["wrong"], "length": 1, "term_freqs": {}}},
-        }))
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            json.dumps(
+                {
+                    "version": 0,
+                    "items": {"a2024": {"fingerprint": ["wrong"], "length": 1, "term_freqs": {}}},
+                }
+            )
+        )
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
 
         results = retrieval.search("digital")
@@ -269,7 +284,9 @@ class TestIndexCaching:
         # dict (e.g. a list) -- cached.get(citekey) in _load_index() would
         # otherwise crash on it instead of treating it as a cache miss.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-        config.RETRIEVAL_INDEX_PATH.write_text(json.dumps({"version": 1, "items": ["not", "a", "dict"]}))
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            json.dumps({"version": 1, "items": ["not", "a", "dict"]})
+        )
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
 
         results = retrieval.search("digital")
@@ -306,11 +323,7 @@ class TestWindows:
         assert retrieval._windows("nothing relevant here", {"blockchain"}, 50, 3) == []
 
     def test_prefers_a_window_covering_more_distinct_terms(self):
-        text = (
-            "moisture " * 20
-            + " ||| soil moisture sensor calibration ||| "
-            + "moisture " * 20
-        )
+        text = "moisture " * 20 + " ||| soil moisture sensor calibration ||| " + "moisture " * 20
         (best,) = retrieval._windows(text, {"soil", "moisture", "sensor"}, 60, 1)
         assert "soil" in best
         assert "sensor" in best
@@ -349,8 +362,11 @@ class TestEvidence:
         ledger.mark_parsed(con, citekey, parsed)
 
     def test_returns_the_supporting_passages(self, ledger_con, tmp_path):
-        self._seed(ledger_con, tmp_path,
-                   "padding " * 100 + "simulation time must follow wall clock time" + " tail" * 50)
+        self._seed(
+            ledger_con,
+            tmp_path,
+            "padding " * 100 + "simulation time must follow wall clock time" + " tail" * 50,
+        )
         passages = retrieval.evidence("a2024", "simulation wall clock", chars=80)
         assert any("wall clock" in p for p in passages)
 
@@ -370,7 +386,8 @@ class TestEvidence:
 
     def test_the_title_alone_can_carry_a_match(self, ledger_con):
         ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Robotics And Control"))
+            ledger_con, make_reference(citekey="a2024", title="Robotics And Control")
+        )
         assert retrieval.evidence("a2024", "robotics", chars=40) != []
 
     def test_an_unknown_citekey_raises(self, ledger_con):
@@ -387,9 +404,7 @@ class TestCli:
         ledger.upsert_reference(con, make_reference(citekey="a2024", title="Twin Patterns"))
         ledger.mark_parsed(con, "a2024", parsed)
 
-    def test_search_prints_candidates_and_points_at_evidence(
-        self, ledger_con, tmp_path, capsys
-    ):
+    def test_search_prints_candidates_and_points_at_evidence(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["search", "digital twin architecture"]) == 0
         out = capsys.readouterr().out
@@ -399,8 +414,7 @@ class TestCli:
 
     def test_evidence_prints_passages(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
-        assert retrieval.main(
-            ["evidence", "architecture patterns", "--citekey", "a2024"]) == 0
+        assert retrieval.main(["evidence", "architecture patterns", "--citekey", "a2024"]) == 0
         assert "patterns" in capsys.readouterr().out
 
     def test_evidence_on_an_unknown_citekey_exits_nonzero(self, ledger_con, tmp_path, capsys):
@@ -417,16 +431,14 @@ class TestCli:
         assert retrieval.main(["search", "quantum chromodynamics"]) == 0
         assert "No results." in capsys.readouterr().out
 
-    def test_evidence_with_no_matching_passage_is_not_an_error(
-            self, ledger_con, tmp_path, capsys):
+    def test_evidence_with_no_matching_passage_is_not_an_error(self, ledger_con, tmp_path, capsys):
         """The `search` counterpart above is covered; this is its
         `evidence` twin. A document that exists and simply says nothing
         about the query is an answer, and the two reasons it can happen --
         no match, or no parsed text -- are indistinguishable from here, so
         the message names both rather than guessing."""
         self._seed(ledger_con, tmp_path)
-        assert retrieval.main(
-            ["evidence", "quantum chromodynamics", "--citekey", "a2024"]) == 0
+        assert retrieval.main(["evidence", "quantum chromodynamics", "--citekey", "a2024"]) == 0
         out = capsys.readouterr().out
         assert "a2024: no passage matches that query" in out
         assert "no parsed text" in out
@@ -439,32 +451,43 @@ class TestCli:
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text("# s\n")
 
-        assert retrieval.main(
-            ["search", "digital twin architecture", "--log", str(draft)]) == 0
+        assert retrieval.main(["search", "digital twin architecture", "--log", str(draft)]) == 0
         calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
         assert calls == 1
         assert chars > 0
         assert "Logged to" in capsys.readouterr().out
 
     def test_log_records_the_collection_the_search_was_scoped_to(
-            self, ledger_con, tmp_path, capsys):
+        self, ledger_con, tmp_path, capsys
+    ):
         from chitragupta import dossier
         from chitragupta.dossier import _retrieval
 
         parsed = tmp_path / "a2024.txt"
         parsed.write_text("padding " * 50 + "digital twin architecture patterns catalog")
-        ledger.upsert_reference(ledger_con, make_reference(
-            citekey="a2024", title="Twin Patterns", collections=("Digital twins",)))
+        ledger.upsert_reference(
+            ledger_con,
+            make_reference(citekey="a2024", title="Twin Patterns", collections=("Digital twins",)),
+        )
         ledger.mark_parsed(ledger_con, "a2024", parsed)
 
         draft = config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text("# s\n")
 
-        assert retrieval.main([
-            "search", "digital twin architecture",
-            "--collection", "Digital twins", "--log", str(draft),
-        ]) == 0
+        assert (
+            retrieval.main(
+                [
+                    "search",
+                    "digital twin architecture",
+                    "--collection",
+                    "Digital twins",
+                    "--log",
+                    str(draft),
+                ]
+            )
+            == 0
+        )
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
             ("digital twin architecture", "Digital twins"),
         ]
@@ -481,8 +504,10 @@ class TestCli:
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text("# s\n")
 
-        assert retrieval.main(
-            ["evidence", "digital twin", "--citekey", "a2024", "--log", str(draft)]) == 0
+        assert (
+            retrieval.main(["evidence", "digital twin", "--citekey", "a2024", "--log", str(draft)])
+            == 0
+        )
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
             ("digital twin", ""),
         ]

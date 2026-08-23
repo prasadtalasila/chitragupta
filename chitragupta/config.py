@@ -49,8 +49,9 @@ def shipped(*parts: str) -> Path:
     return PACKAGE_ROOT.parent.joinpath(*parts)
 
 
-def discover_project_root(cwd: "Path | None" = None,
-                          environ: "dict | None" = None) -> "Path | None":
+def discover_project_root(
+    cwd: "Path | None" = None, environ: "dict | None" = None
+) -> "Path | None":
     """The project directory, or None when there is no project here.
 
     Order, first hit wins:
@@ -140,8 +141,9 @@ def _get_float(env_var: str, *toml_path: str, default: float) -> float:
     return default
 
 
-def _get_optional_float(env_var: str, *toml_path: str,
-                        default: "float | None" = None) -> "float | None":
+def _get_optional_float(
+    env_var: str, *toml_path: str, default: "float | None" = None
+) -> "float | None":
     """A positive duration in seconds, or None for "no limit".
 
     _get_float can't express this: it requires a float default, and
@@ -224,8 +226,9 @@ BIB_FILE_PATH = PROJECT_ROOT / _get("BIB_FILE", "bib", "path", default="papers/b
 # way collections reach a .bib at all. Configurable rather than hardcoded
 # because a user whose exporter puts them somewhere else (a `keywords`
 # convention, say) should not have to patch the parser to be read.
-BIB_COLLECTIONS_FIELD = _get("BIB_COLLECTIONS_FIELD", "bib", "collections_field",
-                             default="groups").strip().lower()
+BIB_COLLECTIONS_FIELD = (
+    _get("BIB_COLLECTIONS_FIELD", "bib", "collections_field", default="groups").strip().lower()
+)
 
 CONTENT_DIR = PROJECT_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
@@ -387,7 +390,8 @@ def _get_start_method(env_var: str, *toml_path: str, default: str) -> str:
 # chitragupta/pdf_text.start_method.
 PARSER_START_METHODS = ("auto", "forkserver", "spawn")
 PARSER_START_METHOD = _get_start_method(
-    "PARSER_START_METHOD", "parser", "start_method", default="auto")
+    "PARSER_START_METHOD", "parser", "start_method", default="auto"
+)
 
 # Give up on a single document after this many seconds, or None for no
 # limit. Applies to both backends, by the mechanism each one has:
@@ -397,7 +401,8 @@ PARSER_START_METHOD = _get_start_method(
 # 675-page book that took 246s on its own, so a number that is safe here
 # is not necessarily safe elsewhere.
 PARSER_DOCUMENT_TIMEOUT = _get_optional_float(
-    "PARSER_DOCUMENT_TIMEOUT", "parser", "document_timeout")
+    "PARSER_DOCUMENT_TIMEOUT", "parser", "document_timeout"
+)
 
 # Give up on a parallel run when *no* document at all has completed for
 # this long, or None to wait forever. Not a per-document deadline: with
@@ -413,7 +418,8 @@ PARSER_DOCUMENT_TIMEOUT = _get_optional_float(
 # small -- since v1.2.0 the affected documents are marked failed and
 # retried on the next run, rather than lost.
 PARSER_STALL_TIMEOUT = _get_optional_float(
-    "PARSER_STALL_TIMEOUT", "parser", "stall_timeout", default=1800.0)
+    "PARSER_STALL_TIMEOUT", "parser", "stall_timeout", default=1800.0
+)
 
 # Parse-quality guard (chitragupta/pdf_text.quality_warning): a PDF extractor
 # that sets its glyph-spacing tolerance too coarse fuses adjacent words
@@ -421,10 +427,12 @@ PARSER_STALL_TIMEOUT = _get_optional_float(
 # match against. Measured over the same 10 PDFs, pdftotext produced
 # 0.01% such tokens and a since-removed backend produced 4.19% -- three
 # orders of magnitude apart -- so 1% sits well clear of both.
-PARSE_LONG_WORD_CHARS = int(_get_float("PARSE_LONG_WORD_CHARS", "parser",
-                                       "long_word_chars", default=20))
-PARSE_LONG_WORD_RATIO = _get_float("PARSE_LONG_WORD_RATIO", "parser",
-                                   "long_word_ratio", default=0.01)
+PARSE_LONG_WORD_CHARS = int(
+    _get_float("PARSE_LONG_WORD_CHARS", "parser", "long_word_chars", default=20)
+)
+PARSE_LONG_WORD_RATIO = _get_float(
+    "PARSE_LONG_WORD_RATIO", "parser", "long_word_ratio", default=0.01
+)
 # Below this many words the ratio is too noisy to mean anything (a
 # cover page, or a scan that yielded almost no text).
 PARSE_MIN_TOKENS = int(_get_float("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200))
@@ -470,10 +478,12 @@ LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(PROJECT_ROOT / "logs")))
 # a human, not a pass/fail line, so precision here would be false
 # precision. Below WEAK a finding is reported as "no support found",
 # which means "go look", never "this citation is wrong".
-PROVENANCE_WEAK_SCORE = _get_float("PROVENANCE_WEAK_SCORE", "provenance",
-                                   "weak_score", default=0.20)
-PROVENANCE_GOOD_SCORE = _get_float("PROVENANCE_GOOD_SCORE", "provenance",
-                                   "good_score", default=0.50)
+PROVENANCE_WEAK_SCORE = _get_float(
+    "PROVENANCE_WEAK_SCORE", "provenance", "weak_score", default=0.20
+)
+PROVENANCE_GOOD_SCORE = _get_float(
+    "PROVENANCE_GOOD_SCORE", "provenance", "good_score", default=0.50
+)
 
 # Heavier optional pipeline (pyproject.toml's "enrich" Poetry group), per chitragupta/enrich/.
 DOCLING_DIR = CONTENT_DIR / "docling"
@@ -490,8 +500,9 @@ DOCLING_CACHE_PATH = CONTENT_DIR / "docling_cache.json"
 DOCLING_IMAGES = _get_bool("DOCLING_IMAGES", "enrich", "docling_images", default=False)
 # Render scale for those bitmaps; 2.0 is ~144 DPI, legible for reading a
 # figure back while checking a draft without storing print-resolution PNGs.
-DOCLING_IMAGE_SCALE = _get_float("DOCLING_IMAGE_SCALE", "enrich",
-                                 "docling_image_scale", default=2.0)
+DOCLING_IMAGE_SCALE = _get_float(
+    "DOCLING_IMAGE_SCALE", "enrich", "docling_image_scale", default=2.0
+)
 CHROMA_DIR = CONTENT_DIR / "chroma"
 
 TOPICS_PATH = CONTENT_DIR / "topics.json"
@@ -552,7 +563,10 @@ TOPIC_SEEDS_PATH = CONTENT_DIR / "topic_seeds.json"
 # to. Which names go in the list stays the author's decision, which is the
 # answer docs/HOUSE-STYLE.md gives and not a gap in this number.
 SEED_TOPIC_MIN_SIMILARITY = _get_float(
-    "SEED_TOPIC_MIN_SIMILARITY", "enrich", "seed_topic_min_similarity", default=0.15,
+    "SEED_TOPIC_MIN_SIMILARITY",
+    "enrich",
+    "seed_topic_min_similarity",
+    default=0.15,
 )
 # How many papers a single seed topic may list, best-scoring first. The
 # actual selection rule: each phrase is ranked against its own scores, so
@@ -563,9 +577,14 @@ SEED_TOPIC_MIN_SIMILARITY = _get_float(
 # be read by a person deciding what to draft, and a topic answering with
 # 238 papers has told them nothing. Raise it when a topic is genuinely
 # broad and you want the tail.
-SEED_TOPIC_MAX_PAPERS = int(_get_float(
-    "SEED_TOPIC_MAX_PAPERS", "enrich", "seed_topic_max_papers", default=25,
-))
+SEED_TOPIC_MAX_PAPERS = int(
+    _get_float(
+        "SEED_TOPIC_MAX_PAPERS",
+        "enrich",
+        "seed_topic_max_papers",
+        default=25,
+    )
+)
 # Whether the words a topic is *named* by exclude the corpus's own
 # authors. Names, not clusters: this never touches how documents are
 # grouped, only how the resulting group is described.
@@ -582,7 +601,10 @@ SEED_TOPIC_MAX_PAPERS = int(_get_float(
 # (black, brown, can, park, wood) and leave the label vocabulary too.
 # Turn this off for a corpus where that trade is wrong.
 TOPIC_EXCLUDE_AUTHOR_NAMES = _get_bool(
-    "TOPIC_EXCLUDE_AUTHOR_NAMES", "enrich", "topic_exclude_author_names", default=True,
+    "TOPIC_EXCLUDE_AUTHOR_NAMES",
+    "enrich",
+    "topic_exclude_author_names",
+    default=True,
 )
 
 # How fine the emergent topic structure is. The two knobs that decide it,
@@ -608,14 +630,24 @@ TOPIC_EXCLUDE_AUTHOR_NAMES = _get_bool(
 # spectral initialisation genuinely fails when n_neighbors >= n_samples,
 # which is what the original formula existed for. What it never did was
 # scale *up*.
-TOPIC_MIN_CLUSTER_SIZE = int(_get_float(
-    "TOPIC_MIN_CLUSTER_SIZE", "enrich", "topic_min_cluster_size", default=3,
-))
+TOPIC_MIN_CLUSTER_SIZE = int(
+    _get_float(
+        "TOPIC_MIN_CLUSTER_SIZE",
+        "enrich",
+        "topic_min_cluster_size",
+        default=3,
+    )
+)
 # HDBSCAN's own default is min_cluster_size; lowering it makes the
 # clustering less conservative and leaves fewer documents as outliers.
-TOPIC_MIN_SAMPLES = int(_get_float(
-    "TOPIC_MIN_SAMPLES", "enrich", "topic_min_samples", default=2,
-))
+TOPIC_MIN_SAMPLES = int(
+    _get_float(
+        "TOPIC_MIN_SAMPLES",
+        "enrich",
+        "topic_min_samples",
+        default=2,
+    )
+)
 # UMAP's neighbourhood size, the other half of granularity: smaller reads
 # more local structure and yields more, finer topics.
 #
@@ -634,9 +666,14 @@ TOPIC_MIN_SAMPLES = int(_get_float(
 # 15/10 pairing scoring 0.14 is the finding worth carrying: it was not
 # merely coarse, it was barely repeatable, which no amount of reading its
 # output would have revealed.
-TOPIC_NEIGHBORS = int(_get_float(
-    "TOPIC_NEIGHBORS", "enrich", "topic_neighbors", default=5,
-))
+TOPIC_NEIGHBORS = int(
+    _get_float(
+        "TOPIC_NEIGHBORS",
+        "enrich",
+        "topic_neighbors",
+        default=5,
+    )
+)
 
 # Whether the bertopic stage also records, per document, every topic it
 # belongs to rather than only the one id fit_transform returns. That
@@ -654,7 +691,10 @@ TOPIC_NEIGHBORS = int(_get_float(
 # only swaps its clusterer for a placeholder in that mode, so there is
 # always a real one to ask.
 TOPIC_DISTRIBUTION = _get_bool(
-    "TOPIC_DISTRIBUTION", "enrich", "topic_distribution", default=True,
+    "TOPIC_DISTRIBUTION",
+    "enrich",
+    "topic_distribution",
+    default=True,
 )
 # How strong a topic must be *relative to the document's own strongest*
 # to be recorded under it, and how many may be kept at all.
@@ -673,7 +713,10 @@ TOPIC_DISTRIBUTION = _get_bool(
 # took 0.570 and the real second 0.319, well over half -- while dropping
 # the long tail of a document that is diffuse rather than plural.
 TOPIC_MEMBERSHIP_RATIO = _get_float(
-    "TOPIC_MEMBERSHIP_RATIO", "enrich", "topic_membership_ratio", default=0.5,
+    "TOPIC_MEMBERSHIP_RATIO",
+    "enrich",
+    "topic_membership_ratio",
+    default=0.5,
 )
 # The cap, for a document similar to almost everything: without one,
 # "belongs to all 76 topics" is noise wearing the shape of an answer.
@@ -685,9 +728,14 @@ TOPIC_MEMBERSHIP_RATIO = _get_float(
 # the ratio binds for most documents and the cap catches only the
 # genuinely diffuse ones -- which is the division of labour the two
 # settings are for.
-TOPIC_MEMBERSHIP_MAX = int(_get_float(
-    "TOPIC_MEMBERSHIP_MAX", "enrich", "topic_membership_max", default=8,
-))
+TOPIC_MEMBERSHIP_MAX = int(
+    _get_float(
+        "TOPIC_MEMBERSHIP_MAX",
+        "enrich",
+        "topic_membership_max",
+        default=8,
+    )
+)
 # The join of the two topic answers: the phrases the author wrote, and
 # the topics the corpus turned out to have. Written by the `converge`
 # stage from artefacts the earlier stages already produced, so it re-runs
@@ -703,7 +751,10 @@ TOPIC_SET_PATH = CONTENT_DIR / "topic_set.json"
 # corpus as the point where a phrase claims the cluster a human would
 # agree it names, without reaching across to its neighbours.
 TOPIC_CONVERGE_SIMILARITY = _get_float(
-    "TOPIC_CONVERGE_SIMILARITY", "enrich", "topic_converge_similarity", default=0.45,
+    "TOPIC_CONVERGE_SIMILARITY",
+    "enrich",
+    "topic_converge_similarity",
+    default=0.45,
 )
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
@@ -712,8 +763,7 @@ RENDERED_DIR = CONTENT_DIR / "rendered"
 # no network and so a style change can never silently renumber a draft that
 # was already reviewed -- see assets/csl/README.md.
 _CSL_STYLE = _get("CSL_STYLE", "render", "csl", default="")
-CSL_STYLE_PATH = ((PROJECT_ROOT / _CSL_STYLE) if _CSL_STYLE
-                  else shipped("assets", "csl", "ieee.csl"))
+CSL_STYLE_PATH = (PROJECT_ROOT / _CSL_STYLE) if _CSL_STYLE else shipped("assets", "csl", "ieee.csl")
 
 # The Vale configuration `python -m chitragupta.draft style` checks a draft
 # against, vendored at assets/vale/ for the reason assets/csl/ieee.csl is:
@@ -721,8 +771,9 @@ CSL_STYLE_PATH = ((PROJECT_ROOT / _CSL_STYLE) if _CSL_STYLE
 # check whose rules differ per clone is not a check. Overridable so a user
 # can point at their own house style without editing what ships.
 _VALE_CONFIG = _get("VALE_CONFIG", "style", "vale_config", default="")
-VALE_CONFIG_PATH = ((PROJECT_ROOT / _VALE_CONFIG) if _VALE_CONFIG
-                    else shipped("assets", "vale", "vale.ini"))
+VALE_CONFIG_PATH = (
+    (PROJECT_ROOT / _VALE_CONFIG) if _VALE_CONFIG else shipped("assets", "vale", "vale.ini")
+)
 
 # A fallback dialect for a draft whose dossier records none -- the
 # standing preference docs/HOUSE-STYLE.md calls for under "What persists
@@ -759,7 +810,9 @@ _ACRONYMS = _get("ACRONYMS", "style", "acronyms", default="")
 ACRONYMS_PATH = (PROJECT_ROOT / _ACRONYMS) if _ACRONYMS else ACRONYMS_DEFAULT_PATH
 
 EMBEDDING_MODEL = _get(
-    "EMBEDDING_MODEL", "enrich", "embedding_model",
+    "EMBEDDING_MODEL",
+    "enrich",
+    "embedding_model",
     default="sentence-transformers/all-MiniLM-L6-v2",
 )
 
@@ -769,9 +822,14 @@ EMBEDDING_MODEL = _get(
 # matters. 3 leaves room for a paper's chunks to still dominate a small
 # k (e.g. k=5), while guaranteeing a second source a chance at the
 # result once at least two papers are relevant.
-EMBED_MAX_PASSAGES_PER_SOURCE = int(_get_float(
-    "EMBED_MAX_PASSAGES_PER_SOURCE", "enrich", "embed_max_passages_per_source", default=3,
-))
+EMBED_MAX_PASSAGES_PER_SOURCE = int(
+    _get_float(
+        "EMBED_MAX_PASSAGES_PER_SOURCE",
+        "enrich",
+        "embed_max_passages_per_source",
+        default=3,
+    )
+)
 
 
 # --------------------------------------------------------------------------

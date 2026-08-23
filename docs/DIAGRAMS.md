@@ -35,7 +35,7 @@ at the end.
 ## 🪜 The ladder
 
 | # | Diagram | Written for | Answers |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | [One glance](#-1-one-glance) | Someone who has never heard of this | what are the steps, and who does each one? |
 | 2 | [Your first run](#-2-your-first-run) | Someone installing it today | what do I type, in what order, and what does each step tell me? |
 | 3 | [The full workflow](#-3-the-full-workflow) | Someone reading the source | what actually runs, what does it write, and where does the module I'm looking at fit? |
@@ -636,7 +636,7 @@ The enrichment layer in particular is worth building for two of them,
 largely wasted on two others, and reduced to a preview step for the fifth.
 
 | Genre | Skills | Retrieval | Enrichment stages | `chitragupta.draft references` |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | [Genre A: corpus-led](#-genre-a-corpus-led) | `survey-writer`, `deep-research` | BM25 **or** `embed_index` | `docling` + `embed`, both worth it | yes |
 | [Genre B: teaching](#-genre-b-teaching) | `tutorial-writer`, `textbook-chapter-writer` | BM25 only | none | yes (custom heading) |
 | [Genre C: LaTeX-native](#-genre-c-latex-native) | `thesis-chapter-writer` | BM25 only | none | **no -- skipped** |
@@ -1007,12 +1007,12 @@ The same eleven are also checked in as standalone files, so you can drop
 one into a slide deck or a paper without copying it out of this document:
 
 | Path | What it is |
-|---|---|
+| --- | --- |
 | `docs/diagrams/<name>.mmd` | the Mermaid source, with a title line |
 | `docs/diagrams/svg/<name>.svg` | the rendered export, ~1900px wide on a white background |
 
 | Diagram | `<name>` |
-|---|---|
+| --- | --- |
 | 1. One glance | `v1-overview` |
 | 2. Your first run | `v2-first-run` |
 | 3. The full workflow | `00-main-workflow` |

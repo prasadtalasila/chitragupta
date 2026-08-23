@@ -97,7 +97,7 @@ than to prose.
 The clean-code comment rules are eight, and they split cleanly in two:
 
 | Banned | Required |
-|---|---|
+| --- | --- |
 | 2. Don't be redundant | 6. Use as explanation of intent |
 | 3. Don't add obvious noise | 7. Use as clarification of code |
 | 4. Don't use closing brace comments | 8. Use as warning of consequences |
@@ -145,7 +145,7 @@ limit taxes exactly the thing this section requires.
 Here that proxy mostly measures comment discipline:
 
 | Scope | Functions over 25 **physical lines** | Functions over 25 **statements** |
-|---|---|---|
+| --- | --- | --- |
 | `chitragupta/` (383 functions) | 128 | 26 |
 | `tests/` (1926 functions) | 63 | 1 |
 
@@ -226,7 +226,7 @@ quality gate to keep in sync -- the same idiom as
 `tests/test_removed_command_scan.py`.
 
 | | Rule | Scope | Counted as |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **C1** | A function body holds at most **25 statements** | `chitragupta/`, `scripts/`, `tests/` | `ast` statement nodes in the body, not descending into nested definitions |
 | **C2** | A module holds at most **250 lines of code** | `chitragupta/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment |
 
@@ -288,7 +288,7 @@ It exists because of the gap between the two options a new rule normally
 has, both of which fail:
 
 | Option | What happens here |
-|---|---|
+| --- | --- |
 | Enforce the rule outright | 28 functions and 12 modules fail on day one. The build is red for reasons nobody in this PR caused, so the rule gets disabled or the threshold raised until it passes -- and a threshold tuned to today's worst code is not a standard |
 | Write it down as guidance | It is followed until the first deadline. Nothing detects the drift, and two years later the document describes a codebase that no longer exists |
 
@@ -296,7 +296,7 @@ The ratchet takes the useful half of each. Concretely, here:
 
 - Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
   `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **3
-  functions** and **9 modules**. Those two counts are themselves pinned
+  functions** and **15 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale.
 - **New offenders fail.** Anything not in the register that crosses
@@ -356,7 +356,7 @@ should not get one.
 ### 📜 General rules
 
 | Rule | Fate |
-|---|---|
+| --- | --- |
 | Follow standard conventions | Already here: DEVELOPER-AGENTS.md's "Conventions a new stage has to follow" |
 | Keep it simple; reduce complexity | Already here: the "Simplicity first" behavioural rule |
 | Boy scout rule | [Reconciled above](#-the-boy-scout-rule-and-surgical-changes) -- the ratchet is this project's form of it |
@@ -365,7 +365,7 @@ should not get one.
 ### 🏗 Design rules
 
 | Rule | Fate |
-|---|---|
+| --- | --- |
 | Keep configurable data at high levels | Already here: `config.toml` is the single source, every key overridable by an env var |
 | Prefer polymorphism to if/else | **N/A as stated** -- `chitragupta/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
 | Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text.py` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
@@ -382,7 +382,7 @@ inversion is the probe pattern.
 ### 👓 Understandability
 
 | Rule | Fate |
-|---|---|
+| --- | --- |
 | Be consistent | Review, and the highest-value one in this list. A second way of doing something already done is the most common finding here |
 | Use explanatory variables | Review |
 | Encapsulate boundary conditions | Already here, as a whole module: `chitragupta/passages.py` is the single place that decides which span of a source may be shown, so no caller re-derives it |
@@ -402,7 +402,7 @@ the thing is for, not what type it returns. `MAX_STATEMENTS` and
 ### 🧩 Functions
 
 | Rule | Fate |
-|---|---|
+| --- | --- |
 | Small | **Enforced** as C1, counted in statements |
 | Do one thing | Review, and the reason C1 works as a proxy. The common smell here is a `main()` that parses arguments, does the work, and formats the output -- most of the C1 register has that shape |
 | Use descriptive names | Review (see Names) |
@@ -438,7 +438,7 @@ already covers its methods.
 ### 🧪 Tests
 
 | Rule | Fate |
-|---|---|
+| --- | --- |
 | One assert per test | **Adopted in spirit, not literally.** One *behaviour* per test, named for it. A literal single assert would split `test_a_deeper_path_is_flagged_and_reported_in_full` into two tests that mean nothing apart |
 | Readable | Review -- and the reason the tests duplicate setup freely rather than DRYing it. A test that reads top to bottom is worth more than a DRY one |
 | Fast | Already held: the whole suite runs in well under a minute |
@@ -452,7 +452,7 @@ naming the smell is what turns "this feels wrong" into a claim someone can
 agree or disagree with.
 
 | Smell | What it looks like here |
-|---|---|
+| --- | --- |
 | **Rigidity** -- a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
 | **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than four aids each writing their own path |
 | **Immobility** -- code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
@@ -475,19 +475,23 @@ What would extend the enforced half, cheapest first, as proposed when
 this document was written. All four items have since landed, each in a
 different shape than proposed here -- see their own notes.
 
-1. ~~**A linter and formatter (`ruff`).**~~ **A linter landed, but as
-   `pylint`, not `ruff`, and not a formatter.** `ci.yml`'s `lint` job runs
+1. ~~**A linter and formatter (`ruff`).**~~ **Both halves are landed now,
+   in two separate steps.** The linter landed first, as `pylint`, not
+   `ruff`: `ci.yml`'s `lint` job runs
    `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
    zero-messages bar (`docs/TECHNICAL-DEBT.md §5.1`), measured and
    enforced the way this item asked for -- a baseline first, a
    `.pylintrc` `disable=` register of the same shape this item wanted for
    `ruff`. It still subsumes what this rung was for: the Names rules,
    unused imports (`unused-import`), and `too-many-*` overlapping C1 from
-   a different angle. What it does **not** cover, because `pylint` isn't
-   `ruff`: line length is a hand-fixed 100-column wrap
-   (`docs/TECHNICAL-DEBT.md §5.1`'s "31 long lines"), not an enforced
-   `E501`, and there is no formatter. Item 2, adopting `ruff` itself,
-   closed the line-length gap along with it -- see its own note.
+   a different angle. `ruff` itself landed after, in two more rounds --
+   item 2 as the linter, `BLE`/`E`/`F`/`RUF100`; #362 as the formatter,
+   `ruff format --check` over `chitragupta`/`scripts`/`tests`/`bench`/
+   `.claude/hooks` (wider than either linter's roots -- see
+   `docs/TECHNICAL-DEBT.md`'s ruff-format subsection for why). Line
+   length -- `docs/TECHNICAL-DEBT.md §5.1`'s "31 long lines", hand-fixed
+   at the time -- is enforced now on both counts: `E501` from item 2, and
+   the formatter refusing a line its own wrapping would have shortened.
 2. ~~**A `# noqa`-free policy for the ratchet.**~~ **Landed as `ruff`**
    (`docs/TECHNICAL-DEBT.md`'s ruff subsection), at the same binary bar
    pylint and markdownlint hold. `ci.yml`'s `lint` job runs

@@ -54,8 +54,7 @@ def make_docs(tmp_path, texts: dict):
     for citekey, text in texts.items():
         path = tmp_path / f"{citekey}.txt"
         path.write_text(text, encoding="utf-8")
-        docs.append(CorpusDoc(citekey=citekey, title=citekey,
-                              pdf_path=None, text_path=str(path)))
+        docs.append(CorpusDoc(citekey=citekey, title=citekey, pdf_path=None, text_path=str(path)))
     return docs
 
 
@@ -87,8 +86,9 @@ class TestAssign:
             phrase_embeddings={"x": [1.0, 0.0], "y": [0.0, 1.0]},
             min_similarity=0.5,
         )
-        under = {topic["phrase"]: [m["citekey"] for m in topic["matches"]]
-                 for topic in result["topics"]}
+        under = {
+            topic["phrase"]: [m["citekey"] for m in topic["matches"]] for topic in result["topics"]
+        }
         assert under["x"] == ["only_x", "both"]
         assert under["y"] == ["both"]
 
@@ -122,27 +122,33 @@ class TestAssign:
         every run, whatever order the ledger handed them over in."""
         forward = topic_seeding.assign(
             doc_embeddings={"zeta": [1.0, 0.0], "alpha": [1.0, 0.0]},
-            phrase_embeddings={"x": [1.0, 0.0]}, min_similarity=0.5,
+            phrase_embeddings={"x": [1.0, 0.0]},
+            min_similarity=0.5,
         )
         reverse = topic_seeding.assign(
             doc_embeddings={"alpha": [1.0, 0.0], "zeta": [1.0, 0.0]},
-            phrase_embeddings={"x": [1.0, 0.0]}, min_similarity=0.5,
+            phrase_embeddings={"x": [1.0, 0.0]},
+            min_similarity=0.5,
         )
-        assert ([m["citekey"] for m in forward["topics"][0]["matches"]]
-                == [m["citekey"] for m in reverse["topics"][0]["matches"]]
-                == ["alpha", "zeta"])
+        assert (
+            [m["citekey"] for m in forward["topics"][0]["matches"]]
+            == [m["citekey"] for m in reverse["topics"][0]["matches"]]
+            == ["alpha", "zeta"]
+        )
 
     def test_unmatched_is_every_document_no_phrase_described(self, isolated_config):
         result = topic_seeding.assign(
             doc_embeddings={"hit": [1.0, 0.0], "miss_b": [0.0, 1.0], "miss_a": [0.0, 1.0]},
-            phrase_embeddings={"x": [1.0, 0.0]}, min_similarity=0.5,
+            phrase_embeddings={"x": [1.0, 0.0]},
+            min_similarity=0.5,
         )
         assert result["unmatched"] == ["miss_a", "miss_b"]
 
     def test_threshold_defaults_to_config(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.99)
         result = topic_seeding.assign(
-            doc_embeddings={"near": [1.0, 0.2]}, phrase_embeddings={"x": [1.0, 0.0]},
+            doc_embeddings={"near": [1.0, 0.2]},
+            phrase_embeddings={"x": [1.0, 0.0]},
         )
         assert result["min_similarity"] == 0.99
         assert result["topics"][0]["matches"] == []
@@ -186,8 +192,9 @@ class TestRunTopicSeeding:
 
         assert ["one", "two"] in FakeModel.encode_calls
 
-    def test_reuses_the_embeddings_the_topic_model_clusters(self, isolated_config,
-                                                            fake_model, tmp_path):
+    def test_reuses_the_embeddings_the_topic_model_clusters(
+        self, isolated_config, fake_model, tmp_path
+    ):
         """Scored against the same cached vectors BERTopic clusters, so a
         similarity in the report explains the assignment beside it."""
         FakeModel.VECTORS = {"body": [1.0, 0.0], "one": [1.0, 0.0]}
@@ -229,25 +236,22 @@ class TestPerPhraseRanking:
 
     def test_a_phrase_is_truncated_to_the_limit(self, isolated_config):
         docs = {f"doc{i:02d}": [1.0, i / 100.0] for i in range(10)}
-        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
-                                      min_similarity=0.0, max_papers=3)
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]}, min_similarity=0.0, max_papers=3)
         assert len(result["topics"][0]["matches"]) == 3
 
     def test_truncation_keeps_the_best_scoring(self, isolated_config):
         """Ranked first, cut second -- the reverse would keep whichever
         papers the ledger happened to return first."""
         docs = {"far": [1.0, 0.9], "near": [1.0, 0.0], "mid": [1.0, 0.4]}
-        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
-                                      min_similarity=0.0, max_papers=2)
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]}, min_similarity=0.0, max_papers=2)
         assert [m["citekey"] for m in result["topics"][0]["matches"]] == ["near", "mid"]
 
     def test_considered_records_what_the_limit_cut(self, isolated_config):
-        """"3 shown" reads the same whether the 4th paper just missed or
+        """ "3 shown" reads the same whether the 4th paper just missed or
         the topic genuinely has 3; only the first justifies raising the
         limit, so the artefact has to say which."""
         docs = {f"doc{i:02d}": [1.0, 0.0] for i in range(10)}
-        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
-                                      min_similarity=0.0, max_papers=3)
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]}, min_similarity=0.0, max_papers=3)
         assert result["topics"][0]["considered"] == 10
         assert len(result["topics"][0]["matches"]) == 3
 
@@ -256,8 +260,9 @@ class TestPerPhraseRanking:
         nothing, not its N nearest neighbours -- the property that made
         four real shelf-like collection names score zero."""
         docs = {"a": [0.0, 1.0], "b": [0.0, 1.0]}
-        result = topic_seeding.assign(docs, {"noise": [1.0, 0.0]},
-                                      min_similarity=0.15, max_papers=25)
+        result = topic_seeding.assign(
+            docs, {"noise": [1.0, 0.0]}, min_similarity=0.15, max_papers=25
+        )
         assert result["topics"][0]["matches"] == []
         assert result["topics"][0]["considered"] == 0
 
@@ -265,13 +270,11 @@ class TestPerPhraseRanking:
         """Cut by the limit means not listed, so it belongs in `unmatched`
         -- otherwise the coverage line counts papers nobody can see."""
         docs = {"kept": [1.0, 0.0], "cut": [1.0, 0.1]}
-        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]},
-                                      min_similarity=0.0, max_papers=1)
+        result = topic_seeding.assign(docs, {"x": [1.0, 0.0]}, min_similarity=0.0, max_papers=1)
         assert result["unmatched"] == ["cut"]
 
     def test_limit_and_floor_are_recorded(self, isolated_config):
-        result = topic_seeding.assign({"a": [1.0]}, {"x": [1.0]},
-                                      min_similarity=0.2, max_papers=7)
+        result = topic_seeding.assign({"a": [1.0]}, {"x": [1.0]}, min_similarity=0.2, max_papers=7)
         assert result["min_similarity"] == 0.2
         assert result["max_papers"] == 7
 

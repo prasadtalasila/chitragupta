@@ -20,7 +20,13 @@ from chitragupta import review
 # crashes `_page_range`. Checked against `_PAYLOAD_FIELDS` in the tests,
 # so a field required here but never written cannot slip in.
 _BASELINE_FIELDS = (
-    "id", "citekey", "page", "end_page", "span_words", "severity", "line",
+    "id",
+    "citekey",
+    "page",
+    "end_page",
+    "span_words",
+    "severity",
+    "line",
 )
 
 
@@ -49,13 +55,10 @@ def _baseline_gaps(payload: dict) -> list[str]:
             gaps.append(f"{key} (not an int)")
 
     findings = payload["findings"]
-    if (not isinstance(findings, list)
-            or any(not isinstance(f, dict) for f in findings)):
+    if not isinstance(findings, list) or any(not isinstance(f, dict) for f in findings):
         gaps.append("findings (not a list of findings)")
     else:
-        gaps += sorted({
-            field for f in findings for field in _BASELINE_FIELDS if field not in f
-        })
+        gaps += sorted({field for f in findings for field in _BASELINE_FIELDS if field not in f})
     return gaps
 
 
@@ -105,8 +108,11 @@ def load_baseline(path: str | Path) -> dict:
             "Write one with `verbatim scan <draft> --write`."
         ) from None
 
-    if (not isinstance(payload, dict) or payload.get("aid") != "verbatim"
-            or "findings" not in payload):
+    if (
+        not isinstance(payload, dict)
+        or payload.get("aid") != "verbatim"
+        or "findings" not in payload
+    ):
         raise ValueError(
             f"{path} is not a verbatim scan payload. Write one with "
             "`verbatim scan <draft> --write`, which files it as the "

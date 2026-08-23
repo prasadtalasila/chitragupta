@@ -73,7 +73,7 @@ separate argument.
 ## Files
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `.claude/skills/survey-writer/SKILL.md` | step 2: `support:` becomes `claim:`/`quote:` |
 | `.claude/skills/tutorial-writer/SKILL.md` | same |
 | `.claude/skills/thesis-chapter-writer/SKILL.md` | name the fields where it writes `evidence.md` |

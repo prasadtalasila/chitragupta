@@ -175,9 +175,7 @@ class TestFailuresThatAreNotContention:
 
 
 class TestCleanup:
-    def test_a_failure_that_is_not_busy_still_closes_the_connection(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_failure_that_is_not_busy_still_closes_the_connection(self, tmp_path, monkeypatch):
         """Whatever goes wrong during acquisition, the connection must
         not be left open -- an open connection is a held lock."""
         path = tmp_path / "pipeline.lock.db"
@@ -208,13 +206,12 @@ class TestCleanup:
         lock = runlock.pipeline_lock(tmp_path / "pipeline.lock.db")
         assert lock.__exit__(None, None, None) is False
 
-    def test_a_non_busy_operational_error_is_reraised_not_misreported(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_non_busy_operational_error_is_reraised_not_misreported(self, tmp_path, monkeypatch):
         """A full disk or an unwritable content/ raises OperationalError
         too. Reporting that as "another run is already running" would
         send someone hunting for a process that does not exist, so the
         error *code* decides, not the exception type."""
+
         class FailingConnection:
             def execute(self, *_args):
                 raise sqlite3.OperationalError("disk I/O error")
@@ -236,9 +233,7 @@ class TestHolderVisibility:
     stops making progress.
     """
 
-    def test_the_refusal_reports_how_long_the_holder_has_been_running(
-        self, tmp_path, monkeypatch
-    ):
+    def test_the_refusal_reports_how_long_the_holder_has_been_running(self, tmp_path, monkeypatch):
         path = tmp_path / "pipeline.lock.db"
         with runlock.pipeline_lock(path):
             with pytest.raises(runlock.AlreadyRunning) as excinfo:

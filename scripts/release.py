@@ -98,6 +98,10 @@ EXCLUDE_TOP_LEVEL = {
     # (#291). Meaningful only alongside this
     # repository's own test suite, which a release doesn't ship either.
     "coveragerc-windows.toml",
+    # `git blame`'s own ignore list (#362) -- meaningful only against
+    # this repository's own commit history, which an unzipped release
+    # doesn't carry either.
+    ".git-blame-ignore-revs",
 }
 
 # Ships as an empty placeholder directory instead of its tracked contents
@@ -124,7 +128,8 @@ def tracked_files() -> list[str]:
     see build_release)."""
     result = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files", "-z"],
-        capture_output=True, check=True,
+        capture_output=True,
+        check=True,
     )
     paths = [p for p in result.stdout.decode().split("\0") if p]
     skip = EXCLUDE_TOP_LEVEL | EMPTY_TOP_LEVEL
@@ -181,8 +186,9 @@ def render_pypi_readme(version: str) -> str:
 
     # <img src="..."> / <source srcset="..."> in the centred logo block,
     # the only raw-HTML asset references in the file.
-    text = re.sub(r'(src|srcset)="(?!https?://)([^"]+)"',
-                  lambda m: f'{m.group(1)}="{raw}{m.group(2)}"', text)
+    text = re.sub(
+        r'(src|srcset)="(?!https?://)([^"]+)"', lambda m: f'{m.group(1)}="{raw}{m.group(2)}"', text
+    )
 
     # Markdown [text](target) links -- skip ones already absolute and
     # the in-page #anchor ones (the table of contents).

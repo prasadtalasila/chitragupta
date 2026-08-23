@@ -57,7 +57,9 @@ _MAX_HELP_LINES = 30
 def _help(module_path):
     result = subprocess.run(
         [sys.executable, "-m", module_path, "--help"],
-        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stderr
     return result.stdout

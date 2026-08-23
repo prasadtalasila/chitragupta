@@ -38,10 +38,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # list comma and an opening quote, in that order and any of them absent.
 # Written this way rather than as two alternatives so a third spelling
 # (`'-m','chitragupta.sync'`, no space) cannot slip between them.
-_INVOCATION = re.compile(r"""-m["']?      # the flag, and the quote closing it in a list
+_INVOCATION = re.compile(
+    r"""-m["']?      # the flag, and the quote closing it in a list
                              [\s,]*       # whitespace and/or the comma between elements
                              ["']?        # the quote opening the module string
-                             chitragupta\.sync\b""", re.VERBOSE)
+                             chitragupta\.sync\b""",
+    re.VERBOSE,
+)
 
 # The sites that own the removal, and must name the old spelling to do
 # their job. An allowlist by path rather than by surrounding prose (the
@@ -112,8 +115,7 @@ def _scanned_files(root=REPO_ROOT):
     found.add(root / "docker" / "Dockerfile")
     excluded = [root / d for d in _EXCLUDED_DIRS]
     return sorted(
-        path for path in found
-        if path.is_file() and not any(d in path.parents for d in excluded)
+        path for path in found if path.is_file() and not any(d in path.parents for d in excluded)
     )
 
 
@@ -147,18 +149,21 @@ class TestNothingInvokesTheRemovedCommand:
             + "\n".join(f"  {path}: {text!r}" for path, text in offenders)
         )
 
-    @pytest.mark.parametrize("path", [
-        # The two files #151 found.
-        "bench/repro_check.py",
-        "bench/sweep_sync.py",
-        # Extensionless, so no suffix glob reaches it, and named by #151
-        # among the places #150 rewrote command strings.
-        "docker/Dockerfile",
-        # The file a user copies to config.toml, and reads as docs.
-        "config.toml.example",
-        # The install path, whose header comment lists commands.
-        "scripts/install_full_pipeline.sh",
-    ])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            # The two files #151 found.
+            "bench/repro_check.py",
+            "bench/sweep_sync.py",
+            # Extensionless, so no suffix glob reaches it, and named by #151
+            # among the places #150 rewrote command strings.
+            "docker/Dockerfile",
+            # The file a user copies to config.toml, and reads as docs.
+            "config.toml.example",
+            # The install path, whose header comment lists commands.
+            "scripts/install_full_pipeline.sh",
+        ],
+    )
     def test_the_files_that_matter_are_in_scope(self, path):
         """Named rather than assumed. A scan whose roots quietly stopped
         covering one of these would keep passing while checking nothing

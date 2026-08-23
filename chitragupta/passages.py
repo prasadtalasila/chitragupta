@@ -71,10 +71,42 @@ from chitragupta import config
 # another.
 _WORD = re.compile(r"[a-z0-9]+")
 _STOPWORDS = {
-    "a", "an", "the", "of", "on", "in", "for", "and", "to", "with",
-    "is", "are", "be", "this", "that", "as", "by", "from", "at",
-    "it", "its", "can", "has", "have", "was", "were", "which", "such",
-    "these", "those", "their", "than", "then", "but", "not", "also",
+    "a",
+    "an",
+    "the",
+    "of",
+    "on",
+    "in",
+    "for",
+    "and",
+    "to",
+    "with",
+    "is",
+    "are",
+    "be",
+    "this",
+    "that",
+    "as",
+    "by",
+    "from",
+    "at",
+    "it",
+    "its",
+    "can",
+    "has",
+    "have",
+    "was",
+    "were",
+    "which",
+    "such",
+    "these",
+    "those",
+    "their",
+    "than",
+    "then",
+    "but",
+    "not",
+    "also",
 }
 
 
@@ -87,6 +119,7 @@ class Passage:
     """A candidate span of source text. `text` is None when the source
     couldn't be read in reading order, in which case the passage stands
     for a whole page and must not be quoted."""
+
     page: int | None
     words: set[str]
     text: str | None = None
@@ -132,8 +165,11 @@ def passage_records(dl_doc) -> list[dict]:
         if label not in PASSAGE_LABELS or not text:
             continue
         prov = item.prov[0] if getattr(item, "prov", None) else None
-        record = {"text": text, "label": label,
-                  "page": getattr(prov, "page_no", None) if prov else None}
+        record = {
+            "text": text,
+            "label": label,
+            "page": getattr(prov, "page_no", None) if prov else None,
+        }
         bbox = getattr(prov, "bbox", None) if prov else None
         if bbox is not None:
             record["bbox"] = [getattr(bbox, side, None) for side in ("l", "t", "r", "b")]
@@ -222,9 +258,14 @@ def _from_sidecar(path: Path) -> list[Passage] | None:
         if not text:
             continue
         label = rec.get("label")
-        found.append(Passage(page=_page_number(rec.get("page")),
-                             words=distinctive(text), text=text,
-                             label=label if isinstance(label, str) else None))
+        found.append(
+            Passage(
+                page=_page_number(rec.get("page")),
+                words=distinctive(text),
+                text=text,
+                label=label if isinstance(label, str) else None,
+            )
+        )
     return found or None
 
 
@@ -239,8 +280,11 @@ def _from_pages(raw: str) -> list[Passage]:
     A blank page is dropped but still consumes its number, so a page
     reported here is the page a reader will turn to.
     """
-    return [Passage(page=i, words=distinctive(page))
-            for i, page in enumerate(raw.split("\f"), 1) if page.strip()]
+    return [
+        Passage(page=i, words=distinctive(page))
+        for i, page in enumerate(raw.split("\f"), 1)
+        if page.strip()
+    ]
 
 
 def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
@@ -250,8 +294,7 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     # enrichment layer's is a second, independent parse of the PDF under
     # its own OCR and figure settings, so it is the richer of the two
     # whenever a run has paid for it.
-    for path in (config.DOCLING_DIR / f"{citekey}.passages.json",
-                 sidecar_path(citekey)):
+    for path in (config.DOCLING_DIR / f"{citekey}.passages.json", sidecar_path(citekey)):
         sidecar = _from_sidecar(path)
         if sidecar:
             return sidecar, None
@@ -281,9 +324,13 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
             # raises UnicodeDecodeError, which is not in the except clause
             # below and would take down a whole report over one PDF. Same
             # guard the parsed-text branch above already applies.
-            out = subprocess.run(["pdftotext", "-layout", pdf_path, "-"],
-                                 capture_output=True, check=True,
-                                 encoding="utf-8", errors="replace")
+            out = subprocess.run(
+                ["pdftotext", "-layout", pdf_path, "-"],
+                capture_output=True,
+                check=True,
+                encoding="utf-8",
+                errors="replace",
+            )
         except (OSError, subprocess.CalledProcessError) as exc:
             return [], f"couldn't run pdftotext on the PDF ({exc})"
         return _from_pages(out.stdout), None

@@ -12,14 +12,21 @@ from pathlib import Path
 
 from chitragupta import config, review
 from chitragupta.review.verbatim_check._scan import (
-    _flags, _matched_note, _not_run_lines, _page_range, _tier_note, published,
+    _flags,
+    _matched_note,
+    _not_run_lines,
+    _page_range,
+    _tier_note,
+    published,
     scan_findings,
 )
 from chitragupta.review.verbatim_check._scan_render import render_scan_markdown
 
 
 def format_scan(
-    findings: list[dict], min_run: int, suppressed: int = 0,
+    findings: list[dict],
+    min_run: int,
+    suppressed: int = 0,
     not_run: list[dict] | None = None,
 ) -> str:
     """The plain-text form, for stdout."""
@@ -65,8 +72,18 @@ def scan_command(
     path and effect are recorded separately (see `render_scan_markdown`'s
     header bullet and `scan_payload`'s `suppressed` field).
     """
-    command = ["python", "-m", "chitragupta.review", "verbatim", "scan", str(draft),
-               "--min-run", str(min_run), "--gap", str(gap)]
+    command = [
+        "python",
+        "-m",
+        "chitragupta.review",
+        "verbatim",
+        "scan",
+        str(draft),
+        "--min-run",
+        str(min_run),
+        "--gap",
+        str(gap),
+    ]
     if limit is not None:
         command += ["--limit", str(limit)]
     if write:
@@ -132,21 +149,23 @@ def scan_payload(
     text, and a flag list would only move the parsing one layer down.
     """
     payload = review.envelope(Path(draft), "verbatim", command)
-    payload.update({
-        "min_run": min_run,
-        "gap": gap,
-        "limit": limit,
-        "suppressed": suppressed,
-        # One entry per detection tier that could not run at all, each
-        # naming the tier and why -- empty when every tier ran. A
-        # consumer reading `findings` alone cannot tell a checked draft
-        # from an unchecked one, and this is the field that answers it
-        # (see `scan_findings`). Additive: `load_baseline` requires
-        # `_BASELINE_FIELDS` and ignores everything else, so a payload
-        # written before this key existed still reads.
-        "tiers_not_run": not_run or [],
-        "findings": [published(f) for f in findings],
-    })
+    payload.update(
+        {
+            "min_run": min_run,
+            "gap": gap,
+            "limit": limit,
+            "suppressed": suppressed,
+            # One entry per detection tier that could not run at all, each
+            # naming the tier and why -- empty when every tier ran. A
+            # consumer reading `findings` alone cannot tell a checked draft
+            # from an unchecked one, and this is the field that answers it
+            # (see `scan_findings`). Additive: `load_baseline` requires
+            # `_BASELINE_FIELDS` and ignores everything else, so a payload
+            # written before this key existed still reads.
+            "tiers_not_run": not_run or [],
+            "findings": [published(f) for f in findings],
+        }
+    )
     return payload
 
 
@@ -192,20 +211,19 @@ def cmd_scan(
         return
 
     command = scan_command(draft, min_run, gap, limit, write, as_json)
-    payload = scan_payload(
-        draft, findings, min_run, gap, limit, suppressed, command, not_run
-    )
+    payload = scan_payload(draft, findings, min_run, gap, limit, suppressed, command, not_run)
 
     # Same `indent=2`, same key order, no trailing difference: what this
     # prints is byte-for-byte what `write_json` files, so a caller may
     # redirect stdout or read the sibling and get the same bytes.
-    print(json.dumps(payload, indent=2) if as_json
-          else format_scan(findings, min_run, suppressed, not_run))
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else format_scan(findings, min_run, suppressed, not_run)
+    )
 
     if write:
-        body = render_scan_markdown(
-            draft, findings, min_run, limit, command, suppressed, not_run
-        )
+        body = render_scan_markdown(draft, findings, min_run, limit, command, suppressed, not_run)
         written = review.write(Path(draft), "verbatim", body, list(formats))
         written["json"] = review.write_json(Path(draft), "verbatim", payload)
         review.print_written(written, stream=sys.stderr if as_json else sys.stdout)

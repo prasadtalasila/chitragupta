@@ -47,8 +47,7 @@ class FakeCollection:
         self._count = count
 
     def query(self, query_embeddings, n_results, where):
-        self.queries.append({"n": len(query_embeddings), "n_results": n_results,
-                             "where": where})
+        self.queries.append({"n": len(query_embeddings), "n_results": n_results, "where": where})
         return self.response
 
     def count(self):
@@ -70,6 +69,7 @@ class FakeClient:
 def fake_chromadb(monkeypatch):
     """Install a chromadb/sentence_transformers pair in sys.modules, and
     hand back the client the module under test will build."""
+
     def install(collections):
         client = FakeClient(collections)
         chromadb = types.SimpleNamespace(PersistentClient=lambda path: client)
@@ -78,6 +78,7 @@ def fake_chromadb(monkeypatch):
         monkeypatch.setitem(sys.modules, "chromadb", chromadb)
         monkeypatch.setitem(sys.modules, "sentence_transformers", transformers)
         return client
+
     return install
 
 
@@ -102,9 +103,7 @@ class TestOptionalStack:
         fake_chromadb({})
         assert overlap_chroma.optional_stack() is not None
 
-    def test_a_missing_package_is_not_installed_rather_than_an_exception(
-        self, monkeypatch
-    ):
+    def test_a_missing_package_is_not_installed_rather_than_an_exception(self, monkeypatch):
         # `embed_index.get_client_and_model()` imports these bare and
         # raises ModuleNotFoundError uncaught, which would take the whole
         # scan down; this is the probe that exists so it does not.
@@ -118,9 +117,7 @@ class TestBuiltCollection:
         chromadb = types.SimpleNamespace(PersistentClient=lambda path: FakeClient({}))
         assert overlap_chroma.built_collection(chromadb) is None
 
-    def test_a_directory_with_no_matching_collection_is_none(
-        self, isolated_config, fake_chromadb
-    ):
+    def test_a_directory_with_no_matching_collection_is_none(self, isolated_config, fake_chromadb):
         # The corpus was embedded under a different `embedding_model`:
         # the collection is namespaced per model, so this one is simply
         # not there and the tier has nothing to read.
@@ -148,9 +145,7 @@ class TestBuiltCollection:
         chromadb = types.SimpleNamespace(PersistentClient=lambda path: client)
         assert overlap_chroma.built_collection(chromadb) is collection
 
-    def test_a_client_listing_bare_names_is_handled_too(
-        self, isolated_config, fake_chromadb
-    ):
+    def test_a_client_listing_bare_names_is_handled_too(self, isolated_config, fake_chromadb):
         # chromadb 0.5 lists collection objects and 1.0 lists names.
         from chitragupta.enrich import embed_index
 
@@ -181,9 +176,7 @@ class TestEmbedder:
             return self
 
         def __matmul__(self, other):
-            return TestEmbedder.FakeVectors(
-                [[a * b for b in other] for a in self]
-            )
+            return TestEmbedder.FakeVectors([[a * b for b in other] for a in self])
 
         def tolist(self):
             return list(self)
@@ -193,8 +186,7 @@ class TestEmbedder:
             self.calls = []
 
         def encode(self, texts, show_progress_bar=False, normalize_embeddings=False):
-            self.calls.append({"texts": list(texts),
-                               "normalized": normalize_embeddings})
+            self.calls.append({"texts": list(texts), "normalized": normalize_embeddings})
             return TestEmbedder.FakeVectors(float(len(t)) for t in texts)
 
     def test_it_encodes_normalized_so_a_dot_product_is_the_cosine(self):
@@ -223,8 +215,8 @@ class TestEmbedder:
             return None, TestEmbedder.FakeModel()
 
         from chitragupta.enrich import embed_index
-        monkeypatch.setattr(embed_index, "get_client_and_model",
-                            fake_get_client_and_model)
+
+        monkeypatch.setattr(embed_index, "get_client_and_model", fake_get_client_and_model)
         embedder = overlap_chroma.Embedder()
         assert loads == []
         embedder.encode(["one"])
@@ -235,26 +227,32 @@ class TestEmbedder:
 class TestShortlist:
     def test_a_single_citekey_is_returned_without_a_query(self):
         collection = FakeCollection()
-        assert overlap_chroma.shortlist(
-            collection, FakeEmbedder(), ["only_2024"], "prose", 5
-        ) == ["only_2024"]
+        assert overlap_chroma.shortlist(collection, FakeEmbedder(), ["only_2024"], "prose", 5) == [
+            "only_2024"
+        ]
         assert collection.queries == []
 
     def test_citekeys_come_back_nearest_first(self):
-        collection = FakeCollection({
-            "metadatas": [[{"citekey": "far_2024"}, {"citekey": "near_2024"}]],
-            "distances": [[0.9, 0.1]],
-        })
+        collection = FakeCollection(
+            {
+                "metadatas": [[{"citekey": "far_2024"}, {"citekey": "near_2024"}]],
+                "distances": [[0.9, 0.1]],
+            }
+        )
         assert overlap_chroma.shortlist(
             collection, FakeEmbedder(), ["far_2024", "near_2024"], "prose", 5
         ) == ["near_2024", "far_2024"]
 
     def test_a_citekey_takes_its_best_distance_across_every_chunk(self):
-        collection = FakeCollection({
-            "metadatas": [[{"citekey": "a_2024"}], [{"citekey": "a_2024"},
-                                                    {"citekey": "b_2024"}]],
-            "distances": [[0.9], [0.05, 0.5]],
-        })
+        collection = FakeCollection(
+            {
+                "metadatas": [
+                    [{"citekey": "a_2024"}],
+                    [{"citekey": "a_2024"}, {"citekey": "b_2024"}],
+                ],
+                "distances": [[0.9], [0.05, 0.5]],
+            }
+        )
         assert overlap_chroma.shortlist(
             collection, FakeEmbedder(), ["a_2024", "b_2024"], "prose", 5
         ) == ["a_2024", "b_2024"]
@@ -262,27 +260,34 @@ class TestShortlist:
     def test_a_citekey_the_collection_never_embedded_ranks_last_not_nowhere(self):
         # A source whose PDF never parsed has no chunk; dropping it would
         # shrink the shortlist below its cap for no stated reason.
-        collection = FakeCollection({
-            "metadatas": [[{"citekey": "indexed_2024"}]], "distances": [[0.2]],
-        })
+        collection = FakeCollection(
+            {
+                "metadatas": [[{"citekey": "indexed_2024"}]],
+                "distances": [[0.2]],
+            }
+        )
         assert overlap_chroma.shortlist(
             collection, FakeEmbedder(), ["indexed_2024", "missing_2024"], "prose", 5
         ) == ["indexed_2024", "missing_2024"]
 
     def test_a_hit_with_no_citekey_in_its_metadata_is_skipped(self):
-        collection = FakeCollection({
-            "metadatas": [[{"title": "no citekey here"}, {"citekey": "real_2024"}]],
-            "distances": [[0.1, 0.4]],
-        })
+        collection = FakeCollection(
+            {
+                "metadatas": [[{"title": "no citekey here"}, {"citekey": "real_2024"}]],
+                "distances": [[0.1, 0.4]],
+            }
+        )
         assert overlap_chroma.shortlist(
             collection, FakeEmbedder(), ["real_2024", "other_2024"], "prose", 5
         ) == ["real_2024", "other_2024"]
 
     def test_the_cap_is_applied(self):
-        collection = FakeCollection({
-            "metadatas": [[{"citekey": f"k{i}_2024"} for i in range(4)]],
-            "distances": [[0.1, 0.2, 0.3, 0.4]],
-        })
+        collection = FakeCollection(
+            {
+                "metadatas": [[{"citekey": f"k{i}_2024"} for i in range(4)]],
+                "distances": [[0.1, 0.2, 0.3, 0.4]],
+            }
+        )
         found = overlap_chroma.shortlist(
             collection, FakeEmbedder(), [f"k{i}_2024" for i in range(4)], "prose", 2
         )
@@ -316,21 +321,15 @@ class TestOpenScope:
         # corpus.
         assert "whole corpus" in reason
 
-    def test_a_missing_enrichment_layer_says_how_to_install_it(
-        self, isolated_config, monkeypatch
-    ):
-        draft = write_draft(config, "# T\n\nprose\n",
-                            dossier_rows=[("T", "`smith_2024`")])
+    def test_a_missing_enrichment_layer_says_how_to_install_it(self, isolated_config, monkeypatch):
+        draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: None)
         scope, reason = overlap_embed.open_scope(draft)
         assert scope is None
         assert "poetry install --with enrich" in reason
 
-    def test_an_unbuilt_collection_says_how_to_build_it(
-        self, isolated_config, monkeypatch
-    ):
-        draft = write_draft(config, "# T\n\nprose\n",
-                            dossier_rows=[("T", "`smith_2024`")])
+    def test_an_unbuilt_collection_says_how_to_build_it(self, isolated_config, monkeypatch):
+        draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
         monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: None)
         scope, reason = overlap_embed.open_scope(draft)
@@ -338,8 +337,7 @@ class TestOpenScope:
         assert "python -m chitragupta.enrich" in reason
 
     def test_everything_present_opens_a_scope(self, isolated_config, monkeypatch):
-        draft = write_draft(config, "# T\n\nprose\n",
-                            dossier_rows=[("T", "`smith_2024`")])
+        draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         collection = FakeCollection()
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
         monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: collection)
@@ -354,9 +352,7 @@ class TestOpenScope:
     ):
         stray = tmp_path / "elsewhere.md"
         stray.write_text("# T\n\nprose\n", encoding="utf-8")
-        assert overlap_embed.unavailable_reason(stray) == (
-            overlap_embed.open_scope(stray)[1]
-        )
+        assert overlap_embed.unavailable_reason(stray) == (overlap_embed.open_scope(stray)[1])
 
     def test_the_dossier_check_comes_before_anything_imports_torch(
         self, isolated_config, tmp_path, monkeypatch
@@ -365,8 +361,7 @@ class TestOpenScope:
         # pipeline every draft lands here, and loading the embedding
         # stack to discover that would cost seconds per scan.
         called = []
-        monkeypatch.setattr(overlap_chroma, "optional_stack",
-                            lambda: called.append(True))
+        monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: called.append(True))
         stray = tmp_path / "elsewhere.md"
         stray.write_text("# T\n\nprose\n", encoding="utf-8")
         overlap_embed.open_scope(stray)
@@ -381,13 +376,17 @@ class TestAlignDraft:
             path = config.DOCLING_DIR / f"{citekey}.passages.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(records), encoding="utf-8")
+
         return write
 
     def section(self, title="T", citekeys=("smith_2024",), texts=("a claim",)):
         return overlap_segments.DraftSection(
-            title, list(citekeys),
-            [overlap_segments.DraftSentence(text, i * 5, i * 5 + 5)
-             for i, text in enumerate(texts)],
+            title,
+            list(citekeys),
+            [
+                overlap_segments.DraftSentence(text, i * 5, i * 5 + 5)
+                for i, text in enumerate(texts)
+            ],
         )
 
     def test_an_aligned_pair_carries_the_sources_page_and_the_drafts_words(
@@ -402,9 +401,7 @@ class TestAlignDraft:
         assert (found.word_start, found.word_end) == (0, 5)
         assert found.source_text == "the source claim."
 
-    def test_an_unrelated_pair_produces_nothing(
-        self, isolated_config, ledger_con, source
-    ):
+    def test_an_unrelated_pair_produces_nothing(self, isolated_config, ledger_con, source):
         source("smith_2024", [{"text": "something else.", "label": "text", "page": 1}])
         scope = overlap_embed.Scope({}, FakeCollection(), ledger_con, FakeEmbedder())
         assert overlap_embed.align_draft(scope, [self.section()]) == []
@@ -423,9 +420,7 @@ class TestAlignDraft:
         scope = overlap_embed.Scope({}, FakeCollection(), ledger_con, embedder)
         assert len(overlap_embed.align_draft(scope, [self.section()])) == 1
 
-    def test_a_source_with_no_usable_passages_is_skipped(
-        self, isolated_config, ledger_con
-    ):
+    def test_a_source_with_no_usable_passages_is_skipped(self, isolated_config, ledger_con):
         scope = overlap_embed.Scope({}, FakeCollection(), ledger_con, FakeEmbedder())
         assert overlap_embed.align_draft(scope, [self.section()]) == []
 
@@ -437,38 +432,51 @@ class TestAlignDraft:
         source("smith_2024", [{"text": "the source claim.", "label": "text", "page": 1}])
         embedder = FakeEmbedder()
         scope = overlap_embed.Scope({}, FakeCollection(), ledger_con, embedder)
-        overlap_embed.align_draft(scope, [
-            self.section(title="one"), self.section(title="two"),
-        ])
-        source_batches = [batch for batch in embedder.encoded
-                          if batch == ["the source claim."]]
+        overlap_embed.align_draft(
+            scope,
+            [
+                self.section(title="one"),
+                self.section(title="two"),
+            ],
+        )
+        source_batches = [batch for batch in embedder.encoded if batch == ["the source claim."]]
         assert len(source_batches) == 1
 
 
 class TestReport:
     def alignment(self, section="A", citekey="k_2024", score=1.0, start=0, end=10):
         return overlap_embed.SectionAlignment(
-            section=section, citekey=citekey, page=1, end_page=1, score=score,
-            word_start=start, word_end=end, matched_words=end - start,
+            section=section,
+            citekey=citekey,
+            page=1,
+            end_page=1,
+            score=score,
+            word_start=start,
+            word_end=end,
+            matched_words=end - start,
             source_text="src",
         )
 
     def test_the_same_span_matching_several_sources_reports_once(self):
         # A section's passage aligning against four of its five cited
         # sources is one place to look, not four.
-        found = overlap_embed.report([
-            self.alignment(citekey="a_2024", score=0.9),
-            self.alignment(citekey="b_2024", score=0.8),
-            self.alignment(citekey="c_2024", score=0.7),
-        ])
+        found = overlap_embed.report(
+            [
+                self.alignment(citekey="a_2024", score=0.9),
+                self.alignment(citekey="b_2024", score=0.8),
+                self.alignment(citekey="c_2024", score=0.7),
+            ]
+        )
         assert [a.citekey for a in found] == ["a_2024"]
 
     def test_it_keeps_at_most_one_alignment_per_section(self):
-        found = overlap_embed.report([
-            self.alignment(section="A", score=0.9, start=0, end=10),
-            self.alignment(section="A", score=0.8, start=20, end=30),
-            self.alignment(section="B", score=0.1, start=40, end=50),
-        ])
+        found = overlap_embed.report(
+            [
+                self.alignment(section="A", score=0.9, start=0, end=10),
+                self.alignment(section="A", score=0.8, start=20, end=30),
+                self.alignment(section="B", score=0.1, start=40, end=50),
+            ]
+        )
         assert [(a.section, a.score) for a in found] == [("A", 0.9), ("B", 0.1)]
 
     def test_a_weak_alignment_in_its_own_section_still_reports(self):
@@ -477,8 +485,10 @@ class TestReport:
         # top-N drops the one hand-verified organic paraphrase in
         # chapter 1 of the real book.
         found = overlap_embed.report(
-            [self.alignment(section=f"S{i}", score=1.0 - i / 100, start=i * 20,
-                            end=i * 20 + 10) for i in range(30)]
+            [
+                self.alignment(section=f"S{i}", score=1.0 - i / 100, start=i * 20, end=i * 20 + 10)
+                for i in range(30)
+            ]
         )
         assert len(found) == 30
 
@@ -487,11 +497,13 @@ class TestReport:
         # still share draft words when a section limit of more than one
         # is in force -- the overlap check is what keeps the reported
         # spans disjoint regardless.
-        found = overlap_embed.report([
-            self.alignment(section="A", score=0.9, start=0, end=10),
-            self.alignment(section="B", score=0.5, start=5, end=15),
-            self.alignment(section="B", score=0.4, start=30, end=40),
-        ])
+        found = overlap_embed.report(
+            [
+                self.alignment(section="A", score=0.9, start=0, end=10),
+                self.alignment(section="B", score=0.5, start=5, end=15),
+                self.alignment(section="B", score=0.4, start=30, end=40),
+            ]
+        )
         assert [(a.section, a.word_start) for a in found] == [("A", 0), ("B", 30)]
 
     def test_nothing_in_gives_nothing_out(self):

@@ -18,7 +18,9 @@ from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
 class TestMainCli:
-    def test_missing_binary_prints_and_returns_1(self, isolated_config, tmp_path, monkeypatch, capsys):
+    def test_missing_binary_prints_and_returns_1(
+        self, isolated_config, tmp_path, monkeypatch, capsys
+    ):
         monkeypatch.setattr(shutil, "which", lambda name: None)
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("text\n")
@@ -28,20 +30,30 @@ class TestMainCli:
         assert rc == 1
         assert "[missing-binary]" in out
 
-    @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
-    def test_called_process_error_prints_and_returns_1(self, isolated_config, tmp_path, monkeypatch, capsys):
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
+    )
+    def test_called_process_error_prints_and_returns_1(
+        self, isolated_config, tmp_path, monkeypatch, capsys
+    ):
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = content_draft(isolated_config, "draft.md")
         # Malformed LaTeX documentclass argument to force pandoc to fail.
-        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--documentclass", "this is not valid \\"])
+        monkeypatch.setattr(
+            sys, "argv", ["render_output.py", str(draft), "--documentclass", "this is not valid \\"]
+        )
         draft.write_text("text\n")
         rc = render_output.main()
         out = capsys.readouterr().out
         assert rc == 1
         assert "[error]" in out
 
-    @pytest.mark.skipif(not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed")
-    def test_success_prints_output_path_and_returns_0(self, isolated_config, tmp_path, monkeypatch, capsys):
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
+    )
+    def test_success_prints_output_path_and_returns_0(
+        self, isolated_config, tmp_path, monkeypatch, capsys
+    ):
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nNo citations here.\n")
@@ -83,8 +95,18 @@ class TestFragmentOutput:
 
     def test_fragment_drops_standalone_and_makes_the_top_heading_a_chapter(self):
         cmd, _ = render_output._pandoc_command(
-            Path("in.md"), Path("bib.bib"), Path("ieee.csl"), Path("out.tex"),
-            Path("in.md"), "tex", "article", "12pt", "a4", "1in", [], True,
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            True,
         )
         assert "--standalone" not in cmd
         assert "--top-level-division=chapter" in cmd
@@ -95,8 +117,17 @@ class TestFragmentOutput:
 
     def test_a_normal_render_is_still_standalone(self):
         cmd, _ = render_output._pandoc_command(
-            Path("in.md"), Path("bib.bib"), Path("ieee.csl"), Path("out.tex"),
-            Path("in.md"), "tex", "article", "12pt", "a4", "1in", [],
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
         )
         assert "--standalone" in cmd
         assert "--top-level-division=chapter" not in cmd
@@ -104,9 +135,13 @@ class TestFragmentOutput:
     def test_the_flag_reaches_render(self, monkeypatch, tmp_path):
         seen = {}
         monkeypatch.setattr(
-            render_output, "render",
-            lambda *args, **kwargs: seen.update(kwargs) or tmp_path / "out.tex")
-        assert render_output._cli.main(["--fragment", "--format", "tex", str(tmp_path / "x.md")]) == 0
+            render_output,
+            "render",
+            lambda *args, **kwargs: seen.update(kwargs) or tmp_path / "out.tex",
+        )
+        assert (
+            render_output._cli.main(["--fragment", "--format", "tex", str(tmp_path / "x.md")]) == 0
+        )
         assert seen["fragment"] is True
 
 
@@ -125,6 +160,10 @@ class TestOutputDirFlag:
             return tmp_path / "out.tex"
 
         monkeypatch.setattr(render_output, "render", fake_render)
-        assert render_output._cli.main(
-            ["--format", "tex", "--output-dir", str(tmp_path), str(tmp_path / "x.md")]) == 0
+        assert (
+            render_output._cli.main(
+                ["--format", "tex", "--output-dir", str(tmp_path), str(tmp_path / "x.md")]
+            )
+            == 0
+        )
         assert str(tmp_path) in seen["positional"]

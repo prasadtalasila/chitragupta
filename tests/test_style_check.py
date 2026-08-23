@@ -38,15 +38,22 @@ def write_scope(draft, line):
 
 def fake_run(payload, stdout=None):
     """A `subprocess.run` returning `payload` as Vale's JSON on stdout."""
+
     def _run(argv, **kwargs):  # pylint: disable=unused-argument
         text = json.dumps(payload) if stdout is None else stdout
         return subprocess.CompletedProcess(argv, 0, stdout=text, stderr="")
+
     return _run
 
 
 def finding(check="chitragupta.DefectMarkers", match="simply", line=3):
-    return {"Check": check, "Match": match, "Line": line,
-            "Message": f"'{match}' is a defect marker.", "Severity": "warning"}
+    return {
+        "Check": check,
+        "Match": match,
+        "Line": line,
+        "Message": f"'{match}' is a defect marker.",
+        "Severity": "warning",
+    }
 
 
 class TestLanguageOf:
@@ -68,7 +75,7 @@ class TestLanguageOf:
         assert style_check.language_of(draft) is None
 
     def test_an_unrecognised_tag_is_still_reported_as_recorded(self, draft):
-        """"Recorded fr-FR, nothing here can check it" and "nobody chose
+        """ "Recorded fr-FR, nothing here can check it" and "nobody chose
         one" are different states, and only the second is worth prompting
         about."""
         write_scope(draft, "- language: fr-FR")
@@ -99,7 +106,7 @@ class TestRuleFilter:
     def test_en_gb_keeps_only_the_gb_rule(self):
         expression = style_check.rule_filter("en-GB")
         assert "DialectGB" not in expression
-        assert 'DialectUS' in expression and 'DialectIN' in expression
+        assert "DialectUS" in expression and "DialectIN" in expression
 
     def test_en_in_keeps_both_gb_and_in(self):
         """en-IN is en-GB plus the -ize check, not an alias for either:
@@ -161,10 +168,12 @@ class TestCollapse:
         assert {f["match"] for f in collapsed} == {"simply", "clearly"}
 
     def test_the_same_token_under_two_rules_stays_separate(self):
-        collapsed = style_check.collapse([
-            finding(check="chitragupta.DefectMarkers", match="just"),
-            finding(check="chitragupta.Just", match="just"),
-        ])
+        collapsed = style_check.collapse(
+            [
+                finding(check="chitragupta.DefectMarkers", match="just"),
+                finding(check="chitragupta.Just", match="just"),
+            ]
+        )
         assert len(collapsed) == 2
 
     def test_the_most_repeated_finding_sorts_first(self):
@@ -207,6 +216,7 @@ class TestProposeLanguage:
         def _run(draft, language):  # pylint: disable=unused-argument
             n = gb if language == "en-GB" else us
             return [finding(check="chitragupta.DialectGB")] * n
+
         monkeypatch.setattr(style_check, "run_vale", _run)
 
     def test_the_dialect_with_fewer_findings_is_proposed(self, draft, monkeypatch):
@@ -223,10 +233,13 @@ class TestProposeLanguage:
         """Every other rule fires identically whichever dialect is
         assumed, so counting them adds the same number to both sides and
         buries the signal -- measured as 18 vs 31 rather than 0 vs 26."""
+
         def _run(draft_, language):  # pylint: disable=unused-argument
             noise = [finding(check="chitragupta.Acronyms", match="ISO")] * 18
-            return noise + ([] if language == "en-GB" else
-                            [finding(check="chitragupta.DialectUS")] * 13)
+            return noise + (
+                [] if language == "en-GB" else [finding(check="chitragupta.DialectUS")] * 13
+            )
+
         monkeypatch.setattr(style_check, "run_vale", _run)
         best, counts = style_check.propose_language(draft)
         assert (best, counts) == ("en-GB", {"en-GB": 0, "en-US": 13})
@@ -234,8 +247,13 @@ class TestProposeLanguage:
 
 class TestReport:
     def _payload(self, draft, language=None, source="nothing", findings=(), proposal=None):
-        return {"draft": str(draft), "language": language, "language_source": source,
-                "findings": list(findings), "proposed_language": proposal}
+        return {
+            "draft": str(draft),
+            "language": language,
+            "language_source": source,
+            "findings": list(findings),
+            "proposed_language": proposal,
+        }
 
     def test_an_unset_dialect_is_stated_not_silently_skipped(self, draft):
         """A report that omits dialect findings because nobody set a
@@ -311,18 +329,21 @@ class TestMain:
         style_check.main([str(draft), str(draft)])
         assert capsys.readouterr().out.count("WARNING") == 1
 
-    def test_an_unreadable_draft_warns_and_still_exits_zero(self, isolated_config,
-                                                            monkeypatch, capsys):
+    def test_an_unreadable_draft_warns_and_still_exits_zero(
+        self, isolated_config, monkeypatch, capsys
+    ):
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
 
         def _raise(*_args, **_kwargs):
             raise OSError("no such file")
+
         monkeypatch.setattr(subprocess, "run", _raise)
         assert style_check.main(["content/drafts/gone.md"]) == 0
         assert "WARNING" in capsys.readouterr().out
 
-    def test_json_carries_the_findings_and_the_not_a_verdict_notice(self, draft,
-                                                                    monkeypatch, capsys):
+    def test_json_carries_the_findings_and_the_not_a_verdict_notice(
+        self, draft, monkeypatch, capsys
+    ):
         """The hook and docs/AUTO-IMPROVEMENT.md's agenda both read this
         rather than the printed form."""
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
@@ -333,7 +354,8 @@ class TestMain:
         assert payload["drafts"][0]["findings"][0]["match"] == "simply"
 
     def test_json_reports_a_missing_binary_as_a_warning_not_an_empty_result(
-            self, draft, monkeypatch, capsys):
+        self, draft, monkeypatch, capsys
+    ):
         monkeypatch.setattr(style_check.shutil, "which", lambda _: None)
         style_check.main([str(draft), "--json"])
         assert json.loads(capsys.readouterr().out)["warnings"]
@@ -424,8 +446,13 @@ class TestSetLanguageRoundTrip:
 class TestCheckWiring:
     def test_an_unset_draft_gets_a_proposal(self, draft, monkeypatch):
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "")
-        monkeypatch.setattr(style_check, "run_vale", lambda d, lang: (
-            [] if lang in (None, "en-GB") else [finding(check="chitragupta.DialectUS")]))
+        monkeypatch.setattr(
+            style_check,
+            "run_vale",
+            lambda d, lang: (
+                [] if lang in (None, "en-GB") else [finding(check="chitragupta.DialectUS")]
+            ),
+        )
         assert style_check.check(draft)["proposed_language"]["language"] == "en-GB"
 
     def test_a_draft_with_a_dialect_gets_no_proposal(self, draft, monkeypatch):
@@ -447,11 +474,21 @@ class TestCheckWiring:
         write_scope(draft, "- language: en-GB")
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [finding()])
         monkeypatch.setattr(
-            style_check, "acronym_drift_findings",
-            lambda d: [{"rule": "chitragupta.AcronymDrift", "match": "DT", "line": 0,
-                        "message": "drifted", "severity": "suggestion", "count": 1}],
+            style_check,
+            "acronym_drift_findings",
+            lambda d: [
+                {
+                    "rule": "chitragupta.AcronymDrift",
+                    "match": "DT",
+                    "line": 0,
+                    "message": "drifted",
+                    "severity": "suggestion",
+                    "count": 1,
+                }
+            ],
         )
         findings = style_check.check(draft)["findings"]
         assert {f["rule"] for f in findings} == {
-            "chitragupta.DefectMarkers", "chitragupta.AcronymDrift",
+            "chitragupta.DefectMarkers",
+            "chitragupta.AcronymDrift",
         }

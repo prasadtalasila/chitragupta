@@ -68,7 +68,7 @@ is a dead end. The fifth row is not a signal at all -- its absence is the
 point.
 
 | Signal | What it finds | What it emits | Who acts on it |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `python -m chitragupta.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
 | `python -m chitragupta.review provenance` | a citation whose source does not visibly support it | Markdown report, or `--json` | human, by hand |
 | `python -m chitragupta.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
@@ -184,7 +184,7 @@ Component for component, the correspondence is close enough to be useful
 and different enough to be dangerous.
 
 | autoresearch | Here | Note |
-|---|---|---|
+| --- | --- | --- |
 | `train.py` -- the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
 | `prepare.py` + `evaluate_bpb` -- read-only ground truth | the six review aids, `chitragupta.draft gate`, #128's allowlist | The loop may run them and may not edit them |
 | `program.md` -- edited by the human, not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
@@ -195,7 +195,7 @@ and different enough to be dangerous.
 | "NEVER STOP" | two attempts per item, one pass, hand back | Inverted, for the reasons below |
 
 | Its design choice | Transfers? | Requirement |
-|---|---|---|
+| --- | --- | --- |
 | **The evaluation harness is read-only ground truth** | **Yes, and it is the rule this proposal most needed.** A rewrite that keeps failing the re-scan could otherwise be "fixed" by adding its phrase to #128's allowlist, and a loop that can suppress its own findings is gaming a metric rather than improving a draft | R1 |
 | **Keep / discard / crash, one row per attempt** | **Yes, as discipline.** The failure rows outnumber the keeps and are where the learning is. Not as a file: `revisions.md` already exists | R6 |
 | **Simplicity as the tie-breaker** | **Yes.** Where a deletion and a rewrite both pass, prefer the smaller diff. That is [SOUL.md](../SOUL.md)'s substantive-editor posture already | R8 |
@@ -336,7 +336,7 @@ range rather than a number for that reason -- it tracks how many aids
 exist, so it is stale the day a seventh lands.
 
 | Family | Sites | Wording |
-|---|---|---|
+| --- | --- | --- |
 | never automatic | 16 | six aid docstrings, `review/__init__.py`, `review/__main__.py`, AGENTS.md, ARCHITECTURE.md ×2, LADDERS.md, CLI.md ×3, GENRE.md |
 | nothing reads it back | 6 | `BANNER`, `_synthesis_render.py`, `synthesis.py`, CLI.md ×2, WRITING-STANDARDS.md |
 

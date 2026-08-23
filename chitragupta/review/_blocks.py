@@ -42,9 +42,9 @@ LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
 HEADING = re.compile(r"^\s*#{1,6}\s+")
 _OPENS_BLOCK = re.compile(
     r"^\s*(?:"
-    r"\||[-*+]\s|\d+[.)]\s|#{1,6}\s"                        # markdown
-    r"|\\item\b|\\(?:begin|end)\{"                           # LaTeX environments
-    r"|\\(?:chapter|(?:sub){0,2}section|paragraph)\*?\{"     # LaTeX headings
+    r"\||[-*+]\s|\d+[.)]\s|#{1,6}\s"  # markdown
+    r"|\\item\b|\\(?:begin|end)\{"  # LaTeX environments
+    r"|\\(?:chapter|(?:sub){0,2}section|paragraph)\*?\{"  # LaTeX headings
     r")"
 )
 # A row and a heading are complete in one line: whatever follows starts
@@ -94,9 +94,10 @@ def paragraph_spans(lines: list[str]) -> list[tuple[int, int, str]]:
     returns raw lines -- `synthesis` has to find a declaration marker
     among them before they are joined.
     """
-    return [(start, start + len(block) - 1,
-             " ".join(line.strip() for line in block))
-            for start, block in _units.blocks(lines)]
+    return [
+        (start, start + len(block) - 1, " ".join(line.strip() for line in block))
+        for start, block in _units.blocks(lines)
+    ]
 
 
 def _cells_prose(cells: list[str]) -> str:

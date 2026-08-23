@@ -31,8 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 @pytest.fixture(scope="module")
 def merge_pr():
-    spec = importlib.util.spec_from_file_location(
-        "merge_pr", REPO_ROOT / "scripts" / "merge_pr.py")
+    spec = importlib.util.spec_from_file_location("merge_pr", REPO_ROOT / "scripts" / "merge_pr.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -104,10 +103,7 @@ class TestBulletsFromDescription:
         assert merge_pr.bullets_from_description(body) == []
 
     def test_checkbox_lines_under_test_plan_are_not_content(self, merge_pr):
-        body = (
-            "## Description\n\n- Fix the thing.\n\n"
-            "## Test plan\n\n- [x] Full suite passes\n"
-        )
+        body = "## Description\n\n- Fix the thing.\n\n## Test plan\n\n- [x] Full suite passes\n"
         assert merge_pr.bullets_from_description(body) == ["Fix the thing."]
 
     def test_it_falls_through_to_a_differently_named_section(self, merge_pr):
@@ -127,7 +123,8 @@ class TestBulletsFromDescription:
 class TestBulletsFromCommits:
     def test_each_subject_becomes_one_bullet(self, merge_pr):
         assert merge_pr.bullets_from_commits(["Fix the thing", "Add the other thing"]) == [
-            "Fix the thing", "Add the other thing",
+            "Fix the thing",
+            "Add the other thing",
         ]
 
     def test_duplicate_subjects_are_not_repeated(self, merge_pr):
@@ -213,6 +210,7 @@ class TestGh:
         reads PR titles and descriptions, which are not guaranteed ASCII,
         and CI's Windows leg decodes cp1252 by default without this."""
         import inspect
+
         source = inspect.getsource(merge_pr._gh)
         assert 'encoding="utf-8"' in source
 
@@ -236,7 +234,7 @@ class TestMerge:
         calls = []
         monkeypatch.setattr(merge_pr, "_gh", lambda *a, **k: calls.append((a, k)) or "")
         merge_pr._merge(42, "- a change")
-        (args, kwargs), = calls
+        ((args, kwargs),) = calls
         assert args == ("pr", "merge", "42", "--squash", "--body-file", "-")
         assert kwargs == {"input_text": "- a change"}
 
@@ -247,6 +245,7 @@ class TestMerge:
         even though the remote merge succeeded. Re-running it is wrong --
         the merge already happened -- so this checks the PR's real state
         before deciding the command failed."""
+
         def fake_gh(*args, **kwargs):
             if args[:2] == ("pr", "merge"):
                 raise subprocess.CalledProcessError(1, ["gh", *args])
@@ -278,7 +277,8 @@ class TestMain:
 
     def test_dry_run_prints_and_does_not_merge(self, merge_pr, monkeypatch, capsys):
         calls = self._stub(
-            merge_pr, monkeypatch,
+            merge_pr,
+            monkeypatch,
             "## Description\n\n- Fix it.\n\n## Impact\n\nnone\n",
             ["Fix it"],
         )
@@ -288,7 +288,8 @@ class TestMain:
 
     def test_without_dry_run_it_merges_with_the_composed_body(self, merge_pr, monkeypatch, capsys):
         calls = self._stub(
-            merge_pr, monkeypatch,
+            merge_pr,
+            monkeypatch,
             "## Description\n\n- Fix it.\n\n## Impact\n\nnone\n",
             ["Fix it"],
         )

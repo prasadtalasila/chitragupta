@@ -121,7 +121,7 @@ around it, do not sync, do not cite. Tell the user to run
 ## When to invoke
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | User asks for a survey / lit review / background / related-work section on topic X | Invoke this skill |
 | User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
 | User asks for a textbook chapter / lecture notes / worked examples | Use `textbook-chapter-writer` instead |

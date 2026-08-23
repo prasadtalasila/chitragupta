@@ -22,7 +22,8 @@ _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 def _local_image_refs(text: str) -> list[str]:
     """Every local (non-URL) image path a Markdown draft references."""
     return [
-        ref for ref in (m.group(1) for m in _MD_IMAGE_RE.finditer(text))
+        ref
+        for ref in (m.group(1) for m in _MD_IMAGE_RE.finditer(text))
         if not _URI_SCHEME_RE.match(ref)
     ]
 

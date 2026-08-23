@@ -58,7 +58,6 @@ from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
 
 
-
 class MissingBinary(RuntimeError):
     """Vale is not on PATH. Named for render_output's exception of the
     same shape, and handled the same way: reported to the caller as a
@@ -157,7 +156,10 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             "unaffected -- this check is advisory."
         )
     result = subprocess.run(
-        _vale_argv(draft, language), capture_output=True, text=True, check=False,
+        _vale_argv(draft, language),
+        capture_output=True,
+        text=True,
+        check=False,
         cwd=config.PROJECT_ROOT,
     )
     # Vale prints `{}` for a clean run and a JSON object keyed by path
@@ -217,8 +219,9 @@ def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
     # both sides and bury the signal under the noise -- measured on one
     # chapter, 18 against 31 rather than the true 0 against 26.
     counts = {
-        tag: sum(1 for f in run_vale(draft, tag)
-                 if f.get("Check", "").startswith("chitragupta.Dialect"))
+        tag: sum(
+            1 for f in run_vale(draft, tag) if f.get("Check", "").startswith("chitragupta.Dialect")
+        )
         for tag in ("en-GB", "en-US")
     }
     best, worst = sorted(counts, key=lambda tag: counts[tag])
@@ -236,8 +239,13 @@ def check(draft: Path, override: str | None = None) -> dict:
         proposed = propose_language(draft)
         if proposed:
             proposal = {"language": proposed[0], "findings_by_language": proposed[1]}
-    return {"draft": str(draft), "language": language, "language_source": source,
-            "findings": findings, "proposed_language": proposal}
+    return {
+        "draft": str(draft),
+        "language": language,
+        "language_source": source,
+        "findings": findings,
+        "proposed_language": proposal,
+    }
 
 
 def build_parser() -> Any:
@@ -246,14 +254,18 @@ def build_parser() -> Any:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft style",
         description="Check a draft's prose against docs/WRITING-STANDARDS.md. "
-                    "A review aid: it exits 0 whatever it finds.",
+        "A review aid: it exits 0 whatever it finds.",
     )
     parser.add_argument("draft", nargs="+", help="draft(s) under content/")
-    parser.add_argument("--language", metavar="TAG",
-                        help="check against this dialect for this run only, "
-                             "ahead of scope.md and config.toml; writes nothing")
-    parser.add_argument("--json", action="store_true",
-                        help="machine-readable findings, for a hook or an agenda")
+    parser.add_argument(
+        "--language",
+        metavar="TAG",
+        help="check against this dialect for this run only, "
+        "ahead of scope.md and config.toml; writes nothing",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="machine-readable findings, for a hook or an agenda"
+    )
     return parser
 
 
@@ -273,8 +285,12 @@ def main(argv=None) -> int:
         except OSError as exc:
             warnings.append(f"{draft}: {exc}")
     if args.json:
-        print(json.dumps({"notice": "Review aid, not a gate.",
-                          "drafts": payloads, "warnings": warnings}, indent=2))
+        print(
+            json.dumps(
+                {"notice": "Review aid, not a gate.", "drafts": payloads, "warnings": warnings},
+                indent=2,
+            )
+        )
     else:
         for payload in payloads:
             print("\n".join(report(Path(payload["draft"]), payload)))

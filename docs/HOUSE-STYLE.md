@@ -143,7 +143,7 @@ never mentions. Where the two overlap, **§9 is the one that governs**; the
 rows below restate its verdicts only so the inventory reads as one list.
 
 | Property | Binary? | Unattended? |
-|---|---|---|
+| --- | --- | --- |
 | Dialect conformance against `scope.md`'s `language:` | yes | yes (#104, #107) |
 | §2's defect markers | yes, minus "just" | yes |
 | Acronym expanded at first use; term defined once | yes, given the dossier glossary | yes |
@@ -228,7 +228,7 @@ is blocked today. Nothing here reorders it; this document adds the reason
 the first three matter more than their size suggests.
 
 | #102's PR | What it is | Why it matters here |
-|---|---|---|
+| --- | --- | --- |
 | #103, shipped | copy-edit mode in `draft-reviser` | the sanctioned edit path -- without it there is nowhere for a prose fix to go |
 | #104, shipped | dialect as a first-class draft property | the recorded target |
 | #105, #106 | render-language plumbing, localisable references | unrelated to this loop; the non-English track |

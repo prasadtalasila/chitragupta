@@ -37,8 +37,7 @@ def set_language(draft: Path, tag: str) -> Path:
     """
     if not _LANGUAGE_TAG.match(tag):
         raise ValueError(
-            f"{tag!r} is not a BCP-47 language tag. Expected a form like "
-            "en-GB, en-US or en-IN."
+            f"{tag!r} is not a BCP-47 language tag. Expected a form like en-GB, en-US or en-IN."
         )
     scope = dossier_dir(draft) / SCOPE_MD
     if not scope.is_file():
@@ -51,8 +50,11 @@ def set_language(draft: Path, tag: str) -> Path:
     if _LANGUAGE_LINE.search(text):
         text = _LANGUAGE_LINE.sub(line, text, count=1)
     else:
-        text = text.replace("- genre:", f"{line}\n- genre:", 1) \
-            if "- genre:" in text else text.replace("# Scope\n", f"# Scope\n\n{line}\n", 1)
+        text = (
+            text.replace("- genre:", f"{line}\n- genre:", 1)
+            if "- genre:" in text
+            else text.replace("# Scope\n", f"# Scope\n\n{line}\n", 1)
+        )
     scope.write_text(text, encoding="utf-8")
     return scope
 

@@ -55,8 +55,7 @@ def _how_to_read(report) -> list[str]:
     return [
         "## How to read this",
         "",
-        f"Read under a genre {_under(report)}, where uncited prose is "
-        f"**{report.standing}**.",
+        f"Read under a genre {_under(report)}, where uncited prose is **{report.standing}**.",
         "",
         f"{_STANDING[report.standing]}",
         "",
@@ -88,21 +87,30 @@ def _summary(report) -> list[str]:
 
 
 def _finding_lines(finding: dict) -> list[str]:
-    where = "block cites nothing" if not finding["block_cites"] \
-        else "block cites a source elsewhere"
-    return [f"- **line {finding['line']}** (`{finding['id']}`, {where})",
-            f"  > {finding['sentence']}"]
+    where = (
+        "block cites nothing" if not finding["block_cites"] else "block cites a source elsewhere"
+    )
+    return [
+        f"- **line {finding['line']}** (`{finding['id']}`, {where})",
+        f"  > {finding['sentence']}",
+    ]
 
 
 def _findings_section(report, found: list[dict]) -> list[str]:
     if report.standing == "ordinary":
-        return ["## Findings", "",
-                "None raised -- see above. This genre's prose is original by "
-                "design.", ""]
+        return [
+            "## Findings",
+            "",
+            "None raised -- see above. This genre's prose is original by design.",
+            "",
+        ]
     if not found:
-        return ["## Findings", "",
-                "None. Every claim-bearing sentence in this draft carries a "
-                "citation.", ""]
+        return [
+            "## Findings",
+            "",
+            "None. Every claim-bearing sentence in this draft carries a citation.",
+            "",
+        ]
     lines = ["## Findings", ""]
     for finding in found:
         lines += _finding_lines(finding)

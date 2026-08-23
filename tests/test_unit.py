@@ -96,9 +96,7 @@ def test_a_book_with_no_outline_at_all_is_refused_by_name(isolated_config):
         unit.contract(isolated_config.DRAFTS_DIR / "unplanned", "sec-model", [])
 
 
-def test_a_book_outside_content_drafts_is_refused_by_the_cli(
-    isolated_config, tmp_path, capsys
-):
+def test_a_book_outside_content_drafts_is_refused_by_the_cli(isolated_config, tmp_path, capsys):
     """`spec`'s own refusal, surfaced through this command rather than
     escaping as a traceback."""
     assert unit.main(["status", str(tmp_path / "elsewhere")]) == 1
@@ -109,7 +107,8 @@ def test_the_input_digest_changes_when_the_brief_changes(book):
     before = unit.input_digest(unit.contract(book, "sec-model", []))
     spec.spec_path(book).write_text(
         GOOD_SPEC.replace("a live data link", "a live data link, and nothing else"),
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     assert unit.input_digest(unit.contract(book, "sec-model", [])) != before
 
 
@@ -151,12 +150,15 @@ def test_contract_prints_the_slice_and_the_digest(book, capsys):
 
 
 def test_contract_as_json_is_what_a_skill_reads(book, capsys):
-    assert unit.main(["contract", str(book), "sec-model",
-                      "--source", "smith_example_2024", "--json"]) == 0
+    assert (
+        unit.main(["contract", str(book), "sec-model", "--source", "smith_example_2024", "--json"])
+        == 0
+    )
     payload = json.loads(capsys.readouterr().out)
     assert payload["sources"] == ["smith_example_2024"]
     assert payload["input_digest"] == unit.input_digest(
-        unit.contract(book, "sec-model", ["smith_example_2024"]))
+        unit.contract(book, "sec-model", ["smith_example_2024"])
+    )
     assert payload["signed_off"] is False
 
 
@@ -172,14 +174,14 @@ def test_accept_records_the_unit_and_what_it_cites(book, corpus, capsys):
     sign_off(book)
     write_unit_draft(book, "sec-model")
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model",
-                      "--source", "smith_example_2024"]) == 0
+    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 0
     record = json.loads(unit.record_path(book, "sec-model").read_text(encoding="utf-8"))
     assert record["unit"] == "sec-model"
     assert record["citekeys"] == ["smith_example_2024"]
     assert record["sources"] == ["smith_example_2024"]
     assert record["input_digest"] == unit.input_digest(
-        unit.contract(book, "sec-model", ["smith_example_2024"]))
+        unit.contract(book, "sec-model", ["smith_example_2024"])
+    )
 
 
 def test_accept_refuses_an_outline_nobody_signed_off(book, corpus, capsys):
@@ -245,7 +247,9 @@ def test_a_book_whose_units_are_all_accepted_passes(book, corpus, capsys):
     assert unit.main(["status", str(book)]) == 0
     out = capsys.readouterr().out
     assert [line.split()[-1] for line in out.splitlines() if line.startswith("  sec-")] == [
-        "accepted", "accepted"]
+        "accepted",
+        "accepted",
+    ]
     assert "2 of 2 unit(s) accepted and current." in out
 
 
@@ -255,7 +259,8 @@ def test_an_edited_brief_makes_an_accepted_unit_stale(book, corpus, capsys):
     unit.main(["accept", str(book), "sec-model"])
     spec.spec_path(book).write_text(
         GOOD_SPEC.replace("a live data link", "a live data link, and nothing else"),
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 1
     assert "inputs changed" in capsys.readouterr().out

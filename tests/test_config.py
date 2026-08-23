@@ -64,15 +64,26 @@ class TestGetHelpers:
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5) == 1.5
 
-    @pytest.mark.parametrize("raw,expected", [
-        ("1", True), ("true", True), ("TRUE", True), ("yes", True), ("on", True),
-        (" true ", True),
-        # The whole point of _get_bool: bool("false") is True, so a plain
-        # cast would make every documented way of switching a setting off
-        # via the environment switch it on instead.
-        ("0", False), ("false", False), ("FALSE", False), ("no", False),
-        ("off", False), ("", False),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("1", True),
+            ("true", True),
+            ("TRUE", True),
+            ("yes", True),
+            ("on", True),
+            (" true ", True),
+            # The whole point of _get_bool: bool("false") is True, so a plain
+            # cast would make every documented way of switching a setting off
+            # via the environment switch it on instead.
+            ("0", False),
+            ("false", False),
+            ("FALSE", False),
+            ("no", False),
+            ("off", False),
+            ("", False),
+        ],
+    )
     def test_bool_env_var_parses_words_not_truthiness(self, monkeypatch, raw, expected):
         monkeypatch.setattr(config, "_toml", {"enrich": {"flag": not expected}})
         monkeypatch.setenv("MY_FLAG", raw)
@@ -120,9 +131,7 @@ class TestRealConfigToml:
 
     def test_acronyms_defaults_to_the_vendored_toml(self):
         assert config.ACRONYMS_PATH == config.ACRONYMS_DEFAULT_PATH
-        assert config.ACRONYMS_DEFAULT_PATH == (
-            config.shipped("assets", "style", "acronyms.toml")
-        )
+        assert config.ACRONYMS_DEFAULT_PATH == (config.shipped("assets", "style", "acronyms.toml"))
         # Vendored, not fetched: the loader has to work with no network.
         assert config.ACRONYMS_DEFAULT_PATH.is_file()
 
@@ -198,12 +207,16 @@ class TestGetStartMethod:
     @pytest.mark.parametrize("raw", ["FORKSERVER", " forkserver "])
     def test_case_and_space_insensitive(self, monkeypatch, raw):
         monkeypatch.setenv("M", raw)
-        assert config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
+        assert (
+            config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
+        )
 
     def test_env_override_wins(self, monkeypatch):
         monkeypatch.setattr(config, "_toml", {"parser": {"start_method": "spawn"}})
         monkeypatch.setenv("M", "forkserver")
-        assert config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
+        assert (
+            config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
+        )
 
     def test_a_typo_is_rejected_with_the_alternatives(self, monkeypatch):
         monkeypatch.setenv("M", "forkserv")
@@ -499,6 +512,5 @@ class TestShipped:
 
     def test_the_vendored_assets_it_names_actually_exist(self):
         """A seam that resolves to nothing is worse than no seam."""
-        for path in (config.CSL_STYLE_PATH, config.VALE_CONFIG_PATH,
-                     config.ACRONYMS_DEFAULT_PATH):
+        for path in (config.CSL_STYLE_PATH, config.VALE_CONFIG_PATH, config.ACRONYMS_DEFAULT_PATH):
             assert path.is_file(), path

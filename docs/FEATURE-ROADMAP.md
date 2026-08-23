@@ -104,7 +104,7 @@ corpus. `verbatim scan` is read-only and takes no lock, so this is safe
 to reproduce at any time.
 
 | Draft | Words | Findings | Longest run | From an **uncited** source | Already quoted |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `survey.md` | 2,448 | 9 | 13w | 3 | 2 |
 | `tutorial.md` | 1,144 | 6 | 14w | 6 | 0 |
 | `book-chapter.md` | 1,453 | 3 | 8w | 3 | 0 |
@@ -214,7 +214,7 @@ What it mostly takes is architecture, ordering and defect vocabulary,
 and an idea is inspiration by definition. Priced item by item:
 
 | Item | What would be copied | Cost of writing it instead |
-|---|---|---|
+| --- | --- | --- |
 | A0 | -- | **Negative.** No `NOTICE`, no per-file provenance headers; two INSPIRATION.md entries instead, in the pattern that file already uses for its CC-BY-NC precedent |
 | A2 | Two prompt sentences | **~0.** They are generic ("summarize rather than copy"); house style differs anyway |
 | B1 | ~12 lines of dict-counting | **~0.** Already being rewritten -- keyed on citekey rather than title, and with the off-by-one fixed. Only the cap-then-truncate *ordering* has value, and that is an idea |
@@ -559,7 +559,7 @@ code, with its own case analysis. Read honestly, it says: the image
 route is prettier and the code route is correct.
 
 | Case | Image route | Code route |
-|---|---|---|
+| --- | --- | --- |
 | Line plot, heatmap | correct; "looks more visually appealing" | correct |
 | Radar chart | **inverts the relationship** between two series, plotting one at ~0.9 against ~0.6 | correct |
 | Business dashboard | **duplicates a category** | correct |
@@ -768,7 +768,7 @@ this.
 ### ✅ Built
 
 | Feature | What it does |
-|---|---|
+| --- | --- |
 | Seed topics | Hand-authored `content/seed_topics.toml`. A phrase is one topic and is never split -- `structural health monitoring` is embedded whole, not as three unigrams |
 | Unlimited seed lists | Seeds never enter the clustering, so naming topics costs no discovered ones. Routing nine phrases through BERTopic's zero-shot mode had cost 28 emergent topics (81 down to 53) |
 | Per-phrase ranking | Each phrase ranked against *its own* scores. `Standards` peaked at 0.295 corpus-wide while `Digital Twin` had a median of 0.338, so one absolute cutoff returned nothing for the first and half the corpus for the second |
@@ -782,7 +782,7 @@ this.
 ### ⏭ Next
 
 | # | Item | Size | Why | Depends on |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | G1 | [#297](https://github.com/prasadtalasila/chitragupta/issues/297) domain-term topic labels | M | Labels are stopwords (`0_the_and_of_to`) or author names -- `werner kritzinger, fraunhofer austria` is a top-three topic. Dropping bibliographies did **not** fix it: the name is in 55 documents' body text. The cluster is right; only the label is wrong | -- |
 | G2 | [#298](https://github.com/prasadtalasila/chitragupta/issues/298) descriptor-based membership | M | 1.64 topics/paper and 25% plural, against 5.03 and 92% for the descriptor mechanism measured beside it. HDBSCAN soft membership answers "which density region", which is near-binary for core points | -- |
 | G3 | [#299](https://github.com/prasadtalasila/chitragupta/issues/299) converged topic set | M | Seed and emergent topics are two artefacts describing one corpus, joined by nobody | G2 |
@@ -791,7 +791,7 @@ this.
 ### 🚫 What Theme G is deliberately not doing
 
 | Not proposed | Why |
-|---|---|
+| --- | --- |
 | Abstractive topic summaries | Abstractive models carry factual inconsistencies in up to 30% of outputs. A topic summary asserting a claim no paper made is the same failure class as a fabricated citekey ([SOUL.md](../SOUL.md)). Extractive first, behind a human gate |
 | An LLM transcribing document structure | Span *selection* (offsets to keep) is safe; span *transcription* is not, because a transcribed reference can be a fabricated one. See [#301](https://github.com/prasadtalasila/chitragupta/issues/301) |
 | Topic ids treated as stable | They are not, and the stage's own docstring says so. Anything downstream must key on labels or citekeys |
@@ -811,7 +811,7 @@ history stops being a list of what to do next, which is the only thing it
 is for.
 
 | # | PR | Theme | Size | Depends on |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
 | 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
 | 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
@@ -858,7 +858,7 @@ the figure complaint at its source.
 Recorded so each is not re-proposed as an oversight.
 
 | Not proposed | Why |
-|---|---|
+| --- | --- |
 | A blocking overlap gate | Declined on measured evidence (#130), and a second meaning would blunt the gate's one meaning ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10) |
 | Claim extraction cached in the corpus or enrichment layer | LLM output on the corpus plane; breaks "same bibliography in, same citekeys out" ([SOUL.md](../SOUL.md)) |
 | TL;DR shown in `corpus ledger` output | Same, plus it inverts the layer order -- see [E1](#-e1-per-citekey-tldr) |

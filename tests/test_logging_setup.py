@@ -44,15 +44,14 @@ def src_logger():
 
 
 class TestConfigure:
-    def test_creates_the_log_file_and_sets_the_configured_level(
-        self, isolated_config, monkeypatch
-    ):
+    def test_creates_the_log_file_and_sets_the_configured_level(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "LOGGING_LEVEL", "WARNING")
         root_level_before = logging.getLogger().level
         logging_setup.configure()
         assert (config.LOGS_DIR / "pipeline.log").exists()
         file_handlers = [
-            h for h in logging.getLogger().handlers
+            h
+            for h in logging.getLogger().handlers
             if isinstance(h, logging.handlers.RotatingFileHandler)
         ]
         assert len(file_handlers) == 1
@@ -75,10 +74,10 @@ class TestConfigure:
         logging_setup.configure()
 
         root = logging.getLogger()
-        assert len([
-            h for h in root.handlers
-            if isinstance(h, logging.handlers.RotatingFileHandler)
-        ]) == 1
+        assert (
+            len([h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)])
+            == 1
+        )
 
         src_logger.info("said once")
         assert (config.LOGS_DIR / "pipeline.log").read_text().count("said once") == 1
@@ -108,15 +107,15 @@ class TestConfigure:
         logging_setup.configure()
 
         root = logging.getLogger()
-        assert len([
-            h for h in root.handlers
-            if isinstance(h, logging.handlers.RotatingFileHandler)
-        ]) == 1, "the old file handler must be detached, not accumulated"
+        assert (
+            len([h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)])
+            == 1
+        ), "the old file handler must be detached, not accumulated"
 
         src_logger.info("after the move")
 
         assert "after the move" in (second / "pipeline.log").read_text()
-        assert "after the move" not in first.read_text()   # old file is done
+        assert "after the move" not in first.read_text()  # old file is done
         assert capsys.readouterr().err.count("after the move") == 1  # not doubled
 
     def test_console_output_ignores_logging_level(
@@ -318,9 +317,7 @@ class TestSay:
         well. Neither should be sacrificed to the other."""
         monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
         logging_setup.configure()
-        logging_setup.say(
-            src_logger, '[ok] {\n  "a": 3\n}', log_as='[ok] {"a": 3}'
-        )
+        logging_setup.say(src_logger, '[ok] {\n  "a": 3\n}', log_as='[ok] {"a": 3}')
 
         assert '{\n  "a": 3\n}' in capsys.readouterr().out
         log_text = (config.LOGS_DIR / "pipeline.log").read_text()
@@ -346,9 +343,7 @@ class TestSay:
         assert len(log_lines) == 1
         assert '[ok] { "a": 3, "b": 4 }' in log_lines[0]
 
-    def test_a_warning_before_configure_does_not_echo_via_lastresort(
-        self, capsys, src_logger
-    ):
+    def test_a_warning_before_configure_does_not_echo_via_lastresort(self, capsys, src_logger):
         """say() promises nothing beyond the bare print until configure()
         has run, and stdlib logging quietly breaks that promise: with no
         handler anywhere up the chain, `Logger.callHandlers` falls back
@@ -377,8 +372,7 @@ class TestSay:
         try:
             for tree in logging_setup._TREES:
                 assert all(
-                    isinstance(h, logging.NullHandler)
-                    for h in logging.getLogger(tree).handlers
+                    isinstance(h, logging.NullHandler) for h in logging.getLogger(tree).handlers
                 ), "only meaningful when no real handler is attached"
 
             logging_setup.say(src_logger, "a complaint", level=logging.WARNING)

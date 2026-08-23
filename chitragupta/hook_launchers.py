@@ -166,8 +166,10 @@ def _launcher_fault(hook: dict) -> list[str]:
     if not shutil.which(program):
         found.append(f"`{program}` is not on PATH, so a hook cannot start.")
     if "$CLAUDE_PROJECT_DIR" in text.replace("${CLAUDE_PROJECT_DIR}", ""):
-        found.append(f"`{program}` uses an unbraced $CLAUDE_PROJECT_DIR, which the "
-                     "shell expands rather than the harness (docs/HOOKS.md).")
+        found.append(
+            f"`{program}` uses an unbraced $CLAUDE_PROJECT_DIR, which the "
+            "shell expands rather than the harness (docs/HOOKS.md)."
+        )
     return found
 
 
@@ -196,18 +198,22 @@ def _import_fault(program: str) -> str | None:
     try:
         result = subprocess.run(
             [program, "-c", "import chitragupta"],
-            capture_output=True, timeout=IMPORT_PROBE_TIMEOUT, check=False,
+            capture_output=True,
+            timeout=IMPORT_PROBE_TIMEOUT,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return (  # pragma: no cover-windows
             f"`{program}` did not respond within {IMPORT_PROBE_TIMEOUT:.0f}s "
             "probing whether it can import chitragupta -- treated as a fault, "
-            "not as clean.")
+            "not as clean."
+        )
     except OSError:
         return None
     if result.returncode != 0:
         return (  # pragma: no cover-windows
             f"`{program}` cannot import chitragupta, so a hook it launches will "
             "start and then fail silently. Activate the virtualenv chitragupta "
-            "is installed into before starting this session.")
+            "is installed into before starting this session."
+        )
     return None

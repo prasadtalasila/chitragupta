@@ -49,8 +49,17 @@ from chitragupta import config, overlap_skipgram  # noqa: E402
 # `context` or `draft_text` -- copyrighted source/draft prose -- since
 # `bench/results/` is committed.
 KEPT_FIELDS = (
-    "id", "citekey", "page", "end_page", "tier", "span_words",
-    "matched_words", "line", "cites_source", "quoted", "severity",
+    "id",
+    "citekey",
+    "page",
+    "end_page",
+    "tier",
+    "span_words",
+    "matched_words",
+    "line",
+    "cites_source",
+    "quoted",
+    "severity",
 )
 
 CAPABILITY_SOURCE = (
@@ -138,20 +147,26 @@ def integrity_complaints(drafts, findings, labels):
         out.append("no drafts matched -- every count below is zero for that reason alone")
     missing = [f["id"] for f in findings if f["id"] not in labels]
     if missing:
-        out.append(f"{len(missing)} of {len(findings)} skip-gram finding(s) are unlabelled "
-                   f"(e.g. {', '.join(missing[:3])})")
+        out.append(
+            f"{len(missing)} of {len(findings)} skip-gram finding(s) are unlabelled "
+            f"(e.g. {', '.join(missing[:3])})"
+        )
     if labels:
         stale = [i for i in labels if i not in {f["id"] for f in findings}]
         if stale:
-            out.append(f"{len(stale)} label(s) match no current finding (e.g. "
-                       f"{', '.join(stale[:3])}) -- stale corpus or re-parse")
+            out.append(
+                f"{len(stale)} label(s) match no current finding (e.g. "
+                f"{', '.join(stale[:3])}) -- stale corpus or re-parse"
+            )
     return out
 
 
 def precision_run(drafts_dir, labels_path, out_dir):
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
-              file=sys.stderr)
+        print(
+            f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync` first",
+            file=sys.stderr,
+        )
         return 1
     drafts = sorted(p for p in Path(drafts_dir).glob("*.md") if p.name[0].isdigit())
     if not drafts:
@@ -183,23 +198,34 @@ def precision_run(drafts_dir, labels_path, out_dir):
 
     for complaint in complaints:
         print(f"\n  WARNING {complaint}")
-    print(f"\nskip-gram findings: {len(findings)}  tp: {tp}  fp: {fp}  "
-          f"precision: {payload['precision']}")
+    print(
+        f"\nskip-gram findings: {len(findings)}  tp: {tp}  fp: {fp}  "
+        f"precision: {payload['precision']}"
+    )
     print(f"Record: {record}")
     return 0
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--drafts", default=None,
-                    help="directory of drafts to scan for the precision arm "
-                         "(*.md, chapters first). Needs a synced corpus.")
-    ap.add_argument("--tag", default=None,
-                    help="names bench/results/<tag>/ for the precision arm's output "
-                         "(path components are stripped: only the final name is used)")
-    ap.add_argument("--labels", default=None,
-                    help="hand-authored ground truth for the precision arm "
-                         "(default: bench/results/<tag>/labels.json)")
+    ap.add_argument(
+        "--drafts",
+        default=None,
+        help="directory of drafts to scan for the precision arm "
+        "(*.md, chapters first). Needs a synced corpus.",
+    )
+    ap.add_argument(
+        "--tag",
+        default=None,
+        help="names bench/results/<tag>/ for the precision arm's output "
+        "(path components are stripped: only the final name is used)",
+    )
+    ap.add_argument(
+        "--labels",
+        default=None,
+        help="hand-authored ground truth for the precision arm "
+        "(default: bench/results/<tag>/labels.json)",
+    )
     args = ap.parse_args(argv)
 
     self_check()
@@ -216,11 +242,16 @@ def main(argv=None):
         out_dir = BENCH_DIR / "results" / Path(args.tag).name
         out_dir.mkdir(parents=True, exist_ok=True)
         record = out_dir / "skipgram_capability.json"
-        record.write_text(json.dumps({
-            "source_words": len(CAPABILITY_SOURCE),
-            "n": overlap_skipgram.DEFAULT_N,
-            "strides": rows,
-        }, indent=1))
+        record.write_text(
+            json.dumps(
+                {
+                    "source_words": len(CAPABILITY_SOURCE),
+                    "n": overlap_skipgram.DEFAULT_N,
+                    "strides": rows,
+                },
+                indent=1,
+            )
+        )
         print(f"Record: {record}")
 
     if not args.drafts:

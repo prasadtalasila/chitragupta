@@ -59,8 +59,16 @@ def main() -> int:
 
     payload = _findings(draft)
     if payload:
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PostToolUse", "additionalContext": payload}}))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PostToolUse",
+                        "additionalContext": payload,
+                    }
+                }
+            )
+        )
     return 0
 
 
@@ -74,7 +82,10 @@ def _findings(draft) -> str:
     """
     result = subprocess.run(
         [sys.executable, "-m", "chitragupta.draft", "style", "--json", str(draft)],
-        check=False, cwd=draft_target.REPO_ROOT, capture_output=True, text=True,
+        check=False,
+        cwd=draft_target.REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
     try:
         report = json.loads(result.stdout)
@@ -111,8 +122,10 @@ def _entry_lines(entry) -> list[str]:
         return []
     lines = []
     if not entry.get("language"):
-        lines.append("  dialect: not checked -- no `language:` in scope.md, so no "
-                     "dialect rule ran. This list is not the whole picture.")
+        lines.append(
+            "  dialect: not checked -- no `language:` in scope.md, so no "
+            "dialect rule ran. This list is not the whole picture."
+        )
     for finding in findings:
         # `count` is an int in every payload this checker emits, so a
         # comparison would do -- but the whole reason this hook parses
@@ -121,8 +134,10 @@ def _entry_lines(entry) -> list[str]:
         # the module tail and cost the *entire* report, not one line.
         count = finding.get("count")
         times = f" (x{count})" if isinstance(count, int) and count > 1 else ""
-        lines.append(f"  line {finding.get('line', 0)}  "
-                     f"{finding.get('rule', '?')}: {finding.get('message', '')}{times}")
+        lines.append(
+            f"  line {finding.get('line', 0)}  "
+            f"{finding.get('rule', '?')}: {finding.get('message', '')}{times}"
+        )
     return lines
 
 

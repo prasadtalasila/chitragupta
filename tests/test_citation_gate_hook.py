@@ -48,8 +48,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = REPO_ROOT / ".claude" / "hooks" / "citation_gate_hook.py"
 
 
-def run_hook(stdin_text: str, env: dict | None = None, cwd: Path | None = None,
-             hook: Path | None = None):
+def run_hook(
+    stdin_text: str, env: dict | None = None, cwd: Path | None = None, hook: Path | None = None
+):
     return subprocess.run(
         [sys.executable, str(hook or HOOK_PATH)],
         input=stdin_text,
@@ -86,7 +87,9 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
     host where these children were never measured.
     """
     return name.startswith("COV_CORE") or name in (
-        "COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE",
+        "COVERAGE_PROCESS_START",
+        "COVERAGE_FILE",
+        "COVERAGE_RCFILE",
     )
 
 
@@ -109,8 +112,7 @@ class HookRepo:
         # The helper too, or the copy cannot `import draft_target`: a hook
         # is run by absolute path, so Python puts *its* directory first on
         # sys.path, and that directory is this temporary one.
-        shutil.copy2(HOOK_PATH.parent / "draft_target.py",
-                     self.hook.parent / "draft_target.py")
+        shutil.copy2(HOOK_PATH.parent / "draft_target.py", self.hook.parent / "draft_target.py")
         self.drafts = root / "content" / "drafts"
         self.drafts.mkdir(parents=True, exist_ok=True)
         self.env = {
@@ -123,9 +125,7 @@ class HookRepo:
         return self.drafts / f"hook_test_{uuid.uuid4().hex}{suffix}"
 
     def run(self, file_path, cwd: Path | None = None):
-        return run_hook(
-            payload(file_path), env=self.env, cwd=cwd or self.root, hook=self.hook
-        )
+        return run_hook(payload(file_path), env=self.env, cwd=cwd or self.root, hook=self.hook)
 
 
 @pytest.fixture

@@ -50,7 +50,7 @@ GROUPS_FIELD = "groups"
 DOI_RE = re.compile(r'10\.\d{4,9}/[^\s,;\'"<>]+')
 
 # Trailing characters a DOI collects when it was scraped from a sentence.
-_DOI_TRAILING = ').,]>'
+_DOI_TRAILING = ").,]>"
 
 Indexes = namedtuple("Indexes", "doi url title collections")
 
@@ -79,7 +79,7 @@ def normalise_title(value: str) -> str:
     LaTeX and dropped brace protection, so this only has to handle what
     remains: any braces that survived, whitespace, and case.
     """
-    return re.sub(r'\s+', ' ', value.replace('{', '').replace('}', '')).strip().lower()
+    return re.sub(r"\s+", " ", value.replace("{", "").replace("}", "")).strip().lower()
 
 
 def read_fields(text: str) -> dict:
@@ -106,9 +106,9 @@ def _matching_brace(text: str, open_pos: int) -> int:
     """The index of the `}` closing the `{` at `open_pos`."""
     depth = 0
     for i in range(open_pos, len(text)):
-        if text[i] == '{':
+        if text[i] == "{":
             depth += 1
-        elif text[i] == '}':
+        elif text[i] == "}":
             depth -= 1
             if depth == 0:
                 return i
@@ -126,11 +126,11 @@ def scan_entries(text: str) -> list:
     # find. Silently truncating a bibliography is the one failure mode
     # this script must not have.
     found = []
-    for match in re.finditer(r'@(\w+)\s*\{', text):
+    for match in re.finditer(r"@(\w+)\s*\{", text):
         open_pos = match.end() - 1
         close_pos = _matching_brace(text, open_pos)
-        header = text[match.end():close_pos]
-        found.append((header.split(',', 1)[0].strip(), close_pos))
+        header = text[match.end() : close_pos]
+        found.append((header.split(",", 1)[0].strip(), close_pos))
     return found
 
 
@@ -142,13 +142,16 @@ def _index_field(cur, field_name: str, transform) -> dict:
     entries in a long-lived library still use.
     """
     index = defaultdict(set)
-    cur.execute("""
+    cur.execute(
+        """
         select d.itemID, v.value
         from itemData d
         join fieldsCombined f on d.fieldID = f.fieldID
         join itemDataValues v on d.valueID = v.valueID
         where f.fieldName = ?
-    """, (field_name,))
+    """,
+        (field_name,),
+    )
     for item_id, value in cur.fetchall():
         index[transform(value)].add(item_id)
     return index
@@ -198,8 +201,8 @@ def build_indexes(con) -> Indexes:
     cur = con.cursor()
     return Indexes(
         doi=_index_dois(cur),
-        url=_index_field(cur, 'url', lambda value: value.strip()),
-        title=_index_field(cur, 'title', normalise_title),
+        url=_index_field(cur, "url", lambda value: value.strip()),
+        title=_index_field(cur, "title", normalise_title),
         collections=_index_collections(cur),
     )
 
@@ -212,9 +215,9 @@ def match_item_ids(fields: dict, indexes: Indexes):
     share a title -- so title is a last resort, not a peer.
     """
     for name, index, normalise in (
-        ('doi', indexes.doi, strip_doi),
-        ('url', indexes.url, str.strip),
-        ('title', indexes.title, normalise_title),
+        ("doi", indexes.doi, strip_doi),
+        ("url", indexes.url, str.strip),
+        ("title", indexes.title, normalise_title),
     ):
         value = fields.get(name)
         if value:
@@ -233,7 +236,7 @@ def escape_group_name(name: str) -> str:
     Zotero's UI does not allow a comma in a collection name, which makes
     this a defensive fallback rather than a live case.
     """
-    return name.replace(',', ';')
+    return name.replace(",", ";")
 
 
 def _groups_for(fields: dict, indexes: Indexes, stats: dict) -> tuple:
@@ -245,17 +248,17 @@ def _groups_for(fields: dict, indexes: Indexes, stats: dict) -> tuple:
     """
     item_ids, method = match_item_ids(fields, indexes)
     if not item_ids:
-        stats['unmatched'] += 1
+        stats["unmatched"] += 1
         return ()
     groups = set()
     for item_id in item_ids:
         groups |= indexes.collections.get(item_id, set())
     if not groups:
-        stats[f'matched_no_collection_via_{method}'] += 1
+        stats[f"matched_no_collection_via_{method}"] += 1
         return ()
-    stats[f'matched_via_{method}'] += 1
+    stats[f"matched_via_{method}"] += 1
     if len(item_ids) > 1:
-        stats['matched_multiple_items'] += 1
+        stats["matched_multiple_items"] += 1
     return tuple(sorted(groups))
 
 
@@ -274,7 +277,7 @@ def populate(text: str, indexes: Indexes):
     # the number of `@` blocks in the file. The two differ -- 644 against
     # 642 on this repository's library -- and counting the parser's would
     # make that difference invisible, which is what `no_fields` prevents.
-    stats['entries_total'] = len(scanned)
+    stats["entries_total"] = len(scanned)
     pieces, cursor = [], 0
     for key, close_pos in scanned:
         fields = fields_by_key.get(key)
@@ -291,22 +294,22 @@ def populate(text: str, indexes: Indexes):
             # healthy library, which is the crying-wolf failure 4.2 is
             # about. They are still counted, so the buckets sum to the
             # total rather than leaving two blocks unaccounted for.
-            stats['no_fields'] += 1
+            stats["no_fields"] += 1
             continue
         if fields.get(GROUPS_FIELD):
             # Don't clobber a field that is already there: re-running this
             # on its own output must be a no-op, not a duplication.
-            stats['already_had_groups'] += 1
+            stats["already_had_groups"] += 1
             continue
         groups = _groups_for(fields, indexes, stats)
         if not groups:
             continue
-        names = ','.join(escape_group_name(name) for name in groups)
+        names = ",".join(escape_group_name(name) for name in groups)
         pieces.append(text[cursor:close_pos])
         pieces.append(f"\t{GROUPS_FIELD} = {{{names}}},\n")
         cursor = close_pos
     pieces.append(text[cursor:])
-    return ''.join(pieces), stats
+    return "".join(pieces), stats
 
 
 def format_stats(stats: dict) -> list:
@@ -316,11 +319,11 @@ def format_stats(stats: dict) -> list:
     named `matched_no_collection_via_*` found an item but had nothing to
     write, so a prefix test on `matched` would overstate the result.
     """
-    total = stats['entries_total']
+    total = stats["entries_total"]
     lines = [f"entries total:            {total}"]
-    buckets = {key: value for key, value in stats.items() if key != 'entries_total'}
+    buckets = {key: value for key, value in stats.items() if key != "entries_total"}
     lines += [f"{key:28s} {buckets[key]}" for key in sorted(buckets)]
-    added = sum(value for key, value in buckets.items() if key.startswith('matched_via_'))
+    added = sum(value for key, value in buckets.items() if key.startswith("matched_via_"))
     lines.append(f"groups field added to:    {added} / {total} entries")
     return lines
 
@@ -328,8 +331,7 @@ def format_stats(stats: dict) -> list:
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) != 3:
-        print("usage: populate_bib_groups.py <zotero.sqlite> <in.bib> <out.bib>",
-              file=sys.stderr)
+        print("usage: populate_bib_groups.py <zotero.sqlite> <in.bib> <out.bib>", file=sys.stderr)
         return 2
 
     sqlite_path, in_path, out_path = argv
@@ -339,16 +341,16 @@ def main(argv=None) -> int:
     finally:
         con.close()
 
-    with open(in_path, encoding='utf-8') as handle:
+    with open(in_path, encoding="utf-8") as handle:
         text = handle.read()
     out_text, stats = populate(text, indexes)
-    with open(out_path, 'w', encoding='utf-8') as handle:
+    with open(out_path, "w", encoding="utf-8") as handle:
         handle.write(out_text)
 
-    print('\n'.join(format_stats(stats)))
+    print("\n".join(format_stats(stats)))
     print(f"wrote {out_path}")
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

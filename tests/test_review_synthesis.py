@@ -53,18 +53,21 @@ class TestTheReportNamesWhatItMeasured:
     def test_it_records_the_genre_the_unit_and_the_source(self, isolated_config):
         draft = a_draft("Text [@A].\n", genre="textbook-chapter")
         report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
-        assert (report.genre, report.kind, report.source) == \
-            ("textbook-chapter", "section", "scope.md")
+        assert (report.genre, report.kind, report.source) == (
+            "textbook-chapter",
+            "section",
+            "scope.md",
+        )
 
     def test_a_tutorials_report_says_the_unit_was_the_document(self, isolated_config):
         draft = a_draft("Lesson.\n\n## Where to go next\n\nSee [@A].\n", genre="tutorial")
         body = _render(draft)
         assert "document" in body
         assert "paragraph" not in body.split("## Units")[0].replace(
-            "paragraphs", "")  # the header must not imply a scale it never used
+            "paragraphs", ""
+        )  # the header must not imply a scale it never used
 
-    def test_it_says_a_thin_corpus_legitimately_produces_single_source_units(
-            self, isolated_config):
+    def test_it_says_a_thin_corpus_legitimately_produces_single_source_units(self, isolated_config):
         draft = a_draft("Text [@A].\n")
         body = _render(draft)
         assert "thin corpus" in body
@@ -95,8 +98,7 @@ class TestTheCounts:
         assert report.single_source_pct is None
 
     def test_declared_and_undeclared_are_counted_apart(self, isolated_config):
-        draft = a_draft(
-            "One [@A].\n<!-- single-source: only A covers this -->\n\nTwo [@B].\n")
+        draft = a_draft("One [@A].\n<!-- single-source: only A covers this -->\n\nTwo [@B].\n")
         report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
         assert (report.declared, report.undeclared) == (1, 1)
 
@@ -105,13 +107,15 @@ class TestFindings:
     def test_a_single_source_unit_is_a_finding(self, isolated_config):
         draft = a_draft("One [@A].\n")
         findings = synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None)))
+            synthesis.build_report(draft, *synthesis.resolve(draft, None))
+        )
         assert [f["kind"] for f in findings] == ["single_source"]
 
     def test_a_multi_source_unit_is_not(self, isolated_config):
         draft = a_draft("Two [@A] and [@B].\n")
-        assert synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None))) == []
+        assert (
+            synthesis.findings(synthesis.build_report(draft, *synthesis.resolve(draft, None))) == []
+        )
 
     def test_an_uncited_unit_is_counted_but_is_never_a_finding(self, isolated_config):
         """Making original prose a finding would bury the one thing this
@@ -122,46 +126,55 @@ class TestFindings:
         assert synthesis.findings(report) == []
 
     def test_undeclared_findings_come_first(self, isolated_config):
-        draft = a_draft(
-            "One [@A].\n<!-- single-source: stated -->\n\nTwo [@B].\n\nThree [@C].\n")
+        draft = a_draft("One [@A].\n<!-- single-source: stated -->\n\nTwo [@B].\n\nThree [@C].\n")
         findings = synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None)))
+            synthesis.build_report(draft, *synthesis.resolve(draft, None))
+        )
         assert [f["declared"] for f in findings] == [None, None, "stated"]
 
     def test_a_long_single_key_run_is_a_finding_in_a_section(self, isolated_config):
         draft = a_draft(
             "## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n\nFour [@B].\n",
-            genre="textbook-chapter")
+            genre="textbook-chapter",
+        )
         findings = synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None)))
+            synthesis.build_report(draft, *synthesis.resolve(draft, None))
+        )
         assert [f["kind"] for f in findings] == ["single_key_run"]
         assert findings[0]["longest_run"] == 3
 
     def test_a_single_source_section_raises_one_finding_not_two(self, isolated_config):
         """Its run is as long as it has paragraphs, by construction --
         reporting that beside the spread says nothing twice."""
-        draft = a_draft("## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n",
-                        genre="textbook-chapter")
+        draft = a_draft("## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n", genre="textbook-chapter")
         findings = synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None)))
+            synthesis.build_report(draft, *synthesis.resolve(draft, None))
+        )
         assert [f["kind"] for f in findings] == ["single_source"]
 
     def test_the_interleaved_counterpart_is_not_a_finding(self, isolated_config):
         draft = a_draft(
             "## S\n\nOne [@A].\n\nTwo [@B].\n\nThree [@A].\n\nFour [@B].\n",
-            genre="textbook-chapter")
-        assert synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None))) == []
+            genre="textbook-chapter",
+        )
+        assert (
+            synthesis.findings(synthesis.build_report(draft, *synthesis.resolve(draft, None))) == []
+        )
 
     def test_spread_alone_cannot_tell_the_two_apart(self, isolated_config):
         """The point of measuring the run: both sections below span two
         sources, and only one of them fuses anything."""
-        blocked = a_draft("## S\n\n[@A] one.\n\n[@A] two.\n\n[@A] three.\n\n[@B] four.\n",
-                          genre="textbook-chapter", name="blocked.md")
-        fused = a_draft("## S\n\n[@A] one.\n\n[@B] two.\n\n[@A] three.\n\n[@B] four.\n",
-                        genre="textbook-chapter", name="fused.md")
-        reports = [synthesis.build_report(d, *synthesis.resolve(d, None))
-                   for d in (blocked, fused)]
+        blocked = a_draft(
+            "## S\n\n[@A] one.\n\n[@A] two.\n\n[@A] three.\n\n[@B] four.\n",
+            genre="textbook-chapter",
+            name="blocked.md",
+        )
+        fused = a_draft(
+            "## S\n\n[@A] one.\n\n[@B] two.\n\n[@A] three.\n\n[@B] four.\n",
+            genre="textbook-chapter",
+            name="fused.md",
+        )
+        reports = [synthesis.build_report(d, *synthesis.resolve(d, None)) for d in (blocked, fused)]
         assert {len(r.units[0].citekeys) for r in reports} == {2}
         assert [r.units[0].longest_run for r in reports] == [3, 1]
 
@@ -169,30 +182,35 @@ class TestFindings:
 class TestFindingIdentity:
     def test_is_stable_across_runs(self, isolated_config):
         draft = a_draft("One [@A].\n")
-        first, second = (synthesis.findings(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None)))
-            for _ in range(2))
+        first, second = (
+            synthesis.findings(synthesis.build_report(draft, *synthesis.resolve(draft, None)))
+            for _ in range(2)
+        )
         assert [f["id"] for f in first] == [f["id"] for f in second]
 
     def test_is_unchanged_by_declaring_the_unit(self, isolated_config):
         """Otherwise the declared/undeclared split renames every finding
         the moment someone explains one -- which is what R2 forbids."""
         plain = a_draft("One [@A].\n", name="plain.md")
-        declared = a_draft("One [@A].\n<!-- single-source: because -->\n",
-                           name="declared.md")
-        ids = [synthesis.findings(synthesis.build_report(d, *synthesis.resolve(d, None)))
-               [0]["id"] for d in (plain, declared)]
+        declared = a_draft("One [@A].\n<!-- single-source: because -->\n", name="declared.md")
+        ids = [
+            synthesis.findings(synthesis.build_report(d, *synthesis.resolve(d, None)))[0]["id"]
+            for d in (plain, declared)
+        ]
         assert ids[0] == ids[1]
 
     def test_is_unchanged_by_an_edit_above_it(self, isolated_config):
         """Position-free, for the reason citation_provenance.finding_id
         is: a line-based identity renames every finding below an edit."""
         before = a_draft("One [@A].\n", name="before.md")
-        after = a_draft("A new opening paragraph [@X] and [@Y].\n\nOne [@A].\n",
-                        name="after.md")
-        ids = [{f["id"] for f in synthesis.findings(
-            synthesis.build_report(d, *synthesis.resolve(d, None)))}
-            for d in (before, after)]
+        after = a_draft("A new opening paragraph [@X] and [@Y].\n\nOne [@A].\n", name="after.md")
+        ids = [
+            {
+                f["id"]
+                for f in synthesis.findings(synthesis.build_report(d, *synthesis.resolve(d, None)))
+            }
+            for d in (before, after)
+        ]
         assert ids[0] <= ids[1]
 
 
@@ -237,16 +255,14 @@ class TestTheCommandLine:
 
     def test_write_files_the_report_and_its_json_sibling(self, isolated_config, capsys):
         draft = a_draft("One [@A].\n")
-        assert review_main.main(
-            ["synthesis", str(draft), "--write", "--formats", "md"]) == 0
+        assert review_main.main(["synthesis", str(draft), "--write", "--formats", "md"]) == 0
         assert review.report_path(draft, "synthesis").is_file()
         assert review.report_path(draft, "synthesis", "json").is_file()
         assert "synthesis.md" in capsys.readouterr().out
 
     def test_write_under_json_puts_the_summary_on_stderr(self, isolated_config, capsys):
         draft = a_draft("One [@A].\n")
-        review_main.main(
-            ["synthesis", str(draft), "--write", "--json", "--formats", "md"])
+        review_main.main(["synthesis", str(draft), "--write", "--json", "--formats", "md"])
         captured = capsys.readouterr()
         json.loads(captured.out)
         assert "synthesis.md" in captured.err
@@ -266,9 +282,14 @@ class TestRepeatability:
 
     def test_two_runs_produce_byte_identical_json(self, isolated_config):
         draft = a_draft("One [@A].\n\nTwo [@A] and [@B].\n")
-        payloads = [json.dumps(synthesis.synthesis_payload(
-            synthesis.build_report(draft, *synthesis.resolve(draft, None)), "cmd"))
-            for _ in range(2)]
+        payloads = [
+            json.dumps(
+                synthesis.synthesis_payload(
+                    synthesis.build_report(draft, *synthesis.resolve(draft, None)), "cmd"
+                )
+            )
+            for _ in range(2)
+        ]
         assert payloads[0] == payloads[1]
 
     def test_the_report_carries_no_date(self, isolated_config):
@@ -301,8 +322,10 @@ class TestTheRenderedReport:
         assert "Every unit that cites at all cites more than one source." in body
 
     def test_it_names_the_run_in_a_section_report(self, isolated_config):
-        draft = a_draft("## S\n\n[@A] one.\n\n[@A] two.\n\n[@A] three.\n\n[@B] four.\n",
-                        genre="textbook-chapter")
+        draft = a_draft(
+            "## S\n\n[@A] one.\n\n[@A] two.\n\n[@A] three.\n\n[@B] four.\n",
+            genre="textbook-chapter",
+        )
         body = _render(draft)
         assert "consecutive paragraphs" in body
 
@@ -360,13 +383,16 @@ class TestResolve:
         assert synthesis.resolve(draft, "section") == ("section", "--unit", "tutorial")
 
 
-@pytest.mark.parametrize("genre,kind", [
-    ("survey", "paragraph"),
-    ("thesis-chapter", "paragraph"),
-    ("deep-research", "paragraph"),
-    ("textbook-chapter", "section"),
-    ("tutorial", "document"),
-])
+@pytest.mark.parametrize(
+    "genre,kind",
+    [
+        ("survey", "paragraph"),
+        ("thesis-chapter", "paragraph"),
+        ("deep-research", "paragraph"),
+        ("textbook-chapter", "section"),
+        ("tutorial", "document"),
+    ],
+)
 def test_each_genre_is_measured_at_its_own_unit(isolated_config, genre, kind):
     draft = a_draft("## S\n\nText [@A].\n", genre=genre, name=f"{genre}.md")
     report = synthesis.build_report(draft, *synthesis.resolve(draft, None))

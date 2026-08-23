@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 
-
 from chitragupta import config, ledger
+
 
 def pytest_sessionstart(session):
     """Keep spawned children importable for the whole session.
@@ -263,9 +263,7 @@ pdflatex_available = shutil.which("pdflatex") is not None
 # rather than folded into pdflatex_available.
 tikz_available = (
     shutil.which("kpsewhich") is not None
-    and subprocess.run(
-        ["kpsewhich", "tikz.sty"], capture_output=True, check=False
-    ).returncode == 0
+    and subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False).returncode == 0
 )
 
 # A figure is two forms -- a TikZ picture and the same diagram in

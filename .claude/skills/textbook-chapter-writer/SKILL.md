@@ -145,7 +145,7 @@ exist whether or not a single `[@citekey]` does.
 ## When to invoke
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | User asks for a textbook chapter / course reader / lecture notes / worked-examples handout | Invoke this skill |
 | User asks for a hands-on lesson the reader follows step by step to a working result | Use `tutorial-writer` instead |
 | User asks for a survey or lit review | Use `survey-writer` instead |

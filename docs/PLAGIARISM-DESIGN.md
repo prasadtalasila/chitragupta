@@ -200,7 +200,7 @@ same corpus, the same book and the same hand labels as the #130
 measurement:
 
 | `median_df >= D` | Suppressed, of 14 gateable | True positives lost, of 1 |
-|---|---|---|
+| --- | --- | --- |
 | 2 | 12 | 0 |
 | 3 | 11 | 0 |
 | 4 | 8 | 0 |
@@ -215,7 +215,7 @@ Grouped by the labeller's own classes, DF turns out to measure what they
 were seeing by eye:
 
 | Class | Findings | median DF |
-|---|---|---|
+| --- | --- | --- |
 | `canonical-definition` | 4 | 3-4 |
 | `third-party-echo` | 9 | 1-4 |
 | `attributed-quotation` | 3 | 1 |
@@ -262,7 +262,7 @@ benchmark literature before choosing an approach, rather than building by
 habit. Summary, for anyone deciding what to build next:
 
 | Source | What it established | Where it lands here |
-|---|---|---|
+| --- | --- | --- |
 | Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013 winner, quality and runtime) | Contextual n-grams with odd/even skip-grams -- exact-matching family, well-engineered n-gram methods beat fancier ones on speed at comparable quality; skip-grams + stemming tolerate single-word edits | The exact tier here (`overlap`/`scan`) is this family. Skip-grams are the tier-2 upgrade, built in `chitragupta/overlap_skipgram.py` (#133) |
 | Sánchez-Pérez et al., [PAN 2014/2015 winner](https://ceur-ws.org/Vol-1180/CLEF2014wn-Pan-SanchezPerezEt2014.pdf) | TF-IDF sentence similarity + recursive passage extension -- the fuzzy-match family wins only on *obfuscated* reuse | Not used: built for obfuscation the exact tier doesn't target, and competes with skip-grams for tier 2 on determinism-adjacent simplicity |
 | [PAN 2025 generated-plagiarism task](https://arxiv.org/abs/2510.06805) | Measured the LLM case directly: exact-matching approaches miss LLM-paraphrased reuse, and detection degrades further as paraphrase complexity rises; embedding-based alignment (SBERT + local alignment, e.g. Smith-Waterman) is the validated answer for that tier | This is exactly why this document's [scope section](PLAGIARISM.md#-what-plagiarism-means-here-and-what-it-deliberately-doesnt) insists a clean `scan` is not "no borrowed wording" |

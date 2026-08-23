@@ -49,7 +49,9 @@ _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 def _run(*argv):
     return subprocess.run(
         [sys.executable, *argv],
-        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
     )
 
 
@@ -67,7 +69,7 @@ class TestTheVerbsAreTheDraftingCommands:
         assert f"chitragupta.draft {verb}" in result.stdout
 
     def test_no_verb_prints_the_layers_usage_and_exits_zero(self):
-        """"Tell me how to use this" is not an error -- the same rule
+        """ "Tell me how to use this" is not an error -- the same rule
         each of the commands already applies to a missing mode."""
         result = _run("-m", "chitragupta.draft")
         assert result.returncode == 0
@@ -164,7 +166,9 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         assert "input" in result.stderr
 
     def test_dossier_status_on_a_nonexistent_draft_exits_one(self):
-        result = _run("-m", "chitragupta.draft", "dossier", "status", "content/drafts/does-not-exist-nope.md")
+        result = _run(
+            "-m", "chitragupta.draft", "dossier", "status", "content/drafts/does-not-exist-nope.md"
+        )
         assert result.returncode == 1
 
     def test_dossier_init_without_required_genre_exits_two(self, tmp_path):

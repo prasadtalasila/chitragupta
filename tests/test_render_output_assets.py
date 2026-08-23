@@ -13,7 +13,7 @@ from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, f
 
 class TestLocalImageRefs:
     def test_extracts_local_image_paths(self):
-        text = "![alt one](figure-one.png)\n\nSome text ![alt two](sub/figure-two.svg \"a title\").\n"
+        text = '![alt one](figure-one.png)\n\nSome text ![alt two](sub/figure-two.svg "a title").\n'
         assert render_output._local_image_refs(text) == ["figure-one.png", "sub/figure-two.svg"]
 
     def test_skips_remote_urls_and_data_uris(self):
@@ -133,7 +133,9 @@ class TestCopyLocalTexIncludes:
 
         render_output._copy_local_tex_includes(draft, dest_dir)
 
-        assert (dest_dir / "figures" / "fig1.tex").read_text() == "\\begin{tikzpicture}\\end{tikzpicture}\n"
+        assert (
+            dest_dir / "figures" / "fig1.tex"
+        ).read_text() == "\\begin{tikzpicture}\\end{tikzpicture}\n"
 
 
 class TestCopyLocalTexIncludesFollowsMarkers:

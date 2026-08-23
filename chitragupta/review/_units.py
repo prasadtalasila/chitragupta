@@ -96,9 +96,7 @@ _MARKER_RE = re.compile(r"(?:<!--|%)\s*single-source:\s*(.*?)\s*(?:-->|$)")
 # A section opens at a heading, in either markup. The same shapes
 # `citation_provenance` recognises, minus the list and table openers: a
 # table row does not start a section.
-_HEADING_RE = re.compile(
-    r"^\s*(?:#{1,6}\s|\\(?:chapter|(?:sub){0,2}section|paragraph)\*?\{)"
-)
+_HEADING_RE = re.compile(r"^\s*(?:#{1,6}\s|\\(?:chapter|(?:sub){0,2}section|paragraph)\*?\{)")
 
 
 @dataclass(frozen=True)
@@ -285,12 +283,13 @@ def _sections(lines: list[str]) -> list[tuple[int, list[str]]]:
 
 
 def _section(start: int, lines: list[str]) -> Unit:
-    paragraphs = [p for p in
-                  (_paragraph(at, block) for at, block in blocks(lines, start))
-                  if p is not None]
+    paragraphs = [
+        p for p in (_paragraph(at, block) for at, block in blocks(lines, start)) if p is not None
+    ]
     prose = _prose(lines)
-    return Unit("section", start, prose, _citekeys(prose),
-                _declaration(lines), _longest_run(paragraphs))
+    return Unit(
+        "section", start, prose, _citekeys(prose), _declaration(lines), _longest_run(paragraphs)
+    )
 
 
 def units(text: str, kind: str) -> list[Unit]:

@@ -24,8 +24,9 @@ this pins only that the skill still tells anyone to run them.
 import re
 from pathlib import Path
 
-SKILL = (Path(__file__).resolve().parent.parent
-         / ".claude" / "skills" / "book-assembler" / "SKILL.md")
+SKILL = (
+    Path(__file__).resolve().parent.parent / ".claude" / "skills" / "book-assembler" / "SKILL.md"
+)
 
 
 def _body() -> str:

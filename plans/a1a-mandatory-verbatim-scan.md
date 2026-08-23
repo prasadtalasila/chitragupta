@@ -86,7 +86,7 @@ Two documents still read as though it is pending, and reconciling them
 is part of this work rather than a separate cleanup:
 
 | Site | What it still says |
-|---|---|
+| --- | --- |
 | `docs/FEATURE-ROADMAP.md`, §"The decision that gates part of this" | frames the amendment as an open question, and A1a as blocked on it |
 | `docs/AUTO-IMPROVEMENT-RATIONALE.md`, §"The amendment this needs" | *"It is the first thing to settle, before any code"* |
 | `docs/AUTO-IMPROVEMENT.md`, build order step 1 | **"Settle the amendment."** Not a coding task -- unannotated, where steps 2/3/5 carry a *Done in x.y.z* rider |
@@ -133,7 +133,7 @@ each, and not one of them empty.
 The real gap is narrower and entirely mechanical:
 
 | Skill | Writes `sections.md` today? |
-|---|---|
+| --- | --- |
 | `survey-writer` | yes, step 8 |
 | `thesis-chapter-writer` | yes |
 | `textbook-chapter-writer` | yes |
@@ -195,7 +195,7 @@ blocking. The count is 16 rather than the 13 this document first found:
 their own copy, and `docs/CLI.md` gained a §`figure` statement with them.
 
 | # | Site | Current wording |
-|---|---|---|
+| --- | --- | --- |
 | 1 | `chitragupta/review/__init__.py` docstring | "None gates, none runs automatically" |
 | 2 | `chitragupta/review/__main__.py` docstring | "nothing invokes them automatically" |
 | 3 | `chitragupta/review/citation_provenance.py` docstring | "never automatically, never a gate" |
@@ -235,7 +235,7 @@ presents its findings *is* something reading a report back. Five of the
 six landed after the count was taken.
 
 | # | Site | New since the count |
-|---|---|---|
+| --- | --- | --- |
 | 17 | `chitragupta/review/__init__.py`, `BANNER` | |
 | 18 | `chitragupta/review/_synthesis_render.py`, the report preamble | **#341** |
 | 19 | `chitragupta/review/synthesis.py`, docstring | **#341** |
@@ -280,7 +280,7 @@ never a verdict" is the sentence that was always doing the work.
 **Per-site, where the surrounding grammar differs:**
 
 | # | Site | Replacement |
-|---|---|---|
+| --- | --- | --- |
 | 7 | `AGENTS.md` Layer 4 | "read over a finished draft -- by you, or by a skill that runs one on your behalf. Never a gate." |
 | 8 | `ARCHITECTURE.md` §Layer 4 | "A skill may invoke them; none of them gates anything" |
 | 9 | `ARCHITECTURE.md` mermaid label | `advisory, never a gate` -- drop "never automatic", keep the rest |
@@ -312,7 +312,7 @@ ratchet watches, and one has no room.** `code_lines()` in
 and the limit is 250:
 
 | Module | Code lines | Headroom |
-|---|---|---|
+| --- | --- | --- |
 | `chitragupta/review/citation_coverage.py` | **250** | **0** |
 | `chitragupta/review/__init__.py` | 229 | 21 |
 | `chitragupta/review/synthesis.py` | 219 | 31 |
@@ -345,7 +345,7 @@ before it is written.
 Recorded so the next person does not "finish" the job by editing them:
 
 | Site | Why not |
-|---|---|
+| --- | --- |
 | `AGENTS.md`, "reads it back out of the ledger" | the ledger, not a review report |
 | `tests/test_sync.py`, "never invoked" | a pool initializer |
 | `chitragupta/dossier/_acronyms.py`, "still never automatic" | **drafting** layer. #190's own rule about `acronyms-suggest --apply`, and the amendment is stated only about layer 4 |
@@ -372,7 +372,7 @@ Three diagrams make a manual-invocation claim on exactly the axis the
 amendment abolishes:
 
 | Diagram | Label |
-|---|---|
+| --- | --- |
 | `00-main-workflow` | `<b>REVIEW AIDS</b> — you run these; none of them is a gate` |
 | `g1-corpus-led` | `LAYER 4 · REVIEW — afterwards, by you, never a gate` |
 | `extra-sequence` | `Layer 4, the review layer — optional afterwards, never a gate` |
@@ -429,7 +429,7 @@ a condition of presenting"*. It becomes a step that runs it. The three
 clauses do different work and only the first changes:
 
 | Clause | Becomes |
-|---|---|
+| --- | --- |
 | "offer this -- don't run it silently" | **run it, and show what it found** |
 | "never make it a condition of presenting" | **unchanged.** This is the not-a-gate clause, and it is what the amendment preserves |
 | "say what it misses" | **unchanged**, and extended by [Part 5](#part-5----what-a-skill-says-when-tier-3-cannot-run) |
@@ -545,7 +545,7 @@ is a different consumer. This adds a regeneration, it does not move one.
 a skill can fix exactly one of them:
 
 | Reason | Can the skill fix it? |
-|---|---|
+| --- | --- |
 | the draft is not under `content/drafts/`, so it has no dossier | no |
 | the dossier's `sections.md` records no citekeys | **yes** -- [Part 4](#part-4----the-sectionsmd-precondition) |
 | the enrichment layer is not installed | no |
@@ -594,7 +594,7 @@ grep-and-replace has to reach all of them, one of which is production
 code rather than a test:
 
 | File | What it says |
-|---|---|
+| --- | --- |
 | `chitragupta/review/verbatim_check.py` | "`tests/test_skill_verbatim_scan_offer.py` holds every skill's offer" -- prose that also has to stop saying *offer* |
 | `tests/test_skill_style_check_step.py` | "and for the same reason" |
 | `tests/test_skill_book_assembly.py` | "Same shape and same reasoning as" |
@@ -634,7 +634,7 @@ skill edits do not change what the command reports on an already-written
 draft; they change what happens on the next draft written.
 
 | | Drafts | Deterministic findings | Embedding-tier findings |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | tier 3 ran | **21** | 519 | **256** |
 | tier 3 skipped | **6** | 3 | -- |
 
@@ -692,7 +692,7 @@ the same exclusion through `_tokenize_draft`'s word stream.
 So the placement #313 chooses is load-bearing for this item:
 
 | Appendix placement | What the mandatory scan sees |
-|---|---|
+| --- | --- |
 | per section, in the body | **scanned** -- every quoted span becomes a finding |
 | once at the end, *before* References | **scanned** -- same |
 | once at the end, *after* References | **blanked entirely** -- the quarantined quotes are never checked |

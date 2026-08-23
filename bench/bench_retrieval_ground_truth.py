@@ -66,9 +66,15 @@ def build_ground_truth(drafts_dir, labels_path=LABELS_PATH):
         if claim is None:
             missing.append(row["id"])
             continue
-        rows.append({"chapter": row["chapter"], "line": row["line"],
-                     "citekey": row["citekey"], "query": claim,
-                     "judgment": row["judgment"]})
+        rows.append(
+            {
+                "chapter": row["chapter"],
+                "line": row["line"],
+                "citekey": row["citekey"],
+                "query": claim,
+                "judgment": row["judgment"],
+            }
+        )
 
     if missing:
         raise ValueError(
@@ -99,8 +105,10 @@ def main(argv=None):
 
     self_check()
     if not config.LEDGER_PATH.exists():
-        print(f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync`",
-              file=sys.stderr)
+        print(
+            f"no ledger at {config.LEDGER_PATH} -- run `python -m chitragupta.corpus sync`",
+            file=sys.stderr,
+        )
         return 1
 
     rows = build_ground_truth(args.drafts)

@@ -132,7 +132,7 @@ commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer).
 For each citing passage in the draft, emit:
 
 | Field | Meaning |
-|---|---|
+| --- | --- |
 | Draft location | Line number and the citing sentence -- or, where the citation sits in a table, a list or a heading (Markdown or LaTeX), that row, item or heading alone |
 | Citekey | The key cited there |
 | Best-matching source passage | The span of that paper's text closest to the claim |
@@ -237,7 +237,7 @@ Those are two different discussions, interleaved. Measured across the
 10-paper sample:
 
 | Papers | Long lines carrying two columns |
-|---|---|
+| --- | --- |
 | 4 of 10 | **82%-89%** |
 | 6 of 10 | 3%-9% (single-column; residue from tables) |
 
@@ -522,7 +522,7 @@ that matters: a `tabular` row ends at `\\`, not at a newline, so a row
 hard-wrapped over three lines is still one claim.
 
 | | Markdown | LaTeX |
-|---|---|---|
+| --- | --- | --- |
 | Row | a `\|` line | text up to `\\` |
 | Cells | split on unescaped `\|` | split on unescaped `&` |
 | List item | `-`, `*`, `+`, `1.` | `\item` |
@@ -536,7 +536,7 @@ document syntax the code did not actually model.
 ## 📊 Sizing (as built)
 
 | Piece | Actual |
-|---|---|
+| --- | --- |
 | `chitragupta/review/citation_provenance.py` | ~250 lines |
 | `chitragupta/passages.py` | ~150 lines |
 | `_passage_records` in `chitragupta/enrich/docling_parse.py` | ~35 lines |

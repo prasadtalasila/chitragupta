@@ -12,8 +12,7 @@ def _write_glossary(draft, body):
     scope_dir = dossier.dossier_dir(draft)
     scope_dir.mkdir(parents=True, exist_ok=True)
     (scope_dir / dossier.SCOPE_MD).write_text(
-        f"# Scope\n\n- genre: survey\n- created: 2026-08-14\n\n"
-        f"## Glossary\n\n{body}\n",
+        f"# Scope\n\n- genre: survey\n- created: 2026-08-14\n\n## Glossary\n\n{body}\n",
         encoding="utf-8",
     )
 
@@ -32,9 +31,7 @@ def test_no_findings_for_a_draft_outside_content_drafts(tmp_path):
     assert style_acronym_drift.findings(draft) == []
 
 
-def test_no_findings_when_the_glossary_agrees_with_the_vocabulary(
-    isolated_config, monkeypatch
-):
+def test_no_findings_when_the_glossary_agrees_with_the_vocabulary(isolated_config, monkeypatch):
     monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
     draft = content_draft(isolated_config, "drafts/topic/survey.md")
     _write_glossary(draft, "- **Digital twin (DT)** -- was, in Chapter 1, a model.")
@@ -42,9 +39,7 @@ def test_no_findings_when_the_glossary_agrees_with_the_vocabulary(
 
 
 def test_one_finding_when_the_glossary_has_drifted(isolated_config, monkeypatch):
-    monkeypatch.setattr(
-        acronyms, "load_vocabulary", lambda: {"DT": "Digital Twin System"}
-    )
+    monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital Twin System"})
     draft = content_draft(isolated_config, "drafts/topic/survey.md")
     _write_glossary(draft, "- **Digital twin (DT)** -- was, in Chapter 1, a model.")
 
@@ -62,14 +57,14 @@ def test_one_finding_when_the_glossary_has_drifted(isolated_config, monkeypatch)
 
 def test_findings_are_sorted_by_term(isolated_config, monkeypatch):
     monkeypatch.setattr(
-        acronyms, "load_vocabulary",
+        acronyms,
+        "load_vocabulary",
         lambda: {"DT": "Digital Twin System", "DS": "Digital Shadow System"},
     )
     draft = content_draft(isolated_config, "drafts/topic/survey.md")
     _write_glossary(
         draft,
-        "- **Digital twin (DT)** -- a model.\n"
-        "- **Digital shadow (DS)** -- a copy.",
+        "- **Digital twin (DT)** -- a model.\n- **Digital shadow (DS)** -- a copy.",
     )
 
     found = style_acronym_drift.findings(draft)

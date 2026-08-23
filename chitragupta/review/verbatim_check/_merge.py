@@ -64,7 +64,4 @@ def _merge_spans(
         else:
             runs.append([item])
             run_end = end
-    return [
-        (min(m[0] for m in run), max(m[1] for m in run), run)
-        for run in runs
-    ]
+    return [(min(m[0] for m in run), max(m[1] for m in run), run) for run in runs]

@@ -74,11 +74,7 @@ def _ends_with_vowel(stem: str) -> bool:
 def _ends_double_consonant(stem: str) -> bool:
     """Porter's `*d`: stem ends in two identical consonants ("hopp",
     "topp") -- caught by 1b's second branch before it strips one."""
-    return (
-        len(stem) >= 2
-        and stem[-1] == stem[-2]
-        and _is_consonant(stem, len(stem) - 1)
-    )
+    return len(stem) >= 2 and stem[-1] == stem[-2] and _is_consonant(stem, len(stem) - 1)
 
 
 def _cvc(stem: str) -> bool:
@@ -151,16 +147,36 @@ def _step1c(word: str) -> str:
 # stem has measure > 0 -- Porter's Table for turning derivational endings
 # into their root form ("relational" -> "relate", not just "relat").
 _STEP2_RULES = (
-    ("ational", "ate"), ("tional", "tion"), ("enci", "ence"), ("anci", "ance"),
-    ("izer", "ize"), ("abli", "able"), ("alli", "al"), ("entli", "ent"),
-    ("eli", "e"), ("ousli", "ous"), ("ization", "ize"), ("ation", "ate"),
-    ("ator", "ate"), ("alism", "al"), ("iveness", "ive"), ("fulness", "ful"),
-    ("ousness", "ous"), ("aliti", "al"), ("iviti", "ive"), ("biliti", "ble"),
+    ("ational", "ate"),
+    ("tional", "tion"),
+    ("enci", "ence"),
+    ("anci", "ance"),
+    ("izer", "ize"),
+    ("abli", "able"),
+    ("alli", "al"),
+    ("entli", "ent"),
+    ("eli", "e"),
+    ("ousli", "ous"),
+    ("ization", "ize"),
+    ("ation", "ate"),
+    ("ator", "ate"),
+    ("alism", "al"),
+    ("iveness", "ive"),
+    ("fulness", "ful"),
+    ("ousness", "ous"),
+    ("aliti", "al"),
+    ("iviti", "ive"),
+    ("biliti", "ble"),
 )
 
 _STEP3_RULES = (
-    ("icate", "ic"), ("ative", ""), ("alize", "al"), ("iciti", "ic"),
-    ("ical", "ic"), ("ful", ""), ("ness", ""),
+    ("icate", "ic"),
+    ("ative", ""),
+    ("alize", "al"),
+    ("iciti", "ic"),
+    ("ical", "ic"),
+    ("ful", ""),
+    ("ness", ""),
 )
 
 # Step 4 endings are dropped outright (measure > 1), no replacement --
@@ -168,8 +184,24 @@ _STEP3_RULES = (
 # so "motion" doesn't lose its whole identity to a rule meant for
 # "adoption" -> "adopt".
 _STEP4_SUFFIXES = (
-    "al", "ance", "ence", "er", "ic", "able", "ible", "ant", "ement",
-    "ment", "ent", "ou", "ism", "ate", "iti", "ous", "ive", "ize",
+    "al",
+    "ance",
+    "ence",
+    "er",
+    "ic",
+    "able",
+    "ible",
+    "ant",
+    "ement",
+    "ment",
+    "ent",
+    "ou",
+    "ism",
+    "ate",
+    "iti",
+    "ous",
+    "ive",
+    "ize",
 )
 
 

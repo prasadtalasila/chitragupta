@@ -92,7 +92,7 @@ independent of
 Each is purpose-built for something the other is not:
 
 | | GROBID | docling |
-|---|---|---|
+| --- | --- | --- |
 | Header metadata | Purpose-built (title, authors, affiliations, abstract) | General layout detection, not citation-schema-aware |
 | References | Structured TEI records, ~0.87-0.90 F1 | No dedicated citation parser |
 | Body text and sections | Adequate; sometimes misses full section isolation | Strong -- this repo depends on it for reading order |
@@ -179,7 +179,7 @@ It must follow the same three conventions every stage here follows:
 Status vocabulary, matching `chitragupta/enrich/__main__.py`:
 
 | Condition | Report |
-|---|---|
+| --- | --- |
 | `[grobid].enabled = false` | `skipped` |
 | Service unreachable at `[grobid].url` | `service-unavailable` |
 | TEI written | `ok` |
@@ -286,7 +286,7 @@ Honest accounting, since the operational objection that removed GROBID
 still stands:
 
 | Cost | Detail |
-|---|---|
+| --- | --- |
 | A pinned JDK 21 | Its bundled Kotlin compiler cannot parse a JDK 25 version string. Unchanged since the removal |
 | A multi-GB, multi-minute build | Or accepting the prebuilt Docker image and its footprint |
 | A long-running service on port 8070 | The only component here that is not a batch job -- a genuinely new operational shape |

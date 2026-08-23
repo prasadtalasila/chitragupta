@@ -124,8 +124,7 @@ def load(path: "Path | None" = None) -> tuple[str, ...]:
     for index, entry in enumerate(raw_topics):
         if not isinstance(entry, str):
             raise SeedTopicsError(
-                f"{seed_path}: '{TOPICS_KEY}[{index}]' must be a string, "
-                f"got {type(entry).__name__}"
+                f"{seed_path}: '{TOPICS_KEY}[{index}]' must be a string, got {type(entry).__name__}"
             )
         phrase = _clean(entry)
         if not phrase:
@@ -160,9 +159,11 @@ def report(data: dict, phrase: "str | None" = None) -> str:
     digital twins in manufacturing belongs under both.
     """
     if not data:
-        return ("No seed-topic matches recorded yet. Write "
-                f"{config.SEED_TOPICS_PATH} and run "
-                f"`{prog_for('enrich')} --stages seed-topics`.")
+        return (
+            "No seed-topic matches recorded yet. Write "
+            f"{config.SEED_TOPICS_PATH} and run "
+            f"`{prog_for('enrich')} --stages seed-topics`."
+        )
 
     topics = data.get("topics", [])
     if phrase is not None:
@@ -179,8 +180,11 @@ def report(data: dict, phrase: "str | None" = None) -> str:
         # genuinely has 25 papers read identically otherwise, and only the
         # first is a reason to raise [enrich].seed_topic_max_papers.
         considered = topic.get("considered", len(matches))
-        shown = (f"{len(matches)} of {considered} papers" if considered > len(matches)
-                 else f"{len(matches)} papers")
+        shown = (
+            f"{len(matches)} of {considered} papers"
+            if considered > len(matches)
+            else f"{len(matches)} papers"
+        )
         lines.append(f"{topic['phrase']}  ({shown})")
         for match in matches:
             lines.append(f"    {match['score']:.3f}  {match['citekey']}")
@@ -191,9 +195,11 @@ def report(data: dict, phrase: "str | None" = None) -> str:
     # caller did not ask for buries the answer.
     if phrase is None:
         unmatched = data.get("unmatched", [])
-        lines.append(f"{data.get('n_docs', 0)} documents, "
-                     f"{len(topics)} seed topics, "
-                     f"{len(unmatched)} documents matched no topic.")
+        lines.append(
+            f"{data.get('n_docs', 0)} documents, "
+            f"{len(topics)} seed topics, "
+            f"{len(unmatched)} documents matched no topic."
+        )
         # The unmatched list is the point of the whole report for an
         # author deciding what to seed next: it is precisely the part of
         # their own corpus their own topic list does not describe.
@@ -203,10 +209,10 @@ def report(data: dict, phrase: "str | None" = None) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f"{prog_for('corpus')} topics",
-                                     description=DESCRIPTION)
+    parser = argparse.ArgumentParser(prog=f"{prog_for('corpus')} topics", description=DESCRIPTION)
     parser.add_argument(
-        "--topic", metavar="PHRASE",
+        "--topic",
+        metavar="PHRASE",
         help="show only this seed topic's papers, instead of every topic",
     )
     return parser
@@ -223,8 +229,7 @@ def main(argv=None) -> int:
     if not data:
         return 1
     if args.topic is not None and not any(
-        t["phrase"].casefold() == _clean(args.topic).casefold()
-        for t in data.get("topics", [])
+        t["phrase"].casefold() == _clean(args.topic).casefold() for t in data.get("topics", [])
     ):
         return 1
     return 0

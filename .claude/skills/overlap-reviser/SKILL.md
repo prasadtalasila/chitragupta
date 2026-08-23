@@ -39,7 +39,7 @@ is a defect.
 ## When to invoke
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | User asks to fix, clean up or remediate verbatim overlap, borrowed wording or a plagiarism report | Invoke this skill |
 | A scan was just run and the user asks "what do I do about these" | Invoke this skill |
 | The user wants the draft **scanned** but says nothing about fixing it | Run the scan and show them. Do not start repairing |
@@ -60,7 +60,7 @@ The scan already buckets every finding by severity. That bucket is the
 line, so this skill does not invent a second threshold:
 
 | Bucket | What it is | This skill |
-|---|---|---|
+| --- | --- | --- |
 | `quoted` | Touching quote marks **and** citing the source | Report it as already correct. Do not touch it |
 | `short` | Under 15 words, not a marked quotation | Repair unattended |
 | `long` | 15 words or more, not a marked quotation | **Stop and ask.** Present paraphrase and quotation as two options and let the human choose |

@@ -36,7 +36,7 @@ specification; [README.md](../README.md#-hardware-requirements) has the
 sizing guidance that follows from it.
 
 | Name used below | What it is |
-|---|---|
+| --- | --- |
 | **the small machine** | 4 cores, 9.7 GB RAM (~3 GB actually free), no GPU |
 | **the multi-GPU machine** | 96 logical cores (48 available to the process), 251 GB RAM, 4x NVIDIA A40 46 GB, driver 555.42.02, CUDA 12.5. Verified 2026-07-30 |
 
@@ -90,7 +90,7 @@ does not cache, so these are extraction times, not `sync`'s steady state,
 which skips PDFs whose bytes have not changed).
 
 | Backend | Total, 5 PDFs | Words extracted | Ratio |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `pdftotext` | 1.43s | 68,888 | 1x |
 | `docling` (OCR on, i.e. before OCR defaulted off) | 60.77s | 69,565 | ~42x |
 
@@ -114,7 +114,7 @@ because OCR is CPU-bound and therefore competes with the parallelism you
 added. Measured 2026-08-04, end to end over the whole 501-PDF corpus:
 
 | Workers | OCR off | OCR on | Cost of OCR |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | 3330.4s | 6941.4s | **2.08x** |
 | 12 | 310.2s | 1213.9s | **3.91x** |
 | 24 | 237.6s | 1139.0s | **4.79x** |
@@ -123,7 +123,7 @@ Equivalently, from the other side -- **turning OCR on roughly halves how
 well the pipeline parallelises**:
 
 | | Speedup, 1 -> 24 workers |
-|---|---|
+| --- | --- |
 | OCR off | 14.02x |
 | OCR on | **6.09x** |
 
@@ -185,7 +185,7 @@ not for content that never arrived.
 **With OCR on, 1.79x:**
 
 | | s/page | Extrapolated to the corpus |
-|---|---|---|
+| --- | --- | --- |
 | One process, one GPU, OCR on | 0.43 | ~1.6 hours |
 | One process, CPU only, OCR on | 1.37 | ~5.1 hours |
 | Like for like, same 6 PDFs | | **1.79x** |
@@ -199,7 +199,7 @@ documents / 2,529 pages, serial, one process, converters warmed so model
 loading is excluded, the same PDFs through both devices:
 
 | Documents | Pages | GPU | CPU | Aggregate |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 10 | 75 | 0.222 s/page | 0.975 s/page | 4.39x |
 | 25 | 394 | 0.174 s/page | 0.948 s/page | 5.43x |
 | 50 | 798 | 0.211 s/page | 0.985 s/page | 4.67x |
@@ -235,7 +235,7 @@ Measured 2026-08-04 with the real `python -m chitragupta.corpus sync` over the *
 one run from an empty ledger; all reported 501 parsed, 0 failed:
 
 | Workers | Wall clock | Speedup | Efficiency | |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1 | 3330.4s | 1.00x | -- | |
 | 4 | 799.2s | 4.17x | 104% | |
 | 8 | 428.6s | 7.77x | 97% | |
@@ -269,7 +269,7 @@ one run from an empty ledger; all reported 501 parsed, 0 failed:
 CPUs. It does not. Measured CPU busy, against the 48 available:
 
 | Run | CPUs busy | of the 48 allowed |
-|---|---|---|
+| --- | --- | --- |
 | 16 workers | 18.7 | 39% |
 | 32 workers | ~34 | ~70% |
 | 24 workers, OCR on | 44.6 | **93%** |
@@ -293,7 +293,7 @@ run-to-run point is worth about a percentage point, not a decimal.)
 Timing each run's phases separates the candidates:
 
 | Workers | Startup (to 1st document) | Tail (after last) | CPU busy |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 24 | 18.6s — **7.9%** of the run | 4.9s — 2.1% | 56% |
 | 32 | 21.8s — **8.9%** | 5.9s — 2.6% | 70% |
 | 48 | 28.5s — **12.7%** | 7.9s — 3.6% | 78% |
@@ -331,7 +331,7 @@ while the rest idle.
 Measured over the whole 501-PDF corpus (2026-08-04, OCR off):
 
 | Workers | 1 GPU | 2 GPUs | 4 GPUs | 1->2 | 2->4 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | 12 | 518.4s | 339.7s | 310.2s | 1.53x | 1.10x |
 | 24 | 535.8s | 298.6s | 237.6s | **1.79x** | 1.26x |
 
@@ -359,7 +359,7 @@ A cold docling worker needs about **8.5s** before it produces its first
 page on the multi-GPU machine:
 
 | Stage | Time |
-|---|---|
+| --- | --- |
 | `import torch` | 1.16s |
 | `import docling` | 2.08s |
 | Build the `DocumentConverter` | 0.13s |
@@ -386,7 +386,7 @@ End to end on the real `sync`, medians of three runs, fresh output
 directory each time:
 
 | Documents | Workers | `spawn` | `forkserver` | Saving |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 8 | 1 (serial) | 46.2s | -- | -- |
 | 8 | 4 | 23.1s | **21.8s** | 1.3s (5.6%) |
 | 8 | 8 | 22.9s | **20.7s** | 2.2s (9.6%) |
@@ -439,7 +439,7 @@ and the retired duplicate-check timings stand in `bench/RESULTS.md`.
 Measured end to end on 2026-08-04, rather than extrapolated:
 
 | Change | Kind | Full 501-PDF corpus |
-|---|---|---|
+| --- | --- | --- |
 | Baseline: serial, OCR on | -- | **1h 56m** |
 | OCR off | not parallelism | 55m 30s |
 | 12 workers, 4 GPUs (today's cap) | CPU + GPU | 5m 10s |
@@ -478,7 +478,7 @@ opens a PDF, so what it costs depends on the parsed text and the row
 count, not on the PDFs behind them.
 
 | Dossiers swept | Cold (no index cache) | Warm (cache from a prior `search()`) |
-|---|---|---|
+| --- | --- | --- |
 | 1 | 2.032s | 0.218s |
 | 10 | 2.036s | 0.257s |
 | 50 | 2.227s | 0.436s |

@@ -67,7 +67,7 @@ def fields(block: str) -> dict[str, str]:
     found: dict[str, str] = {}
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(block)
-        value = block[match.end():end].strip()
+        value = block[match.end() : end].strip()
         if value:
             found.setdefault(match.group("field"), value)
     return found
@@ -127,8 +127,10 @@ def _cmd_check_evidence(args: argparse.Namespace) -> int:
     """
     target = _resolve_dossier(Path(args.draft))
     if not target.is_dir():
-        print(f"No dossier at {draft_relpath(target)}. Create one with "
-              f"`python -m chitragupta.draft dossier init {args.draft} --genre <genre>`.")
+        print(
+            f"No dossier at {draft_relpath(target)}. Create one with "
+            f"`python -m chitragupta.draft dossier init {args.draft} --genre <genre>`."
+        )
         return 1
 
     findings = reworded_claims(target)
@@ -136,9 +138,11 @@ def _cmd_check_evidence(args: argparse.Namespace) -> int:
         print("No claim: reads like its quote: reworded.")
         return 0
     for citekey, score in findings.items():
-        print(f"[warn] {citekey}: claim: reads like quote: with its words moved -- "
-              "re-read whether this is your own reading of the source, not a cue "
-              "to reword until this warning goes away.")
+        print(
+            f"[warn] {citekey}: claim: reads like quote: with its words moved -- "
+            "re-read whether this is your own reading of the source, not a cue "
+            "to reword until this warning goes away."
+        )
         if args.score:
             print(f"    ({score:.0%} content-word bigram overlap with quote:)")
     return 0

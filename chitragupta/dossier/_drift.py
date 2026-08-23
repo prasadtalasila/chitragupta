@@ -24,10 +24,19 @@ from pathlib import Path
 
 from chitragupta import bib_collections
 from chitragupta.dossier._citekeys import (
-    CITED_FILES, _citekeys_in, cited_citekeys, rejected_reasons, section_citekeys,
+    CITED_FILES,
+    _citekeys_in,
+    cited_citekeys,
+    rejected_reasons,
+    section_citekeys,
 )
 from chitragupta.dossier import (
-    _corpus_rows, all_dossiers, digest, dossier_name, draft_relpath, find_draft,
+    _corpus_rows,
+    all_dossiers,
+    digest,
+    dossier_name,
+    draft_relpath,
+    find_draft,
     recorded_corpus,
 )
 from chitragupta.dossier._retrieval import recorded_queries_with_collection
@@ -101,9 +110,7 @@ class Corpus:
             self._index = _ephemeral_index(self.rows)
         return self._index
 
-    def matches(
-        self, queries: list[tuple[str, str]], k: int = CANDIDATE_K
-    ) -> dict[str, list[str]]:
+    def matches(self, queries: list[tuple[str, str]], k: int = CANDIDATE_K) -> dict[str, list[str]]:
         """citekey -> the recorded queries whose top-k it would land in.
 
         Each query carries the collection its call actually ran against
@@ -132,7 +139,8 @@ class Corpus:
             scores = retrieval._bm25_scores(self.index, terms)
             if collection:
                 scores = {
-                    citekey: score for citekey, score in scores.items()
+                    citekey: score
+                    for citekey, score in scores.items()
                     if bib_collections.matches(self.collections.get(citekey, ()), collection)
                 }
             # Ties broken by citekey so that two runs over an unchanged
@@ -147,6 +155,7 @@ class Corpus:
 class Candidate:
     """A paper in the ledger that this dossier has never weighed, which
     one of the dossier's own recorded queries would have surfaced."""
+
     citekey: str
     title: str
     queries: list[str]
@@ -156,6 +165,7 @@ class Candidate:
 class Reconsider:
     """A paper this draft read and declined, which its queries still
     reach -- carried with the reason it was declined."""
+
     citekey: str
     title: str
     queries: list[str]
@@ -203,8 +213,7 @@ class Drift:
                 for c in self.candidates
             ],
             "reconsider": [
-                {"citekey": r.citekey, "title": r.title,
-                 "queries": r.queries, "reason": r.reason}
+                {"citekey": r.citekey, "title": r.title, "queries": r.queries, "reason": r.reason}
                 for r in self.reconsider
             ],
             "unconsidered": self.unconsidered,
@@ -245,8 +254,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     sections_citing = section_citekeys(dossier)
     cited = _citekeys_in(dossier, CITED_FILES)
     report.missing = {
-        citekey: sections_citing.get(citekey, [])
-        for citekey in sorted(cited - corpus.citekeys)
+        citekey: sections_citing.get(citekey, []) for citekey in sorted(cited - corpus.citekeys)
     }
 
     # Everything the dossier ever weighed -- rejections included, which is

@@ -32,9 +32,7 @@ def _matches(relative: PurePosixPath, names: list[str]) -> bool:
         return True
     text = relative.as_posix()
     stem = relative.with_suffix("").as_posix()
-    return any(
-        text == name or stem == name or text.startswith(f"{name}/") for name in names
-    )
+    return any(text == name or stem == name or text.startswith(f"{name}/") for name in names)
 
 
 def _strip_aid_suffix(relative: PurePosixPath) -> PurePosixPath:
@@ -102,8 +100,11 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
     `.tex`/`.pdf` renders sit in the same tree and are gated with
     everything else heavy.
     """
-    roots = [("drafts", config.DRAFTS_DIR), ("dossiers", config.DOSSIERS_DIR),
-             ("review", config.REVIEW_DIR)]
+    roots = [
+        ("drafts", config.DRAFTS_DIR),
+        ("dossiers", config.DOSSIERS_DIR),
+        ("review", config.REVIEW_DIR),
+    ]
     if with_rendered:
         roots.append(("rendered", config.RENDERED_DIR))
 
@@ -114,15 +115,15 @@ def bundle_members(names: list[str], with_rendered: bool) -> list[tuple[Path, st
     return members
 
 
-def _root_members(label: str, root: Path, names: list[str],
-                  with_rendered: bool) -> list[tuple[Path, str]]:
+def _root_members(
+    label: str, root: Path, names: list[str], with_rendered: bool
+) -> list[tuple[Path, str]]:
     """The (file, archive name) pairs one content root contributes."""
     members = []
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
-        if (label == "review" and not with_rendered
-                and path.suffix.lower() not in (".md", ".json")):
+        if label == "review" and not with_rendered and path.suffix.lower() not in (".md", ".json"):
             continue
         relative = PurePosixPath(path.relative_to(root).as_posix())
         if _matches(_match_target(label, relative), names):
@@ -195,8 +196,7 @@ def _checked_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
         name = PurePosixPath(member.name)
         if name.is_absolute() or ".." in name.parts:
             raise DossierError(
-                f"{member.name!r} escapes the extraction directory. "
-                "Refusing the whole archive."
+                f"{member.name!r} escapes the extraction directory. Refusing the whole archive."
             )
         if not name.parts or name.parts[0] not in ARCHIVE_ROOTS:
             raise DossierError(
@@ -271,8 +271,10 @@ def _cmd_restore(args: argparse.Namespace) -> int:
     verb = "Restored" if plan.performed else "Would restore"
     print(f"{verb} into {draft_relpath(config.CONTENT_DIR)}:")
     print(f"  {len(plan.new)} new file(s)")
-    print(f"  {len(plan.overwrite)} existing file(s) "
-          f"{'overwritten' if plan.performed else 'would be OVERWRITTEN'}")
+    print(
+        f"  {len(plan.overwrite)} existing file(s) "
+        f"{'overwritten' if plan.performed else 'would be OVERWRITTEN'}"
+    )
     for path in plan.overwrite[:10]:
         print(f"    {draft_relpath(path)}")
     if len(plan.overwrite) > 10:

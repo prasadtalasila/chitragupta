@@ -91,9 +91,12 @@ class ResourceSampler:
     def _gpu_util() -> list[int]:
         try:
             out = subprocess.run(
-                ["nvidia-smi", "--query-gpu=utilization.gpu",
-                 "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=10, check=False)
+                ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
         except (OSError, subprocess.SubprocessError):
             return []
         if out.returncode != 0:
@@ -125,8 +128,7 @@ class ResourceSampler:
 
     def summary(self) -> dict:
         host_cpus = os.cpu_count() or 1
-        mean_host = (sum(self._cpu_samples) / len(self._cpu_samples)
-                     if self._cpu_samples else None)
+        mean_host = sum(self._cpu_samples) / len(self._cpu_samples) if self._cpu_samples else None
         # /proc/stat is host-wide; express it against what we may use.
         busy_cpus = mean_host * host_cpus / 100 if mean_host is not None else None
         per_gpu = None
@@ -138,16 +140,19 @@ class ResourceSampler:
             # than indexing off the first -- a transient blip should not
             # IndexError away an otherwise good run.
             n = min(len(row) for row in self._gpu_samples)
-            per_gpu = [round(sum(row[i] for row in self._gpu_samples) / len(self._gpu_samples), 1)
-                       for i in range(n)]
+            per_gpu = [
+                round(sum(row[i] for row in self._gpu_samples) / len(self._gpu_samples), 1)
+                for i in range(n)
+            ]
         # Named "host_" because that is what /proc/stat measures: every
         # process on the box, not this run. On an otherwise-idle machine
         # the two coincide; on a shared one this is an upper bound, and
         # can exceed 100% when another tenant uses CPUs we may not.
         return {
             "host_cpu_busy_cores": round(busy_cpus, 1) if busy_cpus is not None else None,
-            "host_cpu_pct_of_allowed": (round(100 * busy_cpus / allowed_cpus(), 1)
-                                        if busy_cpus is not None else None),
+            "host_cpu_pct_of_allowed": (
+                round(100 * busy_cpus / allowed_cpus(), 1) if busy_cpus is not None else None
+            ),
             "gpu_util_mean_per_card": per_gpu,
             "samples": len(self._cpu_samples),
         }
@@ -177,8 +182,9 @@ def read_sync_output(out: str, err: str, workers: int) -> dict:
     # for was the older `print("  FAILED  …")`, so the fallback had
     # quietly counted nothing since. Kept tolerant of both rather than
     # re-pinned to today's, since the count is a fallback either way.
-    failed = (int(summary.group(1)) if summary
-              else len(re.findall(r"^ *FAILED ", out + err, flags=re.M)))
+    failed = (
+        int(summary.group(1)) if summary else len(re.findall(r"^ *FAILED ", out + err, flags=re.M))
+    )
     pool = re.search(r"parsing \d+ document\(s\) with (\d+) workers", out)
     if pool:
         resolved = int(pool.group(1))
@@ -230,11 +236,13 @@ def self_check() -> None:
                         that is silently the best run is a different,
                         rosier benchmark.
     """
-    clean = ("  parsing 2 document(s) with 12 workers\n"
-             "  parsed  alice_paper_2024\n"
-             "  parsed  bose_paper_2023\n"
-             "Sync complete: 2 parsed, 0 unchanged, 0 without a PDF attachment, "
-             "0 failed, 0 stale.\n")
+    clean = (
+        "  parsing 2 document(s) with 12 workers\n"
+        "  parsed  alice_paper_2024\n"
+        "  parsed  bose_paper_2023\n"
+        "Sync complete: 2 parsed, 0 unchanged, 0 without a PDF attachment, "
+        "0 failed, 0 stale.\n"
+    )
     good = read_sync_output(clean, "", 12)
     assert good == {"parsed": 2, "failed": 0, "workers_resolved": 12}, good
 
@@ -242,25 +250,27 @@ def self_check() -> None:
     # that says so on stdout, and the FAILED line is on stderr.
     broke = read_sync_output(
         clean.replace("2 parsed", "1 parsed").replace("0 failed", "1 failed"),
-        "FAILED  bose_paper_2023: docling returned PARTIAL_SUCCESS\n", 12)
-    assert broke["failed"] == 1, (
-        f"a run that lost a document reads as clean: {broke}")
+        "FAILED  bose_paper_2023: docling returned PARTIAL_SUCCESS\n",
+        12,
+    )
+    assert broke["failed"] == 1, f"a run that lost a document reads as clean: {broke}"
     # And with no summary at all -- a run that died before printing one,
     # where the stderr count is all there is.
     assert read_sync_output("", "FAILED  bose_paper_2023: boom\n", 12)["failed"] == 1, (
         "the stderr fallback counts no failures, so a run that died mid-parse "
-        "reports the same 0 failed a clean one does")
+        "reports the same 0 failed a clean one does"
+    )
 
     clamped = read_sync_output(clean, "", 32)
     assert clamped["workers_resolved"] == 12, (
-        f"32 workers were asked for and `sync` said it used 12: {clamped}")
+        f"32 workers were asked for and `sync` said it used 12: {clamped}"
+    )
 
     runs = [{"seconds": 30.0}, {"seconds": 10.0}, {"seconds": 20.0}]
     assert _median_run(runs)["seconds"] == 20.0, "_median_run reports the best run"
 
 
-def one_run(workers: int, gpus: int, ocr: bool, python: str,
-            keep_output: bool = False) -> dict:
+def one_run(workers: int, gpus: int, ocr: bool, python: str, keep_output: bool = False) -> dict:
     """One full `chitragupta.corpus sync` over the whole corpus, from an empty ledger."""
     content_dir = Path(tempfile.mkdtemp(prefix="bench-content-"))
     env = {
@@ -287,8 +297,13 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
             # long document imposes, and the gaps between are the
             # steady-state rate.
             proc = subprocess.Popen(
-                [python, "-m", "chitragupta.corpus", "sync"], cwd=str(REPO_ROOT), env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                [python, "-m", "chitragupta.corpus", "sync"],
+                cwd=str(REPO_ROOT),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
             completions: list[float] = []
             err_lines: list[str] = []
 
@@ -326,17 +341,25 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
                 # Throughput while the pool is actually full. n
                 # completions span n-1 intervals, not n: the one at
                 # `first` bounds the window rather than falling inside it.
-                "steady_docs_per_s": (round((len(completions) - 1) / (last - first), 2)
-                                      if last > first and len(completions) > 1
-                                      else None),
+                "steady_docs_per_s": (
+                    round((len(completions) - 1) / (last - first), 2)
+                    if last > first and len(completions) > 1
+                    else None
+                ),
                 "completions": len(completions),
             }
         return {
-            "record": "run", "workers_requested": workers,
-            "workers_resolved": counts["workers_resolved"], "gpus": gpus, "ocr": ocr,
-            "seconds": round(elapsed, 1), "parsed": counts["parsed"],
+            "record": "run",
+            "workers_requested": workers,
+            "workers_resolved": counts["workers_resolved"],
+            "gpus": gpus,
+            "ocr": ocr,
+            "seconds": round(elapsed, 1),
+            "parsed": counts["parsed"],
             "failed": counts["failed"],
-            "returncode": proc.returncode, **timeline, **sampler.summary(),
+            "returncode": proc.returncode,
+            **timeline,
+            **sampler.summary(),
         }
     finally:
         if not keep_output:
@@ -344,17 +367,26 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str,
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--workers", default="1,4,8,12",
-                    help="comma-separated worker counts (default: 1,4,8,12)")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--workers", default="1,4,8,12", help="comma-separated worker counts (default: 1,4,8,12)"
+    )
     ap.add_argument("--gpus", default="4", help="comma-separated GPU counts (default: 4)")
     ap.add_argument("--ocr", default="off", help="comma-separated: on,off (default: off)")
-    ap.add_argument("--repeat", type=int, default=1,
-                    help="runs per configuration; the median is reported (default: 1)")
+    ap.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="runs per configuration; the median is reported (default: 1)",
+    )
     ap.add_argument("--tag", required=True, help="names the output file")
-    ap.add_argument("--python", default=".venv-full/bin/python",
-                    help="interpreter with the enrich group installed")
+    ap.add_argument(
+        "--python",
+        default=".venv-full/bin/python",
+        help="interpreter with the enrich group installed",
+    )
     ap.add_argument("--dry-run", action="store_true", help="print the plan and exit")
     args = ap.parse_args()
 
@@ -364,10 +396,15 @@ def main() -> int:
     self_check()
     plan, gpus = _validated_plan(ap, args)
 
-    print(f"{len(plan)} configuration(s) x {args.repeat} run(s); "
-          f"each parses the whole corpus from an empty ledger.", flush=True)
-    print(f"machine: {allowed_cpus()} CPUs available to this process "
-          f"(host reports {os.cpu_count()})\n")
+    print(
+        f"{len(plan)} configuration(s) x {args.repeat} run(s); "
+        f"each parses the whole corpus from an empty ledger.",
+        flush=True,
+    )
+    print(
+        f"machine: {allowed_cpus()} CPUs available to this process "
+        f"(host reports {os.cpu_count()})\n"
+    )
     if args.dry_run:
         for w, g, o in plan:
             print(f"  workers={w} gpus={g} ocr={'on' if o else 'off'}")
@@ -375,8 +412,11 @@ def main() -> int:
 
     python = args.python
     if not Path(python).exists() and not shutil.which(python):
-        print(f"error: {python} not found -- run "
-              f"`bash scripts/install_full_pipeline.sh python-deps` first", file=sys.stderr)
+        print(
+            f"error: {python} not found -- run "
+            f"`bash scripts/install_full_pipeline.sh python-deps` first",
+            file=sys.stderr,
+        )
         return 2
 
     out_path = BENCH_DIR / "results" / f"sweep-{args.tag}.jsonl"
@@ -404,8 +444,9 @@ def _validated_plan(ap, args):
         elif t in OFF:
             ocrs.append(False)
         else:
-            ap.error(f"--ocr: {token!r} is neither on nor off "
-                     f"(accepted: {', '.join(sorted(ON | OFF))})")
+            ap.error(
+                f"--ocr: {token!r} is neither on nor off (accepted: {', '.join(sorted(ON | OFF))})"
+            )
     try:
         workers = [int(w) for w in args.workers.split(",")]
         gpus = [int(g) for g in args.gpus.split(",")]
@@ -450,48 +491,70 @@ def _run_plan(plan, repeat, python, out_path):
 def _print_run_line(w, g, o, rec):
     clamp = ""
     if rec["workers_resolved"] and rec["workers_resolved"] != w:
-        clamp = (f"  !! CLAMPED to {rec['workers_resolved']}"
-                 f" -- see worker_ceiling()")
-    status = "" if rec["returncode"] == 0 and rec["failed"] == 0 else \
-             f"  !! rc={rec['returncode']} failed={rec['failed']}"
+        clamp = f"  !! CLAMPED to {rec['workers_resolved']} -- see worker_ceiling()"
+    status = (
+        ""
+        if rec["returncode"] == 0 and rec["failed"] == 0
+        else f"  !! rc={rec['returncode']} failed={rec['failed']}"
+    )
     extra = ""
     if rec.get("startup_s") is not None:
-        extra = (f"  startup={rec['startup_s']}s({rec['startup_pct']}%)"
-                 f" tail={rec['drain_s']}s({rec['drain_pct']}%)")
+        extra = (
+            f"  startup={rec['startup_s']}s({rec['startup_pct']}%)"
+            f" tail={rec['drain_s']}s({rec['drain_pct']}%)"
+        )
     # flush: these runs are tens of minutes each, and stdout
     # is block-buffered when redirected to a file -- without
     # this a `> sweep.log` shows nothing until the very end.
-    print(f"  workers={w:<3} gpus={g} ocr={'on ' if o else 'off'} "
-          f"{rec['seconds']:8.1f}s  parsed={rec['parsed']:<4}"
-          f"  host_cpu={rec['host_cpu_pct_of_allowed']}%{extra}{clamp}{status}",
-          flush=True)
+    print(
+        f"  workers={w:<3} gpus={g} ocr={'on ' if o else 'off'} "
+        f"{rec['seconds']:8.1f}s  parsed={rec['parsed']:<4}"
+        f"  host_cpu={rec['host_cpu_pct_of_allowed']}%{extra}{clamp}{status}",
+        flush=True,
+    )
 
 
 def _print_summary(records, gpus, out_path):
     """The speedup/efficiency table against the 1-worker OCR-off baseline."""
-    baseline = next((r for r in records
-                     if r["workers_resolved"] == 1 and not r["ocr"]
-                     and r["gpus"] == max(gpus)), None)
+    baseline = next(
+        (
+            r
+            for r in records
+            if r["workers_resolved"] == 1 and not r["ocr"] and r["gpus"] == max(gpus)
+        ),
+        None,
+    )
     print(f"\nwrote {out_path}")
-    print(f"\n{'req':>4} {'got':>4} {'gpus':>4} {'ocr':>4} {'wall':>9} "
-          f"{'speedup':>8} {'eff':>5} {'host cpu%':>9}")
+    print(
+        f"\n{'req':>4} {'got':>4} {'gpus':>4} {'ocr':>4} {'wall':>9} "
+        f"{'speedup':>8} {'eff':>5} {'host cpu%':>9}"
+    )
     for r in records:
         got = r["workers_resolved"] or "?"
         sp = eff = ""
         if baseline and isinstance(got, int) and got:
-            sp = f"{baseline['seconds']/r['seconds']:7.2f}x"
-            eff = f"{baseline['seconds']/r['seconds']/got:4.0%}"
-        print(f"{r['workers_requested']:>4} {str(got):>4} {r['gpus']:>4} "
-              f"{'on' if r['ocr'] else 'off':>4} {r['seconds']:8.1f}s {sp:>8} {eff:>5} "
-              f"{str(r['host_cpu_pct_of_allowed']):>9}")
+            sp = f"{baseline['seconds'] / r['seconds']:7.2f}x"
+            eff = f"{baseline['seconds'] / r['seconds'] / got:4.0%}"
+        print(
+            f"{r['workers_requested']:>4} {str(got):>4} {r['gpus']:>4} "
+            f"{'on' if r['ocr'] else 'off':>4} {r['seconds']:8.1f}s {sp:>8} {eff:>5} "
+            f"{str(r['host_cpu_pct_of_allowed']):>9}"
+        )
     if not baseline:
-        print("\n(no 1-worker OCR-off run in this sweep, so no speedup column -- "
-              "add `1` to --workers for a baseline)")
-    clamped = [r for r in records
-               if r["workers_resolved"] and r["workers_resolved"] != r["workers_requested"]]
+        print(
+            "\n(no 1-worker OCR-off run in this sweep, so no speedup column -- "
+            "add `1` to --workers for a baseline)"
+        )
+    clamped = [
+        r
+        for r in records
+        if r["workers_resolved"] and r["workers_resolved"] != r["workers_requested"]
+    ]
     if clamped:
-        print(f"\n!! {len(clamped)} configuration(s) were clamped below what was asked "
-              f"for. Those rows measure the clamp, not the setting.")
+        print(
+            f"\n!! {len(clamped)} configuration(s) were clamped below what was asked "
+            f"for. Those rows measure the clamp, not the setting."
+        )
 
 
 if __name__ == "__main__":

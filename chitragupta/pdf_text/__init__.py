@@ -200,23 +200,40 @@ from chitragupta.pdf_text._annotate import annotated_output
 from chitragupta.pdf_text._backends import _extract_docling, _extract_pdftotext
 from chitragupta.pdf_text._converter import _reset_docling_converter, check_docling_status
 from chitragupta.pdf_text._gpu import (
-    _GPU_MIN_FREE_MIB, _parse_visible_devices, _visible_devices,
-    cuda_is_initialised, gpu_count, usable_devices,
+    _GPU_MIN_FREE_MIB,
+    _parse_visible_devices,
+    _visible_devices,
+    cuda_is_initialised,
+    gpu_count,
+    usable_devices,
 )
 from chitragupta.pdf_text._interrupt import (
-    _TERMINATE_GRACE_SECONDS, interrupt_guard, terminate_workers,
+    _TERMINATE_GRACE_SECONDS,
+    interrupt_guard,
+    terminate_workers,
 )
 from chitragupta.pdf_text._pool import (
-    docling_process_pool, drop_stdlib_shadowing_path_entries, process_pool_context,
+    docling_process_pool,
+    drop_stdlib_shadowing_path_entries,
+    process_pool_context,
 )
 from chitragupta.pdf_text._sizing import (
-    allowed_cpus, docling_threads, resolve_workers, worker_ceiling,
+    allowed_cpus,
+    docling_threads,
+    resolve_workers,
+    worker_ceiling,
 )
 from chitragupta.pdf_text._startup import (
-    _PRELOAD_MODULES, preload_modules, prestart_pool, start_method,
+    _PRELOAD_MODULES,
+    preload_modules,
+    prestart_pool,
+    start_method,
 )
 from chitragupta.pdf_text._worker import (
-    _reset_worker_device, init_worker, is_cuda_oom, worker_device,
+    _reset_worker_device,
+    init_worker,
+    is_cuda_oom,
+    worker_device,
 )
 
 _EXTRACTORS = {

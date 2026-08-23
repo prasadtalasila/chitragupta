@@ -64,8 +64,7 @@ class TestWhatIsAndIsNotAFinding:
         draft = a_draft("Most systems sold as digital twins are dashboards.\n")
         assert found_text(draft) == ["Most systems sold as digital twins are dashboards."]
 
-    def test_only_the_uncited_sentence_of_a_citing_paragraph_is_reported(
-            self, isolated_config):
+    def test_only_the_uncited_sentence_of_a_citing_paragraph_is_reported(self, isolated_config):
         """The failure this aid exists for: a paragraph with one citation
         at the end and an unrelated assertion before it. Suppressing the
         whole paragraph because it cites *something* would be blind to
@@ -79,8 +78,7 @@ class TestWhatIsAndIsNotAFinding:
     def test_a_latex_citation_counts_as_a_citation(self, isolated_config):
         """Every genre skill exports .tex beside the .md, so the aid must
         read a draft in either markup."""
-        draft = a_draft("Twins close the loop \\citep{Kritzinger2018}.\n",
-                        name="thesis.tex")
+        draft = a_draft("Twins close the loop \\citep{Kritzinger2018}.\n", name="thesis.tex")
         assert found_text(draft) == []
 
 
@@ -90,15 +88,11 @@ class TestBlockCites:
         assert uncited_prose.findings(report_for(draft))[0]["block_cites"] is False
 
     def test_it_is_true_when_a_sibling_sentence_cites(self, isolated_config):
-        draft = a_draft(
-            "Three failure modes recur.\nClocks are the first [@Frasheri2022].\n")
+        draft = a_draft("Three failure modes recur.\nClocks are the first [@Frasheri2022].\n")
         assert uncited_prose.findings(report_for(draft))[0]["block_cites"] is True
 
     def test_the_counts_separate_the_two(self, isolated_config):
-        draft = a_draft(
-            "A bare claim.\n\n"
-            "A framed claim.\nIts evidence [@Frasheri2022].\n"
-        )
+        draft = a_draft("A bare claim.\n\nA framed claim.\nIts evidence [@Frasheri2022].\n")
         report = report_for(draft)
         assert (len(report.uncited), len(report.bare)) == (2, 1)
 
@@ -149,8 +143,7 @@ class TestTheExclusions:
         draft = a_draft("\\caption{The loop closes at the pump.}\n", name="thesis.tex")
         assert found_text(draft) == []
 
-    def test_a_table_header_row_is_excluded_and_the_body_rows_are_not(
-            self, isolated_config):
+    def test_a_table_header_row_is_excluded_and_the_body_rows_are_not(self, isolated_config):
         """The column names are scaffolding. The rows are claims -- and
         survey.md's own comparison table attributes each row with a
         citekey in backticks, which the gate cannot see and neither can
@@ -162,8 +155,7 @@ class TestTheExclusions:
         )
         assert found_text(draft) == ["Pattern catalog -- Patterns to instantiate"]
 
-    def test_a_latex_table_header_row_is_excluded_and_the_body_rows_are_not(
-            self, isolated_config):
+    def test_a_latex_table_header_row_is_excluded_and_the_body_rows_are_not(self, isolated_config):
         """The two markups mark the header from opposite sides: markdown's
         separator follows it, booktabs' `\\toprule` precedes it. Missing
         this fired in production -- `thesis-chapter` emits `.tex` and is
@@ -176,7 +168,8 @@ class TestTheExclusions:
             "Patterns & Instantiate them & Structure only \\\\\n"
             "\\bottomrule\n"
             "\\end{tabular}\n",
-            name="thesis.tex")
+            name="thesis.tex",
+        )
         assert found_text(draft) == ["Patterns -- Instantiate them -- Structure only"]
 
     def test_an_hline_ruled_header_row_is_a_known_gap(self, isolated_config):
@@ -190,15 +183,15 @@ class TestTheExclusions:
             "\\hline\n"
             "Patterns & Instantiate them \\\\\n"
             "\\end{tabular}\n",
-            name="thesis.tex")
+            name="thesis.tex",
+        )
         assert "Approach -- Core idea" in found_text(draft)
 
     def test_a_comment_only_block_is_excluded(self, isolated_config):
         """Including WRITING-STANDARDS.md §11's own single-source marker,
         which must not be read as an uncited claim about the world."""
         draft = a_draft(
-            "<!-- single-source: Foo2019 is the only paper covering X -->\n\n"
-            "% A LaTeX comment.\n"
+            "<!-- single-source: Foo2019 is the only paper covering X -->\n\n% A LaTeX comment.\n"
         )
         assert found_text(draft) == []
 
@@ -206,8 +199,7 @@ class TestTheExclusions:
         draft = a_draft("```\nprint('the pot is dry')\n```\n")
         assert found_text(draft) == []
 
-    def test_list_scaffolding_flattens_to_nothing_and_is_skipped(self,
-                                                                isolated_config):
+    def test_list_scaffolding_flattens_to_nothing_and_is_skipped(self, isolated_config):
         """A bare `\\item` or an environment opener carries no claim once
         its marker is stripped."""
         draft = a_draft("\\begin{itemize}\n\\item\n\\end{itemize}\n", name="thesis.tex")
@@ -231,15 +223,12 @@ class TestTheExclusions:
 
 class TestTheGenreDecidesWhetherUncitedProseIsAFinding:
     @pytest.mark.parametrize("genre", ["survey", "thesis-chapter", "deep-research"])
-    def test_uncited_prose_is_exceptional_in_a_citing_genre(self, isolated_config,
-                                                            genre):
+    def test_uncited_prose_is_exceptional_in_a_citing_genre(self, isolated_config, genre):
         draft = a_draft("A bare claim.\n", genre=genre)
         assert found_text(draft) == ["A bare claim."]
 
     @pytest.mark.parametrize("genre", ["textbook-chapter", "tutorial"])
-    def test_uncited_prose_is_ordinary_in_an_original_prose_genre(self,
-                                                                  isolated_config,
-                                                                  genre):
+    def test_uncited_prose_is_ordinary_in_an_original_prose_genre(self, isolated_config, genre):
         """WRITING-STANDARDS §11: a tutorial's body carries no citations
         by design, and a textbook chapter is mostly worked examples.
         Measured, book-chapter.md still yields 81 findings after every
@@ -262,8 +251,7 @@ class TestTheGenreDecidesWhetherUncitedProseIsAFinding:
         assert found_text(draft) == ["A bare claim."]
         assert report_for(draft).genre_source == "nothing"
 
-    def test_a_genre_scope_md_does_not_recognise_gets_the_strict_reading(
-            self, isolated_config):
+    def test_a_genre_scope_md_does_not_recognise_gets_the_strict_reading(self, isolated_config):
         draft = a_draft("A bare claim.\n", genre="monograph")
         report = report_for(draft)
         assert (report.genre, report.standing) == ("monograph", "exceptional")
@@ -299,12 +287,10 @@ class TestFindingIdentity:
         after a paragraph is inserted above it."""
         draft = a_draft("A bare claim.\n")
         before = found_ids(draft)
-        draft.write_text("Something else entirely [@A].\n\nA bare claim.\n",
-                         encoding="utf-8")
+        draft.write_text("Something else entirely [@A].\n\nA bare claim.\n", encoding="utf-8")
         assert found_ids(draft) == before
 
-    def test_it_survives_a_citation_arriving_elsewhere_in_the_block(
-            self, isolated_config):
+    def test_it_survives_a_citation_arriving_elsewhere_in_the_block(self, isolated_config):
         """The finding is still true -- this sentence still carries no
         citation -- so it is not renamed into a new one. Only
         `block_cites` moves."""
@@ -330,8 +316,9 @@ class TestTheReportIsAnArtefactThatDiffs:
         draft = a_draft("A bare claim.\n")
         report = report_for(draft)
         found = uncited_prose.findings(report)
-        assert (_uncited_render.render_markdown(report, "cmd", found)
-                == _uncited_render.render_markdown(report, "cmd", found))
+        assert _uncited_render.render_markdown(
+            report, "cmd", found
+        ) == _uncited_render.render_markdown(report, "cmd", found)
 
     def test_the_markdown_carries_no_date(self, isolated_config):
         """review/__init__.py's rule: a wall-clock line defeats the diff
@@ -346,8 +333,7 @@ class TestTheReportIsAnArtefactThatDiffs:
         body = _uncited_render.render_markdown(report_for(draft), "cmd", [])
         assert review.BANNER in body
 
-    def test_it_says_which_genre_and_standing_it_measured_under(self,
-                                                               isolated_config):
+    def test_it_says_which_genre_and_standing_it_measured_under(self, isolated_config):
         """A textbook chapter reporting no findings has not passed a
         check -- none was applied -- and the report must say so on its
         face, the way synthesis names its unit."""
@@ -356,8 +342,7 @@ class TestTheReportIsAnArtefactThatDiffs:
         assert "tutorial" in body
         assert "ordinary" in body
 
-    def test_it_says_the_genre_was_not_recorded_when_it_was_not(self,
-                                                               isolated_config):
+    def test_it_says_the_genre_was_not_recorded_when_it_was_not(self, isolated_config):
         draft = draft_at()
         draft.write_text("A bare claim.\n", encoding="utf-8")
         body = _uncited_render.render_markdown(report_for(draft), "cmd", [])
@@ -367,10 +352,7 @@ class TestTheReportIsAnArtefactThatDiffs:
         """Volume control: the sentences resting on nothing at all are
         what a reviewer should read before the ones their paragraph
         frames."""
-        draft = a_draft(
-            "A framed claim.\nIts evidence [@A].\n\n"
-            "A bare claim.\n"
-        )
+        draft = a_draft("A framed claim.\nIts evidence [@A].\n\nA bare claim.\n")
         assert found_text(draft) == ["A bare claim.", "A framed claim."]
 
 
@@ -386,8 +368,7 @@ class TestTheCommandLine:
     def test_a_missing_draft_exits_one(self, isolated_config):
         assert uncited_prose.main([str(config.DRAFTS_DIR / "nope.md")]) == 1
 
-    def test_a_draft_outside_the_content_directory_exits_one(self, isolated_config,
-                                                             tmp_path):
+    def test_a_draft_outside_the_content_directory_exits_one(self, isolated_config, tmp_path):
         outside = tmp_path / "elsewhere.md"
         outside.write_text("A bare claim.\n", encoding="utf-8")
         assert uncited_prose.main([str(outside)]) == 1
@@ -398,7 +379,8 @@ class TestTheCommandLine:
         assert "A bare claim." in capsys.readouterr().out
 
     def test_the_text_form_says_why_an_original_prose_genre_raised_nothing(
-            self, isolated_config, capsys):
+        self, isolated_config, capsys
+    ):
         """stdout is where most of these reports are read, so the
         sentence that stops a tutorial's empty report reading as a pass
         has to be there too, not only in the Markdown."""
@@ -408,8 +390,7 @@ class TestTheCommandLine:
         assert "original by design" in out
         assert "A bare claim." not in out
 
-    def test_the_text_form_names_an_unrecorded_genre_as_such(self, isolated_config,
-                                                             capsys):
+    def test_the_text_form_names_an_unrecorded_genre_as_such(self, isolated_config, capsys):
         draft = draft_at()
         draft.write_text("A bare claim.\n", encoding="utf-8")
         uncited_prose.main([str(draft)])
@@ -422,8 +403,7 @@ class TestTheCommandLine:
         assert payload["aid"] == "uncited"
         assert [f["sentence"] for f in payload["findings"]] == ["A bare claim."]
 
-    def test_the_payload_carries_the_envelope_and_no_timestamp(self, isolated_config,
-                                                               capsys):
+    def test_the_payload_carries_the_envelope_and_no_timestamp(self, isolated_config, capsys):
         draft = a_draft("A bare claim.\n")
         uncited_prose.main([str(draft), "--json"])
         out = capsys.readouterr().out
@@ -444,12 +424,14 @@ class TestTheCommandLine:
         uncited_prose.main([str(draft), "--write", "--formats", "md"])
         capsys.readouterr()
         assert review.report_path(draft, "uncited").is_file()
-        assert json.loads(
-            review.report_path(draft, "uncited", "json").read_text(encoding="utf-8")
-        )["aid"] == "uncited"
+        assert (
+            json.loads(review.report_path(draft, "uncited", "json").read_text(encoding="utf-8"))[
+                "aid"
+            ]
+            == "uncited"
+        )
 
-    def test_write_under_json_keeps_the_summary_off_stdout(self, isolated_config,
-                                                           capsys):
+    def test_write_under_json_keeps_the_summary_off_stdout(self, isolated_config, capsys):
         draft = a_draft("A bare claim.\n")
         uncited_prose.main([str(draft), "--json", "--write", "--formats", "md"])
         captured = capsys.readouterr()

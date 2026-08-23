@@ -37,56 +37,63 @@ _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
 def _add_init_parser(sub) -> None:
     p_init = sub.add_parser("init", help="Create a dossier skeleton for a draft")
     p_init.add_argument("draft", help=_DRAFT_PATH_HELP)
-    p_init.add_argument("--genre", required=True,
-                        help=", ".join(GENRES))
+    p_init.add_argument("--genre", required=True, help=", ".join(GENRES))
     p_init.set_defaults(func=_cmd_init)
 
 
 def _add_status_parser(sub) -> None:
     p_status = sub.add_parser("status", help="What a dossier holds, and corpus drift since")
-    p_status.add_argument("draft", nargs="?",
-                          help="Draft path, or the dossier directory itself")
-    p_status.add_argument("--all", action="store_true",
-                          help="One drift report over every dossier instead")
-    p_status.add_argument("--json", action="store_true",
-                          help="Machine-readable drift report (for draft-reviser)")
+    p_status.add_argument("draft", nargs="?", help="Draft path, or the dossier directory itself")
+    p_status.add_argument(
+        "--all", action="store_true", help="One drift report over every dossier instead"
+    )
+    p_status.add_argument(
+        "--json", action="store_true", help="Machine-readable drift report (for draft-reviser)"
+    )
     p_status.set_defaults(func=_cmd_status)
 
 
 def _add_mark_revision_parser(sub) -> None:
     p_mark_revision = sub.add_parser(
         "mark-revision",
-        help="Record a revision-session boundary, so retrieval cost totals per revision")
+        help="Record a revision-session boundary, so retrieval cost totals per revision",
+    )
     p_mark_revision.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_mark_revision.add_argument(
-        "--label", default="",
-        help="Short name for this revision (the date is already recorded)")
+        "--label", default="", help="Short name for this revision (the date is already recorded)"
+    )
     p_mark_revision.set_defaults(func=_cmd_mark_revision)
 
 
 def _add_sections_parser(sub) -> None:
     p_sections = sub.add_parser(
-        "sections", help="Heading -> line range, for reading and editing one section")
+        "sections", help="Heading -> line range, for reading and editing one section"
+    )
     p_sections.add_argument("draft", help="Path to the draft")
     p_sections.add_argument(
-        "--citekeys", action="store_true",
+        "--citekeys",
+        action="store_true",
         help="Print the dossier's sections.md table -- heading -> the citekeys "
-             "cited under it -- derived from the draft instead of by hand")
+        "cited under it -- derived from the draft instead of by hand",
+    )
     p_sections.add_argument(
-        "--write", action="store_true",
-        help="With --citekeys: write the table to the dossier's sections.md")
+        "--write",
+        action="store_true",
+        help="With --citekeys: write the table to the dossier's sections.md",
+    )
     p_sections.set_defaults(func=_cmd_sections)
 
 
 def _add_brief_parser(sub) -> None:
     p_brief = sub.add_parser(
-        "brief", help="The kept evidence for one section, for a subagent to read")
+        "brief", help="The kept evidence for one section, for a subagent to read"
+    )
     p_brief.add_argument("draft", help="Draft path, or the dossier directory itself")
     p_brief.add_argument("citekeys", nargs="*", help="Citekeys to print the blocks for")
-    p_brief.add_argument("--section",
-                         help="Take the citekeys from this sections.md row instead")
-    p_brief.add_argument("--check", action="store_true",
-                         help="Report what resolves without printing the blocks")
+    p_brief.add_argument("--section", help="Take the citekeys from this sections.md row instead")
+    p_brief.add_argument(
+        "--check", action="store_true", help="Report what resolves without printing the blocks"
+    )
     p_brief.set_defaults(func=_cmd_brief)
 
 
@@ -107,9 +114,10 @@ def _add_acronyms_suggest_parser(sub) -> None:
     )
     p_suggest.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_suggest.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="write the suggestions to your [style].acronyms file (fails if "
-             "that key is unset -- see docs/CONFIG.md)",
+        "that key is unset -- see docs/CONFIG.md)",
     )
     p_suggest.set_defaults(func=_cmd_acronyms_suggest)
 
@@ -117,12 +125,15 @@ def _add_acronyms_suggest_parser(sub) -> None:
 def _add_check_evidence_parser(sub) -> None:
     p_check_evidence = sub.add_parser(
         "check-evidence",
-        help="Advisory: does any claim: read like its own quote: with the words moved")
+        help="Advisory: does any claim: read like its own quote: with the words moved",
+    )
     p_check_evidence.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_check_evidence.add_argument(
-        "--score", action="store_true",
+        "--score",
+        action="store_true",
         help="Also print the overlap score -- off by default so there is nothing "
-             "to reword against until it drops (see _evidence_check.py)")
+        "to reword against until it drops (see _evidence_check.py)",
+    )
     p_check_evidence.set_defaults(func=_cmd_check_evidence)
 
 
@@ -133,20 +144,23 @@ def _add_list_parser(sub) -> None:
 
 def _add_export_parser(sub) -> None:
     p_export = sub.add_parser("export", help="Back up drafts and dossiers to a tar.gz")
-    p_export.add_argument("names", nargs="*",
-                          help="Draft names to include (default: everything)")
+    p_export.add_argument("names", nargs="*", help="Draft names to include (default: everything)")
     p_export.add_argument("--out", help="Archive path (default: drafts-<name>-<date>.tar.gz)")
-    p_export.add_argument("--with-rendered", action="store_true",
-                          help="Include content/rendered/, and the .tex/.pdf renders "
-                               "of content/review/'s reports (large: PDFs)")
+    p_export.add_argument(
+        "--with-rendered",
+        action="store_true",
+        help="Include content/rendered/, and the .tex/.pdf renders "
+        "of content/review/'s reports (large: PDFs)",
+    )
     p_export.set_defaults(func=_cmd_export)
 
 
 def _add_restore_parser(sub) -> None:
     p_restore = sub.add_parser("restore", help="Unpack a bundle (dry run unless --force)")
     p_restore.add_argument("archive", help="Path to a tar.gz written by `export`")
-    p_restore.add_argument("--force", action="store_true",
-                           help="Actually write, overwriting what is already there")
+    p_restore.add_argument(
+        "--force", action="store_true", help="Actually write, overwriting what is already there"
+    )
     p_restore.set_defaults(func=_cmd_restore)
 
 
@@ -154,8 +168,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft dossier",
         description="The working state behind a draft: create it, inspect it, "
-                    "back it up, restore it. Stdlib only; never writes to the "
-                    "corpus layer.",
+        "back it up, restore it. Stdlib only; never writes to the "
+        "corpus layer.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

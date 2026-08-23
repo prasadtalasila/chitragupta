@@ -97,8 +97,7 @@ def topic_descriptors(embeddings, topics: list) -> tuple[list[int], Any, Any]:
     ids = sorted(set(assigned.tolist()) - {-1})
     centred = np.asarray(embeddings, dtype=float)
     centred = centred - centred.mean(axis=0)
-    descriptors = np.array([centred[assigned == topic_id].mean(axis=0)
-                            for topic_id in ids])
+    descriptors = np.array([centred[assigned == topic_id].mean(axis=0) for topic_id in ids])
     return ids, centred, descriptors
 
 
@@ -146,13 +145,17 @@ def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None"
     index = {topic_id: column for column, topic_id in enumerate(ids)}
     memberships = {}
     for citekey, assigned, row in zip(citekeys, (int(t) for t in topics), similarity):
-        ranked = sorted(((str(ids[column]), round(float(weight), 6))
-                         for column, weight in enumerate(row) if weight > 0.0),
-                        key=lambda item: (-item[1], item[0]))
+        ranked = sorted(
+            (
+                (str(ids[column]), round(float(weight), 6))
+                for column, weight in enumerate(row)
+                if weight > 0.0
+            ),
+            key=lambda item: (-item[1], item[0]),
+        )
         best = ranked[0][1] if ranked else 0.0
-        kept = [pair for pair in ranked
-                if pair[1] >= best * config.TOPIC_MEMBERSHIP_RATIO]
-        kept = dict(kept[:config.TOPIC_MEMBERSHIP_MAX])
+        kept = [pair for pair in ranked if pair[1] >= best * config.TOPIC_MEMBERSHIP_RATIO]
+        kept = dict(kept[: config.TOPIC_MEMBERSHIP_MAX])
         # The assigned topic is a membership by construction, whatever its
         # similarity -- see this docstring on why the two fields must not
         # be able to contradict each other.
@@ -195,12 +198,16 @@ def _fit(texts: list, embeddings, model) -> tuple[Any, list[int]]:
     umap_model = UMAP(
         n_neighbors=min(config.TOPIC_NEIGHBORS, n_docs - 1),
         n_components=min(5, max(2, n_docs - 2)),
-        min_dist=0.0, metric="cosine", random_state=42,
+        min_dist=0.0,
+        metric="cosine",
+        random_state=42,
     )
     hdbscan_model = HDBSCAN(
         min_cluster_size=max(2, min(config.TOPIC_MIN_CLUSTER_SIZE, n_docs // 2)),
         min_samples=max(1, min(config.TOPIC_MIN_SAMPLES, n_docs - 1)),
-        metric="euclidean", cluster_selection_method="eom", prediction_data=True,
+        metric="euclidean",
+        cluster_selection_method="eom",
+        prediction_data=True,
     )
 
     # vectorizer_model decides only what a topic is *called*. Without one,
@@ -209,9 +216,12 @@ def _fit(texts: list, embeddings, model) -> tuple[Any, list[int]]:
     # they came out named after the authors the papers discuss. See
     # chitragupta/enrich/topic_labels.py.
     topic_model = BERTopic(
-        embedding_model=model, umap_model=umap_model, hdbscan_model=hdbscan_model,
+        embedding_model=model,
+        umap_model=umap_model,
+        hdbscan_model=hdbscan_model,
         vectorizer_model=topic_labels.vectorizer(),
-        calculate_probabilities=False, verbose=False,
+        calculate_probabilities=False,
+        verbose=False,
     )
     return topic_model, topic_model.fit_transform(texts, embeddings)[0]
 
@@ -244,8 +254,9 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
     doc_texts = doc_vectors.corpus_texts(docs)
 
     if len(doc_texts) < 2:
-        raise ValueError("Need at least 2 documents with text to run BERTopic; "
-                         f"got {len(doc_texts)}")
+        raise ValueError(
+            f"Need at least 2 documents with text to run BERTopic; got {len(doc_texts)}"
+        )
 
     _client, model = embed_index.get_client_and_model()  # reuse the same embedding model
 
@@ -256,8 +267,9 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
     # doc_texts here would raise on it.
     citekeys = [citekey for citekey in doc_texts if citekey in cache]
     if len(citekeys) < 2:
-        raise ValueError("Need at least 2 documents with embeddable text to run "
-                         f"BERTopic; got {len(citekeys)}")
+        raise ValueError(
+            f"Need at least 2 documents with embeddable text to run BERTopic; got {len(citekeys)}"
+        )
     texts = [doc_texts[d] for d in citekeys]
     embeddings = np.array([cache[d] for d in citekeys])
 

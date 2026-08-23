@@ -76,25 +76,45 @@ before it had a shared front door.
 import argparse
 import sys
 
-from chitragupta import (citation_gate, dossier, evidence_appendix, references, registry,
-                         render_output, retrieval, spec, style_check, unit)
+from chitragupta import (
+    citation_gate,
+    dossier,
+    evidence_appendix,
+    references,
+    registry,
+    render_output,
+    retrieval,
+    spec,
+    style_check,
+    unit,
+)
 from chitragupta.progname import prog_for
 
 VERBS = {
     "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
-    "dossier": (dossier, "the working state behind a draft: create it, "
-                         "inspect it, back it up, restore it"),
+    "dossier": (
+        dossier,
+        "the working state behind a draft: create it, inspect it, back it up, restore it",
+    ),
     "retrieve": (retrieval, "BM25 retrieval over the synced corpus"),
     "references": (references, "an IEEE reference list built from a draft's own cited citekeys"),
-    "evidence": (evidence_appendix, "the evidence sidecar rendered beside a draft: each "
-                                    "cited source and the spans its dossier marked quotable"),
+    "evidence": (
+        evidence_appendix,
+        "the evidence sidecar rendered beside a draft: each "
+        "cited source and the spans its dossier marked quotable",
+    ),
     "render": (render_output, "render a Pandoc-markdown or LaTeX draft to tex/pdf/docx"),
-    "style": (style_check, "check a draft's prose against docs/WRITING-STANDARDS.md "
-                           "-- a review aid, never a gate"),
+    "style": (
+        style_check,
+        "check a draft's prose against docs/WRITING-STANDARDS.md -- a review aid, never a gate",
+    ),
     "spec": (spec, "the outline a book is generated from, and the human sign-off on it"),
     "unit": (unit, "one section's generation contract, and the record of its acceptance"),
-    "registry": (registry, "terminology, claims and cross-references over a book's "
-                           "accepted units -- a review aid, never a gate"),
+    "registry": (
+        registry,
+        "terminology, claims and cross-references over a book's "
+        "accepted units -- a review aid, never a gate",
+    ),
 }
 
 
@@ -110,7 +130,9 @@ def build_parser() -> argparse.ArgumentParser:
         description=DESCRIPTION,
     )
     parser.add_argument(
-        "verb", choices=sorted(VERBS), nargs="?",
+        "verb",
+        choices=sorted(VERBS),
+        nargs="?",
         help=" / ".join(f"{name} -- {help_text}" for name, (_, help_text) in VERBS.items()),
     )
     # Everything after the verb belongs to that module's own parser, not

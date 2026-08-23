@@ -28,7 +28,7 @@ unknown.
 ## When to invoke
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | User asks in as many words for a whole-corpus pass, cost regardless | Invoke this skill |
 | A scope change the user agreed to has invalidated the recorded queries | Invoke this skill -- the old queries were chosen for the old scope |
 | The draft is being re-targeted at a different reader | Invoke this skill -- what counts as support changes with the reader |

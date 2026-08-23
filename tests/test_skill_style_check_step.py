@@ -91,23 +91,30 @@ def test_every_drafting_skill_runs_the_prose_check():
     )
 
 
-@pytest.mark.parametrize("literal,why", [
-    (_CAVEAT,
-     "a findings list without it reads as a verdict on the prose, when the "
-     "check is silent on every rule WRITING-STANDARDS.md sec 9 marks a "
-     "judgement -- and cannot tell a quotation from the draft's own voice"),
-    (_NO_FIX,
-     "#202 kept 59 of 73 marker hits in this repository's own docs after "
-     "inspecting each. A rule with that hit rate is a report, not a work "
-     "list, and draft-reviser's copy-edit mode is where a change gets made "
-     "and logged"),
-])
+@pytest.mark.parametrize(
+    "literal,why",
+    [
+        (
+            _CAVEAT,
+            "a findings list without it reads as a verdict on the prose, when the "
+            "check is silent on every rule WRITING-STANDARDS.md sec 9 marks a "
+            "judgement -- and cannot tell a quotation from the draft's own voice",
+        ),
+        (
+            _NO_FIX,
+            "#202 kept 59 of 73 marker hits in this repository's own docs after "
+            "inspecting each. A rule with that hit rate is a report, not a work "
+            "list, and draft-reviser's copy-edit mode is where a change gets made "
+            "and logged",
+        ),
+    ],
+)
 def test_every_step_carries_its_qualifier(literal, why):
     offenders = {}
     for path in _skill_files():
         text = _body(path)
         for match in _STEP.finditer(text):
-            window = text[match.start(): match.start() + _LOOKAHEAD_CHARS]
+            window = text[match.start() : match.start() + _LOOKAHEAD_CHARS]
             if literal not in window:
                 offenders.setdefault(path.parent.name, []).append(match.start())
     assert not offenders, (

@@ -10,8 +10,14 @@ module already parses for citekeys, rather than parsing it again.
 import re
 from pathlib import Path
 
-from chitragupta.dossier import (EVIDENCE_MD, REJECTED_MD, SCOPE_MD, SECTIONS_MD,
-                                 _ROW_SPLIT, dossier_dir)
+from chitragupta.dossier import (
+    EVIDENCE_MD,
+    REJECTED_MD,
+    SCOPE_MD,
+    SECTIONS_MD,
+    _ROW_SPLIT,
+    dossier_dir,
+)
 from chitragupta.dossier._sections import _citekeys
 
 # `- **Term** -- definition` bullets under a `## Glossary` heading in
@@ -45,13 +51,13 @@ def glossary_terms(draft: Path) -> dict[str, str]:
     if not heading:
         return {}
     next_heading = _NEXT_HEADING.search(text, heading.end())
-    body = text[heading.end():next_heading.start() if next_heading else len(text)]
+    body = text[heading.end() : next_heading.start() if next_heading else len(text)]
 
     matches = list(_GLOSSARY_TERM.finditer(body))
     terms: dict[str, str] = {}
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
-        definition = body[match.end():end].strip()
+        definition = body[match.end() : end].strip()
         if definition:
             terms[match.group("term").strip()] = definition
     return terms
@@ -160,8 +166,7 @@ def citekeys_by_section(dossier: Path) -> dict[str, list[str]]:
         # section name read back is the heading as it appears in the draft
         # rather than its escaped spelling -- which is what a caller then
         # matches against `sections()` output.
-        cells = [cell.strip().replace(r"\|", "|")
-                 for cell in _ROW_SPLIT.split(stripped.strip("|"))]
+        cells = [cell.strip().replace(r"\|", "|") for cell in _ROW_SPLIT.split(stripped.strip("|"))]
         if len(cells) != 2 or [cell.lower() for cell in cells] == ["section", "citekeys"]:
             continue
         found[cells[0]] = _citekeys(cells[1])

@@ -47,6 +47,7 @@ import logging
 from pathlib import Path
 
 from chitragupta.enrich import corpus
+
 # Re-exported, not used here: STAGE_FUNCS is what main() dispatches
 # through, and the individual wrappers are named so that
 # tests/test_enrich_script.py can reach them where it always has. The
@@ -54,9 +55,14 @@ from chitragupta.enrich import corpus
 # which is how two of these reached CI.
 # pylint: disable=unused-import
 from chitragupta.enrich.stages import (  # noqa: F401
-    STAGE_FUNCS, stage_bertopic, stage_converge, stage_docling,
-    stage_embed, stage_seed_topics,
+    STAGE_FUNCS,
+    stage_bertopic,
+    stage_converge,
+    stage_docling,
+    stage_embed,
+    stage_seed_topics,
 )
+
 # pylint: enable=unused-import
 # citation_gate is read, not called into: draft_citekeys() below uses its
 # citekey reader so a scoped run covers exactly the papers the gate will
@@ -130,30 +136,42 @@ def draft_citekeys(path: Path) -> set[str]:
 # What `--help` prints, deliberately *not* this module's docstring (#152)
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
-DESCRIPTION = ("The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. "
-               "Each stage probes its own prerequisites and reports honestly.")
+DESCRIPTION = (
+    "The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. "
+    "Each stage probes its own prerequisites and reports honestly."
+)
 
 
 def parse_args() -> argparse.Namespace:
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
     parser = argparse.ArgumentParser(prog=prog_for("enrich"), description=DESCRIPTION)
-    parser.add_argument("--target", choices=["host", "docker"], default="host",
-                         help="Informational only -- stages self-probe regardless of this flag.")
+    parser.add_argument(
+        "--target",
+        choices=["host", "docker"],
+        default="host",
+        help="Informational only -- stages self-probe regardless of this flag.",
+    )
     # default=None, not the joined list, so main() can tell "the user
     # asked for every stage" apart from "the user asked for nothing in
     # particular" -- --for-draft narrows the second and is refused
     # against the first. argparse shows no "(default: ...)" of its own
     # here, so the help text below is the only place that default is
     # stated and it has to state both halves.
-    parser.add_argument("--stages", default=None,
-                         help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
-                              "(default: all five, or docling alone with --for-draft)")
-    parser.add_argument("--for-draft", metavar="PATH",
-                         help="Scope the docling stage to the papers this draft cites, instead of "
-                              "the whole corpus. Refused "
-                              "together with an explicit --stages naming "
-                              f"{' or '.join(SCOPE_REFUSED)}.")
+    parser.add_argument(
+        "--stages",
+        default=None,
+        help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
+        "(default: all five, or docling alone with --for-draft)",
+    )
+    parser.add_argument(
+        "--for-draft",
+        metavar="PATH",
+        help="Scope the docling stage to the papers this draft cites, instead of "
+        "the whole corpus. Refused "
+        "together with an explicit --stages naming "
+        f"{' or '.join(SCOPE_REFUSED)}.",
+    )
     return parser.parse_args()
 
 
@@ -242,8 +260,10 @@ def _selected_stages(args) -> set[str]:
     # no longer does.
     unknown = sorted(selected - set(STAGE_ORDER))
     if unknown:
-        print(f"WARNING: unknown stage(s) {', '.join(unknown)} -- "
-              f"known stages: {', '.join(STAGE_ORDER)}")
+        print(
+            f"WARNING: unknown stage(s) {', '.join(unknown)} -- "
+            f"known stages: {', '.join(STAGE_ORDER)}"
+        )
     return selected
 
 
@@ -263,12 +283,14 @@ def _resolve_scope(args, selected) -> "tuple[set[str] | None, int | None]":
     # words.
     refused = sorted(selected & set(SCOPE_REFUSED))
     if refused:
-        print(f"  --for-draft cannot scope {' or '.join(refused)}: "
-              f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
-              "artefact, and a partial one is indistinguishable from a complete one. Run "
-              "them as separate commands:\n"
-              f"      python -m chitragupta.enrich --for-draft {args.for_draft} --stages docling\n"
-              f"      python -m chitragupta.enrich --stages {','.join(refused)}")
+        print(
+            f"  --for-draft cannot scope {' or '.join(refused)}: "
+            f"{'they each build' if len(refused) > 1 else 'it builds'} one whole-corpus "
+            "artefact, and a partial one is indistinguishable from a complete one. Run "
+            "them as separate commands:\n"
+            f"      python -m chitragupta.enrich --for-draft {args.for_draft} --stages docling\n"
+            f"      python -m chitragupta.enrich --stages {','.join(refused)}"
+        )
         return None, EXIT_BAD_SCOPE
 
     draft_path = Path(args.for_draft)
@@ -286,13 +308,17 @@ def _resolve_scope(args, selected) -> "tuple[set[str] | None, int | None]":
         # citekey the bad byte was part of, and the run would then
         # scope itself to a quietly wrong set of papers rather than
         # stopping.
-        print(f"  cannot read --for-draft {draft_path} as UTF-8: {exc}\n"
-              "      Every draft this pipeline writes is UTF-8, so this one came from "
-              "somewhere else -- re-save it in that encoding.")
+        print(
+            f"  cannot read --for-draft {draft_path} as UTF-8: {exc}\n"
+            "      Every draft this pipeline writes is UTF-8, so this one came from "
+            "somewhere else -- re-save it in that encoding."
+        )
         return None, EXIT_BAD_SCOPE
     if not scope:
-        print(f"  no citations found in {draft_path} -- nothing to scope the run to. "
-              "Drop --for-draft to enrich the whole corpus.")
+        print(
+            f"  no citations found in {draft_path} -- nothing to scope the run to. "
+            "Drop --for-draft to enrich the whole corpus."
+        )
         return None, EXIT_BAD_SCOPE
     return scope, None
 
@@ -340,8 +366,10 @@ def _scope_corpus(docs, scope, args, selected) -> tuple[list, int | None]:
     """
     total = len(docs)
     docs = [doc for doc in docs if doc.citekey in scope]
-    _say(f"Corpus: {len(docs)} of {total} doc(s) from {config.BIB_FILE_PATH} "
-         f"-- scoped to {args.for_draft}")
+    _say(
+        f"Corpus: {len(docs)} of {total} doc(s) from {config.BIB_FILE_PATH} "
+        f"-- scoped to {args.for_draft}"
+    )
 
     # Named, not just counted. A citekey a draft cites and the
     # ledger has never heard of is normally the hard gate's business
@@ -351,11 +379,17 @@ def _scope_corpus(docs, scope, args, selected) -> tuple[list, int | None]:
     # smaller number with nothing to explain it.
     unknown = sorted(scope - {doc.citekey for doc in docs})
     if unknown:
-        _say(f"  {len(unknown)} cited citekey(s) are not in the ledger and cannot be "
-             f"enriched: {', '.join(unknown)}", level=logging.WARNING)
+        _say(
+            f"  {len(unknown)} cited citekey(s) are not in the ledger and cannot be "
+            f"enriched: {', '.join(unknown)}",
+            level=logging.WARNING,
+        )
     if not docs and selected & set(CORPUS_STAGES):
-        _say("  nothing to enrich -- re-export your bibliography and run "
-             "`python -m chitragupta.corpus sync` first.", level=logging.WARNING)
+        _say(
+            "  nothing to enrich -- re-export your bibliography and run "
+            "`python -m chitragupta.corpus sync` first.",
+            level=logging.WARNING,
+        )
         return docs, EXIT_BAD_SCOPE
     return docs, None
 

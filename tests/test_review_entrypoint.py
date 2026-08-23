@@ -32,8 +32,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Every module under chitragupta/review/ that is an aid rather than the entry
 # point or the shared helper.
-AID_MODULES = ["citation_provenance", "citation_coverage", "verbatim_check",
-               "synthesis", "figure_layout"]
+AID_MODULES = [
+    "citation_provenance",
+    "citation_coverage",
+    "verbatim_check",
+    "synthesis",
+    "figure_layout",
+]
 
 # A real top-level entry-point block, anchored at column 0 -- not the
 # string wherever it appears. chitragupta/enrich/docling_parse.py discusses
@@ -65,7 +70,9 @@ def _aid_sources(module: str) -> list[Path]:
 def _run(*argv):
     return subprocess.run(
         [sys.executable, *argv],
-        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
     )
 
 
@@ -106,7 +113,7 @@ class TestTheSubcommandsAreTheAids:
         assert f"usage: python -m chitragupta.review {aid}" in result.stdout
 
     def test_no_aid_prints_the_layers_usage_and_exits_zero(self):
-        """"Tell me how to use this" is not an error -- the same rule
+        """ "Tell me how to use this" is not an error -- the same rule
         each aid already applies to a missing mode."""
         result = _run("-m", "chitragupta.review")
         assert result.returncode == 0
@@ -166,7 +173,9 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         layer's design was taken from: `--stages` is the only way to run
         an enrichment stage."""
         for module in ["docling_parse", "embed_index", "topic_model"]:
-            source = (REPO_ROOT / "chitragupta" / "enrich" / f"{module}.py").read_text(encoding="utf-8")
+            source = (REPO_ROOT / "chitragupta" / "enrich" / f"{module}.py").read_text(
+                encoding="utf-8"
+            )
             assert not _MAIN_BLOCK.search(source), module
 
 
@@ -194,22 +203,29 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         assert "--query" in result.stderr
 
     def test_an_out_of_range_flag_value_exits_two(self):
-        result = _run("-m", "chitragupta.review", "verbatim", "scan",
-                      "content/drafts/x.md", "--gap", "-1")
+        result = _run(
+            "-m", "chitragupta.review", "verbatim", "scan", "content/drafts/x.md", "--gap", "-1"
+        )
         assert result.returncode == 2
 
     def test_recheck_without_a_baseline_exits_two(self):
         """`--baseline` is required: there is nothing to compare against
         without one, and defaulting to the report's usual path would
         silently compare against whatever happened to be lying there."""
-        result = _run("-m", "chitragupta.review", "verbatim", "recheck",
-                      "content/drafts/x.md")
+        result = _run("-m", "chitragupta.review", "verbatim", "recheck", "content/drafts/x.md")
         assert result.returncode == 2
         assert "--baseline" in result.stderr
 
     def test_recheck_on_a_draft_outside_content_exits_one(self):
-        result = _run("-m", "chitragupta.review", "verbatim", "recheck",
-                      "README.md", "--baseline", "whatever.json")
+        result = _run(
+            "-m",
+            "chitragupta.review",
+            "verbatim",
+            "recheck",
+            "README.md",
+            "--baseline",
+            "whatever.json",
+        )
         assert result.returncode == 1
 
     def test_recheck_is_listed_as_a_verbatim_mode(self):

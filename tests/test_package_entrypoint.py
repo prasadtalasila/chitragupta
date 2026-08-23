@@ -45,7 +45,7 @@ class TestDispatch:
         assert command in capsys.readouterr().out
 
     def test_no_layer_prints_usage_and_exits_zero(self, capsys):
-        """"Tell me how to use this" is a request, not an error -- the
+        """ "Tell me how to use this" is a request, not an error -- the
         rule every layer here already applies to a missing verb."""
         assert entry.main([]) == 0
         assert "corpus" in capsys.readouterr().out
@@ -97,7 +97,10 @@ class TestTheModuleFormSurvives:
     def test_python_m_still_reaches_each_layer(self, layer):
         result = subprocess.run(
             [sys.executable, "-m", f"chitragupta.{layer}", "--help"],
-            capture_output=True, text=True, cwd=REPO_ROOT, check=False,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
         )
         assert result.returncode == 0
         assert f"python -m chitragupta.{layer}" in result.stdout
@@ -105,7 +108,10 @@ class TestTheModuleFormSurvives:
     def test_the_package_itself_is_runnable_as_a_module(self):
         result = subprocess.run(
             [sys.executable, "-m", "chitragupta"],
-            capture_output=True, text=True, cwd=REPO_ROOT, check=False,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
         )
         assert result.returncode == 0
         assert "corpus" in result.stdout

@@ -75,7 +75,7 @@ widening needs no amendment, so F1--F3 are not blocked on it.
 Three counters are easy to conflate. Only the second is being set here.
 
 | Counter | Value | Status |
-|---|---|---|
+| --- | --- | --- |
 | attempts per item | 2 | R7, unchanged |
 | **passes per invocation** | **max 3** | **this change** (was 1) |
 | invocations | unbounded, human-triggered | unchanged, and correct |
@@ -92,7 +92,7 @@ anyone adding a real one.
 corpus** (read-only; nothing was written):
 
 | Class | Per draft | Unattended? |
-|---|---|---|
+| --- | --- | --- |
 | `missing-citekey` | 0--2 (6 across all 21 dossiers) | yes |
 | `verbatim-run` | 0--9 (four drafts scanned: 0, 3, 6, 9) | yes, minus the long runs #129 reserves |
 | `prose` | 0 -- no producer until #103/#107 | partial |
@@ -188,7 +188,7 @@ them. This table is the developer-side counterpart to the drafting
 loop's six classes.
 
 | Class | Source | Kind | Unattended? |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `over-long-function` | C1 register | binary: under 25 statements or not | yes |
 | `over-long-module` | C2 register | binary: under 250 code lines or not | yes |
 | `inert-noqa` | TECHNICAL-DEBT 2 | 11 countable call sites | yes |

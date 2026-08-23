@@ -43,7 +43,7 @@ class TestOsDeps:
         recorded = RecordedRun(returncode=0)
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["os-deps"]) == 0
-        (command, _kwargs), = recorded.calls
+        ((command, _kwargs),) = recorded.calls
         assert command == ["bash", str(install.SCRIPT), "os-deps"]
 
     def test_states_what_it_will_run_before_running_it(self, monkeypatch, capsys):
@@ -80,7 +80,7 @@ class TestGpuTorch:
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["gpu-torch"]) == 0
-        (command, kwargs), = recorded.calls
+        ((command, kwargs),) = recorded.calls
         assert command == ["bash", str(install.SCRIPT), "gpu-torch"]
         bin_dir = fake_python.parent
         assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
@@ -105,7 +105,7 @@ class TestGpuTorch:
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["gpu-torch"]) == 0
-        (_command, kwargs), = recorded.calls
+        ((_command, kwargs),) = recorded.calls
         bin_dir = venv_python.parent
         assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
         assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")

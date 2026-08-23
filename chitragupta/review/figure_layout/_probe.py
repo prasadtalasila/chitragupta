@@ -43,6 +43,7 @@ _CGBOX_RE = re.compile(
 # only ever needs the name.
 _NODE_NAME_RE = re.compile(r"\\node\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
 
+
 class FigureCompileError(RuntimeError):
     """One figure's own TikZ did not compile.
 
@@ -139,8 +140,10 @@ def parse_boxes(log: str) -> dict[str, Box]:
     """`{node name: (x1, y1, x2, y2)}` from the scaffold's own output."""
     return {
         match.group("name"): (
-            float(match.group("x1")), float(match.group("y1")),
-            float(match.group("x2")), float(match.group("y2")),
+            float(match.group("x1")),
+            float(match.group("y1")),
+            float(match.group("x2")),
+            float(match.group("y2")),
         )
         for match in _CGBOX_RE.finditer(log)
     }
@@ -168,7 +171,10 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
         probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
         result = subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", probe.name],
-            cwd=tmp, capture_output=True, text=True, check=False,
+            cwd=tmp,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))

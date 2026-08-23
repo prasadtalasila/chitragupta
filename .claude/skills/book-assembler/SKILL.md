@@ -17,7 +17,7 @@ that one is why the procedure is shaped this way.
 ## What this skill is not
 
 | Situation | Action |
-|---|---|
+| --- | --- |
 | A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer`'s job (or another genre's), not this skill's |
 | A unit exists but nobody accepted it | Stop. `python -m chitragupta.draft unit accept` is a human's call, made per unit |
 | The user wants a unit's wording changed | `draft-reviser`. Never edit a unit while assembling it |
@@ -36,7 +36,7 @@ The whole of the composition is this table. The outline
 bottom-up from what has been accepted.
 
 | Outline | LaTeX | Label |
-|---|---|---|
+| --- | --- | --- |
 | `# Title` | `\title{...}` in the preamble | -- |
 | `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
 | `### Chapter {#ch-1}` | `\chapter{...}` | `\label{ch-1}` |

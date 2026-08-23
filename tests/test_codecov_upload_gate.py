@@ -67,7 +67,9 @@ def upload_steps() -> list[Path]:
     assert workflows, f"no workflow files under {WORKFLOWS}"
     found = []
     for path in workflows:
-        uses = re.findall(r"^\s*uses:\s*codecov/codecov-action@", path.read_text(encoding="utf-8"), re.M)
+        uses = re.findall(
+            r"^\s*uses:\s*codecov/codecov-action@", path.read_text(encoding="utf-8"), re.M
+        )
         found.extend([path] * len(uses))
     return found
 

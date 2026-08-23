@@ -32,7 +32,9 @@ def markers_in_the_standard() -> set[str]:
     """
     text = STANDARD.read_text(encoding="utf-8")
     sentence = re.search(r"Treat \*\*(.+?)\*\* as\s+defect markers", text, re.S)
-    assert sentence, "WRITING-STANDARDS.md §2 no longer states its marker list in the form this test reads"
+    assert sentence, (
+        "WRITING-STANDARDS.md §2 no longer states its marker list in the form this test reads"
+    )
     return {word.lower() for word in re.findall(r'"([^"]+)"', sentence.group(1))}
 
 
@@ -42,7 +44,7 @@ def tokens_in(rule_file: str) -> set[str]:
     lines = (STYLES / rule_file).read_text(encoding="utf-8").splitlines()
     start = lines.index("tokens:")
     tokens = set()
-    for line in lines[start + 1:]:
+    for line in lines[start + 1 :]:
         if not line.startswith("  - "):
             break
         tokens.add(line[4:].strip().lower())

@@ -49,8 +49,9 @@ def abstract_for(con, citekey):
         if passage.label == "section_header":
             if collecting:
                 break
-            collecting = bool(passage.text and
-                              passage.text.strip().lower().rstrip(".") == "abstract")
+            collecting = bool(
+                passage.text and passage.text.strip().lower().rstrip(".") == "abstract"
+            )
             continue
         if collecting and passage.label == "text" and passage.text:
             parts.append(passage.text)
@@ -73,8 +74,14 @@ def _load(adapter_name, hf_repo):
 
 def _encode(texts, adapter_name, hf_repo):
     tokenizer, model = _load(adapter_name, hf_repo)
-    inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt",
-                       return_token_type_ids=False, max_length=512)
+    inputs = tokenizer(
+        texts,
+        padding=True,
+        truncation=True,
+        return_tensors="pt",
+        return_token_type_ids=False,
+        max_length=512,
+    )
     output = model(**inputs)
     return output.last_hidden_state[:, 0, :].tolist()
 
@@ -94,18 +101,24 @@ def embed_paper(citekeys):
     paper's title or recovered abstract. Delete PAPER_CACHE_PATH by hand
     when that happens; this script does not detect it for you."""
     con = ledger.connect()
-    cache = (json.loads(PAPER_CACHE_PATH.read_text(encoding="utf-8"))
-             if PAPER_CACHE_PATH.exists() else {})
+    cache = (
+        json.loads(PAPER_CACHE_PATH.read_text(encoding="utf-8"))
+        if PAPER_CACHE_PATH.exists()
+        else {}
+    )
     missing = [c for c in citekeys if c not in cache]
     if missing:
         tokenizer, _model = _load("proximity", "allenai/specter2")
-        rows = [(citekey, title_for(con, citekey), abstract_for(con, citekey))
-                for citekey in missing]
+        rows = [
+            (citekey, title_for(con, citekey), abstract_for(con, citekey)) for citekey in missing
+        ]
         texts = [title + tokenizer.sep_token + abstract for _, title, abstract in rows]
         vectors = _encode(texts, "proximity", "allenai/specter2")
         for (citekey, _title, abstract), vector in zip(rows, vectors):
-            cache[citekey] = {"vector": vector,
-                              "abstract_source": "docling" if abstract else "title-only"}
+            cache[citekey] = {
+                "vector": vector,
+                "abstract_source": "docling" if abstract else "title-only",
+            }
         PAPER_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         PAPER_CACHE_PATH.write_text(json.dumps(cache), encoding="utf-8")
     return {c: cache[c]["vector"] for c in citekeys}

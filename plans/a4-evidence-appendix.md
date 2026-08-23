@@ -236,7 +236,7 @@ is the point, not a gap.
 ## Files
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `chitragupta/evidence_appendix.py` | **new.** Stdlib-only, sibling of `references.py`. `build(draft_text, dossier, con) -> str \| None`, plus the writer |
 | `chitragupta/dossier/_evidence_check.py` | promote `_fields()` to public `fields()`. It already parses exactly `claim`/`quote`/`relevance`/`support` -- the new module reuses it rather than adding a second parser for the same file |
 | ~~`chitragupta/render_output/__init__.py`~~ | **not touched.** `emit()` lives in the new module instead -- see the amendment at the top |

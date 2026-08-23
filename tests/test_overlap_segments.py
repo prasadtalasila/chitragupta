@@ -18,9 +18,7 @@ from tests.conftest import make_reference
 
 def segments(text, mapping):
     words, _ = vc._tokenize_draft(text)
-    return overlap_segments.draft_sections(
-        text, [(w.char, w.char_end) for w in words], mapping
-    )
+    return overlap_segments.draft_sections(text, [(w.char, w.char_end) for w in words], mapping)
 
 
 class TestDraftSections:
@@ -50,8 +48,12 @@ class TestDraftSections:
         words, _ = vc._tokenize_draft(text)
         word_strs = [w.text for w in words]
         [segment] = section.sentences
-        assert word_strs[segment.word_start:segment.word_end] == [
-            "alpha", "beta", "gamma", "delta", "epsilon"
+        assert word_strs[segment.word_start : segment.word_end] == [
+            "alpha",
+            "beta",
+            "gamma",
+            "delta",
+            "epsilon",
         ]
 
     def test_prose_and_the_bullets_under_it_are_separate_segments(self):
@@ -112,10 +114,7 @@ class TestDraftSections:
         # "sentence" inside it covers no word of the stream. Reaching
         # here rather than being filtered earlier is the point: this
         # module never has to know how the masking was done.
-        text = (
-            "# Title\n\nReal prose here.\n\n"
-            "```python\nprint('Not prose at all.')\n```\n"
-        )
+        text = "# Title\n\nReal prose here.\n\n```python\nprint('Not prose at all.')\n```\n"
         [section] = segments(text, {"Title": ["k_2024"]})
         assert all("print" not in s.text for s in section.sentences)
 
@@ -128,10 +127,14 @@ class TestMatchedWords:
     def test_it_counts_distinct_words_not_the_sum_of_overlapping_windows(self):
         # Reported 60 matched words inside a 39-word span on the first
         # real run, because consecutive windows share half their words.
-        section = overlap_segments.DraftSection("T", ["k_2024"], [
-            overlap_segments.DraftSentence("a", 0, 20),
-            overlap_segments.DraftSentence("b", 10, 30),
-        ])
+        section = overlap_segments.DraftSection(
+            "T",
+            ["k_2024"],
+            [
+                overlap_segments.DraftSentence("a", 0, 20),
+                overlap_segments.DraftSentence("b", 10, 30),
+            ],
+        )
         assert overlap_segments.matched_words(section, (0, 1)) == 30
 
     def test_no_matched_segments_is_zero(self):
@@ -149,12 +152,16 @@ class TestSourceSentences:
             path = config.DOCLING_DIR / f"{citekey}.passages.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(records), encoding="utf-8")
+
         return write
 
     def test_each_segment_carries_the_page_its_passage_sits_on(self, ledger_con, sidecar):
-        sidecar("smith_2024", [
-            {"text": "First claim here. Second claim here.", "label": "text", "page": 4},
-        ])
+        sidecar(
+            "smith_2024",
+            [
+                {"text": "First claim here. Second claim here.", "label": "text", "page": 4},
+            ],
+        )
         found = overlap_segments.source_sentences(ledger_con, "smith_2024")
         assert [s.text for s in found] == ["First claim here.", "Second claim here."]
         assert {s.page for s in found} == {4}
@@ -162,10 +169,13 @@ class TestSourceSentences:
     def test_a_passage_with_no_page_is_skipped(self, ledger_con, sidecar):
         # A finding reports a page a reviewer turns to; a passage that
         # cannot say which page it is on cannot support one.
-        sidecar("smith_2024", [
-            {"text": "Unpaged claim.", "label": "text", "page": None},
-            {"text": "Paged claim.", "label": "text", "page": 2},
-        ])
+        sidecar(
+            "smith_2024",
+            [
+                {"text": "Unpaged claim.", "label": "text", "page": None},
+                {"text": "Paged claim.", "label": "text", "page": 2},
+            ],
+        )
         found = overlap_segments.source_sentences(ledger_con, "smith_2024")
         assert [s.text for s in found] == ["Paged claim."]
 

@@ -61,8 +61,7 @@ def linfit(xs: list[float], ys: list[float]) -> tuple[float, float]:
 #   NOTE the shipped worker_ceiling() caps at allowed_cpus // 4 = 12 here,
 #   so the 24/32/48 rows required relaxing that clamp and are not
 #   reachable with a stock checkout.
-_MEASURED_EFFICIENCY = {1: 1.00, 4: 1.04, 8: 0.97, 12: 0.89,
-                        16: 0.78, 24: 0.58, 32: 0.47, 48: 0.31}
+_MEASURED_EFFICIENCY = {1: 1.00, 4: 1.04, 8: 0.97, 12: 0.89, 16: 0.78, 24: 0.58, 32: 0.47, 48: 0.31}
 
 
 def measured_efficiency(workers: int) -> tuple[float, bool]:
@@ -79,8 +78,9 @@ def measured_efficiency(workers: int) -> tuple[float, bool]:
     if lo == hi:
         return _MEASURED_EFFICIENCY[lo], True
     span = (workers - lo) / (hi - lo)
-    return (_MEASURED_EFFICIENCY[lo]
-            + span * (_MEASURED_EFFICIENCY[hi] - _MEASURED_EFFICIENCY[lo])), True
+    return (
+        _MEASURED_EFFICIENCY[lo] + span * (_MEASURED_EFFICIENCY[hi] - _MEASURED_EFFICIENCY[lo])
+    ), True
 
 
 def hms(seconds: float) -> str:
@@ -102,21 +102,25 @@ def self_check() -> None:
     """
     a, b = linfit([0.0, 1.0, 2.0, 3.0], [1.0, 3.0, 5.0, 7.0])
     assert abs(a - 1.0) < 1e-9 and abs(b - 2.0) < 1e-9, (
-        f"linfit did not recover y = 2x + 1 from its own points: a={a}, b={b}")
+        f"linfit did not recover y = 2x + 1 from its own points: a={a}, b={b}"
+    )
 
     eff_mid, interpolated_mid = measured_efficiency(6)
     assert interpolated_mid, "6 workers sits between two measured points and must interpolate"
     assert abs(eff_mid - 1.005) < 1e-9, (
-        f"expected the midpoint of the measured 4- and 8-worker efficiencies, got {eff_mid}")
+        f"expected the midpoint of the measured 4- and 8-worker efficiencies, got {eff_mid}"
+    )
 
     eff_exact, interpolated_exact = measured_efficiency(8)
     assert not interpolated_exact and eff_exact == 0.97, (
-        "a directly-measured worker count must return its own value, not interpolate")
+        "a directly-measured worker count must return its own value, not interpolate"
+    )
 
     eff_over, interpolated_over = measured_efficiency(1000)
     assert interpolated_over and eff_over == _MEASURED_EFFICIENCY[48], (
         "a worker count past the measured range must clamp to the highest point, "
-        "not extrapolate past it")
+        "not extrapolate past it"
+    )
 
 
 def main() -> None:
@@ -124,9 +128,13 @@ def main() -> None:
     ap.add_argument("runs", nargs="+", help="bench/*.jsonl timing files")
     ap.add_argument("--corpus", default="bench/corpus.json")
     ap.add_argument("--workers", type=int, default=4, help="parallel GPU workers to model")
-    ap.add_argument("--efficiency", type=float, default=None,
-                    help="parallel efficiency override; default uses the measured "
-                         "curve below rather than assuming perfect scaling")
+    ap.add_argument(
+        "--efficiency",
+        type=float,
+        default=None,
+        help="parallel efficiency override; default uses the measured "
+        "curve below rather than assuming perfect scaling",
+    )
     args = ap.parse_args()
 
     self_check()
@@ -154,16 +162,24 @@ def main() -> None:
         per_page_total = total_pages * (secs / pages)
         per_doc_total = sum(max(a + b * c["pages"], 0.0) for c in corpus)
 
-        print(f"=== {Path(run).name}  [{meta.get('device')}/{meta.get('mode')}"
-              f"{'/images' if meta.get('images') else ''}]")
-        print(f"  sample      : {len(rows)} PDFs, {pages} pages, {secs:.1f}s "
-              f"({secs/pages:.2f} s/page, {secs/len(rows):.1f} s/doc)")
+        print(
+            f"=== {Path(run).name}  [{meta.get('device')}/{meta.get('mode')}"
+            f"{'/images' if meta.get('images') else ''}]"
+        )
+        print(
+            f"  sample      : {len(rows)} PDFs, {pages} pages, {secs:.1f}s "
+            f"({secs / pages:.2f} s/page, {secs / len(rows):.1f} s/doc)"
+        )
         print(f"  cold start  : {meta.get('cold_start_s')}s (model load + first convert)")
         print(f"  linear fit  : seconds ~= {a:.1f} + {b:.3f} * pages")
-        print(f"  serial est. : per-doc {hms(per_doc_total)}  "
-              f"(per-page {hms(per_page_total)}, an optimistic bound)")
-        print("                both understate a real run -- see this module's "
-              "docstring; measured was 9% and 41% above these respectively")
+        print(
+            f"  serial est. : per-doc {hms(per_doc_total)}  "
+            f"(per-page {hms(per_page_total)}, an optimistic bound)"
+        )
+        print(
+            "                both understate a real run -- see this module's "
+            "docstring; measured was 9% and 41% above these respectively"
+        )
         w = args.workers
         if args.efficiency is not None:
             eff, interpolated = args.efficiency, False
@@ -171,8 +187,10 @@ def main() -> None:
         else:
             eff, interpolated = measured_efficiency(w)
             source = "measured curve" + (", interpolated" if interpolated else "")
-        print(f"  {w} workers  : per-doc {hms(per_doc_total/(w*eff))}"
-              f"   (at {eff:.0%} efficiency, {source})")
+        print(
+            f"  {w} workers  : per-doc {hms(per_doc_total / (w * eff))}"
+            f"   (at {eff:.0%} efficiency, {source})"
+        )
         print()
 
 

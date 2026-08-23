@@ -45,12 +45,14 @@ def build_corpus() -> list[dict]:
             doc.close()
         except Exception:  # noqa: BLE001  # an unopenable PDF is data, not a crash
             pages = None
-        rows.append({
-            "citekey": ref.citekey,
-            "path": ref.pdf_path,
-            "pages": pages,
-            "bytes": os.path.getsize(ref.pdf_path),
-        })
+        rows.append(
+            {
+                "citekey": ref.citekey,
+                "path": ref.pdf_path,
+                "pages": pages,
+                "bytes": os.path.getsize(ref.pdf_path),
+            }
+        )
     return rows
 
 
@@ -78,14 +80,17 @@ def main() -> None:
     (BENCH_DIR / "sample16.json").write_text(json.dumps(sample16, indent=1))
     (BENCH_DIR / "sample_small.json").write_text(json.dumps(sample16[:6], indent=1))
 
-    print(f"corpus     : {len(rows)} PDFs, {sum(pages)} pages, "
-          f"{sum(r['bytes'] for r in rows) / 1e9:.2f} GB")
+    print(
+        f"corpus     : {len(rows)} PDFs, {sum(pages)} pages, "
+        f"{sum(r['bytes'] for r in rows) / 1e9:.2f} GB"
+    )
     if pages:
         ordered = sorted(pages)
-        print(f"pages      : median {ordered[len(ordered) // 2]}, "
-              f"mean {sum(pages) / len(pages):.1f}, max {max(pages)}")
-    print(f"sample16   : {len(sample16)} PDFs, "
-          f"{sum(s['pages'] for s in sample16)} pages")
+        print(
+            f"pages      : median {ordered[len(ordered) // 2]}, "
+            f"mean {sum(pages) / len(pages):.1f}, max {max(pages)}"
+        )
+    print(f"sample16   : {len(sample16)} PDFs, {sum(s['pages'] for s in sample16)} pages")
 
 
 if __name__ == "__main__":

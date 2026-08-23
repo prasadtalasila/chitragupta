@@ -40,8 +40,8 @@ def bib_entry(citekey: str) -> str:
         elif text[i] == "}":
             depth -= 1
             if depth == 0:
-                return text[m.start():i + 1]
-    return text[m.start():]  # unbalanced braces: hand back what we have
+                return text[m.start() : i + 1]
+    return text[m.start() :]  # unbalanced braces: hand back what we have
 
 
 def pdf_path(citekey: str) -> Path | None:
@@ -96,7 +96,9 @@ def pages(citekey: str) -> list[str]:
         return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")
     out = subprocess.run(  # pragma: no cover-windows
         ["pdftotext", "-layout", str(p), "-"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return out.stdout.split("\f")  # pragma: no cover-windows
 
