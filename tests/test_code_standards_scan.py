@@ -71,7 +71,6 @@ LEGACY_LONG_FUNCTIONS = {
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
     "chitragupta/review/verbatim_check.py",  # 1880
-    "chitragupta/pdf_text.py",  # 1034
     "chitragupta/sync.py",  # 533
     "chitragupta/enrich/docling_parse.py",  # 523
     "chitragupta/overlap_index.py",  # 511
@@ -139,11 +138,12 @@ def functions(source):
     reading.
 
     Qualified (`Class.method`, `outer.inner`), not the bare name, because
-    the bare name is not unique within a file: `chitragupta/pdf_text.py` defines
-    `__init__` twice. `long_functions()` keys a dict on this, so a
-    collision would drop one offender of a colliding pair -- and, worse,
-    would let a register entry for one `main` silently license a *different*
-    `main` added to the same module later.
+    the bare name is not unique within a file: `chitragupta/pdf_text.py` defined
+    `__init__` twice, in `interrupt_guard` and `_AnnotatedStream`, before
+    #361 split it into a package. `long_functions()` keys a dict on this,
+    so a collision would drop one offender of a colliding pair -- and,
+    worse, would let a register entry for one `main` silently license a
+    *different* `main` added to the same module later.
     """
     return list(_definitions(ast.parse(source), ""))
 
@@ -433,8 +433,9 @@ def test_two_same_named_methods_in_one_module_stay_distinct():
     Keyed on the bare name, the second of these would overwrite the first
     -- so a colliding pair would report as one offender, and a register
     entry for one would license a different function of the same name
-    added to that module later. `chitragupta/pdf_text.py` is the live case: it
-    defines `__init__` on both `interrupt_guard` and `_AnnotatedStream`.
+    added to that module later. `chitragupta/pdf_text.py` was the live
+    case before #361 split it into a package: it defined `__init__` on
+    both `interrupt_guard` and `_AnnotatedStream`.
     """
     source = (
         "class A:\n"

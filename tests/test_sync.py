@@ -669,7 +669,7 @@ class TestWorkerCount:
     def test_oversized_request_is_clamped_and_warned(self, many_corpus, monkeypatch, caplog):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 64)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 8)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
 
@@ -683,7 +683,7 @@ class TestParallelParsing:
     def _four_workers(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         # A real ProcessPoolExecutor would run pdf_text.extract_one in a
         # *child interpreter*, where this process's monkeypatches don't
         # exist -- the fake would silently not be used and these tests
@@ -927,7 +927,7 @@ class TestGpuAssignment:
             captured.update(kwargs)
             return contextlib.nullcontext()
 
-        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor", record)
+        monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor", record)
         return captured
 
     def test_docling_pool_hands_each_worker_its_own_gpu(self, monkeypatch):
@@ -936,7 +936,7 @@ class TestGpuAssignment:
         N workers contend for one card while the rest idle."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(
-            pdf_text, "usable_devices", lambda: ([0, 1, 2, 3], None))
+            pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -960,7 +960,7 @@ class TestGpuAssignment:
         that; calling across the seam can.
         """
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -977,7 +977,7 @@ class TestGpuAssignment:
         """usable_devices decides; this asserts sync passes its answer
         through rather than re-deriving a count of its own."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -991,7 +991,7 @@ class TestGpuAssignment:
         reason."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(
-            pdf_text, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0"))
+            pdf_text._pool, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0"))
         self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1014,10 +1014,10 @@ class TestGpuAssignment:
         to exist on the machine running the test.
         """
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         chosen = multiprocessing.get_context()
         monkeypatch.setattr(
-            pdf_text, "process_pool_context", lambda: (chosen, None))
+            pdf_text._pool, "process_pool_context", lambda: (chosen, None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1030,7 +1030,7 @@ class TestGpuAssignment:
         the ledger open as live sqlite connections, and SQLite says not
         to carry an open connection across fork()."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1042,9 +1042,9 @@ class TestGpuAssignment:
         """A pool that quietly fell back to spawn looks exactly like one
         that got what was configured, and is ~1.5s slower to start."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
         monkeypatch.setattr(
-            pdf_text, "process_pool_context",
+            pdf_text._pool, "process_pool_context",
             lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"))
         self._capture(monkeypatch)
 
@@ -1055,7 +1055,7 @@ class TestGpuAssignment:
 
     def test_a_cpu_only_host_still_builds_a_working_pool(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
         captured = self._capture(monkeypatch)
 
         with sync._executor_for(2):
@@ -1085,7 +1085,7 @@ class TestInterrupt:
     def _pool(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
 
     def test_pending_work_is_cancelled_not_drained(self, many_corpus, monkeypatch, capsys):
@@ -1142,7 +1142,7 @@ class TestProgressReporting:
     def _pool(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
 
     def test_each_completion_is_reported_as_it_lands(self, many_corpus, monkeypatch, caplog):
@@ -1177,7 +1177,7 @@ class TestStallWatchdog:
     def _pool(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
 
     def test_a_stalled_pool_is_abandoned_and_its_documents_reported(
@@ -1312,7 +1312,7 @@ class TestFailureReporting:
 
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
         monkeypatch.setattr(
             pdf_text, "extract_one",
@@ -1477,7 +1477,7 @@ class TestTimeoutReporting:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 30.0)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
 
         def timing_out_extract_one(job):
@@ -1507,7 +1507,7 @@ class TestStallWarning:
     def _pool(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync, "_executor_for", _thread_executor)
 
     def test_it_warns_at_half_time_before_killing(self, many_corpus, monkeypatch, caplog):
