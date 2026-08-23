@@ -70,7 +70,6 @@ LEGACY_LONG_FUNCTIONS = {
 # the growth is bounded by the 34 lines that were over 100 columns, and
 # no file entered the register that was not already on it.
 LEGACY_LONG_FILES = {
-    "chitragupta/review/verbatim_check.py",  # 1880
     "chitragupta/sync.py",  # 533
     "chitragupta/enrich/docling_parse.py",  # 523
     "chitragupta/overlap_index.py",  # 511
@@ -283,7 +282,7 @@ def test_the_scan_reaches_the_source_tree():
     # module in chitragupta/enrich/ and chitragupta/review/, half of which are on the
     # register. A count alone would only imply this; these name it.
     assert "chitragupta/enrich/docling_parse.py" in scanned
-    assert "chitragupta/review/verbatim_check.py" in scanned
+    assert "chitragupta/review/citation_provenance.py" in scanned
     assert not any(name.startswith("bench/") for name in scanned)
 
 

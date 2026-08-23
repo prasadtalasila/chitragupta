@@ -99,7 +99,7 @@ it is on a register it left is not.
 ## 🧱 Tier 1: the debt the ratchet already holds
 
 `tests/test_code_standards_scan.py` freezes **3 functions** over C1 (25
-statements) and **10 modules** over C2 (250 code lines), each with its
+statements) and **9 modules** over C2 (250 code lines), each with its
 current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
 
@@ -124,12 +124,10 @@ different ways, and only one of the two is checked on every run. So this
 tier holds no subsections at all: both of its named entries are closed
 (`chitragupta/sync.py::run` in #178, `chitragupta/dossier.py` in #219),
 and what each was measured against is in the pull request that split it.
-
-**Tracked in #361** (the C2 register: `pdf_text.py` split into a package
-and delisted; `verbatim_check.py` remains -- the issue's own note said to
-land `pdf_text.py` first if the split proved to be more than one PR,
-which it did). #360, the C1 register's four splittable functions, closed
-in #366 -- the count above already reflects it.
+Issue #360, the C1 register's four splittable functions, closed in #366,
+and issue #361, the C2 register's `pdf_text.py` and `verbatim_check.py`,
+closed with the second split landing -- the counts above already reflect
+both.
 
 ## 🧱 Tier 2: the debt CODE-STANDARDS.md already named
 

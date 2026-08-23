@@ -17,6 +17,15 @@ ships `.claude/`, `docs/` and the four root `.md` files to that exact
 sibling location for the same reason, so this module reads from the same
 seam `shipped()` already established rather than inventing a second one.
 
+**Copying `assets/` does not change what the pipeline reads by
+default.** `shipped()` still resolves the vendored CSL style, Vale
+config and acronym list from the *installed package's* location, not
+from the copy this scaffolds -- editing the copied file has no effect
+until `config.toml`'s `[render].csl`/`[render].vale_config`/
+`[style].acronyms` is repointed at it (docs/CONFIG.md). The copy exists
+so those files are discoverable and editable without a user having to
+locate `site-packages` by hand; it is not a live override by itself.
+
 **The pin that keeps the two lists honest.** `scripts/release.py`'s
 `EXCLUDE_TOP_LEVEL` is a *denylist* over every git-tracked path: a new
 root-level file ships in the release zip unless someone adds it there.
@@ -52,8 +61,11 @@ SOURCE_ROOT = PACKAGE_ROOT.parent
 # present for the scaffolded project to actually work: the genre skills
 # cite AGENTS.md by name, CLAUDE.md routes, docs/ is the exhaustive
 # per-flag reference, and .claude/ registers the hooks that enforce the
-# citekey invariant.
-COPY_VERBATIM = (".claude", "docs", "AGENTS.md", "CLAUDE.md", "SOUL.md", "README.md")
+# citekey invariant. assets/ is the one exception to "has to be present":
+# the pipeline's own defaults resolve it from the installed package
+# regardless (see the module docstring), so this copy is for the user to
+# find and edit, not something anything here reads.
+COPY_VERBATIM = (".claude", "docs", "assets", "AGENTS.md", "CLAUDE.md", "SOUL.md", "README.md")
 
 # The one entry that changes name on the way in. config.toml is
 # gitignored per-user data (chitragupta/config.py's PROJECT_MARKER), so
@@ -81,7 +93,7 @@ TOP_LEVEL = frozenset({CONFIG_DEST, *COPY_VERBATIM, "papers", "content"})
 # lines of it before the flags buries the two lines that answer "how do
 # I run this".
 DESCRIPTION = ("Scaffold a project directory -- config.toml, .claude/, "
-               "papers/, content/ and the prose docs.")
+               "papers/, content/, assets/ and the prose docs.")
 
 # What scripts/release.py's zip ships (every git-tracked top-level entry
 # minus its own EXCLUDE_TOP_LEVEL) that `init` deliberately does not
@@ -103,12 +115,6 @@ DELIBERATE_DIFFERENCES = frozenset({
     # The source code -- already installed via pip, not copied a second
     # time into the user's project directory.
     "chitragupta",
-    # Resolved live from the installed package's own location by
-    # chitragupta/config.py's `shipped()` (PACKAGE_ROOT.parent / "assets"),
-    # not copied into the project directory -- the CSL style, the Vale
-    # rules and the default acronym list are the project's own vendored
-    # data, not something a user edits per-project.
-    "assets",
 })
 
 

@@ -1,7 +1,7 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
 Six commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
-`chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check.py`,
+`chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check/`,
 `chitragupta/review/synthesis.py`, `chitragupta/review/figure_layout/` and
 `chitragupta/review/uncited_prose.py`. Each reads a draft -- plus the
 corpus, or in `figure_layout`'s case the figures the draft references,
