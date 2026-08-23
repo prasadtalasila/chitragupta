@@ -215,8 +215,15 @@ class TestScaffoldedDocLinksResolve:
         dest = tmp_path / "project"
         init.scaffold(dest)
 
+        md_files = sorted(dest.rglob("*.md"))
+        assert md_files, (
+            "scaffolded project has no .md files at all -- init.scaffold() "
+            "is broken in a way that would make every assertion below pass "
+            "vacuously"
+        )
+
         broken = []
-        for md_file in sorted(dest.rglob("*.md")):
+        for md_file in md_files:
             text = md_file.read_text(encoding="utf-8")
             for text_, target in self.LINK_RE.findall(text):
                 if target.startswith(("http://", "https://", "mailto:", "#")):
