@@ -172,6 +172,15 @@ enrichment layer is optional and nothing above it needs it.
   it carries wording from copyrighted sources. Never add a `quote:` after
   the fact to make one appear, and never copy a span out of one back into
   body prose.
+
+  **A per-citekey TL;DR is a separate, smaller feature: browsing, not
+  drafting.** `python -m chitragupta.draft tldr write <citekey>` (summary
+  on stdin) caches a one-paragraph summary under `content/tldr/`, keyed
+  to a fingerprint of that citekey's parsed text; `tldr show <citekey>`
+  reads it back and reports it stale rather than silently describing a
+  paper that has since been re-parsed. The tool never generates the
+  summary itself -- a person or a skill composes it -- and
+  `python -m chitragupta.corpus ledger` is untouched.
 - **Layer 3, the enrichment layer -- optional** (`python -m chitragupta.enrich`):
   Docling, embeddings and topic modelling over the same corpus. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is

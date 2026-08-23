@@ -37,6 +37,7 @@ BACKING_MODULES = {
     "spec": "spec",
     "unit": "unit",
     "registry": "registry",
+    "tldr": "tldr",
 }
 
 # A real top-level entry-point block, anchored at column 0 -- not the

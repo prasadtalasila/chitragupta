@@ -505,7 +505,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all nine commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -562,15 +562,16 @@ by that aid's own parser. The submodules inside `chitragupta/enrich/` and
 done nothing. That is a trap, but a silent and harmless one, and it is
 the price of there being exactly one `--help` per layer.
 
-The drafting layer's nine commands carry the same trap without moving
+The drafting layer's eleven commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier.py`, `references.py`,
-`render_output.py`, `retrieval.py`, `style_check.py`, `spec.py`,
-`unit.py` and `registry.py` stayed flat in `chitragupta/` -- each a
-top-level module or package there, never gathered into a shared drafting
-subpackage the way `enrich/`'s stages are; `chitragupta/draft.py` beside
-them is what dropped their `__main__` blocks and
-gave the layer its one front door. So `python -m chitragupta.dossier`, or any of
-the other eight, is the same silent no-op as the nested form above.
+`evidence_appendix.py`, `render_output.py`, `retrieval.py`,
+`style_check.py`, `spec.py`, `unit.py`, `registry.py` and `tldr.py`
+stayed flat in `chitragupta/` -- each a top-level module or package
+there, never gathered into a shared drafting subpackage the way
+`enrich/`'s stages are; `chitragupta/draft.py` beside them is what
+dropped their `__main__` blocks and gave the layer its one front door.
+So `python -m chitragupta.dossier`, or any of the other ten, is the same
+silent no-op as the nested form above.
 
 **One module refuses instead: `chitragupta/sync.py`.** Silence is the right price
 everywhere above because nobody schedules those commands. A no-op is seen

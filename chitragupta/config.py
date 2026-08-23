@@ -261,6 +261,13 @@ DOSSIERS_DIR = CONTENT_DIR / "dossiers"
 # those mirror a *draft*, so they carry the draft's parent directory; a
 # book is a directory of drafts, so its own path is what carries over.
 SPECS_DIR = CONTENT_DIR / "specs"
+# Per-citekey TL;DR sidecars chitragupta/tldr.py writes and reads -- one
+# JSON file per citekey, keyed to a fingerprint of that citekey's parsed
+# text (chitragupta/tldr.py's own docstring has why). Its own directory
+# rather than DOSSIERS_DIR: a summary is not part of any one draft's
+# working state, it is per-citekey, so it does not mirror a draft's path
+# the way DOSSIERS_DIR/REVIEW_DIR/RENDERED_DIR do.
+TLDR_DIR = CONTENT_DIR / "tldr"
 # Cached BM25 term-frequency index for chitragupta/retrieval.py -- keyed by a
 # cheap per-item fingerprint (parsed-file stat, not content), so a
 # search() call only re-tokenizes docs whose text actually changed since

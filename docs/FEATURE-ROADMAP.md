@@ -1,6 +1,6 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. **Ten of the
+Status: **plan for unbuilt work.** Written 2026-08-20. **Eleven of the
 original twenty-one items have shipped and have been removed from this
 document** rather than marked as done -- so everything below is still
 outstanding, which is what makes the list usable.
@@ -16,7 +16,7 @@ Drafts out of this pipeline carry too much of their sources' wording.
 This document says why that happens -- it is a property of how evidence
 reaches the drafter, not a failure of the detectors -- what to build to
 stop it, and in what order. It then does the same for TikZ figure
-layout, and closes with one nice-to-have.
+layout.
 
 Two upstreams are drawn on, both Apache-2.0:
 [OpenScholar](https://github.com/AkariAsai/OpenScholar) for the
@@ -58,7 +58,6 @@ everything below.
 - [Theme C: verify faithful use](#-theme-c-verify-faithful-use)
 - [Theme D: figure layout](#-theme-d-figure-layout)
 - [Theme F: the auto-improvement loop](#-theme-f-the-auto-improvement-loop)
-- [Theme E: nice to have](#-theme-e-nice-to-have)
 - [Theme G: topic modelling](#-theme-g-topic-modelling)
 - [Build order](#-build-order)
 - [What is deliberately not proposed](#-what-is-deliberately-not-proposed)
@@ -306,9 +305,10 @@ Named up front because each one has already killed an obvious design.
 the corpus layer "has no LLM and no judgment calls"; the enrichment
 layer "reads the ledger and never writes it" and "nothing in it is
 generative". So extracted claims live in the **dossier**, and the
-per-citekey TL;DR ([E1](#-e1-per-citekey-tldr)) gets an explicitly
-named home that is neither `corpus` nor `enrich`. Writing either into
-the ledger would break "same bibliography in, same citekeys out".
+per-citekey TL;DR (`chitragupta draft tldr`, [FEATURES.md](FEATURES.md))
+got an explicitly named home that is neither `corpus` nor `enrich`.
+Writing either into the ledger would break "same bibliography in, same
+citekeys out".
 
 **2. No second gate.** `chitragupta.draft gate` means exactly one thing
 -- a fabricated citekey fails -- and
@@ -726,29 +726,6 @@ than planted reuse, or a version-controlled seed allowlist.
 Size: none. Depends on: nothing. Listed so it is not re-opened by
 someone reading step 7 and assuming it is outstanding.
 
-## ✨ Theme E: nice to have
-
-### 🔭 E1: per-citekey TL;DR
-
-A one-paragraph summary per citekey, so skimming a large corpus does not
-mean opening every PDF.
-
-**The placement is the whole design decision.** The natural UX --
-showing it in `python -m chitragupta.corpus ledger` output -- is
-architecturally wrong twice over under constraint 1: the summary is LLM
-output, so it cannot be written to the ledger, and having the corpus
-layer read a generative artefact would invert the layer order.
-
-Proposed instead: summaries are generative, so they belong to the
-drafting layer; they are written to a sidecar under `content/tldr/` by a
-drafting-layer command, and read back by that same command. `corpus
-ledger` is not touched. A summary is keyed to the parsed text's
-fingerprint so it can report itself stale rather than silently
-describing a paper that has since been re-parsed.
-
-Size: M. Depends on: nothing. Genuinely last -- it improves browsing,
-where everything above improves what gets published.
-
 ## 🏷 Theme G: topic modelling
 
 **The one theme here with shipped work in it**, which is why it reads
@@ -821,8 +798,7 @@ is for.
 | 7 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
 | 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
 | 9 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
-| 10 | [E1](#-e1-per-citekey-tldr) per-citekey TL;DR | E | M | -- |
-| 11 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 10 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -861,7 +837,7 @@ Recorded so each is not re-proposed as an oversight.
 | --- | --- |
 | A blocking overlap gate | Declined on measured evidence (#130), and a second meaning would blunt the gate's one meaning ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10) |
 | Claim extraction cached in the corpus or enrichment layer | LLM output on the corpus plane; breaks "same bibliography in, same citekeys out" ([SOUL.md](../SOUL.md)) |
-| TL;DR shown in `corpus ledger` output | Same, plus it inverts the layer order -- see [E1](#-e1-per-citekey-tldr) |
+| TL;DR shown in `corpus ledger` output | Same, plus it inverts the layer order -- see [FEATURES.md](FEATURES.md)'s per-citekey TL;DR section |
 | Image-generated figures | Non-deterministic, and cannot satisfy §10's two-form contract |
 | Any ML dependency in the core | `bibtexparser` as sole core dependency is a design decision in `pyproject.toml`, not an accident |
 | Fetching papers from arXiv or anywhere else | Admission is the reference manager's job alone ([AGENTS.md](../AGENTS.md)) |
