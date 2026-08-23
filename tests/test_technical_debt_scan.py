@@ -376,9 +376,12 @@ class TestTheChecksActuallyFire:
 # `RUF100` is now the mechanism that checks the suppressed set is the
 # right one). The annotation ratio is #355's (annotated every gap,
 # deleted the "Type annotations" section -- `tests/test_annotation_scan.py`
-# ratchets the count directly against the tree instead). A second,
-# weaker prose pin for either here would be exactly the two-debt-lists
-# problem the register warns against.
+# ratchets the count directly against the tree instead). The bench
+# self-check count is #356's: the exclusion moved from a re-measured
+# register item to a stated decision, and `bench/README.md`, not this
+# test, is now where that count is checked by a human reading it
+# directly. A second, weaker prose pin for either here would be exactly
+# the two-debt-lists problem the register warns against.
 
 
 def _regex_pin(pattern: re.Pattern, text: str, what: str) -> tuple[str, ...]:
@@ -401,8 +404,6 @@ _LINT_TARGET_QUOTE_RE = re.compile(r"pylint --rcfile=\.pylintrc ([^`]+)`")
 
 _COVERAGE_SOURCE_QUOTE_RE = re.compile(r"source = (\[[^\]]*\])")
 
-_BENCH_SELF_CHECK_RE = re.compile(r"\*\*(\d+)\*\* scripts still hold no assertion at all")
-
 
 def _ci_lint_target() -> str:
     """The path list `ci.yml`'s lint job actually passes to pylint, read
@@ -424,16 +425,6 @@ def _pyproject_coverage_source() -> list[str]:
         "shape this test reads"
     )
     return ast.literal_eval(match.group(1))
-
-
-def _bench_scripts_without_self_check() -> int:
-    """Count of `bench/*.py` with no `def self_check`, mirroring
-    `for f in bench/*.py; do grep -q "def self_check" $f || echo $f; done`."""
-    return sum(
-        1
-        for path in sorted((REPO_ROOT / "bench").glob("*.py"))
-        if "def self_check" not in path.read_text(encoding="utf-8")
-    )
 
 
 def _assert_lint_target_matches(doc_name: str, text: str, ci_target: str) -> None:
@@ -470,7 +461,8 @@ class TestTheOtherDriftProneClaimsArePinned:
     """Two of the four claims #353's own "What to build" list named,
     each checked against the real document -- the other two (the
     annotation ratio and the noqa marker count) are #355's and #354's
-    now, not this file's; see the comment above."""
+    now, and the bench self-check count that used to be a third is
+    #356's; see the comment above."""
 
     def test_the_quoted_lint_target_matches_ci_everywhere_it_appears(
         self, debt_doc, code_standards_doc
@@ -484,24 +476,12 @@ class TestTheOtherDriftProneClaimsArePinned:
             "docs/TECHNICAL-DEBT.md", debt_doc, _pyproject_coverage_source()
         )
 
-    def test_the_bench_self_check_count_matches_the_tree(self, debt_doc):
-        stated = int(_regex_pin(_BENCH_SELF_CHECK_RE, debt_doc, "docs/TECHNICAL-DEBT.md")[0])
-        assert stated == _bench_scripts_without_self_check(), (
-            "docs/TECHNICAL-DEBT.md's 3.1 self-check count no longer "
-            "matches bench/*.py. Re-measure rather than editing the "
-            "figure by hand."
-        )
-
 
 class TestTheNewPinsFailLoudlyWhenReworded:
     """The same guarantee
     `test_a_reworded_size_sentence_fails_loudly_rather_than_silently`
     pins for `_stated_sizes`, extended to the new patterns above: a pin
     that silently stops matching is worse than no pin."""
-
-    def test_a_reworded_bench_self_check_sentence_fails_loudly(self):
-        with pytest.raises(AssertionError, match="no longer states this fact"):
-            _regex_pin(_BENCH_SELF_CHECK_RE, "8 scripts still have none.", "the doc")
 
     def test_a_lint_target_no_longer_quoted_fails_loudly(self):
         with pytest.raises(AssertionError, match="no longer quotes the pylint invocation"):
