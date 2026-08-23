@@ -56,6 +56,7 @@ DEBT_DOC = REPO_ROOT / "docs" / "TECHNICAL-DEBT.md"
 CODE_STANDARDS_DOC = REPO_ROOT / "docs" / "CODE-STANDARDS.md"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 PYPROJECT_TOML = REPO_ROOT / "pyproject.toml"
+BENCH_README = REPO_ROOT / "bench" / "README.md"
 
 # A register entry as the document writes one: `chitragupta/sync.py::run` for a
 # C1 function, `chitragupta/dossier.py` for a C2 module, always in a code span.
@@ -191,6 +192,11 @@ def _debt_doc():
 @pytest.fixture(name="code_standards_doc")
 def _code_standards_doc():
     return CODE_STANDARDS_DOC.read_text(encoding="utf-8")
+
+
+@pytest.fixture(name="bench_readme")
+def _bench_readme():
+    return BENCH_README.read_text(encoding="utf-8")
 
 
 class TestTheDocumentDescribesTheRegisterCorrectly:
@@ -368,8 +374,8 @@ class TestTheChecksActuallyFire:
 # than a frozen record of a past baseline -- the same shape
 # `_stated_sizes` above already pins for the C1/C2 register sizes.
 # `_regex_pin` is that shape made generic, so #348 (PACKAGING.md) and
-# #345 (ARCHITECTURE.md) can reuse it instead of reinventing it. Two of
-# the claims the issue named are not pinned here, both for the same
+# #345 (ARCHITECTURE.md) can reuse it instead of reinventing it. Three
+# claims that were once pinned here no longer are, each for the same
 # reason: the debt was closed outright rather than merely re-measured,
 # so there is no longer a prose figure to drift. The noqa-marker count
 # is #354's (adopted `ruff`, deleted the "inert markers" section --
@@ -380,8 +386,8 @@ class TestTheChecksActuallyFire:
 # self-check count is #356's: the exclusion moved from a re-measured
 # register item to a stated decision, and `bench/README.md`, not this
 # test, is now where that count is checked by a human reading it
-# directly. A second, weaker prose pin for either here would be exactly
-# the two-debt-lists problem the register warns against.
+# directly. A second, weaker prose pin for any of the three here would
+# be exactly the two-debt-lists problem the register warns against.
 
 
 def _regex_pin(pattern: re.Pattern, text: str, what: str) -> tuple[str, ...]:
@@ -471,9 +477,9 @@ class TestTheOtherDriftProneClaimsArePinned:
         _assert_lint_target_matches("docs/TECHNICAL-DEBT.md", debt_doc, ci_target)
         _assert_lint_target_matches("docs/CODE-STANDARDS.md", code_standards_doc, ci_target)
 
-    def test_the_quoted_coverage_source_matches_pyproject(self, debt_doc):
+    def test_the_quoted_coverage_source_matches_pyproject(self, bench_readme):
         _assert_coverage_source_matches(
-            "docs/TECHNICAL-DEBT.md", debt_doc, _pyproject_coverage_source()
+            "bench/README.md", bench_readme, _pyproject_coverage_source()
         )
 
 
