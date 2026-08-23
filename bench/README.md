@@ -191,17 +191,60 @@ parser simply being unstable.
 ## `self_check()`: what a script here owes a number it publishes
 
 **A script in `bench/` that publishes a number runs a `self_check()` from
-its own `main()`, before it does any real work.** `repro_check.py`,
-`bench_drift.py` and `sweep_sync.py` have one; a new script that
-publishes a number is expected to follow, and one that only prints what
-it read back is not.
+its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift.py`, `sweep_sync.py`,
+`bench_embed_model_compare.py`, `bench_overlap_df.py`,
+`bench_overlap_embed.py`, `bench_overlap_gate.py`,
+`bench_overlap_skipgram.py`, `bench_paraphrase_hunt.py`,
+`bench_retrieval_compare.py`, `bench_retrieval_ground_truth.py`,
+`bench_retrieval_keyword_selfretrieval.py`, `bench_retrieval_live_logs.py`,
+`embed_models.py`, `bench_collection_scope.py`, `bench_overlap.py`,
+`bench_topic_depth.py`, `bench_topic_membership.py`, `estimate.py` and
+`run_parallel.py` each have one -- 20 of the 22 scripts here. The
+exceptions are `bench_docling.py` and `make_corpus.py`: both publish
+only real, directly-observed measurements (a per-PDF timing; a corpus or
+sample size) with no comparison or aggregation logic of their own that
+could silently read a real difference as none. `make_corpus.py`'s
+`rank_sample()` does dedup its evenly-spaced indices, but a bad dedup
+shows up as a wrong number in `main()`'s own
+`sample16 : N PDFs` line, not as a zero hidden behind a comparison --
+the failure this convention exists to catch.
 
 The reason is the first line of every such function: `bench/` sits
 outside **all four** of the things that hold the rest of this tree --
-C1/C2, coverage (`source = ["src", "scripts"]`), the release archive, and
-the linter (`docs/TECHNICAL-DEBT.md` §3.1). Nothing in the test suite
-will ever catch a regression in these files, so the check runs on every
-invocation instead. It costs microseconds.
+C1/C2, coverage (`source = ["chitragupta", "scripts", ".claude/hooks"]`
+in `pyproject.toml`), the release archive, and
+the linter. Nothing in the test suite will ever catch a regression
+in these files, so the check runs on every invocation instead. It costs
+microseconds.
+
+Each of those four is a decision, reaffirmed rather than scheduled
+(#356):
+
+- **C1/C2** -- stated and defended in
+  [CODE-STANDARDS.md](../docs/CODE-STANDARDS.md#-the-binary-rules):
+  one-shot analysis code whose `main()` reads top to bottom on purpose.
+- **Coverage** -- `bench/` is never imported by the shipped pipeline;
+  `self_check()` is the substitute regression guard this section
+  describes, run on every invocation rather than once in CI.
+- **The release archive** -- `bench/` is dev tooling that measures this
+  checkout, not something a `pip install`ed or unzipped-release consumer
+  runs (`scripts/release.py`'s `EXCLUDE_TOP_LEVEL`).
+- **The linter** -- measured directly rather than assumed free: `pylint
+  --rcfile=.pylintrc bench` (run alongside `chitragupta scripts
+  .claude/hooks`, so imports resolve) reports **78 findings** across the
+  22 files, 2026-08-23. 23 are `wrong-import-position` -- the deliberate
+  `sys.path.insert(0, ...)` every script here uses to reach `chitragupta`
+  from outside the package, the same pattern already carved out for
+  `__init__.py` late imports elsewhere in this project. The rest are real
+  mechanical residue (`use-maxsplit-arg`, `line-too-long`,
+  `unspecified-encoding`, `cell-var-from-loop`, and others), the same
+  categories `chitragupta/`'s own pylint adoption paid down before
+  enabling the check -- see `docs/TECHNICAL-DEBT.md`'s ruff/pylint
+  sections for that sequence. Enabling `bench/` here would mean landing
+  that sequence -- baseline, category decisions, mechanical fixes --
+  inside a PR about self-checks, which the "several small, reviewable
+  PRs" rule argues against. Reopen this as its own PR if someone wants to
+  spend one on it.
 
 What it asserts is narrow and specific, and it is not "the script works":
 
