@@ -102,28 +102,65 @@ def stability(reduced, min_cluster_size, min_samples, repeats):
     return float(np.mean(scores))
 
 
+def _summarize_labels(labels: "list[int]") -> dict:
+    """Topic count, outlier share and median cluster size from HDBSCAN's
+    raw labels alone -- factored out of measure() so self_check can
+    fabricate labels without a real UMAP/HDBSCAN fit.
+
+    An all-outlier fit (no id besides -1) must report zero topics
+    explicitly, not raise or silently drop the row: a degenerate fit and
+    a real one must never print the same shape by accident.
+    """
+    ids = sorted(set(labels) - {-1})
+    if not ids:
+        return {"topics": 0, "outlier_share": 1.0, "median_size": 0}
+    sizes = sorted(labels.count(topic_id) for topic_id in ids)
+    return {
+        "topics": len(ids),
+        "outlier_share": labels.count(-1) / len(labels),
+        "median_size": sizes[len(sizes) // 2],
+    }
+
+
 def measure(reduced, min_cluster_size, min_samples, repeats=1):
     import numpy as np
     from hdbscan import all_points_membership_vectors
 
     labels, clusterer = fit_labels(reduced, min_cluster_size, min_samples)
-    ids = sorted(set(labels) - {-1})
-    if not ids:
-        return {"topics": 0, "outlier_share": 1.0, "median_size": 0,
-                "topics_per_doc": 0.0, "stability": None}
+    summary = _summarize_labels(labels)
+    if summary["topics"] == 0:
+        return {**summary, "topics_per_doc": 0.0, "stability": None}
 
-    sizes = sorted(labels.count(topic_id) for topic_id in ids)
     soft = np.atleast_2d(np.asarray(all_points_membership_vectors(clusterer)))
     keep = (soft >= 0.5 * soft.max(axis=1, keepdims=True)) & (soft > 0)
     counts = keep.sum(axis=1)
     live = counts[counts > 0]
     return {
-        "topics": len(ids),
-        "outlier_share": labels.count(-1) / len(labels),
-        "median_size": sizes[len(sizes) // 2],
+        **summary,
         "topics_per_doc": float(live.mean()) if len(live) else 0.0,
         "stability": stability(reduced, min_cluster_size, min_samples, repeats),
     }
+
+
+def self_check() -> None:
+    """Prove `_summarize_labels` reports an all-outlier fit as zero
+    topics explicitly, and counts a real multi-cluster fit correctly --
+    the two shapes `measure()`'s docstring warns a flat curve can hide.
+
+    `bench/` sits outside CI's coverage targets, so nothing in the test
+    suite will ever catch a regression here. This runs on every
+    invocation instead, and needs no UMAP/HDBSCAN fit -- pure list
+    arithmetic over fabricated labels.
+    """
+    all_outliers = _summarize_labels([-1, -1, -1])
+    assert all_outliers == {"topics": 0, "outlier_share": 1.0, "median_size": 0}, (
+        f"an all-outlier fit must report zero topics explicitly, got {all_outliers}")
+
+    mixed = _summarize_labels([0, 0, 1, 1, 1, -1])
+    assert mixed["topics"] == 2, f"did not count both real clusters: {mixed}"
+    assert mixed["outlier_share"] == 1 / 6, f"outlier share miscomputed: {mixed}"
+    assert mixed["median_size"] == 3, (
+        f"median of cluster sizes [2, 3] should be 3 (the upper of the pair), got {mixed}")
 
 
 def main(argv=None):
@@ -133,6 +170,7 @@ def main(argv=None):
                         help="fit each setting this many times and report the "
                              "agreement between fits (adjusted Rand index)")
     args = parser.parse_args(argv)
+    self_check()
 
     import numpy as np
     from umap import UMAP

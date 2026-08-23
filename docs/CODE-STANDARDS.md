@@ -244,9 +244,9 @@ harness, it is one of the four trees `scripts/release.py` deliberately
 excludes from the release archive, and its scripts are one-shot analysis
 code whose `main()` reads top to bottom on purpose. Stating that plainly
 is better than the alternative reading, which is that its long
-functions (a growing number, as `bench/` grows -- see
-[TECHNICAL-DEBT.md §3.1](TECHNICAL-DEBT.md#-31-bench-is-outside-every-check-in-the-repository)
-for the current count) were quietly not counted.
+functions were quietly not counted -- see
+`bench/README.md` for the current self-check count
+and the reasoning behind each of the four things `bench/` sits outside.
 
 ### 📊 Cognitive complexity: the bar is 25, not SonarQube's default 15
 

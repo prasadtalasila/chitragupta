@@ -33,6 +33,28 @@ def lpt_shards(items: list[dict], n: int) -> list[list[dict]]:
     return shards
 
 
+def self_check() -> None:
+    """Prove `lpt_shards` balances load across workers rather than
+    silently packing them in file order.
+
+    The module's own docstring claims "page counts land evenly", and the
+    round-robin GPU assignment plus the published pages_per_s throughput
+    figure both depend on that being true -- an unbalanced shard reads
+    as bad GPU throughput, not as a bad split.
+
+    `bench/` sits outside CI's coverage targets, so nothing in the test
+    suite will ever catch a regression here. This runs on every
+    invocation instead.
+    """
+    items = [{"pages": p} for p in [100, 1, 1, 1, 1, 1, 1, 1]]
+    shards = lpt_shards(items, 4)
+    loads = [sum(item["pages"] for item in shard) for shard in shards]
+    assert loads == [100, 3, 2, 2], (
+        f"LPT shard loads drifted from the known trace for this fixture: {loads}")
+    assert sum(len(shard) for shard in shards) == len(items), (
+        "a shard split must not drop or duplicate items")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", required=True)
@@ -42,6 +64,7 @@ def main() -> None:
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--images", action="store_true")
     args = ap.parse_args()
+    self_check()
 
     items = json.loads(Path(args.sample).read_text())
     shards = lpt_shards(items, args.workers)

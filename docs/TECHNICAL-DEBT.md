@@ -143,65 +143,11 @@ below.
 
 ## 🧱 Tier 3: found by review, tracked nowhere
 
-New in this review. Each names a call site.
-
-### ⚠ 3.1 `bench/` is outside every check in the repository
-
-**Tracked in #356.**
-
-6,183 lines of Python across 22 files (2026-08-13: 2,021 across 8 --
-grown substantially since, mostly the plagiarism/paraphrase-tier
-benchmark scripts `docs/PLAGIARISM-DESIGN.md` cites), and it is excluded
-from all four things that hold the rest of the tree:
-
-- C1 and C2 (`STATEMENT_ROOTS`/`CODE_LINE_ROOTS` in the scan test)
-- coverage (`source = ["chitragupta", "scripts", ".claude/hooks"]` in
-  `pyproject.toml`)
-- the release archive (`scripts/release.py`)
-- the linters -- `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks`
-  and `ruff check chitragupta scripts .claude/hooks`
-  ([5.1](#-51-pylint-a-measured-baseline)/ruff subsection), never `bench/`
-
-Measured against the ratchet it does not face, with the ratchet's own
-`long_functions`/`long_files` from `tests/test_code_standards_scan.py`
-run directly against `("bench",)` rather than approximated: `bench/` now
-holds **20 functions over C1** and **10 modules over C2**,
-`bench_collection_scope.py` the largest module at 543 code lines and
-`repro_check.py`'s own `main()` the largest function at 69 statements.
-
-CODE-STANDARDS.md states the C1/C2 exclusion and its reason -- one-shot
-analysis code whose `main()` reads top to bottom on purpose -- and
-explicitly prefers saying so to "the alternative reading, which is that
-its long functions ... were quietly not counted." That is the right call.
-
-The **untested** half is the part no document addressed, and it is
-narrower than it first looks. `bench/repro_check.py`, the one that
-decides whether a parser change reproduces, has always handled it:
-`self_check()` runs from `main()` on every invocation, and its docstring
-names this exact gap -- "`bench/` sits outside CI's coverage targets, so
-nothing in the test suite will ever catch a regression here. This runs on
-every invocation instead." Nine assertions prove the detector can see a
-difference before a zero from it is believed.
-
-**Narrowed in #294** -- the "pattern of one" half, which is why this item
-is still here rather than deleted with the ones that closed outright.
-`bench/`'s two other number-publishing scripts, `bench_drift.py` and
-`sweep_sync.py`, now each run their own `self_check()` from `main()`, and
-`bench/README.md` states the convention a new script here is expected to
-follow rather than leaving it a habit of one file. Writing it down was
-worth what it usually is: the first run of
-`bench_drift.py`'s new probe found that its subset override had reached
-nothing since `chitragupta/dossier.py` became a package in #224, so its
-three dossier counts had been three measurements of the same whole set.
-
-**Re-measured 2026-08-22:** 14 of the 22 scripts now carry a
-`self_check()`, well past the 3 #294 left it at
-(`for f in bench/*.py; do grep -q "def self_check" $f || echo $f; done`).
-What stays open is the wider half #294 declared out of scope: **8**
-scripts still hold no assertion at all, and `bench/` is still outside all
-four checks above. That is the same accepted call it always was -- the
-convention is a floor for scripts that publish a number, not a plan to
-bring `bench/` under the ratchet.
+**This tier holds no subsections at all.** Its one entry, `bench/`'s
+exclusion from C1/C2, coverage, the release archive and the linter, was
+reaffirmed as a decision rather than arrears in #356 -- see
+`bench/README.md`'s self-check section for the reasoning behind each of
+the four, and the current self-check count.
 
 ## 🧱 Tier 5: continuous integration and the linters
 
@@ -435,11 +381,11 @@ suppressed set was the *right* set, rather than leaving it asserted.
 `bench/make_corpus.py` and `bench/bench_docling.py` would both report
 `BLE001` without their `# noqa`, verified directly (neither except block
 re-raises). They stay exactly as written. `bench/` itself is not in
-`ci.yml`'s `ruff` invocation -- [Tier 3.1](#-31-bench-is-outside-every-check-in-the-repository)
-excludes it from every check in the repository, unchanged by this
-adoption, so the tag is inert in practice (nothing runs `ruff` over
-`bench/`) but correct on the evidence, which is the more honest state
-than stripping a suppression a real check would still need.
+`ci.yml`'s `ruff` invocation -- `bench/README.md` records that
+exclusion as a decision (#356), unchanged by this adoption, so the tag
+is inert in practice (nothing runs `ruff` over `bench/`) but correct on
+the evidence, which is the more honest state than stripping a
+suppression a real check would still need.
 
 **`ruff`'s pin is exact for a reason beyond Sonar S8544.** `RUF100`'s
 verdict on a given `except` block depends on carve-outs like the
@@ -653,13 +599,8 @@ Ordered by what breaks if it is left, not by size.
 
 Short, and deliberately so. Everything the 2026-08-18 reconciliation
 found open is resolved as of #295's batch (PRs #290, #292, #293, #237
-and #291), and §3.1's "pattern of one" closed in PR #294, which gave
+and #291), and `bench/`'s "pattern of one" closed in PR #294, which gave
 `bench_drift.py` and `sweep_sync.py` a `self_check()` each and wrote the
-convention down in `bench/README.md`.
-
-1. **[3.1] The rest of `bench/`.** 8 of its 22 scripts still carry no
-   self-check, and the directory remains outside C1/C2, coverage, the
-   release archive and the linters. Open and accepted rather than
-   scheduled: the convention is a floor for a script that publishes a
-   number, not a plan to bring `bench/` under the ratchet. Tracked in
-   #356.
+convention down in `bench/README.md`, and #356 closed the list's last
+item by reaffirming `bench/`'s exclusions as a decision rather than
+scheduling further work.
