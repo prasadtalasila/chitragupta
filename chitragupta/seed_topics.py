@@ -202,7 +202,7 @@ def report(data: dict, phrase: "str | None" = None) -> str:
     return "\n".join(lines).rstrip()
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f"{prog_for('corpus')} topics",
                                      description=DESCRIPTION)
     parser.add_argument(
@@ -212,7 +212,7 @@ def build_parser():
     return parser
 
 
-def main(argv=None):
+def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     data = load_report()
     print(report(data, args.topic))

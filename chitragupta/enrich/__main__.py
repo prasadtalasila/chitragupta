@@ -134,7 +134,7 @@ DESCRIPTION = ("The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. 
                "Each stage probes its own prerequisites and reports honestly.")
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
     parser = argparse.ArgumentParser(prog=prog_for("enrich"), description=DESCRIPTION)
@@ -326,7 +326,7 @@ def _run_stages(args, selected, scope: set[str] | None = None) -> int:
     return 0
 
 
-def _scope_corpus(docs, scope, args, selected):
+def _scope_corpus(docs, scope, args, selected) -> tuple[list, int | None]:
     """The corpus narrowed to --for-draft's citekeys, with the losses named.
 
     The filter sits here rather than inside build_corpus(): that

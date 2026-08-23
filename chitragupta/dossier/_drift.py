@@ -88,7 +88,7 @@ class Corpus:
     that logged no queries never builds one at all.
     """
 
-    def __init__(self, rows: list[sqlite3.Row]):
+    def __init__(self, rows: list[sqlite3.Row]) -> None:
         self.rows = rows
         self.citekeys = {row["citekey"] for row in rows}
         self.titles = {row["citekey"]: row["title"] or "" for row in rows}

@@ -51,13 +51,14 @@ duplicated encode is a known cost, not an oversight.
 """
 
 import json
+from typing import Any
 
 from chitragupta import config
 from chitragupta.enrich import doc_vectors, embed_index, topic_labels
 from chitragupta.enrich.corpus import CorpusDoc
 
 
-def _unit(matrix):
+def _unit(matrix) -> Any:
     """Rows scaled to unit length, so a dot product is a cosine. A zero
     row is left alone rather than divided by zero: a document with no
     direction matches nothing, which the caller reads as no membership."""
@@ -73,7 +74,7 @@ def _unit(matrix):
 MEMBERSHIP_MECHANISM = "centroid-cosine-centred-v2"
 
 
-def topic_descriptors(embeddings, topics: list):
+def topic_descriptors(embeddings, topics: list) -> tuple[list[int], Any, Any]:
     """One vector per emergent topic: its members' centroid, in
     mean-centred embedding space.
 
@@ -162,7 +163,7 @@ def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None"
     return memberships
 
 
-def _fit(texts: list, embeddings, model):
+def _fit(texts: list, embeddings, model) -> tuple[Any, list[int]]:
     """Configure UMAP/HDBSCAN/BERTopic for a corpus of this size and fit.
 
     Split out of run_topic_model() to keep it under
