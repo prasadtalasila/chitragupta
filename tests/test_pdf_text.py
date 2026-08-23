@@ -691,21 +691,21 @@ class TestAllowedCpus:
         containerised host those differ a lot -- 96 vs 48 on the machine
         this was developed on -- and sizing a pool off the larger number
         spawns workers that only descheduling each other."""
-        monkeypatch.setattr(pdf_text.os, "cpu_count", lambda: 96)
-        monkeypatch.setattr(pdf_text.os, "sched_getaffinity", lambda pid: set(range(48)),
+        monkeypatch.setattr(pdf_text._sizing.os, "cpu_count", lambda: 96)
+        monkeypatch.setattr(pdf_text._sizing.os, "sched_getaffinity", lambda pid: set(range(48)),
                             raising=False)
         assert pdf_text.allowed_cpus() == 48
 
     def test_falls_back_to_cpu_count_without_affinity(self, monkeypatch):
         """sched_getaffinity is Linux-only -- it does not exist on Windows
         or macOS, and this project's CI has a windows-latest leg."""
-        monkeypatch.delattr(pdf_text.os, "sched_getaffinity", raising=False)
-        monkeypatch.setattr(pdf_text.os, "cpu_count", lambda: 8)
+        monkeypatch.delattr(pdf_text._sizing.os, "sched_getaffinity", raising=False)
+        monkeypatch.setattr(pdf_text._sizing.os, "cpu_count", lambda: 8)
         assert pdf_text.allowed_cpus() == 8
 
     def test_falls_back_to_one_when_cpu_count_is_unknown(self, monkeypatch):
-        monkeypatch.delattr(pdf_text.os, "sched_getaffinity", raising=False)
-        monkeypatch.setattr(pdf_text.os, "cpu_count", lambda: None)
+        monkeypatch.delattr(pdf_text._sizing.os, "sched_getaffinity", raising=False)
+        monkeypatch.setattr(pdf_text._sizing.os, "cpu_count", lambda: None)
         assert pdf_text.allowed_cpus() == 1
 
 
@@ -715,32 +715,32 @@ class TestWorkerCeiling:
 
     def test_docling_charges_four_cpus_per_worker(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         assert pdf_text.worker_ceiling() == 12
 
     def test_pdftotext_gets_one_per_cpu(self, monkeypatch):
         """A short single-threaded subprocess, so charging it a docling
         worker's 4 CPUs would under-use the machine."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         assert pdf_text.worker_ceiling() == 48
 
     @pytest.mark.parametrize("cpus,expected", [(1, 1), (4, 1), (8, 2), (16, 4), (48, 12)])
     def test_the_table_the_docs_promise(self, monkeypatch, cpus, expected):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: cpus)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: cpus)
         assert pdf_text.worker_ceiling() == expected
 
     def test_never_below_one(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 1)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 1)
         assert pdf_text.worker_ceiling() == 1
 
 
 class TestResolveWorkers:
     @pytest.fixture(autouse=True)
     def _host(self, monkeypatch):
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(config, "PARSER", "docling")
 
     def test_default_of_one_stays_one(self, monkeypatch):
@@ -757,14 +757,14 @@ class TestResolveWorkers:
     def test_auto_on_small_hosts(self, monkeypatch, cpus, expected):
         """A four-core/eight-thread desktop must not be handed 12 workers
         just because a 48-CPU host would be."""
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: cpus)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: cpus)
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
         assert pdf_text.resolve_workers(500)[0] == expected
 
     def test_oversized_request_is_clamped_and_explained(self, monkeypatch):
         """Silently obeying thrashes the host; silently ignoring hides the
         clamp. Say it."""
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 8)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(config, "PARSER_WORKERS", 15)
         workers, note = pdf_text.resolve_workers(500)
         assert workers == 2
@@ -796,15 +796,15 @@ class TestResolveWorkers:
 
 class TestDoclingThreads:
     def test_one_worker_keeps_doclings_own_default(self, monkeypatch):
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         assert pdf_text.docling_threads(1) == 4
 
     def test_threads_divide_down_so_the_product_fits_the_host(self, monkeypatch):
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 8)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         assert pdf_text.docling_threads(4) == 2
 
     def test_never_below_one(self, monkeypatch):
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 4)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 4)
         assert pdf_text.docling_threads(12) == 1
 
 
@@ -1301,7 +1301,7 @@ class TestStartMethod:
         monkeypatch.setattr(
             multiprocessing, "get_all_start_methods",
             lambda: ["fork", "spawn", "forkserver"])
-        monkeypatch.setattr(pdf_text, "cuda_is_initialised", lambda: False)
+        monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: False)
         assert pdf_text.start_method() == ("forkserver", None)
 
     def test_auto_falls_back_to_spawn_silently(self, monkeypatch):
@@ -1310,7 +1310,7 @@ class TestStartMethod:
         "auto" was asked to do, so there is nothing to report."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "auto")
         monkeypatch.setattr(multiprocessing, "get_all_start_methods", lambda: ["spawn"])
-        monkeypatch.setattr(pdf_text, "cuda_is_initialised", lambda: False)
+        monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: False)
         assert pdf_text.start_method() == ("spawn", None)
 
     def test_an_explicit_forkserver_that_cannot_be_honoured_says_so(self, monkeypatch):
@@ -1318,7 +1318,7 @@ class TestStartMethod:
         and isn't."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "forkserver")
         monkeypatch.setattr(multiprocessing, "get_all_start_methods", lambda: ["spawn"])
-        monkeypatch.setattr(pdf_text, "cuda_is_initialised", lambda: False)
+        monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: False)
         method, complaint = pdf_text.start_method()
         assert method == "spawn"
         assert "not available on this platform" in complaint
@@ -1330,21 +1330,21 @@ class TestStartMethod:
         monkeypatch.setattr(
             multiprocessing, "get_all_start_methods",
             lambda: ["fork", "spawn", "forkserver"])
-        monkeypatch.setattr(pdf_text, "cuda_is_initialised", lambda: True)
+        monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: True)
         method, complaint = pdf_text.start_method()
         assert method == "spawn"
         assert "CUDA is already initialised" in complaint
 
     def test_an_explicit_spawn_is_honoured_without_complaint(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER_START_METHOD", "spawn")
-        monkeypatch.setattr(pdf_text, "cuda_is_initialised", lambda: False)
+        monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: False)
         assert pdf_text.start_method() == ("spawn", None)
 
     def test_spawn_does_not_need_the_cuda_check(self, monkeypatch):
         """Nothing is inherited under spawn, so a hot CUDA context in
         this process is simply not spawn's problem."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "spawn")
-        monkeypatch.setattr(pdf_text, "cuda_is_initialised", lambda: True)
+        monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: True)
         assert pdf_text.start_method() == ("spawn", None)
 
     def test_fork_is_not_a_configurable_value(self):
@@ -1406,7 +1406,7 @@ class TestPrestartPool:
         The small-machine tests below override it; monkeypatch is
         last-write-wins within a test.
         """
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
 
     @pytest.fixture
     def started(self, monkeypatch):
@@ -1428,7 +1428,7 @@ class TestPrestartPool:
     def test_starts_the_forkserver_when_a_pool_is_coming(self, monkeypatch, started):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
 
         pdf_text.prestart_pool()
 
@@ -1439,7 +1439,7 @@ class TestPrestartPool:
         -- starting a torch-importing process for it would be pure cost."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 1)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
 
         pdf_text.prestart_pool()
 
@@ -1453,8 +1453,8 @@ class TestPrestartPool:
         and import torch to then not use it."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 4)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 4)
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
 
         pdf_text.prestart_pool()
 
@@ -1466,8 +1466,8 @@ class TestPrestartPool:
         so a pool really is coming."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
 
         pdf_text.prestart_pool()
 
@@ -1480,8 +1480,8 @@ class TestPrestartPool:
         resolve_workers clamps it -- so there is still no pool to warm."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 8)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 4)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 4)
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
 
         pdf_text.prestart_pool()
 
@@ -1504,7 +1504,7 @@ class TestPrestartPool:
     def test_nothing_is_started_when_spawn_was_chosen(self, monkeypatch, started):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("spawn", None))
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("spawn", None))
 
         pdf_text.prestart_pool()
 
@@ -1517,7 +1517,7 @@ class TestPrestartPool:
 
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
         monkeypatch.setattr(
             multiprocessing, "get_context",
             lambda method: types.SimpleNamespace(set_forkserver_preload=lambda names: None))
@@ -1542,9 +1542,9 @@ class TestProcessPoolContext:
             def set_forkserver_preload(self, names):
                 recorded.append(names)
 
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("forkserver", None))
+        monkeypatch.setattr(pdf_text._pool, "start_method", lambda: ("forkserver", None))
         monkeypatch.setattr(multiprocessing, "get_context", lambda method: FakeContext())
-        monkeypatch.setattr(pdf_text, "preload_modules", lambda: ["torch"])
+        monkeypatch.setattr(pdf_text._pool, "preload_modules", lambda: ["torch"])
 
         ctx, complaint = pdf_text.process_pool_context()
 
@@ -1558,7 +1558,7 @@ class TestProcessPoolContext:
             def set_forkserver_preload(self, names):  # pragma: no cover
                 raise AssertionError("spawn has no forkserver to preload")
 
-        monkeypatch.setattr(pdf_text, "start_method", lambda: ("spawn", "  NOTE why"))
+        monkeypatch.setattr(pdf_text._pool, "start_method", lambda: ("spawn", "  NOTE why"))
         monkeypatch.setattr(multiprocessing, "get_context", lambda method: FakeContext())
 
         ctx, complaint = pdf_text.process_pool_context()
@@ -1583,7 +1583,7 @@ class TestWorkerDevice:
         seen = []
         for _ in range(6):
             pdf_text.init_worker(counter, lock, [0, 1, 2, 3])
-            seen.append(pdf_text._WORKER_DEVICE)
+            seen.append(pdf_text._worker._WORKER_DEVICE)
         assert seen == ["cuda:0", "cuda:1", "cuda:2", "cuda:3", "cuda:0", "cuda:1"]
 
     def test_the_round_robin_walks_only_the_usable_cards(self):
@@ -1593,14 +1593,14 @@ class TestWorkerDevice:
         seen = []
         for _ in range(4):
             pdf_text.init_worker(counter, lock, [1, 2, 4])
-            seen.append(pdf_text._WORKER_DEVICE)
+            seen.append(pdf_text._worker._WORKER_DEVICE)
         assert seen == ["cuda:1", "cuda:2", "cuda:4", "cuda:1"]
 
     def test_no_gpus_means_no_device_override(self):
         """Leave docling to its own AUTO resolution rather than forcing
         a device that doesn't exist."""
         pdf_text.init_worker(_FakeCounter(), _FakeLock(), [])
-        assert pdf_text._WORKER_DEVICE is None
+        assert pdf_text._worker._WORKER_DEVICE is None
 
     def test_the_assigned_device_reaches_the_pipeline(
         self, isolated_config, fake_docling, tmp_path
@@ -1783,14 +1783,14 @@ class TestInterruptGuard:
         def refuse(*args):
             raise ValueError("signal only works in main thread")
 
-        monkeypatch.setattr(pdf_text.signal, "signal", refuse)
+        monkeypatch.setattr(pdf_text._interrupt.signal, "signal", refuse)
         with pdf_text.interrupt_guard(types.SimpleNamespace(), lambda: "0/0") as guard:
             assert guard._previous is None
 
     def test_the_handler_reports_progress_terminates_and_exits(self, monkeypatch, capsys):
         procs = {0: _FakeProcess()}
         exits = []
-        monkeypatch.setattr(pdf_text.os, "_exit", lambda code: exits.append(code))
+        monkeypatch.setattr(pdf_text._interrupt.os, "_exit", lambda code: exits.append(code))
 
         guard = pdf_text.interrupt_guard(
             types.SimpleNamespace(_processes=procs), lambda: "7/24 document(s) parsed"

@@ -106,9 +106,9 @@ def test_the_scan_reaches_the_source_tree():
     """Non-vacuity: a glob that silently matched nothing would make the
     test above pass for the wrong reason, forever."""
     scanned = {_relative(path) for path in _python_files(ANNOTATION_ROOTS)}
-    assert "chitragupta/pdf_text.py" in scanned
+    assert "chitragupta/config.py" in scanned
     # A nested module, the specific thing the glob has to get right --
-    # `**/*.py` degraded to `*.py` would still find pdf_text.py while
+    # `**/*.py` degraded to `*.py` would still find config.py while
     # silently dropping every module enrich/ and review/ hold, which is
     # where most of #355's 55 gaps were.
     assert "chitragupta/enrich/docling_parse.py" in scanned

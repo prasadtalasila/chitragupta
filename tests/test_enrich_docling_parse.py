@@ -915,7 +915,7 @@ class TestParseCorpusParallel:
     def _four_workers(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(docling_parse, "_executor_for", _thread_executor)
 
     def _docs(self, tmp_path, n=5):
@@ -1025,8 +1025,8 @@ class TestParallelHelpers:
             return contextlib.nullcontext()
 
         monkeypatch.setattr(
-            pdf_text, "usable_devices", lambda: ([0, 1, 2, 3], None))
-        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor", record)
+            pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor", record)
         with docling_parse._executor_for(2):
             pass
 
@@ -1042,9 +1042,9 @@ class TestParallelHelpers:
         """Two pool builders, one contract. This one skipped the check
         until PR #40 review caught it."""
         captured = {}
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([1, 2], "  WARNING"))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([1, 2], "  WARNING"))
         monkeypatch.setattr(
-            pdf_text, "ProcessPoolExecutor",
+            pdf_text._pool, "ProcessPoolExecutor",
             lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1058,9 +1058,9 @@ class TestParallelHelpers:
         not iterable" at startup. Invisible to a test that only compares
         initargs to a literal, because the initializer is never run."""
         captured = {}
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([2, 3], None))
         monkeypatch.setattr(
-            pdf_text, "ProcessPoolExecutor",
+            pdf_text._pool, "ProcessPoolExecutor",
             lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1074,9 +1074,9 @@ class TestParallelHelpers:
 
     def test_a_skipped_card_is_reported_not_swallowed(self, monkeypatch, capsys):
         monkeypatch.setattr(
-            pdf_text, "usable_devices",
+            pdf_text._pool, "usable_devices",
             lambda: ([1], "  WARNING skipping cuda:0"))
-        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor",
+        monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor",
                             lambda **kwargs: contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1088,11 +1088,11 @@ class TestParallelHelpers:
     ):
         """A pool that quietly falls back to spawn looks identical to one
         that got what was configured, and is ~1.5s slower to start."""
-        monkeypatch.setattr(pdf_text, "usable_devices", lambda: ([], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
         monkeypatch.setattr(
-            pdf_text, "process_pool_context",
+            pdf_text._pool, "process_pool_context",
             lambda: (multiprocessing.get_context("spawn"), "  NOTE fell back"))
-        monkeypatch.setattr(pdf_text, "ProcessPoolExecutor",
+        monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor",
                             lambda **kwargs: contextlib.nullcontext())
         with docling_parse._executor_for(2):
             pass
@@ -1113,7 +1113,7 @@ class TestParallelHelpers:
     def test_worker_device_reaches_the_pipeline(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
-        monkeypatch.setattr(pdf_text, "_WORKER_DEVICE", "cuda:3")
+        monkeypatch.setattr(pdf_text._worker, "_WORKER_DEVICE", "cuda:3")
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
         docling_parse.parse_doc(CorpusDoc(citekey="a",
@@ -1134,7 +1134,7 @@ class TestParseCorpusParallelEdges:
         """A mixed run -- some cached, some not -- must report every
         document, not just the ones that went through the pool."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 1)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         docs = []
         for i in range(5):
             pdf = tmp_path / f"p{i}.pdf"
@@ -1158,7 +1158,7 @@ class TestParseCorpusParallelEdges:
         self, isolated_config, fake_docling, monkeypatch, tmp_path, capsys
     ):
         monkeypatch.setattr(config, "PARSER_WORKERS", 64)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 8)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
         docling_parse.parse_corpus([
@@ -1174,7 +1174,7 @@ class TestParseCorpusParallelEdges:
         parse -- so it falls into the same branch as the cached ones and
         must be reported there rather than taking down the batch."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         docs = [CorpusDoc(citekey="nopdf",
                           title="t", pdf_path=None)]
         for i in range(3):
@@ -1227,9 +1227,9 @@ class TestWorkerConverterReuse:
     ):
         """Caching on "was one built already" alone would leave a worker
         using a converter pinned to another worker's GPU."""
-        monkeypatch.setattr(pdf_text, "_WORKER_DEVICE", "cuda:0")
+        monkeypatch.setattr(pdf_text._worker, "_WORKER_DEVICE", "cuda:0")
         docling_parse.parse_one((self._doc(tmp_path, "a"), 4))
-        monkeypatch.setattr(pdf_text, "_WORKER_DEVICE", "cuda:1")
+        monkeypatch.setattr(pdf_text._worker, "_WORKER_DEVICE", "cuda:1")
         docling_parse.parse_one((self._doc(tmp_path, "b"), 4))
         assert FakeDocumentConverter.build_count == 2
 
@@ -1250,7 +1250,7 @@ class TestParseCorpusInterrupt:
     def _pool(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        monkeypatch.setattr(pdf_text, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(docling_parse, "_executor_for", _thread_executor)
 
     def _docs(self, tmp_path, n=6):
