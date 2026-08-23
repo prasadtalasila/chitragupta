@@ -19,7 +19,7 @@ import pytest
 from chitragupta import bib_reader, citation_gate, config, dossier, ledger, references, sync
 from chitragupta import render_output
 
-from tests.conftest import content_draft, make_reference
+from tests.conftest import content_draft, make_reference, real_bibliography_path
 
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
@@ -104,7 +104,7 @@ class TestFullPipelineNoMocks:
             references.apply(draft)
 
 
-real_bib_available = (config.PROJECT_ROOT / "papers" / "bibliography.bib").exists()
+real_bib_available = real_bibliography_path().exists()
 
 
 @pytest.mark.skipif(
@@ -119,7 +119,7 @@ class TestRealBibliographySmoke:
     invariant exists to prevent."""
 
     def test_real_bib_file_parses_without_error(self, isolated_config, monkeypatch):
-        real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
+        real_bib = real_bibliography_path()
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
         refs = bib_reader.read_library()
@@ -169,7 +169,7 @@ class TestRealBibliographySmoke:
         """Every real citekey, cited in Pandoc form, must be recognized
         as known once synced -- the gate's regex must not choke on any
         real citekey shape (hyphens, underscores, digits, "--")."""
-        real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
+        real_bib = real_bibliography_path()
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
         refs = bib_reader.read_library()

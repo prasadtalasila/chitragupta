@@ -43,7 +43,6 @@ document owns the arrears. A thing that was never built is not a debt.
 - [Tier 1: the debt the ratchet already holds](#-tier-1-the-debt-the-ratchet-already-holds)
 - [Tier 2: the debt CODE-STANDARDS.md already named](#-tier-2-the-debt-code-standardsmd-already-named)
 - [Tier 3: found by review, tracked nowhere](#-tier-3-found-by-review-tracked-nowhere)
-- [Tier 4: the test suite](#-tier-4-the-test-suite)
 - [Tier 5: continuous integration and the linters](#-tier-5-continuous-integration-and-the-linters)
 - [The standing-instruction budget](#-the-standing-instruction-budget)
 - [Process debt: the formats that are not adhered to](#-process-debt-the-formats-that-are-not-adhered-to)
@@ -206,64 +205,14 @@ four checks above. That is the same accepted call it always was -- the
 convention is a floor for scripts that publish a number, not a plan to
 bring `bench/` under the ratchet.
 
-## 🧱 Tier 4: the test suite
-
-36,546 lines across 93 modules (2026-08-13: 21,780 across 40 -- both trees
-have grown substantially since), against `chitragupta/`'s 25,171 -- the suite is
-about 1.5x the code it tests, holds 100% line and branch coverage, and is in
-better shape than the code. A full review found no dead helper, no
-order-dependent test, no network access, no `xfail`, no bare
-`pytest.raises(Exception)`, and no test writing outside `tmp_path`. Most
-of what a checklist would flag here is deliberate and stated: duplicated
-setup (a test that reads top to bottom beats a DRY one), long modules
-(C2 does not cover tests, for a stated reason), several asserts per test
-(one *behaviour* per test), and five assertion-free tests that are each a
-documented "does not raise".
-
-Three findings, of which two were fixed in the change that first
-recorded them (#235 and #236) because both were making the suite fail on
-a maintainer's machine while passing in CI, the worst direction for a
-test to be wrong in. The third is below.
-
-### 🧪 4.1 Tests that assert against un-versioned per-host data
-
-**The general rule below is tracked in #358**; the two instances that
-prompted it were already fixed when this was first recorded.
-
-`config.toml` and `papers/bibliography.bib` are gitignored, per-host, and
-different on every machine. Two tests depended on them:
-
-- **`tests/test_config.py::test_parser_ocr_defaults_off`** called
-  `importlib.reload(config)` after deleting the `PARSER_OCR` environment
-  variable. Every sibling test in that class *sets* its variable, which
-  wins over the TOML, so none of them care which `config.toml` the reload
-  picks up. Deleting it made this the only test in the class that fell
-  through to the file -- so a developer with `ocr = true` in their own
-  `config.toml` got a failure reading "PARSER_OCR is not False" and
-  meaning "you enabled OCR". CI never saw it, because CI copies
-  `config.toml.example`. Fixed by pointing `CONFIG_PATH` at an empty TOML,
-  which is the only way to assert the *code's* default rather than the
-  example's.
-- **`tests/test_feature_workflows.py::TestRealBibliographySmoke`**
-  asserted `len(refs) == 646` against the maintainer's real
-  bibliography. The class self-skips wherever that file is absent, so
-  this assertion could only ever run on a maintainer's machine, and could
-  only ever fail there -- on the ordinary act of adding a paper. It was
-  at 642 when this review ran.
-
-The second was worse than brittle: it *competed with a real detector*.
-`chitragupta/bib_reader.py` already warns when bibtexparser silently drops an
-entry it cannot parse, and that gap -- not the total -- is the thing
-worth failing on, because a dropped entry is a paper the user believes
-is citable and is not. The fix derives the expectation from the file
-itself, so it holds at any library size.
-
-**The general rule, now in `.opencodereview/rule.json`'s `tests` entry:**
-flag any assertion whose truth depends on a file the repository does not
-track. It is invisible to CI by construction, so it can only be caught by
-review.
-
 ## 🧱 Tier 5: continuous integration and the linters
+
+*Still "Tier 5", not renumbered to 4 now that Tier 4 (the test suite) has
+closed. "How something gets on this list" above asks for numbers to
+close up when an item leaves -- the deliberate exception here is that
+issue #362, in the same ten-PR batch as the issue that closed Tier 4,
+cites "5.1" and "5.2" below; renumbering mid-batch would collide with a
+PR editing this same document concurrently.*
 
 ### 📊 5.1 `pylint`: a measured baseline
 
@@ -695,8 +644,8 @@ worse.
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
 | Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#-tests): a test that reads top to bottom is worth more than a DRY one |
 | `tests/test_pdf_text.py` at 1806 code lines | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
-| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see [Tier 4](#-tier-4-the-test-suite). The assert-free five are documented "does not raise" tests |
-| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike [4.1](#-41-tests-that-assert-against-un-versioned-per-host-data), it does not claim to be testing a *default* |
+| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see `.opencodereview/rule.json`'s `tests` entry. The assert-free five are documented "does not raise" tests |
+| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike the two cases `tests/test_unversioned_data_scan.py` guards against, it does not claim to be testing a *default*, which is why it is that scan's one registered exception rather than a fixed test |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
 | `chitragupta/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, in the locale-codec pass) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
