@@ -28,7 +28,7 @@ where it looks like it doesn't but is right.
 **Written for** someone deciding what to take next, and for the agent that
 picks this repository up cold and needs to know which surprising thing is
 a bug and which is a decision. It assumes
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the process around a
+`DEVELOPER-AGENTS.md` for the process around a
 change and [CODE-STANDARDS.md](CODE-STANDARDS.md) for the standard itself.
 
 **Not covered here:** anything about drafts ([AGENTS.md](../AGENTS.md)),
@@ -329,7 +329,7 @@ this section was written.
 Same shape, with `.markdownlint.yaml` inherited from the same source, run
 over this repository's own prose -- root `*.md`, `docs/**/*.md`,
 `.claude/**/*.md` and `plans/**/*.md`, per `ci.yml`'s `markdownlint` step
-([DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md#-the-linters-which-are-enforced));
+(`DEVELOPER-AGENTS.md`'s "The linters, which are enforced");
 `content/` is the user's drafts and out of scope:
 
 **927 findings**, of which:
@@ -594,7 +594,7 @@ commit body for a setting to hook into. `scripts/merge_pr.py` composes
 the body from the PR's own description (falling back to the branch's
 commits only when the description has no bullets to pull from) and calls
 `gh pr merge --squash --body-file -`, which
-[DEVELOPER-AGENTS.md's Merging section](../DEVELOPER-AGENTS.md#-merging)
+`DEVELOPER-AGENTS.md`'s Merging section
 documents as the standing way to merge rather than as an incantation to
 still be remembered at the end of a session.
 

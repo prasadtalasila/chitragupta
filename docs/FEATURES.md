@@ -325,7 +325,7 @@ topic stages; [PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |
 | Config in one file | `config.toml`, every key overridable by environment variable | [CONFIG.md](CONFIG.md) |
 | Hooks | the citation gate enforced on every draft write | [HOOKS.md](HOOKS.md) |
-| Docker | a target that installs the Pandoc/TeX toolchain when you lack root | [DOCKER.md](../DOCKER.md) |
+| Docker | a target that installs the Pandoc/TeX toolchain when you lack root | `DOCKER.md` (git checkout only) |
 | Graceful degradation | every optional dependency has a documented fallback, and says which one it took | [LADDERS.md](LADDERS.md) |
 | Parallelism and locking | a worker pool for parsing, one write lock for the corpus | [PARALLELISM.md](PARALLELISM.md) |
 

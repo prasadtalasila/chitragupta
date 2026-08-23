@@ -4,7 +4,9 @@ Guidance for coding agents (and anyone else) **using this pipeline to
 draft content**.
 
 > **Changing chitragupta's own code, rather than drafting with it? Read
-> [DEVELOPER-AGENTS.md](DEVELOPER-AGENTS.md) first -- it governs.** Test
+> `DEVELOPER-AGENTS.md` first -- it governs.** (In a git checkout only --
+> `chitragupta init` deliberately does not scaffold it; see `CLAUDE.md`'s
+> routing table.) Test
 > policy, the local check suite, environment constraints, code standards,
 > and commit/PR/release conventions all live there.
 >

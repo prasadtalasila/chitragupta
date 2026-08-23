@@ -18,7 +18,7 @@ assumed.
 
 **Written for** anyone adding a hook to this repository or changing
 `.claude/settings.json`. It assumes
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md), which governs any change to
+`DEVELOPER-AGENTS.md`, which governs any change to
 this repository's code, and [CODE-STANDARDS.md](CODE-STANDARDS.md) for what
 that code must look like.
 
@@ -98,7 +98,7 @@ question is already answered:
 
 Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) -- *"A gate
 `FAIL` is a failing test, not a lint warning"* -- and
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) both bar promoting any new
+`DEVELOPER-AGENTS.md` both bar promoting any new
 check into a gate beside `chitragupta/citation_gate.py`. #183 records the argument
 in full.
 

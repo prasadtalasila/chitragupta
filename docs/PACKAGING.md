@@ -195,7 +195,7 @@ than as a conclusion, because three of them survive.
 | The objection | Where it was written | What happened to it |
 |---|---|---|
 | Needs renaming the `src` layout | `pyproject.toml` header | **Retired by doing it.** A top-level `src` in `site-packages` claims the most generic name on the index; it is unshippable at any price |
-| "Don't add a second install path" | [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) | **Survives as an invariant, not as a mechanism.** The goal was one place a dependency fact can be written. There are now two front doors to one `install_full_pipeline.sh` and one `pyproject.toml` |
+| "Don't add a second install path" | `DEVELOPER-AGENTS.md` (git checkout only) | **Survives as an invariant, not as a mechanism.** The goal was one place a dependency fact can be written. There are now two front doors to one `install_full_pipeline.sh` and one `pyproject.toml` |
 | Tier 1 must not be blockable by a broken venv | [CLI.md](CLI.md#-which-interpreter) | **Retired by keeping the module form** -- see above. The hooks never move to the console script |
 | pip cannot pick a wheel index from the GPU driver | `pyproject.toml`'s torch note | **Survives, reduced.** `pip install …[enrich]` still lands CPU-only torch on a CUDA host. `chitragupta doctor` detects it and `chitragupta install gpu-torch` fixes it -- but neither is automatic |
 | Command names can be renamed freely because nothing external holds them | the PR closing #123 | **Survives, sharpened** -- see [the last section](#-what-a-shipped-command-name-costs) |

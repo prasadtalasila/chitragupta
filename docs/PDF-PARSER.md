@@ -187,7 +187,7 @@ docling behaviours, and a replacement has to supply all of them:
 | What the repo uses | Where |
 |---|---|
 | Per-item `label`, `text`, `prov[0].page_no`, `prov[0].bbox` | passage provenance, `chitragupta/passages.py` |
-| `pic.caption_text(dl_doc)` -- figure caption matched to "Figure N" in prose | `_figure_records`, see [DEVELOPER.md](../DEVELOPER.md#-figures-and-copyright) |
+| `pic.caption_text(dl_doc)` -- figure caption matched to "Figure N" in prose | `_figure_records`, see `DEVELOPER.md`'s "Figures and copyright" (git checkout only) |
 | `export_to_markdown()` | `content/docling/<citekey>.md`, the artefact downstream stages read |
 | `AcceleratorOptions(device="cuda:N", num_threads=...)` set **per worker process** | `init_worker`, one GPU claimed round-robin |
 | A togglable OCR flag, default off | `[parser].ocr` |

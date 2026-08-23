@@ -294,9 +294,10 @@ the propose-and-accept asymmetry, not about the aid.
 ## ✏ The amendment this needs
 
 **Settled: approved by the user on 2026-08-21**
-([plans/f-auto-improvement-adoption.md](../plans/f-auto-improvement-adoption.md)
-§"Decision 1"), and applied in 6.20.1 by #312, which needed it before the
-verbatim scan could become a required step in the genre skills. The
+(`plans/f-auto-improvement-adoption.md`, a working note not shipped
+outside a git checkout, §"Decision 1"), and applied in 6.20.1 by #312,
+which needed it before the verbatim scan could become a required step in
+the genre skills. The
 argument below is kept because it is why the decision went the way it
 did; the sweep is kept because the next rule-wide sweep will want its
 method rather than its counts.
@@ -377,7 +378,7 @@ Whether the same idea can improve the software rather than the drafts. It
 can, but it is the smaller half, and the honest verdict is that **the gap
 is signal, not permission.**
 
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) already grants an agent the
+`DEVELOPER-AGENTS.md` already grants an agent the
 whole cycle -- "implementing features, writing tests first, running the
 full local check suite, opening PRs, watching CI, merging, and cutting
 releases [...] proceed autonomously". CI runs on two platforms with a

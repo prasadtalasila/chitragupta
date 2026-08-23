@@ -14,7 +14,7 @@ not.
 once. **Not covered here:** every flag of every command
 ([CLI.md](CLI.md)), every setting ([CONFIG.md](CONFIG.md)), the internal
 design rationale and failure analysis ([DESIGN.md](DESIGN.md)), and how to
-work on the repository itself ([DEVELOPER.md](../DEVELOPER.md)).
+work on the repository itself (`DEVELOPER.md`, git checkout only).
 
 ## 🧭 Table of contents
 
@@ -363,7 +363,7 @@ is enforced is *invocation* rather than conformance: a harness may
 guarantee that it runs and that its findings are seen, never that they
 were obeyed. Decidable is not the same as
 gateable, which is why
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) bars promoting any new
+`DEVELOPER-AGENTS.md` bars promoting any new
 check into a gate beside `chitragupta/citation_gate.py` outright, rather than
 leaving it to a judgement about how precise the check is.
 

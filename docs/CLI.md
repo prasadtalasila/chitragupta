@@ -58,7 +58,7 @@ chitragupta init
 ```
 
 or, from a git checkout (for working on the pipeline itself --
-[DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)):
+`DEVELOPER-AGENTS.md`):
 
 ```bash
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
@@ -1350,7 +1350,7 @@ naming the remedy:
   report as two merge into one, giving wording nobody touched a different
   `id` -- so the comparison would report repairs that never happened. A
   *patch* difference is accepted silently, because
-  [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md)'s versioning rules define
+  `DEVELOPER-AGENTS.md`'s versioning rules define
   a patch release as changing nothing about what the pipeline does, so a
   finding-shape change cannot land in one.
 - one that is unreadable or not JSON.
