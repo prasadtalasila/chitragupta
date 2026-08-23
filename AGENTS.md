@@ -39,17 +39,22 @@ cites anything must pass on merit.
 
 A PostToolUse hook (`.claude/hooks/citation_gate_hook.py`, wired up in
 `.claude/settings.json`) also enforces this mechanically: any Write/Edit
-under `content/drafts/*.md` or `*.tex` runs the gate automatically and blocks
-the write with a `FAIL` reason on the offending citekey(s) if it doesn't
-pass. Treat the instruction above as belt-and-suspenders, not the only line
-of defense -- but still run the gate by hand before calling a draft done,
-since the hook only fires on the tool call that wrote the file, not on
-demand.
+under `content/drafts/*.md` or `*.tex` runs the gate automatically and
+surfaces a blocking `FAIL` naming the offending citekey(s) if it doesn't
+pass. **It is a PostToolUse hook, so it fires *after* the write lands** --
+the file exists, with the bad citekey in it, until the `FAIL` is fixed.
+The block is on the agent continuing as though the draft were sound, not
+on the bytes reaching disk, and a draft abandoned at that point stays
+wrong on disk. Treat the instruction above as belt-and-suspenders, not
+the only line of defense -- and still run the gate by hand before calling
+a draft done, since the hook only fires on the tool call that wrote the
+file, not on demand.
 
 ## 🧼 Start each draft in a clean session
 
-Begin a draft in a fresh session -- `/clear`, or a new conversation.
-Not as tidiness: it closes the one failure the gate above cannot see.
+Begin a draft in a fresh session -- `/clear` in Claude Code, or a new
+conversation in whatever agent you use. Not tidiness: it closes the one
+failure the gate above cannot see.
 
 The gate is mechanical and complete for what it measures. A citekey is
 in the ledger or it is not, so a **fabricated** one is caught every
