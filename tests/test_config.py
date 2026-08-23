@@ -271,42 +271,59 @@ class TestModuleReloadWithEnvOverrides:
         os.environ.pop("CONFIG_PATH", None)
         importlib.reload(config)
 
-    def test_bib_file_env_override(self, monkeypatch):
-        monkeypatch.setenv("BIB_FILE", "/tmp/other.bib")
-        importlib.reload(config)
-        assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "/tmp/other.bib"
+    @pytest.fixture
+    def _empty_config_toml(self, tmp_path, monkeypatch):
+        """Pins CONFIG_PATH to an empty, tmp_path TOML before a reload.
 
-    def test_parser_ocr_defaults_off(self, monkeypatch, tmp_path):
-        """The code's default, not this developer's setting.
+        `importlib.reload(config)` re-reads config.toml for every constant
+        it recomputes, not just the one a test overrides its own env var
+        for -- so a test that sets e.g. BIB_FILE but leaves CONFIG_PATH
+        alone still reads this developer's real, gitignored config.toml
+        for everything else the reload computes. That was harmless until
+        test_parser_ocr_defaults_off (below) hit the case where it wasn't:
+        falling through to a real `ocr = true` turned "the code defaults
+        OCR off" into "you enabled OCR", on one machine, invisibly to CI
+        (CI copies config.toml.example -- see
+        tests/test_unversioned_data_scan.py::test_ci_creates_config_toml_from_the_tracked_example).
 
-        Every sibling test in this class sets its env var, which wins
-        over the TOML -- so none of them care which config.toml the
-        reload picks up. This one deletes the variable instead, and that
-        makes it the only test here that falls through to the file. Left
-        unpinned it read the repo's real config.toml, which is gitignored
-        per-host data (v1.0.0): a developer with `ocr = true` got a
-        failure that says "PARSER_OCR is not False" and means "you
-        enabled OCR". CI never saw it, because CI copies the example.
-
-        An empty TOML rather than config.toml.example: the example ships
-        `ocr = false`, so pinning to it would assert what the example
-        says while claiming to assert what the code defaults to. With no
-        `[parser]` table at all, `_get_bool`'s own default is the only
-        thing left to answer.
+        Empty rather than config.toml.example: the example ships real
+        values (`ocr = false`, etc.), so pinning to it would assert what
+        the example says while claiming to assert what the code defaults
+        to. With no tables at all, each `_get*` helper's own default is
+        the only thing left to answer -- correct for every test below
+        except test_missing_config_file_names_the_fix and
+        test_custom_config_path, which pin their own CONFIG_PATH content
+        on purpose and so do not use this fixture.
         """
         empty_toml = tmp_path / "config.toml"
         empty_toml.write_text("", encoding="utf-8")
         monkeypatch.setenv("CONFIG_PATH", str(empty_toml))
+
+    def test_bib_file_env_override(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("BIB_FILE", "/tmp/other.bib")
+        importlib.reload(config)
+        assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "/tmp/other.bib"
+
+    def test_parser_ocr_defaults_off(self, monkeypatch, _empty_config_toml):
+        """The code's default, not this developer's setting.
+
+        Every sibling test in this class sets its own env var, which
+        wins over the TOML regardless of what CONFIG_PATH points at -- so
+        only this one, which deletes PARSER_OCR instead of setting it,
+        ever depended on which config.toml a reload picked up. See
+        `_empty_config_toml` for why every test here pins one anyway, and
+        for why an empty TOML rather than config.toml.example.
+        """
         monkeypatch.delenv("PARSER_OCR", raising=False)
         importlib.reload(config)
         assert config.PARSER_OCR is False
 
-    def test_parser_ocr_env_override(self, monkeypatch):
+    def test_parser_ocr_env_override(self, monkeypatch, _empty_config_toml):
         monkeypatch.setenv("PARSER_OCR", "true")
         importlib.reload(config)
         assert config.PARSER_OCR is True
 
-    def test_embedding_model_env_override(self, monkeypatch):
+    def test_embedding_model_env_override(self, monkeypatch, _empty_config_toml):
         monkeypatch.setenv("EMBEDDING_MODEL", "sentence-transformers/other-model")
         importlib.reload(config)
         assert config.EMBEDDING_MODEL == "sentence-transformers/other-model"

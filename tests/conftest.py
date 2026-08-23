@@ -179,6 +179,19 @@ def content_draft(cfg, name: str) -> Path:
     return path
 
 
+def real_bibliography_path() -> Path:
+    """This repo's actual, gitignored `papers/bibliography.bib` -- real
+    per-host data, for the one test class that deliberately smoke-tests
+    against a maintainer's real export rather than a synthetic fixture
+    (`TestRealBibliographySmoke`). Centralised here, rather than as a
+    literal in each test, so `tests/test_unversioned_data_scan.py`'s scan
+    for un-versioned-data reads can tell a named, documented accessor from
+    a bare inline one -- the difference the scan actually cares about,
+    per its own module docstring.
+    """
+    return config.PROJECT_ROOT / "papers" / "bibliography.bib"
+
+
 def make_reference(citekey="smith_example_2024", **overrides):
     """A minimal chitragupta.bib_reader.Reference, for tests that don't need a
     real .bib file on disk."""
