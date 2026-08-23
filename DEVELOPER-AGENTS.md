@@ -561,7 +561,7 @@ entirely -- a clean OCR run says nothing about them.
 What *does* cover Markdown, so "OCR came back clean" is never read as
 "the standing instructions were reviewed": `markdownlint-cli2 "*.md"
 "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"` (see
-["The linters, which are enforced"](#the-linters-which-are-enforced)) for
+["The linters, which are enforced"](#-the-linters-which-are-enforced)) for
 style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
 test, for the one class of factual claim that has a machine-readable
 source of truth to check against; and a human reading the diff for
