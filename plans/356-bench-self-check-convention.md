@@ -111,9 +111,11 @@ pointed at prose that no longer exists.
 ## Task 1: `bench_overlap.py` -- factor out the finding count, add `self_check()`
 
 **Files:**
+
 - Modify: `bench/bench_overlap.py`
 
 **Interfaces:**
+
 - Produces: `_count_exact_findings(scan_output: str) -> int`, `self_check() -> None`
 
 - [ ] **Step 1: Factor the inline count into a named function**
@@ -179,13 +181,16 @@ git add bench/bench_overlap.py
 git commit -m "Add self_check() to bench_overlap.py"
 ```
 
-## Task 2: `bench_topic_membership.py` -- add `self_check()` for `score()`'s column mapping
+## Task 2: `bench_topic_membership.py` -- add `self_check()` for `score()`'s mapping
 
 **Files:**
+
 - Modify: `bench/bench_topic_membership.py`
 
 **Interfaces:**
-- Consumes: `score(name, weights, labels, columns, ratio=0.5) -> dict` (already defined, unchanged)
+
+- Consumes: `score(name, weights, labels, columns, ratio=0.5) -> dict`
+  (already defined, unchanged)
 - Produces: `self_check() -> None`
 
 - [ ] **Step 1: Add `self_check()`**
@@ -261,9 +266,11 @@ git commit -m "Add self_check() to bench_topic_membership.py"
 ## Task 3: `bench_topic_depth.py` -- factor out label summarising, add `self_check()`
 
 **Files:**
+
 - Modify: `bench/bench_topic_depth.py`
 
 **Interfaces:**
+
 - Produces: `_summarize_labels(labels: list[int]) -> dict`, `self_check() -> None`
 - `measure()` (existing) now calls `_summarize_labels` instead of
   inlining the same computation.
@@ -377,9 +384,11 @@ git commit -m "Add self_check() to bench_topic_depth.py"
 ## Task 4: `estimate.py` -- add `self_check()` for `linfit()`/`measured_efficiency()`
 
 **Files:**
+
 - Modify: `bench/estimate.py`
 
 **Interfaces:**
+
 - Produces: `self_check() -> None`
 
 - [ ] **Step 1: Add `self_check()`**
@@ -448,9 +457,11 @@ git commit -m "Add self_check() to estimate.py"
 ## Task 5: `run_parallel.py` -- add `self_check()` for `lpt_shards()`
 
 **Files:**
+
 - Modify: `bench/run_parallel.py`
 
 **Interfaces:**
+
 - Produces: `self_check() -> None`
 
 - [ ] **Step 1: Add `self_check()`**
@@ -507,9 +518,11 @@ git commit -m "Add self_check() to run_parallel.py"
 ## Task 6: `bench_collection_scope.py` -- add `self_check()` for `_pool_usage()`/`_hash_check()`
 
 **Files:**
+
 - Modify: `bench/bench_collection_scope.py`
 
 **Interfaces:**
+
 - Consumes: `_pool_usage(session_file, start, end) -> dict`,
   `_hash_check(hashes_path) -> dict` (both already defined, unchanged)
 - Produces: `self_check() -> None`
@@ -605,9 +618,10 @@ git add bench/bench_collection_scope.py
 git commit -m "Add self_check() to bench_collection_scope.py"
 ```
 
-## Task 7: `bench/README.md` -- name the exempt set, fix the stale coverage quote, become the new home for the four-exclusions record
+## Task 7: `bench/README.md` -- exempt set, stale quote fix, exclusions home
 
 **Files:**
+
 - Modify: `bench/README.md`
 
 - [ ] **Step 1: Fix the stale coverage-source quote**
@@ -615,7 +629,7 @@ git commit -m "Add self_check() to bench_collection_scope.py"
 The self-check section currently reads (in the paragraph starting "The
 reason is the first line of every such function"):
 
-```
+```text
 C1/C2, coverage (`source = ["src", "scripts"]`), the release archive
 ```
 
@@ -623,7 +637,7 @@ C1/C2, coverage (`source = ["src", "scripts"]`), the release archive
 `source = ["chitragupta", "scripts", ".claude/hooks"]` (confirmed by
 reading `pyproject.toml` directly while writing this plan). Replace with:
 
-```
+```text
 C1/C2, coverage (`source = ["chitragupta", "scripts", ".claude/hooks"]`
 in `pyproject.toml`), the release archive
 ```
@@ -632,7 +646,7 @@ in `pyproject.toml`), the release archive
 
 The same paragraph currently ends:
 
-```
+```text
 and the linter (`docs/TECHNICAL-DEBT.md` §3.1). Nothing in the test suite
 will ever catch a regression in these files, so the check runs on every
 invocation instead. It costs microseconds.
@@ -641,7 +655,7 @@ invocation instead. It costs microseconds.
 `docs/TECHNICAL-DEBT.md` §3.1 is deleted in Task 8, so this becomes the
 authoritative record instead of a pointer to one. Replace with:
 
-```
+```text
 and the linter. Nothing in the test suite will ever catch a regression
 in these files, so the check runs on every invocation instead. It costs
 microseconds.
@@ -680,7 +694,7 @@ Each of those four is a decision, reaffirmed rather than scheduled
 
 The self-check section's second paragraph currently ends:
 
-```
+```text
 `repro_check.py`, `bench_drift.py` and `sweep_sync.py` have one; a new
 script that publishes a number is expected to follow, and one that only
 prints what it read back is not.
@@ -688,7 +702,7 @@ prints what it read back is not.
 
 Replace with:
 
-```
+```text
 `repro_check.py`, `bench_drift.py`, `sweep_sync.py`,
 `bench_embed_model_compare.py`, `bench_overlap_df.py`,
 `bench_overlap_embed.py`, `bench_overlap_gate.py`,
@@ -722,9 +736,10 @@ git add bench/README.md
 git commit -m "Document the bench/ self-check exempt set and the four exclusion decisions"
 ```
 
-## Task 8: `docs/TECHNICAL-DEBT.md` -- delete §3.1, close "What to take first" item 1
+## Task 8: `docs/TECHNICAL-DEBT.md` -- delete §3.1, close take-first item 1
 
 **Files:**
+
 - Modify: `docs/TECHNICAL-DEBT.md`
 
 - [ ] **Step 1: Delete §3.1 entirely**
@@ -733,14 +748,15 @@ Delete lines 151-207 (`### ⚠ 3.1 \`bench/\` is outside every check in the
 repository` through the paragraph ending "...not a plan to bring
 `bench/` under the ratchet.").
 
-- [ ] **Step 2: Give Tier 3 the same "holds no subsections" statement Tier 1 and Tier 2 already carry**
+- [ ] **Step 2: Give Tier 3 the same "holds no subsections" statement Tier 1
+  and Tier 2 already carry**
 
 Tier 1 (`## 🧱 Tier 1: the debt the ratchet already holds`) and Tier 2
 both state, once their own named entries closed: "This tier holds no
 subsections at all". Tier 3's heading and its one-line intro currently
 read:
 
-```
+```text
 ## 🧱 Tier 3: found by review, tracked nowhere
 
 New in this review. Each names a call site.
@@ -753,7 +769,7 @@ Replace the intro line with (keeping the `## 🧱 Tier 3: found by review,
 tracked nowhere` heading itself, so nothing that links to the Tier 3
 heading breaks):
 
-```
+```text
 ## 🧱 Tier 3: found by review, tracked nowhere
 
 **This tier holds no subsections at all.** Its one entry, `bench/`'s
@@ -767,7 +783,7 @@ the four, and the current self-check count.
 
 Delete:
 
-```
+```text
 1. **[3.1] The rest of `bench/`.** 8 of its 22 scripts still carry no
    self-check, and the directory remains outside C1/C2, coverage, the
    release archive and the linters. Open and accepted rather than
@@ -790,7 +806,7 @@ shape `_take_first_claims` (Task 11) already tolerates for Tier 1.
 
 Around line 491, the ruff-baseline section currently reads:
 
-```
+```text
 `bench/` itself is not in `ci.yml`'s `ruff` invocation -- [Tier
 3.1](#-31-bench-is-outside-every-check-in-the-repository) excludes it
 from every check in the repository, unchanged by this adoption, so the
@@ -802,7 +818,7 @@ suppression a real check would still need.
 Replace the link with a reference to `bench/README.md` instead of the
 now-deleted anchor:
 
-```
+```text
 `bench/` itself is not in `ci.yml`'s `ruff` invocation -- `bench/README.md`
 records that exclusion as a decision (#356), unchanged by this adoption,
 so the tag is inert in practice (nothing runs `ruff` over `bench/`) but
@@ -820,13 +836,14 @@ git commit -m "Close TECHNICAL-DEBT.md §3.1: reaffirm bench/'s exclusions as a 
 ## Task 9: `docs/CODE-STANDARDS.md` -- fix the dangling §3.1 link
 
 **Files:**
+
 - Modify: `docs/CODE-STANDARDS.md`
 
 - [ ] **Step 1: Reword the "for the current count" sentence**
 
 Around line 244-248, currently:
 
-```
+```text
 Stating that plainly is better than the alternative reading, which is
 that its long functions (a growing number, as `bench/` grows -- see
 [TECHNICAL-DEBT.md §3.1](TECHNICAL-DEBT.md#-31-bench-is-outside-every-check-in-the-repository)
@@ -837,7 +854,7 @@ for the current count) were quietly not counted.
 Task 8 turned it from a re-measured register item into a stated
 decision. Replace with:
 
-```
+```text
 Stating that plainly is better than the alternative reading, which is
 that its long functions were quietly not counted -- see
 [bench/README.md](../bench/README.md) for the current self-check count
@@ -854,6 +871,7 @@ git commit -m "Fix CODE-STANDARDS.md's dangling link to the deleted TECHNICAL-DE
 ## Task 10: `DEVELOPER-AGENTS.md` -- fix the dangling §3.1 link
 
 **Files:**
+
 - Modify: `DEVELOPER-AGENTS.md`
 
 - [ ] **Step 1: Reword the bench-markers bullet**
@@ -861,7 +879,7 @@ git commit -m "Fix CODE-STANDARDS.md's dangling link to the deleted TECHNICAL-DE
 Around lines 462-469 (the ruff-adoption bullet list, "One of the 12
 existing `# noqa: BLE001` markers..."), currently ends:
 
-```
+```text
 bench/`'s two markers were checked the same way and are genuine --
 [Tier 3.1](docs/TECHNICAL-DEBT.md#-31-bench-is-outside-every-check-in-the-repository)
 leaves `bench/` outside every check including this one, unchanged, so
@@ -870,7 +888,7 @@ they stay inert in practice but correct on the evidence.
 
 Replace the link with:
 
-```
+```text
 `bench/`'s two markers were checked the same way and are genuine --
 `bench/README.md` records `bench/`'s exclusion from every check
 including this one as a decision (#356), unchanged, so they stay inert
@@ -884,9 +902,10 @@ git add DEVELOPER-AGENTS.md
 git commit -m "Fix DEVELOPER-AGENTS.md's dangling link to the deleted TECHNICAL-DEBT.md §3.1"
 ```
 
-## Task 11: `tests/test_technical_debt_scan.py` -- remove the bench-self-check pin, following #354/#355's precedent
+## Task 11: `tests/test_technical_debt_scan.py` -- remove the self-check pin
 
 **Files:**
+
 - Modify: `tests/test_technical_debt_scan.py`
 
 This file already documents its own precedent for this exact situation:
@@ -901,6 +920,7 @@ same shape.
 - [ ] **Step 1: Delete the bench-self-check regex, helper and both its tests**
 
 Delete:
+
 - `_BENCH_SELF_CHECK_RE` (the module-level regex, currently ~line 404)
 - `_bench_scripts_without_self_check()` (currently ~lines 429-436)
 - `test_the_bench_self_check_count_matches_the_tree` from
@@ -910,14 +930,13 @@ Delete:
 
 - [ ] **Step 2: Update the precedent comment to name #356 as the third instance**
 
-The comment block starting `# --- #353: the other drift-prone claims the
-issue asked to pin ---` (currently ~lines 365-381) says: "Two of the
-claims the issue named are not pinned here... The noqa-marker count is
-#354's... The annotation ratio is #355's..." Add a third sentence in the
-same shape: "The bench self-check count is #356's: the exclusion moved
-from a re-measured register item to a stated decision, and
-`bench/README.md`, not this test, is now where that count is checked by
-a human reading it directly."
+The comment block starting `# --- #353: the other drift-prone claims the issue
+asked to pin ---` (currently ~lines 365-381) says: "Two of the claims the issue
+named are not pinned here... The noqa-marker count is #354's... The annotation
+ratio is #355's..." Add a third sentence in the same shape: "The bench
+self-check count is #356's: the exclusion moved from a re-measured register
+item to a stated decision, and `bench/README.md`, not this test, is now where
+that count is checked by a human reading it directly."
 
 - [ ] **Step 3: Update `TestTheOtherDriftProneClaimsArePinned`'s docstring**
 
@@ -956,6 +975,7 @@ git commit -m "Remove the bench self-check count pin, closed outright by #356"
 ## Task 12: Bump the version
 
 **Files:**
+
 - Modify: `pyproject.toml`
 
 - [ ] **Step 1: Re-check the latest tag** (per the memory: PR stacking can
@@ -1041,7 +1061,8 @@ Run `/open-code-review:delegate-review` over the branch per
 DEVELOPER-AGENTS.md's shipping cycle step 3. Note in the PR's test plan
 which mode ran, or that the plugin was unavailable.
 
-- [ ] **Step 6: Read `tests/test_technical_debt_scan.py`'s full module once more, green**
+- [ ] **Step 6: Read `tests/test_technical_debt_scan.py`'s full module once
+  more, green**
 
 ```bash
 .venv-full/bin/python -m pytest tests/test_technical_debt_scan.py tests/test_code_standards_scan.py -v
