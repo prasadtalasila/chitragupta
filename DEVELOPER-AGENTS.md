@@ -830,6 +830,13 @@ of commits:
   requires an existing user to change how they invoke or configure the
   pipeline.
 
+Every tag gets a GitHub Release with the wheel/sdist attached, but only
+a **PATCH-free** tag (X.0.0 or X.Y.0) also publishes to PyPI --
+`.github/workflows/release.yml`'s `publish-pypi` job skips a tag ending
+anything other than `.0`, since a published version can never be
+reused and a PATCH release doesn't need `pip install chitragupta-cli`
+to see it immediately. `docs/PACKAGING.md` has the reasoning.
+
 Release notes go in the GitHub Release body, not the git tag message.
 `.github/RELEASE_TEMPLATE.md` has the shape to follow -- GitHub does *not*
 pick that file up automatically, so copy from it by hand when drafting a
