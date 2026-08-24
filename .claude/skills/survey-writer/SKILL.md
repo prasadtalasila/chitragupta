@@ -381,6 +381,11 @@ collapse them for the sake of a cleaner narrative.
      `\documentclass{article}` + `\usepackage{tikz}` document and run
      `pdflatex` on it. A malformed figure fails the *whole* pdf render,
      not just the figure.
+     If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
+     its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
+     copy that line into the probe too: the renderer's preamble loads
+     `tikz` and no library, so a picture that relies on one and does not
+     load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
    - **No citekey inside either figure file.** Step 10's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. This is the genre

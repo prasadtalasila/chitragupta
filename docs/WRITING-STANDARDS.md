@@ -364,7 +364,13 @@ pipeline.
   renderer refuses rather than silently falling back -- the same draft
   has to produce the same output on every host. If it is present, wrap the figure
   in a minimal `\documentclass{article}` + `\usepackage{tikz}` document,
-  run `pdflatex` on it, and never keep one that fails.
+  run `pdflatex` on it, and never keep one that fails. **Copy the
+  figure's own `\usetikzlibrary` line into that probe**, or the check
+  fails for a reason the figure does not have: the probe preamble loads
+  no library, exactly as the renderer's does not, so anything using
+  `positioning`, `matrix`, `fit` or `tree` errors there whether or not
+  it is sound. [TIKZ-STYLE.md](TIKZ-STYLE.md) says where that line goes
+  and why the figure file has to carry it.
 - **Plain 7-bit ASCII in the ASCII form**, wherever it lives, same
   alphabet and same reasoning as the Unicode exclusion above. It is
   what every non-LaTeX render emits, and a draft with no TikZ figure at

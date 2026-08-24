@@ -42,6 +42,46 @@ maps onto a TikZ idiom to actually use:
 (The metaphor list is PaperBanana's planner supplement, read and not
 copied -- [INSPIRATION.md](INSPIRATION.md) carries the credit.)
 
+**Every idiom in that table needs a `\usetikzlibrary` line, and the
+figure file has to carry it itself.** The renderer adds
+`\usepackage{tikz}` to the preamble and nothing else
+(`chitragupta/render_output/__init__.py`), so a picture that reaches for
+`below=4mm of store` without loading `positioning` does not fall back --
+it fails the whole render with a message that names neither the library
+nor the figure:
+
+```text
+! Package PGF Math Error: Unknown operator `o' or `of' (in '4mm of a').
+```
+
+Put the load at the top of `figures/<name>.tex`, above the
+`tikzpicture`:
+
+```latex
+\usetikzlibrary{positioning}
+\begin{tikzpicture}[thick,x=1mm,y=1mm]
+```
+
+That works because the renderer emits `\input{figures/<name>.tex}` into
+the body, and `\usetikzlibrary` is legal there -- inside a `figure`
+float included. Both verified by compiling on this host.
+
+Two things to know before you reach for one:
+
+- **A missing name takes the whole call down.** `\usetikzlibrary{}` fails
+  fatally on the comma list rather than skipping the name it cannot
+  resolve, so one typo reads exactly like several missing packages. Probe
+  a library by compiling a two-line document that loads it -- **not**
+  with `kpsewhich tikzlibrary<name>.code.tex`, which only sees
+  tikz-layer files and so misses every pgf-layer library (`arrows.meta`
+  is `pgflibraryarrows.meta.code.tex`, and resolves fine).
+- **`shapes.geometric`, not `shapes.geometry`.** The second is not a PGF
+  library at all.
+
+`texlive-pictures`, which `scripts/install_full_pipeline.sh` already
+installs, ships all of these -- there is no extra package to add for any
+of them.
+
 ## ✅ Check the drawn figure against this list
 
 Concrete defects, not taste:
