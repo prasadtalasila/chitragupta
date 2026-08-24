@@ -3,38 +3,28 @@
 % branches meet again further down, this is not a tree and drawing it as
 % one will hide the join.
 %
-% Idiom: relative placement, via `positioning`, rather than TikZ's own
-% `child` syntax -- and that is a deliberate departure from
-% docs/TIKZ-STYLE.md's table, so here is why. `child` places a subtree
-% for you and is the nicer notation, but it spells a node's name without
-% the leading backslash, which is the one spelling
-% `python -m chitragupta.review figure` looks for. Drawn that way this
-% picture reports one node of seven, and the aid then reads the six it
-% cannot see as a tall empty band and flags protrusion on a figure that
-% has none -- a wrong finding, not a missed one. Placed the way it is
-% below, every node is measured and the check means something. Use
-% `child` if you would rather have the notation; just confirm the result
-% by compiling and looking, because the aid will not do it for you.
+% Idiom: `tree`, via `child`. `level distance` and `sibling distance`
+% place every node, so adding a branch re-spaces its whole level instead
+% of landing on a neighbour, and the source's own indentation is the
+% structure rather than a comment about it.
 %
-% The root sits above its left child rather than centred over both. That
-% is on purpose: centring it needs a hand-computed offset or the `calc`
-% library, and both trade a millimetre nobody will re-derive for a
-% symmetry the reader does not need.
-\usetikzlibrary{positioning}
+% One thing this idiom costs, worth knowing before you confirm the
+% figure: `child` draws its edges internally rather than as `\draw`, so
+% `python -m chitragupta.review figure` reports no edge list for this
+% picture at all. That is the aid being silently short, not the figure
+% being unwired -- read the nesting below for what connects to what.
+\usetikzlibrary{trees}
 \begin{tikzpicture}[thick,
-                    item/.style={draw,align=center,
-                                 minimum width=20mm,minimum height=9mm}]
-  \node[item] (batch) {batch};
-  \node[item,right=50mm of batch] (live) {live};
-  \node[item,above=10mm of batch] (source) {source};
-  \node[item,below left=10mm and 2mm of batch] (nightly) {nightly};
-  \node[item,below right=10mm and 2mm of batch] (weekly) {weekly};
-  \node[item,below left=10mm and 2mm of live] (push) {push};
-  \node[item,below right=10mm and 2mm of live] (poll) {poll};
-  \draw[->] (source) -- (batch);
-  \draw[->] (source) -- (live);
-  \draw[->] (batch) -- (nightly);
-  \draw[->] (batch) -- (weekly);
-  \draw[->] (live) -- (push);
-  \draw[->] (live) -- (poll);
+                    level distance=16mm,
+                    level 1/.style={sibling distance=46mm},
+                    level 2/.style={sibling distance=23mm},
+                    every node/.style={draw,align=center,
+                                       minimum width=20mm,minimum height=9mm}]
+  \node (source) {source}
+    child { node (batch) {batch}
+      child { node (nightly) {nightly} }
+      child { node (weekly) {weekly} } }
+    child { node (live) {live}
+      child { node (push) {push} }
+      child { node (poll) {poll} } };
 \end{tikzpicture}

@@ -61,14 +61,17 @@ the picture at once and each of them has to be re-checked by eye.
 Relative placement and `fit` layers make most of those collisions
 impossible instead of merely detectable.
 
-One departure to know about, recorded here rather than left to be
-rediscovered: `assets/tikz/branching-tree.tex` uses `positioning`, not
-the `tree` idiom the table names. `child` syntax spells a node's name
-without a leading backslash, which is the one spelling `review figure`
-recognises, so a tree drawn with it reports one node of seven and the
-aid reads the six it cannot see as a tall empty band -- a protrusion
-finding on a figure that has none. `tree` is still fine to use; just
-confirm that one by compiling and looking, because the aid will not.
+**Name every node you draw**, in whichever idiom. `review figure`
+measures a node's geometry only where the source gives it an explicit
+`(name)`, so a picture that names nothing reports no overlap and no
+protrusion because nothing was measurable -- which reads exactly like a
+clean figure and is not one. Both spellings count: `\node (a)` and
+`child { node (a) ... }`.
+
+One thing the `tree` idiom costs, since it is not visible in the output:
+`child` draws its edges internally rather than as `\draw` statements, so
+the edge list `review figure` reports for such a figure is empty rather
+than short. Confirm a tree's wiring from the source's own nesting.
 
 **Every idiom in that table needs a `\usetikzlibrary` line, and the
 figure file has to carry it itself.** The renderer adds

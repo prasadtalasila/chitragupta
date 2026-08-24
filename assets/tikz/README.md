@@ -63,7 +63,7 @@ a figure laid out in hand-computed absolute millimetres cannot express
 "do not collide", so changing one label's length re-opens every
 adjacency in the picture at once.
 
-Two limits worth knowing before you edit:
+Three limits worth knowing before you edit:
 
 - **Gaps are bounded by the protrusion check.** A tall empty horizontal
   band -- more than a third of the figure's height with no node in it --
@@ -73,9 +73,8 @@ Two limits worth knowing before you edit:
 - **A containing box is not a collision.** `layered-stack.tex` relies on
   it: a `fit` layer wholly enclosing its members is grouping, which the
   aid exempts, whereas two layers *partially* overlapping is a finding.
-
-`branching-tree.tex` uses `positioning` rather than the `tree` idiom the
-style document's table names, and its own header comment says why: node
-names in `child` syntax are invisible to the aid, which then reads the
-nodes it cannot see as an empty band and reports a protrusion the figure
-does not have.
+- **A tree reports no edges.** `branching-tree.tex` uses `child`, which
+  draws its edges internally rather than as `\draw` statements, so the
+  aid's edge list comes back empty for it. That is the aid being silently
+  short, not the figure being unwired; confirm a tree's structure from
+  the source's own nesting.
