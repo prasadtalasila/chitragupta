@@ -43,11 +43,11 @@ Same `k`, two typefaces.
 
 ## ✅ Converted: the 15-chapter book
 
-`content/drafts/books/digital-twins-for-software-engineers/`, 465 code
-spans → inline math, across 63 distinct replacements.
+`content/drafts/books/digital-twins-for-software-engineers/`, **515 code
+spans → inline math**, in three passes.
 
-**How each span was decided.** The whitelist was derived from the
-documents themselves, not guessed: a span converted only if every
+**Pass 1 (465 spans), whitelist-driven.** The whitelist was derived from
+the documents themselves, not guessed: a span converted only if every
 letter-token in it appears as a symbol in the book's own `$$` display
 math, or if it was a pure numeric expression. That is why `` `k` ``
 converted and `` `as_of` `` did not -- `as_of` appears in no display
@@ -61,25 +61,56 @@ math anywhere.
   defines *simulated time* `$t$` and *wall-clock time* `` `T` `` in the
   same two-line box, which is the whole defect in miniature.
 - **`k_day` / `k_night`** → `$k_\mathrm{day}$`, upright subscript.
-- **Not converted, correctly:** 309 code spans (`as_of`, `event_time`,
-  `quality`, `substituted`, endpoints, JSON), 415 citekeys, and 171 left
-  for review -- API status vocabulary that a regex should not touch.
+
+**Passes 2 and 3 (50 spans), and why they were needed.** The whitelist
+is built from *single-letter* display-math symbols, so it is structurally
+blind to a multi-letter quantity. Ch. 1 was left self-contradictory:
+`` `0.02 x 100 + 1.5 = 3.5` `` converted while `` `slope = 0.02` ``,
+`` `offset = 1.5` `` and `` `t = slope * dose + offset` `` -- the same
+three quantities in the same chapter -- did not. A second blind spot:
+the path detector excluded any span containing `/`, which also excluded
+every division (`1/64 = 0.015625`, `N(N-1)/2`).
+
+- **Pass 2, 27 spans, hand-adjudicated:** multi-letter names
+  (`$\mathrm{slope}$`, `$\mathrm{Assemble}(N)$`), and symbol expressions
+  whose symbols were already `$…$` in the same chapter (`$C \times I > F$`,
+  `$rB - F$`, `$a - p$`, `$k \times T_s$`).
+- **Pass 3, 22 spans, division-bearing arithmetic:**
+  `$0.05 \times 0.95 / (0.005)^{2} = 0.0475 / 0.000025 = 1{,}900$`,
+  `$= \sqrt{1/0.022569} = 6.66$`,
+  `$(12{,}000 + 3{,}000) / 10{,}000 = 1.5\ \text{years}$`.
+
+**Not converted, correctly:** 410 `\texttt{}` remain -- field names,
+endpoints, paths, JSON, SQL -- along with 415 citekeys. Of the 143 spans
+still in the review bucket, the only two that are even math-*shaped* are
+`quality = no_reading` and `if twin_name == ...`, both genuinely code.
 
 **Verification.**
 
 | Check | Before | After |
 | --- | --- | --- |
-| Symbol clash (the reported defect) | 253 | **0** |
-| Inline `\(…\)` in the book's `.tex` | 0 | 465 |
-| `\texttt{}` total | 925 | 460 |
+| Math-shaped `\texttt{}` (multi-letter aware) | 64 | **0** |
+| Single-letter symbol clash | 253 | **0** |
+| Inline `\(…\)` in the book's `.tex` | 0 | 515 |
+| `\texttt{}` total | 925 | 410 |
 | Display `\[…\]` | 79 | 79 (untouched) |
 | `pdflatex book.tex` | builds | builds, 0 errors |
 
-`925 − 465 = 460` reconciles exactly. The `.tex` were regenerated with
-`draft render`, then the two post-render labels `\label{ch-NN}` and
-`\label{<unit-id>}` reapplied -- `book-assembler` adds those after
-pandoc (`SKILL.md:195-197`), so a plain re-render drops them and every
-`\cref` in the book breaks.
+`925 − 515 = 410` reconciles exactly, and 515 balanced `\(` is itself
+evidence the `$` delimiters pair correctly -- pandoc could not emit an
+odd count from unbalanced input.
+
+**Use the multi-letter check, not the clash detector.** The clash
+detector only matches single letters against display math, so "253 → 0"
+proves no *single-letter display-math symbol* is set two ways. It does
+not prove no *quantity* is -- ch. 1 passed it while still wrong. The
+first row of the table is the check worth re-running.
+
+The `.tex` were regenerated with `draft render`, then the two
+post-render labels `\label{ch-NN}` and `\label{<unit-id>}` reapplied --
+`book-assembler` adds those after pandoc (`SKILL.md:195-197`), so a plain
+re-render drops them and every `\cref` in the book breaks. `book.md`
+needed no change: it is a 30-line index of links, not inlined prose.
 
 ## 📋 Still carrying the old spelling
 

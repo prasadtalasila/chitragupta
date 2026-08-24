@@ -514,8 +514,17 @@ not.
 means exactly one thing -- a fabricated citekey fails -- and
 [docs/CODE-STANDARDS.md](CODE-STANDARDS.md) keeps it that way. Giving it
 a second meaning would blunt the first. The check that does exist is the
-one you can run by eye: a symbol set both as `$k$` and as `` `k` `` in
-the same chapter is always a defect.
+one you can run by eye: a quantity set both as `$k$` and as `` `k` `` in
+the same section is always a defect.
+
+**Grep for the multi-letter ones too.** A single-letter symbol is easy to
+eye-check against the display math that defines it. A quantity spelled
+out -- `slope`, `offset`, `Assemble(N)` -- has no display math to compare
+against and reads like an identifier, so it survives that check and stays
+in typewriter beside the arithmetic that uses it. So does any expression
+containing `/`, if a search for stray backticks was written to skip file
+paths. Both cases really happened in this repository's own book; see
+[plans/math-typesetting-convention.md](../plans/math-typesetting-convention.md).
 
 ## 📖 Sources and attribution
 
