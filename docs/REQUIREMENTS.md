@@ -1,8 +1,9 @@
 # 🎯 Requirements
 
-Status: **requirements record, revised against the codebase.** The
-underlying discussion was held August 2026; this revision was written
-2026-08-18, against `main` at v5.29.0.
+Status: **requirements record, revised against the codebase.** Written
+2026-08-18. Updated 2026-08-24. The underlying discussion was held
+August 2026; this revision was written 2026-08-18, against `main` at
+v5.29.0.
 
 What a grounded long-form AI writing system must do, how the closed- and
 open-source landscape stacks up against that bar, the architectural
@@ -337,7 +338,9 @@ Cheapest first:
    promoted to blocking in Chitragupta, because no threshold separated
    true from false positives on real prose.
 3. **Structural checks** (cross-references resolve; notation matches
-   registry) -- deterministic, would block (book-scale, not yet built).
+   registry) -- deterministic, but advisory, not blocking: book-scale is
+   built (§5.2), and `python -m chitragupta.draft registry check` always
+   exits 0, a review aid rather than a gate.
 4. **Semantic checks** (does the cited source support the claim --
    NLI/embedding-based) -- probabilistic, **advisory only**.
 5. **Human review** -- outline sign-off and final sign-off.
@@ -397,7 +400,7 @@ shipped it; §5 has the full status table.
    (`docs/ZOTERO.md` documents the trap this avoids); brace-matches
    entries to their true end rather than naive `\n}` matching, which
    truncates entries with multi-line fields.
-2. **Parsing**: `chitragupta/pdf_text.py` extracts text per PDF (`pdftotext
+2. **Parsing**: `chitragupta/pdf_text/` extracts text per PDF (`pdftotext
    -layout` or `docling`), preserving page boundaries (form-feed splits)
    so every downstream check can report page numbers.
 3. **Ledger**: `content/ledger.sqlite` content-hashes every artifact
@@ -485,7 +488,7 @@ shipped it; §5 has the full status table.
     soft-solved" -- everything else in that paragraph is what #106
     would have built and didn't.
 
-### 📕 4.6 Scaling to books — not yet built
+### 📕 4.6 Scaling to books — built (#135-#139, see §5.2 and BOOKS.md)
 
 1. **Spec/outline artifact** with human sign-off before any prose
    (#136).
@@ -497,8 +500,9 @@ shipped it; §5 has the full status table.
    unit generations; a global consistency pass runs after chapter-level
    parallel generation (#138).
 4. **Global checks**: cross-reference resolution, notation-registry
-   conformance, duplicate-claim detection across chapters -- all
-   deterministic, all blocking (part of #138).
+   conformance, and a claim register across chapters -- all
+   deterministic (`python -m chitragupta.draft registry check`), and all advisory,
+   not blocking: it always exits 0, a review aid rather than a gate (#138).
 5. **LaTeX book assembly** as a genre skill -- data, not code, per §3.7
    (#139).
 

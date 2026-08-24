@@ -1,6 +1,6 @@
 # 📖 Citation provenance
 
-Status: **implemented.** Written 2026-08-01.
+Status: **implemented.** Written 2026-08-01. Updated 2026-08-24.
 
 **Written for** anyone reading a provenance report and deciding what to
 do about a low-scoring claim. **Assumed:** a drafted, gated document.
@@ -78,16 +78,17 @@ finds sources you missed. It says nothing about whether the ones you did
 cite support what you wrote.
 
 The `verbatim` aid is closer but needs you to already know the answer's
-shape. Two of its three modes take the citekey as an argument, so they
+shape. Two of its four modes take the citekey as an argument, so they
 answer a question you have to have asked first:
 
 - `overlap <draft> <citekey>` -- longest verbatim word runs shared
   between the paragraphs citing that key and the source.
 - `locate <citekey> "<phrase>"` -- which page a phrase appears on.
 
-(The third, `scan`, takes no citekey: it slides the whole draft across
-the whole corpus. That is a different question -- *did I reuse anyone's
-wording anywhere* -- and docs/PLAGIARISM.md is where it belongs.)
+(The other two take no citekey. `scan` slides the whole draft across
+the whole corpus -- a different question, *did I reuse anyone's
+wording anywhere*, and docs/PLAGIARISM.md is where it belongs. `recheck`
+re-scans the draft against a baseline `scan --write` filed earlier.)
 
 So it verifies a suspicion you have already formed about a specific
 citekey. It cannot tell you *which* of a draft's forty citations deserve
@@ -537,10 +538,10 @@ document syntax the code did not actually model.
 
 | Piece | Actual |
 | --- | --- |
-| `chitragupta/review/citation_provenance.py` | ~250 lines |
-| `chitragupta/passages.py` | ~150 lines |
-| `_passage_records` in `chitragupta/enrich/docling_parse.py` | ~35 lines |
-| Tests | ~55 cases |
+| `chitragupta/review/citation_provenance.py` | 475 lines |
+| `chitragupta/passages.py` | 338 lines |
+| `passage_records` in `chitragupta/passages.py` | ~40 lines |
+| Tests | 64 cases |
 
 No new dependencies. No changes to `sync`, `citation_gate`, or the
 render chain beyond calling it.

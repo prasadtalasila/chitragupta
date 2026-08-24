@@ -1,6 +1,6 @@
 # 🕸 Proposal: a GROBID stage for a corpus-internal citation graph
 
-Status: **a proposal, not a plan.** Written 2026-08-07.
+Status: **a proposal, not a plan.** Written 2026-08-07. Updated 2026-08-24.
 
 Nothing described here is built, and `[grobid]` is not a setting that
 exists. This document argues a case and
@@ -57,7 +57,7 @@ and is the main cost weighed in [What it would cost](#-what-it-would-cost).
 
 Two layers touch PDFs, and neither produces bibliographic structure:
 
-- **The corpus layer** (`chitragupta/pdf_text.py`, via `python -m
+- **The corpus layer** (`chitragupta/pdf_text/`, via `python -m
   chitragupta.corpus sync`)
   extracts plain text per citekey to `content/parsed/<citekey>.txt`,
   feeding BM25 retrieval in `chitragupta/retrieval.py`. It dispatches through
@@ -81,7 +81,7 @@ one. It exists to swap what the corpus layer's plain text is *made of*:
 one PDF in, one `.txt` out. GROBID's TEI is structurally different data
 -- nested XML with header, body and back sections -- and forcing it
 through that table would mean either discarding everything but body text
-(defeating the point) or making `pdf_text.py` non-uniform in its return
+(defeating the point) or making `pdf_text/` non-uniform in its return
 type. The right precedent is `docling_parse.py`: a corpus-wide stage
 under `chitragupta/enrich/`, run from `chitragupta/enrich/__main__.py`,
 independent of
@@ -301,9 +301,9 @@ only design that supports it without touching the citekey invariant.
 
 ## 🚫 What this does not change
 
-- **The corpus layer** -- `sync`, `pdf_text.py`, BM25 retrieval:
+- **The corpus layer** -- `sync`, `pdf_text/`, BM25 retrieval:
   untouched.
-- **`[parser].backend`** -- untouched. GROBID is not a `pdf_text.py`
+- **`[parser].backend`** -- untouched. GROBID is not a `pdf_text/`
   backend and does not appear in `_EXTRACTORS`.
 - **docling, embeddings, BERTopic** -- untouched; they run independently
   and write to separate artefacts.

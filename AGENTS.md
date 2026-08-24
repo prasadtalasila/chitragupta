@@ -190,7 +190,7 @@ enrichment layer is optional and nothing above it needs it.
   what keeps this picture free of a cycle -- a per-draft stage wrapping
   either one would reintroduce it.
 - **Layer 4, the review layer -- advisory** (`chitragupta/review/citation_provenance.py`,
-  `chitragupta/review/verbatim_check.py`,
+  `chitragupta/review/verbatim_check/`,
   `chitragupta/review/citation_coverage.py`,
   `chitragupta/review/synthesis.py`,
   `chitragupta/review/figure_layout/`,

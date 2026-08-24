@@ -1,6 +1,6 @@
 # 📦 Packaging: the installable distribution and its command surface
 
-Status: **reference.** Written 2026-08-19.
+Status: **reference.** Written 2026-08-19. Updated 2026-08-24.
 
 What `chitragupta-cli` installs, what you type once it is installed, and
 which of the three names that look identical is actually registered
@@ -20,8 +20,11 @@ the naming, not the semantics.
 > which installs the `chitragupta` and `cg` commands. Every row in the
 > table below is live -- the four layers, and `init`/`doctor`/`install`
 > alike -- and `chitragupta-cli` is published to PyPI via Trusted
-> Publishing on every tagged release (#269). [CLI.md](CLI.md) carries the
-> exhaustive per-flag reference; this table is the surface.
+> Publishing (#269), on every major or minor release -- a PATCH release
+> still gets a GitHub Release with the wheel attached, but does not also
+> reach PyPI, since a published version can never be reused if one had
+> to be spent again for a documentation or CI-only fix. [CLI.md](CLI.md)
+> carries the exhaustive per-flag reference; this table is the surface.
 
 ## 🧭 Table of contents
 
@@ -55,14 +58,19 @@ is not a PyPI name and never was.
 pip install chitragupta-cli
 ```
 
-Published from a tagged release by **Trusted Publishing** -- GitHub's
-OIDC token exchanged for a short-lived PyPI one -- so there is no
-long-lived API token in repository settings to leak or rotate. The
-publish job runs *after* the GitHub Release is created, so a PyPI
-failure would leave a complete, downloadable release behind rather than
-a tag with nothing attached -- the ordering that mattered on the first
-tag, `v6.7.0`, before the publisher was registered on PyPI against this
-repository; every tag since has published cleanly.
+Published from a tagged major or minor release by **Trusted
+Publishing** -- GitHub's OIDC token exchanged for a short-lived PyPI
+one -- so there is no long-lived API token in repository settings to
+leak or rotate. **A PATCH release is not published here.** PyPI never
+accepts a re-upload of a version number, not even a deleted or yanked
+one, so `.github/workflows/release.yml`'s `publish-pypi` job only runs
+for a tag ending `.0` (X.0.0 or X.Y.0); a PATCH tag still gets a GitHub
+Release with the wheel attached, just not a PyPI upload. The publish job
+runs *after* the GitHub Release is created, so a PyPI failure would
+leave a complete, downloadable release behind rather than a tag with
+nothing attached -- the ordering that mattered on the first tag,
+`v6.7.0`, before the publisher was registered on PyPI against this
+repository; every major or minor tag since has published cleanly.
 
 `cg` is likewise **not** a second PyPI project. One distribution declares
 both executables against one entry point:
@@ -125,18 +133,18 @@ command already has -- this is a front door, not a redesign.
 
 | Command | Subcommands / flags |
 | --- | --- |
-| `chitragupta review provenance <draft>` | `--formats` |
+| `chitragupta review provenance <draft>` | `--json`, `--formats` |
 | `chitragupta review verbatim` | `overlap`, `scan`, `recheck`, `locate` |
-| `chitragupta review coverage <draft>` | `--query` (required, repeatable), `--k`, `--write`, `--formats` |
+| `chitragupta review coverage <draft>` | `--query` (required, repeatable), `--k`, `--json`, `--write`, `--formats` |
 | `chitragupta review synthesis <draft>` | `--unit`, `--json`, `--write`, `--formats` |
 | `chitragupta review figure <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review uncited <draft>` | `--genre`, `--json`, `--write`, `--formats` |
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
-| Command              | Flags                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
+| Command              | Flags                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
 That is 4 layers and 21 verbs and aids (3 + 11 + 6 + 1), plus 3
 package-level commands, giving **46 invocable leaf commands**: 3 + 3 +

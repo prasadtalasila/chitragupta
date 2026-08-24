@@ -1,11 +1,11 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Three hooks exist --
-`citation_gate_hook.py`, `style_check_hook.py` and
-`session_start_hook.py` -- sharing one `draft_target.py`, all launching in
-exec form, as `python`. #197 is closed: the placeholder is braced, the
-interpreter name is settled below, and a launcher that cannot start is now
-reported from two sides rather than one.
+Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-23. Three
+hooks exist -- `citation_gate_hook.py`, `style_check_hook.py` and
+`session_start_hook.py` -- sharing one `draft_target.py`, all launching in exec
+form, as `python`. #197 is closed: the placeholder is braced, the interpreter
+name is settled below, and a launcher that cannot start is now reported from
+two sides rather than one.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is

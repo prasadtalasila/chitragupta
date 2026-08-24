@@ -1,6 +1,6 @@
 # ✍ Iterating on a draft
 
-Status: **implemented.** Written 2026-08-06.
+Status: **implemented.** Written 2026-08-06. Updated 2026-08-24.
 
 **Written for** someone changing the drafting layer or the dossier
 format. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md) for the layers
@@ -50,7 +50,7 @@ Half of this pipeline already survives a session ending, and half of it
 doesn't.
 
 `chitragupta/citation_gate.py`, `chitragupta/references.py`,
-`chitragupta/render_output.py` and
+`chitragupta/render_output/` and
 `chitragupta/review/citation_provenance.py` are all stateless with respect to
 *how* a
 draft was written. Hand any of them a `.md` file from last month and they
@@ -525,7 +525,7 @@ Three properties worth knowing:
   skipped. A member is unsafe if it is not a regular file or directory
   (a symlink, a device node), if it escapes the extraction directory, or
   if its top-level directory is not one of `drafts/`, `dossiers/`,
-  `rendered/`. A partially extracted backup is worse than none, because
+  `rendered/`, `review/`. A partially extracted backup is worse than none, because
   it looks like it worked.
 
 ### 🚫 What a bundle does not carry

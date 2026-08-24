@@ -1,6 +1,6 @@
 # 🏗 Design
 
-Status: **reasoning document.** Written 2026-08-02.
+Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-23.
 
 Why this pipeline refuses what it refuses.
 

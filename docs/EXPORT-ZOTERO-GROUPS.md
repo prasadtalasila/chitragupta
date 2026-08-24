@@ -1,6 +1,6 @@
 # 📚 Populating `groups` in a plugin-free Zotero BibTeX export
 
-Status: **how-to.** Written 2026-08-17.
+Status: **how-to.** Written 2026-08-17. Updated 2026-08-23.
 
 **Written for** someone who wants Zotero collection labels in the ledger
 but cannot get [Better BibTeX](https://retorque.re/zotero-better-bibtex/)

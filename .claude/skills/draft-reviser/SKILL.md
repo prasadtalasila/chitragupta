@@ -626,7 +626,7 @@ discards the dossier and pays to rediscover a worse version of it.
 
 ## When there is no dossier
 
-Drafts written before `chitragupta/dossier.py` existed have none, and so do
+Drafts written before `chitragupta/dossier/` existed have none, and so do
 drafts written by hand. Bootstrap rather than refusing:
 
 ```bash

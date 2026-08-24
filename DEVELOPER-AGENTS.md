@@ -90,9 +90,9 @@ file directly is pandoc's `--citeproc`, which is not this codebase. See
 [AGENTS.md](AGENTS.md) for why `bib_reader` is the sole reader.
 
 What a part *does* and what it *costs to install* are separate axes:
-`chitragupta/render_output.py` is drafting-layer code that needs no package from
+`chitragupta/render_output/` is drafting-layer code that needs no package from
 the `enrich` group, which is why it sits in `chitragupta/` rather than
-`chitragupta/enrich/`. `chitragupta/review/verbatim_check.py` is the same axis
+`chitragupta/enrich/`. `chitragupta/review/verbatim_check/` is the same axis
 read the
 other way: it sits beside the two aids it belongs with, not in
 `scripts/`, which holds dev tooling and no layer entry point at all.
@@ -261,7 +261,7 @@ Three, each learned from a bug rather than chosen:
   block-buffered when it isn't a terminal, and the tail of an
   interrupted run is the part worth keeping.
 - **Classify a failure by cause on the exception, not by matching its
-  message.** `pdf_text.py` sets `transient` and `timed_out` marks that
+  message.** `pdf_text/` sets `transient` and `timed_out` marks that
   survive the pool's pickling; `sync` reports each cause separately
   because they want opposite fixes (raise the timeout and `--reparse`
   versus fix or remove the PDF). Adding a cause means adding a mark, not
@@ -470,8 +470,8 @@ no DTaaS config to inherit it from:
   (BLE001 -- fixed by narrowing, not suppressing).
 - **One of the 12 existing `# noqa: BLE001` markers was already
   unneeded**, and `RUF100` is what proved it:
-  `chitragupta/pdf_text.py`'s `_extract_docling` re-raises via `raise ...
-  from exc`, which BLE001's own definition of "blind" exempts. `bench/`'s
+  `chitragupta/pdf_text/_backends.py`'s `_extract_docling` re-raises via
+  `raise ... from exc`, which BLE001's own definition of "blind" exempts. `bench/`'s
   two markers were checked the same way and are genuine --
   `bench/README.md` records `bench/`'s exclusion from every check
   including this one as a decision (#356), unchanged, so they stay inert
@@ -829,6 +829,13 @@ of commits:
   without a fallback, changes a CLI's argument shape, or otherwise
   requires an existing user to change how they invoke or configure the
   pipeline.
+
+Every tag gets a GitHub Release with the wheel/sdist attached, but only
+a **PATCH-free** tag (X.0.0 or X.Y.0) also publishes to PyPI --
+`.github/workflows/release.yml`'s `publish-pypi` job skips a tag ending
+anything other than `.0`, since a published version can never be
+reused and a PATCH release doesn't need `pip install chitragupta-cli`
+to see it immediately. `docs/PACKAGING.md` has the reasoning.
 
 Release notes go in the GitHub Release body, not the git tag message.
 `.github/RELEASE_TEMPLATE.md` has the shape to follow -- GitHub does *not*

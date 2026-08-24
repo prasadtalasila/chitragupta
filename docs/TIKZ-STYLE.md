@@ -1,9 +1,9 @@
 # 📐 TikZ figure style: layout, typography, and the pre-flight checklist
 
-Status: **standard, not mechanically checked.** Written 2026-08-21. A
-future review-layer aid ([FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s D2)
-may check some of the binary items below by compiling the figure;
-nothing here is gated today.
+Status: **standard, not mechanically checked.** Written 2026-08-21. Updated
+2026-08-24. A future review-layer aid
+([FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s D2) may check some of the binary
+items below by compiling the figure; nothing here is gated today.
 
 This is the TikZ-specific half of
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's figure contract:

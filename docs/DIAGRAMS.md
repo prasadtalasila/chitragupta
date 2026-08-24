@@ -1,6 +1,6 @@
 # 📐 The workflow, drawn eleven ways
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
 
 Every diagram here describes the same pipeline. They come in three groups:
 
@@ -238,7 +238,7 @@ flowchart TB
     direction TB
     BR["<b>chitragupta/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
-    PT["<b>chitragupta/pdf_text.py</b> — extract text<br/><small>backend <code>pdftotext</code> · or <code>docling</code><br/>serial by default; opt-in worker pool</small>"]
+    PT["<b>chitragupta/pdf_text/</b> — extract text<br/><small>backend <code>pdftotext</code> · or <code>docling</code><br/>serial by default; opt-in worker pool</small>"]
     TXT[/"<b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     ADV["<i>reported, never fatal:</i><br/>near-duplicates · parse-quality warning · stale citekeys<br/><small>deletion needs <code>--remove-stale</code></small>"]
     BR --> LED --> PT --> TXT --> ADV
@@ -284,8 +284,10 @@ flowchart TB
     direction TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
-    H3["<b>bertopic</b><br/><small>content/topics.json</small>"]
-    H1 --> H2 --> H3
+    H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
+    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]
+    H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
+    H1 --> H2 --> H3 --> H4 --> H5
   end
 
   %% ─────────────── AIDS (side branch) ───────────────
@@ -382,6 +384,8 @@ flowchart TB
       DOC[/"<b>content/docling/&lt;doc&gt;.md</b><br/>+ &lt;doc&gt;.passages.json<br/><b>+ &lt;doc&gt;_artifacts/*.png</b> — figure bitmaps<br/><b>+ &lt;doc&gt;.figures.json</b> — page, caption, cite string<br/><small>the last two only when <code>[enrich].docling_images</code><br/>is on; Docling reads the <b>PDF</b>, never content/parsed/</small>"/]
       CHR[("content/chroma/")]
       TOP[/"content/topics.json"/]
+      SED[/"content/topic_seeds.json"/]
+      CVG[/"content/topic_set.json"/]
     end
 
     subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
@@ -404,8 +408,8 @@ flowchart TB
   CFG -. "read once at import,<br/>env vars override" .-> GEN
 
   BIB -- "chitragupta/bib_reader.py" --> LED
-  PDF -- "chitragupta/pdf_text.py" --> TXT
-  PDF -- "chitragupta/pdf_text.py<br/><small>docling backend only</small>" --> CPS
+  PDF -- "chitragupta/pdf_text/" --> TXT
+  PDF -- "chitragupta/pdf_text/<br/><small>docling backend only</small>" --> CPS
   LED -- "which PDFs need a parse" --> TXT
   LED -- "chitragupta/enrich/corpus.py<br/><small>every row, keyed by <code>citekey</code></small>" --> DOC
   TXT -- "chitragupta/enrich/embed_index.py" --> CHR
@@ -413,6 +417,9 @@ flowchart TB
   CPS -. "<b>chitragupta/enrich/docling_parse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
   DOC --> CHR
   TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
+  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the author's own topic phrases,<br/>matched against the same embeddings</small>" --> SED
+  TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
+  SED --> CVG
 
   TXT -- "chitragupta/retrieval.py" --> RIX
 
@@ -434,7 +441,7 @@ flowchart TB
 
   class BIB,PDF,CFG mine
   class LED,TXT,CPS corpus
-  class DOC,CHR,TOP heavy
+  class DOC,CHR,TOP,SED,CVG heavy
   class RIX,DCA,TCA cache
   class DRF,REN,RVW draft
   class LCK lock
@@ -748,7 +755,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m chitragupta.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m chitragupta.draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>python -m chitragupta.draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -814,7 +821,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>python -m chitragupta.corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 

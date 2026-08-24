@@ -102,11 +102,21 @@ jobs:
   #
   # `needs: release` orders it *after* the GitHub Release is published,
   # deliberately: a PyPI failure then leaves a complete, downloadable
-  # release behind rather than a tag with no artefacts. That ordering is
-  # load-bearing right now, because this job is expected to fail until
-  # Trusted Publishing is configured (see below).
+  # release behind rather than a tag with no artefacts.
+  #
+  # Only a major or minor release publishes here. `endsWith(github.ref_name,
+  # '.0')` is true for X.0.0 and X.Y.0, false for X.Y.Z with Z > 0 -- and
+  # PyPI never accepts a re-upload of a version number, not even a
+  # deleted or yanked one, so a run of PATCH releases (docs-only fixes,
+  # CI-only changes -- DEVELOPER-AGENTS.md's "Versioning and releases")
+  # was each permanently spending a slot on the index for a change a PyPI
+  # install doesn't need to see quickly. A patch tag still gets a GitHub
+  # Release with the wheel/sdist attached -- the `release` job above runs
+  # unconditionally -- it just does not also reach PyPI; `pip install
+  # chitragupta-cli` always resolves to the latest X.Y.0 either way.
   publish-pypi:
     needs: release
+    if: endsWith(github.ref_name, '.0')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -123,10 +133,12 @@ jobs:
       # one, so there is no long-lived credential to leak or rotate.
       #
       # The publisher is registered on PyPI against this repository, this
-      # workflow filename and the `pypi` environment above -- every tag
-      # since v6.7.0 has published cleanly (docs/PACKAGING.md). A failure
-      # here now is a real regression (a renamed environment, a changed
-      # OIDC trust relationship, a PyPI-side outage), not the expected
+      # workflow filename and the `pypi` environment above -- every major
+      # or minor tag since v6.7.0 that reached this job has published
+      # cleanly (docs/PACKAGING.md); a PATCH tag no longer reaches it at
+      # all, per the `if:` above, rather than reaching it and failing.
+      # A failure here now is a real regression (a renamed environment,
+      # a changed OIDC trust relationship, a PyPI-side outage), not the expected
       # state: it was only expected once, before that first tag, and this
       # comment used to say so. If it fails, the tag and the GitHub
       # Release still land -- this job runs after both, and a failure

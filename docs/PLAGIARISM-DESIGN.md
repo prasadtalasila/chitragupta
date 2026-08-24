@@ -1,12 +1,12 @@
 # 🔍 Plagiarism detection: how the three tiers work, and what was measured
 
 Status: **three detection tiers, all built; the second and third
-advisory-only.** Written 2026-08-15, splitting the design half out of
-[PLAGIARISM.md](PLAGIARISM.md), which had grown to carry both.
+advisory-only.** Written 2026-08-15. Updated 2026-08-24, splitting the design
+half out of [PLAGIARISM.md](PLAGIARISM.md), which had grown to carry both.
 
 **Written for** someone changing `chitragupta/overlap_index.py`,
 `chitragupta/overlap_skipgram.py`, `chitragupta/overlap_embed.py` or
-`chitragupta/review/verbatim_check.py` -- or deciding whether a proposed fourth
+`chitragupta/review/verbatim_check/` -- or deciding whether a proposed fourth
 tier is worth building. **Assumed:**
 `DEVELOPER-AGENTS.md` for the process around a
 change, and [ARCHITECTURE.md](ARCHITECTURE.md) for where the review

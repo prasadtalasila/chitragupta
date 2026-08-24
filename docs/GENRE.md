@@ -1,6 +1,6 @@
 # 🎭 Genres
 
-Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
+Status: **reference.** Written 2026-08-08. Updated 2026-08-24, describing `.claude/skills/`
 as it stands.
 
 **Written for** anyone choosing which skill to ask for, and anyone
@@ -96,7 +96,7 @@ document that fails at both.
 Four of the five drafting skills also render an **evidence sidecar** --
 `content/rendered/<topic>/<name>.evidence.{md,pdf}`, listing each cited
 source and the verbatim spans its dossier marked quotable
-([CLI.md](CLI.md#-python--m-chitraguptadraft-evidence)). It changes what a
+([CLI.md](CLI.md#-chitragupta-draft-evidence)). It changes what a
 finished document set *looks like*, so each genre answers for itself
 rather than inheriting one switch, and the two answers that produce
 nothing are decisions on the record, not omissions:
@@ -256,7 +256,7 @@ fingerprint. What that promises is no *missing* citations, not an empty
 candidate list -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
 
-Drafts written before `chitragupta/dossier.py` existed have no dossier, and
+Drafts written before `chitragupta/dossier/` existed have no dossier, and
 neither do hand-written ones. It bootstraps rather than refusing:
 `dossier init`, then fill in what the draft itself can tell you.
 

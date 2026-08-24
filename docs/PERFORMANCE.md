@@ -1,6 +1,6 @@
 # ⚡ Performance
 
-Status: **measurements.** Written 2026-08-03.
+Status: **measurements.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone choosing settings on their own hardware and
 wanting the measured cost rather than a guess. **Assumed:**
@@ -85,7 +85,7 @@ fallback.
 
 ## ⚙ `[parser].backend` -- pdftotext or docling
 
-Measured on 5 real bibliography PDFs, cold (no caching -- `pdf_text.py`
+Measured on 5 real bibliography PDFs, cold (no caching -- `pdf_text/`
 does not cache, so these are extraction times, not `sync`'s steady state,
 which skips PDFs whose bytes have not changed).
 

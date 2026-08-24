@@ -1,6 +1,6 @@
 # 🏗 The pipeline, its ladders, and its tiers
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
 
 **Written for** anyone who has hit a fallback and wants to know what they
 lost by it. **Assumed:** [CLI.md](CLI.md) for the commands named here.
@@ -64,8 +64,8 @@ The numbers are introduction order, not a dependency rank.
 
 **Stage.** One step within a layer, with its own name and its own status.
 The enrichment layer is the only one that literally enumerates them
-(`--stages docling,embed,bertopic`, each reporting `ok`, `partial`,
-`skipped`, `missing-binary` or `error`). There are three, and every one
+(`--stages docling,embed,bertopic,seed-topics,converge`, each reporting `ok`, `partial`,
+`skipped`, `missing-binary` or `error`). There are five, and every one
 of them writes a corpus artefact -- which is why the layer takes the same
 write lock as `sync`, and why its unit of work is the corpus rather than
 a draft.
@@ -204,7 +204,7 @@ Every command above and the flags it takes are in
 Worth stating plainly, because the natural assumption is the expensive
 one and it is wrong. **By default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
-for one of the three stages. The rest of this section is its reach.
+for one of the five stages. The rest of this section is its reach.
 
 `chitragupta/enrich/__main__.py` calls `corpus.build_corpus()`, which returns
 **every row in the ledger, and nothing else.** `ledger.all_items()` is a
@@ -305,7 +305,7 @@ Reuse is refused in three cases:
 supports it, and may it be quoted?
 
 **Where:**
-[`chitragupta/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/passages.py),
+[`chitragupta/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/passages.py),
 read by
 `chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`.
 
@@ -354,7 +354,7 @@ to quote. See [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 this document?
 
 **Where:** `embed_index.get_text()` in
-[`chitragupta/enrich/embed_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/embed_index.py),
+[`chitragupta/enrich/embed_index.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/enrich/embed_index.py),
 also used by
 `chitragupta/enrich/topic_model.py`.
 
@@ -385,7 +385,7 @@ that, once.
 **The question:** which device parses this PDF?
 
 **Where:**
-[`chitragupta/pdf_text.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/pdf_text.py),
+[`chitragupta/pdf_text/`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/pdf_text/__init__.py),
 for both the corpus
 layer's docling backend and the enrichment layer's docling stage.
 
@@ -421,7 +421,7 @@ here.
 Three here, four in
 [ARCHITECTURE.md](ARCHITECTURE.md#-ladders-and-tiers)'s tier-set table,
 and both are right. The fourth is the **detection tiers** behind
-`chitragupta/review/verbatim_check.py`'s `scan`.
+`chitragupta/review/verbatim_check/`'s `scan`.
 
 It has no section here because this page's question -- *where does the
 pipeline choose, and what does it choose between?* -- has no answer for
@@ -458,7 +458,7 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids), `chitragupta.passages` |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.review` (all six aids), `chitragupta.passages` |
 | 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -527,9 +527,9 @@ flowchart LR
 
   subgraph HOW["<b>…implemented in…</b>"]
     direction TB
-    M1["<code>chitragupta/pdf_text.py</code>"]
+    M1["<code>chitragupta/pdf_text/</code>"]
     M2["<code>pyproject.toml</code> groups"]
-    M3["<code>chitragupta/render_output.py</code>"]
+    M3["<code>chitragupta/render_output/</code>"]
     M4["<code>chitragupta/passages.py</code>"]
     M5["<code>chitragupta/enrich/embed_index.py</code>"]
   end
@@ -574,7 +574,7 @@ Two things that diagram makes visible and the table below does not.
 
 The parser backend is the only decision that reaches into two others. It
 decides whether the evidence ladder has a rung 2 to land on, and it
-shares `chitragupta/pdf_text.py` with the accelerator ladder.
+shares `chitragupta/pdf_text/` with the accelerator ladder.
 
 And two decisions leave nothing on disk at all. They change what you are
 *allowed to do* with the files, or how long it takes to get them. That is
@@ -588,10 +588,10 @@ thing, is made here, is implemented there, and shows up on disk as that.*
 | --- | --- | --- | --- | --- | --- |
 | Evidence passages | ladder, 4 rungs | what may be quoted | at read time, per citekey | `chitragupta/passages.py` | `*.passages.json`, else nothing |
 | Enrichment text source | ladder, 3 rungs | what gets embedded | at index time, per doc | `chitragupta/enrich/embed_index.py` | `content/chroma/` |
-| Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `chitragupta/pdf_text.py` | none -- affects time only |
-| Parser backend | tier | how PDFs become text | `[parser].backend` | `chitragupta/pdf_text.py` | `content/parsed/*.txt` |
+| Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `chitragupta/pdf_text/` | none -- affects time only |
+| Parser backend | tier | how PDFs become text | `[parser].backend` | `chitragupta/pdf_text/` | `content/parsed/*.txt` |
 | Interpreter | tier | what can run at all | the command you type | `pyproject.toml` groups | none |
-| Render format | tier | what the draft becomes | `--format` | `chitragupta/render_output.py` | `content/rendered/` |
+| Render format | tier | what the draft becomes | `--format` | `chitragupta/render_output/` | `content/rendered/` |
 
 And the same decisions against the layer that makes them:
 

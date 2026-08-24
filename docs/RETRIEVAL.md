@@ -1,6 +1,6 @@
 # 🔎 Retrieval: BM25, embeddings, and topic models
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-23.
 
 Three things in this repository search or organise your corpus. Two of
 them answer the same question in different ways, and the third answers a

@@ -1,6 +1,6 @@
 # ✍ House style: the prose axis, and what persists across drafts
 
-Status: **proposal, not a plan.** Written 2026-08-11.
+Status: **proposal, not a plan.** Written 2026-08-11. Updated 2026-08-23.
 
 Prose is the axis an unattended loop can improve *best*, which is the
 reverse of the usual intuition that language is the soft part and citations

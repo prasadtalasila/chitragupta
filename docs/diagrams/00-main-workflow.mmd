@@ -18,7 +18,7 @@ flowchart TB
     direction TB
     BR["<b>chitragupta/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
-    PT["<b>chitragupta/pdf_text.py</b> — extract text<br/><small>backend <code>pdftotext</code> · or <code>docling</code><br/>serial by default; opt-in worker pool</small>"]
+    PT["<b>chitragupta/pdf_text/</b> — extract text<br/><small>backend <code>pdftotext</code> · or <code>docling</code><br/>serial by default; opt-in worker pool</small>"]
     TXT[/"<b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     ADV["<i>reported, never fatal:</i><br/>near-duplicates · parse-quality warning · stale citekeys<br/><small>deletion needs <code>--remove-stale</code></small>"]
     BR --> LED --> PT --> TXT --> ADV
@@ -64,8 +64,10 @@ flowchart TB
     direction TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
-    H3["<b>bertopic</b><br/><small>content/topics.json</small>"]
-    H1 --> H2 --> H3
+    H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
+    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]
+    H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
+    H1 --> H2 --> H3 --> H4 --> H5
   end
 
   %% ─────────────── AIDS (side branch) ───────────────

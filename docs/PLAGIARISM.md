@@ -1,12 +1,12 @@
 # 🔍 Plagiarism / verbatim-reuse detection
 
-Status: **implemented, three detection tiers of a planned three.** The
-second and third shipped advisory-only. The third runs only where the
-optional enrichment layer, the Docling passage sidecars and the draft's
-own dossier are all present. Written 2026-08-10; tier 2 added 2026-08-13
+Status: **implemented, three detection tiers of a planned three.** The second
+and third shipped advisory-only. The third runs only where the optional
+enrichment layer, the Docling passage sidecars and the draft's own dossier are
+all present. Written 2026-08-10. Updated 2026-08-24; tier 2 added 2026-08-13
 (#133), tier 3 added 2026-08-15 (#134/#164).
 
-**Written for** someone deciding whether `chitragupta/review/verbatim_check.py`'s
+**Written for** someone deciding whether `chitragupta/review/verbatim_check/`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
 a synced corpus (`python -m chitragupta.corpus sync`) and a citekey-verified draft
@@ -49,7 +49,7 @@ This pipeline draws citekeys from a synced bibliography and gates on
 them (`chitragupta/citation_gate.py`): a draft cannot cite a source that isn't
 real. That answers "is every citation genuine" and says nothing about
 "does the wording around a citation actually belong to whoever it credits,
-or to someone else". `chitragupta/review/verbatim_check.py`'s two modes exist to
+or to someone else". `chitragupta/review/verbatim_check/`'s two modes exist to
 answer the second question, mechanically, over what is currently checked
 verbatim word-n-gram reuse.
 
@@ -154,7 +154,7 @@ It also carries `id`, a position-free name for the finding, and four
 fields that locate it in the draft as written. One of those is easy to
 misread: `start` is a word offset into the normalised stream, not a
 position in the draft file, and the locators are what to use instead. All
-of them are in [CLI.md](CLI.md#-python--m-chitraguptareview-verbatim).
+of them are in [CLI.md](CLI.md#-chitragupta-review-verbatim).
 
 Matches are grouped by `(citekey, diagonal)`, where `diagonal =
 source_position - draft_position`. That `source_position` is a *global*
@@ -353,7 +353,7 @@ is not detected. An empty findings list is not a clean bill of health.
 
 `[parser].backend` (`config.toml`) is `pdftotext` or `docling`. Both
 backends' output gets the same `\f` page-break convention
-(`chitragupta/pdf_text.py`), so nothing about `overlap`/`scan`'s page-locating
+(`chitragupta/pdf_text/`), so nothing about `overlap`/`scan`'s page-locating
 breaks either way. But the two extract genuinely different text, and this
 project's own corpus is configured for `docling`.
 
@@ -364,7 +364,7 @@ by this project's two full-length benchmark chapters
 were extracted fresh with `pdftotext -layout` and compared against the
 corpus's existing `docling`-parsed text, with `scan` run over both.
 
-**Page counts matched exactly for all 26 documents.** `chitragupta/pdf_text.py`'s
+**Page counts matched exactly for all 26 documents.** `chitragupta/pdf_text/`'s
 own comment warns that docling can under-count pages relative to
 pdftotext when a page contributes no extracted item at all -- a blank
 page, or a pure-image one. That is a real risk in principle, and was not

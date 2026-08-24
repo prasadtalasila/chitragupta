@@ -1,6 +1,6 @@
 # 🏗 Architecture
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
 
 What actually runs, what each part writes, and which parts are optional.
 
@@ -81,7 +81,7 @@ flowchart TB
   subgraph JH["<b>LAYER 3 · ENRICHMENT</b> — optional · you run it, no skill does"]
     direction TB
     FULL["<code>python -m chitragupta.enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
-    OUT3[/"content/docling/ · content/chroma/ · content/topics.json"/]
+    OUT3[/"content/docling/ · content/chroma/ · content/topics.json · content/topic_seeds.json · content/topic_set.json"/]
     FULL --> OUT3
   end
 
@@ -249,8 +249,10 @@ ever reads what it produced.
 | `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | scoped |
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
+| `seed-topics` | `content/topic_seeds.json` -- every citekey matching one of the author's own topic phrases, many-to-many | refused |
+| `converge` | `content/topic_set.json` -- `bertopic`'s emergent clusters and `seed-topics`' author-named ones, joined into one topic set | refused |
 
-**Three stages, and no more than three.** A review report and a draft
+**Five stages, and no more than five.** A review report and a draft
 render are deliberately *not* among them, though both would be three-line
 wrappers around `python -m chitragupta.review provenance` and
 `python -m chitragupta.draft render`. They are conveniences rather than
@@ -285,7 +287,7 @@ What the three build stages are *for*, and which one to build first, is in
 `chitragupta/enrich/docling_parse.py`, `embed_index.py` and `topic_model.py` have
 no `__main__` block, so `python -m chitragupta.enrich.docling_parse` imports the
 module, does nothing, and exits 0 -- a silent no-op, not an error.
-`chitragupta/render_output.py` is not among them at all: it has a CLI, needs no
+`chitragupta/render_output/` is not among them at all: it has a CLI, needs no
 package from the `enrich` group, and belongs to the drafting layer --
 which is why it lives in `chitragupta/` rather than in the package.
 
@@ -425,10 +427,10 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters -- see below |
 | `content/rendered/*.md`, `*.tex` | **Yes** -- byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
-| `content/review/*.md` -- the four review reports, and `*.verbatim.json` beside one of them | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
+| `content/review/*.md` -- the six review reports, and a `.json` sibling beside each | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input -- UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change -- two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
-| `content/overlap/` | A cache, not an output: `chitragupta/review/verbatim_check.py`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
+| `content/overlap/` | A cache, not an output: `chitragupta/review/verbatim_check/`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
 | `content/chroma/` | The embedding store the `embed` stage writes -- persistent, not a cache, but incremental: a document whose text hashes the same is not re-embedded. Inherits whatever instability its input text has |
 
 ### 🗄 The passage sidecar, specifically
@@ -505,7 +507,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all four aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all six aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -533,7 +535,7 @@ The last residue of the same confusion was `verbatim_check.py`, a
 review-layer command living in `scripts/` -- the directory that then held
 the enrichment layer's entry point. It ran on bare `python` like the
 other two aids and was in no way heavier; only its path suggested
-otherwise. It is `chitragupta/review/verbatim_check.py` now, and `scripts/` holds
+otherwise. It is `chitragupta/review/verbatim_check/` now, and `scripts/` holds
 no layer entry point at all, leaving only genuine dev tooling behind.
 
 Both moves were corrections of a label, not of a cost.
@@ -609,7 +611,7 @@ satisfy it.
 
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
-`corpus`, and all four review aids share `chitragupta/review/__init__.py`'s
+`corpus`, and all six review aids share `chitragupta/review/__init__.py`'s
 output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 
@@ -676,7 +678,7 @@ the first rung, and falls to the next when that one can't answer. A
 | --- | --- | --- |
 | Evidence passages | the enrichment layer's `.passages.json` -> the corpus layer's `.passages.json` -> parsed text split on page breaks -> a fresh `pdftotext` run | `chitragupta/passages.py` |
 | Enrichment text source | `content/docling/<id>.md` -> the ledger's parsed `.txt` -> a fresh `pdftotext` run | `embed_index.get_text` |
-| Accelerator | one CUDA device per worker -> that worker falls back to the CPU on an out-of-memory error | `chitragupta/pdf_text.py` |
+| Accelerator | one CUDA device per worker -> that worker falls back to the CPU on an out-of-memory error | `chitragupta/pdf_text/` |
 
 A **tier** is a menu you choose from, with no automatic descent. Naming
 these apart matters because the failure modes differ: a ladder degrades

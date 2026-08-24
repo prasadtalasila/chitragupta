@@ -1,6 +1,6 @@
 # 💡 Why an auto-improvement loop, and where its line falls
 
-Status: **reasoning document.** Written 2026-08-11.
+Status: **reasoning document.** Written 2026-08-11. Updated 2026-08-23.
 
 Why this repository should be able to repair a draft on its own, what it
 must never repair, and the one documented rule that stands in the way.

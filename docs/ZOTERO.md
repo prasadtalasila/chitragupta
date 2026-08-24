@@ -1,6 +1,6 @@
 # 📚 Exporting your library from Zotero
 
-Status: **how-to.** Written 2026-08-03.
+Status: **how-to.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone getting their own library into this pipeline for
 the first time. **Assumed:** nothing. **Not covered here:** what the
@@ -17,7 +17,7 @@ general feature):
 1. Right-click the collection you want (or use **File -> Export Library**
    for everything) -> **Export Collection...** / **Export Library...**.
 2. Format: **BibTeX**. Check **Export Files** -- without it you get
-   metadata only and `pdf_text.py` will have nothing to extract.
+   metadata only and `pdf_text/` will have nothing to extract.
 3. Save it as `bibliography` directly inside this repo's `papers/`
    directory. Zotero writes `papers/bibliography.bib` plus a **companion
    folder** (`papers/bibliography/`, `files/<id>/<name>.pdf` inside) for
@@ -113,7 +113,7 @@ A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into to have it indexed:
 the enrichment layer's corpus is the bibliography, so anything it can
 retrieve is something a draft may cite -- see
-[`chitragupta/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/src/enrich/corpus.py)
+[`chitragupta/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/enrich/corpus.py)
 and AGENTS.md's citekey
 invariant. (Earlier versions did have such a directory, `papers/pdfs/`;
 it is gone. A PDF there is now ignored.)
