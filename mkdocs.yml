@@ -152,6 +152,7 @@ nav:
       - Settings: docs/CONFIG.md
   - Understanding the system:
       - Architecture: docs/ARCHITECTURE.md
+      - Rendering flow: docs/RENDERING-FLOW.md
       - The dossier (machine-facing): docs/DOSSIER.md
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
