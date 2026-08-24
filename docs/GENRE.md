@@ -96,7 +96,7 @@ document that fails at both.
 Four of the five drafting skills also render an **evidence sidecar** --
 `content/rendered/<topic>/<name>.evidence.{md,pdf}`, listing each cited
 source and the verbatim spans its dossier marked quotable
-([CLI.md](CLI.md#-python--m-chitraguptadraft-evidence)). It changes what a
+([CLI.md](CLI.md#-chitragupta-draft-evidence)). It changes what a
 finished document set *looks like*, so each genre answers for itself
 rather than inheriting one switch, and the two answers that produce
 nothing are decisions on the record, not omissions:

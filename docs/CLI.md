@@ -20,27 +20,28 @@ short path; this is the full set.
 - [Which interpreter](#-which-interpreter)
 - [The full first run, step by step](#-the-full-first-run-step-by-step)
 - [Every command and flag](#-every-command-and-flag)
-  - [`chitragupta.corpus sync`](#-python--m-chitraguptacorpus-sync)
+  - [`chitragupta corpus sync`](#-chitragupta-corpus-sync)
   - [When `sync` re-parses a document it already parsed](#-when-sync-re-parses-a-document-it-already-parsed)
-  - [`chitragupta.corpus ledger`](#-python--m-chitraguptacorpus-ledger)
-  - [`chitragupta.corpus topics`](#-python--m-chitraguptacorpus-topics)
-  - [`chitragupta.draft gate`](#-python--m-chitraguptadraft-gate)
-  - [`chitragupta.draft references`](#-python--m-chitraguptadraft-references)
-  - [`chitragupta.draft evidence`](#-python--m-chitraguptadraft-evidence)
-  - [`chitragupta.draft dossier`](#-python--m-chitraguptadraft-dossier)
-  - [`chitragupta.draft retrieve`](#-python--m-chitraguptadraft-retrieve)
-  - [`chitragupta.review coverage`](#-python--m-chitraguptareview-coverage)
-  - [`chitragupta.review figure`](#-python--m-chitraguptareview-figure)
-  - [`chitragupta.review provenance`](#-python--m-chitraguptareview-provenance)
-  - [`chitragupta.review synthesis`](#-python--m-chitraguptareview-synthesis)
-  - [`chitragupta.review uncited`](#-python--m-chitraguptareview-uncited)
-  - [`chitragupta.review verbatim`](#-python--m-chitraguptareview-verbatim)
-  - [`chitragupta.draft render`](#-python--m-chitraguptadraft-render)
-  - [`chitragupta.draft spec`](#-python--m-chitraguptadraft-spec)
-  - [`chitragupta.draft unit`](#-python--m-chitraguptadraft-unit)
-  - [`chitragupta.draft registry`](#-python--m-chitraguptadraft-registry)
-  - [`chitragupta.draft tldr`](#-python--m-chitraguptadraft-tldr)
-  - [`chitragupta.enrich`](#-python--m-chitraguptaenrich)
+  - [`chitragupta corpus ledger`](#-chitragupta-corpus-ledger)
+  - [`chitragupta corpus topics`](#-chitragupta-corpus-topics)
+  - [`chitragupta draft gate`](#-chitragupta-draft-gate)
+  - [`chitragupta draft references`](#-chitragupta-draft-references)
+  - [`chitragupta draft evidence`](#-chitragupta-draft-evidence)
+  - [`chitragupta draft dossier`](#-chitragupta-draft-dossier)
+  - [`chitragupta draft retrieve`](#-chitragupta-draft-retrieve)
+  - [`chitragupta review coverage`](#-chitragupta-review-coverage)
+  - [`chitragupta review figure`](#-chitragupta-review-figure)
+  - [`chitragupta review provenance`](#-chitragupta-review-provenance)
+  - [`chitragupta review synthesis`](#-chitragupta-review-synthesis)
+  - [`chitragupta review uncited`](#-chitragupta-review-uncited)
+  - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
+  - [`chitragupta draft render`](#-chitragupta-draft-render)
+  - [`chitragupta draft style`](#-chitragupta-draft-style)
+  - [`chitragupta draft spec`](#-chitragupta-draft-spec)
+  - [`chitragupta draft unit`](#-chitragupta-draft-unit)
+  - [`chitragupta draft registry`](#-chitragupta-draft-registry)
+  - [`chitragupta draft tldr`](#-chitragupta-draft-tldr)
+  - [`chitragupta enrich`](#-chitragupta-enrich)
   - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#-scriptsreleasepy)
 - [Running sync on a schedule](#-running-sync-on-a-schedule)
@@ -404,18 +405,20 @@ package now ships as a runnable command instead.
 
 Defaults shown are the value used when the flag is omitted.
 
-**Examples below assume one interpreter is already on `PATH`** --
-`source .venv-full/bin/activate` once, either path (as in [the full
-first run](#-the-full-first-run-step-by-step)). Every command is then
-exactly `python -m chitragupta.<layer> <verb>`, or `chitragupta <layer>
-<verb>` if you installed the package -- see [Which
-interpreter](#-which-interpreter) for which needs which. Two sections
-below this one -- [Running sync on a schedule](#-running-sync-on-a-schedule)
-and [Environment variables](#-environment-variables) -- spell out
+**Examples below show the installed package's console script** --
+`chitragupta <layer> <verb>`. From a git checkout without the package
+installed, `python -m chitragupta.<layer> <verb>` reaches the exact same
+command; [Which interpreter](#-which-interpreter) has which form needs
+which environment, and why both are kept working on purpose rather than
+one replacing the other. Either way, `source .venv-full/bin/activate`
+once first (as in [the full first run](#-the-full-first-run-step-by-step))
+so the right interpreter is already on `PATH`. Two sections below this
+one -- [Running sync on a schedule](#-running-sync-on-a-schedule) and
+[Environment variables](#-environment-variables) -- spell out
 `.venv-full/bin/python` in full instead, because a cron job or a systemd
 unit has no shell to have activated anything in.
 
-### 🔄 `python -m chitragupta.corpus sync`
+### 🔄 `chitragupta corpus sync`
 
 Bibliography -> ledger -> parsed text. **Needs the venv.** Takes the
 write lock, so only one run at a time; a second run exits **2** rather
@@ -428,10 +431,10 @@ than waiting.
 | `--remove-stale` | off (report only) | Delete ledger rows for citekeys no longer in the bib file. Without it they are only *reported* |
 
 ```bash
-python -m chitragupta.corpus sync
-# python -m chitragupta.corpus sync --reparse
-# python -m chitragupta.corpus sync --remove-stale
-# python -m chitragupta.corpus sync --reparse --remove-stale
+chitragupta corpus sync
+# chitragupta corpus sync --reparse
+# chitragupta corpus sync --remove-stale
+# chitragupta corpus sync --reparse --remove-stale
 
 # Exit codes: 0 = clean, 1 = at least one parse failed,
 #             2 = another run holds the lock.
@@ -453,10 +456,10 @@ sidecar you delete by hand is restored by the same check.
 It costs one re-parse each, once (6.65s per PDF serial, 0.62s at twelve
 workers -- see [PERFORMANCE.md](PERFORMANCE.md)), and the run reports
 them the way it reports any other parse. Nothing to do, in other words --
-but `python -m chitragupta.corpus sync --reparse` forces it all at once if you
+but `chitragupta corpus sync --reparse` forces it all at once if you
 would rather not wait for the next run.
 
-### 🗄 `python -m chitragupta.corpus ledger`
+### 🗄 `chitragupta corpus ledger`
 
 Read-only view of the corpus layer. **Takes no lock**, so it works while
 a sync is running. With no flags it prints a summary.
@@ -471,13 +474,13 @@ a sync is running. With no flags it prints a summary.
 | `--collection NAME` | -- | List only items in this collection, or one beneath it |
 
 ```bash
-python -m chitragupta.corpus ledger
-# python -m chitragupta.corpus ledger --list
-# python -m chitragupta.corpus ledger --status parse_failed
-# python -m chitragupta.corpus ledger --status no_pdf
-# python -m chitragupta.corpus ledger --citekey talasila_composable_2025
-# python -m chitragupta.corpus ledger --collections
-# python -m chitragupta.corpus ledger --collection "Digital twins"
+chitragupta corpus ledger
+# chitragupta corpus ledger --list
+# chitragupta corpus ledger --status parse_failed
+# chitragupta corpus ledger --status no_pdf
+# chitragupta corpus ledger --citekey talasila_composable_2025
+# chitragupta corpus ledger --collections
+# chitragupta corpus ledger --collection "Digital twins"
 ```
 
 Collections need a Better BibTeX export with JabRef fields enabled --
@@ -487,7 +490,7 @@ nothing and says why. See
 parent collection selects everything beneath it, matching is
 case-insensitive, and it is per-segment rather than by substring.
 
-### 🏷 `python -m chitragupta.corpus topics`
+### 🏷 `chitragupta corpus topics`
 
 Read-only view of which papers matched each of your seed topics.
 **Takes no lock and needs no venv**, though what it reads is written by a
@@ -499,8 +502,8 @@ stage that needs both. With no flags it prints every topic.
 | `--topic PHRASE` | -- | Show only this seed topic's papers |
 
 ```bash
-python -m chitragupta.corpus topics
-# python -m chitragupta.corpus topics --topic "digital twin"
+chitragupta corpus topics
+# chitragupta corpus topics --topic "digital twin"
 ```
 
 Exits `1` when no report has been written yet, or when `--topic` names a
@@ -509,7 +512,7 @@ that isn't there" exit `ledger --citekey` already uses.
 
 Seed topics are phrases you write yourself in `content/seed_topics.toml`
 (start from `assets/style/topics.toml.example`), matched against the
-corpus by `python -m chitragupta.enrich --stages seed-topics`. **A phrase
+corpus by `chitragupta enrich --stages seed-topics`. **A phrase
 is one topic and is never split into words**, and a paper is listed under
 every topic it matched rather than only its closest -- so this report is
 many-to-many, unlike `content/topics.json`, where BERTopic gives each
@@ -518,7 +521,7 @@ are listed too; that list is the point of the report when you are
 deciding what to draft next. See
 [CONFIG.md](CONFIG.md#-seed-topics-organising-the-corpus-by-phrases-you-wrote).
 
-### ✅ `python -m chitragupta.draft gate`
+### ✅ `chitragupta draft gate`
 
 The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 **Takes no options** -- every argument is a file to check.
@@ -529,8 +532,8 @@ The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
 | `<file> [<file> ...]` | One or more drafts to check |
 
 ```bash
-python -m chitragupta.draft gate content/drafts/survey.md
-# python -m chitragupta.draft gate content/drafts/*.md      # several at once
+chitragupta draft gate content/drafts/survey.md
+# chitragupta draft gate content/drafts/*.md      # several at once
 
 # Exit codes: 0 = every citation verified,
 #             1 = at least one unresolved citekey, or a file outside content/,
@@ -552,10 +555,10 @@ has one entry point, and this is it (see
 module and exits **0** with empty stdout. For every other command in this
 layer that trap is a harmless no-op, but for the gate it means an
 automated caller gets a **silent, unconditional pass** on a draft nothing
-ever checked. `python -m chitragupta.draft` with no arguments prints the layer's
+ever checked. `chitragupta draft` with no arguments prints the layer's
 usage and exits 0, which is the fastest way to confirm a spelling.
 
-### 📚 `python -m chitragupta.draft references`
+### 📚 `chitragupta draft references`
 
 Append or replace a `References` section built from a draft's own cited
 citekeys.
@@ -573,7 +576,7 @@ markers are still `[@citekey]`:
 Authors, venue, volume and pages come from the ledger's `bib_fields`
 column, which `sync` populates from the bib file. A row synced before
 that column existed has no fields to format, so its entry degrades to
-title and year until the next `python -m chitragupta.corpus sync`.
+title and year until the next `chitragupta corpus sync`.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -582,11 +585,11 @@ title and year until the next `python -m chitragupta.corpus sync`.
 | `--heading HEADING` | `References` | Heading text, e.g. `"6. References"` to match a draft's own numbered headings |
 
 ```bash
-python -m chitragupta.draft references content/drafts/survey.md
-# python -m chitragupta.draft references content/drafts/thesis.md --heading "6. References"
+chitragupta draft references content/drafts/survey.md
+# chitragupta draft references content/drafts/thesis.md --heading "6. References"
 ```
 
-### 🧾 `python -m chitragupta.draft evidence`
+### 🧾 `chitragupta draft evidence`
 
 Render the **evidence sidecar** beside a draft: each cited source, and
 the verbatim spans its dossier marked quotable, grouped by the section
@@ -621,7 +624,7 @@ Four things it will not do, each of them structural rather than checked:
   dropped -- the same rule `references` follows.
 - **It adds no citations to anything.** Every citekey it prints sits in a
   code span, which the gate blanks, so
-  `python -m chitragupta.draft gate` over a sidecar reports
+  `chitragupta draft gate` over a sidecar reports
   `0 citations ... OK` and the draft's own `[1]`, `[2]` numbering is
   untouched.
 - **It writes nothing when there is nothing to show.** No dossier, or no
@@ -642,12 +645,12 @@ that genre emits one rather than declining.
 | `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`; confined to `content/` |
 
 ```bash
-python -m chitragupta.draft evidence content/drafts/dt/survey.md --format pdf
+chitragupta draft evidence content/drafts/dt/survey.md --format pdf
 # leaves survey.evidence.md beside survey.evidence.pdf -- the Markdown is
 # the sidecar's own source, and the only diffable form of it
 ```
 
-### 🗂 `python -m chitragupta.draft dossier`
+### 🗂 `chitragupta draft dossier`
 
 The working state behind a draft: create it, inspect it, back it up,
 restore it. A dossier lives at `content/dossiers/` plus the draft's path
@@ -680,7 +683,7 @@ and the other isn't:
 | No ledger, or an unreadable one | Reports the dossier as usual, says the drift check is unavailable, **exits 0** |
 | No dossier for this draft | Prints the `init` command to create one, **exits 1** |
 
-So `python -m chitragupta.draft dossier status <draft> >/dev/null` is a usable
+So `chitragupta draft dossier status <draft> >/dev/null` is a usable
 test for
 "does this draft have a dossier yet", while a machine with no corpus built
 still gets a full report of what it has.
@@ -780,53 +783,53 @@ material is gone rather than mislaid.
 | `--force` | `restore` | Actually write, overwriting what is already there |
 
 ```bash
-python -m chitragupta.draft dossier init content/drafts/survey.md --genre survey
-python -m chitragupta.draft dossier status content/drafts/survey.md
-python -m chitragupta.draft dossier sections content/drafts/survey.md
+chitragupta draft dossier init content/drafts/survey.md --genre survey
+chitragupta draft dossier status content/drafts/survey.md
+chitragupta draft dossier sections content/drafts/survey.md
 # Derive the section -> citekey map instead of writing it by hand
-python -m chitragupta.draft dossier sections content/drafts/survey.md --citekeys --write
+chitragupta draft dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
-python -m chitragupta.draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
+chitragupta draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
 
 # New acronyms this draft's glossary or prose defines; --apply writes them to
 # your [style].acronyms file (see docs/CONFIG.md)
-python -m chitragupta.draft dossier acronyms-suggest content/drafts/survey.md
-python -m chitragupta.draft dossier acronyms-suggest content/drafts/survey.md --apply
+chitragupta draft dossier acronyms-suggest content/drafts/survey.md
+chitragupta draft dossier acronyms-suggest content/drafts/survey.md --apply
 
 # Before dispatching a section writer: do this section's rows resolve?
-python -m chitragupta.draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
+chitragupta draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
 # What the writer itself runs
-python -m chitragupta.draft dossier brief content/drafts/survey.md --section "2. Failure modes"
-python -m chitragupta.draft dossier brief content/drafts/survey.md talasila_composable_2025
+chitragupta draft dossier brief content/drafts/survey.md --section "2. Failure modes"
+chitragupta draft dossier brief content/drafts/survey.md talasila_composable_2025
 
 # After writing evidence.md: does any claim: just restate its own quote:?
-python -m chitragupta.draft dossier check-evidence content/drafts/survey.md
+chitragupta draft dossier check-evidence content/drafts/survey.md
 
 # After a sync: which drafts went stale, and what specifically
-python -m chitragupta.draft dossier status --all
-python -m chitragupta.draft dossier status --all --json
+chitragupta draft dossier status --all
+chitragupta draft dossier status --all --json
 
 # Back up everything, then one topic with its PDFs
-python -m chitragupta.draft dossier export
-python -m chitragupta.draft dossier export digital-twins-for-software-engineers --with-rendered
+chitragupta draft dossier export
+chitragupta draft dossier export digital-twins-for-software-engineers --with-rendered
 
 # Restore: look first, then commit to it
-python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz
-python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz --force
+chitragupta draft dossier restore drafts-all-2026-08-06.tar.gz
+chitragupta draft dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
 A bundle carries `drafts/`, `dossiers/` and optionally `rendered/`, with
 paths relative to `content/` so it restores into a checkout whose
 `[content].dir` points elsewhere. It does **not** carry
-`content/ledger.sqlite` (regenerate with `python -m chitragupta.corpus sync`) or
+`content/ledger.sqlite` (regenerate with `chitragupta corpus sync`) or
 `papers/bibliography.bib` (your reference manager's export, which
 AGENTS.md keeps as the source of truth rather than something this
 pipeline copies). Restore refuses the whole archive -- rather than
 skipping a member -- if any entry is a link or device node, escapes the
 extraction directory, or sits outside those three directories.
 
-### 🔎 `python -m chitragupta.draft retrieve`
+### 🔎 `chitragupta draft retrieve`
 
 BM25 retrieval over the synced corpus. Read-only, takes no lock, needs no
 venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
@@ -860,15 +863,15 @@ withdrawn.
 | `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
 
 ```bash
-python -m chitragupta.draft retrieve search "digital twin architecture" --k 15 \
+chitragupta draft retrieve search "digital twin architecture" --k 15 \
     --log content/drafts/survey.md
-python -m chitragupta.draft retrieve evidence "digital twin architecture" \
+chitragupta draft retrieve evidence "digital twin architecture" \
     --citekey ferko_architecting_2022 --log content/drafts/survey.md
 ```
 
 `--log` appends to `retrieval.md` in that draft's dossier, which is what
 turns "retrieval is where the tokens go" into a number for a particular
-draft (`python -m chitragupta.draft dossier status` totals it). A `--log` path that
+draft (`chitragupta draft dossier status` totals it). A `--log` path that
 isn't under `content/drafts/`, or a filesystem error while writing, is
 reported on stderr and skipped -- the measurement never fails the search
 it was measuring.
@@ -876,7 +879,7 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
-### 📐 `python -m chitragupta.review figure`
+### 📐 `chitragupta review figure`
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate** -- it exits 0 whatever it finds -- and like
@@ -913,7 +916,7 @@ absence. That one stays a human judgement.
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report |
 
 ```bash
-python -m chitragupta.review figure content/drafts/<topic>/survey.md
+chitragupta review figure content/drafts/<topic>/survey.md
 # ... --write
 # ... --json > figure.json
 ```
@@ -929,7 +932,7 @@ A figure that does not compile is a finding on that figure, not a crash:
 the draft's other figures are still checked, and the command still exits
 0.
 
-### 📊 `python -m chitragupta.review coverage`
+### 📊 `chitragupta review coverage`
 
 How much of what retrieval surfaced actually made it into a draft's
 citations. **Informational, not a gate** -- unlike the gate, nothing it
@@ -947,7 +950,7 @@ it reuses `chitragupta.retrieval`, which is itself stdlib.
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report -- so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python -m chitragupta.review coverage content/drafts/survey.md \
+chitragupta review coverage content/drafts/survey.md \
     --query "digital twin composability" \
     --query "runtime verification"
 # ... --k 10
@@ -967,7 +970,7 @@ set), and `status` (`uncited_candidates` or `cited_outside_candidates`).
 An additional serialisation of what `format_report` already prints,
 never a second computation.
 
-### 📖 `python -m chitragupta.review provenance`
+### 📖 `chitragupta review provenance`
 
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
@@ -986,10 +989,10 @@ filed whether or not `--json` is given.
 | `--json` | off | Print the findings as JSON instead of just the written-files summary (see below). The `.json` sibling is filed either way |
 
 ```bash
-python -m chitragupta.review provenance content/drafts/survey.md
-# python -m chitragupta.review provenance content/drafts/survey.md --formats md
-# python -m chitragupta.review provenance content/drafts/survey.md --formats md,tex,pdf
-# python -m chitragupta.review provenance content/drafts/survey.md --json > provenance.json
+chitragupta review provenance content/drafts/survey.md
+# chitragupta review provenance content/drafts/survey.md --formats md
+# chitragupta review provenance content/drafts/survey.md --formats md,tex,pdf
+# chitragupta review provenance content/drafts/survey.md --json > provenance.json
 ```
 
 **`--json`** carries the same envelope every review aid's JSON does, plus
@@ -1003,7 +1006,7 @@ unconditionally -- matching the `.md`'s own always-write policy -- and
 `--json` only decides whether it is *also* printed to stdout, with the
 written-files summary moving to stderr in that case.
 
-### 🧩 `python -m chitragupta.review synthesis`
+### 🧩 `chitragupta review synthesis`
 
 How many sources each unit of a draft rests on, **at the unit that
 draft's genre binds at**. Prose required to fuse two or more sources
@@ -1031,7 +1034,7 @@ The unit comes from the genre recorded in the draft's dossier
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python -m chitragupta.review synthesis content/drafts/survey.md
+chitragupta review synthesis content/drafts/survey.md
 # ... --unit section          # a draft whose dossier records no genre
 # ... --write --formats md
 # ... --json > synthesis.json
@@ -1075,11 +1078,11 @@ fenced code block is ignored.
 itemised -- `id`, `kind` (`single_source` or `single_key_run`), `line`,
 `unit`, `citekeys`, `declared` and `longest_run`.
 
-### 🔍 `python -m chitragupta.review uncited`
+### 🔍 `chitragupta review uncited`
 
 Which sentences of a draft carry **no citation at all**. This is the
 prose-side question, and it is the one nothing answered before:
-[`coverage`](#-python--m-chitraguptareview-coverage) looks like it
+[`coverage`](#-chitragupta-review-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
 finds**, and it blocks no draft. Alone among the six aids it reads
@@ -1115,7 +1118,7 @@ table that attributes rows that way genuinely rests on nothing.
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-python -m chitragupta.review uncited content/drafts/survey.md
+chitragupta review uncited content/drafts/survey.md
 # ... --genre survey          # a draft whose dossier records no genre
 # ... --write --formats md
 # ... --json > uncited.json
@@ -1142,7 +1145,7 @@ surfaced and never repaired unattended.
 `bare`, and one `findings` object per uncited sentence -- `id`, `line`,
 `sentence` and `block_cites`.
 
-### 📋 `python -m chitragupta.review verbatim`
+### 📋 `chitragupta review verbatim`
 
 Layer 4, the review layer, with four subcommands: verbatim overlap
 between a draft and one cited source, a whole-draft x whole-corpus scan,
@@ -1176,14 +1179,14 @@ CLI-usage error rather than a verdict. `recheck` also uses `2` for a
 baseline it cannot compare against.
 
 ```bash
-python -m chitragupta.review verbatim overlap content/drafts/survey.md talasila_composable_2025
-# python -m chitragupta.review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
-python -m chitragupta.review verbatim scan content/drafts/survey.md
-# python -m chitragupta.review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
-# python -m chitragupta.review verbatim scan content/drafts/survey.md --write --formats md
-# python -m chitragupta.review verbatim scan content/drafts/survey.md --json > findings.json
-# python -m chitragupta.review verbatim recheck content/drafts/survey.md --baseline content/review/survey.verbatim.json
-# python -m chitragupta.review verbatim locate talasila_composable_2025 "a digital twin is"
+chitragupta review verbatim overlap content/drafts/survey.md talasila_composable_2025
+# chitragupta review verbatim overlap content/drafts/survey.md talasila_composable_2025 --n 12
+chitragupta review verbatim scan content/drafts/survey.md
+# chitragupta review verbatim scan content/drafts/survey.md --min-run 12 --gap 2 --limit 10
+# chitragupta review verbatim scan content/drafts/survey.md --write --formats md
+# chitragupta review verbatim scan content/drafts/survey.md --json > findings.json
+# chitragupta review verbatim recheck content/drafts/survey.md --baseline content/review/survey.verbatim.json
+# chitragupta review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
 
 **`--json`, and who it is for.** Until 5.4.0 the findings were text and
@@ -1374,7 +1377,7 @@ touched.
 The `overlap-reviser` skill
 ([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)) is the intended
 caller: it takes a baseline, repairs findings one at a time, and keeps a
-repair only when `recheck` and `python -m chitragupta.draft gate` both come back
+repair only when `recheck` and `chitragupta draft gate` both come back
 clean. Nothing obliges you to use it -- `recheck` is as free and as
 advisory as every other command here.
 
@@ -1474,9 +1477,9 @@ you can turn to whichever one parsed the citekey -- see
 writes a break between consecutive pages that carry text, so a page with
 no extracted items at all shifts the numbering after it. The passage
 sidecar records each item's own page and is not affected; where the two
-disagree, believe `python -m chitragupta.review provenance`.
+disagree, believe `chitragupta review provenance`.
 
-### 📄 `python -m chitragupta.draft render`
+### 📄 `chitragupta draft render`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
 for PDF) on `PATH`, but no Python package from the enrich group.
@@ -1484,7 +1487,7 @@ for PDF) on `PATH`, but no Python package from the enrich group.
 Citations render IEEE-style -- `[1]`, and `[3]–[6]` for a consecutive run
 -- over a numbered bibliography of complete entries, via the CSL style
 vendored at `assets/csl/ieee.csl`. In the copy handed to pandoc, the
-draft's own References section -- if `python -m chitragupta.draft references`
+draft's own References section -- if `chitragupta draft references`
 added one -- keeps its heading, but its entries are replaced by
 citeproc's placement anchor. The output therefore carries exactly one
 bibliography, citeproc's, which is the one that can be numbered
@@ -1561,15 +1564,15 @@ converting a thesis fragment's `\citep{...}` genuinely is a format
 conversion.
 
 ```bash
-python -m chitragupta.draft render content/drafts/survey.md --format pdf
-# python -m chitragupta.draft render content/drafts/survey.md --format tex
-# python -m chitragupta.draft render content/drafts/survey.md --format docx
-# python -m chitragupta.draft render content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
-# python -m chitragupta.draft render content/drafts/thesis.md \
+chitragupta draft render content/drafts/survey.md --format pdf
+# chitragupta draft render content/drafts/survey.md --format tex
+# chitragupta draft render content/drafts/survey.md --format docx
+# chitragupta draft render content/drafts/survey.md --format md   # numbered Markdown, no pandoc needed
+# chitragupta draft render content/drafts/thesis.md \
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
-### 🎨 `python -m chitragupta.draft style`
+### 🎨 `chitragupta draft style`
 
 Report where a draft's prose departs from
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers, §8's
@@ -1580,8 +1583,8 @@ Vale). **A review aid: it exits 0 whatever it finds**, and nothing in
 this pipeline reads its output back or blocks on it.
 
 ```bash
-python -m chitragupta.draft style content/drafts/<path>
-python -m chitragupta.draft style content/drafts/<path> --json
+chitragupta draft style content/drafts/<path>
+chitragupta draft style content/drafts/<path> --json
 ```
 
 It is not a gate and cannot be made one, not even behind a flag. The gate
@@ -1604,7 +1607,7 @@ most specific first, and the report names which one was used:
 Record a draft's dialect with:
 
 ```bash
-python -m chitragupta.draft dossier set-language content/drafts/<path> en-GB
+chitragupta draft dossier set-language content/drafts/<path> en-GB
 ```
 
 With none of the three set -- the shipped "not settled" placeholder, or
@@ -1614,7 +1617,7 @@ command measures the draft both ways and proposes one:
 ```text
 dialect: not checked -- no `language:` in scope.md and no [style].language
 it reads as en-GB (en-GB: 0, en-US: 13). To record that:
-  python -m chitragupta.draft dossier set-language content/drafts/<path> en-GB
+  chitragupta draft dossier set-language content/drafts/<path> en-GB
 ```
 
 It proposes and never writes: [HOUSE-STYLE.md](HOUSE-STYLE.md)'s rule is
@@ -1635,7 +1638,7 @@ settles any of them.
 #### 📕 Assembling a book: `--fragment` and `--output-dir`
 
 ```bash
-python -m chitragupta.draft render content/drafts/<book>/<unit>.md \
+chitragupta draft render content/drafts/<book>/<unit>.md \
     --format tex --fragment --output-dir content/drafts/<book>
 ```
 
@@ -1653,7 +1656,7 @@ fragment carries its own numbered reference list.
 command writes. [BOOKS.md](BOOKS.md) is the assembly procedure both exist
 for.
 
-### 🎯 `python -m chitragupta.draft spec`
+### 🎯 `chitragupta draft spec`
 
 The outline a book is generated from, and the human sign-off on it --
 the book-scale track's first artefact ([BOOKS.md](BOOKS.md)). Stdlib
@@ -1661,11 +1664,11 @@ only, no venv needed. Writes only under `content/specs/`, mirroring the
 book's own directory under `content/drafts/`.
 
 ```bash
-python -m chitragupta.draft spec init content/drafts/<book> --title "<title>"
-python -m chitragupta.draft spec show content/drafts/<book>
-python -m chitragupta.draft spec show content/drafts/<book> --unit sec-1
-python -m chitragupta.draft spec sign content/drafts/<book> --by "<name>"
-python -m chitragupta.draft spec status content/drafts/<book>
+chitragupta draft spec init content/drafts/<book> --title "<title>"
+chitragupta draft spec show content/drafts/<book>
+chitragupta draft spec show content/drafts/<book> --unit sec-1
+chitragupta draft spec sign content/drafts/<book> --by "<name>"
+chitragupta draft spec status content/drafts/<book>
 ```
 
 | Command | Does | Exit |
@@ -1686,17 +1689,17 @@ judging any draft's content, and nothing it says can refuse a write.
 [BOOKS.md](BOOKS.md#-what-statuss-exit-code-is-and-is-not) has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
-### 🧱 `python -m chitragupta.draft unit`
+### 🧱 `chitragupta draft unit`
 
 One section's generation contract, and the record of its acceptance --
 the book-scale track's second artefact ([BOOKS.md](BOOKS.md)). Reads the
 outline `spec` owns; writes only `content/specs/<book>/units/<id>.json`.
 
 ```bash
-python -m chitragupta.draft unit contract content/drafts/<book> <unit-id> [--source CITEKEY]...
-python -m chitragupta.draft unit contract content/drafts/<book> <unit-id> --json
-python -m chitragupta.draft unit accept   content/drafts/<book> <unit-id> [--source CITEKEY]...
-python -m chitragupta.draft unit status   content/drafts/<book>
+chitragupta draft unit contract content/drafts/<book> <unit-id> [--source CITEKEY]...
+chitragupta draft unit contract content/drafts/<book> <unit-id> --json
+chitragupta draft unit accept   content/drafts/<book> <unit-id> [--source CITEKEY]...
+chitragupta draft unit status   content/drafts/<book>
 ```
 
 | Command | Does | Exit |
@@ -1713,16 +1716,16 @@ it can answer "does this need regenerating?".
 `accept` **invokes the citation gate, it does not replace it**: a unit
 the gate refuses cannot be accepted, and nothing here is a second gate.
 
-### 📇 `python -m chitragupta.draft registry`
+### 📇 `chitragupta draft registry`
 
 Terminology, claims and cross-references over a book's **accepted** units
 ([BOOKS.md](BOOKS.md)). Three registries, built by a deterministic pass
 and written under `content/specs/<book>/registries/`.
 
 ```bash
-python -m chitragupta.draft registry build   content/drafts/<book>
-python -m chitragupta.draft registry check   content/drafts/<book>
-python -m chitragupta.draft registry excerpt content/drafts/<book> <unit-id>
+chitragupta draft registry build   content/drafts/<book>
+chitragupta draft registry check   content/drafts/<book>
+chitragupta draft registry excerpt content/drafts/<book> <unit-id>
 ```
 
 | Command | Does | Exit |
@@ -1745,7 +1748,7 @@ skipped, because a registry over half a book is a different claim from
 one over all of it. Contradiction between claims is **not** detected --
 only duplication, which is what a machine can decide.
 
-### 🔭 `python -m chitragupta.draft tldr`
+### 🔭 `chitragupta draft tldr`
 
 A one-paragraph, human-authored summary per citekey, so skimming a large
 corpus does not mean opening every PDF. `write` never generates the
@@ -1757,9 +1760,9 @@ describing a paper that has since been re-parsed; it never rewrites the
 sidecar itself.
 
 ```bash
-echo "This paper proposes ..." | python -m chitragupta.draft tldr write smith2024
-python -m chitragupta.draft tldr show smith2024
-python -m chitragupta.draft tldr show smith2024 --json
+echo "This paper proposes ..." | chitragupta draft tldr write smith2024
+chitragupta draft tldr show smith2024
+chitragupta draft tldr show smith2024 --json
 ```
 
 | Command | Does | Exit |
@@ -1769,12 +1772,12 @@ python -m chitragupta.draft tldr show smith2024 --json
 
 Never touches `content/ledger.sqlite`: the summary is LLM output, so it
 stays in this drafting-layer sidecar rather than the corpus plane, and
-`python -m chitragupta.corpus ledger` is unchanged.
+`chitragupta corpus ledger` is unchanged.
 
-### 🧠 `python -m chitragupta.enrich`
+### 🧠 `chitragupta enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
-BERTopic -> seed topics. **Needs the venv.** Each stage probes
+BERTopic -> seed topics -> converge. **Needs the venv.** Each stage probes
 its own prerequisites and reports a real per-stage status. A
 `skipped/missing-binary` result on a machine without TeX Live is
 therefore a correct answer rather than a bug.
@@ -1787,16 +1790,16 @@ therefore a correct answer rather than a bug.
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `seed-topics` or `converge` |
 
 ```bash
-python -m chitragupta.enrich
-# python -m chitragupta.enrich --stages docling
-# python -m chitragupta.enrich --stages embed,bertopic
-# python -m chitragupta.enrich --stages seed-topics   # skipped with no content/seed_topics.toml
-# python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
+chitragupta enrich
+# chitragupta enrich --stages docling
+# chitragupta enrich --stages embed,bertopic
+# chitragupta enrich --stages seed-topics   # skipped with no content/seed_topics.toml
+# chitragupta enrich --for-draft content/drafts/digital-twins.md
 
 # A review report and a draft render are tier-1 commands, not stages --
 # no venv, no lock:
-# python -m chitragupta.review provenance content/drafts/survey.md
-# python -m chitragupta.draft render content/drafts/survey.md --format pdf
+# chitragupta review provenance content/drafts/survey.md
+# chitragupta draft render content/drafts/survey.md --format pdf
 ```
 
 #### 📚 Enriching one draft's papers
@@ -1809,7 +1812,7 @@ twenty-three papers therefore costs twenty-three parses rather than the
 whole library:
 
 ```console
-$ python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md
+$ chitragupta enrich --for-draft content/drafts/digital-twins.md
 Target: host
 Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/drafts/digital-twins.md
 
@@ -1826,16 +1829,16 @@ Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/draft
 With no `--stages` of its own it runs `docling` alone -- the stage the
 scope actually reaches, and the one that produces the quotable passages
 this is usually for. To carry on into the draft's own review report, run
-`python -m chitragupta.review provenance <draft>` afterwards: it is a tier-1
+`chitragupta review provenance <draft>` afterwards: it is a tier-1
 command, so it needs no venv and waits on no lock.
 
 Two stages refuse the scope rather than honouring it:
 
 ```console
-$ python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages embed
+$ chitragupta enrich --for-draft content/drafts/digital-twins.md --stages embed
   --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
-      python -m chitragupta.enrich --for-draft content/drafts/digital-twins.md --stages docling
-      python -m chitragupta.enrich --stages embed
+      chitragupta enrich --for-draft content/drafts/digital-twins.md --stages docling
+      chitragupta enrich --stages embed
 ```
 
 That is a tier, not a ladder ([LADDERS.md](LADDERS.md)). `embed` writes a

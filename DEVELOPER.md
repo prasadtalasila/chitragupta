@@ -165,9 +165,15 @@ docs/                     reference docs that ship in the release zip -- everyth
                                                      because the reasoning outlives the decision
                             measurements.            numbers from a real run on a named machine
                             a proposal, not a plan.  nothing here is built; the decision is open
-                          A new document picks one of those rather than inventing a sixth. The date
-                          is when it was written, not when it was last touched -- git already
-                          records revisions, and a hand-maintained "last revised" goes stale
+                          A new document picks one of those rather than inventing a sixth. Written
+                          is when it was authored and never moves afterward -- git already records
+                          revisions, and a hand-maintained "last revised" goes stale. A revision
+                          substantive enough that a returning reader should know appends a second
+                          sentence right after it, `Updated <date>.` -- itself hand-maintained, so
+                          it is a pointer worth checking against `git log`, not a guarantee: a
+                          suspiciously old Updated date is a reason to check the file's real history,
+                          not proof nothing changed since. Most files carry no Updated sentence at
+                          all, which reads as "unchanged since it was written," not as an omission
   PARALLELISM.md            parallel parse design: architecture, components, and the roadmap
   PERFORMANCE.md            what each config setting costs, measured -- the lookup-oriented companion
                             to PARALLELISM.md's design doc

@@ -46,7 +46,7 @@ depth was asked for.
 
 `content/rendered/` mirrors the same path, so a topic directory names a
 draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together --
-[CLI.md](CLI.md#-python--m-chitraguptadraft-render) has the detail. That is
+[CLI.md](CLI.md#-chitragupta-draft-render) has the detail. That is
 what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.
@@ -200,7 +200,7 @@ source wording:
 | `chitragupta/evidence_appendix.py` | nothing at all | It is deciding what to put in a rendered document. A legacy `support:` holds a raw 600-character retrieval window (`EVIDENCE_CHARS`), and printing one as an attributed quotation would publish it |
 
 So the evidence sidecar
-([CLI.md](CLI.md#-python--m-chitraguptadraft-evidence)) reads `quote:` and
+([CLI.md](CLI.md#-chitragupta-draft-evidence)) reads `quote:` and
 only `quote:`. A pre-A2 dossier therefore renders no sidecar, which is
 correct rather than a gap: nobody ever decided those windows were worth
 quoting. `claim:` is excluded from it for the mirror-image reason -- it is

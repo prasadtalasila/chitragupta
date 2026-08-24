@@ -154,7 +154,7 @@ It also carries `id`, a position-free name for the finding, and four
 fields that locate it in the draft as written. One of those is easy to
 misread: `start` is a word offset into the normalised stream, not a
 position in the draft file, and the locators are what to use instead. All
-of them are in [CLI.md](CLI.md#-python--m-chitraguptareview-verbatim).
+of them are in [CLI.md](CLI.md#-chitragupta-review-verbatim).
 
 Matches are grouped by `(citekey, diagonal)`, where `diagonal =
 source_position - draft_position`. That `source_position` is a *global*

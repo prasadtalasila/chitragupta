@@ -279,6 +279,8 @@ citekey's parsed text, so `show` reports a summary stale rather than
 silently describing a paper that has since been re-parsed.
 `corpus ledger` is untouched: the summary is LLM output, so it stays in
 the drafting layer's own sidecar rather than the corpus plane.
+[docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
+proposal parked at #401.
 
 ## 🔍 Review layer: six advisory aids
 

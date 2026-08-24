@@ -177,6 +177,7 @@ nav:
       - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
+      - Per-citekey TL;DR, built and proposed: docs/TLDR.md
       - Auto-improvement, what would be built: docs/AUTO-IMPROVEMENT.md
       - Auto-improvement, why: docs/AUTO-IMPROVEMENT-RATIONALE.md
       - House style: docs/HOUSE-STYLE.md
