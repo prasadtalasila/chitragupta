@@ -501,14 +501,23 @@ Only the pdf shows that the same symbol has been set two ways.
 
 `--format md` does not go through pandoc ([RENDERING-FLOW.md](RENDERING-FLOW.md)),
 so `$k = 4$` reaches `content/rendered/` verbatim and shows as literal
-`$k = 4$` in a viewer without MathJax. That is a real cost and it is
-accepted deliberately: GitHub, GitLab, Obsidian, Jupyter and VS Code all
-render it, the `$$…$$` blocks already in every draft carry the same cost,
-and the alternative -- one spelling for the pdf and another for the
-preview -- means two forms of every equation with nothing checking they
-still agree. [§10's figures](#-10-figures) pay that price because a TikZ
+`$k = 4$` in a viewer without MathJax. That is a real cost, accepted
+here because the alternative -- one spelling for the pdf and another for
+the Markdown -- means two forms of every equation with nothing checking
+they still agree. GitHub, GitLab, Obsidian, Jupyter and VS Code all
+render `$…$`, and the `$$…$$` blocks already in every draft carry the
+same cost. [§10's figures](#-10-figures) pay that price because a TikZ
 picture genuinely cannot be shown as text; an equation can, so it should
 not.
+
+**Where the rendered Markdown is itself read, rather than being a step
+on the way to a pdf**, that trade is worse than it looks, and this rule
+is not the last word. A
+mapping of ASCII to LaTeX, held per draft in the dossier, would let the
+source stay ASCII while `tex` and `docx` still get real equations; the
+one thing it cannot do is maintain itself. That is specified, unbuilt,
+in `plans/math-format-native-rendering.md`. **Until it exists, this
+section is the rule.**
 
 **Stated and not gated, deliberately.** `python -m chitragupta.draft gate`
 means exactly one thing -- a fabricated citekey fails -- and

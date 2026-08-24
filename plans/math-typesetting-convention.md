@@ -126,9 +126,17 @@ genre skill.
 
 ## 🤔 Considered and rejected
 
+> **Superseded in part.** A *fourth* mechanism -- an ASCII → LaTeX
+> mapping held in the dossier -- avoids all three failures below, because
+> its key is the backtick span already in the draft, so nothing has to be
+> inferred and no new syntax is added. It is specified in
+> `plans/math-format-native-rendering.md`. The rejection recorded here
+> was of these three mechanisms, and was over-generalised to the whole
+> idea; it is kept rather than rewritten so the narrowing is visible.
+
 **ASCII in `.md`, math in `.tex`, from one source.** Attractive, because
 `--format md` never reaches pandoc so a rendered Markdown preview shows
-`$k = 4$` literally. Three mechanisms exist and all three fail:
+`$k = 4$` literally. Three mechanisms were considered and all three fail:
 
 - Pandoc raw spans, `` `\(k = 4\)`{=latex} `` -- non-LaTeX writers
   *drop* raw LaTeX rather than falling back to ASCII, and the `--format
