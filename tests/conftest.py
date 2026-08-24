@@ -102,6 +102,7 @@ def isolated_config(tmp_path, monkeypatch):
         "DRAFTS_DIR": "drafts",
         "DOSSIERS_DIR": "dossiers",
         "SPECS_DIR": "specs",
+        "TLDR_DIR": "tldr",
         "RETRIEVAL_INDEX_PATH": "retrieval_index.json",
         "OVERLAP_DIR": "overlap",
         "VERBATIM_ALLOWLIST_PATH": "verbatim_allowlist.toml",

@@ -321,6 +321,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      `pdflatex` on it. A malformed figure fails the *whole* pdf render
      in step 11, not just the figure, so a figure that will not compile
      alone never reaches the fragment.
+     If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
+     its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
+     copy that line into the probe too: the renderer's preamble loads
+     `tikz` and no library, so a picture that relies on one and does not
+     load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
    - **No citekey inside either figure file.** Step 10's gate reads the
      fragment and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose

@@ -1,6 +1,6 @@
 """The drafting layer's single entry point: `python -m chitragupta.draft <verb>`.
 
-Nine commands, run by hand or by a genre skill over one draft:
+Eleven commands, run by hand or by a genre skill over one draft:
 
     python -m chitragupta.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
@@ -16,6 +16,10 @@ Nine commands, run by hand or by a genre skill over one draft:
     python -m chitragupta.draft references <file.md> [--heading TEXT]
         an IEEE reference list built from exactly the citekeys a
         Markdown draft cites.
+
+    python -m chitragupta.draft evidence <file> [--format md|tex|pdf]
+        the evidence sidecar rendered beside a draft: each cited source
+        and the spans its dossier marked quotable.
 
     python -m chitragupta.draft render <file> --format tex|pdf|...
         the drafting layer's publish step: Pandoc/LaTeX rendering to
@@ -36,6 +40,12 @@ Nine commands, run by hand or by a genre skill over one draft:
     python -m chitragupta.draft registry build|check|excerpt <book> [<unit-id>]
         terminology, claims and cross-references over a book's accepted
         units -- a review aid, never a gate (docs/BOOKS.md).
+
+    python -m chitragupta.draft tldr write|show <citekey>
+        a one-paragraph, human-authored summary per citekey, cached
+        under content/tldr/ and keyed to a fingerprint of its parsed
+        text -- a browsing aid, never read by `corpus ledger`
+        (docs/FEATURES.md).
 
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer and `python -m chitragupta.review <aid>` for the review layer. None
@@ -86,6 +96,7 @@ from chitragupta import (
     retrieval,
     spec,
     style_check,
+    tldr,
     unit,
 )
 from chitragupta.progname import prog_for
@@ -114,6 +125,10 @@ VERBS = {
         registry,
         "terminology, claims and cross-references over a book's "
         "accepted units -- a review aid, never a gate",
+    ),
+    "tldr": (
+        tldr,
+        "a one-paragraph summary per citekey, cached beside a fingerprint of its parsed text",
     ),
 }
 

@@ -39,6 +39,7 @@ short path; this is the full set.
   - [`chitragupta.draft spec`](#-python--m-chitraguptadraft-spec)
   - [`chitragupta.draft unit`](#-python--m-chitraguptadraft-unit)
   - [`chitragupta.draft registry`](#-python--m-chitraguptadraft-registry)
+  - [`chitragupta.draft tldr`](#-python--m-chitraguptadraft-tldr)
   - [`chitragupta.enrich`](#-python--m-chitraguptaenrich)
   - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#-scriptsreleasepy)
@@ -1742,6 +1743,32 @@ Every report says how many units it could read and names the ones it
 skipped, because a registry over half a book is a different claim from
 one over all of it. Contradiction between claims is **not** detected --
 only duplication, which is what a machine can decide.
+
+### 🔭 `python -m chitragupta.draft tldr`
+
+A one-paragraph, human-authored summary per citekey, so skimming a large
+corpus does not mean opening every PDF. `write` never generates the
+summary itself -- it reads one on stdin, from a person or a skill -- and
+persists it under `content/tldr/<citekey>.json`, keyed to a fingerprint
+of that citekey's current parsed text. `show` recomputes the fingerprint
+every time and reports the summary **stale** rather than silently
+describing a paper that has since been re-parsed; it never rewrites the
+sidecar itself.
+
+```bash
+echo "This paper proposes ..." | python -m chitragupta.draft tldr write smith2024
+python -m chitragupta.draft tldr show smith2024
+python -m chitragupta.draft tldr show smith2024 --json
+```
+
+| Command | Does | Exit |
+| --- | --- | --- |
+| `write <citekey>` | store stdin as `<citekey>`'s summary | 1 if the citekey isn't in the ledger, has no parsed text yet, or stdin is empty |
+| `show <citekey> [--json]` | print the summary and whether it's stale | **always 0** -- no summary recorded is not an error |
+
+Never touches `content/ledger.sqlite`: the summary is LLM output, so it
+stays in this drafting-layer sidecar rather than the corpus plane, and
+`python -m chitragupta.corpus ledger` is unchanged.
 
 ### 🧠 `python -m chitragupta.enrich`
 

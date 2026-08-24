@@ -350,6 +350,11 @@ candidate for the chapter.
      `pdflatex` on it. A malformed figure fails the *whole* pdf render,
      not just the figure -- and in this genre that render is the
      artifact a class actually reads.
+     If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
+     its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
+     copy that line into the probe too: the renderer's preamble loads
+     `tikz` and no library, so a picture that relies on one and does not
+     load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
    - **No citekey inside either figure file.** Step 11's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
