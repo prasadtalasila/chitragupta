@@ -98,21 +98,48 @@ the draft, a different substitution per output format
 
 ## 📊 Per-format policy
 
-| Format | Reaches pandoc? | Emit | Why |
-| --- | --- | --- | --- |
-| `tex`, `pdf` | yes | `\(…\)` | Real math; `amsmath` is already loaded. |
-| `docx` | yes | `$…$` → pandoc | Pandoc turns `$…$` into **native Word equations** (OMML), not text. |
-| `md` | **no** | the ASCII, untouched | Markdown is read as Markdown. |
+**There is no per-format table, and that is the point.** The fork is a
+single predicate that [RENDERING-FLOW.md](../docs/RENDERING-FLOW.md)
+already draws: *does this render reach pandoc?* `--format md` on a
+Markdown draft never does; every other combination does.
+
+| Reaches pandoc? | `_math.py` does | Then pandoc emits |
+| --- | --- | --- |
+| **yes** (`tex`, `pdf`, `docx`) | substitute the span with `$…$` | `\(…\)` for LaTeX, OMML for Word -- format-native, per writer |
+| **no** (`md`) | nothing | the ASCII, untouched |
+
+**Substitute `$…$`, never `\(…\)`.** This is the trap: `\(k = 4\)` is
+*not* math to pandoc's Markdown reader. Handed
+`A $k = 4$ and B \(k = 4\)` it emits `A \(k = 4\) and B (k = 4)` -- the
+second one silently loses its backslashes and becomes ordinary
+parenthesised text. `$…$` is pandoc's native inline math and is the only
+spelling that survives; each writer then renders it in its own idiom,
+which is what "format-native" means here.
 
 **`--format md` does nothing at all**, which is the point: the draft is
-already ASCII, so the no-op is the correct behaviour rather than a
-special case to code. `_math.py` runs only on the LaTeX-bound path,
-exactly as `_figures.py` forks today.
+already ASCII, so the no-op is correct behaviour rather than a special
+case to code. `_math.py` runs only on the pandoc path, exactly as
+`_figures.py` forks today (`:201` vs `:218`).
 
 That also means the feature is **inert for `md`** -- if the mapping is
-missing, malformed or stale, the Markdown output is unaffected. Only
-`tex`/`pdf`/`docx` can regress, and those are the formats where the
-gap/orphan report below runs.
+missing, malformed or stale, the Markdown output is unaffected. Only the
+pandoc formats can regress, and those are where the gap/orphan report
+below runs.
+
+### ⚠ `docx` is not a requirement, and must still be substituted
+
+`--format docx` is not something this project needs, but it exists in
+the CLI, and **"not required" must not be implemented as "excluded from
+`_math.py`"**. Today `§12`'s `$…$` in the draft reaches pandoc's docx
+writer and becomes a real Word equation. If the draft reverts to ASCII
+and docx is left out of the substitution, that same span becomes
+`\texttt{k = 4}` in Word -- *worse than before this plan existed*, and
+silently.
+
+Keying on "reaches pandoc" rather than on a list of formats avoids this
+for free: docx is served by the same line of code as `tex`, no extra
+case, no extra test beyond one that asserts an `oMath` element survives.
+A per-format allowlist is how the regression gets written by accident.
 
 ## ⚠ Drift is the real cost
 
