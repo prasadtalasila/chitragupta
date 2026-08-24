@@ -523,8 +523,8 @@ out -- `slope`, `offset`, `Assemble(N)` -- has no display math to compare
 against and reads like an identifier, so it survives that check and stays
 in typewriter beside the arithmetic that uses it. So does any expression
 containing `/`, if a search for stray backticks was written to skip file
-paths. Both cases really happened in this repository's own book; see
-[plans/math-typesetting-convention.md](../plans/math-typesetting-convention.md).
+paths. Both cases really happened in this repository's own book, and
+`plans/math-typesetting-convention.md` records what each one cost.
 
 ## 📖 Sources and attribution
 
