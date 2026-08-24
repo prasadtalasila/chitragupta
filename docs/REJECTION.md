@@ -1,6 +1,6 @@
 # 🚫 Rejection
 
-Status: **reasoning document.** Written 2026-08-07.
+Status: **reasoning document.** Written 2026-08-07. Updated 2026-08-24.
 
 **Written for** someone weighing a change to retrieval, or wondering why
 a stage that looks obviously useful was built and withdrawn. **Assumed:**

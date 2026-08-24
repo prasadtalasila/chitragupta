@@ -1,6 +1,6 @@
 # 🏗 The pipeline, its ladders, and its tiers
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
 
 **Written for** anyone who has hit a fallback and wants to know what they
 lost by it. **Assumed:** [CLI.md](CLI.md) for the commands named here.

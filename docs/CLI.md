@@ -1,6 +1,6 @@
 # ⌨ Command reference
 
-Status: **reference.** Written 2026-08-03.
+Status: **reference.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone running this pipeline, at any level of
 familiarity: it is the reference you keep open beside a terminal.

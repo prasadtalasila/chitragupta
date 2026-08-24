@@ -1,6 +1,6 @@
 # 💡 Inspiration: what this project borrowed, and from where
 
-Status: **reference.** Written 2026-08-13.
+Status: **reference.** Written 2026-08-13. Updated 2026-08-24.
 
 Every external idea this project took, what was taken, and -- where it
 matters -- what was deliberately *not* taken. Credit is the first purpose;

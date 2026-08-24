@@ -1,7 +1,7 @@
 # 🗂 The dossier
 
-Status: **reference.** Written 2026-08-22, describing the format as it
-stands.
+Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
+format as it stands.
 
 **Written for** the model or the person reading a dossier back -- most
 often `draft-reviser` picking up a draft weeks later, and only sometimes

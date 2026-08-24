@@ -1,6 +1,6 @@
 # 📄 PDF parser tradeoffs for chitragupta
 
-Status: **reasoning document.** Written 2026-08-02.
+Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-24.
 
 **Written for** someone choosing `[parser].backend`, or revisiting that
 choice. **Assumed:** [CONFIG.md](CONFIG.md) for how to set it. **Not

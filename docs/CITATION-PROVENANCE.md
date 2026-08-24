@@ -1,6 +1,6 @@
 # 📖 Citation provenance
 
-Status: **implemented.** Written 2026-08-01.
+Status: **implemented.** Written 2026-08-01. Updated 2026-08-24.
 
 **Written for** anyone reading a provenance report and deciding what to
 do about a low-scoring claim. **Assumed:** a drafted, gated document.

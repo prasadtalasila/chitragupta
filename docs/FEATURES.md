@@ -1,7 +1,7 @@
 # ✨ Features
 
-Status: **reference.** Written 2026-08-22, describing the pipeline as it
-stands at 6.20.2.
+Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
+pipeline as it stands at 6.20.2.
 
 **Written for** someone deciding whether this does what they need, and
 for anyone who wants the whole capability surface in one place rather

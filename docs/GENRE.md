@@ -1,6 +1,6 @@
 # 🎭 Genres
 
-Status: **reference.** Written 2026-08-08, describing `.claude/skills/`
+Status: **reference.** Written 2026-08-08. Updated 2026-08-24, describing `.claude/skills/`
 as it stands.
 
 **Written for** anyone choosing which skill to ask for, and anyone

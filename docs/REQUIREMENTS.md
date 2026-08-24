@@ -1,8 +1,9 @@
 # 🎯 Requirements
 
-Status: **requirements record, revised against the codebase.** The
-underlying discussion was held August 2026; this revision was written
-2026-08-18, against `main` at v5.29.0.
+Status: **requirements record, revised against the codebase.** Written
+2026-08-18. Updated 2026-08-24. The underlying discussion was held
+August 2026; this revision was written 2026-08-18, against `main` at
+v5.29.0.
 
 What a grounded long-form AI writing system must do, how the closed- and
 open-source landscape stacks up against that bar, the architectural

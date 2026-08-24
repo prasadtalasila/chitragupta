@@ -1,6 +1,6 @@
 # 🗺 The auto-improvement loop: what would be built
 
-Status: **specification of mostly unbuilt work.** Written 2026-08-11;
+Status: **specification of mostly unbuilt work.** Written 2026-08-11. Updated 2026-08-24;
 step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, and step 5 built narrow
 (verbatim runs only) in 5.7.0 -- see [Build order](#-build-order).
 

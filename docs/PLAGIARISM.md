@@ -1,9 +1,9 @@
 # 🔍 Plagiarism / verbatim-reuse detection
 
-Status: **implemented, three detection tiers of a planned three.** The
-second and third shipped advisory-only. The third runs only where the
-optional enrichment layer, the Docling passage sidecars and the draft's
-own dossier are all present. Written 2026-08-10; tier 2 added 2026-08-13
+Status: **implemented, three detection tiers of a planned three.** The second
+and third shipped advisory-only. The third runs only where the optional
+enrichment layer, the Docling passage sidecars and the draft's own dossier are
+all present. Written 2026-08-10. Updated 2026-08-24; tier 2 added 2026-08-13
 (#133), tier 3 added 2026-08-15 (#134/#164).
 
 **Written for** someone deciding whether `chitragupta/review/verbatim_check/`'s

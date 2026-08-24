@@ -1,11 +1,11 @@
 # 🧾 Technical debt: what is owed, and what only looks like it
 
-Status: **register, not a standard.** Written 2026-08-13, from a
-full-tree review of `chitragupta/`, `scripts/`, `bench/`, `docker/` and
-`.github/`. Nothing here is enforced. The one part of this project's debt
-that *is* enforced -- the C1/C2 ratchet -- lives in
-`tests/test_code_standards_scan.py` and is
-[pointed at](#-tier-1-the-debt-the-ratchet-already-holds), never restated.
+Status: **register, not a standard.** Written 2026-08-13. Updated 2026-08-24,
+from a full-tree review of `chitragupta/`, `scripts/`, `bench/`, `docker/` and
+`.github/`. Nothing here is enforced. The one part of this project's debt that
+*is* enforced -- the C1/C2 ratchet -- lives in
+`tests/test_code_standards_scan.py` and is [pointed
+at](#-tier-1-the-debt-the-ratchet-already-holds), never restated.
 
 **Reconciled 2026-08-18** against the tree as it now stands, since a
 register that only shrinks the way it says it should is one this

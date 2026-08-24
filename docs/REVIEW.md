@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
-Status: **reference.** Written 2026-08-22, describing the six aids as
-they stand.
+Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
+six aids as they stand.
 
 **Written for** you, after a draft is finished -- someone deciding
 whether it is good enough to hand over. **Assumed:**

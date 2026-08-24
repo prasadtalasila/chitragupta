@@ -1,6 +1,7 @@
 # 🧠 Topic modelling: what the literature said, and what this corpus said back
 
-Status: **discussion**, not a specification. It records where the topic
+Status: **discussion, not a specification.** Written 2026-08-21. Updated
+2026-08-23. It records where the topic
 stage's current shape came from -- which published findings argued for
 it, which measurements on this project's own corpus confirmed or
 contradicted them, and which decisions are still open. `docs/CONFIG.md`

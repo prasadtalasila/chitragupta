@@ -1,6 +1,6 @@
 # ✍ Writing standards for the drafting layer
 
-Status: **reference.** Written 2026-08-03.
+Status: **reference.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone drafting with this pipeline, and for the skills
 that draft on their behalf. **Assumed:** [GENRE.md](GENRE.md) for which

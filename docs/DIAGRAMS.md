@@ -1,6 +1,6 @@
 # 📐 The workflow, drawn eleven ways
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
 
 Every diagram here describes the same pipeline. They come in three groups:
 

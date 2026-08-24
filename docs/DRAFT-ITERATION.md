@@ -1,6 +1,6 @@
 # ✍ Iterating on a draft
 
-Status: **implemented.** Written 2026-08-06.
+Status: **implemented.** Written 2026-08-06. Updated 2026-08-24.
 
 **Written for** someone changing the drafting layer or the dossier
 format. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md) for the layers

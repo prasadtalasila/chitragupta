@@ -1,9 +1,9 @@
 # ✍ Book-scale drafting: the outline, the units, and the registries
 
-Status: **built.** All four pieces of the track are here -- the outline
-(#136), the generation unit (#137), the three registries (#138) and the
-assembly skill (#139). Each section below describes something that
-exists; nothing here is a plan.
+Status: **built.** Written 2026-08-18. Updated 2026-08-23. All four pieces of
+the track are here -- the outline (#136), the generation unit (#137), the three
+registries (#138) and the assembly skill (#139). Each section below describes
+something that exists; nothing here is a plan.
 
 **Written for** someone drafting a document larger than a chapter with
 this pipeline, and for whoever builds the next piece of the track. It

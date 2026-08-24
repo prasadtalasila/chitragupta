@@ -1,6 +1,6 @@
 # ⚡ Performance
 
-Status: **measurements.** Written 2026-08-03.
+Status: **measurements.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone choosing settings on their own hardware and
 wanting the measured cost rather than a guess. **Assumed:**

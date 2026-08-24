@@ -1,10 +1,10 @@
 # 🤝 Code standards: what is binary, what is judgement, and the ratchet
 
-Status: **standard, partly enforced.** Written 2026-08-13. The two
-size rules below are enforced by `tests/test_code_standards_scan.py`;
-everything under [The rest of the checklist](#-the-rest-of-the-checklist)
-is a review standard with no detector, and [Build order](#-build-order)
-says which detectors would come next.
+Status: **standard, partly enforced.** Written 2026-08-13. Updated 2026-08-24.
+The two size rules below are enforced by `tests/test_code_standards_scan.py`;
+everything under [The rest of the checklist](#-the-rest-of-the-checklist) is a
+review standard with no detector, and [Build order](#-build-order) says which
+detectors would come next.
 
 This is the code counterpart of
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md): that one is the standard the

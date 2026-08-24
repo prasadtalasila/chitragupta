@@ -1,6 +1,6 @@
 # ⚙ Configuration
 
-Status: **reference.** Written 2026-08-03.
+Status: **reference.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone setting this pipeline up on their own machine.
 **Assumed:** [CLI.md](CLI.md) for the commands these settings change.

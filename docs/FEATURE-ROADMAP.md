@@ -1,8 +1,8 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. **Eleven of the
-original twenty-one items have shipped and have been removed from this
-document** rather than marked as done -- so everything below is still
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-24.
+**Eleven of the original twenty-one items have shipped and have been removed
+from this document** rather than marked as done -- so everything below is still
 outstanding, which is what makes the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**

@@ -1,6 +1,6 @@
 # 📦 Packaging: the installable distribution and its command surface
 
-Status: **reference.** Written 2026-08-19.
+Status: **reference.** Written 2026-08-19. Updated 2026-08-24.
 
 What `chitragupta-cli` installs, what you type once it is installed, and
 which of the three names that look identical is actually registered

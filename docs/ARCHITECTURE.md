@@ -1,6 +1,6 @@
 # 🏗 Architecture
 
-Status: **reference.** Written 2026-08-06.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
 
 What actually runs, what each part writes, and which parts are optional.
 

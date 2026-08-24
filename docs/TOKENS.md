@@ -1,6 +1,6 @@
 # 🪙 Tokens
 
-Status: **reasoning document.** Written 2026-08-08.
+Status: **reasoning document.** Written 2026-08-08. Updated 2026-08-23.
 
 **Written for** someone deciding where to spend engineering effort on
 cost, or reviewing a proposal that claims a saving. **Assumed:**

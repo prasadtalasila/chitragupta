@@ -1,6 +1,6 @@
 # 📚 Exporting your library from Zotero
 
-Status: **how-to.** Written 2026-08-03.
+Status: **how-to.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone getting their own library into this pipeline for
 the first time. **Assumed:** nothing. **Not covered here:** what the

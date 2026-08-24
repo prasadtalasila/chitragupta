@@ -1,6 +1,6 @@
 # 🕸 Proposal: a GROBID stage for a corpus-internal citation graph
 
-Status: **a proposal, not a plan.** Written 2026-08-07.
+Status: **a proposal, not a plan.** Written 2026-08-07. Updated 2026-08-24.
 
 Nothing described here is built, and `[grobid]` is not a setting that
 exists. This document argues a case and

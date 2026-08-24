@@ -1,6 +1,6 @@
 # ⚡ Parallelism: design and roadmap
 
-Status: **implemented.** Written 2026-08-03.
+Status: **implemented.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** someone changing how the parse path schedules work.
 **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md). **Not covered here:**
