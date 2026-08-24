@@ -74,30 +74,59 @@ span**, never against prose. A span with no row is left alone -- that is
 what keeps `as_of` and `GET /sensing/{unit}` in `\texttt{}` by
 construction rather than by heuristic.
 
-### 🧱 Display math: a `math` fenced block
+### 🧱 Display math: a `<!-- math -->` marker and a plain fence
 
-A code *span* is to inline math what a fenced block is to display math,
-so the draft spells a displayed equation as a fence tagged `math`:
+A code *span* is to inline math what a fenced block is to display math.
+The draft spells a displayed equation as an **untagged** fence preceded
+by a marker, and the same table supplies its LaTeX:
 
 ````markdown
-```math
+<!-- math -->
+```
 dW/dt = -W/tau
 ```
 ````
 
-and the same table supplies its LaTeX
-(`\frac{dW}{dt} = -\frac{W}{\tau}`), wrapped in `$$…$$` on substitution.
+**Why a marker rather than a ```` ```math ```` tag.** GitHub and GitLab
+render a `math`-tagged fence *as LaTeX*, so ASCII inside one is
+mis-typeset there -- `tau` becomes three italic letters rather than τ,
+which is worse than showing it plainly. An untagged fence renders as a
+plain code block everywhere. The marker also matches
+[§10's figure convention](../docs/WRITING-STANDARDS.md#-10-figures)
+exactly, which that section describes as *"inert to pdflatex, dropped by
+pandoc, and meaningful only to this pipeline"* -- the same three
+properties are wanted here.
 
-**The tag is what disambiguates.** `_math.py` must look *inside* a
-```` ```math ```` fence but must *not* look inside any other fence, where
-the content is code. Without a tag those two requirements contradict
-each other. An untagged or differently-tagged fence is untouched, as
-today.
+The cost is one extra line per equation and a marker that can drift from
+its block. A marker with no fence after it, or a fence body with no row
+in the mapping, are both gap conditions for the report below.
 
-**Substitute fences before spans.** The prototype got this wrong once:
+**The marker is what disambiguates.** `_math.py` must read the fence
+*after* a `<!-- math -->` and no other, because every other fence holds
+code. Nothing else in the draft changes meaning.
+
+**Substitute blocks before spans.** The prototype got this wrong once:
 if inline substitution runs first it walks into the fence body and
 rewrites `W` and `tau` there, corrupting the block before the display
-rule ever sees it. Fences first, then spans over what remains.
+rule ever sees it. Blocks first, then spans over what remains.
+
+### 🔤 Which notation lives in which artefact
+
+Worth stating because three different math spellings are in play and
+only one of them is ever hand-written:
+
+| Artefact | Holds | Written by |
+| --- | --- | --- |
+| draft `.md` | `<!-- math -->` + fence, and `` ` ` `` spans -- **ASCII** | the author |
+| rendered `.md` | the same, byte-identical | `--format md`, which does not reach pandoc |
+| temp copy | `$$…$$` and `$…$` -- pandoc's native math markup | `_math.py`, discarded after the render |
+| `.tex` | `\[…\]` and `\(…\)` | **pandoc** |
+
+Neither `.md` ever contains `\[…\]` or `$$…$$`, and nobody hand-writes a
+math delimiter at any layer. `\[…\]` is LaTeX's own display form --
+`$$…$$` is plain TeX, ignores the `fleqn` class option and mishandles
+`\abovedisplayshortskip`, which is why `amsmath` treats it as obsolete.
+Pandoc already emits the correct one, so this design never has to choose.
 
 ## 🔌 Where it hooks in
 
