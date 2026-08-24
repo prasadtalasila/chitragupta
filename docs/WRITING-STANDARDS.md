@@ -460,6 +460,63 @@ deliberately not adapted: upstream cites by positional index into a
 truncated list, so reordering that list silently changes what every
 citation means. This project has real citekeys and keeps using them.
 
+## 🔢 12. Mathematics
+
+**Every quantity is math: `$…$` inline, `$$…$$` displayed. Backticks
+mean code, and only code.** A `.tex` draft uses `\(…\)` and `\[…\]`
+directly and the rest of this section still applies to it.
+
+This needs stating because the failure is invisible in the draft and
+only appears downstream. Pandoc's Markdown reader turns a code span into
+`\texttt{}` and escapes its spaces, so `` `k = 4` `` becomes
+`\texttt{k\ =\ 4}` in the rendered LaTeX -- upright, typewriter, with
+`=` set as ordinary text -- while `$$…$$` two paragraphs earlier becomes
+a real `\[…\]`. Both spellings look plausible in the Markdown source.
+Only the pdf shows that the same symbol has been set two ways.
+
+### 📐 The rule in practice
+
+- **A symbol is math wherever it appears.** If `\[ m(t) = m_0 - k\,t \]`
+  defines `k`, then every later mention is `$k$`, never `` `k` ``. The
+  test is not how the mention is punctuated but whether the *thing named*
+  is a quantity.
+- **Arithmetic is math too.** `$12 \times 2 \times 365 = 8{,}760$`, not
+  `` `12 x 2 x 365 = 8,760` ``. ASCII `x` and `*` are not multiplication
+  signs, and a thousands comma needs `{,}` or LaTeX sets it as a
+  punctuation comma with the wrong spacing after it.
+- **A text subscript is upright.** `$k_\mathrm{day}$`, not `$k_{day}$` --
+  the latter sets *d*, *a*, *y* as three italic variables multiplied
+  together.
+- **Backticks keep everything they were always for**: field names
+  (`as_of`, `event_time`), endpoints, filenames, literal values,
+  identifiers. A parameter named in an API *and* used in an equation is
+  the genuinely ambiguous case; pick by which role the sentence is
+  playing, and be consistent within the section.
+- **Dates, versions and timestamps are not math.** `2026-02-01` in math
+  mode sets its hyphens as minus signs.
+- **A literal dollar sign must be escaped** (`\$`) once a draft uses
+  `$…$`, or it opens math mode and swallows the rest of the paragraph.
+
+### ⚖ What this costs, and why it is still right
+
+`--format md` does not go through pandoc ([RENDERING-FLOW.md](RENDERING-FLOW.md)),
+so `$k = 4$` reaches `content/rendered/` verbatim and shows as literal
+`$k = 4$` in a viewer without MathJax. That is a real cost and it is
+accepted deliberately: GitHub, GitLab, Obsidian, Jupyter and VS Code all
+render it, the `$$…$$` blocks already in every draft carry the same cost,
+and the alternative -- one spelling for the pdf and another for the
+preview -- means two forms of every equation with nothing checking they
+still agree. [§10's figures](#-10-figures) pay that price because a TikZ
+picture genuinely cannot be shown as text; an equation can, so it should
+not.
+
+**Stated and not gated, deliberately.** `python -m chitragupta.draft gate`
+means exactly one thing -- a fabricated citekey fails -- and
+[docs/CODE-STANDARDS.md](CODE-STANDARDS.md) keeps it that way. Giving it
+a second meaning would blunt the first. The check that does exist is the
+one you can run by eye: a symbol set both as `$k$` and as `` `k` `` in
+the same chapter is always a defect.
+
 ## 📖 Sources and attribution
 
 Three openly licensed works supply the principles above. All three require
