@@ -74,6 +74,31 @@ span**, never against prose. A span with no row is left alone -- that is
 what keeps `as_of` and `GET /sensing/{unit}` in `\texttt{}` by
 construction rather than by heuristic.
 
+### 🧱 Display math: a `math` fenced block
+
+A code *span* is to inline math what a fenced block is to display math,
+so the draft spells a displayed equation as a fence tagged `math`:
+
+````markdown
+```math
+dW/dt = -W/tau
+```
+````
+
+and the same table supplies its LaTeX
+(`\frac{dW}{dt} = -\frac{W}{\tau}`), wrapped in `$$…$$` on substitution.
+
+**The tag is what disambiguates.** `_math.py` must look *inside* a
+```` ```math ```` fence but must *not* look inside any other fence, where
+the content is code. Without a tag those two requirements contradict
+each other. An untagged or differently-tagged fence is untouched, as
+today.
+
+**Substitute fences before spans.** The prototype got this wrong once:
+if inline substitution runs first it walks into the fence body and
+rewrites `W` and `tau` there, corrupting the block before the display
+rule ever sees it. Fences first, then spans over what remains.
+
 ## 🔌 Where it hooks in
 
 A new `chitragupta/render_output/_math.py`, beside `_figures.py` and
@@ -195,6 +220,25 @@ For the drafts already converted to `$…$`, adopting this means reverting
 their `.md` to ASCII. That is exact, not a rewrite: the pre-conversion
 sources are backed up outside `content/`, and
 `plans/math-typesetting-convention.md` records where.
+
+## 🧪 Prototyped, and what it proved
+
+A ~25-line prototype of `_math.py` was run against a draft holding one
+inline and one displayed equation, with the mapping above. Two results
+worth keeping:
+
+1. **The temp copy it produced was byte-identical** to the same document
+   written under `§12`'s `$…$` convention. So this design is not an
+   approximation of the shipped one -- it converges on exactly the same
+   input to pandoc.
+2. **The rendered PDF text was byte-identical too** (compared via
+   `pdftotext`). The `.tex` carried real `\(W\)`, `\(\tau\)` and a
+   displayed `\[\frac{dW}{dt} = -\frac{W}{\tau}\]`.
+
+That is the whole claim of the design, demonstrated rather than argued:
+**same PDF, different Markdown.** It also means the implementation has a
+cheap and exact test -- render a fixture both ways and assert the temp
+copies match, rather than asserting anything about pdf bytes.
 
 ## 🌱 Seed data already exists
 
