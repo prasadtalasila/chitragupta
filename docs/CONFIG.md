@@ -137,7 +137,7 @@ used as given.
   as the enrichment caches below it. It is also what every tier-1 command
   that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
-  that resolves outside it, and so do all four of `chitragupta.review`'s aids.
+  that resolves outside it, and so do all six of `chitragupta.review`'s aids.
   `ledger` is the one that takes no path argument at all -- its CLI only
   ever addresses rows by citekey or status -- so the rule applies to it
   vacuously rather than needing a check. This one
@@ -158,7 +158,7 @@ reference manager, re-export, and re-run `sync` -- see
 
 ### 📐 `[render]` -- citation style
 
-Used only by `chitragupta/render_output.py`, never by `sync` or the
+Used only by `chitragupta/render_output/`, never by `sync` or the
 citation gate.
 
 | Key | Env var | Accepts | Default |
@@ -182,7 +182,7 @@ citation gate.
 - **`collapse_citations`** -- whether a run of consecutive numbers
   collapses: `[3]–[6]` rather than `[3], [4], [5], [6]`. The IEEE
   Reference Guide's own examples use the collapsed form, but upstream
-  `ieee.csl` does not produce it, so `render_output.py` injects the one
+  `ieee.csl` does not produce it, so `render_output` injects the one
   CSL attribute that does (`collapse="citation-number"`) into a temp copy
   of the style. Set `false` to render whatever the style on disk says,
   unmodified. A style that already sets `collapse` itself is never
@@ -324,8 +324,9 @@ The values in full:
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
-  write lock. Commands that don't take that lock -- `chitragupta.draft` (all six
-  drafting-layer CLIs: gate, dossier, retrieve, references, render) --
+  write lock. Commands that don't take that lock -- `chitragupta.draft` (all eleven
+  drafting-layer CLIs: gate, dossier, retrieve, references, evidence, render,
+  style, spec, unit, registry, tldr) --
   write to stdout only and are not logged.
 
 The log file's own location, `logs/` beside the repo root, has no
@@ -417,7 +418,7 @@ strange timeout.
 
 ### ⚖ `backend`: pdftotext or docling
 
-`chitragupta/pdf_text.py` dispatches through a table, so adding a backend is one
+`chitragupta/pdf_text/` dispatches through a table, so adding a backend is one
 function plus one entry -- and two candidates were added and later
 removed through that same seam.
 
@@ -427,7 +428,7 @@ removed through that same seam.
 | `docling` | `docling`, `enrich` group | **Yes** -- form feeds between pages | **Yes** -- writes a passage sidecar | ~42x slower; see [PERFORMANCE.md](PERFORMANCE.md#-parserbackend----pdftotext-or-docling) |
 
 **Page boundaries are not cosmetic, which is why both backends now keep
-them.** `chitragupta/review/verbatim_check.py` reports which PDF page a verbatim
+them.** `chitragupta/review/verbatim_check/` reports which PDF page a verbatim
 run came from by splitting on those form feeds. Before `docling` asked
 for them, a citekey parsed that way reported `pdf p.1` for every hit,
 regardless of where the text sat.
@@ -454,7 +455,7 @@ and the ladder it feeds is in
 enrichment layer, and does not make `chitragupta/enrich/docling_parse.py` redundant.**
 They are two consumers of the same library, with different scopes:
 
-- **`chitragupta/pdf_text.py`** (the corpus layer, on `sync`) extracts plain
+- **`chitragupta/pdf_text/`** (the corpus layer, on `sync`) extracts plain
   text per
   citekey into `content/parsed/<citekey>.txt` for BM25 retrieval, plus the
   passage sidecar beside it. docling here is a higher-fidelity substitute

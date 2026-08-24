@@ -293,8 +293,10 @@ sequence.
    finding may be read, may be invoked by a driver, and may never block a
    draft.*
 2. **#127, widened** to every aid. Hard prerequisite for everything
-   below. *Done for `verbatim scan` in 5.4.0, on layer-level plumbing the
-   other two aids reuse; they are the remainder of this step.*
+   below. *Done: `verbatim scan` in 5.4.0, then `provenance` and
+   `coverage` in 6.16.0 (#309), and `synthesis`/`uncited` from the day
+   each landed (#341, #311) -- all six aids now emit JSON on the same
+   layer-level plumbing.*
 3. **#128** -- severity buckets and the boilerplate allowlist. *Done in
    5.5.0 -- the allowlist shipped as per-host, gitignored data (like
    `config.toml`), not version-controlled as first framed in
@@ -323,7 +325,9 @@ sequence.
 7. **#130** -- the gating decision, last, tuned against real reports from
    step 5.
 
-Steps 4 and 5 are the only new work; the rest are open issues.
+Steps 4 and 5's widening are the only work left live. Steps 1, 2, 3 and 6
+are shipped, and step 7 (#130) is a closed, declined decision rather
+than an open issue -- see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
 
 ## 🚫 What this does not change
 

@@ -125,18 +125,18 @@ command already has -- this is a front door, not a redesign.
 
 | Command | Subcommands / flags |
 | --- | --- |
-| `chitragupta review provenance <draft>` | `--formats` |
+| `chitragupta review provenance <draft>` | `--json`, `--formats` |
 | `chitragupta review verbatim` | `overlap`, `scan`, `recheck`, `locate` |
-| `chitragupta review coverage <draft>` | `--query` (required, repeatable), `--k`, `--write`, `--formats` |
+| `chitragupta review coverage <draft>` | `--query` (required, repeatable), `--k`, `--json`, `--write`, `--formats` |
 | `chitragupta review synthesis <draft>` | `--unit`, `--json`, `--write`, `--formats` |
 | `chitragupta review figure <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review uncited <draft>` | `--genre`, `--json`, `--write`, `--formats` |
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
-| Command              | Flags                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
+| Command              | Flags                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
 That is 4 layers and 21 verbs and aids (3 + 11 + 6 + 1), plus 3
 package-level commands, giving **46 invocable leaf commands**: 3 + 3 +

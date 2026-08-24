@@ -191,7 +191,7 @@ docs/                     reference docs that ship in the release zip -- everyth
     svg/*.svg                 rendered exports (mmdc -b white -w 1900). Exports only -- edit the
                               fenced block in DIAGRAMS.md, then re-render
   CITATION-PROVENANCE.md    what chitragupta/review/citation_provenance.py reports and how to read it
-  PLAGIARISM.md             what chitragupta/review/verbatim_check.py's overlap/scan modes catch and don't
+  PLAGIARISM.md             what chitragupta/review/verbatim_check/'s overlap/scan modes catch and don't
                             (verbatim reuse only, paraphrase is a later tier), the n-gram
                             fingerprinting technique and its literature sources, and a measured
                             docling-vs-pdftotext backend comparison
@@ -224,9 +224,9 @@ config.toml.example       tracked template for the central config -- paths, pars
 papers/                   gitignored, per-host data -- not shipped in the repo
   bibliography.bib          BibTeX export -- source of truth for citekeys/metadata (config.toml's [bib].path default)
   bibliography/             the export's companion attachment folder, referenced by each entry's file field
-pyproject.toml            Poetry config (dependency/lockfile manager for now, package-mode = false --
-                          no [build-system] yet; docs/PACKAGING.md has the decision to publish and
-                          what still has to land first) + pytest/coverage tool config
+pyproject.toml            Poetry config -- a real, publishable package (name chitragupta-cli, import
+                          package chitragupta, [build-system] = poetry-core; docs/PACKAGING.md has
+                          the decision and the naming) + pytest/coverage tool config
 poetry.toml               project-local Poetry config: virtualenvs.create = false (installs into
                           whatever venv VIRTUAL_ENV points at, e.g. .venv-full/, instead of Poetry's own)
 poetry.lock               resolved dependency versions -- regenerate with `poetry lock` after editing pyproject.toml
@@ -247,7 +247,7 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           detect/remove rows for citekeys no longer in the bib file. Also persists each
                           entry's formatting-relevant BibTeX fields (bib_fields, JSON), so references.py
                           can build a full bibliography entry without reading the bib file itself
-  pdf_text.py               PDF text extraction, dispatched to pdftotext/docling by config.PARSER; also the parse-quality guard
+  pdf_text/                 PDF text extraction, dispatched to pdftotext/docling by config.PARSER; also the parse-quality guard
   sync.py                   orchestrates the above -- the corpus layer's `sync` verb; --remove-stale opts into
                           deleting stale ledger rows (default: report only, see README's "Removing a paper")
   corpus.py                 the corpus layer's single entry point, `python -m chitragupta.corpus sync|ledger`.
@@ -268,19 +268,19 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           pages -> pdftotext) and whether it may be quoted -- shared by the consumers
                           that need to point at part of a source rather than all of it
   overlap_index.py          disk-cached word n-gram fingerprint index (content/overlap/) for
-                          chitragupta/review/verbatim_check.py's overlap and scan modes -- one .fpr file per citekey plus
+                          chitragupta/review/verbatim_check/'s overlap and scan modes -- one .fpr file per citekey plus
                           a merged, binary-searchable corpus-wide index.bin, both keyed by
                           (pdf_hash, parsed-file stat) so a re-run over an unchanged corpus costs no
                           re-fingerprinting. Read-only over the corpus layer, no writer lock
   citation_gate.py          hard citation-verification gate -- the drafting layer must pass this
-  dossier.py                the working state behind a draft (reader, scope, kept evidence, rejected
+  dossier/                  the working state behind a draft (reader, scope, kept evidence, rejected
                           candidates, steering, revision log) as Markdown under content/dossiers/,
                           mirroring the draft's path; plus tar.gz backup/restore. Read-only over the
                           corpus layer, never a gate -- see docs/DRAFT-ITERATION.md
   references.py             auto-generates a draft's "## References" section from its own cited citekeys,
                           as numbered IEEE entries ordered by first appearance -- the same order (and
                           so the same numbers) pandoc's citeproc assigns when the draft is rendered
-  render_output.py          Pandoc/TeX Live rendering + standalone CLI -- stdlib-only, no enrich group
+  render_output/            Pandoc/TeX Live rendering + standalone CLI -- stdlib-only, no enrich group
                           needed, which is why it sits here and not in chitragupta/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
@@ -289,7 +289,7 @@ chitragupta/review/                the review layer -- one command, `python -m c
                           mirroring the draft), the "not a gate" banner, the header, and the
                           write-md-then-render routine all six aids use. No timestamp, so a
                           report diffs across revisions
-  __main__.py               the layer's single entry point: one parser, five subcommands, each
+  __main__.py               the layer's single entry point: one parser, six subcommands, each
                           wired to its aid's own build_parser()/run(). The aids below carry no
                           __main__ block of their own -- see docs/ARCHITECTURE.md on why a layer's
                           command surface stays one level deep
@@ -301,8 +301,10 @@ chitragupta/review/                the review layer -- one command, `python -m c
                           unit its genre binds at (docs/WRITING-STANDARDS.md §11), not a gate
   uncited_prose.py          `uncited` -- which sentences carry no citation at all, the prose-side
                           question `coverage` does not answer. The one aid that reads no corpus
-  verbatim_check.py         `verbatim` -- per-citekey overlap, whole-draft x whole-corpus scan, and
+  verbatim_check/           `verbatim` -- per-citekey overlap, whole-draft x whole-corpus scan, and
                           page-locating checks against sources
+  figure_layout/            `figure` -- a TikZ figure's own pre-flight defects (occlusion, chaotic
+                          routing, illegible type, ...), not a gate -- see docs/TIKZ-STYLE.md
   _blocks.py                what a *block* is -- a table row, a list item, a heading -- in both
                           markups. Shared by provenance and uncited_prose; neither owns it
   _claims.py                which sentences of a draft carry a claim, and which are scaffolding.
@@ -315,7 +317,7 @@ chitragupta/enrich/                the enrichment layer (pyproject.toml's "enric
                           the stages below, which carry no __main__ block of their own
   corpus.py                 the enrichment layer's view of the ledger -- one CorpusDoc per bib item,
                           so every enriched document is citable, keyed by its citekey
-  docling_parse.py, embed_index.py, topic_model.py
+  docling_parse.py, embed_index.py, topic_model.py, topic_seeding.py, topic_converge.py
 scripts/                   dev tooling only -- no layer entry point lives here
   install_full_pipeline.sh  single staged install path (os-deps/python-deps/dev-deps/all) for host + Docker
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
@@ -323,15 +325,23 @@ tests/                    pytest suite -- unit tests per module + end-to-end fea
 content/                  generated, gitignored (regenerate with sync)
   ledger.sqlite, parsed/<citekey>.txt, drafts/, dossiers/, rendered/, review/,
   retrieval_index.json, overlap/,
-  docling/, chroma/, topics.json, topic_embed_cache.json  (chitragupta/enrich/ outputs)
+  docling/, chroma/, topics.json, topic_seeds.json, topic_set.json,
+  topic_embed_cache.json  (chitragupta/enrich/ outputs)
 logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups. Level from
                           config.toml's [logging]; relocate with the LOGS_DIR env var
-.claude/skills/           drafting layer: survey-writer, thesis-chapter-writer,
-                          textbook-chapter-writer, tutorial-writer, deep-research
+.claude/skills/           drafting layer: five that write a draft (survey-writer,
+                          thesis-chapter-writer, textbook-chapter-writer, tutorial-writer,
+                          deep-research), three that revise one that already exists
+                          (draft-reviser, corpus-reviser, overlap-reviser), and one that
+                          assembles accepted units into a book (book-assembler)
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer
-.claude/hooks/            citation_gate_hook.py -- PostToolUse hook, mechanically enforces citation_gate on
-                          every Write/Edit under content/drafts/*.md and *.tex (see AGENTS.md)
-.claude/settings.json     wires the hook above into the PostToolUse event
+.claude/hooks/            citation_gate_hook.py and style_check_hook.py -- PostToolUse hooks,
+                          mechanically enforcing the citation gate and the prose style check on
+                          every Write/Edit under content/drafts/*.md and *.tex (see AGENTS.md);
+                          session_start_hook.py checks the project can draft at all; draft_target.py
+                          is the shared "which file did this tool call touch" helper both PostToolUse
+                          hooks use
+.claude/settings.json     wires the three hooks above into PostToolUse/SessionStart
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry) -- unverified end-to-end, see DOCKER.md
 ```
 

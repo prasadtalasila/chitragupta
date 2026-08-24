@@ -253,9 +253,11 @@ non-determinism bug was found only because shrinking the window made it
 load-bearing; it had been shipping in `search()` for every caller. And
 the arithmetic table above exists because an earlier version of the
 defaults (3 windows of 700 characters) lost to one-stage in *every*
-scenario and nobody had checked -- the check now lives in
-`tests/test_retrieval.py::TestTwoStageCost`, and it is why the claim
-cannot silently invert again.
+scenario and nobody had checked. That check has no pinning test of its
+own any more -- it was removed along with the `triage` two-stage path
+itself, and only a historical comment survives at
+`chitragupta/retrieval.py`'s "It is a lookup, not a stage" passage,
+pointing back here.
 
 ## ✍ Recording how a rejection was made
 

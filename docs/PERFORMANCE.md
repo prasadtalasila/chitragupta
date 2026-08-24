@@ -85,7 +85,7 @@ fallback.
 
 ## ⚙ `[parser].backend` -- pdftotext or docling
 
-Measured on 5 real bibliography PDFs, cold (no caching -- `pdf_text.py`
+Measured on 5 real bibliography PDFs, cold (no caching -- `pdf_text/`
 does not cache, so these are extraction times, not `sync`'s steady state,
 which skips PDFs whose bytes have not changed).
 

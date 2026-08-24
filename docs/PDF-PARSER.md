@@ -377,7 +377,7 @@ $ python -c "import sys; sys.OpenCV_LOADER = True; import cv2"
 ImportError: ERROR: recursion is detected during loading of "cv2" binary extensions.
 ```
 
-**Why sync turns that into a whole-run failure.** `chitragupta/pdf_text.py`'s
+**Why sync turns that into a whole-run failure.** `chitragupta/pdf_text/_startup.py`'s
 `prestart_pool()` starts a forkserver whose preload imports `docling` while
 the parent reads the bibliography -- which is why the print lands *before*
 the progress lines. `forkserver.main()` catches `ImportError` and discards

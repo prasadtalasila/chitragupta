@@ -36,7 +36,7 @@ different mechanisms, and keeps them apart on purpose.
 
 | Term | What it means here | Where it lives |
 | --- | --- | --- |
-| **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync.py`'s worker pool, `chitragupta/pdf_text.py` |
+| **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync.py`'s worker pool, `chitragupta/pdf_text/` |
 | **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `chitragupta/runlock.py` |
 
 Unrelated problems, unrelated solutions. Parallelism is an opt-in speed
@@ -70,7 +70,7 @@ Two entry points reach it, sharing the same machinery:
           │ _executor_for()                        │ _executor_for()
           └────────────────┬───────────────────────┘
                            ▼
-                   chitragupta/pdf_text.py
+                   chitragupta/pdf_text/
         resolve_workers · worker_ceiling · docling_threads
    process_pool_context · prestart_pool · init_worker · usable_devices
 ```
@@ -128,7 +128,7 @@ runs print identically.
 
 ## 🧩 Components
 
-All in `chitragupta/pdf_text.py` unless noted.
+All in `chitragupta/pdf_text/` unless noted.
 
 ### 🧮 `resolve_workers(n_docs) -> (workers, complaint)`
 

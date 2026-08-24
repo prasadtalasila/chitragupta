@@ -666,14 +666,15 @@ Its own status line is stale, which matters for anyone costing this:
 it says the `prose` class *"has no producer until #103 and #107 land"*,
 but [HOUSE-STYLE.md](HOUSE-STYLE.md) records #107 shipped in 5.13.0 and
 its automatic invocation (#183) in 5.19.0, and `chitragupta/style_check.py`
-carries `--json` today. **Build-order step 6 has shipped.** Steps 3 and
-6 are done; 1, 2, 4, 5 and 7 are the live work.
+carries `--json` today. **Build-order step 6 has shipped.** Steps 1, 2, 3 and
+6 are done, and step 7 (#130) is a closed, declined decision rather than
+an open issue; only step 4 and step 5's widening are the live work.
 
 ### 🗒 F2: the `agenda` aid
 
 Step 4, and the largest genuinely new piece of the track. A fourth key
 in `review.AIDS`: deterministic, stdlib-only, no LLM, takes no lock,
-exits 0 whatever it finds. It reads the other four aids' JSON plus the
+exits 0 whatever it finds. It reads the other six aids' JSON plus the
 dossier's drift report and emits **one ranked, deduplicated worklist**
 -- *"This cross-signal merge is the work no individual aid can do."*
 

@@ -25,6 +25,8 @@ flowchart TB
       DOC[/"<b>content/docling/&lt;doc&gt;.md</b><br/>+ &lt;doc&gt;.passages.json<br/><b>+ &lt;doc&gt;_artifacts/*.png</b> — figure bitmaps<br/><b>+ &lt;doc&gt;.figures.json</b> — page, caption, cite string<br/><small>the last two only when <code>[enrich].docling_images</code><br/>is on; Docling reads the <b>PDF</b>, never content/parsed/</small>"/]
       CHR[("content/chroma/")]
       TOP[/"content/topics.json"/]
+      SED[/"content/topic_seeds.json"/]
+      CVG[/"content/topic_set.json"/]
     end
 
     subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
@@ -47,8 +49,8 @@ flowchart TB
   CFG -. "read once at import,<br/>env vars override" .-> GEN
 
   BIB -- "chitragupta/bib_reader.py" --> LED
-  PDF -- "chitragupta/pdf_text.py" --> TXT
-  PDF -- "chitragupta/pdf_text.py<br/><small>docling backend only</small>" --> CPS
+  PDF -- "chitragupta/pdf_text/" --> TXT
+  PDF -- "chitragupta/pdf_text/<br/><small>docling backend only</small>" --> CPS
   LED -- "which PDFs need a parse" --> TXT
   LED -- "chitragupta/enrich/corpus.py<br/><small>every row, keyed by <code>citekey</code></small>" --> DOC
   TXT -- "chitragupta/enrich/embed_index.py" --> CHR
@@ -56,6 +58,9 @@ flowchart TB
   CPS -. "<b>chitragupta/enrich/docling_parse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
   DOC --> CHR
   TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
+  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the author's own topic phrases,<br/>matched against the same embeddings</small>" --> SED
+  TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
+  SED --> CVG
 
   TXT -- "chitragupta/retrieval.py" --> RIX
 
@@ -77,7 +82,7 @@ flowchart TB
 
   class BIB,PDF,CFG mine
   class LED,TXT,CPS corpus
-  class DOC,CHR,TOP heavy
+  class DOC,CHR,TOP,SED,CVG heavy
   class RIX,DCA,TCA cache
   class DRF,REN,RVW draft
   class LCK lock

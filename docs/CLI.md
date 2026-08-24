@@ -134,7 +134,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all six commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all four aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all six aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -167,7 +167,7 @@ by hand, but don't change what a hook or a skill invokes.
 
 Two commands look like they belong in a higher tier and don't:
 
-- `chitragupta.draft render` (`chitragupta/render_output.py`) needs only stdlib
+- `chitragupta.draft render` (`chitragupta/render_output/`) needs only stdlib
   plus
   `chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references`. It
   shells out to the
@@ -755,6 +755,7 @@ material is gone rather than mislaid.
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
+| `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
 | `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
@@ -971,7 +972,7 @@ never a second computation.
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
 
-Unlike the other two it writes by default -- reading a provenance report
+Unlike the other five it writes by default -- reading a provenance report
 in a terminal was never the point. The report lands in
 `content/review/<topic>/<stem>.provenance.md`, mirroring the draft's path,
 with its `.tex`/`.pdf` renders and its `.json` sibling beside it, all
@@ -997,7 +998,7 @@ Markdown report -- `id`, `line`, `citekey`, `claim`, `score`, `band`,
 `passage` (`page`/`quotable`/`text`, `null` when nothing matched) and
 `note` (why a source was unreadable, when one was). An additional
 serialisation of what `render_markdown` already prints, never a second
-computation. Unlike the other two aids, the `.json` is filed
+computation. Unlike the other five aids, the `.json` is filed
 unconditionally -- matching the `.md`'s own always-write policy -- and
 `--json` only decides whether it is *also* printed to stdout, with the
 written-files summary moving to stderr in that case.
@@ -1165,7 +1166,7 @@ technique and its literature sources.
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other two review aids. `0` on every
+**Exit codes**, shared with the other five review aids. `0` on every
 successful invocation, findings or not: these are advisory, never a gate.
 That includes `recheck` -- a draft that got worse still exits 0.
 
@@ -1603,7 +1604,7 @@ most specific first, and the report names which one was used:
 Record a draft's dialect with:
 
 ```bash
-python -m chitragupta.draft dossier set-language en-GB content/drafts/<path>
+python -m chitragupta.draft dossier set-language content/drafts/<path> en-GB
 ```
 
 With none of the three set -- the shipped "not settled" placeholder, or
@@ -1613,7 +1614,7 @@ command measures the draft both ways and proposes one:
 ```text
 dialect: not checked -- no `language:` in scope.md and no [style].language
 it reads as en-GB (en-GB: 0, en-US: 13). To record that:
-  python -m chitragupta.draft dossier set-language en-GB content/drafts/<path>
+  python -m chitragupta.draft dossier set-language content/drafts/<path> en-GB
 ```
 
 It proposes and never writes: [HOUSE-STYLE.md](HOUSE-STYLE.md)'s rule is

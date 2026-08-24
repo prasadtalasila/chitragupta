@@ -169,8 +169,8 @@ how much a function *does* -- and is blind to how well it is explained. On
 that measure the codebase is in good shape: 26 offenders in `chitragupta/`, not
 128, and the tests hold the bar almost perfectly at 1 in 1926.
 
-The same correction applies to files: `chitragupta/config.py` is 509 physical
-lines and 288 lines of code, the difference being 221 lines of
+The same correction applies to files: `chitragupta/config.py` is 934 physical
+lines and 447 lines of code, the difference being 487 lines of
 per-setting rationale. The file rule counts code lines -- non-blank,
 non-comment -- for the same reason.
 
@@ -368,7 +368,7 @@ should not get one.
 | --- | --- |
 | Keep configurable data at high levels | Already here: `config.toml` is the single source, every key overridable by an env var |
 | Prefer polymorphism to if/else | **N/A as stated** -- `chitragupta/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
-| Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text.py` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
+| Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text/` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
 | Prevent over-configurability | Review. A `config.toml` key with one caller and no user asking for it is a maintenance cost, not flexibility |
 | Use dependency injection | Already here as **the probe pattern**: a stage depends on "is pandoc on PATH?", answered at run time, never on a `--target` flag naming its environment |
 | Follow Law of Demeter | Already here as module boundaries: `references.py` reads the ledger's `bib_fields` column and must not reach through to `bibliography.bib` |
@@ -454,7 +454,7 @@ agree or disagree with.
 | Smell | What it looks like here |
 | --- | --- |
 | **Rigidity** -- a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
-| **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than four aids each writing their own path |
+| **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than six aids each writing their own path |
 | **Immobility** -- code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
 | **Needless complexity** | Speculative configurability, an abstraction with one call site, defensive handling for an impossible state |
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |
@@ -502,7 +502,7 @@ different shape than proposed here -- see their own notes.
    rather than a comment nothing reads, which is what makes this a
    `# noqa`-free *policy* rather than just a second linter. One of the 12
    existing markers turned out to be unneeded on that evidence
-   (`chitragupta/pdf_text.py`'s re-raising `except` -- BLE001's own
+   (`chitragupta/pdf_text/_backends.py`'s re-raising `except` -- BLE001's own
    definition exempts a block that ends in `raise`) and was removed;
    the rest were confirmed live, not assumed so.
 3. ~~**Type annotations and a checker.**~~ **Annotated in full, in #355 --

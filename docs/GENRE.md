@@ -256,7 +256,7 @@ fingerprint. What that promises is no *missing* citations, not an empty
 candidate list -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
 
-Drafts written before `chitragupta/dossier.py` existed have no dossier, and
+Drafts written before `chitragupta/dossier/` existed have no dossier, and
 neither do hand-written ones. It bootstraps rather than refusing:
 `dossier init`, then fill in what the draft itself can tell you.
 

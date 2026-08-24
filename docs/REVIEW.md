@@ -107,9 +107,9 @@ draft's path:
 
 ```text
 content/drafts/<topic>/survey.md
-  -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
+  -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf, .json)
      content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf, .json)
-     content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
+     content/review/<topic>/survey.coverage.md     (+ .tex/.pdf, .json)
      content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf, .json)
      content/review/<topic>/survey.figure.md       (+ .tex/.pdf, .json)
      content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)

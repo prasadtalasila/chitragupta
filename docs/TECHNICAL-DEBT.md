@@ -332,10 +332,11 @@ them. Each is a
 with no detector, checked by hand against the tree:
 
 - **Over-configurability** ("a `config.toml` key with one caller and no
-  user asking for it"). 41 public constants in `chitragupta/config.py`; the four
-  with no external caller (`LOG_LEVELS`, `PARSER_START_METHODS`,
-  `BIB_FILE`, `CONFIG_PATH`) are all internal validation tuples or
-  intermediate values used within `config.py` itself. No speculative key.
+  user asking for it"). 63 public constants in `chitragupta/config.py`; the
+  five with no external caller (`LOG_LEVELS`, `PARSER_START_METHODS`,
+  `PACKAGE_ROOT`, `PROJECT_MARKER`, `CONFIG_PATH`) are all internal
+  validation tuples or intermediate values used within `config.py` itself.
+  No speculative key.
 - **Flag arguments** ("don't use flag arguments"). Nine functions take a
   boolean-defaulted parameter; every one is a CLI option plumbed to its
   implementation (`--force`, `--json`, `--write`, `--remove-stale`), not
@@ -384,7 +385,7 @@ the register into one list, which is what build order item 2 asked for.
 | `F821` undefined-name | 4 | `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated three fields `"array[int]"` with no `array` import in the module -- real, fixed by adding it |
 | `BLE001` blind-except | 2 | `style_check.language_of`/`style_acronym_drift.findings`, each catching a blind `Exception` where `dossier.dossier_dir` only ever raises `dossier.DossierError` -- real, fixed by narrowing rather than suppressing |
 | `E501` line-too-long | 1 | `chitragupta/dossier/_create.py:33`, a 125-column Markdown table row inside an f-string template -- real, and pylint's own blind spot: `unspecified-encoding`'s checker does not see inside a multi-line string literal, so a 10.00/10 `pylint` run says nothing about it |
-| `RUF100` unused-noqa | 1 | `chitragupta/pdf_text.py`'s `_extract_docling` -- fixed by removing the marker |
+| `RUF100` unused-noqa | 1 | `chitragupta/pdf_text/_backends.py`'s `_extract_docling` -- fixed by removing the marker |
 
 The `per-file-ignores` entry is `"__init__.py" = ["F401", "E402"]`,
 wholesale rather than 52 per-line `noqa`s, because that pattern is
@@ -396,7 +397,7 @@ built for exactly this shape.
 `scripts/check_version_bump.py`'s, added after that count was taken)
 turned out to split 11/1.** Eleven are confirmed live: `ruff` would
 report `BLE001` at each without its `# noqa`, checked directly rather
-than assumed. The twelfth, `pdf_text.py`'s, was not -- `_extract_docling`
+than assumed. The twelfth, `pdf_text/`'s, was not -- `_extract_docling`
 re-raises via `raise ... from exc`, which `BLE001`'s own definition of
 "blind" exempts, so the marker suppressed nothing and was removed (the
 *why*-comment beside it stayed; only the `noqa:` tag was dead weight).
@@ -654,7 +655,7 @@ worse.
 | Looks like | Actually |
 | --- | --- |
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
-| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:128`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
+| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:139`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval.py` and `enrich/docling_parse.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |
 | 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline) -- confirmed live, not assumed so |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
