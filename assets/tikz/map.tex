@@ -1,0 +1,20 @@
+% Metaphor: map. Two axes a reader can name, and every item placed by
+% where it falls on both -- reach for it when the point is *how things
+% compare*, not how they connect. A map with arrows on it is usually a
+% pipeline that has not admitted it yet.
+%
+% Idiom: `matrix`. The rows and columns are the layout, so no cell needs
+% a coordinate and re-wording a label cannot collide with its neighbour.
+% Each cell holds a real `\node` with a name, which is what lets
+% `python -m chitragupta.review figure` measure this picture at all.
+\usetikzlibrary{matrix}
+\begin{tikzpicture}[thick,
+                    cell/.style={draw,align=center,
+                                 minimum width=30mm,minimum height=12mm},
+                    head/.style={align=center,minimum height=8mm}]
+  \matrix[row sep=4mm,column sep=4mm] {
+    \node[head] (corner) {};        & \node[head] (cheap) {cheap};   & \node[head] (dear) {dear};    \\
+    \node[head] (batch) {batch};    & \node[cell] (bc) {overnight};  & \node[cell] (bd) {rebuild};   \\
+    \node[head] (live) {live};      & \node[cell] (lc) {cached};     & \node[cell] (ld) {on demand}; \\
+  };
+\end{tikzpicture}

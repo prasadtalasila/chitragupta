@@ -598,24 +598,6 @@ shapes, lines and typography. The layout material is instead in
 `prompts/diagram_eval_prompts.py`, the *evaluation* rubric, which was
 never advertised as a style artefact.
 
-### 🏗 D3: known-good layout scaffolds
-
-A small library of TikZ patterns, **one per metaphor in D1's list** --
-pipeline, layered stack, branching tree, hub-and-spoke, control loop --
-with spacing that satisfies D2 by construction. D1 tells an author to
-choose a metaphor; this gives them something to choose *from*, so the
-choice is a starting file rather than a blank `tikzpicture`.
-
-PaperBanana's retriever ranks reference figures by a rule worth keeping
--- *"Structure is more important than Topic for drawing"* -- but its
-reference corpus is not in the repository (it needs a separate
-Hugging Face download) and is a set of raster images regardless. Building
-this from accepted TikZ sources in this project is strictly better,
-because the retrieved artefact is then editable source rather than
-pixels.
-
-Size: M. Depends on: D1, D2.
-
 ### 👁 D4: optional vision critique
 
 Only for what D2 cannot judge: whether the figure communicates its
@@ -794,12 +776,11 @@ is for.
 | 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
 | 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
 | 4 | [F2](#-f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
-| 5 | [D3](#-d3-known-good-layout-scaffolds) layout scaffolds | D | M | D1, D2 |
-| 6 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 7 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
-| 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
-| 9 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
-| 10 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 5 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 6 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
+| 7 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
+| 8 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
+| 9 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).

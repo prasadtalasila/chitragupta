@@ -1,0 +1,19 @@
+% Metaphor: pipeline. One direction, one stage after another, nothing
+% doubling back -- reach for it when the thing being drawn is a sequence
+% and the reader's question is "what happens next".
+%
+% Idiom: a chain placed with `positioning`. Each stage says where it sits
+% relative to the one before it, so inserting a stage moves everything
+% downstream instead of re-opening every adjacency by hand.
+\usetikzlibrary{positioning}
+\begin{tikzpicture}[thick,
+                    stage/.style={draw,align=center,
+                                  minimum width=24mm,minimum height=10mm}]
+  \node[stage] (intake) {intake};
+  \node[stage,right=8mm of intake] (parse) {parse};
+  \node[stage,right=8mm of parse] (index) {index};
+  \node[stage,right=8mm of index] (serve) {serve};
+  \draw[->] (intake) -- (parse);
+  \draw[->] (parse) -- (index);
+  \draw[->] (index) -- (serve);
+\end{tikzpicture}
