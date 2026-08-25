@@ -227,9 +227,11 @@ def _fence_gaps(masked: str) -> "list[str]":
     """
     found = []
     for match in _FENCE_RE.finditer(masked):
+        if match.group("tag").strip():
+            continue
         body = _body_of(match)
         lines = body.splitlines()
-        if match.group("tag").strip() or len(lines) > _MAX_EQUATION_LINES:
+        if len(lines) > _MAX_EQUATION_LINES:
             continue
         # `lines[0]` is reached only once the body has matched, so an
         # empty fence cannot get here.
