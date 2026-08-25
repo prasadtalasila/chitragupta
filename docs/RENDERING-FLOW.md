@@ -19,6 +19,7 @@ citeproc pass over a composed book ([BOOKS.md](BOOKS.md)).
 
 - [The two paths through `render()`](#-the-two-paths-through-render)
 - [Citation resolution: `--citeproc` is the only mode there is](#-citation-resolution---citeproc-is-the-only-mode-there-is)
+- [Mathematics: substituted on the pandoc path only](#-mathematics-substituted-on-the-pandoc-path-only)
 - [Four places a rendered bibliography can live](#-four-places-a-rendered-bibliography-can-live)
 - [The manual References section, and why citeproc replaces it](#-the-manual-references-section-and-why-citeproc-replaces-it)
 - [Figure substitution: four combinations, one real no-op](#-figure-substitution-four-combinations-one-real-no-op)
@@ -61,6 +62,34 @@ mid-key otherwise, silently dropping the citation), and stripping control
 characters / folding math-alphanumeric Unicode that `content/parsed/`
 text can carry and pdflatex cannot. Neither the draft nor
 `papers/bibliography.bib` is ever written to.
+
+## 🔢 Mathematics: substituted on the pandoc path only
+
+`chitragupta/render_output/_math.py` runs on the same temp copy, between
+the figure swap and `_safe_render_inputs`, and turns a draft's ASCII into
+mathematics pandoc can read -- `` `tau` `` into `$\tau$`, and a
+`<!-- math -->` fence into `$$…$$` -- using the ASCII-to-LaTeX table in
+the dossier's `math.md` ([DOSSIER.md](DOSSIER.md),
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12).
+
+It turns on **the same predicate as the two paths above**: a render that
+reaches pandoc gets the substitution, and `--format md` -- which does not
+-- is a byte-perfect no-op, which is the whole reason the LaTeX lives
+outside the draft. A span with no row is left exactly as it was, so
+`as_of` stays `\texttt{as\_of}` by construction rather than by heuristic.
+
+**It writes `$…$`, never `\(…\)`.** Pandoc's *Markdown reader* does not
+read `\(…\)` as mathematics: handed `A $k = 4$ and B \(k = 4\)` it emits
+`A \(k = 4\) and B (k = 4)`, silently dropping the second one's
+backslashes. `$…$` is the native inline form, and each writer then
+renders it in its own idiom -- which is what makes the output
+format-native rather than LaTeX-shaped.
+
+Two conditions **fail the render** rather than warning, because both mean
+the pdf would carry verbatim text where the author said an equation goes:
+a `<!-- math -->` marker with no row, and one with no `math.md` at all.
+The second is what renaming a draft looks like -- a dossier is found by
+path alone. Heuristic gaps print `[math]` warnings and carry on.
 
 ## 🗂 Four places a rendered bibliography can live
 

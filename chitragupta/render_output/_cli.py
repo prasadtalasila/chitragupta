@@ -8,6 +8,7 @@ from pathlib import Path
 from chitragupta import config
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
+from chitragupta.render_output._math import MathMappingError
 
 
 def _format_arg(value: str) -> str:
@@ -159,6 +160,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}")
+        return 1
+    except MathMappingError as exc:
+        # Non-zero, and deliberately so. A `<!-- math -->` marker is the
+        # author stating a displayed equation is here; rendering it as
+        # verbatim text instead is the exact defect
+        # docs/WRITING-STANDARDS.md §12 exists to prevent, and a warning
+        # a skill may carry on past is not enough to stop it shipping.
+        # The heuristic gaps stay warnings -- only this is certain.
+        print(f"[error] {exc}")
         return 1
     except OutsideContentDir as exc:
         # Reported like any other render failure rather than as a

@@ -462,24 +462,90 @@ citation means. This project has real citekeys and keeps using them.
 
 ## 🔢 12. Mathematics
 
-**Every quantity is math: `$…$` inline, `$$…$$` displayed. Backticks
-mean code, and only code.** A `.tex` draft uses `\(…\)` and `\[…\]`
-directly and the rest of this section still applies to it.
+**A quantity is never left as a bare code span. Backticks mean code, and
+only code.** There are two ways to honour that, and a Markdown draft may
+use either -- but only one of them per quantity, and consistently.
+
+| | In the draft | Where the LaTeX lives |
+| --- | --- | --- |
+| **Mapped** (preferred for a new draft) | `` `k = 4` ``, ASCII | the dossier's `math.md` |
+| **Inline** | `$k = 4$` / `$$…$$` | the draft itself |
+
+A `.tex` draft -- `thesis-chapter-writer`'s -- writes `\(…\)` and `\[…\]`
+directly and has no third option; the rest of this section still applies
+to it.
 
 This needs stating because the failure is invisible in the draft and
 only appears downstream. Pandoc's Markdown reader turns a code span into
-`\texttt{}` and escapes its spaces, so `` `k = 4` `` becomes
+`\texttt{}` and escapes its spaces, so an unhandled `` `k = 4` `` becomes
 `\texttt{k\ =\ 4}` in the rendered LaTeX -- upright, typewriter, with
-`=` set as ordinary text -- while `$$…$$` two paragraphs earlier becomes
-a real `\[…\]`. Both spellings look plausible in the Markdown source.
-Only the pdf shows that the same symbol has been set two ways.
+`=` set as ordinary text -- while a real equation two paragraphs earlier
+becomes `\[…\]`. Both look plausible in the Markdown source. Only the pdf
+shows that the same symbol has been set two ways.
+
+### 🗺 The mapped form, and why it is preferred
+
+`$k = 4$` fixes the pdf and costs the Markdown. `--format md` never
+reaches pandoc ([RENDERING-FLOW.md](RENDERING-FLOW.md)), so those
+delimiters land verbatim in `content/rendered/` -- fine where the
+Markdown is a step towards a pdf, wrong where somebody reads it.
+
+The mapped form keeps the draft ASCII and puts the LaTeX in the
+dossier's `math.md` ([DOSSIER.md](DOSSIER.md)):
+
+```markdown
+| ASCII in the draft | LaTeX |
+| --- | --- |
+| `k = 4`          | `k = 4` |
+| `tau`            | `\tau` |
+| `dW/dt = -W/tau` | `\frac{dW}{dt} = -\frac{W}{\tau}` |
+```
+
+`render` substitutes those into a temp copy for every format that reaches
+pandoc, so `tex`, `pdf` and the rest get real mathematics while
+`--format md` is a byte-perfect no-op. **The key is the span already in
+the draft**, so nothing new is invented and nothing is guessed: a span
+with a row is a quantity because the mapping says so, and `as_of` stays
+code because it has no row.
+
+A **displayed** equation is an untagged fence with a `<!-- math -->`
+marker on the line above:
+
+````markdown
+<!-- math -->
+```
+dW/dt = -W/tau
+```
+````
+
+The marker, not a ```` ```math ```` tag, for two reasons: GitHub and
+GitLab typeset a `math`-tagged fence as LaTeX, so ASCII inside one is
+rendered wrongly there; and every other fence in a draft holds code, so
+something has to say which is which. It is the same device as
+[§10's figure marker](#-10-figures), for the same reason -- inert to
+pdflatex, dropped by pandoc, meaningful only to this pipeline.
+
+**A marker with no row is a hard error, not a warning.** `render` exits
+non-zero, because a marker is you stating that a displayed equation is
+here, and rendering it as verbatim text is the whole defect this section
+exists to prevent. A missing `math.md` for a draft that has markers
+usually means the draft was renamed and its dossier did not follow: the
+two are tied by path alone and there is no `dossier rename`.
 
 ### 📐 The rule in practice
 
+Written below in the inline spelling; in the mapped form the same rules
+govern the mapping's LaTeX column, which is the only place LaTeX appears.
+
 - **A symbol is math wherever it appears.** If `\[ m(t) = m_0 - k\,t \]`
-  defines `k`, then every later mention is `$k$`, never `` `k` ``. The
-  test is not how the mention is punctuated but whether the *thing named*
-  is a quantity.
+  defines `k`, then every later mention of it is a quantity too -- `$k$`,
+  or `` `k` `` with a row. What is never right is a bare `` `k` `` with
+  no row, and that is the shape a check cannot see from punctuation
+  alone: `render` closes the world instead, flagging any span equal to a
+  symbol your own mapped equations already use.
+- **One form per draft.** Do not mix `$k$` in one section with a mapped
+  `` `k` `` in another; a reader diffing two sections cannot tell whether
+  the difference is deliberate.
 - **Arithmetic is math too.** `$12 \times 2 \times 365 = 8{,}760$`, not
   `` `12 x 2 x 365 = 8,760` ``. ASCII `x` and `*` are not multiplication
   signs, and a thousands comma needs `{,}` or LaTeX sets it as a
@@ -497,43 +563,49 @@ Only the pdf shows that the same symbol has been set two ways.
 - **A literal dollar sign must be escaped** (`\$`) once a draft uses
   `$…$`, or it opens math mode and swallows the rest of the paragraph.
 
-### ⚖ What this costs, and why it is still right
+### ⚖ Which form to choose
 
-`--format md` does not go through pandoc ([RENDERING-FLOW.md](RENDERING-FLOW.md)),
-so `$k = 4$` reaches `content/rendered/` verbatim and shows as literal
-`$k = 4$` in a viewer without MathJax. That is a real cost, accepted
-here because the alternative -- one spelling for the pdf and another for
-the Markdown -- means two forms of every equation with nothing checking
-they still agree. GitHub, GitLab, Obsidian, Jupyter and VS Code all
-render `$…$`, and the `$$…$$` blocks already in every draft carry the
-same cost. [§10's figures](#-10-figures) pay that price because a TikZ
-picture genuinely cannot be shown as text; an equation can, so it should
-not.
+**A new draft should use the mapped form**, unless nobody will ever read
+its `.md`. The inline form is not deprecated and needs no migration: a
+draft already written with `$…$` keeps rendering exactly as it did, and
+`_math.py` only ever touches a span that has a row.
 
-**Where the rendered Markdown is itself read, rather than being a step
-on the way to a pdf**, that trade is worse than it looks, and this rule
-is not the last word. A
-mapping of ASCII to LaTeX, held per draft in the dossier, would let the
-source stay ASCII while `tex` and `docx` still get real equations; the
-one thing it cannot do is maintain itself. That is specified, unbuilt,
-in `plans/math-format-native-rendering.md`. **Until it exists, this
-section is the rule.**
+Pick the inline form when the draft is a step on the way to a pdf and
+the equation count is small -- one `$k$` is cheaper than a dossier file.
+Pick the mapped form when the Markdown is read, when there are enough
+equations that a table earns its keep, or when the ASCII should read
+naturally: `` `t = tau * ln(2)` `` maps to `t = \tau \ln 2`, so the
+source stays legible while the LaTeX stays typographically right.
+Neither is a compromise, which is the point of holding both.
 
-**Stated and not gated, deliberately.** `python -m chitragupta.draft gate`
+### 🔍 What is checked, and what you still have to look for
+
+**Two certain things stop a render** (`render` exits non-zero): a
+`<!-- math -->` marker with no row to resolve it, and a marker with no
+mapping file at all. Both mean the pdf would carry verbatim text where
+you said an equation goes.
+
+**Two heuristics only warn**, because a wrong guess must not stop a
+render: a span that looks like a quantity (`h = 9`) with no row, and a
+span equal to a symbol your own mapped equations already use. That second
+one is there because the first cannot see a bare `` `k` `` -- there is no
+operator to key on -- and single symbols were the *dominant* shape when
+this was measured, roughly 296 of 515 in one book.
+
+**Still not gated, deliberately.** `python -m chitragupta.draft gate`
 means exactly one thing -- a fabricated citekey fails -- and
-[docs/CODE-STANDARDS.md](CODE-STANDARDS.md) keeps it that way. Giving it
-a second meaning would blunt the first. The check that does exist is the
-one you can run by eye: a quantity set both as `$k$` and as `` `k` `` in
-the same section is always a defect.
+[docs/CODE-STANDARDS.md](CODE-STANDARDS.md) keeps it that way. `render`
+refusing is a different thing from the gate, and refuses only what is
+certain.
 
-**Grep for the multi-letter ones too.** A single-letter symbol is easy to
-eye-check against the display math that defines it. A quantity spelled
-out -- `slope`, `offset`, `Assemble(N)` -- has no display math to compare
-against and reads like an identifier, so it survives that check and stays
-in typewriter beside the arithmetic that uses it. So does any expression
-containing `/`, if a search for stray backticks was written to skip file
-paths. Both cases really happened in this repository's own book, and
-`plans/math-typesetting-convention.md` records what each one cost.
+**What no check sees.** A quantity spelled out -- `slope`, `offset`,
+`Assemble(N)` -- reads like an identifier, so unless it has a row it
+looks like ordinary code to everything above. So does any expression
+containing `/`, to a search written to skip file paths. And a draft using
+the *inline* form has no mapping to close the world against, so it gets
+the operator heuristic only. All three really happened in this
+repository's own book; `plans/math-typesetting-convention.md` records
+what each cost.
 
 ## 📖 Sources and attribution
 

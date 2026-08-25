@@ -414,6 +414,15 @@ the lesson design is the part worth keeping either way.
      from a source paper's figure is the same violation in different
      pixels.
 
+   **A quantity in the prose follows `docs/WRITING-STANDARDS.md` §12.**
+   Rare in this genre and easy to get wrong when it appears: a value the
+   learner *types* stays a plain code span, because it is literal input,
+   while a value the lesson *reasons about* is a quantity and needs a row
+   in the dossier's `math.md`. `` `DRY_THRESHOLD = 35.0` `` in a config
+   file is code; "the threshold is `k = 4` reading units per hour" is
+   mathematics. When in doubt here, prefer code -- a tutorial's job is
+   the keyboard, not the derivation.
+
 10. **Reread as the beginner.** One pass as someone who has never seen the
    topic. Flag: undefined terms, steps that assume a prior action you never
    instructed, any point where the learner must decide something, any step

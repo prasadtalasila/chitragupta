@@ -144,7 +144,11 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **The dossier is written back** -- `scope.md` only if the user agreed
   to a scope change, plus `evidence.md`, `rejected.md`, `sections.md`,
   `steering.md`, and a `revisions.md` entry saying plainly that this pass
-  was wide and why.
+  was wide and why. **`math.md` too, if the draft has one**: it is keyed
+  on the exact text of a code span (docs/WRITING-STANDARDS.md §12), and a
+  wide rewrite reworders more quantities than a scoped one. Same rule as
+  `draft-reviser` -- add, drop or re-key a row per quantity, and let the
+  render's `[math]` warnings say what you missed.
 - **Figures still follow the draft's own genre.** Same rule as
   `draft-reviser`: `scope.md`'s `genre:` line names the skill whose
   drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's

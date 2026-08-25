@@ -65,6 +65,24 @@ were missing entirely are the two that matter most.
 | `steering.md` | what the user asked for in chat that the draft doesn't show | **nowhere** |
 | `revisions.md` | append-only log of what changed and why | **nowhere** |
 | `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
+| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) | **nowhere** |
+
+**`math.md` is the one optional file**, and the only one whose absence is
+not a defect: a draft with no mathematics has none, and a draft using
+§12's inline `$…$` form does not need one. `render` reads it for every
+format that reaches pandoc and ignores it for `--format md`, which is
+what keeps the draft's own text ASCII. Two consequences worth knowing
+before you rename anything:
+
+- A draft and its dossier are tied by **path alone**, and there is no
+  `dossier rename`. Moving a draft orphans its mapping, and every
+  equation in it silently reverts to typewriter text on the next render.
+  `render` refuses outright when a `<!-- math -->` marker has no mapping
+  to resolve, which is what makes that case loud rather than mute.
+- Because it is keyed on the exact span text, a revision that *rewords*
+  an equation desyncs it. Which skill fixes that is not left open --
+  each of `draft-reviser`, `corpus-reviser` and `overlap-reviser` carries
+  the step, and the four Markdown genre writers create the file.
 
 **`scope.md` -- the boundary.** Genre, the reader the draft is written
 for, the dialect it is written in (`language:`, so an en-GB draft stays

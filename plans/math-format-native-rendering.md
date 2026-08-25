@@ -1,6 +1,17 @@
 # Format-native equation rendering, from a dossier-held mapping
 
-Status: **proposal, unbuilt.** Written 2026-08-24.
+Status: **built.** Written 2026-08-24, shipped 2026-08-25 in #407.
+
+> **What shipped, and what changed on the way.** All of it: `_math.py`,
+> the gap/orphan report, `render` exiting non-zero on the certain cases,
+> `§12` rewritten to carry both forms, and the six `SKILL.md` edits this
+> plan named as the real work. Two things moved. The inline `$…$` form
+> was **kept rather than replaced** -- substitution only touches a span
+> that has a row, so a draft already written that way renders unchanged
+> and needed no migration. And `check()` refuses only a `<!-- math -->`
+> marker it cannot resolve, never a heuristic gap, because a wrong guess
+> about an inline span must not stop a render. The rest is as specified
+> below.
 
 **Written for** whoever implements this. **Assumed:**
 [docs/RENDERING-FLOW.md](../docs/RENDERING-FLOW.md) for the two paths
@@ -216,11 +227,148 @@ a gate**: [docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md) keeps
 citekey fails -- and this must not blunt it. Same standing as the review
 layer.
 
+### 🔁 What a revision can actually do, and what survives it
+
+Four cases, and they are not equally safe. Substitution is a key lookup
+over every span, so a *repeat* of an already-mapped span is correct with
+no action from anyone -- that is the design carrying its own weight, and
+it covers the common case of a symbol used again in new prose.
+
+| A revision... | Result if nobody reconciles | Detected? |
+| --- | --- | --- |
+| repeats a mapped span (`` `k` `` again, new sentence) | **correct** -- substituted by lookup | n/a, nothing to do |
+| rewords a mapped expression (`k = 4` → `k = 4.5`) | renders `\texttt{}` | **yes** -- gap, it has `=` |
+| deletes a span | nothing renders wrong | yes -- orphan, harmless |
+| introduces a **new bare symbol** (`` `j` ``) | renders `\texttt{}` | **no -- blind spot** |
+
+**The blind spot is the worst combination: least detectable, most
+common.** The gap rule keys on `=`, `<`, `>` or arithmetic, and a bare
+symbol has none of them. In the 15-chapter book that shape *dominated* --
+of 515 conversions, roughly 296 were single symbols (`k`×55, `h`×50,
+`Ts`×47, `g`×42). A rule that misses those is not a defence.
+
+**Fix it by closing the world over symbols, not by widening the
+heuristic.** The mapping already declares which symbols this draft uses:
+collect every symbol appearing in a mapped LaTeX *value* -- `\tau`, `k`,
+`W_0` -- and treat any backtick span equal to one of them, but lacking
+its own row, as a gap. That is document-derived rather than guessed, and
+it is the same technique that took the real conversion from 253 clashes
+to zero. A genuinely new symbol usually enters via an equation, so it
+enters the value-space in the same revision that introduces it.
+
+### 💥 A redraft or a rename severs the link entirely
+
+Worse than any per-span gap, because it is not per-span. The draft and
+its dossier are tied by **path alone** -- `dossier_dir()`'s own docstring
+says *"the mirroring rule is the only thing tying the two together"*, and
+`content/drafts/dt/survey.md` resolves to `content/dossiers/dt/survey/`.
+There is **no `dossier rename` or `move` command** (`init status list
+export restore` is the whole set), and `_status.py` *"never raises on a
+missing ledger or a missing dossier"* by design.
+
+So renaming or moving a draft orphans its `math.md` silently, and the
+next render substitutes **nothing at all** -- every span in the document
+reverts to `\texttt{}` at once. Ranked by how likely and how quiet:
+
+| Scenario | Effect | Loud? |
+| --- | --- | --- |
+| draft renamed or moved | **total** reversion, mapping unreachable | **silent** |
+| draft hand-edited outside any skill | gaps, per span | partly |
+| `dossier restore` of an older archive | mass orphans and gaps | partly |
+| genre skill re-run over an existing draft | draft and mapping regenerate *together* | safe, though off-protocol |
+
+**The migration argument and the failure mode are the same property.**
+This plan says an absent `math.md` means no substitution, so the feature
+is inert until a mapping exists -- that is what makes migration free. It
+is also precisely why a severed link says nothing: "no mapping" and "no
+maths in this draft" are indistinguishable.
+
+**The `<!-- math -->` marker breaks that tie, and does it with
+certainty.** A draft containing a display marker demonstrably has
+mathematics in it, so:
+
+- marker present, `math.md` absent → **certain** defect, not a heuristic
+  one. Refuse the render.
+- marker present, no row for its fence body → certain gap.
+- draft has no dossier directory at all → report it as its own condition,
+  distinct from "dossier exists, no `math.md`". The first means a rename;
+  the second means an unmaintained mapping, and they need different
+  advice.
+
+This only anchors a draft that has at least one displayed equation; one
+with inline math alone still reverts quietly on a rename. Narrowing that
+further would need the draft to carry something the dossier can be
+checked against -- which is the `scope.md` fingerprint pattern, and
+[DOSSIER.md](../docs/DOSSIER.md) already records that nobody maintains
+that one. Do not add a second unmaintained fingerprint; prefer refusing
+loudly on the cases that *are* certain.
+
+**And let `render` exit non-zero on a gap.** The "aid, not a gate" line
+above protects `chitragupta.draft gate`'s single meaning; it says nothing
+about `render`, which already refuses to write outside `content/` and
+refuses to overwrite its own source. A skill that ignores a warning still
+ships a wrong pdf; one that gets a non-zero exit cannot. This is the
+difference between correct-by-instruction and correct-by-construction,
+and it is worth more than any wording in the six SKILL.md files.
+
 Be honest in the plan's own record that the dossier has form here:
 `scope.md`'s corpus fingerprint is a staleness marker that
 [DOSSIER.md](../docs/DOSSIER.md) says is *"written once, by `init`, and
 is not maintained by any"* later step. A mapping nobody updates decays
-the same way. The gap/orphan report is the whole defence.
+the same way.
+
+## 👤 Who maintains it -- the part this plan was missing
+
+The gap/orphan report above is **detection, not ownership**, and it fires
+at render time, after the revision, as an aid rather than a gate. An
+earlier draft of this plan stopped there. That is a smoke alarm with
+nobody assigned to call the fire brigade, and it is the difference
+between a mapping that survives and one that decays exactly as
+`scope.md`'s fingerprint did.
+
+**As things stand today, no skill would touch `math.md`.** Every reviser
+enumerates the dossier files it handles *by name* -- `draft-reviser`'s
+step 6 is literally "Write the dossier back", against a closed list --
+so an eighth file is not picked up implicitly by any of them:
+
+| Skill | Dossier files it names today | Needs |
+| --- | --- | --- |
+| the four Markdown genre writers | write the dossier at draft time | **create** `math.md` alongside `evidence.md` |
+| `draft-reviser`, main mode | all 7 | reconcile rows for every section it edits |
+| `draft-reviser`, copy-edit mode | `revisions.md` only | **see below -- the sharp case** |
+| `corpus-reviser` | 7 | same as `draft-reviser`, over a wider rewrite |
+| `overlap-reviser` | 5 | **see below -- the sharpest case** |
+| `book-assembler` | writes no prose | only: do not lose per-unit mappings when composing |
+
+`thesis-chapter-writer` is deliberately absent: it emits a `.tex`
+fragment and writes `\(…\)` directly, so it has nothing to map.
+
+**The two that are worse than merely not-updating.**
+
+*`draft-reviser`'s copy-edit mode* asserts of itself, at step 6, that
+there is *"no evidence delta, no new rejection and no moved section to
+record"*. That is true today and **becomes false the moment `math.md`
+exists**: "convert this to en-GB" or "fix the grammar" rephrases the
+sentence around an equation and can add, drop or alter a span. A mode
+whose whole safety argument is "this pass changes nothing structural"
+must not silently acquire a structural side effect. Either it reconciles
+the mapping too, or it is barred from editing a line containing a mapped
+span and says so.
+
+*`overlap-reviser`* is sharper still. Its stated job is to rewrite *"each
+short uncited run to preserve the claim and the citation while breaking
+the borrowed wording"* -- deliberate rephrasing is precisely the
+operation that desyncs a mapping keyed on exact span text, and it is the
+skill least likely to notice, because it is reasoning about borrowed
+wording rather than about quantities. Its existing discipline is the
+right hook: it already re-runs `draft gate` and `verbatim recheck` on
+every repair, so the gap/orphan check joins that same must-re-pass list.
+
+**Do not solve this by making the report a gate.**
+[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md) keeps
+`chitragupta.draft gate` meaning exactly one thing. Ownership belongs in
+the skills that do the editing, which is where every other dossier file's
+upkeep already lives.
 
 ## 🧩 Known limitation: homographs
 
@@ -279,18 +427,36 @@ human-adjudicated** ASCII → LaTeX pairs -- `Ts` → `T_s`, `k_day` →
 → `= \sqrt{1/0.022569} = 6.66`. Those are the first `math.md` files,
 not work to redo.
 
-## 🛑 What would make this not worth building
+## 🛑 What would have made this not worth building
 
-Stated so a later reader can tell a decision from an accident:
+Kept as written, because both conditions were live decisions at the time
+and the first one shaped what shipped:
 
-- **Nobody maintains the mapping.** This is the one that matters. A
-  `math.md` that goes stale is worse than no mapping, because the
-  failure is silent and looks exactly like the original bug. If the
-  gap/orphan report cannot be made to run automatically on every render
-  of a LaTeX-bound format, reconsider the whole item.
+- **The skill edits are not made.** This was the one that mattered:
+  `_math.py` is small, and the ownership above meant editing **six
+  SKILL.md files** as well. A `math.md` that goes stale is worse than no
+  mapping, because the failure is silent and looks exactly like the
+  original bug. The conclusion was that a module with detection and no
+  owner is the decay case rather than a partial win -- so the six edits
+  landed in the same change, and that is why this is one PR rather than
+  two.
 - **The `.md` stops being read directly.** The entire benefit is that a
-  human reading `content/rendered/*.md` sees `k = 4`. If that stops
-  being true, `§12` as shipped is simpler and strictly better.
+  human reading `content/rendered/*.md` sees `k = 4`. If that stops being
+  true, `§12`'s inline form is simpler and strictly better -- which is
+  the reason it was kept alongside rather than replaced.
+
+## 🔭 What is still not solved
+
+- **A draft with inline math only still reverts quietly on a rename.**
+  The `<!-- math -->` marker anchors a draft that has at least one
+  displayed equation; one with only spans has nothing certain to check
+  against, and adding a fingerprint would repeat a mistake
+  [DOSSIER.md](../docs/DOSSIER.md) already records.
+- **Homographs.** One spelling gets one meaning per dossier.
+- **The heuristics are still heuristics.** A spelled-out quantity reads
+  like an identifier, and the symbol closure only sees a symbol the
+  mapping's own LaTeX already uses -- a genuinely new one, mentioned bare
+  before it ever appears in an equation, is invisible.
 
 **HTML is explicitly out of scope.** This pipeline has no `--format
 html`, and what any downstream converter does with the Markdown is not a

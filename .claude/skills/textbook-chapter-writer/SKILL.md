@@ -371,6 +371,16 @@ candidate for the chapter.
      pixels -- which bites hardest here, where the temptation is to
      reproduce the textbook diagram everyone in the field already knows.
 
+   **Equations follow `docs/WRITING-STANDARDS.md` §12, not this step, and
+   this genre has more of them than any other here.** A worked example is
+   mostly quantities. Write each as ASCII in a code span -- `` `k = 4` ``,
+   `` `m = a * W + b` `` -- and give it a row in the dossier's `math.md`;
+   a displayed equation is an untagged fence under a `<!-- math -->`
+   marker. `render` turns those into real mathematics for the pdf a
+   student reads, and leaves the `.md` legible. A quantity in a bare code
+   span with no row renders as typewriter text beside the equation that
+   defines it, which is the exact thing §12 exists to stop.
+
 8. **Close the loop.** End with a short summary of what the chapter
    established, tied back to the objectives it opened with, plus pointers to
    where a student who wants more should go next -- including, where it fits,
