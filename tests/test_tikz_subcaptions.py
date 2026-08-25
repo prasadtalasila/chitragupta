@@ -49,6 +49,7 @@ STYLE_DOC = REPO_ROOT / "docs" / "TIKZ-STYLE.md"
 # heading's words rather than its emoji: an emoji is the kind of thing a
 # doc pass changes without meaning to touch this test.
 _SECTION_RE = re.compile(r"^##\s+\S*\s*Panels in one figure.*$", re.MULTILINE)
+_NEXT_HEADING_RE = re.compile(r"^##\s", re.MULTILINE)
 _FENCE_RE = re.compile(r"```latex\n(?P<body>.*?)```", re.DOTALL)
 
 # `(a) polled`, `(b) pushed`, ... -- the label node text the section
@@ -59,11 +60,21 @@ EXPECTED_PANELS = 3
 
 
 def _panel_example() -> str:
-    """The worked example docs/TIKZ-STYLE.md's panel section carries."""
+    """The worked example docs/TIKZ-STYLE.md's panel section carries.
+
+    The search is bounded at the *next* `##` heading rather than run to
+    the end of the file. Unbounded, a section that lost its example would
+    quietly pick up the next section's fence and every assertion below
+    would go on passing against the wrong picture -- the same
+    vacuous-pass failure this file's docstring describes for a figure
+    that names no node.
+    """
     doc = STYLE_DOC.read_text(encoding="utf-8")
     section = _SECTION_RE.search(doc)
     assert section is not None, "docs/TIKZ-STYLE.md has no panelled-figure section"
-    fence = _FENCE_RE.search(doc, section.end())
+    following = _NEXT_HEADING_RE.search(doc, section.end())
+    body = doc[section.end() : following.start() if following else len(doc)]
+    fence = _FENCE_RE.search(body)
     assert fence is not None, "the panelled-figure section carries no ```latex example"
     return fence.group("body")
 
