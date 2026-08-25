@@ -891,17 +891,33 @@ reaches only the part of that checklist geometry can decide.
 | --- | --- | --- |
 | Node text over 15 words | binary | no |
 | Edge list, reported for confirmation | binary | no |
+| Stranded arrowhead | binary | no |
 | Node overlap | binary | yes |
 | Content protrusion | binary | yes |
+| Nothing was measurable | binary | yes |
+| Declared names that went unmeasured | **diagnostic, human-read only** | yes |
 | Emptiness | **continuous, human-read only** | yes |
 
 Two things about that table are deliberate. **Emptiness is reported and
 consumed by nothing** -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3
 forbids a continuous score from being what anything unattended optimises,
 so it is labelled advisory everywhere it appears rather than left to be
-inferred. And the two static checks need no TeX at all, so on a host
-without `tikz.sty` this still reports them and says the geometry was
-skipped, rather than refusing to run.
+inferred. The count of names measured against names declared sits on
+that same side of the line, for the same reason: it is a ratio, and a
+ratio is a target. "Nothing was measurable" is on the other side because
+it is binary and has one correct fix -- name the nodes. And the three
+static checks need no TeX at all, so on a host without `tikz.sty` this
+still reports them and says the geometry was skipped, rather than
+refusing to run.
+
+**A stranded arrowhead** is [TIKZ-STYLE.md](TIKZ-STYLE.md)'s "one arrow
+is one `\draw`" rule, mechanised: a line built in pieces, each piece
+carrying `->`, renders a head where the pieces join as well as at the
+end. It fires only where the pieces meet at a bare coordinate --
+chaining head-to-tail through a *named* node is how a pipeline is
+normally drawn, and TikZ clips each path at the node's boundary so
+nothing is stranded. An `arrows.meta` tip (`-{Stealth}`) is not
+recognised and the check comes back silently short rather than wrong.
 
 **Arrow crossings are not checked**, deliberately: not cheaply reachable
 from node geometry, and a bad approximation would be worse than its
@@ -942,13 +958,20 @@ the eyes win and the figure stays -- this is an aid, and
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 is the same instinct
 applied to the one number here that is continuous.
 
-**A clean report is not the same as a checked figure**, and today the
-command does not distinguish them: the geometry checks measure only
-nodes the source names, so a picture that names none reports nothing
-found because nothing was measurable. Exactly one of the 43 figures in
-this project's own drafted book names a node, so that is the common case
-rather than a corner. Name the nodes you draw, in whichever idiom --
-`\node (a)` and `child { node (a) ... }` both count.
+**A clean report is not the same as a checked figure**, and the command
+now distinguishes them. The geometry checks measure only nodes the
+source names, so a picture that names none has nothing to measure --
+which used to print as `No layout findings`, the same sentence a figure
+gets when every check ran and found nothing. Exactly one of the 43
+figures in this project's own drafted book names a node, so the report's
+most common output was its most misleading one. It now says so in its
+own line, and lists any declared name that did not come back measured
+beside it -- read that list before trusting a protrusion finding, since
+an unmeasured node's band reads as empty space. In JSON the two arrive
+as `names_declared` and `names_unmeasured` per figure, and as a
+`nothing-measurable` finding; `geometry_checked` keeps its old meaning,
+which is only that a compile happened. Name the nodes you draw, in
+whichever idiom -- `\node (a)` and `child { node (a) ... }` both count.
 
 | Flag | Default | What it does |
 | --- | --- | --- |

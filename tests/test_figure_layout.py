@@ -20,6 +20,7 @@ Two kinds of test here, and the split is the module's own:
 import json
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -251,6 +252,178 @@ class TestEdgeListLimits:
 
     def test_a_to_with_options_is_still_an_edge(self):
         assert figure_layout.edge_list("\\draw (a) to[bend left] (b);") == [("a", "b")]
+
+
+class TestStrandedArrowheads:
+    """docs/TIKZ-STYLE.md's "one arrow is one `\\draw`" rule, mechanised.
+
+    #399 found it by looking at a rendered PNG: two colinear upward
+    arrows meeting at `(46,36)`, each carrying `->`, render an arrowhead
+    where they join as well as at the end -- a second head pointing at
+    nothing in the middle of the line. Source-only, so it runs on a host
+    with no TeX at all, and it is the half of #399 that recurs; the
+    other half (a `fill=white` band erasing an arrowhead) needs the
+    geometry of anonymous nodes and stays a prose rule.
+    """
+
+    def test_the_defect_from_the_issue(self):
+        """`4-1-five-parts-of-a-model`'s two lines, verbatim."""
+        source = "\\draw[->] (46,36) -- (46,44);\n\\draw[->] (46,32) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == ["46,36"]
+
+    def test_a_chain_through_a_named_node_is_not_a_finding(self):
+        """The discriminator, and the reason this check is precise rather
+        than noisy. TikZ clips a path at a node's boundary, so arrow 1's
+        head lands *on* `parse` -- correctly pointing at it -- and arrow 2
+        starts from the opposite border. `assets/tikz/pipeline.tex`,
+        `control-loop.tex` and `hub-and-spoke-network.tex` are all drawn
+        this way, so treating it as a finding would break
+        tests/test_tikz_scaffolds.py's zero-findings criterion.
+        """
+        source = "\\draw[->] (intake) -- (parse);\n\\draw[->] (parse) -- (index);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_the_last_piece_alone_carrying_the_head_is_the_fix(self):
+        """What docs/TIKZ-STYLE.md tells the author to write instead."""
+        source = "\\draw[->] (46,36) -- (46,44);\n\\draw (46,32) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_two_arrows_converging_on_one_point_are_not_a_finding(self):
+        """Both heads are at the end of their own stroke and nothing
+        continues past either, so neither is stranded -- it is a junction
+        an author drew on purpose."""
+        source = "\\draw[->] (0,0) -- (46,36);\n\\draw[->] (90,0) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_whitespace_in_a_coordinate_does_not_hide_the_junction(self):
+        """`(46,36)` and `(46, 36)` are one point spelled two ways."""
+        source = "\\draw[->] (46, 36) -- (46,44);\n\\draw[->] (46,32) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == ["46,36"]
+
+    def test_a_head_at_the_start_only_is_not_a_finding(self):
+        """`<-` puts the head at the *start* of the path, so the junction
+        at the far end carries nothing to strand."""
+        source = "\\draw[<-] (46,36) -- (46,44);\n\\draw[<-] (46,32) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_a_perpendicular_bend_strands_a_head_just_as_a_straight_run_does(self):
+        """`1-3-demonstrator-today.tex` as it stood in
+        `content/backup/chitragupta-6.20.7/`, verbatim -- a defect this
+        sweep found that no issue had recorded, since fixed by hand.
+
+        **This is deliberately broader than the rule as written.**
+        docs/TIKZ-STYLE.md says "two *colinear* segments that meet", and
+        these two are perpendicular: a dashed arrow runs east into
+        `(72,32)` and a solid one leaves it going north. The head is
+        stranded all the same -- what makes it a defect is that a stroke
+        continues out of the point, not the angle it continues at. Pinned
+        because narrowing the check to match the doc's wording is the
+        natural thing for a later reader to do, and it would silently
+        drop this whole shape.
+        """
+        source = "\\draw[->,dashed] (70,32) -- (72,32);\n\\draw[->] (72,32) -- (72,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == ["72,32"]
+
+    def test_two_dimension_bars_sharing_a_boundary_are_not_a_finding(self):
+        """`1-1-decision-latency.tex`, verbatim -- the only false
+        positive this check produced over the 43 figures of this
+        repository's own drafted book, and the reason the continuing
+        statement's own start head has to be looked at.
+
+        Both bars terminate at `(55,-7)`: the first draws a `>` into it
+        and the second a `<` out of it, so it reads as `|<-->|<-->|` and
+        no head is stranded. Without the `<-` clause this matches every
+        other rule the check applies.
+        """
+        source = (
+            "\\draw[<->] (10,-7) -- (55,-7) node[midway,above] {detection gap};\n"
+            "\\draw[<->] (55,-7) -- (95,-7) node[midway,above] {response gap};\n"
+        )
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_a_curve_continuing_out_of_an_arrowhead_is_a_finding(self):
+        """`2-2-model-simulator-simulation.tex`, verbatim -- the one true
+        positive from that same sweep. The head at `(90,34)` points at
+        empty space and a bezier carries the stroke onwards, which is
+        #399's defect drawn with a different path operator."""
+        source = (
+            "\\draw[->] (90,10) -- (90,34) node[anchor=south east] {state};\n"
+            "\\draw[thick] (90,34) .. controls (100,32) and (106,22) .. (124,18);\n"
+        )
+
+        assert figure_layout.stranded_arrowheads(source) == ["90,34"]
+
+    def test_a_coordinate_inside_the_option_group_is_not_the_paths_first_point(self):
+        """`shift={(1,0)}` is a parenthesised token in the options, and
+        reading it as where the path starts would compare the wrong
+        coordinate -- here it would miss the junction entirely."""
+        source = "\\draw[->] (46,32) -- (46,36);\n\\draw[shift={(1,0)}] (46,36) -- (46,44);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == ["46,36"]
+
+    def test_a_double_headed_arrow_strands_its_end_head_too(self):
+        """`<->` draws a head at each end, so its end head is stranded by
+        a continuation exactly as `->`'s is."""
+        source = "\\draw[<->] (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == ["46,36"]
+
+    def test_a_commented_out_segment_does_not_strand_anything(self):
+        source = "\\draw[->] (46,32) -- (46,36);\n% \\draw (46,36) -- (46,44);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_one_junction_is_reported_once(self):
+        """Two heads stranded at the same point is one defect to fix, not
+        two findings to read."""
+        source = (
+            "\\draw[->] (0,0) -- (46,36);\n"
+            "\\draw[->] (90,0) -- (46,36);\n"
+            "\\draw (46,36) -- (46,44);\n"
+        )
+
+        assert figure_layout.stranded_arrowheads(source) == ["46,36"]
+
+
+class TestStrandedArrowheadLimits:
+    """What this check deliberately does not reach, pinned rather than
+    left in prose -- the same standing `TestEdgeListLimits` has. Every
+    one of these fails *safe*: a finding missed, never a wrong one."""
+
+    def test_an_arrows_meta_tip_specification_is_not_recognised(self):
+        """`-{Stealth}` draws a head at the end just as `->` does, but
+        recognising every `arrows.meta` tip name means parsing TikZ's tip
+        grammar. Left short rather than approximated."""
+        source = "\\draw[-{Stealth}] (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_a_path_statement_with_no_points_at_all_is_skipped(self):
+        """`\\draw[help lines] grid;` names no point, so there is no
+        endpoint to strand a head at and nothing to compare. Real TikZ,
+        and it reaches this function like any other `\\draw`."""
+        source = "\\draw[->] grid;\n\\draw[->] (46,32) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
+    def test_a_reversed_continuation_is_not_recognised(self):
+        """`(46,44) -- (46,36)` draws the same stroke as its reverse, so
+        this is the same defect written backwards. Only the head-to-tail
+        spelling is matched -- the one docs/TIKZ-STYLE.md describes, and
+        the one an author building a line in pieces actually writes.
+        Widening to either endpoint would also fire on an unrelated tick
+        mark that happens to touch the point."""
+        source = "\\draw[->] (46,32) -- (46,36);\n\\draw (46,44) -- (46,36);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
 
 
 class TestScaffold:
@@ -718,6 +891,248 @@ class TestCheckDraft:
         assert results[0].overlapping == [("a", "b")]
 
 
+class TestMeasurability:
+    """#405: whether anything was measured at all, said rather than
+    inferred.
+
+    The aid measures a node only where the source spells an explicit
+    `(name)`, so a figure that names nothing reports no overlap and no
+    protrusion because there was nothing to run the checks on -- and that
+    was indistinguishable, in the report, from a clean figure. Exactly
+    1 of the 43 figures in this repository's own drafted book names a
+    node (#393), so it is the normal case rather than a corner.
+
+    **Two facts, deliberately on opposite sides of R3's line.** "Nothing
+    was measurable" is binary, is not score-shaped, and is a finding.
+    *Which* declared names went unmeasured is a diagnostic and is kept
+    out of `findings` for the same reason `empty_fraction` is: a ratio of
+    measured to declared is exactly the kind of number an unattended loop
+    would drive to one.
+    """
+
+    def test_a_figure_that_names_no_node_measured_nothing(self):
+        result = figure_layout.FigureResult(path=Path("flow.tex"), boxes={})
+
+        assert result.nothing_measurable is True
+        assert result.has_findings is True
+
+    def test_a_figure_with_a_measured_node_did_measure_something(self):
+        result = figure_layout.FigureResult(
+            path=Path("flow.tex"), declared=["a"], boxes={"a": (0.0, 0.0, 1.0, 1.0)}
+        )
+
+        assert result.nothing_measurable is False
+        assert result.unmeasured == []
+
+    def test_an_uncompiled_figure_makes_no_claim_either_way(self):
+        """`boxes is None` is "we do not know", not "nothing was there".
+        A host with no TeX, and a figure whose own TikZ is broken, both
+        land here -- and reporting either as unmeasurable would be a
+        second wrong answer on top of the one already reported."""
+        skipped = figure_layout.FigureResult(path=Path("f.tex"), skipped="no tikz.sty")
+        failed = figure_layout.FigureResult(path=Path("f.tex"), failed="! Missing $ inserted.")
+
+        assert skipped.nothing_measurable is False
+        assert failed.nothing_measurable is False
+
+    def test_a_name_that_did_not_come_back_is_reported(self):
+        """#404's failure mode, kept visible after the fix: a declared
+        name absent from the geometry means the checks ran over less than
+        the figure, and `protrudes()` reads the band the missing node
+        occupies as empty."""
+        result = figure_layout.FigureResult(
+            path=Path("tree.tex"),
+            declared=["source", "batch", "live"],
+            boxes={"source": (0.0, 0.0, 1.0, 1.0)},
+        )
+
+        assert result.unmeasured == ["batch", "live"]
+        assert result.nothing_measurable is False
+
+    def test_the_pictures_own_bounding_box_does_not_count_as_a_measured_node(self):
+        """`current bounding box` is in `boxes` for every figure that
+        compiles, so counting it would make "something was measured" true
+        of every figure and close the gap on paper only."""
+        result = figure_layout.FigureResult(
+            path=Path("flow.tex"), boxes={figure_layout.BBOX_NAME: (0.0, 0.0, 10.0, 10.0)}
+        )
+
+        assert result.nothing_measurable is True
+
+    def test_check_draft_records_what_the_figure_declared(self, tmp_path, monkeypatch):
+        """The names have to reach the report from the same call the
+        probe asks pdflatex about, or the two can disagree about what was
+        even attempted."""
+
+        def _no_tikz():
+            raise figure_layout.MissingBinary("tikz.sty is not installed")
+
+        monkeypatch.setattr(figure_layout, "_require_tikz", _no_tikz)
+        draft = _draft_with_figure(tmp_path, "\\node (a) at (0,0) {A};\n\\node (b) at (2,0) {B};\n")
+
+        assert figure_layout.check_draft(draft)[0].declared == ["a", "b"]
+
+    @needs_tikz
+    def test_an_anonymous_figure_is_reported_as_unmeasurable_end_to_end(self, tmp_path):
+        """The #393 shape, against a real compile: a picture drawn from
+        `\\draw` paths alone compiles perfectly well and yields no
+        geometry to check."""
+        draft = _draft_with_figure(
+            tmp_path,
+            "\\begin{tikzpicture}\n\\draw (0,0) rectangle (2,1);\n\\end{tikzpicture}\n",
+        )
+
+        result = figure_layout.check_draft(draft)[0]
+
+        assert result.failed is None
+        assert result.nothing_measurable is True
+
+
+class TestMeasurabilityReport:
+    """The same fact in all three formats -- `_report.py`'s standing
+    invariant, and the one #405 is about: "clean" and "unmeasurable" have
+    to be different lines rather than the same one."""
+
+    def test_the_text_report_no_longer_calls_an_unmeasured_figure_clean(self, tmp_path):
+        """The exact sentence #405 was filed about. It said the same
+        thing whether every check ran and found nothing or no check could
+        run at all."""
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex", boxes={})]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "No layout findings" not in text
+        assert "quiet.tex" in text
+        assert "names no node" in text
+
+    def test_a_genuinely_clean_figure_still_says_it_is_not_a_verdict(self, tmp_path):
+        """The other half of the same distinction: the sentence has to
+        keep printing where it is true, or the fix has only moved the
+        misreading."""
+        results = [
+            figure_layout.FigureResult(
+                path=tmp_path / "figures" / "flow.tex",
+                declared=["a"],
+                boxes={
+                    "a": (0.0, 0.0, 10.0, 10.0),
+                    figure_layout.BBOX_NAME: (0.0, 0.0, 11.0, 11.0),
+                },
+            )
+        ]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "No layout findings" in text
+        assert "not a verdict" in text
+
+    def test_unmeasurability_is_a_finding_in_the_json(self, tmp_path):
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex", boxes={})]
+
+        body = figure_layout.payload(tmp_path / "s.md", results, "cmd")
+
+        assert [f["kind"] for f in body["findings"]] == ["nothing-measurable"]
+
+    def test_the_unmeasured_names_are_a_diagnostic_and_never_a_finding(self, tmp_path):
+        """R3, asserted rather than trusted -- the same guard
+        `test_the_emptiness_proportion_is_never_a_finding` puts on the
+        proportion. A count of measured-of-declared is a ratio, and a
+        ratio in a findings array is a ratio something will try to
+        close."""
+        results = [
+            figure_layout.FigureResult(
+                path=tmp_path / "figures" / "tree.tex",
+                declared=["source", "batch"],
+                boxes={
+                    "source": (0.0, 0.0, 2.0, 2.0),
+                    figure_layout.BBOX_NAME: (0.0, 0.0, 2.0, 2.0),
+                },
+            )
+        ]
+
+        body = figure_layout.payload(tmp_path / "s.md", results, "cmd")
+
+        assert body["figures"][0]["names_declared"] == ["source", "batch"]
+        assert body["figures"][0]["names_unmeasured"] == ["batch"]
+        assert body["findings"] == []
+
+    def test_an_unmeasured_name_is_printed_beside_the_findings_it_undermines(self, tmp_path):
+        """It has to reach the *text* report too, not only the JSON:
+        an unmeasured node's band reads as empty space, so this is what
+        tells a reader the protrusion finding above it is untrustworthy
+        -- #404's failure mode, made visible instead of silent."""
+        results = [
+            figure_layout.FigureResult(
+                path=tmp_path / "figures" / "tree.tex",
+                declared=["source", "batch", "live"],
+                boxes={
+                    "source": (0.0, 0.0, 10.0, 10.0),
+                    figure_layout.BBOX_NAME: (0.0, 0.0, 10.0, 300.0),
+                },
+            )
+        ]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+
+        assert "protrudes" in text
+        assert "declared but not measured: `batch`, `live`" in text
+
+    def test_the_shipped_geometry_checked_key_keeps_its_meaning(self, tmp_path):
+        """It is true because a compile happened, which is what #405
+        calls misleading -- but it is a published key, so the fix is a
+        field beside it rather than a redefinition under a reader who is
+        already consuming it."""
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex", boxes={})]
+
+        figures = figure_layout.payload(tmp_path / "s.md", results, "cmd")["figures"]
+
+        assert figures[0]["geometry_checked"] is True
+        assert figures[0]["names_declared"] == []
+
+    def test_the_markdown_says_it_too(self, tmp_path):
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex", boxes={})]
+
+        body = figure_layout.render_markdown(tmp_path / "s.md", results, "cmd")
+
+        assert "names no node" in body
+        assert "Nothing to report" not in body
+
+    def test_a_stranded_arrowhead_reaches_the_text_and_the_findings(self, tmp_path):
+        results = [
+            figure_layout.FigureResult(
+                path=tmp_path / "figures" / "flow.tex",
+                stranded=["46,36"],
+            )
+        ]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+        findings = figure_layout.payload(tmp_path / "s.md", results, "cmd")["findings"]
+
+        assert "46,36" in text
+        assert findings == [
+            {
+                "figure": str(tmp_path / "figures" / "flow.tex"),
+                "kind": "stranded-arrowhead",
+                "at": "46,36",
+            }
+        ]
+
+    def test_check_draft_finds_a_stranded_arrowhead_without_any_compile(
+        self, tmp_path, monkeypatch
+    ):
+        """Source-only, like the node-length and edge-list checks -- so it
+        runs on CI's Windows leg, which installs no TeX at all."""
+
+        def _no_tikz():
+            raise figure_layout.MissingBinary("tikz.sty is not installed")
+
+        monkeypatch.setattr(figure_layout, "_require_tikz", _no_tikz)
+        draft = _draft_with_figure(
+            tmp_path, "\\draw[->] (46,36) -- (46,44);\n\\draw[->] (46,32) -- (46,36);\n"
+        )
+
+        assert figure_layout.check_draft(draft)[0].stranded == ["46,36"]
+
+
 class TestReport:
     def test_a_clean_draft_says_so(self, tmp_path):
         draft = tmp_path / "survey.md"
@@ -734,6 +1149,7 @@ class TestReport:
         draft = tmp_path / "survey.md"
         result = figure_layout.FigureResult(
             path=tmp_path / "figures" / "flow.tex",
+            declared=["a"],
             boxes={"a": (0.0, 0.0, 10.0, 10.0), figure_layout.BBOX_NAME: (0.0, 0.0, 20.0, 10.0)},
         )
 
@@ -869,6 +1285,7 @@ class TestMarkdownReport:
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
+                declared=["a"],
                 boxes={
                     "a": (0.0, 0.0, 5.0, 5.0),
                     figure_layout.BBOX_NAME: (0.0, 0.0, 100.0, 100.0),
@@ -885,6 +1302,7 @@ class TestMarkdownReport:
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
+                declared=["a", "b"],
                 boxes={
                     "a": (0.0, 0.0, 40.0, 10.0),
                     "b": (20.0, 0.0, 60.0, 10.0),
@@ -906,6 +1324,7 @@ class TestMarkdownReport:
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
+                declared=["a", "b"],
                 boxes={
                     "a": (0.0, 0.0, 40.0, 10.0),
                     "b": (20.0, 0.0, 60.0, 10.0),
@@ -920,16 +1339,18 @@ class TestMarkdownReport:
         assert "protrudes" in text
 
     def test_a_figure_with_nothing_to_say_gets_no_empty_heading(self, tmp_path):
-        """Found running this over real drafts: a figure drawn from
-        `\\draw` paths alone has no nodes, no edges between named things
-        and no proportion, and printing a bare `path:` line for it was
-        most of the output while carrying none of the information."""
-        results = [
-            figure_layout.FigureResult(
-                path=tmp_path / "figures" / "quiet.tex",
-                boxes={},
-            )
-        ]
+        """Found running this over real drafts: printing a bare `path:`
+        line for a figure with no findings was most of the output while
+        carrying none of the information.
+
+        The case that motivated it -- a figure drawn from `\\draw` paths
+        alone -- is **no longer one of these**: #405 made "nothing was
+        measurable" a finding in its own right, so such a figure now
+        earns its heading by having something to say under it. What is
+        left here is a result carrying no geometry and no reason for its
+        absence, which is what a bare `FigureResult` is.
+        """
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex")]
 
         text = figure_layout.format_report(tmp_path / "s.md", results)
 
@@ -940,12 +1361,7 @@ class TestMarkdownReport:
         """The opposite rule to the text report's, deliberately: a filed
         report is read as a record of what was checked, so a figure
         silently absent reads as one never looked at."""
-        results = [
-            figure_layout.FigureResult(
-                path=tmp_path / "figures" / "quiet.tex",
-                boxes={},
-            )
-        ]
+        results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex")]
 
         body = figure_layout.render_markdown(tmp_path / "s.md", results, "cmd")
 
@@ -957,6 +1373,7 @@ class TestMarkdownReport:
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
+                declared=["a"],
                 boxes={
                     "a": (0.0, 0.0, 10.0, 10.0),
                     figure_layout.BBOX_NAME: (0.0, 0.0, 11.0, 11.0),

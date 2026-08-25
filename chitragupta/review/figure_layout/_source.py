@@ -1,10 +1,10 @@
-"""The two checks that read a figure's source and never compile it.
+"""The three checks that read a figure's source and never compile it.
 
-Node text length and the edge list are properties of what an author
-wrote, not of what TeX drew, so they need no toolchain and run on any
-host. Keeping them here rather than beside the geometry checks is what
-lets most of this aid work -- and most of its tests run -- where TeX Live
-is not installed.
+Node text length, the edge list and stranded arrowheads are properties
+of what an author wrote, not of what TeX drew, so they need no toolchain
+and run on any host. Keeping them here rather than beside the geometry
+checks is what lets most of this aid work -- and most of its tests run --
+where TeX Live is not installed.
 
 Deliberately regex over TikZ rather than a LaTeX parser, matching how
 `render_output/_figures.py` already reads these same files. Each pattern
@@ -193,3 +193,112 @@ def edge_list(source: str) -> list[tuple[str, str]]:
         ]
         edges += list(zip(names, names[1:]))
     return edges
+
+
+# The leading option group of a path statement -- `\draw[thick,->] ...`.
+# Only the leading group, deliberately: scanning the whole statement for
+# an arrow specification would also find one inside a mid-path node's
+# label (`-- node[midway] {a -> b} (c)`), which is text rather than a
+# tip. `\draw (a) edge[->] (b)` puts its tip outside this group and is
+# therefore missed -- failing short rather than wrong, the same stance
+# `edge_list` takes.
+_LEADING_OPTIONS_RE = re.compile(r"^\s*\[(?P<options>[^\]]*)\]")
+
+
+def _split_options(body: str) -> tuple[str, str]:
+    """A path statement's leading option group and everything after it.
+
+    Split rather than merely matched so the options are kept out of the
+    point scan: `\\draw[shift={(1,0)},->] (a) -- (b);` has a
+    parenthesised token inside its options, and reading that as the
+    path's first point would compare the wrong coordinate.
+    """
+    options = _LEADING_OPTIONS_RE.match(body)
+    if options is None:
+        return "", body
+    return options.group("options"), body[options.end() :]
+
+
+# The arrow specifications that put a head at each end of a path. Tested
+# as substrings rather than patterns because that is exactly the
+# distinction wanted: `<->` contains both and draws both heads, `->`
+# contains only the first, `<-` only the second. An `arrows.meta` tip
+# (`-{Stealth}`) draws an end head and matches neither -- recognising
+# every tip name means parsing TikZ's tip grammar, and a missed finding
+# is what an advisory aid does anyway.
+_END_ARROW = "->"
+_START_ARROW = "<-"
+
+
+def _point(token: str) -> str:
+    """A parenthesised token with its internal whitespace normalised.
+
+    `(46,36)` and `(46, 36)` are one point spelled two ways, and this
+    check is entirely a question of whether two statements name the same
+    one. Deliberately string normalisation rather than parsing to
+    numbers: a coordinate can carry a unit (`(2cm,0)`) or a `\\foreach`
+    macro (`(\\x,3)`), and both compare correctly as text while neither
+    survives `float()`.
+    """
+    return ",".join(part.strip() for part in token.strip().split(","))
+
+
+def stranded_arrowheads(source: str) -> list[str]:
+    """Every bare coordinate where an arrowhead lands mid-stroke.
+
+    docs/TIKZ-STYLE.md's "one arrow is one `\\draw`" rule, mechanised.
+    A line built in pieces, each piece carrying `->`, renders a head
+    where the pieces join as well as at the end -- a second head pointing
+    at nothing. #399 found two colinear segments meeting at `(46,36)`
+    doing exactly this.
+
+    **The junction has to be a bare coordinate, and that clause is what
+    makes the check precise rather than noisy.** Head-to-tail chaining
+    through a *named* node is the normal way to draw a pipeline:
+
+        \\draw[->] (intake) -- (parse);
+        \\draw[->] (parse)  -- (index);
+
+    TikZ clips each path at the node's boundary, so the first head lands
+    on `parse` pointing at it and the second starts from the opposite
+    border. Nothing is stranded. Three of the six scaffolds in
+    `assets/tikz/` are drawn this way, so a check without this clause
+    would report a finding on each of them. In #399's figure nothing is
+    drawn at `(46,36)` at all, which is why the head points at empty
+    space -- so `_COORDINATE_RE`, which `edge_list` uses to *discard* a
+    token, is the inclusion filter here.
+
+    Only the head-to-tail spelling is matched: a second statement whose
+    *first* point is the junction. Widening to either endpoint would also
+    fire on an unrelated tick mark that happens to touch the point.
+
+    **And the continuing statement must not draw its own head there**,
+    which is not an obvious clause until you see what it excludes. Two
+    `<->` dimension bars sharing a boundary --
+
+        \\draw[<->] (10,-7) -- (55,-7) node[midway,above] {detection gap};
+        \\draw[<->] (55,-7) -- (95,-7) node[midway,above] {response gap};
+
+    -- are head-to-tail at a bare coordinate and match everything above,
+    but `(55,-7)` is where *both* bars terminate: the second draws a
+    `<` head into the same point, so the pair reads as `|<-->|<-->|` and
+    nothing is stranded. Found by running this over the 43 figures of
+    this repository's own drafted book, where it was the only false
+    positive; the one true positive there is `2-2`'s arrow into
+    `(90,34)`, which a `\\draw[thick]` bezier then continues out of.
+    """
+    ends_with_head, opens_at = [], set()
+    for statement in _PATH_STATEMENT_RE.finditer(strip_comments(source)):
+        options, body = _split_options(statement.group("body"))
+        points = [_point(token) for token in _PAREN_TOKEN_RE.findall(body)]
+        if not points:
+            continue
+        if _START_ARROW not in options:
+            opens_at.add(points[0])
+        if _END_ARROW in options:
+            ends_with_head.append(points[-1])
+    found = []
+    for point in ends_with_head:
+        if point in opens_at and point not in found and _COORDINATE_RE.match(point):
+            found.append(point)
+    return found

@@ -77,6 +77,20 @@ LEGACY_LONG_FUNCTIONS = {
 # pattern appears. Every existing entry's count also moved with the same
 # reformat; none of the six is a real complexity increase, and the trade
 # is accepted the same way the line-wrap one was.
+#
+# One more entered on #405, and it is the first to enter mostly on prose
+# rather than on code. `figure_layout/__init__.py` sat at 247, with a
+# ~70-line docstring stating the aid's whole contract -- which checks
+# exist, which need pdflatex, and which side of AUTO-IMPROVEMENT.md's R3
+# each falls on. Three new rows in that table, a three-line note, and
+# the four statements implementing them took it to 257: ten of those
+# eleven lines are the header, because `code_lines()` charges for a
+# docstring and not for a `#` comment. The seam available is
+# `build_parser`/`main`/`run`/`_command` into a `_cli.py`, which is a
+# pure line-count move rather than a split by responsibility -- unlike
+# `_report.py`'s, whose docstring records a real seam. Deferred to its
+# own PR under DEVELOPER-AGENTS.md's surgical-changes rule rather than
+# tripling the diff of a reporting fix.
 LEGACY_LONG_FILES = {
     "chitragupta/sync.py",  # 548
     "chitragupta/enrich/docling_parse.py",  # 542
@@ -93,6 +107,7 @@ LEGACY_LONG_FILES = {
     "chitragupta/passages.py",  # 260
     "chitragupta/review/verbatim_check/__init__.py",  # 260
     "chitragupta/dossier/_retrieval.py",  # 256
+    "chitragupta/review/figure_layout/__init__.py",  # 257
 }
 
 
