@@ -31,7 +31,7 @@ docs/CODE-STANDARDS.md's "one place a fact is written" rules out.
 import re
 from pathlib import Path
 
-from chitragupta.render_output import _tables
+from chitragupta.render_output import _paths, _tables
 
 RULES = {
     "no-caption": "chitragupta.TableNoCaption",
@@ -52,13 +52,16 @@ _TABLE_HEAD_RE = re.compile(r"^[ \t]*\|.*\|[ \t]*\n[ \t]*\|[ \t:|-]+\|[ \t]*$", 
 # "no caption at all" from "a caption nobody can refer to".
 _CAPTION_RE = re.compile(r"^[ \t]*:[ \t]*\S.*$", re.MULTILINE)
 
+# A Markdown heading, only to bound a section. `review/_blocks.HEADING`
+# already spells this, and is deliberately not imported: the review layer
+# sits above this one in docs/ARCHITECTURE.md, so a drafting-layer check
+# reaching into it would be a new dependency in the wrong direction for
+# one three-token pattern.
 _HEADING_RE = re.compile(r"^#{1,6}[ \t]+\S.*$", re.MULTILINE)
 
 # The id shape a `\\label{tab:<id>}` can carry without further escaping,
 # and the one the figure markers already use for a base name.
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-
-_MARKDOWN_SUFFIXES = {".md", ".markdown"}
 
 
 def _finding(rule: str, match: str, line: int, message: str) -> dict:
@@ -82,7 +85,7 @@ def _section_starts(text: str) -> "list[int]":
     list may be empty and `_section_of` returns 0 for that case rather
     than failing.
     """
-    return [_tables._line_of(text, m.start()) for m in _HEADING_RE.finditer(text)]
+    return [_tables.line_of(text, m.start()) for m in _HEADING_RE.finditer(text)]
 
 
 def _section_of(line: int, starts: "list[int]") -> int:
@@ -98,8 +101,8 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
     stopped -- the marker is what they left out.
     """
     declared = {table.line for table in tables}
-    captions = {_tables._line_of(text, m.start()) for m in _CAPTION_RE.finditer(text)}
-    heads = [_tables._line_of(text, m.start()) for m in _TABLE_HEAD_RE.finditer(text)]
+    captions = {_tables.line_of(text, m.start()) for m in _CAPTION_RE.finditer(text)}
+    heads = [_tables.line_of(text, m.start()) for m in _TABLE_HEAD_RE.finditer(text)]
     found = []
     for index, line in enumerate(heads):
         # Bounded by the next table, or a bare table would count the
@@ -214,7 +217,11 @@ def _reference_problems(text: str, tables: "list[_tables.Table]") -> "list[dict]
 
 def findings(draft: Path) -> "list[dict]":
     """Every table finding for `draft`, ordered by where it is."""
-    if draft.suffix.lower() not in _MARKDOWN_SUFFIXES:
+    # `render`'s own answer to "is this a Markdown draft?", not a second
+    # one: the carve-out below has to be the same set of suffixes the
+    # renderer takes its Markdown path for, or a draft could be checked
+    # under one contract and rendered under the other.
+    if draft.suffix.lower() not in _paths._MARKDOWN_SUFFIXES:
         return []
     text = draft.read_text(encoding="utf-8")
     tables = _tables.tables(text)

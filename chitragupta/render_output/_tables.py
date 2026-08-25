@@ -98,7 +98,7 @@ class Table(NamedTuple):
     line: int
 
 
-def _line_of(text: str, offset: int) -> int:
+def line_of(text: str, offset: int) -> int:
     """The 1-based line `offset` falls on."""
     return text.count("\n", 0, offset) + 1
 
@@ -111,7 +111,7 @@ def tables(text: str) -> "list[Table]":
     for `pdf` pointing at the same table.
     """
     return [
-        Table(m.group("id"), m.group("caption"), number, _line_of(text, m.start()))
+        Table(m.group("id"), m.group("caption"), number, line_of(text, m.start()))
         for number, m in enumerate(_TABLE_RE.finditer(text), start=1)
     ]
 
@@ -123,7 +123,7 @@ def references(text: str) -> "list[tuple[str, int]]":
     what tells a table the prose reads from one it merely stands beside,
     and that is a line-number question.
     """
-    return [(m.group("id"), _line_of(text, m.start())) for m in _REF_RE.finditer(text)]
+    return [(m.group("id"), line_of(text, m.start())) for m in _REF_RE.finditer(text)]
 
 
 def _caption_for(table: Table, output_format: str) -> str:
@@ -159,11 +159,20 @@ def substitute(text: str, output_format: str) -> str:
     was: substituting nothing for it would delete a noun phrase from the
     middle of a sentence, leaving prose that reads as though a word were
     missing. `warnings` reports it instead.
-    """
-    by_id = {table.id: table for table in tables(text)}
 
-    def _caption(match: "re.Match[str]") -> str:
-        return _caption_for(by_id[match.group("id")], output_format)
+    Captions are numbered by **position**, not by id, so a draft that
+    reuses an id still numbers both of its captions correctly -- `sub`
+    visits matches in document order, which is the order `tables` counts
+    in. A *reference* to a reused id cannot be resolved that way and
+    takes the last table claiming it; that ambiguity is inherent, and
+    `warnings` is what reports the collision behind it.
+    """
+    declared = tables(text)
+    by_id = {table.id: table for table in declared}
+    in_order = iter(declared)
+
+    def _caption(_match: "re.Match[str]") -> str:
+        return _caption_for(next(in_order), output_format)
 
     text = _TABLE_RE.sub(_caption, text)
 

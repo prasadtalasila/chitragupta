@@ -97,10 +97,10 @@ break:
   table into another section and copying its id with it. Both are
   reported by the prose check this skill already runs at its own step
   (§13's table findings, over the `<!-- table: <id> -->` markers beneath
-  each caption) -- read those rather than eyeballing the markers. A table you add is a table you also introduce
-  and read a pattern off; a table left standing with no sentence
-  pointing at it is a `TableUnreferenced` finding and a reader's
-  problem.
+  each caption) -- read those rather than eyeballing the markers. A
+  table you add is a table you also introduce and read a pattern off; a
+  table left standing with no sentence pointing at it is a
+  `TableUnreferenced` finding and a reader's problem.
 
 ## Collection scoping (#195): inherit it, do not re-ask
 

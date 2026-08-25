@@ -97,6 +97,24 @@ class TestSubstituteMarkdown:
         assert "and Table 2 prices it" in out
 
 
+class TestADraftThatReusesAnId:
+    """A collision `warnings` reports and `substitute` still has to render.
+
+    Numbering by id rather than by position would give the *first* table
+    the second one's number, so a draft with a duplicate id would carry
+    two "Table 2"s and no "Table 1".
+    """
+
+    def test_captions_are_still_numbered_by_position(self):
+        out = _tables.substitute(DRAFT + DRAFT, "md")
+        assert out.count("**Table 1:**") == 1
+        assert [line for line in out.splitlines() if line.startswith("**Table")][:3] == [
+            "**Table 1:** Where to start when building a first twin.",
+            "**Table 2:** What each retention tier costs.",
+            "**Table 3:** Where to start when building a first twin.",
+        ]
+
+
 class TestSubstituteOtherPandocFormats:
     def test_docx_keeps_a_caption_and_gets_a_literal_number(self):
         # Verified against pandoc 3.1.11.1: the docx writer emits the
