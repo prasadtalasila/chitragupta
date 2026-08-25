@@ -380,8 +380,10 @@ pipeline.
 - **Panels are lettered, in both forms, however many there are.** A
   figure showing the same thing under several conditions is one figure
   with panels -- one marker, one pair, whatever the count -- and each
-  panel carries a sub-caption reading `(a) <short title>`, lettered in
-  reading order. The letters have to be in the ASCII form too, and not
+  panel carries a sub-caption reading `(<letter>) <short title>`, where
+  the letter is the panel's place in reading order: `(a)` for the first,
+  `(b)` for the second, on through the alphabet. The letters have to be
+  in the ASCII form too, and not
   as a decoration: every format except `tex`/`pdf` renders the `.txt`
   and never sees the picture, so a figure lettered only in its TikZ
   ships a `docx` and an `html` whose panels are unlabelled, with nothing

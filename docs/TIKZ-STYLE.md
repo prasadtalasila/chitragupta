@@ -122,13 +122,18 @@ pair** -- one marker per panel would give you separate floats with
 separate numbers, which is a row of figures rather than a panelled one.
 Nothing here is specific to two: letter as far as the figure goes.
 
-**Every panel carries a label node reading `(a) <short title>`,
-lettered in reading order** -- left to right, then top to bottom. Draw
-it as an ordinary node under the panel it names; a panel with a bold
+**Every panel carries a label node reading `(<letter>) <short title>`,
+and the letter is the panel's position in reading order** -- `(a)` for
+the first panel, `(b)` for the second, `(c)` for the third, and on
+through the alphabet. Reading order is left to right, then top to
+bottom, so it is the panel's *place in the picture* that decides its
+letter, not the order you happened to draw the nodes in: move a panel
+and its letter moves with the position, not with the panel. Draw the
+label as an ordinary node under the panel it names; a panel with a bold
 title and no letter cannot be pointed at from the prose, which is what
-the letter is for. Prose then refers to `Figure~\ref{fig:x}(a)`, with
-the `(a)` typed, since these letters are drawn rather than counted by
-LaTeX.
+the letter is for. Prose then refers to `Figure~\ref{fig:x}(b)` for the
+second panel, with the letter typed, since these letters are drawn
+rather than counted by LaTeX.
 
 **Put the same letters in the ASCII twin.** Every format except
 `tex`/`pdf` -- `md`, `html` and `docx` alike -- renders the `.txt` and

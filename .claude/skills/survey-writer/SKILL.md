@@ -378,7 +378,9 @@ collapse them for the sake of a cleaner narrative.
      figure.
    - **Panels get lettered sub-captions, in both forms.** A figure with
      more than one panel is still one figure and one marker; each panel
-     carries a `(a) <short title>` node, lettered in reading order, and
+     carries a `(<letter>) <short title>` node -- `(a)` for the first
+     panel in reading order, `(b)` for the second, on through the
+     alphabet -- and
      the same letters appear in the `.txt` -- `docx`, `html` and `md`
      render only that form, so letters left out of it are letters the
      reader never sees. `docs/TIKZ-STYLE.md` has the worked example, the
