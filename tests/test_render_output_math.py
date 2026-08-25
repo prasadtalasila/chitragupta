@@ -260,8 +260,27 @@ class TestImportBoundary:
                     f"{node.module}.{a.name}" if node.module == "chitragupta" else node.module
                     for a in node.names
                 )
+        # Non-vacuous guard: an AST walk that matched nothing would make
+        # the assertion below pass forever, for the wrong reason.
+        assert "chitragupta.config" in imported, (
+            "the import scan found no chitragupta imports at all, so it is not "
+            "checking anything -- has _math.py's import style changed?"
+        )
         offenders = {n for n in imported if n.startswith("chitragupta")} - allowed
         assert offenders == set(), (
             f"_math.py imports {offenders}, outside the set _paths.py commits this "
             "package to. Locate the dossier with config.mirrored_dir() instead."
         )
+
+    def test_the_duplicated_path_rule_still_agrees_with_dossier_dir(self, isolated_config):
+        """`mapping_path` re-derives what `dossier.dossier_dir` already knows.
+
+        That duplication is deliberate -- importing the dossier package would
+        break bare-`python` rendering -- but a duplicate only stays correct
+        while nobody moves the original. A test may import what the module
+        may not, so this is where the two are held together.
+        """
+        from chitragupta import dossier
+
+        draft = config.DRAFTS_DIR / "dt" / "tank.md"
+        assert _math.mapping_path(draft) == dossier.dossier_dir(draft) / _math.MAPPING_FILENAME
