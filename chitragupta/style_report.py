@@ -54,6 +54,16 @@ def report(draft: Path, payload: dict) -> list[str]:
     """
     findings = payload["findings"]
     lines = [f"{draft}"] + _dialect_lines(payload)
+    if payload.get("vale_error"):
+        # Same discipline as the dialect lines above: findings are missing
+        # here for a reason the reader cannot see, and an unexplained
+        # short report reads as a clean draft. What still ran is named,
+        # because it is not nothing -- the glossary and table checks are
+        # this module's own Python.
+        lines.append(
+            "  prose rules: not checked -- vale is not installed. The "
+            "glossary and table findings below still ran."
+        )
     if not findings:
         lines.append("  no findings.")
         return lines

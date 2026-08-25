@@ -101,7 +101,7 @@ from chitragupta.render_output._citeproc import (
     _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
-from chitragupta.render_output import _math
+from chitragupta.render_output import _math, _tables
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figures import (
@@ -374,6 +374,11 @@ def render(
     # a figure whose marker or twin is wrong.
     for warning in _figure_warnings(draft_text, input_path):
         print(f"[figure] {warning}", file=sys.stderr)
+    # Same placement, same reason: the Markdown-to-Markdown path is the
+    # one that renders a table's number here rather than deferring it to
+    # LaTeX, so it is the path where an unresolvable marker matters most.
+    for warning in _tables.warnings(draft_text):
+        print(f"[table] {warning}", file=sys.stderr)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not
         # a format conversion, and pandoc is the wrong tool for it. Its
@@ -391,7 +396,9 @@ def render(
         return references.write_numbered(
             input_path,
             out_dir,
-            _with_figures_for(draft_text, input_path, output_format),
+            _tables.substitute(
+                _with_figures_for(draft_text, input_path, output_format), output_format
+            ),
         )
 
     math_mapping = _checked_math_mapping(draft_text, input_path)
@@ -417,7 +424,10 @@ def render(
             config.BIB_FILE_PATH,
             Path(tmp),
             _math.substitute(
-                _with_figures_for(draft_text, input_path, output_format), math_mapping
+                _tables.substitute(
+                    _with_figures_for(draft_text, input_path, output_format), output_format
+                ),
+                math_mapping,
             ),
         )
         cmd, env = _pandoc_command(

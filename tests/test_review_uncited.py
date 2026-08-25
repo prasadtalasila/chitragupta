@@ -143,6 +143,27 @@ class TestTheExclusions:
         draft = a_draft("\\caption{The loop closes at the pump.}\n", name="thesis.tex")
         assert found_text(draft) == []
 
+    def test_a_pandoc_table_caption_is_excluded(self, isolated_config):
+        """WRITING-STANDARDS.md §13's caption line. Without this the aid
+        reports one false finding per table in every draft written to that
+        section -- on the aid whose whole design problem is alarm
+        fatigue."""
+        draft = a_draft(
+            "| Starting point | Core idea |\n"
+            "|---|---|\n"
+            "| Pattern catalog | Patterns to instantiate |\n\n"
+            ": Where to start when building a first twin.\n"
+            "<!-- table: start-here -->\n"
+        )
+        assert found_text(draft) == ["Pattern catalog -- Patterns to instantiate"]
+
+    def test_an_inline_table_reference_does_not_reach_the_report(self, isolated_config):
+        """§13's reference marker sits *inside* a sentence, which the
+        block-level COMMENT exclusion cannot see. Left in, a finding
+        quotes pipeline markup back at the reader."""
+        draft = a_draft("The platforms in <!-- tableref: start-here --> differ.\n")
+        assert found_text(draft) == ["The platforms in Table differ."]
+
     def test_a_table_header_row_is_excluded_and_the_body_rows_are_not(self, isolated_config):
         """The column names are scaffolding. The rows are claims -- and
         survey.md's own comparison table attributes each row with a
