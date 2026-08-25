@@ -216,6 +216,43 @@ a gate**: [docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md) keeps
 citekey fails -- and this must not blunt it. Same standing as the review
 layer.
 
+### 🔁 What a revision can actually do, and what survives it
+
+Four cases, and they are not equally safe. Substitution is a key lookup
+over every span, so a *repeat* of an already-mapped span is correct with
+no action from anyone -- that is the design carrying its own weight, and
+it covers the common case of a symbol used again in new prose.
+
+| A revision... | Result if nobody reconciles | Detected? |
+| --- | --- | --- |
+| repeats a mapped span (`` `k` `` again, new sentence) | **correct** -- substituted by lookup | n/a, nothing to do |
+| rewords a mapped expression (`k = 4` → `k = 4.5`) | renders `\texttt{}` | **yes** -- gap, it has `=` |
+| deletes a span | nothing renders wrong | yes -- orphan, harmless |
+| introduces a **new bare symbol** (`` `j` ``) | renders `\texttt{}` | **no -- blind spot** |
+
+**The blind spot is the worst combination: least detectable, most
+common.** The gap rule keys on `=`, `<`, `>` or arithmetic, and a bare
+symbol has none of them. In the 15-chapter book that shape *dominated* --
+of 515 conversions, roughly 296 were single symbols (`k`×55, `h`×50,
+`Ts`×47, `g`×42). A rule that misses those is not a defence.
+
+**Fix it by closing the world over symbols, not by widening the
+heuristic.** The mapping already declares which symbols this draft uses:
+collect every symbol appearing in a mapped LaTeX *value* -- `\tau`, `k`,
+`W_0` -- and treat any backtick span equal to one of them, but lacking
+its own row, as a gap. That is document-derived rather than guessed, and
+it is the same technique that took the real conversion from 253 clashes
+to zero. A genuinely new symbol usually enters via an equation, so it
+enters the value-space in the same revision that introduces it.
+
+**And let `render` exit non-zero on a gap.** The "aid, not a gate" line
+above protects `chitragupta.draft gate`'s single meaning; it says nothing
+about `render`, which already refuses to write outside `content/` and
+refuses to overwrite its own source. A skill that ignores a warning still
+ships a wrong pdf; one that gets a non-zero exit cannot. This is the
+difference between correct-by-instruction and correct-by-construction,
+and it is worth more than any wording in the six SKILL.md files.
+
 Be honest in the plan's own record that the dossier has form here:
 `scope.md`'s corpus fingerprint is a staleness marker that
 [DOSSIER.md](../docs/DOSSIER.md) says is *"written once, by `init`, and
