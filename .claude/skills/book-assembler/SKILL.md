@@ -306,6 +306,25 @@ It is the reading copy for anyone who is not building LaTeX.
    `grep -c` over that log printed nothing at all, and a check that
    silently reports nothing is worse than no check.
 
+   **Table numbers are the book's, not a unit's, and one thing can break
+   them.** A unit's tables carry
+   `docs/WRITING-STANDARDS.md` §13's markers, which the conversion turns
+   into `\caption{...\label{tab:<id>}}` -- so the `book` class numbers
+   them "1.3", per chapter, across the whole book with nothing to
+   configure. What does not survive is a **duplicate id**: two units that
+   each wrote `<!-- table: comparison -->` become two `\label{}`s in one
+   document, and every `\ref` to that id silently resolves to whichever
+   LaTeX saw last. Check for it before composing, and send a collision
+   back to `draft-reviser` rather than renaming a label here:
+
+   ```bash
+   grep -ho '<!-- table: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
+   ```
+
+   Anything printed is a collision. The per-unit prose check reports the
+   same defect (`TableDuplicateId`) but sees one unit at a time -- across
+   units, this is the check.
+
    **If the units number their own headings, turn LaTeX's numbering
    off** -- `\setcounter{secnumdepth}{-2}` in the preamble. A book whose
    Markdown says `## 1.0 Before you start` otherwise renders "1.1 1.0

@@ -273,6 +273,18 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    reviser reads. Drop `--write` to see the table first; a citekey cited
    above the first `\section` is reported on stderr rather than
    attributed to a section that does not contain it.
+   A table in this genre is **written as real LaTeX**, and carries no
+   marker: `\begin{table}` with its own `\caption{...}\label{tab:<id>}`,
+   referred to as `Table~\ref{tab:<id>}`. That is
+   `docs/WRITING-STANDARDS.md` §13's carve-out, and it exists for the
+   same reason §10 keeps this genre's TikZ inline -- the fragment is
+   `\input` into the user's own thesis, where their own `pdflatex`
+   numbers the table consistently with their other chapters. The
+   Markdown marker vocabulary would be dropped by their build, leaving an
+   unnumbered table in a chapter that refers to a number. Introduce the
+   table before it appears and read a pattern off it afterwards; a
+   caption is not a reading.
+
 9. **Add a figure only if the argument needs one.** Place it beside the
    framework, architecture or study design it captures, when prose
    would otherwise take a paragraph to describe it --

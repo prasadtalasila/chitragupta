@@ -306,6 +306,17 @@ candidate for the chapter.
    naming the exercise and why it went -- so a later revision doesn't
    reintroduce a problem you already judged and dropped. The same goes for a
    worked example you drafted and abandoned.
+
+   Wherever a step above puts a table in the chapter -- a table of
+   symbols, units or parameter values is the common case here -- **it
+   gets a caption, an id, and a sentence that reads it**, per
+   `docs/WRITING-STANDARDS.md` §13: a caption line under the table,
+   `<!-- table: <id> -->` on the line below it, and an inline
+   `<!-- tableref: <id> -->` wherever the prose points at it. Never write
+   the number; the renderer assigns it, and a number typed into a chapter
+   is wrong the moment that chapter is assembled into a book. A student
+   meeting a table with no lead-in has to guess what to compare.
+
 7. **Add a figure, if a worked example or concept earns one.** Place it
    beside the worked example (step 5) or concept it clarifies.
    `docs/WRITING-STANDARDS.md` §10's original ASCII diagrams suit this

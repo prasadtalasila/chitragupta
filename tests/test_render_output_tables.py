@@ -66,8 +66,13 @@ class TestSubstituteLatexBound:
         # The number is LaTeX's to assign: the same unit numbers "3" in an
         # article and "1.3" inside an assembled book, so writing one here
         # would be wrong in one of the two.
+        #
+        # Raw-attribute span, not a bare command: pandoc's Markdown reader
+        # escapes `~` to `\textasciitilde{}`, which sets a literal tilde
+        # between the word and the number. Caught by rendering a real
+        # draft, not by reading the code.
         out = _tables.substitute(DRAFT, "tex")
-        assert "The platforms in Table~\\ref{tab:start-here} differ" in out
+        assert "The platforms in `Table~\\ref{tab:start-here}`{=latex} differ" in out
         assert "<!-- tableref:" not in out
 
     def test_latex_and_tex_and_pdf_agree(self):

@@ -67,11 +67,15 @@ class TestNoId:
 class TestIds:
     def test_two_tables_claiming_one_id(self, tmp_path):
         body = f"# S\n\nAs <!-- tableref: start-here --> shows.\n\n{TABLE}\n{CAPTION}\n{TABLE}\n{CAPTION}"
-        assert "chitragupta.TableDuplicateId" in rules(style_tables.findings(draft_with(body, tmp_path)))
+        assert "chitragupta.TableDuplicateId" in rules(
+            style_tables.findings(draft_with(body, tmp_path))
+        )
 
     def test_an_id_that_is_not_kebab_case(self, tmp_path):
         body = f"# S\n\nAs <!-- tableref: Start Here --> shows.\n\n{TABLE}\n: C.\n<!-- table: Start_Here -->\n"
-        assert "chitragupta.TableMalformedId" in rules(style_tables.findings(draft_with(body, tmp_path)))
+        assert "chitragupta.TableMalformedId" in rules(
+            style_tables.findings(draft_with(body, tmp_path))
+        )
 
     def test_a_reference_to_an_id_no_table_declares(self, tmp_path):
         body = f"# S\n\nAs <!-- tableref: ghost --> shows, and <!-- tableref: start-here --> too.\n\n{TABLE}\n{CAPTION}"
@@ -91,10 +95,7 @@ class TestUnreferenced:
 
 class TestReferencedOutsideItsSection:
     def test_the_only_reference_sits_in_another_section(self, tmp_path):
-        body = (
-            "## One\n\nAs <!-- tableref: start-here --> shows.\n\n"
-            f"## Two\n\n{TABLE}\n{CAPTION}"
-        )
+        body = f"## One\n\nAs <!-- tableref: start-here --> shows.\n\n## Two\n\n{TABLE}\n{CAPTION}"
         found = style_tables.findings(draft_with(body, tmp_path))
         assert rules(found) == ["chitragupta.TableRefOutsideSection"]
 

@@ -136,9 +136,19 @@ def _caption_for(table: Table, output_format: str) -> str:
 
 
 def _reference_for(table: Table, output_format: str) -> str:
-    """The phrase a `tableref` marker expands to in `output_format`."""
+    """The phrase a `tableref` marker expands to in `output_format`.
+
+    The LaTeX-bound form is wrapped in pandoc's raw-attribute span rather
+    than written bare, because of the tie: a bare `Table~\\ref{...}` in
+    Markdown reaches the LaTeX writer as
+    `Table\\textasciitilde{}\\ref{...}` -- pandoc's Markdown reader owns
+    `~` (its subscript syntax) and escapes it, so the reference sets with
+    a literal tilde in the middle. Measured on this pipeline's own render,
+    not on pandoc in the abstract. The `\\label` beside it needs no such
+    wrapper, and does survive bare.
+    """
     if output_format in _LATEX_BOUND:
-        return f"Table~\\ref{{tab:{table.id}}}"
+        return f"`Table~\\ref{{tab:{table.id}}}`{{=latex}}"
     return f"Table {table.number}"
 
 

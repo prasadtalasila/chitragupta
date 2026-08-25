@@ -305,7 +305,27 @@ collapse them for the sake of a cleaner narrative.
    - Framing paragraph for the overall topic
    - One subsection per theme, citing the papers that actually support each claim
    - A comparison table: columns for approach/paper, citekey, core idea,
-     stated limitations
+     stated limitations. **It carries a caption and an id, and the prose
+     reads it** -- `docs/WRITING-STANDARDS.md` §13 is the contract, and
+     this genre's table is the one it was written for:
+
+     ```markdown
+     | Starting point | Citekey | Core idea | Stated limitation |
+     |---|---|---|---|
+     | ... | ... | ... | ... |
+
+     : Where to start when building a first twin.
+     <!-- table: start-here -->
+     ```
+
+     Refer to it with an inline `<!-- tableref: start-here -->`, which
+     the renderer expands to "Table 3" or `\ref{}` depending on the
+     format -- never write the number yourself, and never write the word
+     "Table" beside the marker. Introduce the table before it appears
+     (what is compared, on what axis) and read a pattern off it
+     afterwards (the outlier row, the column where everything agrees).
+     A comparison nobody reads aloud is a table the reader has to
+     interpret unaided.
    - A gap-analysis paragraph: what the retrieved corpus does *not* cover
      (including sub-themes that stayed thin after reformulation, and any
      cross-source disagreement from step 5)
