@@ -135,7 +135,11 @@ Concrete defects, not taste:
   carrying `->`, render as an arrowhead where they join as well as at
   the end -- a second head pointing at nothing in the middle of the
   line. If a line needs to be built in pieces, put the `->` on the last
-  piece only.
+  piece only. This one *is* mechanically checked, where the pieces meet
+  at a bare coordinate: chaining head-to-tail through a **named** node
+  is how a pipeline is normally drawn and is not a defect, because TikZ
+  clips each path at the node's boundary so the head points at the node
+  rather than at empty space.
 - **Chaotic routing** -- arrows should not cross unnecessarily or form
   spaghetti loops. Left off the mechanical checks that may eventually
   exist; a bad approximation of "does this route look chaotic" would be
@@ -217,10 +221,13 @@ author gets wrong:
   shape what passes -- a two-row diagram spread out generously trips it
   with nothing wrong -- so when a finding and your own eyes disagree,
   the eyes win and the figure stays.
-- **A clean report is not a checked figure.** The geometry checks
-  measure only nodes the source names, so a picture that names none
-  reports nothing found because nothing was measurable. Name the nodes
-  you draw, in whichever idiom -- `\node (a)` and
+- **A clean report is not a checked figure -- and the report now says
+  which it is.** The geometry checks measure only nodes the source
+  names, so a picture that names none has nothing to measure. That used
+  to print as `No layout findings`, identical to a figure where every
+  check ran and found nothing; it now prints as its own finding, with
+  the declared names that did not come back listed beside it. Name the
+  nodes you draw, in whichever idiom -- `\node (a)` and
   `child { node (a) ... }` both count.
 
 [REVIEW.md](REVIEW.md) has the aid among the other five;

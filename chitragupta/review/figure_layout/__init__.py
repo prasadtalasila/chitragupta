@@ -16,9 +16,16 @@ from geometry, and the split matters:
 |---|---|---|
 | Node text overload (>15 words) | binary | no |
 | Edge list | binary, reported for confirmation | no |
+| Stranded arrowhead | binary | no |
 | Node overlap | binary | yes |
 | Content protrusion | binary | yes |
+| Nothing was measurable | binary | yes |
+| Names declared vs measured | **diagnostic, human-read only** | yes |
 | Corner emptiness | **continuous, human-read only** | yes |
+
+**What was measurable is reported, never inferred** (#405): a figure
+that names no node reports nothing *because nothing ran*, which used to
+print as a clean result. `_result.py`'s `nothing_measurable` has why.
 
 **Corner emptiness is reported and consumed by nothing**, per
 docs/AUTO-IMPROVEMENT.md's R3: no continuous score may be the thing an
@@ -107,6 +114,7 @@ from chitragupta.review.figure_layout._source import (
     MAX_NODE_WORDS,
     edge_list,
     overlong_nodes,
+    stranded_arrowheads,
 )
 
 # Re-exported so the aid is one import for a caller and one name in
@@ -135,6 +143,7 @@ __all__ = [
     "protrudes",
     "render_markdown",
     "scaffold",
+    "stranded_arrowheads",
 ]
 
 
@@ -197,6 +206,13 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
             path=path,
             overlong=overlong_nodes(source),
             edges=edge_list(source),
+            stranded=stranded_arrowheads(source),
+            # What the probe will ask pdflatex about, recorded so the
+            # report can say how much of the figure was measurable
+            # (#405). The same call `node_boxes()` makes internally over
+            # the same file, so the two cannot disagree about what was
+            # attempted -- which is the whole point of recording it.
+            declared=node_names(source),
             skipped=skipped,
         )
         # Unreachable on a host with no TeX, where `skipped` is always

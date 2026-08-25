@@ -19,11 +19,14 @@ Two things it guards that are easy to miss:
 - **Zero findings has to be earned, not vacuous.** The aid measures a
   node's geometry only where the source spells an explicit `(name)`, so
   a picture that names nothing reports no overlap and no protrusion
-  because nothing was measurable at all -- indistinguishable, in the
-  report, from a clean figure. Exactly 1 of the 43 figures in this
-  repository's own drafted book names a node (#393), so this is the
+  because nothing was measurable at all. Exactly 1 of the 43 figures in
+  this repository's own drafted book names a node (#393), so this is the
   normal case rather than a corner. Every scaffold is therefore also
-  asserted to have every name it declares come back measured.
+  asserted to have every name it declares come back measured. That
+  assertion used to be this file's own workaround for the aid reporting
+  the two cases identically; #405 moved the distinction into the aid, so
+  it is now a second opinion on a thing `has_findings` already covers
+  rather than the only thing covering it.
 """
 
 import re
@@ -192,7 +195,10 @@ class TestThroughTheDocumentedCommand:
 
         assert len(results) == 1
         assert results[0].skipped == ""
-        assert results[0].failed is None
-        assert results[0].overlong == []
-        assert figure_layout.overlaps(results[0].boxes) == []
-        assert figure_layout.protrudes(results[0].boxes) is False
+        # `has_findings` now carries the whole criterion, because #405
+        # put "nothing was measurable" inside it. Before that this had to
+        # additionally assert that every declared name came back measured
+        # -- the aid could not tell a clean figure from an unmeasured
+        # one, so every caller had to make the distinction for itself.
+        assert results[0].has_findings is False
+        assert results[0].unmeasured == []
