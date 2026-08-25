@@ -84,10 +84,14 @@ survey's expectations.
 
 **`review figure` -- what a TikZ figure's own geometry says.**
 Overlapping nodes, content protruding past the frame, node text too long
-to fit, page-width overflow, and the edge list to confirm the figure
-connects what you meant it to. The mechanical half of the figure style
-guide: it checks what can be measured from the compiled geometry and
-leaves taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)).
+to fit, page-width overflow, an arrowhead stranded mid-line where a
+figure builds one arrow out of two `\draw`s, and the edge list to
+confirm the figure connects what you meant it to. The mechanical half of
+the figure style guide: it checks what can be measured from the compiled
+geometry and leaves taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)). It
+also says **how much of a figure it could measure at all** -- a picture
+that names no node has no geometry to check, and that no longer reads
+the same as a picture that passed.
 
 It **measures and never places.** TikZ computes the layout; this reads
 the result back out of a real compile and reports on it, which is why

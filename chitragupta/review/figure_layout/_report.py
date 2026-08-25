@@ -23,6 +23,15 @@ from chitragupta.review.figure_layout._source import MAX_NODE_WORDS
 # reader of any of the three learns the same thing about the number.
 EMPTINESS_LABEL = "advisory, human-read only -- nothing consumes this"
 
+# The sentence #405 was filed about, in the form that fixes it. The aid
+# measures only nodes the source names, so this is not "the figure is
+# fine" -- it is "there was nothing here to check", and the two used to
+# print identically.
+UNMEASURABLE = (
+    "names no node, so nothing was measured -- the overlap, protrusion "
+    "and emptiness checks did not run"
+)
+
 
 def _figure_lines(result: FigureResult) -> list[str]:
     """One figure's findings, as the report prints them."""
@@ -31,10 +40,28 @@ def _figure_lines(result: FigureResult) -> list[str]:
         lines.append(f"  - does not compile: {result.failed}")
     for name, count in result.overlong:
         lines.append(f"  - node `{name}` has {count} words (over {MAX_NODE_WORDS})")
+    for point in result.stranded:
+        lines.append(
+            f"  - an arrowhead lands mid-line at `({point})`, where another path "
+            f"continues -- put the `->` on the last piece only"
+        )
     for one, other in result.overlapping:
         lines.append(f"  - nodes `{one}` and `{other}` overlap")
     if result.protruding:
         lines.append("  - content protrudes past the main block, wasting vertical space")
+    if result.nothing_measurable:
+        lines.append(f"  - {UNMEASURABLE}")
+    if result.unmeasured:
+        # A diagnostic, not a finding: it is what makes a *protrusion*
+        # finding above untrustworthy, so it is printed beside one rather
+        # than counted as one. Named rather than counted deliberately --
+        # "3 of 7 measured" is a ratio, and R3 keeps a ratio out of
+        # anything something could drive.
+        named = ", ".join(f"`{name}`" for name in result.unmeasured)
+        lines.append(
+            f"  - declared but not measured: {named} "
+            f"(the geometry checks ran over less than the figure)"
+        )
     if result.edges:
         drawn = ", ".join(f"{one} -> {other}" for one, other in result.edges)
         lines.append(f"  - edges (confirm against the prose): {drawn}")
@@ -104,10 +131,16 @@ def render_markdown(draft_path: Path, results: list[FigureResult], command: str)
 def _findings(results: list[FigureResult]) -> list[dict]:
     """One object per binary finding.
 
-    `empty_fraction` is deliberately **not** here. It rides in the
-    per-figure section of the payload instead, because R3's rule is that
-    a continuous score is never the thing optimised -- and a score listed
+    `empty_fraction` is deliberately **not** here, and neither is the
+    count of names that came back unmeasured. Both ride in the per-figure
+    section of the payload instead, because R3's rule is that a
+    continuous score is never the thing optimised -- and a score listed
     among the findings is a score something will eventually try to close.
+
+    `nothing-measurable` *is* here, and the line between it and its
+    neighbour is worth stating: "no node was named" is binary and has one
+    correct fix, while "3 of 7 names were measured" is a ratio and would
+    be a target.
     """
     findings = []
     for result in results:
@@ -122,8 +155,14 @@ def _findings(results: list[FigureResult]) -> list[dict]:
             {"figure": figure, "kind": "node-overlap", "nodes": [one, other]}
             for one, other in result.overlapping
         ]
+        findings += [
+            {"figure": figure, "kind": "stranded-arrowhead", "at": point}
+            for point in result.stranded
+        ]
         if result.protruding:
             findings.append({"figure": figure, "kind": "content-protrusion"})
+        if result.nothing_measurable:
+            findings.append({"figure": figure, "kind": "nothing-measurable"})
     return findings
 
 
@@ -140,7 +179,15 @@ def payload(draft_path: Path, results: list[FigureResult], command: str) -> dict
                     "edges": [list(edge) for edge in result.edges],
                     "empty_fraction": result.empty_fraction,
                     "empty_fraction_note": EMPTINESS_LABEL,
+                    # `geometry_checked` is true because a compile
+                    # happened, not because anything was checked -- #405
+                    # is right that this reads as more than it means. It
+                    # is a shipped key, so the fix is the two fields
+                    # beside it rather than a redefinition under a reader
+                    # already consuming it.
                     "geometry_checked": result.boxes is not None,
+                    "names_declared": result.declared,
+                    "names_unmeasured": result.unmeasured,
                 }
                 for result in results
             ],

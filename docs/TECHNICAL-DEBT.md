@@ -99,7 +99,7 @@ it is on a register it left is not.
 ## 🧱 Tier 1: the debt the ratchet already holds
 
 `tests/test_code_standards_scan.py` freezes **3 functions** over C1 (25
-statements) and **15 modules** over C2 (250 code lines), each with its
+statements) and **16 modules** over C2 (250 code lines), each with its
 current size in a trailing comment that
 `test_every_registered_offender_records_its_current_count` keeps honest.
 
