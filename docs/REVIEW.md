@@ -89,6 +89,15 @@ connects what you meant it to. The mechanical half of the figure style
 guide: it checks what can be measured from the compiled geometry and
 leaves taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)).
 
+It **measures and never places.** TikZ computes the layout; this reads
+the result back out of a real compile and reports on it, which is why
+its thresholds are not something to draw towards -- fix a finding by
+changing what you asked TikZ for, not by nudging a coordinate until the
+number moves. `assets/tikz/` ships a known-good starting file per layout
+metaphor so that is a file rather than a blank picture.
+[CLI.md](CLI.md#-chitragupta-review-figure) has the boundary in full,
+including the one way a clean report can mislead.
+
 **`review uncited` -- which sentences rest on nothing at all.** This
 looks like `coverage` and is its mirror image. `coverage` asks a question
 about the *corpus* side of the boundary -- were the surfaced candidates

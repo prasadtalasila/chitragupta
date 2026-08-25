@@ -142,6 +142,23 @@ class TestNodeText:
 
         assert figure_layout.overlong_nodes(source) == []
 
+    def test_a_commented_out_node_is_not_measured(self):
+        """A node an author commented out is not in the figure, so its
+        label length is not a finding about the figure (#404). The same
+        blindness as the probe's, failing safe here rather than loudly
+        -- which is why the two are fixed together: a node measured for
+        geometry but not for text length is a confusing split."""
+        words = " ".join(f"word{n}" for n in range(20))
+        source = f"% \\node (old) {{{words}}};\n\\node (a) {{short}};\n"
+
+        assert figure_layout.overlong_nodes(source) == []
+
+    def test_a_child_syntax_nodes_label_is_measured(self):
+        words = " ".join(f"word{n}" for n in range(20))
+        source = f"\\node (root) {{root}} child {{ node (leaf) {{{words}}} }};"
+
+        assert [name for name, _ in figure_layout.overlong_nodes(source)] == ["leaf"]
+
 
 class TestEdgeList:
     """The faithfulness check: what the figure claims connects to what.
@@ -199,6 +216,15 @@ class TestEdgeList:
         source = "\\node (a) {A};\n\\node (b) {B};\n"
 
         assert figure_layout.edge_list(source) == []
+
+    def test_a_commented_out_draw_is_not_an_edge(self):
+        """The edge list is the one check read as a list of what the
+        figure *claims*, so a wrong entry is worse than a missing one --
+        and an edge the author commented out is exactly that. Same
+        comment blindness as #404's other two symptoms."""
+        source = "% \\draw (a) -- (ghost);\n\\draw (a) -- (b);\n"
+
+        assert figure_layout.edge_list(source) == [("a", "b")]
 
 
 class TestEdgeListLimits:
@@ -281,6 +307,58 @@ class TestProbePlacement:
         """A node with no `(name)` cannot be probed -- `\\pgfpointanchor`
         has nothing to ask for."""
         assert figure_layout.node_names("\\node {just a label};\n") == []
+
+    def test_a_node_named_only_in_a_comment_is_not_probed(self):
+        """#404's first defect, and it produced a *wrong* finding rather
+        than a missed one.
+
+        A comment that merely mentions a node declaration made the probe
+        ask `pdflatex` for a shape nothing had drawn, which fails the
+        compile -- so the aid reported *the figure* as not compiling,
+        about a figure that compiles perfectly well. Hit for real by
+        `assets/tikz/branching-tree.tex`'s own header comment.
+        """
+        source = "% see \\node (ghost) for how this works\n\\node (a) {A};\n"
+
+        assert figure_layout.node_names(source) == ["a"]
+
+    def test_an_escaped_percent_does_not_start_a_comment(self):
+        """`\\%` is a literal percent sign, so what follows it is still
+        the figure. Stripping it as a comment would lose real nodes."""
+        source = "\\node (pct) {50\\% of runs}; \\node (b) {B};\n"
+
+        assert figure_layout.node_names(source) == ["pct", "b"]
+
+    def test_node_names_finds_a_child_syntaxs_names(self):
+        """#404's second defect. `child` spells the same declaration
+        without a leading backslash, and the names are real inside the
+        picture -- `\\pgfpointanchor` resolves them. Finding only the
+        root left the children unmeasured, and `protrudes()` then read
+        the band they occupy as empty and reported a protrusion the
+        figure did not have."""
+        source = (
+            "\\node (root) {root}\n"
+            "  child { node (left) {L} }\n"
+            "  child { node[draw] (right) {R} };\n"
+        )
+
+        assert figure_layout.node_names(source) == ["root", "left", "right"]
+
+    def test_a_mid_path_label_node_is_found_too(self):
+        """Same spelling, same reason: `node (mid)` on a path declares a
+        real named node."""
+        source = "\\draw (a) -- node (mid) {label} (b);\n"
+
+        assert figure_layout.node_names(source) == ["mid"]
+
+    def test_the_word_node_inside_a_label_is_not_a_declaration(self):
+        """The guard on widening the pattern. Prose in a label can
+        contain the word, and treating it as a declaration would
+        reintroduce the crash above by a different route -- so the
+        keyword counts only where a label cannot be."""
+        source = "\\node (a) {a node (of sorts)};\n"
+
+        assert figure_layout.node_names(source) == ["a"]
 
     def test_probes_go_inside_the_picture_not_after_it(self):
         """`current bounding box` belongs to the picture being built, so

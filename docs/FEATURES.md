@@ -258,7 +258,7 @@ copyrighted sources.
 | `draft references` | an IEEE reference list built only from citekeys the draft already cites | [CLI.md](CLI.md) |
 | `draft render` | `.md`, `.tex`, `.pdf`, `.docx` via Pandoc, numbered IEEE-style | [CLI.md](CLI.md) |
 | `draft style` | prose checked against the house writing standards -- a review aid, never a gate | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) |
-| TikZ figures | figures drawn to a documented style, checked for layout defects | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
+| TikZ figures | figures drawn to a documented style, checked for layout defects, and started from a known-good scaffold per layout metaphor rather than from an empty picture (`assets/tikz/`) | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
 
 ### 📕 Book-scale drafting
 

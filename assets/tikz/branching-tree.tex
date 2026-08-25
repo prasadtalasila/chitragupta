@@ -1,0 +1,30 @@
+% Metaphor: branching tree. One thing divides into cases, and no case
+% rejoins another -- reach for it for a taxonomy or a decision. If two
+% branches meet again further down, this is not a tree and drawing it as
+% one will hide the join.
+%
+% Idiom: `tree`, via `child`. `level distance` and `sibling distance`
+% place every node, so adding a branch re-spaces its whole level instead
+% of landing on a neighbour, and the source's own indentation is the
+% structure rather than a comment about it.
+%
+% One thing this idiom costs, worth knowing before you confirm the
+% figure: `child` draws its edges internally rather than as `\draw`, so
+% `python -m chitragupta.review figure` reports no edge list for this
+% picture at all. That is the aid being silently short, not the figure
+% being unwired -- read the nesting below for what connects to what.
+\usetikzlibrary{trees}
+\begin{tikzpicture}[thick,
+                    level distance=16mm,
+                    level 1/.style={sibling distance=46mm},
+                    level 2/.style={sibling distance=23mm},
+                    every node/.style={draw,align=center,
+                                       minimum width=20mm,minimum height=9mm}]
+  \node (source) {source}
+    child { node (batch) {batch}
+      child { node (nightly) {nightly} }
+      child { node (weekly) {weekly} } }
+    child { node (live) {live}
+      child { node (push) {push} }
+      child { node (poll) {poll} } };
+\end{tikzpicture}

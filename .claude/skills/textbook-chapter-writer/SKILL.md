@@ -332,8 +332,15 @@ candidate for the chapter.
    carries a real picture rather than monospace art. Five riders, each
    of which §10 explains:
 
-   - **Commit to a layout metaphor before drawing, then check the
-     result against `docs/TIKZ-STYLE.md`'s pre-flight defect list**
+   - **Commit to a layout metaphor before drawing, and start from the
+     scaffold for it rather than from an empty picture.** `assets/tikz/`
+     holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names
+     -- pipeline, map, layered stack, control loop, branching tree,
+     hub-and-spoke. Copy the one that fits and re-label it. Each places
+     its nodes relative to one another, which is the property worth
+     keeping: a figure laid out in hand-computed millimetres re-opens
+     every adjacency in it the moment any label changes length. Then
+     check the result against that document's pre-flight defect list
      (occlusion, chaotic routing, illegible type, non-rectangular
      protrusion, an overlong node, literal copying) before keeping the
      figure.

@@ -27,6 +27,7 @@ import tempfile
 from pathlib import Path
 
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
+from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
 
 # What the scaffold prints per node, and what this module parses back.
 # One node per line, `pt`-suffixed as TeX writes dimensions.
@@ -38,10 +39,11 @@ _CGBOX_RE = re.compile(
 )
 
 # `\node[opts] (name) at (x,y) {label}`, for finding what to probe. The
-# same shape `_source.py` parses for its own checks; kept separate rather
-# than imported because the two want different things from it -- this one
-# only ever needs the name.
-_NODE_NAME_RE = re.compile(r"\\node\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
+# same shape `_source.py` parses for its own checks; the pattern stays
+# separate because the two want different things from it -- this one only
+# ever needs the name -- while the declaration's own spelling comes from
+# there, so widening it stays one edit rather than two that can drift.
+_NODE_NAME_RE = re.compile(_NODE_KEYWORD + r"\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
 
 
 class FigureCompileError(RuntimeError):
@@ -61,8 +63,17 @@ def node_names(source: str) -> list[str]:
     The scaffold needs these up front: `\\pgfpointanchor` is asked for
     one named node at a time, so the probe has to know what to ask for
     before it can ask.
+
+    **Getting this wrong fails loudly and in the wrong direction**,
+    which is why comments are stripped and why the `child` spelling
+    counts (#404). A name found where no node was drawn makes
+    `\\pgfpointanchor` raise ``No shape named ... is known`` and takes
+    the whole compile down, so the aid reports the *figure* as broken. A
+    name missed leaves that node unmeasured, and `protrudes()` then
+    reads the band it occupies as empty -- a seven-node tree drawn with
+    `child` reported one node and a protrusion it did not have.
     """
-    return [match.group("name").strip() for match in _NODE_NAME_RE.finditer(source)]
+    return [match.group("name").strip() for match in _NODE_NAME_RE.finditer(strip_comments(source))]
 
 
 def scaffold(source: str, names: list[str]) -> str:

@@ -42,6 +42,37 @@ maps onto a TikZ idiom to actually use:
 (The metaphor list is PaperBanana's planner supplement, read and not
 copied -- [INSPIRATION.md](INSPIRATION.md) carries the credit.)
 
+**There is a starting file for every row of that table, in
+`assets/tikz/`.** One per metaphor, named for it, each compiling on its
+own and each reporting no binary finding from
+`python -m chitragupta.review figure`. Copy the one whose metaphor fits
+and re-label it; the point of the choice above is that it hands you a
+file rather than a blank `tikzpicture`. `assets/` is copied into a
+project by `chitragupta init`, so they are already beside a scaffolded
+draft and there is nothing to download. `assets/tikz/README.md` says
+what each one is for.
+
+**Every scaffold places its nodes relative to one another, and none of
+them writes a coordinate in millimetres.** That is the property to keep
+when you edit one. A figure laid out in hand-computed absolute
+millimetres cannot express "do not collide": re-wording one label, or
+setting the figure at a different type size, re-opens every adjacency in
+the picture at once and each of them has to be re-checked by eye.
+Relative placement and `fit` layers make most of those collisions
+impossible instead of merely detectable.
+
+**Name every node you draw**, in whichever idiom. `review figure`
+measures a node's geometry only where the source gives it an explicit
+`(name)`, so a picture that names nothing reports no overlap and no
+protrusion because nothing was measurable -- which reads exactly like a
+clean figure and is not one. Both spellings count: `\node (a)` and
+`child { node (a) ... }`.
+
+One thing the `tree` idiom costs, since it is not visible in the output:
+`child` draws its edges internally rather than as `\draw` statements, so
+the edge list `review figure` reports for such a figure is empty rather
+than short. Confirm a tree's wiring from the source's own nesting.
+
 **Every idiom in that table needs a `\usetikzlibrary` line, and the
 figure file has to carry it itself.** The renderer adds
 `\usepackage{tikz}` to the preamble and nothing else
@@ -87,6 +118,24 @@ of them.
 Concrete defects, not taste:
 
 - **Occlusion and overlap** -- no two nodes' boxes intersect.
+- **A `fill` erases everything under it, not just the line you aimed
+  it at.** Filling a label white and drawing it last is the standard
+  way to make a line break at the text instead of striking through it,
+  and it works -- but the fill is a rectangle the height of the whole
+  node and the width of the whole label, and it paints out every
+  arrowhead, border and rule that rectangle happens to cover. A one-line
+  label 139mm wide, filled to interrupt one vertical arrow at *x*=24,
+  also deleted an arrowhead and the top edge of a box at *x*=70: the
+  edge rendered as a stub going nowhere and the box as three sides. Ask
+  what else is in the band before reaching for `fill=white`, and note
+  that shrinking the band rarely rescues it -- `inner ysep=0pt` bought
+  0.06mm in that case, and breaking the label over two lines makes the
+  band *taller*, not narrower.
+- **One arrow is one `\draw`.** Two colinear segments that meet, each
+  carrying `->`, render as an arrowhead where they join as well as at
+  the end -- a second head pointing at nothing in the middle of the
+  line. If a line needs to be built in pieces, put the `->` on the last
+  piece only.
 - **Chaotic routing** -- arrows should not cross unnecessarily or form
   spaghetti loops. Left off the mechanical checks that may eventually
   exist; a bad approximation of "does this route look chaotic" would be
@@ -148,3 +197,32 @@ forward flow, sans-serif labels against serif-italic maths.
 
 This is a checklist an author checks a figure against, not something
 enforced mechanically today.
+
+`python -m chitragupta.review figure` reaches the part of it that
+geometry can decide, and it is a **user-driven aid**: a person runs it
+over a finished figure, it exits 0 whatever it finds, and nothing
+downstream blocks on it. Three things follow, and they are the ones an
+author gets wrong:
+
+- **It measures; it never places.** TikZ computes the layout, and the
+  aid compiles the figure and reads back where things actually landed.
+  So the fix for a finding is to change what you asked TikZ for -- a
+  `sibling distance`, a `row sep`, a different library -- and never to
+  nudge a coordinate until the number moves. `assets/tikz/` is the
+  starting point for exactly that, and none of its six scaffolds writes
+  a coordinate at all.
+- **Its thresholds are the checker's, not this document's.** "An empty
+  band worth more than a third of the height" is a number chosen so
+  ordinary layouts pass; it is not a rule from the list above. It does
+  shape what passes -- a two-row diagram spread out generously trips it
+  with nothing wrong -- so when a finding and your own eyes disagree,
+  the eyes win and the figure stays.
+- **A clean report is not a checked figure.** The geometry checks
+  measure only nodes the source names, so a picture that names none
+  reports nothing found because nothing was measurable. Name the nodes
+  you draw, in whichever idiom -- `\node (a)` and
+  `child { node (a) ... }` both count.
+
+[REVIEW.md](REVIEW.md) has the aid among the other five;
+[CLI.md](CLI.md#-chitragupta-review-figure) has its flags and the full
+statement of the boundary.
