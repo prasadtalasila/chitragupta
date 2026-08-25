@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config
+from chitragupta import config, render_output
 from chitragupta.render_output import _math
 
 
@@ -237,6 +237,40 @@ class TestCheckRefusesOnlyTheCertainCases:
         # a marker the author wrote deliberately is certain enough.
         draft = _draft(mapping=None, text="a `h = 9` gap and nothing else\n")
         _math.check(draft.read_text(encoding="utf-8"), draft, {})
+
+
+class TestCheckedMathMapping:
+    """`render`'s own wrapper: load, refuse the certain, warn the rest.
+
+    Extracted from `render` because the four statements pushed it over
+    docs/CODE-STANDARDS.md's 25-statement limit, and tested here rather
+    than through `render` so a host without pandoc still exercises it.
+    """
+
+    def test_returns_the_mapping_and_prints_gaps_to_stderr(self, isolated_config, capsys):
+        draft = _draft(text="a mapped `tau` and an unmapped `h = 9`\n")
+        mapping = render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
+        assert mapping["tau"] == "\\tau"
+        err = capsys.readouterr().err
+        assert "[math] `h = 9` looks like a quantity" in err
+
+    def test_a_clean_draft_says_nothing(self, isolated_config, capsys):
+        # Every row used, no unmapped quantity: the quiet path. Needs a
+        # mapping matching this text exactly -- the fuller MAPPING would
+        # report four orphans here, which is the orphan check being right.
+        draft = _draft(
+            mapping="| ASCII | LaTeX |\n| --- | --- |\n| `tau` | `\\tau` |\n",
+            text="a mapped `tau` and the field `as_of`\n",
+        )
+        render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
+        assert "[math]" not in capsys.readouterr().err
+
+    def test_it_raises_before_warning_on_an_unresolvable_marker(self, isolated_config):
+        # check() runs first, so a certain failure is not buried under a
+        # list of heuristic warnings.
+        draft = _draft(mapping=None)
+        with pytest.raises(_math.MathMappingError):
+            render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
 
 
 class TestImportBoundary:
