@@ -220,7 +220,60 @@ Be honest in the plan's own record that the dossier has form here:
 `scope.md`'s corpus fingerprint is a staleness marker that
 [DOSSIER.md](../docs/DOSSIER.md) says is *"written once, by `init`, and
 is not maintained by any"* later step. A mapping nobody updates decays
-the same way. The gap/orphan report is the whole defence.
+the same way.
+
+## 👤 Who maintains it -- the part this plan was missing
+
+The gap/orphan report above is **detection, not ownership**, and it fires
+at render time, after the revision, as an aid rather than a gate. An
+earlier draft of this plan stopped there. That is a smoke alarm with
+nobody assigned to call the fire brigade, and it is the difference
+between a mapping that survives and one that decays exactly as
+`scope.md`'s fingerprint did.
+
+**As things stand today, no skill would touch `math.md`.** Every reviser
+enumerates the dossier files it handles *by name* -- `draft-reviser`'s
+step 6 is literally "Write the dossier back", against a closed list --
+so an eighth file is not picked up implicitly by any of them:
+
+| Skill | Dossier files it names today | Needs |
+| --- | --- | --- |
+| the four Markdown genre writers | write the dossier at draft time | **create** `math.md` alongside `evidence.md` |
+| `draft-reviser`, main mode | all 7 | reconcile rows for every section it edits |
+| `draft-reviser`, copy-edit mode | `revisions.md` only | **see below -- the sharp case** |
+| `corpus-reviser` | 7 | same as `draft-reviser`, over a wider rewrite |
+| `overlap-reviser` | 5 | **see below -- the sharpest case** |
+| `book-assembler` | writes no prose | only: do not lose per-unit mappings when composing |
+
+`thesis-chapter-writer` is deliberately absent: it emits a `.tex`
+fragment and writes `\(…\)` directly, so it has nothing to map.
+
+**The two that are worse than merely not-updating.**
+
+*`draft-reviser`'s copy-edit mode* asserts of itself, at step 6, that
+there is *"no evidence delta, no new rejection and no moved section to
+record"*. That is true today and **becomes false the moment `math.md`
+exists**: "convert this to en-GB" or "fix the grammar" rephrases the
+sentence around an equation and can add, drop or alter a span. A mode
+whose whole safety argument is "this pass changes nothing structural"
+must not silently acquire a structural side effect. Either it reconciles
+the mapping too, or it is barred from editing a line containing a mapped
+span and says so.
+
+*`overlap-reviser`* is sharper still. Its stated job is to rewrite *"each
+short uncited run to preserve the claim and the citation while breaking
+the borrowed wording"* -- deliberate rephrasing is precisely the
+operation that desyncs a mapping keyed on exact span text, and it is the
+skill least likely to notice, because it is reasoning about borrowed
+wording rather than about quantities. Its existing discipline is the
+right hook: it already re-runs `draft gate` and `verbatim recheck` on
+every repair, so the gap/orphan check joins that same must-re-pass list.
+
+**Do not solve this by making the report a gate.**
+[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md) keeps
+`chitragupta.draft gate` meaning exactly one thing. Ownership belongs in
+the skills that do the editing, which is where every other dossier file's
+upkeep already lives.
 
 ## 🧩 Known limitation: homographs
 
@@ -283,11 +336,13 @@ not work to redo.
 
 Stated so a later reader can tell a decision from an accident:
 
-- **Nobody maintains the mapping.** This is the one that matters. A
-  `math.md` that goes stale is worse than no mapping, because the
-  failure is silent and looks exactly like the original bug. If the
-  gap/orphan report cannot be made to run automatically on every render
-  of a LaTeX-bound format, reconsider the whole item.
+- **The skill edits are not made.** This is the one that matters, and it
+  is now the item's real size: `_math.py` is small, but the ownership
+  above means editing **six SKILL.md files** as well. A `math.md` that
+  goes stale is worse than no mapping, because the failure is silent and
+  looks exactly like the original bug. If those edits are not going to
+  land in the same change, do not build the module either -- a mapping
+  with detection and no owner is the decay case, not a partial win.
 - **The `.md` stops being read directly.** The entire benefit is that a
   human reading `content/rendered/*.md` sees `k = 4`. If that stops
   being true, `§12` as shipped is simpler and strictly better.
