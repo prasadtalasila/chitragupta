@@ -267,9 +267,7 @@ def check(text: str, draft: Path, mapping: "dict[str, str]") -> None:
         )
     missing = [
         body
-        for body in (
-            re.sub(r"^[ \t>]*", "", m.group("body"), flags=re.M).strip() for m in blocks
-        )
+        for body in (re.sub(r"^[ \t>]*", "", m.group("body"), flags=re.M).strip() for m in blocks)
         if body not in mapping
     ]
     if missing:

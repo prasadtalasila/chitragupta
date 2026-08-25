@@ -1,6 +1,17 @@
 # Format-native equation rendering, from a dossier-held mapping
 
-Status: **proposal, unbuilt.** Written 2026-08-24.
+Status: **built.** Written 2026-08-24, shipped 2026-08-25 in #407.
+
+> **What shipped, and what changed on the way.** All of it: `_math.py`,
+> the gap/orphan report, `render` exiting non-zero on the certain cases,
+> `§12` rewritten to carry both forms, and the six `SKILL.md` edits this
+> plan named as the real work. Two things moved. The inline `$…$` form
+> was **kept rather than replaced** -- substitution only touches a span
+> that has a row, so a draft already written that way renders unchanged
+> and needed no migration. And `check()` refuses only a `<!-- math -->`
+> marker it cannot resolve, never a heuristic gap, because a wrong guess
+> about an inline span must not stop a render. The rest is as specified
+> below.
 
 **Written for** whoever implements this. **Assumed:**
 [docs/RENDERING-FLOW.md](../docs/RENDERING-FLOW.md) for the two paths
@@ -416,20 +427,36 @@ human-adjudicated** ASCII → LaTeX pairs -- `Ts` → `T_s`, `k_day` →
 → `= \sqrt{1/0.022569} = 6.66`. Those are the first `math.md` files,
 not work to redo.
 
-## 🛑 What would make this not worth building
+## 🛑 What would have made this not worth building
 
-Stated so a later reader can tell a decision from an accident:
+Kept as written, because both conditions were live decisions at the time
+and the first one shaped what shipped:
 
-- **The skill edits are not made.** This is the one that matters, and it
-  is now the item's real size: `_math.py` is small, but the ownership
-  above means editing **six SKILL.md files** as well. A `math.md` that
-  goes stale is worse than no mapping, because the failure is silent and
-  looks exactly like the original bug. If those edits are not going to
-  land in the same change, do not build the module either -- a mapping
-  with detection and no owner is the decay case, not a partial win.
+- **The skill edits are not made.** This was the one that mattered:
+  `_math.py` is small, and the ownership above meant editing **six
+  SKILL.md files** as well. A `math.md` that goes stale is worse than no
+  mapping, because the failure is silent and looks exactly like the
+  original bug. The conclusion was that a module with detection and no
+  owner is the decay case rather than a partial win -- so the six edits
+  landed in the same change, and that is why this is one PR rather than
+  two.
 - **The `.md` stops being read directly.** The entire benefit is that a
-  human reading `content/rendered/*.md` sees `k = 4`. If that stops
-  being true, `§12` as shipped is simpler and strictly better.
+  human reading `content/rendered/*.md` sees `k = 4`. If that stops being
+  true, `§12`'s inline form is simpler and strictly better -- which is
+  the reason it was kept alongside rather than replaced.
+
+## 🔭 What is still not solved
+
+- **A draft with inline math only still reverts quietly on a rename.**
+  The `<!-- math -->` marker anchors a draft that has at least one
+  displayed equation; one with only spans has nothing certain to check
+  against, and adding a fingerprint would repeat a mistake
+  [DOSSIER.md](../docs/DOSSIER.md) already records.
+- **Homographs.** One spelling gets one meaning per dossier.
+- **The heuristics are still heuristics.** A spelled-out quantity reads
+  like an identifier, and the symbol closure only sees a symbol the
+  mapping's own LaTeX already uses -- a genuinely new one, mentioned bare
+  before it ever appears in an equation, is invisible.
 
 **HTML is explicitly out of scope.** This pipeline has no `--format
 html`, and what any downstream converter does with the Markdown is not a

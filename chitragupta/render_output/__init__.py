@@ -289,6 +289,30 @@ def _pandoc_command(
     return cmd, env
 
 
+def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]":
+    """`input_path`'s ASCII-to-LaTeX mapping, having reported what is wrong.
+
+    Called past `render`'s Markdown-to-Markdown early return, so it runs
+    for exactly the formats that reach pandoc -- the one predicate §12's
+    mapping turns on. A Markdown-to-Markdown render leaves the draft's
+    ASCII alone, which is the whole point of holding the LaTeX elsewhere.
+
+    Above `_require("pandoc")` in the caller, deliberately: a mapping
+    problem is worth reporting on a host with no pandoc installed, and
+    keeping it out of that untestable tail is what lets it be covered.
+
+    `check` raises rather than warning, for the two conditions that are
+    certain rather than heuristic -- see `_math.check`. The gaps below it
+    print and carry on, the way a figure problem does.
+    """
+    mapping = _math.load_mapping(input_path)
+    path = _math.mapping_path(input_path)
+    _math.check(draft_text, input_path, mapping)
+    for warning in _math.warnings(draft_text, mapping, path is not None and path.is_file()):
+        print(f"[math] {warning}", file=sys.stderr)
+    return mapping
+
+
 def render(
     input_path: str,
     output_format: str = "pdf",
@@ -370,21 +394,7 @@ def render(
             _with_figures_for(draft_text, input_path, output_format),
         )
 
-    # Past the early return, so this runs for exactly the formats that
-    # reach pandoc -- the one predicate §12's mapping turns on. A
-    # Markdown-to-Markdown render leaves the draft's ASCII alone, which is
-    # the whole point of holding the LaTeX somewhere else.
-    #
-    # Above `_require("pandoc")` deliberately: a mapping problem is worth
-    # reporting on a host with no pandoc installed, and keeping it out of
-    # the untestable tail is what lets it be covered.
-    math_mapping = _math.load_mapping(input_path)
-    math_file = _math.mapping_path(input_path)
-    _math.check(draft_text, input_path, math_mapping)
-    for warning in _math.warnings(
-        draft_text, math_mapping, math_file is not None and math_file.is_file()
-    ):
-        print(f"[math] {warning}", file=sys.stderr)
+    math_mapping = _checked_math_mapping(draft_text, input_path)
 
     # Everything from here on needs the real pandoc/pdflatex/TeX Live
     # toolchain to exercise -- see #291. Marked per-line rather than by
