@@ -56,6 +56,7 @@ from chitragupta import config, dossier
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
 from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
+from chitragupta.style_tables import findings as table_findings
 
 
 class MissingBinary(RuntimeError):
@@ -232,19 +233,32 @@ def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
 
 def check(draft: Path, override: str | None = None) -> dict:
     """Everything one draft's report is built from, as data."""
+    # The Python-side findings are computed first and survive a missing
+    # Vale. They used to be appended to `run_vale`'s result, so the
+    # `MissingBinary` it raises took the glossary and table findings down
+    # with it -- a host that never ran the `os-deps` install stage lost
+    # two checks that never needed the binary. The absence is reported as
+    # `vale_error` rather than raised, because a report naming what did
+    # not run is this module's whole header discipline.
     language, source = resolve_language(draft, override)
-    findings = collapse(run_vale(draft, language)) + acronym_drift_findings(draft)
-    proposal = None
-    if language is None:
-        proposed = propose_language(draft)
-        if proposed:
-            proposal = {"language": proposed[0], "findings_by_language": proposed[1]}
+    findings = acronym_drift_findings(draft) + table_findings(draft)
+    vale_error, proposal = None, None
+    try:
+        findings = collapse(run_vale(draft, language)) + findings
+    except MissingBinary as exc:
+        vale_error = str(exc)
+    # Not attempted without Vale: the proposal is measured *by* running
+    # it both ways, so on a host without it there is nothing to measure.
+    proposed = propose_language(draft) if language is None and vale_error is None else None
+    if proposed:
+        proposal = {"language": proposed[0], "findings_by_language": proposed[1]}
     return {
         "draft": str(draft),
         "language": language,
         "language_source": source,
         "findings": findings,
         "proposed_language": proposal,
+        "vale_error": vale_error,
     }
 
 
@@ -279,11 +293,13 @@ def main(argv=None) -> int:
         draft = Path(name)
         try:
             payloads.append(check(draft, args.language))
-        except MissingBinary as exc:
-            warnings.append(str(exc))
-            break  # the binary will not appear between two drafts
         except OSError as exc:
             warnings.append(f"{draft}: {exc}")
+    # Once, not once per draft: the binary will not appear between two of
+    # them, and repeating an identical warning is noise. Every draft is
+    # still checked, because the findings Vale does not produce do not
+    # depend on it.
+    warnings += sorted({payload["vale_error"] for payload in payloads} - {None})
     if args.json:
         print(
             json.dumps(

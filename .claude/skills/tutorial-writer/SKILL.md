@@ -349,6 +349,14 @@ the lesson design is the part worth keeping either way.
    Name the steps you could not verify there too -- that is the durable half
    of the disclosure you make in chat.
 
+   A tutorial rarely needs a table, and a comparison table almost never
+   belongs in one -- weighing alternatives is a different genre's job. If
+   the lesson genuinely calls for one (a table of flags, or of expected
+   outputs), `docs/WRITING-STANDARDS.md` §13 applies unchanged: a caption
+   line, `<!-- table: <id> -->` under it, and an inline
+   `<!-- tableref: <id> -->` where the step points at it. Never write the
+   number yourself.
+
 9. **Add a figure, if the path needs one.** Go back to wherever it
    belongs -- what the learner is about to build in the front matter
    (step 3), or how data moves through a command beside that step

@@ -1642,11 +1642,26 @@ chitragupta draft render content/drafts/survey.md --format pdf
 
 Report where a draft's prose departs from
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers, §8's
-recorded dialect, and a glossary acronym whose recorded expansion has
+recorded dialect, a glossary acronym whose recorded expansion has
 drifted from the current `[style].acronyms` vocabulary (§9;
-`chitragupta/style_acronym_drift.py`, the one finding here not sourced from
-Vale). **A review aid: it exits 0 whatever it finds**, and nothing in
-this pipeline reads its output back or blocks on it.
+`chitragupta/style_acronym_drift.py`), and §13's tables
+(`chitragupta/style_tables.py`). Those last two are the findings here
+*not* sourced from Vale, and they are computed in plain Python.
+**A review aid: it exits 0 whatever it finds**, and nothing in this
+pipeline reads its output back or blocks on it.
+
+**The table findings**, all of which name a defect a reader of the
+rendered pdf would meet:
+
+| Rule | What it means |
+| --- | --- |
+| `chitragupta.TableNoCaption` | The table has no caption line, so nothing numbers it in any format |
+| `chitragupta.TableNoId` | It has a caption but no `<!-- table: <id> -->`, so no sentence can refer to it |
+| `chitragupta.TableDuplicateId` | Two tables claim one id; in an assembled book that is a `\ref` resolving silently to the wrong table |
+| `chitragupta.TableMalformedId` | An id `\label{tab:<id>}` cannot carry unescaped |
+| `chitragupta.TableUnreferenced` | No sentence refers to the table at all |
+| `chitragupta.TableUnknownRef` | A `<!-- tableref: -->` naming a table that does not exist |
+| `chitragupta.TableRefOutsideSection` | The table is referred to, but only from another section |
 
 ```bash
 chitragupta draft style content/drafts/<path>
@@ -1692,10 +1707,13 @@ that the machine offers and the human accepts.
 **Repeated findings collapse.** A chapter that never expands "AI" reports
 it once with a count, not once per occurrence.
 
-Needs the `vale` binary on `PATH`; without it the command reports
-missing-binary and changes nothing, the same bargain `render` makes with
-pandoc. `bash scripts/install_full_pipeline.sh os-deps` installs the
-pinned version. The rules live in `assets/vale/`, vendored rather than
+**Vale's own findings need the `vale` binary on `PATH`**; without it the
+command says so in the report header and still runs the two Python
+checks -- the glossary drift and the table findings above, neither of
+which ever needed the binary. The same bargain `render` makes with
+pandoc, narrowed to the part that actually depends on the tool.
+`bash scripts/install_full_pipeline.sh os-deps` installs the pinned
+version. The rules live in `assets/vale/`, vendored rather than
 fetched, and `assets/vale/README.md` documents what they deliberately
 leave out -- `licence`/`license` and `practice`/`practise` are decided by
 part of speech, `program`/`programme` by domain, and no string match

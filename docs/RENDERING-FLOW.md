@@ -1,6 +1,6 @@
 # 🖨 Rendering flow
 
-Status: **reference.** Written 2026-08-24.
+Status: **reference.** Written 2026-08-24. Updated 2026-08-25.
 
 How `python -m chitragupta.draft render` turns a draft into `.md`/`.tex`/`.pdf`/`.docx`,
 where a rendered draft's bibliography actually comes from, and what happens
@@ -23,6 +23,7 @@ citeproc pass over a composed book ([BOOKS.md](BOOKS.md)).
 - [Four places a rendered bibliography can live](#-four-places-a-rendered-bibliography-can-live)
 - [The manual References section, and why citeproc replaces it](#-the-manual-references-section-and-why-citeproc-replaces-it)
 - [Figure substitution: four combinations, one real no-op](#-figure-substitution-four-combinations-one-real-no-op)
+- [Table numbering: four cases, and pandoc numbers in only one](#-table-numbering-four-cases-and-pandoc-numbers-in-only-one)
 - [Known defect: the fourth combination isn't a no-op on this host](#-known-defect-the-fourth-combination-isnt-a-no-op-on-this-host)
 - [Unbuilt: a natbib-style mode for thesis fragments](#-unbuilt-a-natbib-style-mode-for-thesis-fragments)
 
@@ -176,6 +177,45 @@ surprise people who have only read the code:
   panelled figure's `(a)`/`(b)` sub-captions have to exist in the `.txt`
   as well as in the picture: for three of the five formats the twin is
   the only thing the reader sees.
+
+## 🔢 Table numbering: four cases, and pandoc numbers in only one
+
+`_tables.substitute` (`chitragupta/render_output/_tables.py`) resolves
+[WRITING-STANDARDS.md §13](WRITING-STANDARDS.md)'s two markers -- the
+`<!-- table: <id> -->` under a caption line, and the inline
+`<!-- tableref: <id> -->` -- into whatever the target format can count
+with. Every row was measured on this host's pandoc 3.1.11.1, because the
+obvious assumption (pandoc numbers a captioned table) is true in exactly
+one of them:
+
+| Draft | Output | Caption becomes | Reference becomes |
+| --- | --- | --- | --- |
+| `.md` | `tex`, `latex`, `pdf` | `: <caption>\label{tab:<id>}` -- LaTeX counts it | `` `Table~\ref{tab:<id>}`{=latex} `` |
+| `.md` | `md` | `**Table N:** <caption>` -- a paragraph, since this path never reaches pandoc | `Table N` |
+| `.md` | `docx`, `html`, ... | `: Table N: <caption>` -- a real caption carrying a number pandoc will not supply | `Table N` |
+| `.tex` | any | untouched -- the fragment writes `\caption{}\label{}` itself | untouched |
+
+Three things in that table are not guessable and cost a render each to
+find out:
+
+- **The docx writer numbers nothing.** A captioned table round-trips out
+  of `.docx` as a bare caption paragraph, so the number has to be in the
+  text pandoc is handed.
+- **`\label` survives a Markdown caption; `~` does not.** A raw
+  `\label{tab:x}` written into a caption line reaches
+  `\caption{...\label{tab:x}}` intact, but a bare `Table~\ref{tab:x}` in
+  prose arrives as `Table\textasciitilde{}\ref{tab:x}` -- pandoc's
+  Markdown reader owns `~` and escapes it. Hence the raw-attribute span
+  in the first row, which is not decoration.
+- **Pandoc has no caption-attribute syntax**, so an id cannot ride along
+  in the caption: `: Caption {#tbl:x}` sets the literal text
+  `\{\#tbl:x\}`. Nor is pandoc-crossref's `@tbl:x` available, since
+  `citation_gate.py` reads a bare `@key` as a citekey and would fail the
+  gate on `tbl`.
+
+The substitution order in `_substituted` is figures, then tables, then
+mathematics, and it is not arbitrary: a figure substitution can insert a
+fenced ASCII block, and `_math`'s displayed-equation rule reads fences.
 
 ## 🐛 Known defect: the fourth combination isn't a no-op on this host
 

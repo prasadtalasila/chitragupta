@@ -56,13 +56,28 @@ REFERENCE_TITLE = re.compile(
 )
 
 # A caption names a figure or a table; it does not assert anything the
-# draft has to support. Markdown has no caption syntax, so all three
-# shapes the genre skills actually emit are recognised: an image line, a
-# `Figure 1.`/`Table 2:` lead-in, and LaTeX's own command.
+# draft has to support. Four shapes the genre skills emit: an image line,
+# a `Figure 1.`/`Table 2:` lead-in, LaTeX's own command, and -- since
+# WRITING-STANDARDS.md §13 -- pandoc's own `: caption` line, which is
+# what a numbered table's caption is written as.
+#
+# The `:` alternative requires the following space, so a sentence opening
+# on a colon is not swallowed with it.
 CAPTION = re.compile(
-    r"^\s*(?:!\[|\\caption\*?\{|(?:figure|table|listing)\s+\d+\s*[.:])",
+    r"^\s*(?::[ \t]|!\[|\\caption\*?\{|(?:figure|table|listing)\s+\d+\s*[.:])",
     re.IGNORECASE,
 )
+
+# §13's reference marker, which sits *inside* a sentence rather than on a
+# line of its own -- the one marker in this pipeline that does. `COMMENT`
+# is block-level and cannot see it, so a finding would otherwise quote
+# pipeline markup back at the reader.
+#
+# Replaced by the word it stands for rather than by nothing: the marker
+# expands to "Table 3" in the rendered document, so a sentence with it
+# removed entirely reads as though a noun were missing. The number is the
+# renderer's to assign and is deliberately not guessed here.
+INLINE_TABLE_REF = re.compile(r"[ \t]*<!--[ \t]*tableref:[ \t]*\S+?[ \t]*-->[ \t]*")
 
 # A block that is only a comment. Includes WRITING-STANDARDS.md §11's
 # `<!-- single-source: ... -->` marker, which must not be read as an
@@ -143,7 +158,10 @@ def _body(text: str) -> list[str]:
     calls it: a fenced block demonstrating this project's own markup
     would otherwise be read as prose making a claim.
     """
-    lines = citation_gate._blank_code(text).splitlines()
+    lines = [
+        line if COMMENT.match(line) else INLINE_TABLE_REF.sub(" Table ", line)
+        for line in citation_gate._blank_code(text).splitlines()
+    ]
     for index, line in enumerate(lines):
         if _opens_the_reference_list(line):
             return lines[:index]

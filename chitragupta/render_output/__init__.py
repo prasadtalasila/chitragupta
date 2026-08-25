@@ -101,7 +101,7 @@ from chitragupta.render_output._citeproc import (
     _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
-from chitragupta.render_output import _math
+from chitragupta.render_output import _math, _tables
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figures import (
@@ -313,6 +313,40 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     return mapping
 
 
+# One list rather than a loop per kind in `render()`, and the tag is what
+# keeps `[figure]` and `[table]` apart in the one stderr stream a genre
+# skill reads.
+#
+# Both kinds are collected *above* `render`'s Markdown-to-Markdown early
+# return, because that path is where a table's number is written here
+# rather than deferred to LaTeX -- so it is the path where an
+# unresolvable marker costs the most, and the one that would otherwise
+# report nothing at all.
+def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]":
+    """Every figure and table problem in the draft, tagged with its source."""
+    return [("figure", w) for w in _figure_warnings(draft_text, input_path)] + [
+        ("table", w) for w in _tables.warnings(draft_text)
+    ]
+
+
+# Figures, then tables, then mathematics -- one chain with one definition,
+# reached by both of `render`'s paths. The order is not arbitrary: a
+# figure substitution can introduce a fenced ASCII block, and `_math`'s
+# own display rule reads fences, so mathematics goes last.
+#
+# The Markdown path passes an empty mapping, which substitutes nothing --
+# §12 deliberately leaves a Markdown render's ASCII alone, and
+# `tests/test_render_output_math.py` pins that. Tables are the opposite
+# case and pass through here on that path too: their numbers exist
+# nowhere else, since that path never reaches pandoc.
+def _substituted(
+    draft_text: str, input_path: Path, output_format: str, math_mapping: "dict[str, str]"
+) -> str:
+    """The text a writer actually sees, with every marker resolved."""
+    with_figures = _with_figures_for(draft_text, input_path, output_format)
+    return _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
+
+
 def render(
     input_path: str,
     output_format: str = "pdf",
@@ -372,8 +406,8 @@ def render(
     # Before the early return below, so a Markdown draft rendered to
     # Markdown -- the one path that never reaches pandoc -- still reports
     # a figure whose marker or twin is wrong.
-    for warning in _figure_warnings(draft_text, input_path):
-        print(f"[figure] {warning}", file=sys.stderr)
+    for prefix, warning in _draft_warnings(draft_text, input_path):
+        print(f"[{prefix}] {warning}", file=sys.stderr)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not
         # a format conversion, and pandoc is the wrong tool for it. Its
@@ -389,9 +423,7 @@ def render(
         # reference list of its own.
         _copy_local_assets(input_path, out_dir)
         return references.write_numbered(
-            input_path,
-            out_dir,
-            _with_figures_for(draft_text, input_path, output_format),
+            input_path, out_dir, _substituted(draft_text, input_path, output_format, {})
         )
 
     math_mapping = _checked_math_mapping(draft_text, input_path)
@@ -416,9 +448,7 @@ def render(
             input_path,
             config.BIB_FILE_PATH,
             Path(tmp),
-            _math.substitute(
-                _with_figures_for(draft_text, input_path, output_format), math_mapping
-            ),
+            _substituted(draft_text, input_path, output_format, math_mapping),
         )
         cmd, env = _pandoc_command(
             safe_md,

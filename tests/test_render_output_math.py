@@ -273,6 +273,27 @@ class TestCheckedMathMapping:
             render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
 
 
+class TestTheMarkdownPathLeavesTheAsciiAlone:
+    """§12's whole point, and now also a load-bearing equivalence.
+
+    `render`'s Markdown-to-Markdown path composes the same substitution
+    chain as the pandoc path (`_substituted`) and passes an **empty**
+    mapping, so the two have one definition rather than two. That is only
+    correct because an empty mapping substitutes nothing -- this is what
+    says so, rather than leaving it to a reader of `_math.substitute`.
+    """
+
+    def test_an_empty_mapping_changes_nothing(self):
+        assert _math.substitute(ASCII_DRAFT, {}) == ASCII_DRAFT
+
+    def test_the_md_render_keeps_backticked_quantities(self, isolated_config):
+        draft = _draft()
+        rendered = render_output.render(str(draft), output_format="md")
+        text = rendered.read_text(encoding="utf-8")
+        assert "`tau = 48`" in text and "```\ndW/dt = -W/tau\n```" in text
+        assert "$" not in text
+
+
 class TestImportBoundary:
     """`render_output` renders under bare `python`; `_math` must not widen that.
 

@@ -100,7 +100,7 @@ LEGACY_LONG_FILES = {
     "chitragupta/retrieval.py",  # 432
     "chitragupta/references.py",  # 389
     "chitragupta/review/citation_provenance.py",  # 383
-    "chitragupta/render_output/__init__.py",  # 326
+    "chitragupta/render_output/__init__.py",  # 333
     "chitragupta/overlap_skipgram.py",  # 288
     "chitragupta/review/citation_coverage.py",  # 275
     "chitragupta/enrich/__main__.py",  # 266

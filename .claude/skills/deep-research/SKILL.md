@@ -200,6 +200,15 @@ apart in ways a single-author draft doesn't:
   Every other genre in this pipeline calibrates how freely it uses
   them; this one uses none, by design. If a section genuinely needs a
   visual, say so in the report rather than adding one.
+- **§13's tables do apply**, and matter here more than elsewhere: a
+  contradiction map or a per-perspective comparison is this genre's
+  natural shape. Every table carries a caption line and an
+  `<!-- table: <id> -->` marker, is referred to with an inline
+  `<!-- tableref: <id> -->`, and has a sentence beside it reading a
+  pattern off it. Section writers work in parallel, so **check the ids
+  for collisions at synthesis** the same way their `math.md` rows are
+  reconciled -- two sections that both wrote `<!-- table: comparison -->`
+  produce one broken cross-reference in the assembled report.
 - **§12's mathematics does apply**, unlike §10's figures. A quantity
   carried over from a source -- a threshold, an effect size, a bound --
   goes in a code span as ASCII with a row in the dossier's `math.md`, so
