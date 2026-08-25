@@ -19,6 +19,23 @@ from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
 class TestMainCli:
+    def test_an_unresolvable_display_equation_prints_and_returns_1(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        # A `<!-- math -->` marker with no mapping is certain, not
+        # heuristic: the render would emit verbatim text where the author
+        # said an equation goes. Non-zero, because a genre skill's
+        # documented reaction to a warning is to carry on -- which would
+        # ship exactly the defect §12 exists to prevent.
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("<!-- math -->\n```\ndW/dt = -W/tau\n```\n")
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "tex"])
+        rc = render_output.main()
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "[error]" in out
+        assert "renamed or moved" in out
+
     def test_missing_binary_prints_and_returns_1(
         self, isolated_config, tmp_path, monkeypatch, capsys
     ):

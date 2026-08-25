@@ -101,6 +101,7 @@ from chitragupta.render_output._citeproc import (
     _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
+from chitragupta.render_output import _math
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figures import (
@@ -369,6 +370,22 @@ def render(
             _with_figures_for(draft_text, input_path, output_format),
         )
 
+    # Past the early return, so this runs for exactly the formats that
+    # reach pandoc -- the one predicate §12's mapping turns on. A
+    # Markdown-to-Markdown render leaves the draft's ASCII alone, which is
+    # the whole point of holding the LaTeX somewhere else.
+    #
+    # Above `_require("pandoc")` deliberately: a mapping problem is worth
+    # reporting on a host with no pandoc installed, and keeping it out of
+    # the untestable tail is what lets it be covered.
+    math_mapping = _math.load_mapping(input_path)
+    math_file = _math.mapping_path(input_path)
+    _math.check(draft_text, input_path, math_mapping)
+    for warning in _math.warnings(
+        draft_text, math_mapping, math_file is not None and math_file.is_file()
+    ):
+        print(f"[math] {warning}", file=sys.stderr)
+
     # Everything from here on needs the real pandoc/pdflatex/TeX Live
     # toolchain to exercise -- see #291. Marked per-line rather than by
     # extracting a helper, since there is no single enclosing block to tag
@@ -389,7 +406,9 @@ def render(
             input_path,
             config.BIB_FILE_PATH,
             Path(tmp),
-            _with_figures_for(draft_text, input_path, output_format),
+            _math.substitute(
+                _with_figures_for(draft_text, input_path, output_format), math_mapping
+            ),
         )
         cmd, env = _pandoc_command(
             safe_md,
