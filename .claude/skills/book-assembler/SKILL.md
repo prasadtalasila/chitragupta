@@ -309,9 +309,15 @@ It is the reading copy for anyone who is not building LaTeX.
    **Table numbers are the book's, not a unit's, and one thing can break
    them.** A unit's tables carry
    `docs/WRITING-STANDARDS.md` §13's markers, which the conversion turns
-   into `\caption{...\label{tab:<id>}}` -- so the `book` class numbers
-   them "1.3", per chapter, across the whole book with nothing to
-   configure. What does not survive is a **duplicate id**: two units that
+   into `\caption{...\label{tab:<id>}}`, so the `book` class numbers them
+   itself. **Which shape it uses follows the `\setcounter{secnumdepth}`
+   decision below**, and both were measured with `pdflatex` rather than
+   assumed: with chapter numbering on, tables read "1.1", "2.1", "2.2" --
+   reset per chapter; with `-2` (units numbering their own headings),
+   they read "1", "2", "3" -- flat, continuous across the whole book.
+   Either way the numbers are unique and every `\ref` resolves, so there
+   is nothing to configure for the tables themselves. What does not
+   survive is a **duplicate id**: two units that
    each wrote `<!-- table: comparison -->` become two `\label{}`s in one
    document, and every `\ref` to that id silently resolves to whichever
    LaTeX saw last. Check for it before composing, and send a collision

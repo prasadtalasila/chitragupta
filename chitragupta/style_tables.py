@@ -31,6 +31,7 @@ docs/CODE-STANDARDS.md's "one place a fact is written" rules out.
 import re
 from pathlib import Path
 
+from chitragupta import citation_gate
 from chitragupta.render_output import _paths, _tables
 
 RULES = {
@@ -223,7 +224,14 @@ def findings(draft: Path) -> "list[dict]":
     # under one contract and rendered under the other.
     if draft.suffix.lower() not in _paths._MARKDOWN_SUFFIXES:
         return []
-    text = draft.read_text(encoding="utf-8")
+    # Fenced code blanked first, the same call `review/_claims.py` makes
+    # for the same reason: a tutorial showing a pipe table *as an
+    # example* -- including one demonstrating this section's own markup --
+    # would otherwise be reported as a real table with no caption. That
+    # is a false finding per example, on a report whose usefulness is
+    # entirely a question of noise. It blanks in place, character for
+    # character, so every line number below still points where it says.
+    text = citation_gate._blank_code(draft.read_text(encoding="utf-8"))
     tables = _tables.tables(text)
     found = _uncaptioned(text, tables) + _id_problems(tables) + _reference_problems(text, tables)
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))

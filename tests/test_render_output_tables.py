@@ -13,7 +13,9 @@ produces a rendered table with no number at all, which is the defect
 issue 395 is about.
 """
 
-from chitragupta import render_output
+from pathlib import Path
+
+from chitragupta import config, render_output
 from chitragupta.render_output import _tables
 
 
@@ -169,37 +171,31 @@ class TestWarnings:
 
 
 class TestRenderIntegration:
-    def test_the_markdown_path_numbers_the_caption(self, tmp_path, monkeypatch):
+    """Through `render` itself, on the one path that never reaches pandoc.
+
+    `isolated_config` rather than three `monkeypatch.setattr` calls: the
+    fixture already points every derived path at a throwaway tree, and a
+    hand-patched subset is how a test starts depending on the real
+    content directory the moment `render` reads a fourth path.
+    """
+
+    def _draft(self, text: str) -> Path:
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(text, encoding="utf-8")
+        return draft
+
+    def test_the_markdown_path_numbers_the_caption(self, isolated_config):
         # The one path that never reaches pandoc still has to produce a
         # numbered table, which is half of what issue 395 asks for.
-        from chitragupta import config
-
-        content = tmp_path / "content"
-        drafts = content / "drafts"
-        drafts.mkdir(parents=True)
-        monkeypatch.setattr(config, "CONTENT_DIR", content)
-        monkeypatch.setattr(config, "DRAFTS_DIR", drafts)
-        monkeypatch.setattr(config, "RENDERED_DIR", content / "rendered")
-        draft = drafts / "survey.md"
-        draft.write_text(DRAFT, encoding="utf-8")
-
-        out = render_output.render(str(draft), output_format="md")
+        out = render_output.render(str(self._draft(DRAFT)), output_format="md")
 
         rendered = out.read_text(encoding="utf-8")
         assert "**Table 1:** Where to start when building a first twin." in rendered
         assert "The platforms in Table 1 differ" in rendered
 
-    def test_a_marker_problem_is_reported_on_the_markdown_path(self, tmp_path, monkeypatch, capsys):
-        from chitragupta import config
-
-        content = tmp_path / "content"
-        drafts = content / "drafts"
-        drafts.mkdir(parents=True)
-        monkeypatch.setattr(config, "CONTENT_DIR", content)
-        monkeypatch.setattr(config, "DRAFTS_DIR", drafts)
-        monkeypatch.setattr(config, "RENDERED_DIR", content / "rendered")
-        draft = drafts / "survey.md"
-        draft.write_text("| A |\n|---|\n| 1 |\n\n<!-- table: bare -->\n", encoding="utf-8")
+    def test_a_marker_problem_is_reported_on_the_markdown_path(self, isolated_config, capsys):
+        draft = self._draft("| A |\n|---|\n| 1 |\n\n<!-- table: bare -->\n")
 
         render_output.render(str(draft), output_format="md")
 

@@ -54,6 +54,27 @@ class TestNoCaption:
         assert found[0]["match"] == "| Starting point | Core idea |"
 
 
+class TestFencedExamplesAreNotTables:
+    """A draft showing a table as an example is not a draft with a table.
+
+    `tutorial-writer` and `textbook-chapter-writer` both put Markdown
+    source in fences, and this section's own markup is the likeliest
+    thing a draft about this pipeline would show. Reported, it is one
+    false finding per example on a report whose whole value is its
+    signal-to-noise ratio.
+    """
+
+    def test_a_fenced_table_example_reports_nothing(self, tmp_path):
+        body = f"# S\n\nLike this:\n\n```markdown\n{TABLE}```\n"
+        assert style_tables.findings(draft_with(body, tmp_path)) == []
+
+    def test_a_real_table_after_a_fenced_one_still_reports_at_its_own_line(self, tmp_path):
+        body = f"# S\n\n```markdown\n{TABLE}```\n\n{TABLE}"
+        found = style_tables.findings(draft_with(body, tmp_path))
+        assert rules(found) == ["chitragupta.TableNoCaption"]
+        assert found[0]["line"] == 9  # blanking preserves every line number
+
+
 class TestNoId:
     def test_a_caption_without_a_marker_is_a_different_finding(self, tmp_path):
         # Narrower than NoCaption, and reported instead of it: the author

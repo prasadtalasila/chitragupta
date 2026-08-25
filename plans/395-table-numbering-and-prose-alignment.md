@@ -110,10 +110,13 @@ duplicate label silently resolves to the wrong table.
 document order of `table:` markers, which is the order LaTeX's own
 counter runs in, so the two agree on order. They do not agree on
 *format*, and that is deliberate rather than a defect to fix: an
-`article` render numbers "Table 3", and the same unit inside an
-assembled `book` numbers "Table 1.3", because `book` resets the table
-counter per chapter. The consuming document's convention wins, which is
-the whole reason numbering is not baked into the draft.
+`article` render numbers "Table 3"; the same unit inside an assembled
+`book` numbers "Table 2.1" where chapters are numbered, and "Table 5" --
+flat, book-wide -- where `book-assembler` has suppressed chapter
+numbering with `\setcounter{secnumdepth}{-2}` for units that number
+their own headings. Both measured with `pdflatex`. The consuming
+document's convention wins, which is the whole reason numbering is not
+baked into the draft.
 
 ## 🖨 What the renderer does, per format
 
@@ -125,7 +128,7 @@ outside LaTeX:
 
 | Draft | Output | Caption line becomes | `tableref` becomes |
 | --- | --- | --- | --- |
-| `.md` | `tex`, `latex`, `pdf` | `: <caption>\label{tab:<id>}` -- LaTeX numbers it | `Table~\ref{tab:<id>}` |
+| `.md` | `tex`, `latex`, `pdf` | `: <caption>\label{tab:<id>}` -- LaTeX numbers it | `` `Table~\ref{tab:<id>}`{=latex} `` |
 | `.md` | `md` (never reaches pandoc) | `**Table N:** <caption>`, an ordinary paragraph | `Table N` |
 | `.md` | `docx`, `html`, anything else | `: Table N: <caption>` -- still a real caption, with a literal number pandoc will not supply | `Table N` |
 | `.tex` | any | untouched | untouched |
@@ -174,16 +177,17 @@ it checks is not in Vale's reach.
 
 | Finding | What it catches |
 | --- | --- |
-| `Tables.NoCaption` | A pipe table with no caption line -- the state every draft is in today |
-| `Tables.NoId` | A caption with no `table:` marker under it, so nothing can refer to it |
-| `Tables.DuplicateId` | Two tables claiming one id; in a book unit this is a silently wrong `\ref` |
-| `Tables.MalformedId` | An id that is not kebab-case |
-| `Tables.Unreferenced` | **The issue's second half**: a table no sentence points at |
-| `Tables.UnknownRef` | A `tableref` naming an id no table declares |
-| `Tables.RefBeforeTable` | The only reference to a table sits in a different section than the table |
+| `chitragupta.TableNoCaption` | A pipe table with no caption line -- the state every draft is in today |
+| `chitragupta.TableNoId` | A caption with no `table:` marker under it, so nothing can refer to it |
+| `chitragupta.TableDuplicateId` | Two tables claiming one id; in a book unit this is a silently wrong `\ref` |
+| `chitragupta.TableMalformedId` | An id that is not kebab-case |
+| `chitragupta.TableUnreferenced` | **The issue's second half**: a table no sentence points at |
+| `chitragupta.TableUnknownRef` | A `tableref` naming an id no table declares |
+| `chitragupta.TableRefOutsideSection` | The only reference to a table sits in a different section than the table |
 
-`Tables.Unreferenced` and `Tables.RefBeforeTable` are the prose-alignment
-half, and they are as far as a machine can go: that a sentence *points
+`chitragupta.TableUnreferenced` and
+`chitragupta.TableRefOutsideSection` are the prose-alignment half, and
+they are as far as a machine can go: that a sentence *points
 at* a table is decidable, and whether it *explains* the table is not.
 The genre skills carry the judgement half -- introduce the table, then
 read a pattern off it -- and WRITING-STANDARDS.md §9's decidable /
@@ -258,10 +262,39 @@ environment, not a caption line), and bundling them would double a diff
 that already spans four layers. Worth its own issue.
 
 **Existing drafts are not migrated.** Every draft in `content/drafts/`
-predates this contract and will report `Tables.NoCaption` on the first
+predates this contract and will report `chitragupta.TableNoCaption` on the first
 run of `draft style`. That is the finding working, not a regression:
 the fix per draft is a `draft-reviser` pass, and the user's own drafts
 are not this repository's to rewrite.
+
+## 🧾 What building it taught, that reading could not
+
+Three things were found by rendering a real draft in all four formats,
+and each changed the design after this plan was first written:
+
+- **A bare `Table~\ref{}` does not survive.** Pandoc's Markdown reader
+  owns `~` -- its subscript syntax -- and escapes it, so the reference
+  reaches the LaTeX writer as `Table\textasciitilde{}\ref{...}` and sets
+  with a literal tilde. The reference is therefore emitted inside
+  pandoc's raw-attribute span, `` `Table~\ref{tab:<id>}`{=latex} ``. The
+  `\label` beside it needs no such wrapper and does survive bare, which
+  is why this was not obvious from the caption working.
+- **Captions must be numbered by position, not by id.** A draft that
+  reuses an id would otherwise give its *first* table the second one's
+  number -- two "Table 2"s and no "Table 1" -- on top of the duplicate
+  the check already reports.
+- **A book's table numbers are not one shape.** With chapter numbering
+  on, an assembled book reads "1.1", "2.1", "2.2"; with
+  `\setcounter{secnumdepth}{-2}`, which `book-assembler` applies for
+  units that number their own headings, it reads "1", "2", "3" -- flat
+  across the whole book. Both are correct and unique, and both were
+  measured rather than reasoned about.
+
+One thing the plan missed and review caught: the style check reads the
+draft with fenced code **blanked** (`citation_gate._blank_code`, the same
+call `review/_claims.py` makes). Without it, a tutorial showing a pipe
+table as an example -- including one demonstrating this section's own
+markup -- reports as a real table with no caption.
 
 ## 🔨 Build order
 

@@ -669,8 +669,9 @@ they ask you to bring.
 **Never write the number.** `: Table 1: Where to start.` renders as
 "Table 1: Table 1: Where to start.", because LaTeX supplies its own
 prefix; and a number typed into a chapter is wrong the moment that
-chapter is assembled into a book, where the same table numbers "1.3"
-rather than "3". `render` resolves both markers per format
+chapter is assembled into a book, where the same table numbers "2.1" --
+or something else again, since a book that suppresses chapter numbering
+counts its tables flat from the front. `render` resolves both markers per format
 ([RENDERING-FLOW.md](RENDERING-FLOW.md) has the four cases): LaTeX-bound
 output gets a `\label` and numbers itself, and every other format gets a
 number counted at render time, because pandoc numbers nothing outside

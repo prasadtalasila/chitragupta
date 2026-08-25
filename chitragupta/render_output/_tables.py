@@ -27,8 +27,13 @@ against pandoc 3.1.11.1 rather than assumed:
   spelling and gains a raw `\\label{}`, which survives the Markdown
   reader into `\\caption{...\\label{...}}` -- so LaTeX numbers the table
   itself, and a reference becomes `Table~\\ref{}`. That is what makes the
-  same unit read "Table 3" in an `article` and "Table 1.3" inside an
-  assembled `book`, where the counter resets per chapter.
+  same unit read "Table 3" in an `article` and "Table 2.1" inside an
+  assembled `book` that numbers its chapters -- or "Table 5" in one that
+  does not, since `book-assembler` suppresses chapter numbering
+  (`\\setcounter{secnumdepth}{-2}`) for units that number their own
+  headings, and a table then counts flat across the whole book. Both
+  measured; the point is that the *consuming* document decides, which is
+  why no number belongs in a draft.
 - **`md`**: this format never reaches pandoc at all
   (docs/RENDERING-FLOW.md), so a caption line would land in
   `content/rendered/` as a stray colon and nothing would number it. The
