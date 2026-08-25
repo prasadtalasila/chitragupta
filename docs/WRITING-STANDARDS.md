@@ -574,6 +574,14 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
   `` `12 x 2 x 365 = 8,760` ``. ASCII `x` and `*` are not multiplication
   signs, and a thousands comma needs `{,}` or LaTeX sets it as a
   punctuation comma with the wrong spacing after it.
+- **An equation is never a fenced code block.** A fence means code
+  exactly as backticks do, and pandoc sets it as `\begin{verbatim}` --
+  upright, monospace, `x` still a letter. A displayed equation is the
+  marker plus fence above, or `$$…$$`; a *symbol legend* is a list, with
+  each symbol set as math like every other mention of it. **A fence
+  inside a blockquote is still a fence**, which is where the occurrence
+  that prompted this was hiding (#406): one relation, set three ways in
+  one chapter, and the fenced one was the odd one out.
 - **A text subscript is upright.** `$k_\mathrm{day}$`, not `$k_{day}$` --
   the latter sets *d*, *a*, *y* as three italic variables multiplied
   together.
@@ -609,12 +617,24 @@ Neither is a compromise, which is the point of holding both.
 mapping file at all. Both mean the pdf would carry verbatim text where
 you said an equation goes.
 
-**Two heuristics only warn**, because a wrong guess must not stop a
-render: a span that looks like a quantity (`h = 9`) with no row, and a
-span equal to a symbol your own mapped equations already use. That second
-one is there because the first cannot see a bare `` `k` `` -- there is no
+**Three heuristics only warn**, because a wrong guess must not stop a
+render: a span that looks like a quantity (`h = 9`) with no row, a span
+equal to a symbol your own mapped equations already use, and an untagged
+fence that looks like a displayed equation nobody marked. The second is
+there because the first cannot see a bare `` `k` `` -- there is no
 operator to key on -- and single symbols were the *dominant* shape when
 this was measured, roughly 296 of 515 in one book.
+
+The third names both remedies, because a bare fence leaves the question
+open in both directions: mark it if it is an equation, tag it if it is
+code. It fires on a fence of **at most four lines** holding an operator
+and no underscore identifier -- `as_of` and `predicted_next` are code,
+and length is what separates an equation from the other thing a bare
+fence holds, an [§10 figure](#-10-figures), whose box borders are not
+math-shaped but whose `->` arrows are. Measured over every untagged
+fence in this repository's own drafts, the genuine equations run one to
+four lines and the shortest false positive is a seven-line pseudocode
+listing.
 
 **Still not gated, deliberately.** `python -m chitragupta.draft gate`
 means exactly one thing -- a fabricated citekey fails -- and
@@ -630,6 +650,13 @@ the *inline* form has no mapping to close the world against, so it gets
 the operator heuristic only. All three really happened in this
 repository's own book; `plans/math-typesetting-convention.md` records
 what each cost.
+
+A long aligned array in an *unmarked* fence is past the four-line bar and
+goes unreported too -- deliberately, since that is the shape whose marker
+is worth writing by hand. And nothing here reads a rendered `.tex`: a
+post-render grep for math-shaped `\texttt{}` is what reported this book
+clean while a `\begin{verbatim}` equation sat in it, because a fence
+never becomes a `\texttt{}`.
 
 ## 🔢 13. Tables
 
