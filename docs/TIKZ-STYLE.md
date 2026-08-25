@@ -113,6 +113,115 @@ Two things to know before you reach for one:
 installs, ships all of these -- there is no extra package to add for any
 of them.
 
+## 🔠 Panels in one figure, and the letters they need
+
+A figure that shows the same thing under two or three conditions is one
+figure with panels, not two or three figures. **However many panels it
+has, it stays one figure, one `figure:` marker and one `.tex`/`.txt`
+pair** -- one marker per panel would give you separate floats with
+separate numbers, which is a row of figures rather than a panelled one.
+Nothing here is specific to two: letter as far as the figure goes.
+
+**Every panel carries a label node reading `(<letter>) <short title>`,
+and the letter is the panel's position in reading order** -- `(a)` for
+the first panel, `(b)` for the second, `(c)` for the third, and on
+through the alphabet. Reading order is left to right, then top to
+bottom, so it is the panel's *place in the picture* that decides its
+letter, not the order you happened to draw the nodes in: move a panel
+and its letter moves with the position, not with the panel. Draw the
+label as an ordinary node under the panel it names; a panel with a bold
+title and no letter cannot be pointed at from the prose, which is what
+the letter is for. Prose then refers to `Figure~\ref{fig:x}(b)` for the
+second panel, with the letter typed, since these letters are drawn
+rather than counted by LaTeX.
+
+**Put the same letters in the ASCII twin.** Every format except
+`tex`/`pdf` -- `md`, `html` and `docx` alike -- renders the `.txt` and
+never sees the picture, so for three of the five formats the ASCII form
+is the only place the sub-captions exist. Letter it by taking the four
+columns from the gap to the *left* of each title rather than by
+inserting them, or every title after the first slides off the panel it
+labels; the letters then overhang their panels by four columns, which
+is the intended look and keeps §10's ~70-column cap intact.
+
+**When a row stops fitting, wrap into another row -- never scale the
+picture.** Three panels of about 48mm each overflow an ordinary text
+block by 71.8pt, and pdflatex only *warns*: `Overfull \hbox`, in a log
+nobody reads, with the figure quietly in the margin. Four of the same
+panels as a 2x2 grid fit with no warning at all. Reaching for
+`\resizebox` or `scale=` instead would shrink the node text below the
+document's own size, which "Type and line weight" below forbids for
+exactly this reason.
+
+**Where the figure is captioned, the caption is the figure file's**,
+in a `figure` float around the picture -- `\caption` needs no package,
+and `\label` plus `\renewcommand{\thefigure}{N.M}` beside it is what
+makes `\ref` print a chapter-relative number. That float is part of
+*your* copy of a scaffold, not of the scaffold: the files in
+`assets/tikz/` are bare `tikzpicture` fragments, so wrapping one is a
+step of copying it.
+
+**Do not reach for `subcaption`, `subfig` or `subfigure`.** The package
+is installed on a typical TeX stack, so this is a choice rather than a
+limit. `\usetikzlibrary` is legal in the document body and
+`\usepackage` is not (`! LaTeX Error: Can be used only in preamble.`),
+so a figure file can load its own TikZ library but never its own
+package -- and the preamble that would have to load it is not always
+ours. `thesis-chapter-writer`'s fragment is `\input` into the user's own
+thesis, whose preamble we never see, so a figure needing `subcaption`
+compiles here and fails there. Drawn letters work in every genre and
+change no preamble. The whole cost is `\subref` and automatic "Figure 1a"
+numbering, which is one typed letter per reference.
+
+**Record the convention, don't re-decide it.** Which letters a venue
+wants -- `(a)`, `(i)`, `A`, or titles alone -- is a house-style decision
+in [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8's sense, and belongs
+in the dossier's `scope.md` beside the dialect. `draft-reviser` reads
+that file before every edit; a convention agreed in chat is gone by the
+next session.
+
+A three-panel figure, relative placement throughout, verified on this
+host -- it compiles, every node it names comes back measured, and
+`python -m chitragupta.review figure` reports nothing:
+
+```latex
+\usetikzlibrary{positioning,fit}
+\begin{figure}
+\centering
+\begin{tikzpicture}[thick,
+                    box/.style={draw,align=center,
+                                minimum width=17mm,minimum height=8mm}]
+  \node[box] (senseA) {sensor};
+  \node[box,below=6mm of senseA] (storeA) {store};
+  \draw[->] (senseA) -- (storeA);
+  \node[fit=(senseA)(storeA),draw=none] (panelA) {};
+  \node[below=2mm of panelA] (labelA) {(a) polled};
+
+  \node[box,right=12mm of senseA] (senseB) {sensor};
+  \node[box,below=6mm of senseB] (storeB) {store};
+  \draw[->] (senseB) -- (storeB);
+  \node[fit=(senseB)(storeB),draw=none] (panelB) {};
+  \node[below=2mm of panelB] (labelB) {(b) pushed};
+
+  \node[box,right=12mm of senseB] (senseC) {sensor};
+  \node[box,below=6mm of senseC] (storeC) {store};
+  \draw[->] (senseC) -- (storeC);
+  \node[fit=(senseC)(storeC),draw=none] (panelC) {};
+  \node[below=2mm of panelC] (labelC) {(c) buffered};
+\end{tikzpicture}
+\caption{One reading path under three delivery modes.}
+\label{fig:delivery-modes}
+\end{figure}
+```
+
+`tests/test_tikz_subcaptions.py` reads that example out of this file and
+compiles it, so it cannot drift into something that no longer works.
+The empty `fit` nodes are what give each panel an extent to hang its
+label under; they are grouping boxes, which `review figure` excludes
+from its overlap check by design, and any other way of finding the same
+point is equally fine. What the rule asks for is the label and its
+letter.
+
 ## ✅ Check the drawn figure against this list
 
 Concrete defects, not taste:

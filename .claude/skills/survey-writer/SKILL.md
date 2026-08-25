@@ -376,6 +376,16 @@ collapse them for the sake of a cleaner narrative.
      (occlusion, chaotic routing, illegible type, non-rectangular
      protrusion, an overlong node, literal copying) before keeping the
      figure.
+   - **Panels get lettered sub-captions, in both forms.** A figure with
+     more than one panel is still one figure and one marker; each panel
+     carries a `(<letter>) <short title>` node -- `(a)` for the first
+     panel in reading order, `(b)` for the second, on through the
+     alphabet -- and
+     the same letters appear in the `.txt` -- `docx`, `html` and `md`
+     render only that form, so letters left out of it are letters the
+     reader never sees. `docs/TIKZ-STYLE.md` has the worked example, the
+     row-wrapping rule for a row that stops fitting, and why the
+     `subcaption` package is not the answer.
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.md`, move the draft and its dossier before
      adding a figure, or drop the figure -- and in this genre dropping

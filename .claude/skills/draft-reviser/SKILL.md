@@ -63,6 +63,13 @@ break:
   `%figure:` in a `.tex` one), which is greppable precisely so this is
   not a reading exercise. Relabel a box, add an arrow, rename a
   component in one form and you must make the same change in the other.
+  **A panelled figure's letters are part of that pair**: adding,
+  dropping or re-ordering a panel re-letters every panel after it, in
+  the picture *and* in the ASCII twin, and lettering an unlettered
+  figure is a figure edit like any other -- log it in `revisions.md`.
+  Which lettering to use is `scope.md`'s to say, not yours: it is a
+  house-style decision under `docs/WRITING-STANDARDS.md` §8, read before
+  the edit rather than re-decided during it.
   **One difference survives by genre, and it is not about where the
   files are**: `thesis-chapter-writer`'s TikZ additionally stays inline
   via a real `\input` -- that fragment is what the user `\input`s

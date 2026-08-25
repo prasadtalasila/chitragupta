@@ -377,6 +377,28 @@ pipeline.
   all still renders its fence straight into the pdf -- which is exactly
   the run where one Unicode box character takes the whole document down
   with it.
+- **Panels are lettered, in both forms, however many there are.** A
+  figure showing the same thing under several conditions is one figure
+  with panels -- one marker, one pair, whatever the count -- and each
+  panel carries a sub-caption reading `(<letter>) <short title>`, where
+  the letter is the panel's place in reading order: `(a)` for the first,
+  `(b)` for the second, on through the alphabet. The letters have to be
+  in the ASCII form too, and not
+  as a decoration: every format except `tex`/`pdf` renders the `.txt`
+  and never sees the picture, so a figure lettered only in its TikZ
+  ships a `docx` and an `html` whose panels are unlabelled, with nothing
+  anywhere reporting it. [TIKZ-STYLE.md](TIKZ-STYLE.md) has the worked
+  example, how to letter an ASCII diagram without sliding every title
+  off its panel, and why `subcaption` is not the answer.
+- **Where a figure is captioned, the caption lives in the figure file**,
+  in a `figure` float around the picture, with `\label` and
+  `\renewcommand{\thefigure}{N.M}` beside it. The renderer substitutes a
+  marker for a bare `\input` and adds no float of its own, so a picture
+  whose file carries none is set unnumbered and uncaptioned in the flow
+  of the text. Which lettering a venue wants -- `(a)`, `(i)`, `A`, or
+  titles with no letters -- is a §8 house-style decision: record it in
+  the dossier's `scope.md` beside the dialect, where `draft-reviser`
+  reads it before every edit, rather than settling it again per figure.
 
 Where `tikz.sty` is absent, the fallback is the same in every genre and
 is what this section required before the pair existed: the ASCII goes
@@ -397,7 +419,7 @@ agreement between the two forms: nothing can check that a TikZ picture
 and an ASCII diagram depict the same thing, so a revision that edits one
 and not the other leaves the pdf and the Markdown preview disagreeing,
 silently and indefinitely. `draft-reviser` carries the only defence
-there is -- touch a figure, touch both forms.
+there is -- touch a figure, touch both forms, panel letters included.
 
 ## 🧩 11. Multi-source synthesis, at your genre's unit
 

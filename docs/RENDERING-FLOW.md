@@ -164,6 +164,19 @@ but then drops the `tikzpicture` environment, and keeps dropping it under
 docstring) -- so without the swap, a `.tex` fragment's figure would
 silently vanish from its own `.md` preview.
 
+Two consequences of that table worth stating outright, because both
+surprise people who have only read the code:
+
+- **Nothing here adds a `figure` float or a `\caption`.** The
+  substitution is a bare `\input`, so a captioned, numbered figure is one
+  whose *figure file* carries the float --
+  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10.
+- **Only `tex`/`latex`/`pdf` ever draw the TikZ.** `md`, `html` and
+  `docx` all take row two and render the ASCII twin, which is why a
+  panelled figure's `(a)`/`(b)` sub-captions have to exist in the `.txt`
+  as well as in the picture: for three of the five formats the twin is
+  the only thing the reader sees.
+
 ## 🐛 Known defect: the fourth combination isn't a no-op on this host
 
 The fourth row's no-op rests on one assumption: that pandoc, asked to
