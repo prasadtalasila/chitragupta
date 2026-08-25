@@ -1,6 +1,9 @@
 # Math typesetting convention: rollout
 
-Status: **in progress.** Written 2026-08-24.
+Status: **in progress.** Written 2026-08-24. The fence check this file's
+own verification table was blind to shipped 2026-08-25 in #412 (#406);
+still open is the old spelling in the drafts and chapters listed at the
+end, which are `draft-reviser` jobs rather than anything to build.
 
 [docs/WRITING-STANDARDS.md §12](../docs/WRITING-STANDARDS.md#-12-mathematics)
 now owns the rule -- every quantity is `$…$` / `$$…$$`, backticks mean
@@ -142,6 +145,14 @@ genre skill.
 - `content/drafts/book-chapters/digital-twin-life-cycle-considerations/`
   -- 5 math spans in backticks, 0 display math, in both the base and
   `-corpus-revised` variants.
+- **Two chapters of the book, in fences rather than spans**, which is
+  why the 515-span conversion did not reach them and #412's check is
+  what found them: `14-running-twins-in-production.md:628`, ASCII
+  arithmetic sitting directly above a real `$$\begin{array}$$` that sets
+  the same quantities properly, and two symbol legends in
+  `12-platforms-and-composability.md`, one of them past the four-line
+  bar and so not reported by the check either. Ch. 13's two, the ones
+  #406 was opened for, are fixed.
 - The standalone drafts under `content/drafts/digital-twins-for-software-engineers/`
   are already clean: `book-chapter.md` uses `$$`, and the survey,
   tutorial and deep-research drafts contain no math at all.
