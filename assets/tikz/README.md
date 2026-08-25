@@ -28,6 +28,14 @@ from the draft with a single marker line -- `docs/WRITING-STANDARDS.md`
 §10 owns that contract, and your genre skill's figure step spells the
 marker for your draft's language.
 
+**A panelled figure is still one file.** Copy the same scaffold once per
+panel into a single `tikzpicture` -- or two different ones, if the panels
+are different shapes -- and give each panel an `(a) <short title>` label
+node. `docs/TIKZ-STYLE.md`'s "Panels in one figure" section has the
+worked example and the rule for a row that stops fitting. These files
+carry no `figure` float, so the float and the `\caption` are added to
+your copy, not found in it.
+
 Each file carries its own `\usetikzlibrary` line at the top. Keep it:
 the renderer's preamble loads `tikz` and no library at all, so a picture
 that reaches for `below=4mm of store` without loading `positioning`
