@@ -106,6 +106,28 @@ proves no *single-letter display-math symbol* is set two ways. It does
 not prove no *quantity* is -- ch. 1 passed it while still wrong. The
 first row of the table is the check worth re-running.
 
+**And that table's first row is itself blind to a fence (#406).** Every
+number above was measured on a *code span* or on rendered `\texttt{}`,
+and neither reaches an equation written as ASCII inside a fenced block:
+the converter blanks every fence before scanning, correctly, since a
+fence usually holds code; the post-render grep looks for math-shaped
+`\texttt{}`, and pandoc sets a fence as `\begin{verbatim}`; and the
+clash detector matches spans, not fences. All three reported the book
+clean while ch. 13 carried `C x I  >  F` in an untagged fence inside a
+blockquote -- the same relation the chapter sets as real display math at
+line 542 and as `$C \times I > F$` at line 961.
+
+The fix is not a fourth grep over the `.tex`. `_math.warnings()` now
+reports an unmarked fence at the source, before pandoc, alongside the
+two span heuristics it already had; [§12](../docs/WRITING-STANDARDS.md#-12-mathematics)
+records the shape and what bounds it. Re-measuring with it found **three**
+occurrences in the live book rather than the one the issue reported --
+ch. 13's relation, ch. 13's symbol legend at line 501, and ch. 14's
+arithmetic at line 628, the last sitting directly above a real
+`$$\begin{array}$$` that sets the same quantities properly. Two of the
+three are the shapes a scan looking for a *relation* would not have
+called an equation at all.
+
 The `.tex` were regenerated with `draft render`, then the two
 post-render labels `\label{ch-NN}` and `\label{<unit-id>}` reapplied --
 `book-assembler` adds those after pandoc (`SKILL.md:195-197`), so a plain

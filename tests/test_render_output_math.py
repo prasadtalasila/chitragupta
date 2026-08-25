@@ -208,6 +208,77 @@ class TestWarnings:
         assert _math.warnings(text, {"h = 9": "h = 9"}, True) == []
 
 
+class TestAnUnmarkedFenceHoldingAnEquation:
+    """#406: the shape all three of §12's checks agreed was clean.
+
+    The converter blanks every fence before scanning for spans, and the
+    post-render grep looked for math-shaped `\\texttt{}` -- which a fence
+    never becomes, since pandoc sets it as `\\begin{verbatim}`. So a
+    displayed relation written as ASCII in a fence passed every one of
+    them, and reached the pdf as upright monospace between two inline
+    equations.
+    """
+
+    def test_an_untagged_fence_holding_a_relation_is_a_gap(self, isolated_config):
+        # Verbatim from the chapter that reported it, blockquote and all.
+        text = "> Call it `C`. Adopt when\n>\n> ```\n> C x I  >  F\n> ```\n>\n> where `I`\n"
+        assert _math.warnings(text, {}, False)[0] == (
+            "`C x I  >  F` looks like a displayed equation but its fence has no "
+            "`<!-- math -->` marker. Tag the fence if it is code."
+        )
+
+    def test_a_marked_fence_is_not_reported_as_unmarked(self, isolated_config):
+        text = "<!-- math -->\n```\nC x I > F\n```\n"
+        assert _math.warnings(text, {"C x I > F": "C \\times I > F"}, True) == []
+
+    def test_a_tagged_fence_is_code(self, isolated_config):
+        # A tag is the author saying "code", so it settles the question
+        # a bare fence leaves open. `python`-tagged constants were the
+        # only other candidates the corpus scan turned up.
+        text = "```python\nDRY_THRESHOLD = 35.0\n```\n"
+        assert _math.warnings(text, {}, False) == []
+
+    def test_a_fence_of_program_output_is_code(self, isolated_config):
+        # An underscore identifier is code and never a quantity -- the
+        # same distinction `as_of` draws for spans. This is what keeps a
+        # tutorial's captured output quiet.
+        text = "```\nhour 11  sensor= 38.2  predicted_next= 35.0\n```\n"
+        assert _math.warnings(text, {}, False) == []
+
+    def test_a_fence_with_no_operator_in_it_is_not_an_equation(self, isolated_config):
+        assert _math.warnings("```\nchitragupta draft render\n```\n", {}, False) == []
+
+    def test_an_ascii_figure_is_not_an_equation(self, isolated_config):
+        # The other inhabitant of a bare fence (§10). No box border is
+        # math-shaped, but one `->` anywhere in the diagram is, so length
+        # is what separates the two -- this is the largest class of false
+        # positive the corpus turned up.
+        figure = "\n".join(["+------+", "| twin | -> readings", "+------+", "", "|", "v"])
+        assert _math.warnings(f"```\n{figure}\n```\n", {}, False) == []
+
+    def test_an_empty_fence_is_not_an_equation(self, isolated_config):
+        assert _math.warnings("```\n```\n", {}, False) == []
+
+    def test_a_tagged_fence_does_not_hide_the_untagged_one_after_it(self, isolated_config):
+        # Fence delimiters pair in order. Matching an opener without its
+        # info string would pair a tagged block's *closer* with the next
+        # block's opener, swallowing the equation between them.
+        text = "```sql\nselect 1\n```\n\ntext\n\n```\nC x I > F\n```\n"
+        assert _math.warnings(text, {}, False) == [
+            "`C x I > F` looks like a displayed equation but its fence has no "
+            "`<!-- math -->` marker. Tag the fence if it is code."
+        ]
+
+    def test_the_first_line_names_a_multi_line_equation(self, isolated_config):
+        # The whole body in a warning would be a paragraph; the first
+        # line is enough to find the fence.
+        text = "```\n-8 = -24k + g\ng = 24k - 8\n```\n"
+        assert _math.warnings(text, {}, False) == [
+            "`-8 = -24k + g` looks like a displayed equation but its fence has no "
+            "`<!-- math -->` marker. Tag the fence if it is code."
+        ]
+
+
 class TestCheckRefusesOnlyTheCertainCases:
     def test_a_marker_with_no_mapping_file_is_refused(self, isolated_config):
         draft = _draft(mapping=None)

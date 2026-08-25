@@ -76,6 +76,39 @@ _BLOCK_RE = re.compile(
 # equation has no row".
 _LONE_MARKER_RE = re.compile(r"^[ \t>]*<!--[ \t]*math[ \t]*-->[ \t]*$", re.M)
 
+# Any fence, with its info string. `_BLOCK_RE` above finds the ones a
+# marker claims; this finds all of them, so what is left over after the
+# marked ones are masked out is a fence nobody has said anything about.
+#
+# The info string is part of the *opening* pattern deliberately. Match a
+# bare ``` instead and the delimiters stop pairing: a tagged block's
+# closing fence reads as an opener, pairs with the next block's opener,
+# and the equation between them is swallowed as a body.
+_FENCE_RE = re.compile(
+    r"^(?P<indent>[ \t>]*)```(?P<tag>[^\n]*)\n(?P<body>.*?)^(?P=indent)```[ \t]*$",
+    re.M | re.S,
+)
+
+# An underscore identifier: `as_of`, `predicted_next`, `sensor_id`. Code,
+# never a quantity -- the same distinction §12 draws for spans, applied
+# to a whole fence body. It is what keeps a tutorial's captured output
+# and an untagged SQL query quiet, both of which the operator heuristic
+# alone reads as mathematics. The cost is an ASCII subscript (`k_day`)
+# in an *unmarked* fence, which goes unreported.
+_SNAKE_CASE_RE = re.compile(r"\w_\w")
+
+# A displayed equation is short, and that is the whole discriminator
+# against the other thing a bare fence holds: an ASCII figure. A box
+# border is not math-shaped, but a `->` arrow inside a 26-line diagram
+# is, and the operator heuristic reads the body rather than the line.
+#
+# Measured over every untagged fence in this project's own drafts: the
+# genuine equations run 1 to 4 lines, and the shortest false positive --
+# a 7-line pseudocode listing -- is clear of the bar with margin to
+# spare. The cost is a long aligned array left unreported, which is the
+# shape a marker is worth writing by hand anyway.
+_MAX_EQUATION_LINES = 4
+
 # Enough of an operator to call a span a quantity rather than an
 # identifier. Necessarily heuristic; the symbol closure below is what
 # catches a bare `k`, which this cannot.
@@ -165,6 +198,49 @@ def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":
     return frozenset(symbols)
 
 
+def _body_of(match: "re.Match[str]") -> str:
+    """A fence's body, stripped of the indent every line carries.
+
+    The indent is whatever put the fence inside a blockquote or a list
+    item, so it belongs to the document rather than to the equation --
+    a mapping row keyed on `> C x I > F` would be keyed on the quoting.
+    """
+    return re.sub(r"^[ \t>]*", "", match.group("body"), flags=re.M).strip()
+
+
+def _fence_gaps(masked: str) -> "list[str]":
+    """Every untagged fence in `masked` that looks like a displayed equation.
+
+    `masked` has the marked blocks already blanked out, so what this sees
+    is the fences nobody claimed. An untagged one is the open question:
+    a tag is the author saying "code", and §12 gives every other fence a
+    `<!-- math -->` marker, so a bare fence holding a relation is either
+    an unmarked equation or a tag somebody forgot -- and both are worth
+    saying, because the two remedies are one word each.
+
+    This is the shape #406 reported: `C x I  >  F` reached the pdf as
+    `\\begin{verbatim}` between two inline equations, and every check
+    §12 had agreed the chapter was clean. The span scan cannot see it --
+    it blanks fences first, correctly, since a fence usually is code --
+    and no post-render grep for `\\texttt{}` can, since a fence never
+    becomes one.
+    """
+    found = []
+    for match in _FENCE_RE.finditer(masked):
+        body = _body_of(match)
+        lines = body.splitlines()
+        if match.group("tag").strip() or len(lines) > _MAX_EQUATION_LINES:
+            continue
+        # `lines[0]` is reached only once the body has matched, so an
+        # empty fence cannot get here.
+        if _MATH_SHAPED_RE.search(body) and not _SNAKE_CASE_RE.search(body):
+            found.append(
+                f"`{lines[0]}` looks like a displayed equation but its fence has no "
+                "`<!-- math -->` marker. Tag the fence if it is code."
+            )
+    return found
+
+
 def substitute(text: str, mapping: "dict[str, str]") -> str:
     """`text` with every mapped span and block rewritten as `$...$`.
 
@@ -176,8 +252,7 @@ def substitute(text: str, mapping: "dict[str, str]") -> str:
 
     def _block(match: "re.Match[str]") -> str:
         indent = match.group("indent")
-        body = re.sub(r"^[ \t>]*", "", match.group("body"), flags=re.M).strip()
-        latex = mapping.get(body)
+        latex = mapping.get(_body_of(match))
         if latex is None:
             return match.group(0)
         return f"{indent}$$\n{indent}{latex}\n{indent}$$"
@@ -195,16 +270,21 @@ def warnings(text: str, mapping: "dict[str, str]", has_mapping_file: bool) -> "l
     """Every gap and orphan in `text`, as lines a caller can print.
 
     A *gap* is a span that should have a row and has not: math-shaped, or
-    equal to a symbol the mapping's own LaTeX already uses. A *orphan* is
-    a row matching nothing, the tell that a revision reworded or deleted
-    the sentence it belonged to.
+    equal to a symbol the mapping's own LaTeX already uses -- or, since
+    #406, an untagged fence holding an equation nobody marked. A *orphan*
+    is a row matching nothing, the tell that a revision reworded or
+    deleted the sentence it belonged to.
+
+    Fences are reported first, the way `substitute` rewrites them first:
+    a displayed equation is the bigger thing to have got wrong, and the
+    symbols in it usually explain the inline gaps underneath.
 
     `has_mapping_file` separates "this draft has no mathematics" from
     "this draft's mapping is gone" -- the second is what a rename looks
     like, and without the distinction they are the same silence.
     """
-    found: list[str] = []
     masked = _BLOCK_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    found = _fence_gaps(masked)
     spans = {m.group("body").strip() for m in _SPAN_RE.finditer(masked)}
     symbols = _symbols_of(mapping)
 
@@ -220,10 +300,7 @@ def warnings(text: str, mapping: "dict[str, str]", has_mapping_file: bool) -> "l
             )
 
     if has_mapping_file:
-        used = spans | {
-            re.sub(r"^[ \t>]*", "", m.group("body"), flags=re.M).strip()
-            for m in _BLOCK_RE.finditer(text)
-        }
+        used = spans | {_body_of(m) for m in _BLOCK_RE.finditer(text)}
         for orphan in sorted(set(mapping) - used):
             found.append(
                 f"`{orphan}` has a row in {MAPPING_FILENAME} but appears nowhere in the draft"
@@ -265,11 +342,7 @@ def check(text: str, draft: Path, mapping: "dict[str, str]") -> None:
             f"{draft.name} has {lone} `<!-- math -->` marker(s) with no fenced "
             "block after them. The marker names the equation that follows it."
         )
-    missing = [
-        body
-        for body in (re.sub(r"^[ \t>]*", "", m.group("body"), flags=re.M).strip() for m in blocks)
-        if body not in mapping
-    ]
+    missing = [body for body in (_body_of(m) for m in blocks) if body not in mapping]
     if missing:
         listed = ", ".join(f"`{m}`" for m in missing)
         raise MathMappingError(
