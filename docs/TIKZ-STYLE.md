@@ -197,3 +197,32 @@ forward flow, sans-serif labels against serif-italic maths.
 
 This is a checklist an author checks a figure against, not something
 enforced mechanically today.
+
+`python -m chitragupta.review figure` reaches the part of it that
+geometry can decide, and it is a **user-driven aid**: a person runs it
+over a finished figure, it exits 0 whatever it finds, and nothing
+downstream blocks on it. Three things follow, and they are the ones an
+author gets wrong:
+
+- **It measures; it never places.** TikZ computes the layout, and the
+  aid compiles the figure and reads back where things actually landed.
+  So the fix for a finding is to change what you asked TikZ for -- a
+  `sibling distance`, a `row sep`, a different library -- and never to
+  nudge a coordinate until the number moves. `assets/tikz/` is the
+  starting point for exactly that, and none of its six scaffolds writes
+  a coordinate at all.
+- **Its thresholds are the checker's, not this document's.** "An empty
+  band worth more than a third of the height" is a number chosen so
+  ordinary layouts pass; it is not a rule from the list above. It does
+  shape what passes -- a two-row diagram spread out generously trips it
+  with nothing wrong -- so when a finding and your own eyes disagree,
+  the eyes win and the figure stays.
+- **A clean report is not a checked figure.** The geometry checks
+  measure only nodes the source names, so a picture that names none
+  reports nothing found because nothing was measurable. Name the nodes
+  you draw, in whichever idiom -- `\node (a)` and
+  `child { node (a) ... }` both count.
+
+[REVIEW.md](REVIEW.md) has the aid among the other five;
+[CLI.md](CLI.md#-chitragupta-review-figure) has its flags and the full
+statement of the boundary.

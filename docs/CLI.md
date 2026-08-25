@@ -907,6 +907,49 @@ skipped, rather than refusing to run.
 from node geometry, and a bad approximation would be worse than its
 absence. That one stays a human judgement.
 
+#### 📏 It measures; it never places
+
+The line this aid is built on, stated because it is the one a reader is
+most likely to assume the other way round: **nothing here computes where
+a node should go.** TikZ does the layout; this reads back what TikZ
+decided.
+
+Concretely, every coordinate in the package enters through one door --
+`\pgfpointanchor` and `\pgfgetlastxy`, injected into the figure's own
+picture and parsed back out of the compile log. Every function in
+`_geometry.py` then takes those boxes as an argument and returns a
+verdict: `dict[str, Box] -> bool | list | float`. None of them returns a
+position. That is why a compile is unavoidable and "just parse the
+source" is not an option -- a node's box depends on the font and the
+label's rendered width, neither of which exists until TeX has run.
+
+The practical consequence for an author: fix a finding by changing what
+you asked TikZ for -- a `sibling distance`, a `row sep`, which library
+you reached for -- not by nudging a coordinate until the number moves.
+`assets/tikz/` exists so that starting point is a file rather than a
+blank picture, and none of those six scaffolds writes a coordinate at
+all.
+
+**And do not tune a figure to the thresholds.** The numbers behind
+`overlap` and `protrusion` are this checker's own -- an empty horizontal
+band worth more than a third of the figure's height, and a 1pt
+touching-versus-colliding tolerance. They are not facts about TikZ and
+not the standard; [TIKZ-STYLE.md](TIKZ-STYLE.md) is. They are chosen
+generously so that ordinary layouts pass, and they do shape what passes:
+a two-row diagram spread out lavishly trips protrusion even though
+nothing about it is wrong. When a finding and your own eyes disagree,
+the eyes win and the figure stays -- this is an aid, and
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 is the same instinct
+applied to the one number here that is continuous.
+
+**A clean report is not the same as a checked figure**, and today the
+command does not distinguish them: the geometry checks measure only
+nodes the source names, so a picture that names none reports nothing
+found because nothing was measurable. Exactly one of the 43 figures in
+this project's own drafted book names a node, so that is the common case
+rather than a corner. Name the nodes you draw, in whichever idiom --
+`\node (a)` and `child { node (a) ... }` both count.
+
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
