@@ -245,6 +245,53 @@ it is the same technique that took the real conversion from 253 clashes
 to zero. A genuinely new symbol usually enters via an equation, so it
 enters the value-space in the same revision that introduces it.
 
+### 💥 A redraft or a rename severs the link entirely
+
+Worse than any per-span gap, because it is not per-span. The draft and
+its dossier are tied by **path alone** -- `dossier_dir()`'s own docstring
+says *"the mirroring rule is the only thing tying the two together"*, and
+`content/drafts/dt/survey.md` resolves to `content/dossiers/dt/survey/`.
+There is **no `dossier rename` or `move` command** (`init status list
+export restore` is the whole set), and `_status.py` *"never raises on a
+missing ledger or a missing dossier"* by design.
+
+So renaming or moving a draft orphans its `math.md` silently, and the
+next render substitutes **nothing at all** -- every span in the document
+reverts to `\texttt{}` at once. Ranked by how likely and how quiet:
+
+| Scenario | Effect | Loud? |
+| --- | --- | --- |
+| draft renamed or moved | **total** reversion, mapping unreachable | **silent** |
+| draft hand-edited outside any skill | gaps, per span | partly |
+| `dossier restore` of an older archive | mass orphans and gaps | partly |
+| genre skill re-run over an existing draft | draft and mapping regenerate *together* | safe, though off-protocol |
+
+**The migration argument and the failure mode are the same property.**
+This plan says an absent `math.md` means no substitution, so the feature
+is inert until a mapping exists -- that is what makes migration free. It
+is also precisely why a severed link says nothing: "no mapping" and "no
+maths in this draft" are indistinguishable.
+
+**The `<!-- math -->` marker breaks that tie, and does it with
+certainty.** A draft containing a display marker demonstrably has
+mathematics in it, so:
+
+- marker present, `math.md` absent → **certain** defect, not a heuristic
+  one. Refuse the render.
+- marker present, no row for its fence body → certain gap.
+- draft has no dossier directory at all → report it as its own condition,
+  distinct from "dossier exists, no `math.md`". The first means a rename;
+  the second means an unmaintained mapping, and they need different
+  advice.
+
+This only anchors a draft that has at least one displayed equation; one
+with inline math alone still reverts quietly on a rename. Narrowing that
+further would need the draft to carry something the dossier can be
+checked against -- which is the `scope.md` fingerprint pattern, and
+[DOSSIER.md](../docs/DOSSIER.md) already records that nobody maintains
+that one. Do not add a second unmaintained fingerprint; prefer refusing
+loudly on the cases that *are* certain.
+
 **And let `render` exit non-zero on a gap.** The "aid, not a gate" line
 above protects `chitragupta.draft gate`'s single meaning; it says nothing
 about `render`, which already refuses to write outside `content/` and
