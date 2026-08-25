@@ -229,6 +229,14 @@ Update only what actually changed:
 - `steering.md` -- append the instruction that prompted this revision,
   dated. This is the part with nowhere else to live; skipping it is how
   the next session loses the thread.
+- `math.md` -- **only if the draft has one.** It maps the draft's ASCII to
+  the LaTeX it renders as (docs/WRITING-STANDARDS.md §12), keyed on the
+  exact span text, so any edit that adds, removes or *rewords* a quantity
+  desyncs it. Add a row for a new one, drop the row for a deleted one,
+  and change the key when you reword one. `render` reports what you
+  missed -- `[math]` warnings for a gap or an orphan, and a hard failure
+  for a `<!-- math -->` marker it cannot resolve -- so run step 7 and read
+  its output rather than trusting this list.
 - `revisions.md` -- append one entry: date, what changed, which sections,
   and why. A copy-edit pass logs one entry for the whole document and
   updates nothing else in this list; see "Copy-edit mode".
@@ -358,7 +366,7 @@ What changes, relative to the loop above:
 | 3. Map the change onto sections | Read the whole draft. This is precisely the case step 3's exception exists for, and it is paid for deliberately |
 | 4. Decide whether to search | **No, and never.** A copy-edit that needs a retrieval call has stopped being one; see "Where the line is" below |
 | 5. Edit in place | Unchanged, and load-bearing for a second reason -- below |
-| 6. Write the dossier back | `revisions.md` only, one entry. There is no evidence delta, no new rejection and no moved section to record |
+| 6. Write the dossier back | `revisions.md`, one entry -- **and `math.md`, if the draft has one.** There is no evidence delta, no new rejection and no moved section to record, but a wording pass is exactly what desyncs a mapping keyed on exact span text: "convert to en-GB" or "fix the grammar" rewrites the sentence around an equation. This is the one thing a copy-edit changes structurally, and step 7's render is what catches it |
 | 7. Gate, reference, render | Unchanged. Run the gate even though you changed no citation: that is the point |
 | Run the prose check | **Inverted, and this is the one place it inverts.** The findings are this pass's work list rather than a report: the user asked for exactly this class of change. Run it before you start, to scope the pass, and again at the end, to say what is left |
 

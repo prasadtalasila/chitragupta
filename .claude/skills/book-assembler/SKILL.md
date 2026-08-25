@@ -182,6 +182,16 @@ It is the reading copy for anyone who is not building LaTeX.
        --format tex --fragment --output-dir content/drafts/<book>
    ```
 
+   **A unit's mathematics resolves per unit, and that is why this works.**
+   Each unit has its own dossier, so `render` reads *its* `math.md`
+   (docs/WRITING-STANDARDS.md §12) -- there is no book-level mapping to
+   assemble and nothing to merge. Two units may map the same ASCII
+   differently and both stay right. What this step must not do is move or
+   rename a unit's `.md`: a dossier is found by path alone, so a renamed
+   unit loses its mapping and every equation in that chapter silently
+   becomes typewriter text. A `<!-- math -->` marker with no mapping fails
+   this render outright, which is the loud half of that.
+
    `--fragment` is what makes it assemblable: no preamble, the unit's own
    `#` heading becomes the book's `\chapter`, and code blocks are left
    unhighlighted because `Shaded`/`Highlighting` are defined only by the

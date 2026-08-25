@@ -197,7 +197,20 @@ Accept the repair only if **all** of:
 
 - the gate exits 0;
 - the finding's `id` appears in `recheck`'s `resolved`;
-- `objective_delta` is not positive.
+- `objective_delta` is not positive;
+- **if the draft's dossier has a `math.md`**, the repaired passage's
+  quantities still match it. That mapping is keyed on the exact text of a
+  code span (docs/WRITING-STANDARDS.md §12), and breaking borrowed
+  wording is *precisely* the operation that desyncs it -- rephrase a
+  sentence containing `` `tau = 48` `` and the row no longer matches
+  anything. Update the row when you reword a quantity, and let
+  `python -m chitragupta.draft render content/drafts/<path> --format tex`
+  confirm it: a `<!-- math -->` marker it cannot resolve fails the render,
+  and a gap or orphan prints a `[math]` warning.
+
+This skill is the likeliest of all of them to break that mapping and the
+least likely to notice, because it is reasoning about borrowed wording
+rather than about quantities.
 
 That last one is the check worth having. A rewrite that fixes its own
 finding by lifting from a different source resolves the item and leaves

@@ -404,6 +404,13 @@ collapse them for the sake of a cleaner narrative.
      from a source survey's own figure is the same violation in
      different pixels, whichever notation it is drawn in.
 
+   **Any quantity in the prose follows `docs/WRITING-STANDARDS.md` §12,
+   not this step.** Write it as ASCII in a code span and give it a row in
+   the dossier's `math.md`; `render` turns those into real mathematics for
+   every format that reaches pandoc, and leaves the `.md` alone. A survey
+   rarely has much, but a threshold or an error bound quoted from a source
+   is a quantity, and a bare `` `k = 4` `` renders as typewriter text.
+
 10. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
     (this is the canonical, source-of-truth format), then run:
 

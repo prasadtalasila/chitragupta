@@ -200,6 +200,13 @@ apart in ways a single-author draft doesn't:
   Every other genre in this pipeline calibrates how freely it uses
   them; this one uses none, by design. If a section genuinely needs a
   visual, say so in the report rather than adding one.
+- **§12's mathematics does apply**, unlike §10's figures. A quantity
+  carried over from a source -- a threshold, an effect size, a bound --
+  goes in a code span as ASCII with a row in the dossier's `math.md`, so
+  the pdf sets it as mathematics and the `.md` stays readable. Section
+  writers are dispatched in parallel and each sees only its own slice, so
+  **collect their rows into one `math.md` at synthesis**, and reconcile a
+  symbol two sections spelled differently rather than keeping both.
 
 ## Depth presets
 
