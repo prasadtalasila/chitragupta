@@ -1,6 +1,8 @@
 # #396: sub-captions for a figure's panels
 
-Status: **plan, unbuilt.** Written 2026-08-25. Implements
+Status: **plan, built.** Written 2026-08-25; built the same day in PR
+409, which shipped every file in the list below and none of the
+optional tiers. Implements
 [#396](https://github.com/prasadtalasila/chitragupta/issues/396), "when
 there are two sub-figures, add sub-captions to them" -- **read as *two or
 more*, with no fixed number**, per the issue author. Two is the smallest
