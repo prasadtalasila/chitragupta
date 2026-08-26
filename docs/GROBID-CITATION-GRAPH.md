@@ -123,7 +123,7 @@ flowchart TB
 
   BIB --> READER --> LEDGER --> CORPUS
 
-  subgraph EX["<b>ENRICHMENT LAYER</b> — <code>python -m chitragupta.enrich --stages …</code> · one write lock"]
+  subgraph EX["<b>ENRICHMENT LAYER</b> — <code>chitragupta enrich --stages …</code> · one write lock"]
     direction LR
     DOC["<code>docling_parse.py</code><br/><small>body text, reading order</small>"]
     GRO["<code>grobid_parse.py</code> <b>(NEW)</b><br/><small>header + reference lists</small>"]

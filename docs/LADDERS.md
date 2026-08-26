@@ -160,21 +160,21 @@ flowchart TB
   BIB(["papers/bibliography.bib<br/><small>exported from your reference manager</small>"])
 
   subgraph CORPUS["corpus layer -- deterministic, holds the lock"]
-    SYNC["python -m chitragupta.corpus sync"]
+    SYNC["chitragupta corpus sync"]
     LEDGER[("content/ledger.sqlite")]
     PARSED[("content/parsed/&lt;citekey&gt;.txt<br/>+ .passages.json")]
   end
 
   subgraph DRAFTING["drafting layer -- generative, reviewed by you"]
     SKILL["a genre skill<br/><small>survey · thesis · textbook · tutorial · deep-research</small>"]
-    GATE{"python -m chitragupta.draft gate<br/><b>hard gate</b>"}
-    REFS["python -m chitragupta.draft references"]
-    RENDER["python -m chitragupta.draft render"]
+    GATE{"chitragupta draft gate<br/><b>hard gate</b>"}
+    REFS["chitragupta draft references"]
+    RENDER["chitragupta draft render"]
     DRAFT[("content/drafts/ · content/rendered/")]
   end
 
   subgraph ENRICH["enrichment layer -- optional, same lock as sync"]
-    ENR["python -m chitragupta.enrich --stages ..."]
+    ENR["chitragupta enrich --stages ..."]
     ART[("content/docling/ · content/chroma/ · content/topics.json")]
   end
 

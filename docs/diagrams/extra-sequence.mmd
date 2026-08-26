@@ -5,14 +5,14 @@ sequenceDiagram
     autonumber
     actor You as You
     participant Z as Zotero
-    participant Sync as chitragupta.corpus sync<br/>(corpus layer)
+    participant Sync as chitragupta corpus sync<br/>(corpus layer)
     participant Led as content/<br/>ledger.sqlite
     participant Ret as chitragupta.retrieval<br/>+ chitragupta.passages
     participant Skill as genre skill<br/>(.claude/skills/)
     participant Hook as PostToolUse hook
-    participant Gate as chitragupta.draft gate
-    participant Ref as chitragupta.draft references
-    participant Ren as chitragupta.draft render<br/>(pandoc / TeX Live)
+    participant Gate as chitragupta draft gate
+    participant Ref as chitragupta draft references
+    participant Ren as chitragupta draft render<br/>(pandoc / TeX Live)
 
     rect rgba(255,247,237,0.6)
     Note over You,Z: CURATE — the only step that adds a paper
@@ -22,7 +22,7 @@ sequenceDiagram
 
     rect rgba(238,242,255,0.6)
     Note over Sync,Led: SYNC — deterministic, incremental, holds the run lock
-    You->>Sync: python -m chitragupta.corpus sync
+    You->>Sync: chitragupta corpus sync
     Sync->>Sync: take content/pipeline.lock.db
     Sync->>Led: upsert one row per citekey
     Led-->>Sync: which PDFs actually changed
@@ -69,4 +69,4 @@ sequenceDiagram
     Ren-->>You: content/rendered/<slug>.pdf
     end
 
-    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta.review provenance · verbatim · coverage · synthesis<br/>figure · uncited · quotation<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
+    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta review provenance · verbatim · coverage · synthesis<br/>figure · uncited · quotation<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft

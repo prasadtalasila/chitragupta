@@ -14,7 +14,7 @@ flowchart TB
   end
 
   %% ─────────────── 2 · SYNC ───────────────
-  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>python -m chitragupta.corpus sync</code> · holds the run lock"]
+  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>chitragupta corpus sync</code> · holds the run lock"]
     direction TB
     BR["<b>chitragupta/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
     LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
@@ -46,21 +46,21 @@ flowchart TB
   end
 
   %% ─────────────── 5 · GATE ───────────────
-  GATE{{"<b>THE CITATION GATE</b> · <code>python -m chitragupta.draft gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
+  GATE{{"<b>THE CITATION GATE</b> · <code>chitragupta draft gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
   ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
   %% ─────────────── 6 · PUBLISH ───────────────
   subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
     direction TB
-    REFS["<b>python -m chitragupta.draft references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
-    REND["<b>python -m chitragupta.draft render</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
+    REFS["<b>chitragupta draft references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
+    REND["<b>chitragupta draft render</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
     OUT[/"<b>content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md</b>"/]
     REFS --> REND --> OUT
   end
 
   %% ─────────────── ENRICHMENT (side branch) ───────────────
-  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>python -m chitragupta.enrich --stages …</code> · same run lock"]
+  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>chitragupta enrich --stages …</code> · same run lock"]
     direction TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
@@ -73,13 +73,13 @@ flowchart TB
   %% ─────────────── AIDS (side branch) ───────────────
   subgraph SA["<b>REVIEW AIDS</b> — run these afterwards; none of them is a gate"]
     direction TB
-    A1["<b>chitragupta.review provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>chitragupta.review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
-    A3["<b>chitragupta.review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
-    A4["<b>chitragupta.review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
-    A5["<b>chitragupta.review figure</b><br/><small>overlapping nodes · protrusion · overlong labels</small>"]
-    A6["<b>chitragupta.review uncited</b><br/><small>which sentences cite nothing at all?</small>"]
-    A7["<b>chitragupta.review quotation</b><br/><small>is each quoted span really in that source?</small>"]
+    A1["<b>chitragupta review provenance</b><br/><small>what in the source supports this claim?</small>"]
+    A2["<b>chitragupta review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
+    A3["<b>chitragupta review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
+    A4["<b>chitragupta review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
+    A5["<b>chitragupta review figure</b><br/><small>overlapping nodes · protrusion · overlong labels</small>"]
+    A6["<b>chitragupta review uncited</b><br/><small>which sentences cite nothing at all?</small>"]
+    A7["<b>chitragupta review quotation</b><br/><small>is each quoted span really in that source?</small>"]
   end
 
   %% ─────────────── SPINE ───────────────

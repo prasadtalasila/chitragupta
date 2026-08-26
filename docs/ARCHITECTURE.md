@@ -66,7 +66,7 @@ flowchart TB
 
   subgraph J1["<b>LAYER 1 · CORPUS</b> — deterministic, no LLM, safe unattended"]
     direction TB
-    SYNC["<code>python -m chitragupta.corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
+    SYNC["<code>chitragupta corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
     OUT1[/"<b>content/ledger.sqlite</b> · <b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     SYNC --> OUT1
   end
@@ -74,20 +74,20 @@ flowchart TB
   subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
     direction TB
     SKILL["<b>.claude/skills/</b> — five genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
-    CHAIN["<b>the chain, on every draft</b><br/><code>python -m chitragupta.draft gate</code> — <b>hard gate</b><br/><code>python -m chitragupta.draft references</code><br/><code>python -m chitragupta.draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
+    CHAIN["<b>the chain, on every draft</b><br/><code>chitragupta draft gate</code> — <b>hard gate</b><br/><code>chitragupta draft references</code><br/><code>chitragupta draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
     SKILL --> CHAIN
   end
 
   subgraph JH["<b>LAYER 3 · ENRICHMENT</b> — optional · you run it, no skill does"]
     direction TB
-    FULL["<code>python -m chitragupta.enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
+    FULL["<code>chitragupta enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
     OUT3[/"content/docling/ · content/chroma/ · content/topics.json · content/topic_seeds.json · content/topic_set.json"/]
     FULL --> OUT3
   end
 
   subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never a gate · <b>takes no lock</b>"]
     direction TB
-    A["<code>python -m chitragupta.review provenance</code><br/><code>python -m chitragupta.review coverage</code><br/><code>python -m chitragupta.review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
+    A["<code>chitragupta review provenance</code><br/><code>chitragupta review coverage</code><br/><code>chitragupta review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
     OUT4[/"<b>content/review/&lt;topic&gt;/&lt;stem&gt;.{provenance,verbatim,coverage}.md</b>"/]
     A --> OUT4
   end
