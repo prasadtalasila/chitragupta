@@ -96,7 +96,7 @@ LEGACY_LONG_FILES = {
     "chitragupta/enrich/docling_parse.py",  # 542
     "chitragupta/overlap_index.py",  # 523
     "chitragupta/ledger.py",  # 502
-    "chitragupta/config.py",  # 447
+    "chitragupta/config.py",  # 453
     "chitragupta/retrieval.py",  # 432
     "chitragupta/references.py",  # 389
     "chitragupta/review/citation_provenance.py",  # 383

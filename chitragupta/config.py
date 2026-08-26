@@ -825,8 +825,8 @@ EMBEDDING_MODEL = _get(
 
 ENTAILMENT_MODEL = _get(
     "ENTAILMENT_MODEL",
-    "entailment",
-    "model",
+    "enrich",
+    "entailment_model",
     default="cross-encoder/nli-deberta-v3-small",
 )
 

@@ -169,8 +169,8 @@ how much a function *does* -- and is blind to how well it is explained. On
 that measure the codebase is in good shape: 26 offenders in `chitragupta/`, not
 128, and the tests hold the bar almost perfectly at 1 in 1926.
 
-The same correction applies to files: `chitragupta/config.py` is 934 physical
-lines and 447 lines of code, the difference being 487 lines of
+The same correction applies to files: `chitragupta/config.py` is 941 physical
+lines and 453 lines of code, the difference being 488 lines of
 per-setting rationale. The file rule counts code lines -- non-blank,
 non-comment -- for the same reason.
 
