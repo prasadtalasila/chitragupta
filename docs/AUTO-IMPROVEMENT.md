@@ -1,13 +1,15 @@
 # 🗺 The auto-improvement loop: what would be built
 
-Status: **specification of mostly unbuilt work.** Written 2026-08-11. Updated 2026-08-24;
-step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, and step 5 built narrow
-(verbatim runs only) in 5.7.0 -- see [Build order](#-build-order).
+Status: **specification of mostly unbuilt work.** Written 2026-08-11. Updated 2026-08-26;
+step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, step 4 in #381, and
+step 5 built narrow (verbatim runs only) in 5.7.0 -- see
+[Build order](#-build-order).
 
-`python -m chitragupta.review agenda` is not a command and no skill consumes
-anything below. Of the review aids, all six now emit JSON: `verbatim
-scan` as of 5.4.0 (#127), `provenance` and `coverage` as of 6.16.0 (#309),
-and `synthesis` and `uncited` from the day each landed (#341, #311).
+`python -m chitragupta.review agenda <draft>` is a command now (#381), though
+no skill consumes it yet -- that is step 5's widening, still open. Of the
+review aids, all seven now emit JSON: `verbatim scan` as of 5.4.0 (#127),
+`provenance` and `coverage` as of 6.16.0 (#309), `synthesis` and `uncited`
+from the day each landed (#341, #311), and `agenda` itself from #381.
 This document states *what* would be built and *what it must satisfy*, in
 the order it would be built.
 
@@ -96,7 +98,7 @@ it finds.
 
 - the six aids' `.json` for this draft -- each optional, and skipped
   with a note when absent;
-- `chitragupta.dossier.status(draft)`, for missing citekeys and candidates;
+- `chitragupta.dossier.drift(dossier_dir)`, for missing citekeys and candidates;
 - `rejected.md` -- a candidate already turned down with a reason is never
   re-proposed;
 - `sections.md`, so every item carries a section anchor.
@@ -303,8 +305,8 @@ sequence.
    `config.toml`), not version-controlled as first framed in
    [HOUSE-STYLE.md](HOUSE-STYLE.md); the constraints above (read-only to
    the loop, etc.) hold either way.*
-4. **`agenda`, one aid further.** New. Useful on its own the day it lands,
-   whether or not step 5 follows.
+4. **`agenda`, one aid further.** *Done in #381 -- useful on its own,
+   independently of whether step 5 follows.*
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect
    classes rather than verbatim runs alone. *Built narrow first, in
    5.7.0: `overlap-reviser` is #129 as filed, over the `verbatim-run`
@@ -326,7 +328,7 @@ sequence.
 7. **#130** -- the gating decision, last, tuned against real reports from
    step 5.
 
-Steps 4 and 5's widening are the only work left live. Steps 1, 2, 3 and 6
+Step 5's widening is the only work left live. Steps 1, 2, 3, 4 and 6
 are shipped, and step 7 (#130) is a closed, declined decision rather
 than an open issue -- see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
 

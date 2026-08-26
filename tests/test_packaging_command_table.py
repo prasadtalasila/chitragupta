@@ -50,7 +50,15 @@ DRAFT_SUBCOMMANDS = {
 DRAFT_FLAT_VERBS = {"gate", "references", "evidence", "render", "style"}
 
 REVIEW_SUBCOMMANDS = {"verbatim": {"overlap", "scan", "recheck", "locate"}}
-REVIEW_FLAT_AIDS = {"provenance", "coverage", "synthesis", "figure", "uncited", "quotation"}
+REVIEW_FLAT_AIDS = {
+    "provenance",
+    "coverage",
+    "synthesis",
+    "figure",
+    "uncited",
+    "quotation",
+    "agenda",
+}
 
 CORPUS_VERBS = {"sync", "ledger", "topics"}
 

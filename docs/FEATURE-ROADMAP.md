@@ -695,36 +695,10 @@ Its own status line is stale, which matters for anyone costing this:
 it says the `prose` class *"has no producer until #103 and #107 land"*,
 but [HOUSE-STYLE.md](HOUSE-STYLE.md) records #107 shipped in 5.13.0 and
 its automatic invocation (#183) in 5.19.0, and `chitragupta/style_check.py`
-carries `--json` today. **Build-order step 6 has shipped.** Steps 1, 2, 3 and
-6 are done, and step 7 (#130) is a closed, declined decision rather than
-an open issue; only step 4 and step 5's widening are the live work.
-
-### 🗒 F2: the `agenda` aid
-
-Step 4, and the largest genuinely new piece of the track. A fourth key
-in `review.AIDS`: deterministic, stdlib-only, no LLM, takes no lock,
-exits 0 whatever it finds. It reads the other seven aids' JSON plus the
-dossier's drift report and emits **one ranked, deduplicated worklist**
--- *"This cross-signal merge is the work no individual aid can do."*
-
-Seven item classes, of which **four are surfaced and never acted on**
-(`unsupported-claim`, `uncited-source`, `candidate` -- all judgement),
-one is unattended (`missing-citekey`), and two are partial
-(`verbatim-run` except the long runs reserved for a human; `prose` only
-where mechanically re-checkable).
-
-Two questions the document leaves open, and this roadmap does not close:
-whether `missing-citekey` should be acted on unattended at all, and how
-the agenda should behave on a draft with no dossier -- where *"refusing
-may be the right answer here even though no other aid refuses."*
-
-This roadmap adds a producer: C1 is either a
-seventh class or folds into `unsupported-claim`. Either way it is
-surfaced, not unattended.
-
-Size: L. Depends on: F1. Also wants #128's severity buckets, which
-shipped in 5.5.0 -- ordering is by class, then bucket, then position,
-and the stated risk is *"alarm fatigue, not correctness"*.
+carries `--json` today. **Build-order step 6 has shipped, and so has step
+4 (#381).** Steps 1, 2, 3, 4 and 6 are done, and step 7 (#130) is a
+closed, declined decision rather than an open issue; only step 5's
+widening is the live work.
 
 ### 🤖 F3: widen `overlap-reviser` into `agenda-reviser`
 
@@ -740,8 +714,8 @@ rebuild: the scan payload's `id` (R2's stable identity) and
 deterministic). [B5](#-b5-pre-gate-self-feedback-loop) in particular should
 take its acceptance test from here rather than from upstream.
 
-Size: L. Depends on: F2, and the amendment only for automation --
-person-triggered widening needs no amendment at all.
+Size: L. Depends on: F2 (shipped, #381), and the amendment only for
+automation -- person-triggered widening needs no amendment at all.
 
 ### ⚖ F4: the gating decision -- already answered
 
@@ -810,8 +784,8 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Ten items have shipped and have been
-removed from this document rather than marked -- what they became is
+**Only unbuilt work appears here.** Eleven items have shipped and have
+been removed from this document rather than marked -- what they became is
 described in [FEATURES.md](FEATURES.md), and how each was built is in the
 PR that closed it and in `plans/`. A roadmap that accumulates its own
 history stops being a list of what to do next, which is the only thing it
@@ -822,12 +796,11 @@ is for.
 | 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
 | 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
 | 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 4 | [F2](#-f2-the-agenda-aid) the `agenda` aid | F | L | F1 |
-| 5 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 6 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 |
-| 7 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
-| 8 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
-| 9 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 5 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 (shipped, #381) |
+| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
+| 7 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
+| 8 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).

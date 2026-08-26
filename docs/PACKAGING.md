@@ -140,6 +140,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta review figure <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review uncited <draft>` | `--genre`, `--json`, `--write`, `--formats` |
 | `chitragupta review quotation <draft>` | `--json`, `--write`, `--formats` |
+| `chitragupta review agenda <draft>` | `--json`, `--formats` |
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
@@ -147,17 +148,15 @@ command already has -- this is a front door, not a redesign.
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
-That is 4 layers and 22 verbs and aids (3 + 11 + 7 + 1), plus 3
-package-level commands, giving **47 invocable leaf commands**: 3 + 3 +
-(5 + 25) + (6 + 4) + 1. The counts are stated because a table is easy to
+That is 4 layers and 23 verbs and aids (3 + 11 + 8 + 1), plus 3
+package-level commands, giving **48 invocable leaf commands**: 3 + 3 +
+(5 + 25) + (7 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; #267 pins them with a test that
 walks the live parsers, so a verb added without a row here fails the
 suite.
 
-Two things are deliberately absent. `agenda` is described as unbuilt in
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) -- the strings in the tree are
-a proposal, not a command. And `chitragupta/sync.py` still carries a `__main__`
-block, which makes it look like a fifth entry point; it is a
+One thing is deliberately absent. `chitragupta/sync.py` still carries a
+`__main__` block, which makes it look like a fifth entry point; it is a
 **tombstone**, refusing with exit 64 because the corpus layer's old
 direct invocation was removed in 5.2.0. After the rename it must keep
 refusing, with its message updated to name the current command. This
