@@ -17,7 +17,7 @@ import types
 import pytest
 
 from chitragupta import config
-from chitragupta.enrich import embed_index
+from chitragupta.enrich import _rerank, embed_index
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -627,4 +627,211 @@ class TestSearchCapsPerSource:
         embed_index.search("query", k=5)
 
         assert collection.last_n_results > 5
-        assert collection.last_n_results == 5 * embed_index._OVERFETCH_MULTIPLIER
+        assert collection.last_n_results == 5 * config.EMBED_OVERFETCH_MULTIPLIER
+
+
+class TestSearchIsSizedByConfig:
+    """#380 moved all three of search()'s sizes into `config.toml`.
+    Each test here fails if one of them is read from a literal again."""
+
+    def make_response(self, hits):
+        return TestSearchCapsPerSource.make_response(self, hits)
+
+    def test_k_defaults_to_the_configured_top_k(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        monkeypatch.setattr(config, "EMBED_TOP_K", 2)
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 9)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response(
+            [("a2024", "A", f"chunk {i}", 0.1 * i) for i in range(5)]
+        )
+
+        assert len(embed_index.search("query")) == 2
+
+    def test_an_explicit_k_still_wins_over_the_configured_default(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        """The setting is a default, not a ceiling -- the CLI's --k and
+        every skill that names a k must still be honoured."""
+        monkeypatch.setattr(config, "EMBED_TOP_K", 2)
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 9)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response(
+            [("a2024", "A", f"chunk {i}", 0.1 * i) for i in range(5)]
+        )
+
+        assert len(embed_index.search("query", k=4)) == 4
+
+    def test_the_over_fetch_multiplier_is_configured_not_hardcoded(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        monkeypatch.setattr(config, "EMBED_OVERFETCH_MULTIPLIER", 7)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response([("a2024", "A", "chunk", 0.1)])
+
+        embed_index.search("query", k=3)
+
+        assert collection.last_n_results == 3 * 7
+
+
+class TestSearchReranks:
+    """Issue #380: a cross-encoder reorders the over-fetched passages
+    **before** the per-citekey cap, never after.
+
+    Every test here drives a **stub scorer** rather than a model. That is
+    the point, not a shortcut: what is under test is the position of the
+    rerank relative to the cap, and a real cross-encoder's judgement
+    would make the assertions depend on a downloaded model's opinion
+    instead of on the ordering this module controls.
+    """
+
+    def make_response(self, hits):
+        return TestSearchCapsPerSource.make_response(self, hits)
+
+    def stub_scorer(self, monkeypatch, by_snippet):
+        """Substitute a scorer whose ranking is known: `by_snippet` maps a
+        passage's text to the score the cross-encoder is to return."""
+        scorer = types.SimpleNamespace(
+            predict=lambda pairs: [by_snippet[snippet] for _query, snippet in pairs]
+        )
+        monkeypatch.setattr(_rerank, "_load_reranker", lambda _model_id: scorer)
+        return scorer
+
+    # The pool below is the one bench/bench_rerank_position.py's own
+    # self_check() plants, so the shipped behaviour and the benchmark
+    # that measured it are pinned against the same fixture.
+    POOL = [
+        ("a2024", "A", "chunk a1", 0.1),
+        ("a2024", "A", "chunk a2", 0.2),
+        ("a2024", "A", "chunk a3", 0.3),
+        ("b2024", "B", "chunk b1", 0.4),
+        ("c2024", "C", "chunk c1", 0.5),
+    ]
+    PROMOTES_C = {
+        "chunk c1": 9.0,
+        "chunk a3": 8.0,
+        "chunk a1": 3.0,
+        "chunk a2": 2.0,
+        "chunk b1": 1.0,
+    }
+
+    def test_a_promotion_changes_which_document_survives_the_cap(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        """The whole reason the rerank sits before the cap. Reranking
+        after it could only ever permute {A, A, B}; reranking before it
+        puts C in and pushes B out."""
+        monkeypatch.setattr(config, "RERANK", True)
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
+        self.stub_scorer(monkeypatch, self.PROMOTES_C)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response(self.POOL)
+
+        results = embed_index.search("query", k=3)
+
+        assert [r["citekey"] for r in results] == ["c2024", "a2024", "a2024"]
+
+    def test_the_rejected_order_is_not_what_ships(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        """Cap-then-rerank is the plausible mistake, and it is
+        distinguishable from the shipped order by the *set* of papers it
+        returns, not merely by their order -- which is why this asserts
+        on membership rather than on a permutation."""
+        monkeypatch.setattr(config, "RERANK", True)
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
+        self.stub_scorer(monkeypatch, self.PROMOTES_C)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response(self.POOL)
+
+        returned = {r["citekey"] for r in embed_index.search("query", k=3)}
+
+        assert returned == {"a2024", "c2024"}
+        assert returned != {"a2024", "b2024"}, (
+            "the reranker ran after the cap -- it can only have permuted the "
+            "chunks the bi-encoder already chose"
+        )
+
+    def test_reranking_off_is_the_default_and_leaves_the_order_alone(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        assert config.RERANK is False, "reranking must ship off"
+
+        def explode(_model_id):
+            raise AssertionError("a cross-encoder was constructed while rerank was off")
+
+        monkeypatch.setattr(_rerank, "_load_reranker", explode)
+        monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = self.make_response(self.POOL)
+
+        results = embed_index.search("query", k=3)
+
+        # Asserts the loader was never *called*, not merely that the
+        # output looks unchanged: keeping the suite free of a model
+        # download is the property, and it survives only if this fails
+        # loudly when someone makes the load eager.
+        assert [r["citekey"] for r in results] == ["a2024", "a2024", "b2024"]
+
+    def test_an_empty_pool_is_returned_untouched(self, isolated_config, monkeypatch):
+        def explode(_model_id):
+            raise AssertionError("scored an empty pool")
+
+        monkeypatch.setattr(_rerank, "_load_reranker", explode)
+        assert _rerank.rerank("query", []) == []
+
+
+class TestLoadReranker:
+    """The loader itself, which every test above substitutes."""
+
+    @pytest.fixture(autouse=True)
+    def clear_cache(self):
+        """`_load_reranker` is `lru_cache`d, so a model loaded (or a
+        failure raised) in one test would otherwise be served to the
+        next."""
+        _rerank._load_reranker.cache_clear()
+        yield
+        _rerank._load_reranker.cache_clear()
+
+    def test_a_model_that_will_not_load_raises_naming_the_key_and_the_model(self, monkeypatch):
+        def exploding_cross_encoder(model_id):
+            raise OSError(f"no such model: {model_id}")
+
+        fake_st = types.ModuleType("sentence_transformers")
+        fake_st.CrossEncoder = exploding_cross_encoder
+        monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
+
+        with pytest.raises(RuntimeError) as excinfo:
+            _rerank._load_reranker("nonexistent/model")
+
+        # Naming both is the whole point: silently falling back to
+        # un-reranked results would be invisible, since they look
+        # entirely normal.
+        assert "nonexistent/model" in str(excinfo.value)
+        assert "[enrich].rerank_model" in str(excinfo.value)
+        assert isinstance(excinfo.value.__cause__, OSError)
+
+    def test_the_model_is_constructed_once_and_cached(self, monkeypatch):
+        calls = []
+
+        def counting_cross_encoder(model_id):
+            calls.append(model_id)
+            return types.SimpleNamespace(predict=lambda pairs: [0.0] * len(pairs))
+
+        fake_st = types.ModuleType("sentence_transformers")
+        fake_st.CrossEncoder = counting_cross_encoder
+        monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
+
+        _rerank._load_reranker("some/model")
+        _rerank._load_reranker("some/model")
+
+        # A reranked drafting session makes many search() calls; paying
+        # the ~2s construction on each one would dwarf the rerank itself.
+        assert calls == ["some/model"]

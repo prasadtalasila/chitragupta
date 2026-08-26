@@ -1,0 +1,170 @@
+{
+ "n_queries": 20,
+ "repeats": 3,
+ "snippet_chars": 500,
+ "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+ "rows": [
+  {
+   "device": "cuda",
+   "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+   "pool": 5,
+   "rerank_ms_per_query": 5.75,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 1.46,
+   "model_load_ms": 1875.1
+  },
+  {
+   "device": "cuda",
+   "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+   "pool": 20,
+   "rerank_ms_per_query": 18.89,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 2.52,
+   "model_load_ms": 1860.5
+  },
+  {
+   "device": "cuda",
+   "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+   "pool": 50,
+   "rerank_ms_per_query": 41.17,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 4.31,
+   "model_load_ms": 1828.8
+  },
+  {
+   "device": "cuda",
+   "model": "cross-encoder/ms-marco-MiniLM-L12-v2",
+   "pool": 5,
+   "rerank_ms_per_query": 9.76,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 1.78,
+   "model_load_ms": 1838.4
+  },
+  {
+   "device": "cuda",
+   "model": "cross-encoder/ms-marco-MiniLM-L12-v2",
+   "pool": 20,
+   "rerank_ms_per_query": 34.32,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 3.76,
+   "model_load_ms": 1923.9
+  },
+  {
+   "device": "cuda",
+   "model": "cross-encoder/ms-marco-MiniLM-L12-v2",
+   "pool": 50,
+   "rerank_ms_per_query": 71.58,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 6.75,
+   "model_load_ms": 2046.5
+  },
+  {
+   "device": "cuda",
+   "model": "BAAI/bge-reranker-base",
+   "pool": 5,
+   "rerank_ms_per_query": 16.6,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 2.33,
+   "model_load_ms": 2916.4
+  },
+  {
+   "device": "cuda",
+   "model": "BAAI/bge-reranker-base",
+   "pool": 20,
+   "rerank_ms_per_query": 67.02,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 6.39,
+   "model_load_ms": 3525.8
+  },
+  {
+   "device": "cuda",
+   "model": "BAAI/bge-reranker-base",
+   "pool": 50,
+   "rerank_ms_per_query": 156.8,
+   "search_baseline_ms_per_query": 12.44,
+   "slowdown_x": 13.61,
+   "model_load_ms": 3457.4
+  },
+  {
+   "device": "cpu",
+   "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+   "pool": 5,
+   "rerank_ms_per_query": 40.72,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 1.92,
+   "model_load_ms": 1918.1
+  },
+  {
+   "device": "cpu",
+   "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+   "pool": 20,
+   "rerank_ms_per_query": 210.18,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 5.75,
+   "model_load_ms": 1817.5
+  },
+  {
+   "device": "cpu",
+   "model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+   "pool": 50,
+   "rerank_ms_per_query": 513.86,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 12.62,
+   "model_load_ms": 1777.7
+  },
+  {
+   "device": "cpu",
+   "model": "cross-encoder/ms-marco-MiniLM-L12-v2",
+   "pool": 5,
+   "rerank_ms_per_query": 100.54,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 3.27,
+   "model_load_ms": 1882.5
+  },
+  {
+   "device": "cpu",
+   "model": "cross-encoder/ms-marco-MiniLM-L12-v2",
+   "pool": 20,
+   "rerank_ms_per_query": 401.68,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 10.08,
+   "model_load_ms": 1871.1
+  },
+  {
+   "device": "cpu",
+   "model": "cross-encoder/ms-marco-MiniLM-L12-v2",
+   "pool": 50,
+   "rerank_ms_per_query": 856.33,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 20.36,
+   "model_load_ms": 1879.5
+  },
+  {
+   "device": "cpu",
+   "model": "BAAI/bge-reranker-base",
+   "pool": 5,
+   "rerank_ms_per_query": 170.15,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 4.85,
+   "model_load_ms": 2590.8
+  },
+  {
+   "device": "cpu",
+   "model": "BAAI/bge-reranker-base",
+   "pool": 20,
+   "rerank_ms_per_query": 1001.4,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 23.64,
+   "model_load_ms": 2723.9
+  },
+  {
+   "device": "cpu",
+   "model": "BAAI/bge-reranker-base",
+   "pool": 50,
+   "rerank_ms_per_query": 2202.14,
+   "search_baseline_ms_per_query": 44.24,
+   "slowdown_x": 50.78,
+   "model_load_ms": 2677.2
+  }
+ ]
+}

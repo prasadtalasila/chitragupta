@@ -36,6 +36,8 @@ if it is obvious which is which, so:
 | [2026-08-16: retrieval and reranking, against real drafting judgments](#2026-08-16-retrieval-and-reranking-against-real-drafting-judgments) | **Current** | Arm B of #194. A different question than the section above: not "which embedding model does tier 3 agree with most", but "which retrieval configuration finds the citekey a real drafting session cited", scored against 48 real (query, citekey) pairs. **BM25 outright wins** every row here, dense+rerank and the SPECTER2 cascade included |
 | [2026-08-16: retrieval quality against what a drafting session actually logged](#2026-08-16-retrieval-quality-against-what-a-drafting-session-actually-logged) | **Current** | Same nine rows as the section above, a different ground truth: 96 real `search`-mode queries logged live by `retrieval.md` across all 15 chapters, scored against each chapter's real kept-citekey set rather than a reconstructed single-citekey pair. **BM25 still wins on nDCG@5**, but SPECTER2 standalone has the best recall@5 here, and reranking is not uniformly helpful -- it actively hurts `all-MiniLM-L6-v2`. Its nDCG numbers are **not comparable in magnitude** to the section above's -- see the section's own methodological note before quoting one against the other |
 | [2026-08-16: retrieval quality with a ground truth no retrieval method built](#2026-08-16-retrieval-quality-with-a-ground-truth-no-retrieval-method-built) | **Current** | A fairness correction, not a third opinion: the two sections above both score against citekeys a session *kept after BM25 surfaced them* -- a paper dense retrieval found that BM25 never showed a human has no way to score as a hit. This section's ground truth comes from neither: 256 real bib entries' own author-assigned keywords, query = the keywords, correct answer = that entry itself. **BM25 still wins outright** (recall@5 0.80, nDCG@5 0.73, the highest of any row in any of these three sections) -- the strongest evidence yet that the win is real, not an artifact of who built the test. But the SPECTER2 cascade, the worst row in both sections above, is here the **second-best row overall**, beating every standalone dense/rerank row -- read as a property of this section's self-retrieval task favouring paper-level similarity, not a bug fixed in the cascade's own code, which is unchanged from the sections above |
+| [2026-08-26: where a cross-encoder rerank sits, relative to the per-citekey cap](#2026-08-26-where-a-cross-encoder-rerank-sits-relative-to-the-per-citekey-cap) | **Current** | Planning input for #380 (roadmap B4), at the shipped pipeline's own shape -- chunks, cap 3, pool 20 -- which none of the three sections above measure (they collapse to one chunk per paper over a pool of 50, which is a cap of 1 applied after the rerank). **The cap position is strongly observable**: moving the rerank across the cap changes which papers survive on 217 of 256 queries, and #380's stated order is the better one. But reranking is a **wash for finding the right paper** (recall@5 identical at 156/256; the answer is lost 20x and gained 20x), it does **not** move `distinct@5` at all -- so B4 does not unblock #310 -- and **reranking BM25 does not help either**, which answers the open question the first of those sections left. All three findings were re-run against `ms-marco-MiniLM-L12-v2` and `BAAI/bge-reranker-base` and survive the change of reranker |
+| [2026-08-26b: what cross-encoding the over-fetched passages costs](#2026-08-26b-what-cross-encoding-the-over-fetched-passages-costs) | **Current** | The cost half of #380, which the section above deliberately left unmeasured. At the shipped pool of 20 the cheapest reranker makes an `embed_index.search()` call **2.5x** more expensive on a GPU and **5.75x** on a CPU; `bge-reranker-base`, the quality winner above, costs a full **second per call on CPU**. Read beside that section's "recall@5 unchanged", this is what makes `rerank = false` the only defensible default |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -3462,3 +3464,317 @@ unrecoverable. #254 is the fix.
   of the misses" is not separable from "a second pass finds more
   regardless of the first pass's scope".
 - **Run-to-run variance.** One agent per condition, one run each.
+
+## 2026-08-26: where a cross-encoder rerank sits, relative to the per-citekey cap
+
+Planning input for #380 (roadmap B4), run before any of that issue's code
+was designed. #380 says the interesting part is not the library call but
+**where the rerank sits**: over-fetch, then rerank, then cap per citekey,
+then truncate to `k` -- because reranking after the cap orders a list
+whose composition the bi-encoder already decided. This section measures
+whether that distinction is observable on real queries, and what
+reranking buys at the shipped pipeline's own shape.
+
+### Why the existing rows could not answer this
+
+[The 2026-08-16 sections above](#2026-08-16-retrieval-and-reranking-against-real-drafting-judgments)
+already score "a dense drop-in, alone and reranked", and they are not
+being re-run or contradicted here. They cannot settle #380's question,
+for a reason worth stating before anyone quotes them at it: those rows
+pool 50 chunks, rerank, then `collapse_to_citekeys(...)[:5]`. Collapsing
+the whole pool to distinct papers **is** a per-citekey cap of 1, applied
+*after* the rerank, over a pool 2.5x deeper than the shipped one. The
+shipped `embed_index.search()` returns **chunks**, caps at
+`embed_max_passages_per_source` (3), and over-fetches `k * 4` = 20. A cap
+of 1 over 50 and a cap of 3 over 20 can disagree about which document
+survives, which is exactly what #380 asks about.
+
+### The arms
+
+`bench/bench_rerank_position.py`, five arms over one query set:
+
+| Arm | Order |
+| --- | --- |
+| 1 dense-shipped | pool -> cap -> truncate (`embed_index.search()` today) |
+| 2 dense +rerank **before** cap | pool -> rerank -> cap -> truncate (**#380's stated order**) |
+| 3 dense +rerank **after** cap | pool -> cap -> truncate -> rerank (the order #380 rejects) |
+| 4 bm25-shipped | `retrieval.search(k)` -- what the genre skills actually call |
+| 5 bm25 over-fetch +rerank | `retrieval.search(k*4)` -> rerank -> `k` |
+
+Arm 5 is the row the 2026-08-16 section's own "What this does not
+measure" names as missing -- *"whether reranking BM25's own top-K would
+beat everything in this table is a real, untested combination"*.
+
+`cap_and_truncate` is `embed_index.search()`'s cap loop lifted out
+verbatim, so the three dense arms differ *only* in where `rerank` is
+applied; `assert_replication_matches_shipped` asserts on real queries
+that arm 1 reproduces `embed_index.search()` exactly, so no arm can
+quietly measure a reimplementation that drifted.
+
+### The ground truth, and why this one
+
+`bench_retrieval_keyword_selfretrieval.py`'s 256 pairs, imported rather
+than rebuilt: query = a bib entry's own author-assigned `keywords`,
+correct answer = that entry itself. Chosen over the 48-pair drafting
+ground truth because it needs only `bibliography.bib` and the synced
+ledger -- no restored book, no rejoin -- and because no retrieval method
+built it. Host and corpus as the sections above: 642 ledger items, 497
+parsed, `content/chroma/` at 40,741 chunks,
+`sentence-transformers/all-mpnet-base-v2`, `k` = 5, cap = 3, reranker
+`cross-encoder/ms-marco-MiniLM-L6-v2`.
+
+### The table
+
+| row | n | recall@3 | recall@5 | nDCG@5 | distinct@5 |
+|---|---|---|---|---|---|
+| 1 dense-shipped (pool -> cap -> k) | 256 | 0.5039 | 0.6094 | 0.4949 | 3.590 |
+| 2 dense +rerank **before** cap (#380) | 256 | **0.5430** | 0.6094 | **0.5281** | 3.574 |
+| 3 dense +rerank **after** cap | 256 | 0.5273 | 0.6094 | 0.4962 | 3.590 |
+| 4 bm25-shipped (`retrieval.search`) | 256 | **0.7695** | **0.8047** | **0.7321** | **5.000** |
+| 5 bm25 over-fetch +rerank -> k | 256 | 0.7500 | 0.7930 | 0.6886 | 5.000 |
+
+`recall@3` and `distinct@5` are here because they, not `recall@5`, are
+what #380's motivating claim is about -- "better-ordered passages mean
+fewer passages are needed", and "fewer passages per source is what makes
+multi-source units reachable". No existing row measures either.
+
+### Is the cap position observable at all? Yes, and strongly
+
+Arm 2 against arm 3: **217 of 256 queries (84.8%) return a different set
+of papers**, and a further 20 differ only in order. So #380's concern is
+not theoretical on this corpus -- moving the rerank across the cap
+changes *which documents* survive on five queries in six.
+
+**Arm 2 is also the better of the two orders**, which is the first thing
+here that supports the issue as written: nDCG@5 0.5281 against 0.4962,
+recall@3 139/256 against 135/256. The order #380 specifies is the one to
+build, and now for a measured reason rather than only an argued one.
+
+### But the churn is a wash for finding the right paper
+
+Arm 1 against arm 2 is the same 217/256 set churn -- and **recall@5 is
+bit-identical at 156/256**. The reason is not that the benchmark cannot
+see the effect; it is that the effect cancels. The correct paper is
+**lost 20 times and gained 20 times**. Reranking is genuinely swapping
+right answers out and in, in equal number.
+
+That distinction was worth spending a second run on, because an
+unchanged recall beside an 85% set change has two readings that lead to
+opposite plans -- the swaps traded evenly, or the churn never touched
+the answer -- and only one of them is a finding. The pool-rank profile
+confirms the metric has room to see it: the correct paper sits at
+**median rank 2** in the 20-chunk pool, at rank 1 for only 92 of 256, in
+the top 3 for 141, beyond rank 5 for 24, and **absent from the pool
+entirely for 69 (27%)**. It is not a benchmark whose answer is always at
+rank 1.
+
+Where reranking does pay is shallower in the list: **recall@3 rises from
+129/256 to 139/256, ten queries.** That is the one place "fewer passages
+are needed" gets support, and it is modest.
+
+The 27% absent figure sets a ceiling worth recording separately: dense
+retrieval's best possible recall@5 here is 187/256 (0.7305) no matter
+what reranks it, because the other 69 answers never enter the pool. The
+shipped arm reaches 156. A deeper `_OVERFETCH_MULTIPLIER` is a different
+lever than a reranker, and this section does not test it.
+
+### `distinct@5` does not move, and that is the clearest result
+
+3.590 -> 3.574 is **four slots across 256 queries**. Zero, not "slightly
+worse".
+
+It is worth seeing why this is structural rather than a near-miss. With
+cap = 3 and `k` = 5, `distinct@5` can only lie in {2, 3, 4, 5}, and the
+cap is what puts it there. Reranking reshuffles *within* the same cap
+regime, so it cannot change source diversity; only
+`embed_max_passages_per_source` or `k` can. **B4 therefore does not
+unblock #310's multi-source units**, which is the compounding claim
+#380 leads with. That conclusion does not depend on the lost/gained
+question above.
+
+### Reranking the retriever that actually wins does not help either
+
+Arm 4 against arm 5 answers the 2026-08-16 section's own open question.
+Stated as query counts, because the rate differences are small: recall@5
+206 -> 203 (**three queries**), recall@3 197 -> 192 (**five queries**).
+Those are too small to call a regression. The ordering metric is the
+only clear signal, and it moves against reranking: **nDCG@5 0.7321 ->
+0.6886**. The correct paper is lost 15 times and gained 12.
+
+So: no improvement from reranking BM25, and the one metric with a clear
+direction is negative.
+
+BM25 also holds `distinct@5` at a perfect 5.000 by construction -- it is
+one result per citekey (#305), so it has no cap-position question to
+answer at all.
+
+### Three rerankers, because one model is not a finding
+
+Every number above is `cross-encoder/ms-marco-MiniLM-L6-v2`, trained on
+MS MARCO web search rather than on scientific prose -- so "reranking is
+a wash" was, on that run alone, entangled with "this reranker is out of
+domain". `--rerank-model` exists to separate the two. Two more
+candidates, same 256 queries, same arms:
+
+Arm 2 (dense, reranked before the cap), against arm 1's un-reranked
+baseline of recall@3 129/256, recall@5 156/256, nDCG@5 0.4949,
+`distinct@5` 3.590:
+
+| reranker | recall@3 | recall@5 | nDCG@5 | distinct@5 | lost / gained |
+|---|---|---|---|---|---|
+| *(none -- arm 1 baseline)* | 129 | 156 | 0.4949 | 3.590 | -- |
+| `cross-encoder/ms-marco-MiniLM-L6-v2` | 139 | 156 | **0.5281** | 3.574 | 20 / 20 |
+| `cross-encoder/ms-marco-MiniLM-L12-v2` | 138 | 152 | 0.5107 | 3.570 | 22 / 18 |
+| `BAAI/bge-reranker-base` | **144** | **157** | 0.5175 | 3.531 | 16 / 17 |
+
+**The confound is resolved, and the conclusion survives it.**
+`bge-reranker-base` is a strong general-purpose reranker from a
+different training lineage, and it moves recall@5 by **one query**, from
+156 to 157. `ms-marco-MiniLM-L12-v2` -- the larger sibling of the
+default -- moves it *down* four. Whatever reranking is doing here, no
+reranker in this set makes the dense path find papers it was not already
+finding.
+
+**What all three do agree on** is the shallow-ordering gain: recall@3
+rises for every one of them, by 9, 10 and 15 queries. That is the real
+effect, and it is consistent across models.
+
+**And none of them moves `distinct@5`** -- 3.590 -> 3.574, 3.570, 3.531.
+All three drift very slightly *down*, none by enough to matter. The
+structural argument above says why: the cap, not the ordering, sets
+source diversity.
+
+**Reranking BM25 gets worse the stronger the reranker is**, which is the
+one pattern here worth flagging as odd rather than explaining. Arm 5's
+nDCG@5: 0.6886 (L6), 0.6800 (L12), 0.6533 (bge), against arm 4's
+un-reranked 0.7321; recall@5 203, 199, 196 against 206. With three
+points this is a direction, not a law -- but the direction is that a
+better cross-encoder damages BM25's ordering *more*, and no candidate
+came close to leaving it alone. Whatever BM25 is ranking on for these
+keyword queries, a cross-encoder over a 500-character window disagrees
+with it, and is wrong to.
+
+One architecture note, because `docs/CONFIG.md` warns about this family
+for the *embedding* slot: `BAAI/bge-reranker-base` is
+`XLMRobertaForSequenceClassification` with `num_labels=1`, scoring a
+`(query, passage)` pair jointly in a single forward pass, exactly as
+`ms-marco-MiniLM-L6-v2` (`BertForSequenceClassification`,
+`num_labels=1`) does. CONFIG.md's `"query: "` / `"passage: "` prefix
+warning is about bi-encoders, which encode the two sides independently
+and need a role marker. It does **not** carry over to the reranker, and
+no prefix was added for it here.
+
+### What this does not measure
+
+- **A second ground truth.** One query set, and a self-retrieval one:
+  its task rewards paper-level similarity, the same property [the
+  2026-08-16 keyword section](#2026-08-16-retrieval-quality-with-a-ground-truth-no-retrieval-method-built)
+  already notes lifted the SPECTER2 cascade there. Direction, not
+  magnitude, is what should be quoted from this table.
+- **Arm 2 and arm 5 are not apples-to-apples.** Arm 5 hands the
+  cross-encoder BM25's `_snippet()` output -- query-term-anchored
+  windows -- while arm 2 hands it raw chunk prefixes (`doc[:500]`). The
+  reranker is scoring differently-shaped text in the two arms. Compare
+  each against its own un-reranked baseline; do not read arm 5 against
+  arm 2.
+- **Wall clock.** No arm is timed. A reranker's cost per query is a real
+  input to whether it is affordable in a drafting loop, and it is not
+  measured here.
+- **A deeper pool, or a different cap.** `_OVERFETCH_MULTIPLIER` = 4 and
+  cap = 3 throughout, both at their shipped values.
+- **Precision.** As every retrieval section here: a plausible substitute
+  paper in the top 5 counts as a miss, the same as an irrelevant one.
+
+### Reproducing
+
+```bash
+CHITRAGUPTA_PROJECT=/workspace /workspace/.venv-full/bin/python \
+    bench/bench_rerank_position.py --tag 2026-08-26-rerank-position
+
+# The other two rerankers in the sweep above.
+for m in cross-encoder/ms-marco-MiniLM-L12-v2 BAAI/bge-reranker-base; do
+    CHITRAGUPTA_PROJECT=/workspace /workspace/.venv-full/bin/python \
+        bench/bench_rerank_position.py --rerank-model "$m" \
+        --tag "2026-08-26-rerank-position-$(basename "$m")"
+done
+```
+
+Read-only against `content/`; writes only
+`bench/results/<tag>/rerank_position.json`.
+
+## 2026-08-26b: what cross-encoding the over-fetched passages costs
+
+The section above measures whether reranking helps. It does not time
+anything, and `plans/b4-cross-encoder-rerank.md` was blocked on cost: a
+reranker runs inside a drafting loop, once per `search()` call, so
+affordability is decided by *added latency per call*, not by the model's
+size on disk.
+
+`bench/bench_rerank_cost.py`. 20 real queries x up to 50 real passages
+(500 chars each, the shipped `snippet_chars`), median of 3 passes after
+an untimed warm-up. The baseline is the shipped `embed_index.search()`
+path -- query encode plus Chroma query -- timed **in the same process on
+the same device**, so both halves of every ratio come from one run.
+
+| device | baseline `search()` |
+|---|---|
+| cuda | 12.4 ms/query |
+| cpu | 44.2 ms/query |
+
+Rerank cost, and what it does to a search call:
+
+| device | reranker | pool 5 | pool 20 (shipped) | pool 50 |
+|---|---|---|---|---|
+| cuda | `ms-marco-MiniLM-L6-v2` | 5.7 ms (1.46x) | **18.9 ms (2.52x)** | 41.2 ms (4.31x) |
+| cuda | `ms-marco-MiniLM-L12-v2` | 9.8 ms (1.78x) | 34.3 ms (3.76x) | 71.6 ms (6.75x) |
+| cuda | `BAAI/bge-reranker-base` | 16.6 ms (2.33x) | 67.0 ms (6.39x) | 156.8 ms (13.61x) |
+| cpu | `ms-marco-MiniLM-L6-v2` | 40.7 ms (1.92x) | **210.2 ms (5.75x)** | 513.9 ms (12.62x) |
+| cpu | `ms-marco-MiniLM-L12-v2` | 100.5 ms (3.27x) | 401.7 ms (10.08x) | 856.3 ms (20.36x) |
+| cpu | `BAAI/bge-reranker-base` | 170.2 ms (4.85x) | 1001.4 ms (23.64x) | 2202.1 ms (50.78x) |
+
+Model construction, paid once per process by a lazy loader: 1.8-2.0 s
+for either MiniLM, 2.6-3.5 s for `bge-reranker-base`.
+
+**At the shipped pool of 20, the cheapest reranker makes a search call
+2.5x more expensive on a GPU and 5.75x on a CPU.** Read that against
+what the section above found it buys: recall@5 unchanged, `distinct@5`
+unchanged, recall@3 up ten queries in 256. This is the number that turns
+"default off" from a courtesy into the only defensible setting.
+
+**The quality winner and the cost winner are not the same model, and the
+gap is not small.** `bge-reranker-base` had the best recall@3 and
+recall@5 above; here it is **3.5x** the cost of `ms-marco-MiniLM-L6-v2`
+on a GPU and **4.8x** on a CPU. For five extra correct answers in 256, on
+one document-level ground truth, that is not a trade this measurement
+supports.
+
+**CPU is where this decides itself.** The `enrich` extra installs torch
+either way and nothing requires a GPU, so a laptop drafting session with
+`bge-reranker-base` would pay **one full second per search call**, and
+over 2 seconds if anyone widened the pool. A genre skill issues many
+searches per draft.
+
+**Pool depth is superlinear-ish in practice.** 5 -> 20 -> 50 costs
+roughly 1x -> 3.3x -> 7.2x (cuda, L6), so "just over-fetch deeper so the
+reranker has more to work with" -- the obvious response to the 27% of
+correct papers that never enter the pool -- is the most expensive knob
+here, not a free one.
+
+### What this does not measure
+
+- **Batching across queries.** Every timing scores one query's pairs per
+  `predict()` call, which is what `search()` would do. A caller reranking
+  many queries at once would amortise better, and no skill does.
+- **Throughput under contention.** One process, one idle GPU. A parallel
+  sync or a second session is not modelled.
+- **Quantised or ONNX runtimes**, which are the standard answer to
+  cross-encoder latency and would change every row here.
+- **This host only.** One CPU, one GPU model. The ratios travel better
+  than the absolute figures, which is why the ratio is the headline.
+
+### Reproducing
+
+```bash
+CHITRAGUPTA_PROJECT=/workspace /workspace/.venv-full/bin/python \
+    bench/bench_rerank_cost.py --tag 2026-08-26-rerank-cost
+```
