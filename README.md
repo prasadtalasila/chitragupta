@@ -78,10 +78,11 @@ conscience:
   evidence, rejected candidates, a revision log -- and read back to
   change it. That is why a draft is never revised by re-running the
   skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
-- **The review layer** is seven advisory aids for a finished draft:
+- **The review layer** is eight advisory aids for a finished draft:
   provenance, verbatim, coverage, synthesis, figure layout, uncited
-  prose and quotation integrity. None of them is a gate -- not even
-  `quotation`, whose answer is binary -- which is not the same as
+  prose, quotation integrity, and agenda -- one ranked, deduplicated
+  worklist merged across the other seven. None of them is a gate -- not
+  even `quotation`, whose answer is binary -- which is not the same as
   borrowed wording being fine to leave once you have found it
   ([docs/REVIEW.md](docs/REVIEW.md)).
 
@@ -183,7 +184,7 @@ chitragupta corpus ledger
 ```
 
 Every command that chain runs, every way to re-run one by hand, and all
-six review-layer commands for checking a finished draft against its
+eight review-layer commands for checking a finished draft against its
 sources are in
 [docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
 step](docs/CLI.md#-the-full-first-run-step-by-step), which walks the whole

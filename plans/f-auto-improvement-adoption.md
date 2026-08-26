@@ -3,6 +3,14 @@
 Status: **decisions recorded, developer half designed.** Written
 2026-08-21.
 
+**#381 closed "Still open" items 2 and 3 below** (`missing-citekey` is
+unattended; a draft with no dossier gets a reduced source set rather
+than a refusal) when it built F2, the `agenda` aid -- see that section
+for the answers as shipped. Item 1 is also moot now: the `prose` class
+producer (#107/#183) landed before #381 did, so its contribution to N
+was never actually zero-by-construction the way this item assumed. The
+developer-side loop this plan is otherwise about remains unbuilt.
+
 **This document does not restate [Theme F](../docs/FEATURE-ROADMAP.md).**
 F1--F4 already carry the drafting loop's adoption -- `--json` on the
 other two aids, the `agenda` aid, widening `overlap-reviser` into
@@ -329,20 +337,19 @@ and the three-pass bound could begin to bind for real. The bound is
 therefore a **named constant**, and re-measuring it is an acceptance
 criterion for whichever of #103/#107 lands second.
 
-**2. Should `missing-citekey` be acted on unattended at all?**
-[F2](../docs/FEATURE-ROADMAP.md#-f2-the-agenda-aid) raises this and
-explicitly does not close it. The item-class table above inherits
-`AUTO-IMPROVEMENT.md`'s "yes", and that inheritance is an assumption
-rather than a decision -- flagged here so it is not mistaken for one. It
-is the smaller of the two unattended classes (6 findings across all 21
-dossiers), so deciding it either way changes little in practice and
-should be decided on its merits rather than by default.
+**2. Should `missing-citekey` be acted on unattended at all?** *Closed
+by #381, decided yes.* This raised the question and, at the time this
+plan was written, explicitly did not close it -- `AUTO-IMPROVEMENT.md`'s
+"yes" was inherited as an assumption rather than a decision. It was the
+smaller of the two unattended classes (6 findings across all 21
+dossiers), decided on its own merits rather than by default.
 
-**3. How should the agenda behave on a draft with no dossier?** Also
-F2's, also open. The roadmap quotes the live possibility that *"refusing
-may be the right answer here even though no other aid refuses"* -- which
-would make the agenda the one aid that can decline to run, and that is a
-departure from the layer's posture worth deciding deliberately.
+**3. How should the agenda behave on a draft with no dossier?** *Closed
+by #381: a reduced source set, not a refusal.* The roadmap had quoted the
+live possibility that *"refusing may be the right answer here even
+though no other aid refuses"* -- decided against, so `agenda` keeps the
+layer's "exit 0 whatever it finds" posture rather than becoming the one
+aid that can decline to run.
 
-Items 2 and 3 belong to F2 and are recorded here only so this document
-does not read as though it closed them.
+Items 2 and 3 belonged to F2 and were recorded here only so this document
+did not read as though it had closed them; both are now closed, by #381.

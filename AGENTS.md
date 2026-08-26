@@ -195,12 +195,16 @@ enrichment layer is optional and nothing above it needs it.
   `chitragupta/review/synthesis.py`,
   `chitragupta/review/figure_layout/`,
   `chitragupta/review/uncited_prose.py`,
-  `chitragupta/review/quotation.py`): read over
+  `chitragupta/review/quotation.py` and
+  `chitragupta/review/agenda/`): read over
   a finished draft -- by you, or by a skill that runs one on your
   behalf. Never a gate. Each reads a draft plus
   the corpus -- or, for `figure_layout`, the figures the draft
-  references, and for `uncited_prose`, nothing beyond the draft itself --
-  and produces **evidence for a human judgement, never a
+  references, for `uncited_prose`, nothing beyond the draft itself, for
+  `quotation`, the dossier's own quoted spans, or for `agenda`, the
+  other seven aids' own reports, the drafting layer's prose check, and
+  the dossier's drift report, merged into one ranked worklist -- and
+  produces **evidence for a human judgement, never a
   verdict** -- every one exits 0 whether it finds something or not, and
   none may block a draft. Don't promote one to a gate --
   [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the

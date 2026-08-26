@@ -29,6 +29,7 @@ short path; this is the full set.
   - [`chitragupta draft evidence`](#-chitragupta-draft-evidence)
   - [`chitragupta draft dossier`](#-chitragupta-draft-dossier)
   - [`chitragupta draft retrieve`](#-chitragupta-draft-retrieve)
+  - [`chitragupta review agenda`](#-chitragupta-review-agenda)
   - [`chitragupta review coverage`](#-chitragupta-review-coverage)
   - [`chitragupta review figure`](#-chitragupta-review-figure)
   - [`chitragupta review provenance`](#-chitragupta-review-provenance)
@@ -136,7 +137,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all six aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all eight aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -302,6 +303,7 @@ chitragupta review synthesis content/drafts/<slug>.md            # how many sour
 chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
 chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
+chitragupta review agenda content/drafts/<slug>.md               # merges the other seven into one ranked worklist
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -383,6 +385,7 @@ python -m chitragupta.review synthesis content/drafts/<slug>.md
 python -m chitragupta.review figure content/drafts/<topic>/<slug>.md
 python -m chitragupta.review uncited content/drafts/<slug>.md
 python -m chitragupta.review quotation content/drafts/<slug>.md
+python -m chitragupta.review agenda content/drafts/<slug>.md
 ```
 
 ### 📦 Migrating a checkout to `pip install`
@@ -882,11 +885,55 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
+### 🗺 `chitragupta review agenda`
+
+One ranked, deduplicated worklist merged across the other seven aids'
+`.json`, `chitragupta.draft style --json`'s prose findings, and the
+dossier's drift report. Layer 4, the review layer: advisory, not a gate,
+and it **reads, never runs, an aid** -- an aid's `.json` that does not
+exist yet is named as absent in the header, not computed on the fly. A
+draft with no dossier still produces an agenda; `missing-citekey` and
+`candidate` are simply absent from it, and the header says why.
+
+Every item carries a `class` from the item-class table
+([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)), a section anchor where one
+applies, and whether it is `unattended` -- safe for a future automated
+pass to act on without asking first (`missing-citekey`, and the short
+runs a verbatim scan finds) -- or merely surfaced for a person to decide
+(everything judgement-shaped: `unsupported-claim`, `uncited-source`,
+`uncited-claim`, `candidate`, and the mechanically re-checkable subset of
+`prose`).
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The Markdown draft to check |
+| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report; `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--json` | off | Print the worklist as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
+
+```bash
+chitragupta review agenda content/drafts/survey.md
+# chitragupta review agenda content/drafts/survey.md --formats md
+# chitragupta review agenda content/drafts/survey.md --json > agenda.json
+```
+
+**`--json`** carries the same envelope every review aid's JSON does, plus
+`sources` (`available`/`stale` per aid, `available`/`partial` for the
+prose check, `available`/`corpus_available` for the dossier drift) and
+one `items` object per worklist entry -- `id`, `class`, `section`,
+`citekey`, `line`, `unattended`, `summary` and a `detail` object whose
+shape is specific to the class. An additional serialisation of what
+`render_markdown` already prints, never a second computation. Like
+[`provenance`](#-chitragupta-review-provenance), the `.json` (and the
+`.md`) is filed unconditionally -- there is no `--write` flag -- and
+`--json` only decides whether the worklist is *also* printed to stdout,
+with the written-files summary moving to stderr in that case.
+
 ### 📐 `chitragupta review figure`
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate** -- it exits 0 whatever it finds -- and like
-the other five aids nothing it reports can block a draft.
+the other seven aids nothing it reports can block a draft.
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
 reaches only the part of that checklist geometry can decide.
 
@@ -1044,8 +1091,8 @@ never a second computation.
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
 
-Unlike the other five it writes by default -- reading a provenance report
-in a terminal was never the point. The report lands in
+Like `agenda`, and unlike the rest, it writes by default -- reading a
+provenance report in a terminal was never the point. The report lands in
 `content/review/<topic>/<stem>.provenance.md`, mirroring the draft's path,
 with its `.tex`/`.pdf` renders and its `.json` sibling beside it, all
 filed whether or not `--json` is given.
@@ -1070,8 +1117,9 @@ Markdown report -- `id`, `line`, `citekey`, `claim`, `score`, `band`,
 `passage` (`page`/`quotable`/`text`, `null` when nothing matched) and
 `note` (why a source was unreadable, when one was). An additional
 serialisation of what `render_markdown` already prints, never a second
-computation. Unlike the other five aids, the `.json` is filed
-unconditionally -- matching the `.md`'s own always-write policy -- and
+computation. Unlike the other six gated behind `--write`, the `.json`
+is filed unconditionally -- matching the `.md`'s own always-write
+policy, the same one `agenda` follows -- and
 `--json` only decides whether it is *also* printed to stdout, with the
 written-files summary moving to stderr in that case.
 
@@ -1154,8 +1202,8 @@ prose-side question, and it is the one nothing answered before:
 [`coverage`](#-chitragupta-review-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
-finds**, and it blocks no draft. Alone among the seven aids it reads
-no corpus: no ledger, no sync, no `enrich` extra, only the draft.
+finds**, and it blocks no draft. Alone among the aids it reads no
+corpus directly: no ledger, no sync, no `enrich` extra, only the draft.
 
 **Most of a draft carries no citation, and most of that is fine.** So
 the report's real work is what it declines to raise. Two things narrow
@@ -1305,7 +1353,7 @@ technique and its literature sources.
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other five review aids. `0` on every
+**Exit codes**, shared with the other seven review aids. `0` on every
 successful invocation, findings or not: these are advisory, never a gate.
 That includes `recheck` -- a draft that got worse still exits 0.
 
@@ -1439,11 +1487,12 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All six review aids emit one now (#309, #341, #314, #311) -- `provenance` and `coverage`
-follow the same envelope, above. [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
-planned `agenda` aid still treats each aid's JSON as optional, though: not
-every draft has had every aid run against it, and `coverage`'s sibling is
-only ever filed under `--write`.
+All eight review aids emit one now (#309, #341, #314, #311, #416, #381) --
+`provenance` and `coverage` follow the same envelope, above.
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s `agenda` aid treats each other
+aid's JSON as optional rather than required, though: not every draft has
+had every aid run against it, and `coverage`'s sibling is only ever filed
+under `--write`.
 
 **`recheck`, and what it is for.** `scan` says what a draft borrows.
 `recheck` says what changed since a particular scan. That is the question

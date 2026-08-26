@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
 Status: **reference.** Written 2026-08-22. Updated 2026-08-26, describing the
-seven aids as they stand.
+eight aids as they stand.
 
 **Written for** you, after a draft is finished -- someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also **take no lock**, so any of them runs happily while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## 🧩 The seven aids
+## 🧩 The eight aids
 
 **`review provenance` -- does the cited paper actually say this?** The
 gate answers "is this citekey real?" exactly, and that is all it can
@@ -136,6 +136,19 @@ project carries a `quote:` yet, because A2's contract makes one a
 deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
+**`review agenda` -- one ranked, deduplicated worklist across the other
+seven.** Each of the aids above answers its own question in isolation;
+this one reads what they already wrote (each optional -- an aid that
+never ran is named as absent, not treated as clean), plus the drafting
+layer's prose check and the dossier's drift report, and merges them into
+one ordered list a person or a future reviser skill can work down. It
+**reads, and never runs, an aid** -- a stale or missing input is named in
+the report's header rather than triggering a live re-run. Every item
+carries whether it is `unattended` (safe for a future automated pass) or
+merely surfaced for a human to decide; `missing-citekey` and the short
+runs a verbatim scan finds are the former, everything judgement-shaped is
+the latter.
+
 ## 📋 What every report looks like
 
 One output contract, mirroring the draft's own path exactly as
@@ -152,10 +165,12 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.figure.md       (+ .tex/.pdf, .json)
      content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)
      content/review/<topic>/survey.quotation.md    (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.agenda.md       (+ .tex/.pdf, .json)
 ```
 
-`review provenance` writes by default. The rest print, and write only
-under `--write`, because printing is the usual use.
+`review provenance` and `review agenda` write by default. The rest
+print, and write only under `--write`, because printing is the usual
+use.
 
 Two properties of every report, both deliberate:
 

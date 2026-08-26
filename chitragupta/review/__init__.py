@@ -1,17 +1,17 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Seven commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
+Eight commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
 `chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check/`,
 `chitragupta/review/synthesis.py`, `chitragupta/review/figure_layout/`,
-`chitragupta/review/uncited_prose.py` and
-`chitragupta/review/quotation.py`. Each reads a draft -- plus the
-corpus, or in `figure_layout`'s case the figures the draft references,
-or in `uncited_prose`'s case nothing else at all -- and produces
-evidence for a human judgement. None gates, none blocks a draft, none
-takes the write lock, and all seven are interpreter tier 1.
-docs/ARCHITECTURE.md's "Layer 4: the review layer" is the definition;
-this module is what makes the seven obey one output contract instead
-of seven.
+`chitragupta/review/uncited_prose.py`, `chitragupta/review/quotation.py` and
+`chitragupta/review/agenda/`. Each reads a draft -- plus the corpus, or in
+`figure_layout`'s case the figures the draft references, in
+`uncited_prose`'s case nothing else at all, or in `agenda`'s case the
+other seven aids' own reports -- and produces evidence for a human
+judgement. None gates, none blocks a draft, none takes the write lock,
+and all eight are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4:
+the review layer" is the definition; this module is what makes the
+eight obey one output contract instead of eight.
 
 **One directory, mirroring the draft's path**, the same rule
 `content/rendered/` and `content/dossiers/` already follow:
@@ -24,6 +24,7 @@ of seven.
          content/review/<topic>/survey.figure.md       (+ .tex/.pdf)
          content/review/<topic>/survey.uncited.md      (+ .tex/.pdf)
          content/review/<topic>/survey.quotation.md    (+ .tex/.pdf)
+         content/review/<topic>/survey.agenda.md       (+ .tex/.pdf)
 
 so a draft, its dossier, its renders and its review artefacts are all
 findable from the draft's own path. The `.tex`/`.pdf` land *beside* the
@@ -39,11 +40,11 @@ computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
 Markdown through `chitragupta/render_output.py`, and this is not a render of
-anything. All seven aids emit one now -- `verbatim scan` since #127,
+anything. All eight aids emit one now -- `verbatim scan` since #127,
 `provenance` and `coverage` since #309, and `synthesis`, `figure`,
-`uncited` and `quotation` from the day each landed -- which is why
-docs/AUTO-IMPROVEMENT.md's
-`agenda` reads each aid's JSON as optional rather than required.
+`uncited`, `quotation` and `agenda` from the day each landed -- which is
+why `agenda` itself can read each of the other seven aids' JSON as
+optional rather than required.
 
 **No timestamp in a report.** The reason to write one at all is that it
 becomes reviewable later and diffable across revisions, and a wall-clock
@@ -57,7 +58,7 @@ docs say so too, but a file found on disk months later is exactly the
 case the docs cannot reach.
 
 Stdlib-only, and imports `render_output` lazily so the md-only path
-doesn't pay for it -- same tier as the seven commands it serves.
+doesn't pay for it -- same tier as the eight commands it serves.
 """
 
 import json
@@ -79,6 +80,7 @@ AIDS = {
     "figure": "TikZ layout check",
     "uncited": "Uncited prose",
     "quotation": "Quotation integrity",
+    "agenda": "Agenda",
 }
 
 # Deliberately names its sources rather than linking to them: this text
