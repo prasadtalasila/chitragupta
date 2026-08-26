@@ -363,6 +363,24 @@ good_score = 0.50
 #                       Default if absent: sentence-transformers/all-MiniLM-L6-v2
 embedding_model = "sentence-transformers/all-mpnet-base-v2"
 
+# ---------------------------------------------------------------------
+# The three numbers that size embed_index.search(). They are one setting
+# in three parts, and read best as the pipeline they describe:
+#
+#   over-fetch k * multiplier  ->  [rerank]  ->  cap per citekey  ->  keep k
+#
+# docs/CORPUS-SEARCH.md draws it. All three are validated at load: a
+# value below 1, a float or a bool raises, naming the key -- because
+# each nonsense value fails as a quietly empty result rather than as an
+# error.
+# ---------------------------------------------------------------------
+
+# How many passages a search returns when the caller doesn't say. A
+# default, not a ceiling -- the CLI's --k and any skill that names a k
+# still win.
+#                                                             Default: 5
+embed_top_k = 5
+
 # The most chunks of one citekey embed_index.search() will return among
 # its top k (#305): a per-citekey cap applied to the ranked list before
 # it's truncated, so one thoroughly-matched paper can't fill every
@@ -372,6 +390,47 @@ embedding_model = "sentence-transformers/all-mpnet-base-v2"
 # deserves more of the result.
 #                                                             Default: 3
 embed_max_passages_per_source = 3
+
+# How much deeper than k to fetch from Chroma before capping, so that
+# dropping a dominant paper's excess chunks *promotes* another paper's
+# chunk into the window rather than merely shortening the list. At 1 the
+# cap can only shorten -- which is the failure #305 existed to fix.
+#
+# This is the lever for "the right paper never came back at all": 27% of
+# correct papers never entered the pool in the measurement behind #380.
+# It is also the expensive one when rerank is on, since the reranker
+# scores the whole pool -- 5 -> 20 -> 50 chunks costs roughly
+# 1x -> 3.3x -> 7.2x.
+#                                                             Default: 4
+embed_overfetch_multiplier = 4
+
+# Whether embed_index.search() reorders its over-fetched passages with a
+# cross-encoder before that cap is applied (#380). Off, and that is a
+# measurement rather than caution -- bench/RESULTS.md, 2026-08-26:
+#   - recall@5 does not move (156 of 256 either way; the correct paper
+#     is lost 20x and gained 20x, so the swaps cancel);
+#   - source diversity does not move at all -- the cap sets it, not the
+#     ordering, so this does NOT help multi-source drafting;
+#   - what it does buy is shallow ordering: recall@3 129 -> 139 of 256;
+#   - it costs 2.5x a search call on a GPU and 5.75x on a CPU.
+# Turn it on if you read the top 3 and not the top 5. Rebuild nothing:
+# unlike embedding_model this changes ranking only, not the index.
+#                                                         Default: false
+rerank = false
+
+# Which cross-encoder scores (query, passage) pairs when rerank is on.
+# Read only when it is.
+#
+# This takes a *cross-encoder* -- one that scores both texts jointly in a
+# single forward pass -- not an embedding model, so the "query: " /
+# "passage: " prefix warning above does NOT apply here: BAAI/bge-reranker
+# -base is a sequence-classification cross-encoder and is a genuine
+# drop-in. docs/CORPUS-SEARCH.md's "Choosing a reranker" has the measured
+# comparison; the short version is that bge-reranker-base won on recall
+# by five queries in 256 and costs 3.5-4.8x more, which is why the
+# cheaper model is the default.
+#            Default: cross-encoder/ms-marco-MiniLM-L6-v2
+rerank_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
 # Whether the docling stage also extracts figure bitmaps, into
 # content/docling/<doc>_artifacts/, plus a <doc>.figures.json giving each

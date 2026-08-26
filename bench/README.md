@@ -90,6 +90,8 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | How many topics does this corpus divide into, at each clustering setting -- and what does the coarse setting cost? | **`bench_topic_depth.py`** -- needs the `enrich` group and a synced corpus; reuses `content/topic_embed_cache.json`, so a warm cache makes it minutes. The **outlier** column is the one to read: it *falls* as topics get finer |
 | Which mechanism can honestly say a paper belongs to more than one *emergent* topic? | **`bench_topic_membership.py`** -- scores five candidates on shape **and on agreement with the clustering they claim to describe**, which is what disqualifies three of them |
 | What does scoping a draft's retrieval to a curated Zotero collection (`--collection`, #195) actually buy? | **`bench_collection_scope.py`** -- two arms of the same chapter, whole corpus vs one shelf, from the same pre-registered queries; replays each dossier's own logged queries to reconstruct what each arm surfaced. Stdlib only, no GPU, but it scores a *drafting run*, so it needs two real drafts and their dossiers to already exist |
+| Does a cross-encoder rerank help, and does it matter whether it runs before or after the per-citekey cap (#380)? | **`bench_rerank_position.py`** -- needs the `enrich` group and a built `content/chroma/`; reuses `bench_retrieval_keyword_selfretrieval.py`'s 256 pairs and `bench_retrieval_compare.py`'s scoring, and measures at the **shipped** shape (chunks, cap 3, pool 20) rather than the citekey-collapsed one those rows use. Reports `distinct@5`, which is the metric #380's own motivating claim is about |
+| What does cross-encoding the over-fetched passages *cost*, per `search()` call? | **`bench_rerank_cost.py`** -- needs the `enrich` group and a built `content/chroma/`; times the rerank stage against the shipped `embed_index.search()` measured in the same process, across model x device x pool depth. Reports a **slowdown ratio**, not a duration, because that is what decides affordability |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -197,9 +199,10 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_overlap_skipgram.py`, `bench_paraphrase_hunt.py`,
 `bench_retrieval_compare.py`, `bench_retrieval_ground_truth.py`,
 `bench_retrieval_keyword_selfretrieval.py`, `bench_retrieval_live_logs.py`,
-`embed_models.py`, `bench_collection_scope.py`, `bench_overlap.py`,
+`bench_rerank_position.py`, `bench_rerank_cost.py`, `embed_models.py`,
+`bench_collection_scope.py`, `bench_overlap.py`,
 `bench_topic_depth.py`, `bench_topic_membership.py`, `estimate.py` and
-`run_parallel.py` each have one -- 20 of the 22 scripts here. The
+`run_parallel.py` each have one -- 22 of the 24 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

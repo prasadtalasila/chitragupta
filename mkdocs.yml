@@ -157,6 +157,7 @@ nav:
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
       - Retrieval: docs/RETRIEVAL.md
+      - Corpus search, stage by stage: docs/CORPUS-SEARCH.md
       - Topic modelling, the evidence: docs/TOPIC-MODELLING.md
   - Choosing settings:
       - Performance: docs/PERFORMANCE.md

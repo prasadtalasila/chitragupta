@@ -187,6 +187,56 @@ class TestGetWorkers:
             config._get_workers("W", "parser", "workers", default=1)
 
 
+class TestGetPositiveInt:
+    """The three settings that size embed_index.search()'s stages
+    (#380). Validated at load, unlike every other numeric key here,
+    because each nonsense value fails as a quietly wrong result set
+    rather than as an error -- `embed_top_k = 0` simply returns
+    nothing."""
+
+    @pytest.fixture(autouse=True)
+    def _toml(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+
+    def test_missing_key_uses_default(self):
+        assert config._get_positive_int("N", "enrich", "embed_top_k", default=5) == 5
+
+    def test_int_from_toml(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": 9}})
+        assert config._get_positive_int("N", "enrich", "embed_top_k", default=5) == 9
+
+    def test_env_override_wins(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": 9}})
+        monkeypatch.setenv("N", "2")
+        assert config._get_positive_int("N", "enrich", "embed_top_k", default=5) == 2
+
+    @pytest.mark.parametrize("raw", ["0", "-1"])
+    def test_below_one_is_rejected(self, monkeypatch, raw):
+        """A cap, a k or a multiplier of 0 each produce an empty or
+        pointless result rather than an error, so silence here is the
+        expensive option."""
+        monkeypatch.setenv("N", raw)
+        with pytest.raises(ValueError, match="whole number >= 1"):
+            config._get_positive_int("N", "enrich", "embed_top_k", default=5)
+
+    def test_nonsense_string_is_rejected(self, monkeypatch):
+        monkeypatch.setenv("N", "several")
+        with pytest.raises(ValueError, match="whole number >= 1"):
+            config._get_positive_int("N", "enrich", "embed_top_k", default=5)
+
+    def test_bool_is_rejected(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": True}})
+        with pytest.raises(ValueError, match="whole number >= 1"):
+            config._get_positive_int("N", "enrich", "embed_top_k", default=5)
+
+    def test_a_float_is_rejected_rather_than_truncated(self, monkeypatch):
+        """2.7 passages is not a thing, and int(2.7) == 2 would silently
+        honour a value nobody wrote."""
+        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": 2.7}})
+        with pytest.raises(ValueError, match="whole number >= 1"):
+            config._get_positive_int("N", "enrich", "embed_top_k", default=5)
+
+
 class TestGetStartMethod:
     """[parser].start_method decides how the docling pool creates its
     workers. A typo has to be rejected at load, naming the alternatives,

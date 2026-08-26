@@ -168,6 +168,14 @@ shortening it (#305, [CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-la
 BM25's `search` needs no such cap: it is already one-per-citekey by
 construction.
 
+**A cross-encoder can reorder the over-fetched passages before that cap
+(#380), and is off by default.** It improves ordering rather than recall
+and cannot improve source diversity at all, and it makes a search call
+2.5x dearer on a GPU. The stage order, the measurements behind that
+default, and how to choose a `rerank_model` are in
+[CORPUS-SEARCH.md](CORPUS-SEARCH.md), which is this section at the level
+of one `search()` call.
+
 **When it earns its cost.** BM25 cannot match a paper that argues your
 point in different words. If your corpus is large, or written across
 communities that use different vocabulary for the same idea, semantic

@@ -1,0 +1,87 @@
+{
+ "k": 5,
+ "cap": 3,
+ "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+ "rerank_model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+ "rows": [
+  {
+   "row": "1 dense-shipped (pool -> cap -> k)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.5039,
+   "recall@5": 0.6094,
+   "ndcg@5": 0.4949,
+   "distinct@5": 3.59
+  },
+  {
+   "row": "2 dense +rerank BEFORE cap (#380)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.543,
+   "recall@5": 0.6094,
+   "ndcg@5": 0.5281,
+   "distinct@5": 3.574
+  },
+  {
+   "row": "3 dense +rerank AFTER cap",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.5273,
+   "recall@5": 0.6094,
+   "ndcg@5": 0.4962,
+   "distinct@5": 3.59
+  },
+  {
+   "row": "4 bm25-shipped (retrieval.search)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.7695,
+   "recall@5": 0.8047,
+   "ndcg@5": 0.7321,
+   "distinct@5": 5.0
+  },
+  {
+   "row": "5 bm25 over-fetch +rerank -> k",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.75,
+   "recall@5": 0.793,
+   "ndcg@5": 0.6886,
+   "distinct@5": 5.0
+  }
+ ],
+ "deltas": {
+  "arm2 vs arm3 (rerank before vs after the cap)": {
+   "n": 256,
+   "set_differs": 217,
+   "order_differs": 20,
+   "set_differs_pct": 84.8,
+   "lost": 20,
+   "gained": 20
+  },
+  "arm1 vs arm2 (does reranking change what ships)": {
+   "n": 256,
+   "set_differs": 217,
+   "order_differs": 17,
+   "set_differs_pct": 84.8,
+   "lost": 20,
+   "gained": 20
+  },
+  "arm4 vs arm5 (does reranking help the winner)": {
+   "n": 256,
+   "set_differs": 253,
+   "order_differs": 3,
+   "set_differs_pct": 98.8,
+   "lost": 15,
+   "gained": 12
+  }
+ },
+ "dense_pool_rank_profile": {
+  "n": 256,
+  "absent_from_pool": 69,
+  "median_rank": 2,
+  "at_rank_1": 92,
+  "at_rank_1_to_3": 141,
+  "beyond_rank_5": 24
+ }
+}

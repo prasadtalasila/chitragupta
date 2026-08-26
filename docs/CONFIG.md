@@ -362,7 +362,11 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | Key | Env var | Accepts | Default in code | In `config.toml.example` |
 | --- | --- | --- | --- | --- |
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
-| `embed_max_passages_per_source` | `EMBED_MAX_PASSAGES_PER_SOURCE` | integer | `3` | `3` |
+| `embed_top_k` | `EMBED_TOP_K` | integer >= 1 | `5` | `5` |
+| `embed_max_passages_per_source` | `EMBED_MAX_PASSAGES_PER_SOURCE` | integer >= 1 | `3` | `3` |
+| `embed_overfetch_multiplier` | `EMBED_OVERFETCH_MULTIPLIER` | integer >= 1 | `4` | `4` |
+| `rerank` | `RERANK` | boolean | `false` | `false` |
+| `rerank_model` | `RERANK_MODEL` | a sentence-transformers **cross-encoder** id | `cross-encoder/ms-marco-MiniLM-L6-v2` | `cross-encoder/ms-marco-MiniLM-L6-v2` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
@@ -383,13 +387,65 @@ larger, more accurate mpnet, so anyone who copied `config.toml.example`
 is running mpnet. Check your own file rather than assuming either. See
 [Choosing an embedding model](#-choosing-an-embedding-model).
 
+### 🔭 The three that size a search
+
+`embed_top_k`, `embed_max_passages_per_source` and
+`embed_overfetch_multiplier` are one setting in three parts. They are
+the stages of `chitragupta.enrich.embed_index.search()`, in order:
+
+```text
+over-fetch (k x multiplier)  ->  [rerank]  ->  cap per citekey  ->  keep k
+```
+
+[CORPUS-SEARCH.md](CORPUS-SEARCH.md) draws that and explains why the
+order is what it is. In short:
+
+**`embed_top_k`** is how many passages come back when a caller does not
+say. A **default, not a ceiling** -- the CLI's `--k` and any skill that
+names a `k` still win. BM25's `chitragupta.retrieval.search()` takes its
+own `k` and is not governed by this key.
+
 **`embed_max_passages_per_source`** caps how many chunks of one citekey
-`chitragupta.enrich.embed_index.search()` will return among its top `k`
-(#305) -- BM25's `chitragupta.retrieval.search()` is already one-per-citekey
-by construction and has no matching key. Raise it for a corpus where a
-single, unusually thorough paper legitimately deserves more of the
-result than three chunks; lower it (to `1`) to force maximal source
-diversity per query.
+may appear among those `k` (#305) -- BM25's search is already
+one-per-citekey by construction and has no matching key. Raise it for a
+corpus where a single, unusually thorough paper legitimately deserves
+more of the result than three chunks; lower it to `1` to force maximal
+source diversity per query. **This, not reranking, is the lever for
+source diversity**: with a cap of 3 and `k` of 5, the number of distinct
+papers in a result is bounded by the cap.
+
+**`embed_overfetch_multiplier`** is how much deeper than `k` Chroma is
+asked, so that dropping a dominant paper's excess chunks *promotes*
+another paper's chunk into the window rather than merely shortening the
+list. At `1` the cap can only shorten, which is the failure #305 existed
+to fix. Raise it when the right paper never comes back at all -- no
+amount of reranking can reorder a passage that was never fetched. It is
+also the expensive knob when `rerank` is on, since the reranker scores
+the whole pool.
+
+**All three are validated at load**, unlike most numeric settings here:
+a value below 1, a float, or a bool raises immediately and names the
+key. That is deliberate, because every nonsense value fails *quietly*
+otherwise -- `embed_top_k = 0` returns no results at all, which reads
+like an empty corpus rather than a typo.
+
+**`rerank`** turns on a cross-encoder that reorders the over-fetched
+passages **before** that cap is applied (#380). Off by default, and that
+is measured rather than cautious: on this project's corpus it leaves
+recall@5 unchanged (156 of 256 either way), does not change source
+diversity at all, and costs 2.5x a search call on a GPU and 5.75x on a
+CPU. What it does buy is ordering -- recall@3 rises from 129 to 139 of
+256. Turn it on if you read the top three hits rather than all five.
+Changing it rebuilds nothing.
+
+**`rerank_model`** names that cross-encoder, and is read only when
+`rerank` is on. **The `bge-*` / `e5-*` prefix warning below does not
+apply to this key** -- it is about bi-encoders, and a reranker scores
+both texts jointly, so `BAAI/bge-reranker-base` is a genuine drop-in
+here even though its embedding-model siblings are not.
+[CORPUS-SEARCH.md](CORPUS-SEARCH.md#-choosing-a-reranker) carries the
+measured candidate table, including the two candidates that were
+rejected and why.
 
 ## 🔤 How values are parsed
 
@@ -408,8 +464,10 @@ raising. So `ocr = "true"` -- a string, not a boolean -- is read as the
 default `false`, with no complaint. Quote strings; don't quote booleans
 or numbers.
 
-**Four settings are validated at load and fail loudly:** `workers`,
-`start_method`, `document_timeout`, `stall_timeout`. A bad value raises
+**Seven settings are validated at load and fail loudly:** `workers`,
+`start_method`, `document_timeout`, `stall_timeout`, and the three that
+size a search -- `embed_top_k`, `embed_max_passages_per_source` and
+`embed_overfetch_multiplier`. A bad value raises
 immediately, naming the key, the environment variable, and what was
 expected -- rather than surfacing much later as a nonsense pool size or a
 strange timeout.
