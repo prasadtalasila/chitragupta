@@ -104,6 +104,7 @@ from chitragupta.render_output._citeproc import (
 from chitragupta.render_output import _math, _tables
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
+from chitragupta.render_output._figure_captions import figures as _declared_figures
 from chitragupta.render_output._figure_captions import substitute_captions, substitute_refs
 from chitragupta.render_output._figures import (
     _FIGURE_MARKER_MD_RE,
@@ -330,15 +331,26 @@ def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]
     ]
 
 
-# Figure references and captions, then figure content, then tables, then
+# Figure captions and references, then figure content, then tables, then
 # mathematics -- one chain with one definition, reached by both of
-# `render`'s paths. The order is not arbitrary: `substitute_refs` and
-# `substitute_captions` both read `figures()` off the *original* marker
-# text, so both have to run before `_with_figures_for` replaces the marker
-# with actual content -- after that, the `[marker, caption]` adjacency
-# they look for no longer exists. A figure substitution can also introduce
-# a fenced ASCII block, and `_math`'s own display rule reads fences, so
-# mathematics goes last.
+# `render`'s paths.
+#
+# The figure list is computed exactly once, off `draft_text` before either
+# substitution has touched it, and handed to both. Recomputing it off text
+# a prior pass already rewrote is wrong twice over: after `substitute_refs`
+# has run, a `figureref` sentence right after an uncaptioned marker no
+# longer starts with `<!--`, so `substitute_captions`'s own pair regex
+# would misread that sentence as the marker's caption and swallow it, and
+# a marker `substitute_captions` has already wrapped in `\caption{...}` or
+# `**Figure N:**` would spuriously match the pair regex *again*. Captions
+# therefore run first, off the one precomputed list, and refs run second
+# on the result -- a `figureref` marker is a self-contained inline token,
+# so wrapping earlier text in a caption around it changes nothing about
+# resolving it. Both have to run before `_with_figures_for` replaces the
+# marker with actual content, too: after that, the `[marker, caption]`
+# adjacency captions looks for no longer exists. A figure substitution can
+# also introduce a fenced ASCII block, and `_math`'s own display rule
+# reads fences, so mathematics goes last.
 #
 # The Markdown path passes an empty mapping, which substitutes nothing --
 # §12 deliberately leaves a Markdown render's ASCII alone, and
@@ -349,9 +361,10 @@ def _substituted(
     draft_text: str, input_path: Path, output_format: str, math_mapping: "dict[str, str]"
 ) -> str:
     """The text a writer actually sees, with every marker resolved."""
-    with_refs = substitute_refs(draft_text, output_format)
-    with_captions = substitute_captions(with_refs, output_format)
-    with_figures = _with_figures_for(with_captions, input_path, output_format)
+    declared = _declared_figures(draft_text)
+    with_captions = substitute_captions(draft_text, output_format, declared)
+    with_refs = substitute_refs(with_captions, output_format, declared)
+    with_figures = _with_figures_for(with_refs, input_path, output_format)
     return _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
 
 

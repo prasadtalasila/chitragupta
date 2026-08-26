@@ -102,7 +102,9 @@ def _caption_wrap_for(figure: "Figure", marker: str, output_format: str) -> str:
     return f"{marker}\n**Figure {figure.number}:** {figure.caption}"
 
 
-def substitute_captions(text: str, output_format: str) -> str:
+def substitute_captions(
+    text: str, output_format: str, declared: "list[Figure] | None" = None
+) -> str:
     """`text` with every `[marker, caption]` pair wrapped for `output_format`.
 
     The marker line itself is left exactly as it was inside the wrapper,
@@ -111,11 +113,20 @@ def substitute_captions(text: str, output_format: str) -> str:
     replacement for it. An uncaptioned marker does not match the pair
     regex at all and is untouched, preserving §10's accepted uncaptioned
     case.
+
+    `declared` lets a caller hand in a list already computed from `text`
+    before any substitution touched it -- `__init__.py`'s `_substituted`
+    does, because `substitute_refs` also needs that same pristine list
+    rather than one recomputed off text `substitute_captions` has already
+    rewritten (see that function's own docstring for why recomputing is
+    wrong). Left `None`, this call is self-contained, which is what every
+    direct test of this function relies on.
     """
-    declared = iter(figures(text))
+    figs = figures(text) if declared is None else declared
+    remaining = iter(figs)
 
     def replace(match: "re.Match[str]") -> str:
-        return _caption_wrap_for(next(declared), match.group("marker"), output_format)
+        return _caption_wrap_for(next(remaining), match.group("marker"), output_format)
 
     return _FIGURE_CAPTION_PAIR_RE.sub(replace, text)
 
@@ -131,15 +142,23 @@ def _figureref_for(figure: "Figure | None", raw: str, output_format: str) -> str
     return f"Figure {figure.number}"
 
 
-def substitute_refs(text: str, output_format: str) -> str:
+def substitute_refs(text: str, output_format: str, declared: "list[Figure] | None" = None) -> str:
     """`text` with every `figureref` marker resolved for `output_format`.
 
     A `figureref` naming an id no *captioned* figure declares -- including
     one naming a figure that exists but carries no caption -- is left
     exactly as written, the same non-destructive rule `_tables.substitute`
     uses for an unresolvable `tableref`.
+
+    `declared`, as in `substitute_captions`, lets a caller pin the figure
+    list to the text as it stood before either substitution ran. This
+    matters here for a subtler reason than in that function: recomputing
+    `figures()` off text `substitute_captions` has *already* rewritten
+    would scan already-wrapped `\\caption{...}`/`**Figure N:**` lines for
+    a *new* marker/caption pair, corrupting the very numbering this
+    module exists to get right. Left `None`, this call is self-contained.
     """
-    by_id = {figure.id: figure for figure in figures(text)}
+    by_id = {figure.id: figure for figure in (figures(text) if declared is None else declared)}
 
     def replace(match: "re.Match[str]") -> str:
         return _figureref_for(by_id.get(match.group("id")), match.group(0), output_format)

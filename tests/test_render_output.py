@@ -796,3 +796,30 @@ class TestCaptionedFigureRenderReal:
         assert "**Figure 1:** One reading path." in rendered
         assert "Figure 1 shows the flow." in rendered
         assert "<!-- figure:" not in rendered
+
+    def test_a_figureref_right_after_an_uncaptioned_marker_is_not_swallowed(
+        self, isolated_config, tmp_path
+    ):
+        # fig2's marker has no blank line before the `figureref` sentence
+        # that follows it -- exactly the adjacency `substitute_captions`
+        # looks for. Resolving refs before captions would turn that
+        # sentence into plain prose no longer starting with `<!--`,
+        # misreading it as fig2's caption and eating it from the body.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir, name="fig1")
+        figure_pair(draft_dir, name="fig2")
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(
+            "# Title\n\n"
+            + CAPTIONED_MD
+            + "\n<!-- figure: figures/fig2 -->\n"
+            + "<!-- figureref: fig1 --> is the one to compare against.\n"
+        )
+
+        out_path = render_output.render(str(draft), output_format="md")
+
+        rendered = out_path.read_text()
+        assert "**Figure 2:**" not in rendered
+        assert "Figure 1 is the one to compare against." in rendered
