@@ -68,6 +68,7 @@ from chitragupta.review import (
     agenda,
     citation_coverage,
     citation_provenance,
+    claim_support,
     figure_layout,
     quotation,
     synthesis,
@@ -87,6 +88,7 @@ AIDS = {
     "uncited": (uncited_prose, "which sentences of the draft carry no citation?"),
     "quotation": (quotation, "is each quoted span really in the source it cites?"),
     "agenda": (agenda, "one ranked, deduplicated worklist across every other aid"),
+    "support": (claim_support, "does the cited source entail this claim?"),
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this

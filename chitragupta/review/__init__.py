@@ -81,6 +81,7 @@ AIDS = {
     "uncited": "Uncited prose",
     "quotation": "Quotation integrity",
     "agenda": "Agenda",
+    "support": "Claim support",
 }
 
 # Deliberately names its sources rather than linking to them: this text
