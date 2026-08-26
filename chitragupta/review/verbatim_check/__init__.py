@@ -1,9 +1,9 @@
 """Plagiarism / page-locator helper for reviewing a draft.
 
-One of the six aids in the **review layer**, beside
-citation_provenance.py, citation_coverage.py, synthesis.py, figure_layout/
-and uncited_prose.py -- read over a finished draft, by a person or by a driver, never a gate, and
-never holding the write lock. chitragupta/review/__init__.py owns where a written
+One of the seven aids in the **review layer**, beside
+citation_provenance.py, citation_coverage.py, synthesis.py, figure_layout/,
+uncited_prose.py and quotation.py -- read over a finished draft, by a person or by a driver,
+never a gate, and never holding the write lock. chitragupta/review/__init__.py owns where a written
 report goes (`content/review/<topic>/<stem>.verbatim.md`, mirroring the
 draft's path) and what its header looks like.
 

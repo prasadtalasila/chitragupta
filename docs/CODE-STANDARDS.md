@@ -454,7 +454,7 @@ agree or disagree with.
 | Smell | What it looks like here |
 | --- | --- |
 | **Rigidity** -- a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
-| **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than six aids each writing their own path |
+| **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than seven aids each writing their own path |
 | **Immobility** -- code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
 | **Needless complexity** | Speculative configurability, an abstraction with one call site, defensive handling for an impossible state |
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |

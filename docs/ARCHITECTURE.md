@@ -66,7 +66,7 @@ flowchart TB
 
   subgraph J1["<b>LAYER 1 · CORPUS</b> — deterministic, no LLM, safe unattended"]
     direction TB
-    SYNC["<code>python -m chitragupta.corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
+    SYNC["<code>chitragupta corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
     OUT1[/"<b>content/ledger.sqlite</b> · <b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     SYNC --> OUT1
   end
@@ -74,20 +74,20 @@ flowchart TB
   subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
     direction TB
     SKILL["<b>.claude/skills/</b> — five genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
-    CHAIN["<b>the chain, on every draft</b><br/><code>python -m chitragupta.draft gate</code> — <b>hard gate</b><br/><code>python -m chitragupta.draft references</code><br/><code>python -m chitragupta.draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
+    CHAIN["<b>the chain, on every draft</b><br/><code>chitragupta draft gate</code> — <b>hard gate</b><br/><code>chitragupta draft references</code><br/><code>chitragupta draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
     SKILL --> CHAIN
   end
 
   subgraph JH["<b>LAYER 3 · ENRICHMENT</b> — optional · you run it, no skill does"]
     direction TB
-    FULL["<code>python -m chitragupta.enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
+    FULL["<code>chitragupta enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
     OUT3[/"content/docling/ · content/chroma/ · content/topics.json · content/topic_seeds.json · content/topic_set.json"/]
     FULL --> OUT3
   end
 
   subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never a gate · <b>takes no lock</b>"]
     direction TB
-    A["<code>python -m chitragupta.review provenance</code><br/><code>python -m chitragupta.review coverage</code><br/><code>python -m chitragupta.review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
+    A["<code>chitragupta review provenance</code><br/><code>chitragupta review coverage</code><br/><code>chitragupta review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
     OUT4[/"<b>content/review/&lt;topic&gt;/&lt;stem&gt;.{provenance,verbatim,coverage}.md</b>"/]
     A --> OUT4
   end
@@ -309,8 +309,8 @@ not. Reading an artefact is not calling a layer.
 
 ## 🔍 Layer 4: the review layer
 
-Six aids behind one command, run over a finished draft. **What each one
-answers, what a report looks like, and how to read one is
+Seven aids behind one command, run over a finished draft. **What each
+one answers, what a report looks like, and how to read one is
 [REVIEW.md](REVIEW.md)** -- this section is only the layer's boundary:
 where it sits, and what it may not do.
 
@@ -341,10 +341,16 @@ refused, the same tier-1 rule the gate chain follows.
 
 That they are *not* gates is the design, not an omission. The gate answers
 a question with one correct answer -- is this citekey in the ledger? --
-and can therefore be automatic and absolute. These six answer questions
-of judgement, where a machine verdict would be either wrong often enough
-to be ignored, or trusted more than it deserves. They give you the
-evidence and leave the call to you.
+and can therefore be automatic and absolute. Six of the seven answer
+questions of judgement, where a machine verdict would be either wrong
+often enough to be ignored, or trusted more than it deserves. They give
+you the evidence and leave the call to you.
+
+**`quotation` is the seventh, and it is not one of those.** Its question
+-- does this quoted span appear in the source it is attributed to? -- is
+binary, deterministic, and about as close to ground truth as anything
+outside the gate. It is the sharpest test this section has, so it is
+worked through rather than excepted, immediately below.
 
 **Which side a check falls on is decided by what it is measured against,
 not by how decidable its answer is.** The two are easy to conflate, and
@@ -359,6 +365,22 @@ is a line someone typed, so it can be wrong, stale, or deliberately
 overridden by a quoted title or a proper noun. Blocking on it refuses a
 correct draft on a bad target -- a failure the gate cannot have by
 construction.
+
+`quotation` is the case where the temptation is strongest, because
+nothing about it is fuzzy. What it is measured against is the *parse* --
+`passages.py`'s ladder, at whichever rung has been reached today. An
+enrichment run that has not happened, a backend switched back to
+`pdftotext`, a re-parse of an edited PDF: each changes the answer while
+nothing changes about the paper. So "this span is absent" is a statement
+about the parse as much as about the source, which is exactly why the
+aid has a *third* outcome, `unverifiable`, for a source only
+`pdftotext -layout` could read -- there, column splicing means a
+perfectly correct quotation is not contiguous in the text, and calling
+it absent would assert a fabrication that is not there. A check that
+needs a third outcome is not a two-valued gate, however binary its
+first two look. Deterministic did not make it gateable; what it is
+measured against decided that, and would have decided it the same way
+had the answer been fuzzy.
 
 Such a check reports and never blocks, whichever layer it lives in. What
 is enforced is *invocation* rather than conformance: a harness may
@@ -427,7 +449,7 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters -- see below |
 | `content/rendered/*.md`, `*.tex` | **Yes** -- byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
-| `content/review/*.md` -- the six review reports, and a `.json` sibling beside each | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
+| `content/review/*.md` -- the seven review reports, and a `.json` sibling beside each | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries -- `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input -- UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change -- two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
 | `content/overlap/` | A cache, not an output: `chitragupta/review/verbatim_check/`'s word n-gram fingerprints (per-document `docs/*.fpr` and the merged `index.bin`), keyed by `(pdf_hash, parsed-file stat)` per document. The `.fpr` files serve both modes; the merged `index.bin` is `scan`'s alone, built on the first `scan` and reloaded by every later one, so a re-scan over an unchanged corpus re-fingerprints nothing. Delete it and the next `overlap` or `scan` rebuilds whatever it needs |
@@ -507,7 +529,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all six aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all seven aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -611,7 +633,7 @@ satisfy it.
 
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
-`corpus`, and all six review aids share `chitragupta/review/__init__.py`'s
+`corpus`, and all seven review aids share `chitragupta/review/__init__.py`'s
 output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 

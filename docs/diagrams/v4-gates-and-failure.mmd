@@ -3,7 +3,7 @@ title: "Level 4 — gates and exit codes: what makes a run stop"
 ---
 flowchart TB
 
-  START(["<code>python -m chitragupta.corpus sync</code>"]) --> Q2
+  START(["<code>chitragupta corpus sync</code>"]) --> Q2
 
   Q2{"<b>config.toml present?</b><br/><small>read once at import,<br/>before anything else happens</small>"}
   Q2 -- no --> EC["<b>refuses to import</b><br/><small>cp config.toml.example config.toml</small>"]
@@ -44,7 +44,7 @@ flowchart TB
   AGG -- yes --> E1["<b>exit 1</b><br/>corpus not in sync,<br/>human attention needed"]
 
   E0 --> GATEIN(["a skill drafts against this corpus"])
-  GATEIN --> G{"<b>chitragupta.draft gate</b><br/>every citekey resolvable?"}
+  GATEIN --> G{"<b>chitragupta draft gate</b><br/>every citekey resolvable?"}
   G -- "yes · <b>exit 0</b>" --> GOOD["references → render<br/><small>the only path to a rendered draft</small>"]
   G -- "no · <b>exit 1</b>" --> GBAD["<b>the write is blocked.</b><br/><small>Treated like a failing test,<br/>not a lint warning.</small>"]
   GBAD --> GLOOP["<b>the skill re-drafts and re-runs the gate</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft<br/>that hasn't passed.” — all five SKILL.md files.<br/>This exit 1 is the only one nobody has to see:<br/>the loop is inside the skill, not in front of you.</small>"]

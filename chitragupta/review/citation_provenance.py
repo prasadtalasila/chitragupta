@@ -7,11 +7,11 @@ exactly: *does the cited paper actually say this?* A claim that drifted
 away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
-One of the six commands in the **review layer**, beside
-citation_coverage.py, verbatim_check.py, synthesis.py, figure_layout/ and
-uncited_prose.py -- read over a finished draft, by a person or by a
+One of the seven commands in the **review layer**, beside
+citation_coverage.py, verbatim_check/, synthesis.py, figure_layout/,
+uncited_prose.py and quotation.py -- read over a finished draft, by a person or by a
 driver, never a gate, and never holding the write lock.
-chitragupta/review/__init__.py owns what the six have in common: where
+chitragupta/review/__init__.py owns what the seven have in common: where
 the report goes (`content/review/`, mirroring the draft's path) and what its header looks like.
 
 Not a gate, and for a concrete reason. Matching is lexical, so it cannot separate "the source

@@ -634,6 +634,37 @@ We also have an advantage PaperBanana structurally lacks -- its critic
 sees only the rendered raster, where ours can see the render **and** the
 TikZ source that produced it.
 
+**Skipped by evidence, 2026-08-26 (#388).** The evidence this section
+already asked for, gathered before writing any critic: `review figure`,
+plus per-host scripts measuring label-fit and figure width the same
+way, run over all 43 figures in this project's own drafted book -- not
+`assets/tikz/`'s six scaffolds, which report zero findings **by
+construction** (#382's own acceptance test)
+and so cannot answer whether D1-D3 left a gap. Two mechanical findings
+came back, a `content-protrusion` in `15-2-mesh-versus-hub` and a
+`stranded-arrowhead` in `2-2-model-simulator-simulation` -- and both are
+already inside `review figure`'s own remit: `figure_layout/_source.py`'s
+own docstring names the `2-2` case as the exact true positive found
+when that check was built. Neither is a D4 finding.
+
+A full visual pass over all 43 renders -- the part only a vision judge
+can do: does the figure communicate its point, is the routing chaotic,
+is the type illegible or inconsistent, does a `fill` occlude anything --
+found nothing beyond those same two. No figure had crossed or spaghetti
+arrows, box-ified prose, or type a reader would call inconsistent; every
+one communicated its stated point. **D1-D3 already leave nothing on
+this corpus for D4 to catch, so it is skipped rather than built,** which
+this section already said was the legitimate outcome.
+
+Worth stating plainly rather than overclaiming: the vision judge here
+was one LLM, one pass, and this book's figures are technical-diagram
+simple -- boxes, arrows, at most one axis -- rather than the dense
+multi-panel case a vision critic's argument is strongest for. If a
+future book's figures are denser and `review figure` plus this
+checklist again come back clean where a reader disagrees, that is new
+evidence and reopens the question; this run is not a permanent proof,
+only the specific answer on the specific corpus asked about.
+
 Size: M. Depends on: D1-D3, and evidence that they left a real gap.
 
 ## 🔄 Theme F: the auto-improvement loop
@@ -656,11 +687,11 @@ an open issue; only step 4 and step 5's widening are the live work.
 
 Step 4, and the largest genuinely new piece of the track. A fourth key
 in `review.AIDS`: deterministic, stdlib-only, no LLM, takes no lock,
-exits 0 whatever it finds. It reads the other six aids' JSON plus the
+exits 0 whatever it finds. It reads the other seven aids' JSON plus the
 dossier's drift report and emits **one ranked, deduplicated worklist**
 -- *"This cross-signal merge is the work no individual aid can do."*
 
-Six item classes, of which **three are surfaced and never acted on**
+Seven item classes, of which **four are surfaced and never acted on**
 (`unsupported-claim`, `uncited-source`, `candidate` -- all judgement),
 one is unattended (`missing-citekey`), and two are partial
 (`verbatim-run` except the long runs reserved for a human; `prose` only

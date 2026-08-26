@@ -1,6 +1,6 @@
 """The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
-Six aids, read over a finished draft -- by a person, or by a skill that
+Seven aids, read over a finished draft -- by a person, or by a skill that
 runs one on your behalf. None of them is a gate, none takes the write
 lock, and none of them can block a draft:
 
@@ -26,6 +26,10 @@ lock, and none of them can block a draft:
         which sentences carry no citation at all. The only aid that
         reads no corpus.
 
+    python -m chitragupta.review quotation <draft>
+        is each quoted span in the dossier actually in the source it is
+        attributed to? The only aid whose answer is binary.
+
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
 so `python -m chitragupta.review.verbatim_check` imports a module and exits 0
@@ -36,7 +40,8 @@ docs/ARCHITECTURE.md states the invariant.
 The subcommand names are not invented here. They are the keys of
 `review.AIDS`, which are also the suffixes a written report is filed
 under (`survey.provenance.md`, `.verbatim.md`, `.coverage.md`,
-`.synthesis.md`, `.figure.md`, `.uncited.md`) -- so the command a reader
+`.synthesis.md`, `.figure.md`, `.uncited.md`, `.quotation.md`) -- so the
+command a reader
 types and the file they get back share one vocabulary.
 
 Each aid declares its own flags in its own `build_parser(parser)` and
@@ -57,6 +62,7 @@ from chitragupta.review import (
     citation_coverage,
     citation_provenance,
     figure_layout,
+    quotation,
     synthesis,
     uncited_prose,
     verbatim_check,
@@ -72,6 +78,7 @@ AIDS = {
     "synthesis": (synthesis, "how many sources does each unit of the draft rest on?"),
     "figure": (figure_layout, "what a TikZ figure's own geometry says about it"),
     "uncited": (uncited_prose, "which sentences of the draft carry no citation?"),
+    "quotation": (quotation, "is each quoted span really in the source it cites?"),
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this
@@ -89,7 +96,7 @@ if set(AIDS) != set(review.AIDS):
 # What `--help` prints, deliberately *not* this module's docstring (#152)
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
-DESCRIPTION = "The review layer: six read-only aids over a finished draft. No gate."
+DESCRIPTION = "The review layer: seven read-only aids over a finished draft. No gate."
 
 
 def build_parser() -> argparse.ArgumentParser:
