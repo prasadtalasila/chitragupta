@@ -67,6 +67,14 @@ to fix.
 same-titled documents are still different papers, and bucketing them
 together would silently drop one.
 
+**`snippet_chars` stops being cosmetic when stage 2 is on.** The
+cross-encoder scores the *truncated snippet*, not the whole 200-word
+chunk, so shrinking `snippet_chars` narrows what the reranker may judge
+on as well as what you see. This is deliberate: the passage you are
+shown is then exactly the evidence the ranking was based on. It is not a
+`config.toml` key -- callers pass it -- but it is worth knowing before
+tuning it alongside the four above.
+
 ## ⚖ Why the rerank sits where it does
 
 This is the one ordering decision in the file, and it is worth stating

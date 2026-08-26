@@ -307,6 +307,18 @@ def search(query: str, k: "int | None" = None, snippet_chars: int = 500) -> list
         query_embeddings=query_embedding, n_results=k * config.EMBED_OVERFETCH_MULTIPLIER
     )
 
+    # Built for the whole over-fetched pool, not just the kept slice,
+    # because the reranker below scores the pool. Costs 20 dict merges
+    # and 20 string slices against a ~12ms search call.
+    #
+    # Note what that makes `snippet_chars` when reranking is on: the
+    # cross-encoder scores this *truncated* snippet, not the whole
+    # chunk, so a small `snippet_chars` narrows what the reranker may
+    # judge on as well as what the caller sees. Deliberate -- it is the
+    # shape bench/bench_rerank_position.py measured, and scoring the
+    # full chunk while returning a shorter one would leave the returned
+    # text no longer the evidence the ranking was based on -- but it is
+    # a coupling worth knowing before tuning either number.
     hits = [
         {**metadata, "snippet": doc_text[:snippet_chars], "distance": distance}
         for doc_text, metadata, distance in zip(
