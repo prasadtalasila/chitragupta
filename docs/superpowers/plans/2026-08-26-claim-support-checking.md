@@ -12,7 +12,7 @@
 
 ## Why this is one plan, not two
 
-`writing-plans`' Scope Check asks whether this should split into independent plans. It was considered and rejected: the issue's own scope bundles "an honest limits section... next to the aid's own output" and a "measurement over the project's own real drafts" into one PR, and the limits section cannot be written honestly before the measurement exists — a plan that shipped the aid first and measured second would either lie in its own docs on day one or ship with a placeholder, which this project's own rule (no fabrication, no placeholders) forbids either way. So the tasks below are ordered so the measurement (Task 8) runs before the doc text that depends on it (Task 9) is finalized, inside one sequential plan.
+`writing-plans`' Scope Check asks whether this should split into independent plans. It was considered and rejected: the issue's own scope bundles "an honest limits section... next to the aid's own output" and a "measurement over the project's own real drafts" into one PR, and the limits section cannot be written honestly before the measurement exists — a plan that shipped the aid first and measured second would either lie in its own docs on day one or ship with a placeholder, which this project's own rule (no fabrication, no placeholders) forbids either way. So the tasks below are ordered so the measurement (Task 7) runs before the doc text that depends on it (Task 8) is finalized, inside one sequential plan.
 
 ## A note on "build order item 9"
 
@@ -68,13 +68,15 @@ The issue cites "build order item 9" in `docs/FEATURE-ROADMAP.md`. As of this wr
   ```python
   ENTAILMENT_MODEL = _get(
       "ENTAILMENT_MODEL",
-      "entailment",
-      "model",
+      "enrich",
+      "entailment_model",
       default="cross-encoder/nli-deberta-v3-small",
   )
   ```
 
-  (The exact default model name is finalized by Task 7's investigation; this default is a placeholder for *which model*, not for the mechanism — update it here once Task 7 concludes, and note that update in Task 7 itself rather than leaving two sources of truth.)
+  `[enrich]`, not a dedicated `[entailment]` table: `EMBEDDING_MODEL` (the sibling this knob sits beside) already reads from `[enrich].embedding_model` despite living in a top-level module (`chitragupta/overlap_embed.py`), not under `chitragupta/enrich/` — so `[enrich]` is this project's actual convention for "config gated by the `enrich` optional-dependency group," not "config for the `chitragupta/enrich/` package" specifically. A dedicated table would be its own inconsistency.
+
+  (The exact default model name is finalized by Task 6's investigation; this default is a placeholder for *which model*, not for the mechanism — update it here once Task 6 concludes, and note that update in Task 6 itself rather than leaving two sources of truth.)
 
 - [ ] **Step 2: Write the failing test for `optional_stack`**
 
@@ -180,7 +182,7 @@ The issue cites "build order item 9" in `docs/FEATURE-ROADMAP.md`. As of this wr
       module may assume -- entailment sits at index 1 here and would
       break silently if the code hard-coded index 0."""
       fake = FakeCrossEncoder(
-          logits={("premise a", "claim a"): [5.0, -5.0, 0.0]},
+          logits={("premise a", "claim a"): [-10.0, 10.0, -10.0]},
           id2label={0: "contradiction", 1: "entailment", 2: "neutral"},
       )
       entailer = entailment.Entailer(model=fake)
@@ -189,8 +191,11 @@ The issue cites "build order item 9" in `docs/FEATURE-ROADMAP.md`. As of this wr
       assert scores[0] == pytest.approx(1.0, abs=1e-3)
 
   def test_score_is_low_for_a_contradiction_logit():
+      # Same logits as the test above, id2label swapped -- proves the
+      # lookup goes by label, not position: entailment now sits at
+      # index 0, which holds the *minimum* of this vector.
       fake = FakeCrossEncoder(
-          logits={("premise b", "claim b"): [5.0, -5.0, 0.0]},
+          logits={("premise b", "claim b"): [-10.0, 10.0, -10.0]},
           id2label={0: "entailment", 1: "contradiction", 2: "neutral"},
       )
       entailer = entailment.Entailer(model=fake)
