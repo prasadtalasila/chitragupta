@@ -823,6 +823,13 @@ EMBEDDING_MODEL = _get(
     default="sentence-transformers/all-MiniLM-L6-v2",
 )
 
+ENTAILMENT_MODEL = _get(
+    "ENTAILMENT_MODEL",
+    "entailment",
+    "model",
+    default="cross-encoder/nli-deberta-v3-small",
+)
+
 # The most chunks chitragupta/enrich/embed_index.py::search() will return from a
 # single citekey, applied to the over-fetched ranked list before it is
 # truncated to k -- see that function's docstring for why the ordering
