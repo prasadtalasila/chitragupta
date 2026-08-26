@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import config, logging_setup
+from chitragupta.enrich import _rerank
 from chitragupta.enrich.corpus import CorpusDoc
 
 # Fixed name for the same reason chitragupta/sync.py pins its own: this
@@ -245,19 +246,16 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     return counts
 
 
-# How far past k to over-fetch before capping, so that dropping one
-# paper's excess chunks has room to promote another paper's chunk into
-# the top k rather than just shortening the list. A multiple of k, not
-# of the collection size: growing with the request keeps the fetch
-# bounded by what was asked for rather than by corpus size, and Chroma
-# itself returns min(n_results, chunk_count) rather than erroring when
-# n_results exceeds what the collection holds (verified against
-# chromadb 1.5.9), so there is no need to clamp against a count() call.
-_OVERFETCH_MULTIPLIER = 4
+def search(query: str, k: "int | None" = None, snippet_chars: int = 500) -> list[dict]:
+    """`k` defaults to `config.EMBED_TOP_K` rather than to a literal, so
+    the three numbers that size this function -- how deep it fetches,
+    how many chunks one citekey may own, and how many it returns -- are
+    one set of settings in `config.toml` instead of one key and two
+    constants. `None` rather than the value itself in the signature:
+    a module-level default would be bound at import and could not be
+    monkeypatched by a test or changed by an env var for one run.
 
-
-def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
-    """`snippet_chars` defaults to enough context for a caller to judge
+    `snippet_chars` defaults to enough context for a caller to judge
     relevance itself before citing, rather than trusting distance alone.
 
     Deliberately the same shape as `chitragupta.retrieval.search()`, so this is a
@@ -275,7 +273,8 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     therefore searchable by title and not by meaning.
 
     At most `config.EMBED_MAX_PASSAGES_PER_SOURCE` of the k results come
-    from any one citekey (issue #305) -- unlike BM25's `search`, which is
+    from any one citekey (issue #305), out of a pool of
+    `k * config.EMBED_OVERFETCH_MULTIPLIER` -- unlike BM25's `search`, which is
     one-per-citekey by construction, Chroma ranks by chunk and a single
     well-matched paper can otherwise fill every slot. The cap is applied
     to the over-fetched, distance-ranked list *before* truncating to k:
@@ -283,22 +282,48 @@ def search(query: str, k: int = 5, snippet_chars: int = 500) -> list[dict]:
     chunk into the window, where capping an already-truncated top-k
     would only shorten it. Keyed on `citekey`, not title, so two
     untitled or same-titled documents are still capped apart.
+
+    When `[enrich].rerank` is on, a cross-encoder reorders the
+    over-fetched list **before** that cap, never after (#380). The two
+    rules are really one rule, which is why they are documented
+    together: the cap exists so that dropping a dominant paper's excess
+    chunks *promotes another paper's chunk into the window*, and a
+    rerank placed after the cap can only permute chunks the bi-encoder
+    already chose. Reranking first is what lets a promotion change
+    **which document** survives, and `tests/test_enrich_embed_index.py`
+    pins exactly that so a later refactor cannot quietly swap the order
+    back -- the two orders disagree about which papers come back on 217
+    of 256 real queries (`bench/RESULTS.md`, 2026-08-26).
+
+    Off by default. It costs 2.5x a search call on a GPU and 5.75x on a
+    CPU, and buys ordering rather than recall -- see
+    `docs/CORPUS-SEARCH.md` before turning it on.
     """
     client, model = get_client_and_model()
     collection = client.get_or_create_collection(collection_name())
+    k = config.EMBED_TOP_K if k is None else k
     query_embedding = model.encode([query], show_progress_bar=False).tolist()
-    raw = collection.query(query_embeddings=query_embedding, n_results=k * _OVERFETCH_MULTIPLIER)
+    raw = collection.query(
+        query_embeddings=query_embedding, n_results=k * config.EMBED_OVERFETCH_MULTIPLIER
+    )
+
+    hits = [
+        {**metadata, "snippet": doc_text[:snippet_chars], "distance": distance}
+        for doc_text, metadata, distance in zip(
+            raw["documents"][0], raw["metadatas"][0], raw["distances"][0]
+        )
+    ]
+    if config.RERANK:
+        hits = _rerank.rerank(query, hits)
 
     results = []
     per_source = {}
-    for doc_text, metadata, distance in zip(
-        raw["documents"][0], raw["metadatas"][0], raw["distances"][0]
-    ):
-        citekey = metadata["citekey"]
+    for hit in hits:
+        citekey = hit["citekey"]
         if per_source.get(citekey, 0) >= config.EMBED_MAX_PASSAGES_PER_SOURCE:
             continue
         per_source[citekey] = per_source.get(citekey, 0) + 1
-        results.append({**metadata, "snippet": doc_text[:snippet_chars], "distance": distance})
+        results.append(hit)
         if len(results) == k:
             break
     return results

@@ -254,9 +254,10 @@ def dense_pools(queries, k):
     """The over-fetched, distance-ranked chunk list `embed_index.search()`
     works from, for every query at once.
 
-    `_OVERFETCH_MULTIPLIER` and `snippet_chars` are read from the module
-    rather than restated, so a change to either moves this benchmark with
-    the pipeline instead of leaving it measuring last release's shape.
+    The over-fetch multiplier and `snippet_chars` are read from config
+    rather than restated, so a change to either moves this benchmark
+    with the pipeline instead of leaving it measuring last release's
+    shape.
     """
     from chitragupta.enrich import embed_index
 
@@ -264,7 +265,7 @@ def dense_pools(queries, k):
     collection = client.get_or_create_collection(embed_index.collection_name())
     embeddings = model.encode(queries, show_progress_bar=True, batch_size=64).tolist()
     raw = collection.query(
-        query_embeddings=embeddings, n_results=k * embed_index._OVERFETCH_MULTIPLIER
+        query_embeddings=embeddings, n_results=k * config.EMBED_OVERFETCH_MULTIPLIER
     )
     pools = []
     for docs, metas, distances in zip(raw["documents"], raw["metadatas"], raw["distances"]):

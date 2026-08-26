@@ -17,7 +17,7 @@ Three axes, because the answer differs by an order of magnitude across
 each: model (the three candidates
 bench_rerank_position.py scored), device (`cuda` vs `cpu` -- the enrich
 extra installs torch either way, and a laptop drafting session has no
-GPU), and pool depth (`k * _OVERFETCH_MULTIPLIER` is 20 today, but the
+GPU), and pool depth (`k * embed_overfetch_multiplier` is 20 today, but the
 pool depth is the knob someone will reach for first if reranking is
 turned on).
 

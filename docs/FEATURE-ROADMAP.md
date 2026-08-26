@@ -432,11 +432,27 @@ Size: S. Depends on: nothing.
 
 ### 🧠 B4: cross-encoder reranking
 
+**Shipped in 6.28.0, and one of its two claims did not survive
+measurement.** `chitragupta/enrich/embed_index.py` reranks the
+over-fetched passages before the per-citekey cap, behind
+`[enrich].rerank`, **off by default** --
+[docs/CORPUS-SEARCH.md](CORPUS-SEARCH.md) documents the stage order and
+`bench/RESULTS.md` (2026-08-26) the evidence.
+
 OpenScholar's `--ranking_ce` / `--reranker`. `retrieval.py`'s own
 docstring already anticipates the swap, and
 `chitragupta/enrich/embed_index.py` already has a matching
-`search(query, k)` shape. Better-ordered passages mean fewer passages
-are needed, which compounds with B1.
+`search(query, k)` shape. Better-ordered passages do mean the *right*
+passage sits higher -- recall@3 rose from 129 to 139 of 256 queries.
+
+**They do not mean fewer passages are needed, and this item no longer
+claims they do.** The earlier wording said the gain "compounds with B1"
+because fewer passages per source would make multi-source units
+reachable. Measured, source diversity does not move at all (3.590 ->
+3.574 distinct papers in a top-5), and the reason is structural: with a
+cap of 3 and `k` of 5 the count is bounded by the **cap**, not by the
+ordering. `embed_max_passages_per_source` and `k` are the levers for
+that; B4 is not one.
 
 Behind the `enrich` extra per constraint 3. Nothing is taken from
 upstream here in any case: what ships there is a single

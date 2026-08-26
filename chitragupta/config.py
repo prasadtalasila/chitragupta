@@ -141,6 +141,37 @@ def _get_float(env_var: str, *toml_path: str, default: float) -> float:
     return default
 
 
+def _get_positive_int(env_var: str, *toml_path: str, default: int) -> int:
+    """A whole number of at least 1, validated at load.
+
+    Validated rather than silently defaulted -- unlike `_get_float` --
+    because the three settings that use it size
+    `chitragupta.enrich.embed_index.search()`'s stages, and every
+    nonsense value there fails as a *quietly wrong result set* rather
+    than as an error: `embed_top_k = 0` returns nothing at all,
+    `embed_overfetch_multiplier = 0` asks Chroma for zero rows, and a
+    cap of 0 admits no passage from any source. A silent fallback to the
+    default would hide all three behind a plausible-looking search.
+
+    `bool` is rejected explicitly for the same reason `_get_workers`
+    rejects it: TOML's `embed_top_k = true` parses as a bool, and bool
+    is an int subclass, so without this it would quietly mean 1.
+    """
+    raw = _raw_setting(env_var, toml_path)
+    if raw is None:
+        return default
+    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a whole number >= 1, not {raw!r}."
+    if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+        raise ValueError(problem)
+    try:
+        value = int(str(raw).strip())
+    except ValueError:
+        raise ValueError(problem) from None
+    if value < 1:
+        raise ValueError(problem)
+    return value
+
+
 def _get_optional_float(
     env_var: str, *toml_path: str, default: "float | None" = None
 ) -> "float | None":
@@ -823,19 +854,80 @@ EMBEDDING_MODEL = _get(
     default="sentence-transformers/all-MiniLM-L6-v2",
 )
 
-# The most chunks chitragupta/enrich/embed_index.py::search() will return from a
-# single citekey, applied to the over-fetched ranked list before it is
-# truncated to k -- see that function's docstring for why the ordering
-# matters. 3 leaves room for a paper's chunks to still dominate a small
-# k (e.g. k=5), while guaranteeing a second source a chance at the
-# result once at least two papers are relevant.
-EMBED_MAX_PASSAGES_PER_SOURCE = int(
-    _get_float(
-        "EMBED_MAX_PASSAGES_PER_SOURCE",
-        "enrich",
-        "embed_max_passages_per_source",
-        default=3,
-    )
+# The three numbers that size chitragupta/enrich/embed_index.py::search()'s
+# stages. They are one setting in three parts and are easiest to read as
+# the pipeline they describe -- docs/CORPUS-SEARCH.md draws it:
+#
+#   over-fetch k * MULTIPLIER  ->  [rerank]  ->  cap per citekey  ->  keep k
+#
+# so the pool the cap and the reranker both work from is
+# EMBED_TOP_K * EMBED_OVERFETCH_MULTIPLIER, and the useful invariant is
+# that the multiplier is what gives the cap something to promote *from*.
+# At a multiplier of 1 the cap can only shorten the result, never
+# improve it, which is the failure #305 existed to fix.
+
+# How many passages search() returns when a caller does not say. A
+# default, not a ceiling: every caller may still pass `k` explicitly,
+# and the CLI's --k does.
+EMBED_TOP_K = _get_positive_int("EMBED_TOP_K", "enrich", "embed_top_k", default=5)
+
+# The most chunks search() will return from a single citekey, applied to
+# the over-fetched ranked list before it is truncated to k -- see that
+# function's docstring for why the ordering matters. 3 leaves room for a
+# paper's chunks to still dominate a small k (e.g. k=5), while
+# guaranteeing a second source a chance at the result once at least two
+# papers are relevant. Lower it to 1 to force maximal source diversity.
+EMBED_MAX_PASSAGES_PER_SOURCE = _get_positive_int(
+    "EMBED_MAX_PASSAGES_PER_SOURCE",
+    "enrich",
+    "embed_max_passages_per_source",
+    default=3,
+)
+
+# How much deeper than k search() asks Chroma for, so that dropping a
+# dominant paper's excess chunks promotes another paper's chunk into the
+# window rather than merely shortening the list. A multiple of k, not of
+# the collection size: growing with the request keeps the fetch bounded
+# by what was asked for rather than by corpus size, and Chroma returns
+# min(n_results, chunk_count) rather than erroring when n_results
+# exceeds what the collection holds (verified against chromadb 1.5.9),
+# so there is no need to clamp against a count() call. Raising it is the
+# lever for a correct paper that never enters the pool at all -- and the
+# expensive one when reranking is on, since the reranker scores the
+# whole pool.
+EMBED_OVERFETCH_MULTIPLIER = _get_positive_int(
+    "EMBED_OVERFETCH_MULTIPLIER",
+    "enrich",
+    "embed_overfetch_multiplier",
+    default=4,
+)
+
+# Whether embed_index.search() reorders its over-fetched passages with a
+# cross-encoder before the per-citekey cap is applied (#380). Off by
+# default, and that is a measurement rather than caution:
+# bench/bench_rerank_position.py found reranking leaves recall@5
+# unchanged (156 of 256 either way, the correct paper lost 20x and
+# gained 20x) and moves source diversity not at all, while
+# bench/bench_rerank_cost.py found the cheapest candidate makes a search
+# call 2.5x dearer on a GPU and 5.75x on a CPU. What it does buy is
+# ordering: recall@3 rises from 129 to 139 of 256.
+RERANK = _get_bool("RERANK", "enrich", "rerank", default=False)
+
+# Which cross-encoder scores (query, passage) pairs when RERANK is on.
+# Read only when it is. Unlike EMBEDDING_MODEL this takes a
+# *cross-encoder* -- a model that scores the two texts jointly in one
+# forward pass -- so the "query: "/"passage: " prefix warning that rules
+# the bge-*/e5-* bi-encoders out of EMBEDDING_MODEL does not apply here:
+# BAAI/bge-reranker-base is a sequence-classification cross-encoder and
+# is a genuine drop-in. The default is the cheapest of the three
+# candidates measured, which is also the one that won on nDCG@5; the
+# candidate that won on recall cost 3.5-4.8x more for five extra correct
+# answers in 256. See docs/CORPUS-SEARCH.md, "Choosing a reranker".
+RERANK_MODEL = _get(
+    "RERANK_MODEL",
+    "enrich",
+    "rerank_model",
+    default="cross-encoder/ms-marco-MiniLM-L6-v2",
 )
 
 
