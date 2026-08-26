@@ -99,13 +99,15 @@ bench/sample*.json
 bench/par_*/
 
 # Same "no draft/source prose in a committed result" discipline as
-# bench_overlap_embed.py's KEPT_FIELDS: pairs.json (bench_paraphrase_hunt.py)
-# and ground_truth.json (bench_retrieval_ground_truth.py) both carry claim
-# text quoted straight out of the drafted book, so neither is committed --
-# only labels.json (judgments, no claim text) is. Each script's docstring
-# says how to regenerate its file locally.
+# bench_overlap_embed.py's KEPT_FIELDS: pairs.json (bench_paraphrase_hunt.py),
+# ground_truth.json (bench_retrieval_ground_truth.py) and candidates.md
+# (bench_claim_support.py) all carry claim text (and, for candidates.md, a
+# matched source excerpt) quoted straight out of the drafted book, so none
+# of the three is committed -- only labels.json (judgments, no claim text)
+# is. Each script's docstring says how to regenerate its file locally.
 bench/results/*/pairs.json
 bench/results/*/ground_truth.json
+bench/results/*/candidates.md
 
 # bench_retrieval_compare.py's own subprocess-worker payloads
 # (_dense_worker_<model>.json, _cascade_worker.json) are scratch --
