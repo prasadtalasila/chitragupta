@@ -139,7 +139,7 @@ def test_unavailable_reason_names_the_missing_group(monkeypatch):
 
 
 def test_unavailable_reason_is_none_when_the_stack_is_present(monkeypatch):
-    monkeypatch.setattr(entailment, "optional_stack", lambda: object())
+    monkeypatch.setattr(entailment, "optional_stack", object)
     assert entailment.unavailable_reason() is None
 
 
@@ -151,7 +151,7 @@ def test_open_entailer_returns_reason_when_unavailable(monkeypatch):
 
 
 def test_open_entailer_returns_an_entailer_when_available(monkeypatch):
-    monkeypatch.setattr(entailment, "optional_stack", lambda: object())
+    monkeypatch.setattr(entailment, "optional_stack", object)
     entailer, reason = entailment.open_entailer()
     assert isinstance(entailer, entailment.Entailer)
     assert reason is None
