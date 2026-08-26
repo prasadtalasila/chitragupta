@@ -297,3 +297,10 @@ class TestFormatReport:
         text = render.format_report(report, claim_support.findings(report))
         assert "missing_2024" in text
         assert "0%" not in text
+        # `format_report` is a flat list with no summary/detail split like
+        # `render_markdown`'s Markdown sections have -- a citekey's reason
+        # must appear exactly once, not once per `_format_finding` line and
+        # then again from a second, redundant pass over
+        # `report.unscoreable` (a real duplication bug found while
+        # implementing this task, see task-3-report.md).
+        assert text.count("not in the ledger") == 1
