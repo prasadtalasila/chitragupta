@@ -69,6 +69,53 @@ class TestBuildReport:
         assert finding.score == pytest.approx(0.91)
         assert finding.passage.text == "Twins close the control loop."
 
+    def test_picks_the_higher_scoring_of_two_quotable_passages(self, isolated_config):
+        """`_score_claim`'s whole reason to exist over a bare `quotable[0]`:
+        given a real choice between candidates, it must pick the one the
+        entailer actually scores higher -- not whichever sidecar record
+        happens to sit first. The winning passage is deliberately placed
+        *second* in the sidecar list, so a `scores[0]`-shaped bug (or a
+        stray `min` in place of `max`) would fail this by returning the
+        loser instead."""
+        _add_item("twopassage_2024")
+        _sidecar(
+            "twopassage_2024",
+            [
+                {"text": "An irrelevant passage about something else.", "page": 1},
+                {"text": "Twins close the control loop precisely.", "page": 2},
+            ],
+        )
+        draft = _draft(config, "Digital twins close the loop precisely [@twopassage_2024].\n")
+        fake = FakeEntailer(
+            {
+                (
+                    "An irrelevant passage about something else.",
+                    "Digital twins close the loop precisely.",
+                ): 0.10,
+                (
+                    "Twins close the control loop precisely.",
+                    "Digital twins close the loop precisely.",
+                ): 0.88,
+            }
+        )
+        report = claim_support.build_report(draft, fake)
+        assert len(report.findings) == 1
+        finding = report.findings[0]
+        assert finding.passage.text == "Twins close the control loop precisely."
+        assert finding.score == pytest.approx(0.88)
+        # Both candidates must actually have been sent to the entailer --
+        # an implementation that scored only the first passage (or only
+        # the winner, decided some other way) would still pass the two
+        # assertions above by accident if it happened to guess right.
+        assert fake.calls == [
+            [
+                ("An irrelevant passage about something else.",
+                 "Digital twins close the loop precisely."),
+                ("Twins close the control loop precisely.",
+                 "Digital twins close the loop precisely."),
+            ]
+        ]
+
     def test_a_citekey_cited_twice_fetches_its_passages_only_once(
         self, isolated_config, monkeypatch
     ):
