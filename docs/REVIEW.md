@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
-Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
-six aids as they stand.
+Status: **reference.** Written 2026-08-22. Updated 2026-08-26, describing the
+seven aids as they stand.
 
 **Written for** you, after a draft is finished -- someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also **take no lock**, so any of them runs happily while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## 🧩 The six aids
+## 🧩 The seven aids
 
 **`review provenance` -- does the cited paper actually say this?** The
 gate answers "is this citekey real?" exactly, and that is all it can
@@ -111,6 +111,31 @@ which is why one always says *candidates* and the other always says
 *sentences*. It is also the only aid that reads no corpus, so it runs
 before you have parsed anything.
 
+**`review quotation` -- is each quoted span really in the source it
+cites?** The only aid whose answer is binary. A `quote:` recorded in a
+dossier is verbatim by contract and reaches a rendered evidence sidecar
+in quotation marks, under an attribution; nothing before this checked
+that the span is in the paper it names. A quotation attributed to a
+source that does not contain it is the same failure class as a
+fabricated citekey, and the one part of that class the citation gate
+cannot see -- because the citekey *is* real.
+
+It reports three outcomes, not two. **Found** gives you the page and how
+it matched. **Absent** is the finding, and carries the page its
+distinctive words concentrate on, so you can tell a fabrication from a
+quotation someone edited. **Not checkable** is the third, and it is the
+honest one: where the only text available is `pdftotext -layout` output,
+a two-column page splices its columns together and a perfectly correct
+quotation is simply not contiguous. Calling that absent would accuse a
+draft of something it did not do, so the aid says it measured nothing
+instead. That third outcome is also why this check, binary as it is,
+stays advisory -- [ARCHITECTURE.md](ARCHITECTURE.md) works it through.
+
+Today it will tell you there is nothing to check: no dossier in this
+project carries a `quote:` yet, because A2's contract makes one a
+deliberate act rather than the residue of retrieval. That is the
+expected answer, not a clean bill of health, and the report says so.
+
 ## 📋 What every report looks like
 
 One output contract, mirroring the draft's own path exactly as
@@ -126,6 +151,7 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf, .json)
      content/review/<topic>/survey.figure.md       (+ .tex/.pdf, .json)
      content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.quotation.md    (+ .tex/.pdf, .json)
 ```
 
 `review provenance` writes by default. The rest print, and write only
