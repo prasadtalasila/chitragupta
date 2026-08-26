@@ -34,6 +34,7 @@ short path; this is the full set.
   - [`chitragupta review provenance`](#-chitragupta-review-provenance)
   - [`chitragupta review synthesis`](#-chitragupta-review-synthesis)
   - [`chitragupta review uncited`](#-chitragupta-review-uncited)
+  - [`chitragupta review quotation`](#-chitragupta-review-quotation)
   - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
   - [`chitragupta draft render`](#-chitragupta-draft-render)
   - [`chitragupta draft style`](#-chitragupta-draft-style)
@@ -300,6 +301,7 @@ chitragupta review coverage content/drafts/<slug>.md --query "digital twin compo
 chitragupta review synthesis content/drafts/<slug>.md            # how many sources each unit rests on
 chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
+chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -380,6 +382,7 @@ python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital 
 python -m chitragupta.review synthesis content/drafts/<slug>.md
 python -m chitragupta.review figure content/drafts/<topic>/<slug>.md
 python -m chitragupta.review uncited content/drafts/<slug>.md
+python -m chitragupta.review quotation content/drafts/<slug>.md
 ```
 
 ### 📦 Migrating a checkout to `pip install`
@@ -1151,7 +1154,7 @@ prose-side question, and it is the one nothing answered before:
 [`coverage`](#-chitragupta-review-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
-finds**, and it blocks no draft. Alone among the six aids it reads
+finds**, and it blocks no draft. Alone among the seven aids it reads
 no corpus: no ledger, no sync, no `enrich` extra, only the draft.
 
 **Most of a draft carries no citation, and most of that is fine.** So
@@ -1210,6 +1213,73 @@ surfaced and never repaired unattended.
 `standing` (`exceptional` or `ordinary`), `sentences_total`, `uncited`,
 `bare`, and one `findings` object per uncited sentence -- `id`, `line`,
 `sentence` and `block_cites`.
+
+### 📖 `chitragupta review quotation`
+
+Does each **quoted span** in a draft's dossier actually appear in the
+source it is attributed to? A `quote:` is verbatim by contract and
+reaches a rendered evidence sidecar in quotation marks under an
+attribution; nothing before this checked the span was really there. A
+quotation attributed to a paper that does not contain it is the same
+failure class as a fabricated citekey, and the one part of that class
+[`chitragupta draft gate`](#-chitragupta-draft-gate) cannot see, because
+the citekey *is* real. **Advisory, exits 0 whatever it finds.**
+
+**It checks exactly what the evidence sidecar publishes** -- the same
+`quote:` fields [`draft evidence`](#-chitragupta-draft-evidence) would
+print, for citekeys the draft actually cites. A legacy `support:` block
+is not checked: it holds a raw retrieval window nobody ever chose as a
+quotation, and [DOSSIER.md](DOSSIER.md) already says a module that
+*prints* one must read it as nothing at all.
+
+**Three outcomes, not two.**
+
+| Outcome | Means | A finding? |
+| --- | --- | --- |
+| found | The span is in the source. The report gives the page and the tier that matched | no |
+| absent | It is not, and the source *was* readable in reading order. Carries the page its distinctive words concentrate on, so you can tell a fabrication from an edited quotation | **yes** |
+| not checkable | The source has no reading-ordered passages -- only `pdftotext -layout` text, whose column splicing makes a correct quotation genuinely non-contiguous. Reporting it absent would accuse a draft of something it did not do | no |
+
+**The matcher, because "verbatim" is not as simple as it sounds.** Both
+sides are reduced to one `[a-z0-9]` character stream after NFKD, so a
+line-break hyphen, a soft hyphen, a ligature, collapsed whitespace and a
+curly quotation mark all stop mattering. Two more normalisations were
+added on measurement rather than on principle: an inline reference
+marker is stripped from the source (a passage reads "...and hypotheses
+[30]." where the quotation correctly drops it), and an elision or
+`[editorial]` insertion splits the quote into fragments that must appear
+**in order**. Ordered, so the check stays exact -- there is no
+similarity score in it anywhere. `plans/c3-quotation-integrity.md` has
+the measurement.
+
+**Today it reports nothing to check**, on every draft in this project.
+No dossier carries a `quote:` yet: A2's contract makes capturing one a
+deliberate act rather than the residue of retrieval. That is the
+expected answer and the report says so -- it is not a clean bill of
+health.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The draft to check |
+| `--json` | off | Print the verdicts as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+
+```bash
+chitragupta review quotation content/drafts/survey.md
+# ... --write --formats md
+# ... --json > quotation.json
+```
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`quotes_total`, `found`, `absent`, `unverifiable`, a `quotes` object per
+checked span (`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`) and
+a `findings` object per absent one (`id`, `citekey`, `quote`,
+`near_miss_page`, `near_miss_score`). The `tier` is `exact`,
+`exact-pair`, `elided` or `elided-pair`: a reader deciding whether to
+trust a rendered quotation should be able to see that the check was
+contiguous rather than an alignment around an ellipsis.
 
 ### 📋 `chitragupta review verbatim`
 

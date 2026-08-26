@@ -124,6 +124,7 @@ bucket within a class, then position in the draft.
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
+| `misquoted` | quotation | defect -- the span is not in the source it cites | no -- surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
 
 The `prose` class had no producer when this was written. It has both a

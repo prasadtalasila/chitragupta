@@ -656,11 +656,11 @@ an open issue; only step 4 and step 5's widening are the live work.
 
 Step 4, and the largest genuinely new piece of the track. A fourth key
 in `review.AIDS`: deterministic, stdlib-only, no LLM, takes no lock,
-exits 0 whatever it finds. It reads the other six aids' JSON plus the
+exits 0 whatever it finds. It reads the other seven aids' JSON plus the
 dossier's drift report and emits **one ranked, deduplicated worklist**
 -- *"This cross-signal merge is the work no individual aid can do."*
 
-Six item classes, of which **three are surfaced and never acted on**
+Seven item classes, of which **four are surfaced and never acted on**
 (`unsupported-claim`, `uncited-source`, `candidate` -- all judgement),
 one is unattended (`missing-citekey`), and two are partial
 (`verbatim-run` except the long runs reserved for a human; `prose` only

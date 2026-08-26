@@ -10,7 +10,7 @@ citekey cited but never surfaced by any of the given queries is not a
 problem (it's likely explained by a different query the skill also ran)
 but worth showing so the report isn't misread as a gap-finder.
 
-One of the six commands in the **review layer**, named by the entry point
+One of the seven commands in the **review layer**, named by the entry point
 rather than by a sibling list this module has no line budget to grow --
 read over a finished draft, by a person or by a driver, never a gate,
 and never holding the write lock. Purely informational, unlike citation_gate.py.
