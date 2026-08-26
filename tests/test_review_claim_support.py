@@ -6,7 +6,8 @@ import json
 
 import pytest
 
-from chitragupta import config, ledger
+from chitragupta import config, ledger, review
+from chitragupta.review import _claim_support_render as render
 from chitragupta.review import claim_support
 
 
@@ -208,3 +209,91 @@ class TestFindings:
                 "note": None,
             }
         ]
+
+
+@pytest.fixture
+def registered_aid(monkeypatch):
+    """`render_markdown` calls `review.header(report.draft, "support",
+    command)`, and `header()` does a bare `AIDS[aid]` lookup. Task 4 --
+    not this one -- registers "support" in `review.AIDS` (and,
+    indivisibly, in `review/__main__.py`'s own `AIDS`, since that
+    module's import-time guard requires both to have the same keys and
+    several other test files already import `review.__main__`). Adding
+    the key here for real, ahead of Task 4, would either leave
+    `__main__.AIDS` behind (tripping that guard for every test file
+    that imports `chitragupta.review.__main__`) or require inventing
+    `claim_support.build_parser` early, which is Task 4's job too. So
+    this patches the key into `review.AIDS` for the tests in this file
+    only -- `render_markdown` itself is unchanged and calls `header`
+    exactly as Task 4 will find it."""
+    monkeypatch.setitem(review.AIDS, "support", "Claim support")
+
+
+class TestRenderMarkdown:
+    def test_includes_the_ranked_not_banded_caveat(self, isolated_config, registered_aid):
+        draft = _draft(config, "No citations here.\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        text = render.render_markdown(report, "cmd", claim_support.findings(report))
+        assert "ranked" in text.lower()
+        assert "not a fact-check" in text.lower()
+
+    def test_lists_a_finding_with_its_score_and_claim(self, isolated_config, registered_aid):
+        _add_item("good_2024")
+        _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
+        draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
+        fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
+        report = claim_support.build_report(draft, fake)
+        found = claim_support.findings(report)
+        text = render.render_markdown(report, "cmd", found)
+        assert "good_2024" in text
+        assert "90%" in text
+
+    def test_notes_an_unscoreable_citekey(self, isolated_config, registered_aid):
+        draft = _draft(config, "A claim citing nothing on record [@missing_2024].\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        found = claim_support.findings(report)
+        text = render.render_markdown(report, "cmd", found)
+        assert "missing_2024" in text
+        assert "not in the ledger" in text or "no readable text" in text
+        # Real bug found while implementing this task (see task-3-report.md):
+        # the brief's own `_finding_lines` printed `finding["score"]:.0%`
+        # unconditionally, so an unscoreable citekey -- score 0.0 by
+        # `build_report`'s own design -- rendered as "(0%)" in Findings,
+        # exactly the "checked and found wanting" standing this aid's
+        # module docstring says an unscoreable citekey must not carry.
+        assert "(0%)" not in text
+
+    def test_a_bare_citation_with_no_surrounding_prose_notes_missing_claim_text(
+        self, isolated_config, registered_aid
+    ):
+        draft = _draft(config, "[@missing_2024]\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        found = claim_support.findings(report)
+        assert found[0]["claim"] == ""
+        text = render.render_markdown(report, "cmd", found)
+        assert "(no claim text)" in text
+
+
+class TestFormatReport:
+    def test_plain_text_has_no_markdown_headings(self, isolated_config):
+        draft = _draft(config, "No citations here.\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        text = render.format_report(report, claim_support.findings(report))
+        assert "##" not in text
+
+    def test_lists_a_scored_finding_with_its_percentage(self, isolated_config):
+        _add_item("good_2024")
+        _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
+        draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
+        fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
+        report = claim_support.build_report(draft, fake)
+        text = render.format_report(report, claim_support.findings(report))
+        assert "90%" in text
+        assert "good_2024" in text
+
+    def test_an_unscoreable_finding_does_not_read_as_a_zero_score(self, isolated_config):
+        draft = _draft(config, "A claim citing nothing on record [@missing_2024].\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        text = render.format_report(report, claim_support.findings(report))
+        assert "missing_2024" in text
+        assert "0%" not in text
