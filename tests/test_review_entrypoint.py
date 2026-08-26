@@ -38,6 +38,7 @@ AID_MODULES = [
     "verbatim_check",
     "synthesis",
     "figure_layout",
+    "agenda",
 ]
 
 # A real top-level entry-point block, anchored at column 0 -- not the
