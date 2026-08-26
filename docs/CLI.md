@@ -32,6 +32,7 @@ short path; this is the full set.
   - [`chitragupta review coverage`](#-chitragupta-review-coverage)
   - [`chitragupta review figure`](#-chitragupta-review-figure)
   - [`chitragupta review provenance`](#-chitragupta-review-provenance)
+  - [`chitragupta review support`](#-chitragupta-review-support)
   - [`chitragupta review synthesis`](#-chitragupta-review-synthesis)
   - [`chitragupta review uncited`](#-chitragupta-review-uncited)
   - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
@@ -135,7 +136,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all six aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all seven aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -883,7 +884,7 @@ error.
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate** -- it exits 0 whatever it finds -- and like
-the other five aids nothing it reports can block a draft.
+the other six aids nothing it reports can block a draft.
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
 reaches only the part of that checklist geometry can decide.
 
@@ -1041,7 +1042,7 @@ never a second computation.
 Reports what in each cited source actually supports the claim citing it,
 quoting a real passage. Layer 4, the review layer: advisory, not a gate.
 
-Unlike the other five it writes by default -- reading a provenance report
+Unlike the other six it writes by default -- reading a provenance report
 in a terminal was never the point. The report lands in
 `content/review/<topic>/<stem>.provenance.md`, mirroring the draft's path,
 with its `.tex`/`.pdf` renders and its `.json` sibling beside it, all
@@ -1067,10 +1068,46 @@ Markdown report -- `id`, `line`, `citekey`, `claim`, `score`, `band`,
 `passage` (`page`/`quotable`/`text`, `null` when nothing matched) and
 `note` (why a source was unreadable, when one was). An additional
 serialisation of what `render_markdown` already prints, never a second
-computation. Unlike the other five aids, the `.json` is filed
+computation. Unlike the other six aids, the `.json` is filed
 unconditionally -- matching the `.md`'s own always-write policy -- and
 `--json` only decides whether it is *also* printed to stdout, with the
 written-files summary moving to stderr in that case.
+
+### 🔬 `chitragupta review support`
+
+Does the cited source actually entail the claim citing it -- scored by
+a real NLI entailment model, not the lexical overlap
+[`provenance`](#-chitragupta-review-provenance) uses. Same underlying
+question -- does the source support this claim -- different mechanism,
+and a different output shape: ranked, never banded, unlike
+`provenance`'s "no support found / weak / supported" bands. **Advisory,
+exits 0 whatever it finds**, and it blocks no draft. Needs the `enrich`
+extra; without it, the command prints a notice on stderr and still
+exits 0 rather than failing.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The draft to check |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+
+```bash
+chitragupta review support content/drafts/survey.md
+# ... --write --formats md
+# ... --json > support.json
+```
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`scored`, `unscoreable`, and one `findings` object per citation -- `id`,
+`line`, `citekey`, `claim`, `score`, `note`. These two counts are
+deliberately different units, not a second inconsistency: `scored`
+counts *findings* -- one per citation the entailer actually scored
+(`note` is `null`) -- while `unscoreable` counts *citekeys* -- one per
+source whose passages carried no readable text to score against. A
+citekey cited twice that turns out unscoreable is one `unscoreable`
+entry but zero of its two findings count as scored.
 
 ### 🧩 `chitragupta review synthesis`
 
@@ -1151,7 +1188,7 @@ prose-side question, and it is the one nothing answered before:
 [`coverage`](#-chitragupta-review-coverage) looks like it
 answers this and does not -- it reports which *surfaced candidates* got
 cited, which is about the corpus. **Advisory, exits 0 whatever it
-finds**, and it blocks no draft. Alone among the six aids it reads
+finds**, and it blocks no draft. Alone among the seven aids it reads
 no corpus: no ledger, no sync, no `enrich` extra, only the draft.
 
 **Most of a draft carries no citation, and most of that is fine.** So
@@ -1235,7 +1272,7 @@ technique and its literature sources.
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other five review aids. `0` on every
+**Exit codes**, shared with the other six review aids. `0` on every
 successful invocation, findings or not: these are advisory, never a gate.
 That includes `recheck` -- a draft that got worse still exits 0.
 
@@ -1369,8 +1406,9 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All six review aids emit one now (#309, #341, #314, #311) -- `provenance` and `coverage`
-follow the same envelope, above. [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
+All seven review aids emit one now (#309, #341, #314, #311) --
+`provenance` and `coverage` follow the same envelope, above.
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
 planned `agenda` aid still treats each aid's JSON as optional, though: not
 every draft has had every aid run against it, and `coverage`'s sibling is
 only ever filed under `--write`.

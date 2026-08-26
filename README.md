@@ -78,9 +78,9 @@ conscience:
   evidence, rejected candidates, a revision log -- and read back to
   change it. That is why a draft is never revised by re-running the
   skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
-- **The review layer** is six advisory aids for a finished draft:
-  provenance, verbatim, coverage, synthesis, figure layout and uncited
-  prose. None of them is a gate -- which is not the same as borrowed
+- **The review layer** is seven advisory aids for a finished draft:
+  provenance, verbatim, coverage, synthesis, figure layout, uncited
+  prose and claim support. None of them is a gate -- which is not the same as borrowed
   wording being fine to leave once you have found it
   ([docs/REVIEW.md](docs/REVIEW.md)).
 

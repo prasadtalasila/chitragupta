@@ -194,7 +194,8 @@ enrichment layer is optional and nothing above it needs it.
   `chitragupta/review/citation_coverage.py`,
   `chitragupta/review/synthesis.py`,
   `chitragupta/review/figure_layout/`,
-  `chitragupta/review/uncited_prose.py`): read over
+  `chitragupta/review/uncited_prose.py`,
+  `chitragupta/review/claim_support.py`): read over
   a finished draft -- by you, or by a skill that runs one on your
   behalf. Never a gate. Each reads a draft plus
   the corpus -- or, for `figure_layout`, the figures the draft

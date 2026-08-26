@@ -121,7 +121,7 @@ bucket within a class, then position in the draft.
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
 | `prose` | `style_check` (#107), `steering.md` | no evidence delta | only the mechanically re-checkable subset -- [HOUSE-STYLE.md](HOUSE-STYLE.md) |
-| `unsupported-claim` | provenance | judgement | no -- surfaced |
+| `unsupported-claim` | provenance, support | judgement | no -- surfaced |
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |

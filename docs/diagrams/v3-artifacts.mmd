@@ -40,7 +40,7 @@ flowchart TB
       direction LR
       DRF[/"content/drafts/&lt;slug&gt;.md | .tex"/]
       REN[/"content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md"/]
-      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage,synthesis,figure,uncited}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
+      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage,synthesis,figure,uncited,support}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
     end
 
     LCK[/"content/pipeline.lock.db<br/><small>held by whichever writer is running</small>"/]
@@ -71,7 +71,7 @@ flowchart TB
   LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
   DRF == "<b>chitragupta.draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
   DRF -- "chitragupta.draft render<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>chitragupta.review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited --write</small>" --> RVW
+  DRF -- "the review layer<br/><small>chitragupta.review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited · support --write</small>" --> RVW
 
   classDef mine fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef corpus fill:#eef2ff,stroke:#4f46e5,color:#1e1b4b

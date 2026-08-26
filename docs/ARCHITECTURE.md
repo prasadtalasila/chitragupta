@@ -309,7 +309,7 @@ not. Reading an artefact is not calling a layer.
 
 ## 🔍 Layer 4: the review layer
 
-Six aids behind one command, run over a finished draft. **What each one
+Seven aids behind one command, run over a finished draft. **What each one
 answers, what a report looks like, and how to read one is
 [REVIEW.md](REVIEW.md)** -- this section is only the layer's boundary:
 where it sits, and what it may not do.
@@ -341,7 +341,7 @@ refused, the same tier-1 rule the gate chain follows.
 
 That they are *not* gates is the design, not an omission. The gate answers
 a question with one correct answer -- is this citekey in the ledger? --
-and can therefore be automatic and absolute. These six answer questions
+and can therefore be automatic and absolute. These seven answer questions
 of judgement, where a machine verdict would be either wrong often enough
 to be ignored, or trusted more than it deserves. They give you the
 evidence and leave the call to you.

@@ -1,6 +1,6 @@
 """The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
-Six aids, read over a finished draft -- by a person, or by a skill that
+Seven aids, read over a finished draft -- by a person, or by a skill that
 runs one on your behalf. None of them is a gate, none takes the write
 lock, and none of them can block a draft:
 
@@ -25,6 +25,10 @@ lock, and none of them can block a draft:
     python -m chitragupta.review uncited <draft>
         which sentences carry no citation at all. The only aid that
         reads no corpus.
+
+    python -m chitragupta.review support <draft>
+        does the cited source actually entail the claim citing it,
+        scored by a real NLI entailment model.
 
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
@@ -91,7 +95,7 @@ if set(AIDS) != set(review.AIDS):
 # What `--help` prints, deliberately *not* this module's docstring (#152)
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
-DESCRIPTION = "The review layer: six read-only aids over a finished draft. No gate."
+DESCRIPTION = "The review layer: seven read-only aids over a finished draft. No gate."
 
 
 def build_parser() -> argparse.ArgumentParser:

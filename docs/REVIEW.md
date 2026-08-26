@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
 Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
-six aids as they stand.
+seven aids as they stand.
 
 **Written for** you, after a draft is finished -- someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also **take no lock**, so any of them runs happily while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## 🧩 The six aids
+## 🧩 The seven aids
 
 **`review provenance` -- does the cited paper actually say this?** The
 gate answers "is this citekey real?" exactly, and that is all it can
@@ -111,6 +111,22 @@ which is why one always says *candidates* and the other always says
 *sentences*. It is also the only aid that reads no corpus, so it runs
 before you have parsed anything.
 
+**`review support` -- does the source actually entail this claim?** Same
+underlying question as `provenance`, asked a different way. `provenance`
+scores lexical overlap -- cheap, and enough to catch a citekey pointing
+at the wrong paper. `support` scores with a real NLI entailment model,
+which is what it takes to catch a paraphrase that subtly misstates a
+paper it is genuinely citing: the citekey is real, the wording no longer
+matches the source closely enough for a verbatim scan to flag, and the
+source is topically related enough to pass a lexical check -- only
+reading whether the source's own words actually entail the claim catches
+that. The output shape differs too: `provenance` bands its findings
+("no support found" / "weak" / "supported"); `support` publishes a bare
+ranked score and no bands, because retrieval already selected these
+passages by similarity, which weakens the discriminator in the same way
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) records for its own tier 3,
+and a band here would claim a precision this corpus does not support.
+
 ## 📋 What every report looks like
 
 One output contract, mirroring the draft's own path exactly as
@@ -126,6 +142,7 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf, .json)
      content/review/<topic>/survey.figure.md       (+ .tex/.pdf, .json)
      content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.support.md      (+ .tex/.pdf, .json)
 ```
 
 `review provenance` writes by default. The rest print, and write only
