@@ -340,7 +340,7 @@ candidate for the chapter.
    `.txt` contents in a fence on `--format md` and every other
    non-LaTeX format, and `--format tex`/`--format pdf` (step 13) get
    `\input{figures/<name>.tex}`, so the printed chapter a student reads
-   carries a real picture rather than monospace art. Five riders, each
+   carries a real picture rather than monospace art. Six riders, each
    of which §10 explains:
 
    - **Commit to a layout metaphor before drawing, and start from the
@@ -391,6 +391,12 @@ candidate for the chapter.
      from a source paper's figure is the same violation in different
      pixels -- which bites hardest here, where the temptation is to
      reproduce the textbook diagram everyone in the field already knows.
+   - **A caption, if the figure earns one, goes in the draft, never in
+     the figure file.** A caption line directly below the marker, no
+     blank line between, and an inline `<!-- figureref: <name> -->`
+     wherever the prose points at it -- never write the word "Figure" or
+     a number; the renderer assigns both, the same contract §13 gives
+     the table above. An uncaptioned figure is still accepted by design.
 
    **Equations follow `docs/WRITING-STANDARDS.md` §12, not this step, and
    this genre has more of them than any other here.** A worked example is

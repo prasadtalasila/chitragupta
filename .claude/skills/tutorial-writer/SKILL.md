@@ -381,7 +381,7 @@ the lesson design is the part worth keeping either way.
    `.txt` contents in a fence on `--format md` and every other
    non-LaTeX format, and `--format tex`/`--format pdf` (step 14) get
    `\input{figures/<name>.tex}`, so a learner reading the PDF gets a
-   real picture instead of monospace art. Five riders, each of which §10
+   real picture instead of monospace art. Six riders, each of which §10
    explains:
 
    - **Commit to a layout metaphor before drawing, and start from the
@@ -431,6 +431,13 @@ the lesson design is the part worth keeping either way.
    - **The TikZ must be as original as the ASCII.** A picture redrawn
      from a source paper's figure is the same violation in different
      pixels.
+   - **A caption, if this figure warrants one, goes in the draft, never
+     in the figure file.** A caption line directly below the marker, no
+     blank line between, and an inline `<!-- figureref: <name> -->`
+     wherever the lesson points at it -- never write the word "Figure"
+     or a number; the renderer assigns both. Most of this genre's rare
+     figures need no caption at all, and that is the accepted case, not
+     a gap.
 
    **A quantity in the prose follows `docs/WRITING-STANDARDS.md` §12.**
    Rare in this genre and easy to get wrong when it appears: a value the

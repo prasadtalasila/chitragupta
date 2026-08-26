@@ -11,7 +11,14 @@ import shutil
 import subprocess
 import pytest
 from chitragupta import render_output
-from tests.conftest import ASCII_FIGURE, MARKED_INPUT, MARKED_MD, TIKZ_FIGURE, figure_pair
+from tests.conftest import (
+    ASCII_FIGURE,
+    CAPTIONED_MD,
+    MARKED_INPUT,
+    MARKED_MD,
+    TIKZ_FIGURE,
+    figure_pair,
+)
 
 
 class TestLocalTexIncludeRefs:
@@ -197,6 +204,27 @@ class TestFigureWarnings:
         draft = tmp_path / "draft.tex"
         warnings = render_output._figure_warnings("\\input{figures/fig1.tex}\n", draft)
         assert any("no `%figure:` marker" in w for w in warnings)
+
+
+class TestFigureWarningsExtended:
+    def test_a_clean_captioned_pair_warns_about_nothing(self, tmp_path):
+        figure_pair(tmp_path)
+        draft = tmp_path / "draft.md"
+        assert render_output._figure_warnings(CAPTIONED_MD, draft) == []
+
+    def test_two_captioned_figures_sharing_an_id_is_flagged(self, tmp_path):
+        figure_pair(tmp_path)
+        text = CAPTIONED_MD + "\n<!-- figure: figures/fig1 -->\nA second caption.\n"
+        draft = tmp_path / "draft.md"
+        warnings = render_output._figure_warnings(text, draft)
+        assert any("fig1" in w and "more than one figure" in w for w in warnings)
+
+    def test_a_figureref_naming_no_declared_figure_is_flagged(self, tmp_path):
+        figure_pair(tmp_path)
+        text = CAPTIONED_MD + "\n<!-- figureref: ghost -->\n"
+        draft = tmp_path / "draft.md"
+        warnings = render_output._figure_warnings(text, draft)
+        assert any("ghost" in w and "no figure declares it" in w for w in warnings)
 
 
 class TestRequireTikz:

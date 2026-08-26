@@ -216,6 +216,21 @@ class TestTheExclusions:
         )
         assert found_text(draft) == []
 
+    def test_a_figure_caption_is_excluded(self, isolated_config):
+        """Issue 411's caption line has no self-identifying prefix, unlike
+        a table's `:`-led one -- so this needs the block-membership check
+        `_excluded` already has for a booktabs `\\toprule`, not the
+        first-line prefix check a table's caption gets."""
+        draft = a_draft("<!-- figure: figures/fig1 -->\nOne reading path.\n")
+        assert found_text(draft) == []
+
+    def test_an_inline_figure_reference_does_not_reach_the_report(self, isolated_config):
+        """Mirrors `test_an_inline_table_reference_does_not_reach_the_report`:
+        the marker sits *inside* a sentence, so it must be replaced by the
+        word it stands for rather than left as markup."""
+        draft = a_draft("The flow in <!-- figureref: fig1 --> differs.\n")
+        assert found_text(draft) == ["The flow in Figure differs."]
+
     def test_fenced_code_is_excluded(self, isolated_config):
         draft = a_draft("```\nprint('the pot is dry')\n```\n")
         assert found_text(draft) == []

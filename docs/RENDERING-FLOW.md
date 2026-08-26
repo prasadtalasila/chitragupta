@@ -1,6 +1,6 @@
 # 🖨 Rendering flow
 
-Status: **reference.** Written 2026-08-24. Updated 2026-08-25.
+Status: **reference.** Written 2026-08-24. Updated 2026-08-26.
 
 How `python -m chitragupta.draft render` turns a draft into `.md`/`.tex`/`.pdf`/`.docx`,
 where a rendered draft's bibliography actually comes from, and what happens
@@ -23,6 +23,7 @@ citeproc pass over a composed book ([BOOKS.md](BOOKS.md)).
 - [Four places a rendered bibliography can live](#-four-places-a-rendered-bibliography-can-live)
 - [The manual References section, and why citeproc replaces it](#-the-manual-references-section-and-why-citeproc-replaces-it)
 - [Figure substitution: four combinations, one real no-op](#-figure-substitution-four-combinations-one-real-no-op)
+- [Figure numbering: a caption wraps the marker, in two passes](#-figure-numbering-a-caption-wraps-the-marker-in-two-passes)
 - [Table numbering: four cases, and pandoc numbers in only one](#-table-numbering-four-cases-and-pandoc-numbers-in-only-one)
 - [Known defect: the fourth combination isn't a no-op on this host](#-known-defect-the-fourth-combination-isnt-a-no-op-on-this-host)
 - [Unbuilt: a natbib-style mode for thesis fragments](#-unbuilt-a-natbib-style-mode-for-thesis-fragments)
@@ -177,6 +178,47 @@ surprise people who have only read the code:
   panelled figure's `(a)`/`(b)` sub-captions have to exist in the `.txt`
   as well as in the picture: for three of the five formats the twin is
   the only thing the reader sees.
+
+## 🔢 Figure numbering: a caption wraps the marker, in two passes
+
+Issue 411 gives a *captioned* figure the same "author writes no number"
+contract §13 gives a table, via
+`chitragupta/render_output/_figure_captions.py` -- a sibling of
+`_figures.py`, not a part of it, split out once the combined module
+crossed `docs/CODE-STANDARDS.md`'s 250-code-line ratchet.
+
+The Markdown contract is a `figure:` marker followed directly by its
+caption, no blank line between (`_FIGURE_CAPTION_PAIR_RE`):
+
+```markdown
+<!-- figure: figures/delivery-modes -->
+One reading path under three delivery modes.
+```
+
+Two passes run *before* `_with_figures_for`'s own substitution, in
+`_substituted` (`chitragupta/render_output/__init__.py`), because both
+read `figures()` off the original `[marker, caption]` text -- after
+`_with_figures_for` replaces the marker with real content, that adjacency
+is gone:
+
+| Pass | What it resolves | LaTeX-bound (`tex`/`latex`/`pdf`) | Everything else |
+| --- | --- | --- | --- |
+| `substitute_captions` | The `[marker, caption]` pair | Wraps the untouched marker in `\begin{figure}...\caption{}\label{fig:<id>}...\end{figure}` -- LaTeX's own counter numbers it, no `\thefigure` override ever written | `<marker>\n**Figure N:** <caption>`, N counted in document order among captioned figures only |
+| `substitute_refs` | An inline `<!-- figureref: <id> -->` | `` `Figure~\ref{fig:<id>}`{=latex} `` -- the same raw-attribute-span reason `_tables._reference_for` needs for `~` | `Figure N` |
+
+An **uncaptioned** marker (§10's accepted case) matches neither pass's
+regex and renders exactly as ["Figure substitution" above](#-figure-substitution-four-combinations-one-real-no-op)
+already describes -- no float, no number, no `\label`. A `figureref`
+naming an uncaptioned figure's id, or one no figure declares at all, is
+left exactly as written; `python -m chitragupta.draft style`
+(`chitragupta/style_figures.py`) is what reports it, not a failed render.
+
+The `.tex` fragment (`thesis-chapter-writer`) carries neither marker and
+is untouched by either pass -- it hand-authors a real `\begin{figure}`
+inline, the same carve-out the table section below states for a
+`\begin{table}`. The only change there is one line removed:
+`\renewcommand{\thefigure}{N.M}` is no longer written, so the user's own
+thesis-wide `figure` counter numbers it instead.
 
 ## 🔢 Table numbering: four cases, and pandoc numbers in only one
 

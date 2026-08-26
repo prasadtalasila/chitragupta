@@ -15,7 +15,14 @@ from chitragupta import ledger
 from chitragupta import render_output
 from tests.conftest import content_draft
 from tests.conftest import make_reference
-from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
+from tests.conftest import (
+    ASCII_FIGURE,
+    CAPTIONED_MD,
+    MARKED_MD,
+    MARKED_INPUT,
+    TIKZ_FIGURE,
+    figure_pair,
+)
 from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
@@ -730,3 +737,89 @@ class TestFigurePairRenderReal:
 
         assert out_path.exists()
         assert "[figure]" in capsys.readouterr().err
+
+
+class TestCaptionedFigureRenderReal:
+    """Issue 411: a captioned figure's number, real toolchain end to end --
+    the shape unit tests on `_figures.py` alone cannot prove, because only
+    a real pdflatex run confirms the float LaTeX actually compiles."""
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_captioned_figure_compiles_to_a_numbered_pdf_float(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(
+            "# Title\n\n" + CAPTIONED_MD + "\n<!-- figureref: fig1 --> shows the flow.\n"
+        )
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        assert "\\begin{figure}" in source
+        assert "\\input{figures/fig1.tex}" in source
+        assert "\\caption{One reading path.}" in source
+        assert "\\label{fig:fig1}" in source
+        assert "Figure~\\ref{fig:fig1} shows the flow." in source
+        compiled = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
+        )
+        assert compiled.returncode == 0, compiled.stdout[-2000:]
+
+    @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+    def test_a_captioned_figure_to_md_gets_a_bold_numbered_caption(self, isolated_config, tmp_path):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(
+            "# Title\n\n" + CAPTIONED_MD + "\n<!-- figureref: fig1 --> shows the flow.\n"
+        )
+
+        out_path = render_output.render(str(draft), output_format="md")
+
+        rendered = out_path.read_text()
+        assert "**Figure 1:** One reading path." in rendered
+        assert "Figure 1 shows the flow." in rendered
+        assert "<!-- figure:" not in rendered
+
+    def test_a_figureref_right_after_an_uncaptioned_marker_is_not_swallowed(
+        self, isolated_config, tmp_path
+    ):
+        # fig2's marker has no blank line before the `figureref` sentence
+        # that follows it -- exactly the adjacency `substitute_captions`
+        # looks for. Resolving refs before captions would turn that
+        # sentence into plain prose no longer starting with `<!--`,
+        # misreading it as fig2's caption and eating it from the body.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir, name="fig1")
+        figure_pair(draft_dir, name="fig2")
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(
+            "# Title\n\n"
+            + CAPTIONED_MD
+            + "\n<!-- figure: figures/fig2 -->\n"
+            + "<!-- figureref: fig1 --> is the one to compare against.\n"
+        )
+
+        out_path = render_output.render(str(draft), output_format="md")
+
+        rendered = out_path.read_text()
+        assert "**Figure 2:**" not in rendered
+        assert "Figure 1 is the one to compare against." in rendered
