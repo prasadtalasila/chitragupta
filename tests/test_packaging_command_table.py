@@ -58,6 +58,7 @@ REVIEW_FLAT_AIDS = {
     "uncited",
     "quotation",
     "agenda",
+    "support",
 }
 
 CORPUS_VERBS = {"sync", "ledger", "topics"}

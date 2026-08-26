@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
-Status: **reference.** Written 2026-08-22. Updated 2026-08-26, describing the
-eight aids as they stand.
+Status: **reference.** Written 2026-08-22. Updated 2026-08-27, describing the
+nine aids as they stand.
 
 **Written for** you, after a draft is finished -- someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also **take no lock**, so any of them runs happily while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## 🧩 The eight aids
+## 🧩 The nine aids
 
 **`review provenance` -- does the cited paper actually say this?** The
 gate answers "is this citekey real?" exactly, and that is all it can
@@ -137,7 +137,7 @@ deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
 **`review agenda` -- one ranked, deduplicated worklist across the other
-seven.** Each of the aids above answers its own question in isolation;
+eight.** Each of the aids above answers its own question in isolation;
 this one reads what they already wrote (each optional -- an aid that
 never ran is named as absent, not treated as clean), plus the drafting
 layer's prose check and the dossier's drift report, and merges them into
@@ -148,6 +148,22 @@ carries whether it is `unattended` (safe for a future automated pass) or
 merely surfaced for a human to decide; `missing-citekey` and the short
 runs a verbatim scan finds are the former, everything judgement-shaped is
 the latter.
+
+**`review support` -- does the source actually entail this claim?** Same
+underlying question as `provenance`, asked a different way. `provenance`
+scores lexical overlap -- cheap, and enough to catch a citekey pointing
+at the wrong paper. `support` scores with a real NLI entailment model,
+which is what it takes to catch a paraphrase that subtly misstates a
+paper it is genuinely citing: the citekey is real, the wording no longer
+matches the source closely enough for a verbatim scan to flag, and the
+source is topically related enough to pass a lexical check -- only
+reading whether the source's own words actually entail the claim catches
+that. The output shape differs too: `provenance` bands its findings
+("no support found" / "weak" / "supported"); `support` publishes a bare
+ranked score and no bands, because retrieval already selected these
+passages by similarity, which weakens the discriminator in the same way
+[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) records for its own tier 3,
+and a band here would claim a precision this corpus does not support.
 
 ## 📋 What every report looks like
 
@@ -166,6 +182,7 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.uncited.md      (+ .tex/.pdf, .json)
      content/review/<topic>/survey.quotation.md    (+ .tex/.pdf, .json)
      content/review/<topic>/survey.agenda.md       (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.support.md      (+ .tex/.pdf, .json)
 ```
 
 `review provenance` and `review agenda` write by default. The rest

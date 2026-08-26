@@ -1,6 +1,6 @@
 """The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
-Eight aids, read over a finished draft -- by a person, or by a skill that
+Nine aids, read over a finished draft -- by a person, or by a skill that
 runs one on your behalf. None of them is a gate, none takes the write
 lock, and none of them can block a draft:
 
@@ -31,10 +31,14 @@ lock, and none of them can block a draft:
         attributed to? The only aid whose answer is binary.
 
     python -m chitragupta.review agenda <draft>
-        merge the other seven aids' reports, the drafting layer's prose
+        merge the other eight aids' reports, the drafting layer's prose
         check, and the dossier's drift report into one ranked,
         deduplicated worklist. Reads what the others wrote; runs none
         of them.
+
+    python -m chitragupta.review support <draft>
+        does the cited source actually entail the claim citing it,
+        scored by a real NLI entailment model.
 
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
@@ -47,8 +51,8 @@ The subcommand names are not invented here. They are the keys of
 `review.AIDS`, which are also the suffixes a written report is filed
 under (`survey.provenance.md`, `.verbatim.md`, `.coverage.md`,
 `.synthesis.md`, `.figure.md`, `.uncited.md`, `.quotation.md`,
-`.agenda.md`) -- so the command a reader types and the file they get
-back share one vocabulary.
+`.agenda.md`, `.support.md`) -- so the command a reader types and the
+file they get back share one vocabulary.
 
 Each aid declares its own flags in its own `build_parser(parser)` and
 does its work in its own `run(args)`. This file only wires them
@@ -106,7 +110,7 @@ if set(AIDS) != set(review.AIDS):
 # What `--help` prints, deliberately *not* this module's docstring (#152)
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
-DESCRIPTION = "The review layer: eight read-only aids over a finished draft. No gate."
+DESCRIPTION = "The review layer: nine read-only aids over a finished draft. No gate."
 
 
 def build_parser() -> argparse.ArgumentParser:
