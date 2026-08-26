@@ -1,0 +1,163 @@
+"""chitragupta/review/claim_support.py: does the cited source actually
+entail the claim citing it, per a real NLI model (stubbed here --
+the module's own logic is what is under test, not the model)."""
+
+import json
+
+import pytest
+
+from chitragupta import config, ledger
+from chitragupta.review import claim_support
+
+
+def _add_item(citekey, parsed_text=None, title="T"):
+    parsed_path = None
+    if parsed_text is not None:
+        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+        parsed_path = config.PARSED_DIR / f"{citekey}.txt"
+        parsed_path.write_text(parsed_text, encoding="utf-8")
+        parsed_path = str(parsed_path)
+    con = ledger.connect()
+    try:
+        con.execute(
+            "INSERT OR REPLACE INTO items"
+            " (citekey, title, status, parsed_path, pdf_path, last_synced)"
+            " VALUES (?, ?, 'parsed', ?, NULL, '2026-01-01')",
+            (citekey, title, parsed_path),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+
+def _sidecar(citekey, records):
+    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
+    (config.DOCLING_DIR / f"{citekey}.passages.json").write_text(json.dumps(records))
+
+
+class FakeEntailer:
+    """Scores by exact-pair table lookup -- no model anywhere."""
+
+    def __init__(self, scores):
+        self.scores = scores
+        self.calls = []
+
+    def score(self, pairs):
+        self.calls.append(list(pairs))
+        return [self.scores.get(pair, 0.0) for pair in pairs]
+
+
+def _draft(config_dir, text):
+    draft = config_dir.DRAFTS_DIR / "topic" / "draft.md"
+    draft.parent.mkdir(parents=True, exist_ok=True)
+    draft.write_text(text, encoding="utf-8")
+    return draft
+
+
+class TestBuildReport:
+    def test_scores_a_claim_against_its_citekeys_best_passage(self, isolated_config):
+        _add_item("good_2024")
+        _sidecar("good_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
+        fake = FakeEntailer(
+            {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
+        )
+        report = claim_support.build_report(draft, fake)
+        assert len(report.findings) == 1
+        finding = report.findings[0]
+        assert finding.citekey == "good_2024"
+        assert finding.score == pytest.approx(0.91)
+        assert finding.passage.text == "Twins close the control loop."
+
+    def test_a_citekey_cited_twice_fetches_its_passages_only_once(
+        self, isolated_config, monkeypatch
+    ):
+        """The per-citekey passage cache: a draft citing the same source
+        twice must not re-fetch (and, once a real Entailer is in the
+        loop, re-embed) its passages a second time."""
+        _add_item("shared_2024")
+        _sidecar("shared_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        calls = []
+        real_source_passages = claim_support.source_passages
+
+        def counting(con, citekey):
+            calls.append(citekey)
+            return real_source_passages(con, citekey)
+
+        monkeypatch.setattr(claim_support, "source_passages", counting)
+        draft = _draft(
+            config,
+            "Digital twins close the loop [@shared_2024].\n\n"
+            "It also logs telemetry [@shared_2024].\n",
+        )
+        fake = FakeEntailer(
+            {
+                ("Twins close the control loop.", "Digital twins close the loop."): 0.9,
+                ("Twins close the control loop.", "It also logs telemetry."): 0.2,
+            }
+        )
+        report = claim_support.build_report(draft, fake)
+        assert len(report.findings) == 2
+        assert calls == ["shared_2024"]
+
+
+class TestUnscoreable:
+    def test_a_citekey_with_no_passages_at_all_is_noted_not_scored(self, isolated_config):
+        draft = _draft(config, "A claim about nothing on record [@missing_2024].\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        assert report.findings[0].score == 0.0
+        assert "missing_2024" in report.unscoreable
+
+    def test_a_citekey_with_only_page_level_passages_is_noted_not_scored(self, isolated_config):
+        _add_item("pageonly_2024", parsed_text="whole page one text\fwhole page two text")
+        draft = _draft(config, "A claim citing a page scan [@pageonly_2024].\n")
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        assert report.findings[0].passage is None
+        assert "pageonly_2024" in report.unscoreable
+
+
+class TestOrderingAndId:
+    def test_worst_scoring_claim_sorts_first(self, isolated_config):
+        _add_item("weak_2024")
+        _sidecar("weak_2024", [{"text": "Unrelated source text.", "page": 1}])
+        _add_item("strong_2024")
+        _sidecar("strong_2024", [{"text": "Twins close the loop.", "page": 1}])
+        draft = _draft(
+            config,
+            "Weak claim here [@weak_2024]. Strong claim here [@strong_2024].\n",
+        )
+        fake = FakeEntailer(
+            {
+                ("Unrelated source text.", "Weak claim here."): 0.05,
+                ("Twins close the loop.", "Strong claim here."): 0.95,
+            }
+        )
+        report = claim_support.build_report(draft, fake)
+        assert [f.citekey for f in report.findings] == ["weak_2024", "strong_2024"]
+
+
+class TestFindingId:
+    def test_stable_across_runs(self):
+        assert claim_support.finding_id("k", "c") == claim_support.finding_id("k", "c")
+
+    def test_differs_for_a_different_claim_on_the_same_citekey(self):
+        assert claim_support.finding_id("k", "c1") != claim_support.finding_id("k", "c2")
+
+
+class TestFindings:
+    def test_one_dict_per_finding_no_band(self, isolated_config):
+        _add_item("good_2024")
+        _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
+        draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
+        fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
+        found = claim_support.findings(claim_support.build_report(draft, fake))
+        assert found == [
+            {
+                "id": claim_support.finding_id("good_2024", "Digital twins close the loop."),
+                "line": 1,
+                "citekey": "good_2024",
+                "claim": "Digital twins close the loop.",
+                "score": pytest.approx(0.9),
+                "note": None,
+            }
+        ]
