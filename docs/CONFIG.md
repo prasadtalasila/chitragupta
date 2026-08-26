@@ -1,6 +1,6 @@
 # ⚙ Configuration
 
-Status: **reference.** Written 2026-08-03. Updated 2026-08-24.
+Status: **reference.** Written 2026-08-03. Updated 2026-08-26.
 
 **Written for** anyone setting this pipeline up on their own machine.
 **Assumed:** [CLI.md](CLI.md) for the commands these settings change.
@@ -28,6 +28,7 @@ this document can stay a reference rather than an argument.
 - [How values are parsed](#-how-values-are-parsed)
 - [Notes on individual settings](#-notes-on-individual-settings)
 - [Choosing an embedding model](#-choosing-an-embedding-model)
+- [Choosing an entailment model](#-choosing-an-entailment-model)
 - [Seed topics: organising the corpus by phrases you wrote](#-seed-topics-organising-the-corpus-by-phrases-you-wrote)
 
 ## 📥 How configuration is loaded
@@ -363,6 +364,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | --- | --- | --- | --- | --- |
 | `embedding_model` | `EMBEDDING_MODEL` | a sentence-transformers model id | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/all-mpnet-base-v2` |
 | `embed_max_passages_per_source` | `EMBED_MAX_PASSAGES_PER_SOURCE` | integer | `3` | `3` |
+| `entailment_model` | `ENTAILMENT_MODEL` | a `sentence_transformers.CrossEncoder` model id | `cross-encoder/nli-deberta-v3-small` | `cross-encoder/nli-deberta-v3-base` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
@@ -390,6 +392,16 @@ by construction and has no matching key. Raise it for a corpus where a
 single, unusually thorough paper legitimately deserves more of the
 result than three chunks; lower it (to `1`) to force maximal source
 diversity per query.
+
+**The two `entailment_model` columns differ on purpose, same shape as
+`embedding_model` above.** The code's fallback is the smaller of the two
+DeBERTa-v3 checkpoints among the three real candidates investigated for
+this setting (a third, different-family candidate has fewer parameters
+still -- see the table below); the shipped example sets the larger, more
+accurate `-base` variant of the same DeBERTa-v3 family. Both are genuine
+drop-ins -- confirmed by actually loading all three real candidates via
+`sentence_transformers.CrossEncoder`, not by assumption. See
+[Choosing an entailment model](#-choosing-an-entailment-model).
 
 ## 🔤 How values are parsed
 
@@ -725,6 +737,116 @@ python -m chitragupta.enrich --stages embed
 The model downloads on first use (needs network), and Chroma's existing
 collection is **not** re-embedded automatically -- switch only when you
 are prepared to rebuild the index.
+
+## 🧠 Choosing an entailment model
+
+### 🔍 What this model is asked, and how the answer is read
+
+`chitragupta/entailment.py`'s `Entailer.score()` calls
+`CrossEncoder(config.ENTAILMENT_MODEL).predict(pairs)` on
+`(premise, hypothesis)` pairs -- a citing sentence's claim against a
+retrieved passage from the cited source -- and reads off the
+`"entailment"` probability by looking up `"entailment"` in the model's own
+`id2label` mapping, not by a fixed column index. That lookup-by-label,
+rather than lookup-by-position, is what makes every candidate below a
+genuine drop-in regardless of label ordering: confirmed for real by
+loading all three and comparing their actual `id2label` values, not
+assumed from one model's shape.
+
+Real investigation for this section: all three candidates were loaded for
+real via `sentence_transformers.CrossEncoder` in `.venv-full`, their real
+`id2label`, real parameter count (`m.model.num_parameters()`) and real
+elapsed time for a batch of 8 identical `(premise, hypothesis)` pairs were
+recorded, not estimated. `sentence-transformers` (already pinned by the
+`enrich` group for `chitragupta/overlap_chroma.py`'s `Embedder`) needed no
+extra install for any of the three -- `CrossEncoder` and
+`SentenceTransformer` are two classes in one already-pinned package.
+
+### ✅ Drop-in cross-encoders
+
+| Model | Size | Relative cost | Best for | Tradeoff |
+| --- | --- | --- | --- | --- |
+| `cross-encoder/nli-deberta-v3-small` (code default) | 141,897,219 params | Lowest of the DeBERTa-v3 pair -- 0.337s for a batch of 8 pairs, measured | Small corpora, quick iteration, the conservative default for a citation-integrity aid | 87.55 MNLI-mismatched accuracy (published by the model's own card) -- 2.49 points below `-base` |
+| `cross-encoder/nli-deberta-v3-base` (example default) | 184,424,451 params | ~30% more parameters than `-small`; measured elapsed time was within noise of `-small`'s at this batch size (0.346s/0.351s across two runs) | The more accurate DeBERTa-v3 checkpoint, when the extra ~2.5 accuracy points are worth a larger download and more memory | Real cost is parameters and download/memory, not per-call latency at the batch sizes this aid actually uses |
+| `cross-encoder/nli-MiniLM2-L6-H768` | 82,120,707 params | Smallest and measured fastest of the three -- 0.234s for the same batch | A CPU-constrained machine where every parameter counts | Lowest published accuracy of the three (86.89 MNLI-mismatched) -- a real, if modest, gap below `-small` for a ~42% parameter saving |
+
+The `sentence-transformers` project's own pretrained-cross-encoder NLI
+table also lists other checkpoints not among this task's three
+candidates -- `cross-encoder/nli-deberta-v3-xsmall` in particular, whose
+published MNLI-mismatched accuracy (87.77) is marginally *above*
+`-small`'s (87.55) on a smaller backbone. That candidate was not loaded or
+measured here: this investigation's scope was the three named in the
+task brief, not every NLI checkpoint in the family. Recorded as an open
+question for a future investigation, not resolved by this one -- adopting
+it now would mean picking a default with no measured parameter count or
+elapsed time, which is exactly what this task's own standard rules out.
+
+What each one is:
+
+- **`nli-deberta-v3-small`** -- the smaller of the two DeBERTa-v3
+  checkpoints among this task's three candidates (`microsoft/deberta-v3`
+  family, fine-tuned by the `sentence-transformers` project on SNLI +
+  MultiNLI for exactly this `(premise, hypothesis) -> {contradiction,
+  entailment, neutral}` task) -- not the smallest DeBERTa-v3 NLI
+  checkpoint that exists; see the `-xsmall` note above. Real `id2label`:
+  `{0: 'contradiction', 1: 'entailment', 2: 'neutral'}`. 141,897,219 real
+  parameters; 0.337s measured for a batch of 8 pairs in this environment.
+  87.55 MNLI-mismatched accuracy, published on the model's own card and by
+  the `sentence-transformers` project's pretrained cross-encoder table.
+  Code default, confirmed by this investigation rather than left
+  unexamined.
+- **`nli-deberta-v3-base`** -- the same recipe on the larger 12-layer
+  DeBERTa-v3 backbone. Real `id2label` identical to `-small`'s. Real
+  184,424,451 parameters; 0.346s measured (0.351s on an independent
+  repeat run), effectively the same as `-small` at this batch size --
+  the fixed per-call overhead dominates a batch this small, so the two
+  models' real cost difference shows up in parameters and memory, not in
+  measured latency here. 90.04 MNLI-mismatched accuracy, a real +2.49
+  over `-small` on the same published benchmark. Ships as the
+  `config.toml.example` default, the same "smaller/faster code fallback,
+  larger/more-accurate shipped example" pattern `embedding_model` already
+  uses above.
+- **`nli-MiniLM2-L6-H768`** -- a MiniLMv2 backbone distilled from
+  RoBERTa-Large, fine-tuned the same way on SNLI + MultiNLI. Real
+  `id2label` identical to the other two. Real 82,120,707 parameters --
+  the smallest of the three, and the one actually measured fastest here
+  (0.234s for the same batch of 8, versus 0.337s/0.346s for the DeBERTa-v3
+  pair). 86.89 MNLI-mismatched accuracy, the lowest published number of
+  the three -- a real gap below `-small` (0.66 points) that is small in
+  absolute terms but not zero, on a citation-integrity aid where a wrong
+  supported/not-supported call has a real cost. A legitimate choice for a
+  CPU-constrained machine that needs every millisecond; not the default,
+  because the accuracy this aid gives up for it is real and the compute
+  this aid actually spends is small (one claim against a handful of
+  retrieved passages, not a corpus-wide bulk pass).
+
+### 🚫 Not without a code change first, for entailment
+
+- **`facebook/bart-large-mnli` and the `MoritzLaurer/*` zero-shot-MNLI
+  models** -- confirmed for real (model-card metadata, not assumed): both
+  declare `pipeline_tag: zero-shot-classification`, and neither declares
+  `library_name: sentence-transformers` the way all three candidates above
+  do (`facebook/bart-large-mnli` names no `library_name` at all;
+  `MoritzLaurer/deberta-v3-base-zeroshot-v2.0` names `transformers`
+  explicitly). They are `transformers.pipeline("zero-shot-classification")`
+  models, not `sentence_transformers.CrossEncoder`-wrapped ones. Using
+  either here would mean a second ML code path --
+  `AutoModelForSequenceClassification` plus hand-rolled `(premise,
+  hypothesis)` tokenization -- next to the `CrossEncoder` path
+  `chitragupta/entailment.py` and `chitragupta/overlap_chroma.py`'s
+  `Embedder` already share, for no accuracy case made. An API-shape
+  rejection, not an accuracy one -- no claim is made here about whether
+  either would score better or worse, only that adopting one is a real
+  code change, not a config-only swap.
+
+### 🔄 Switching entailment models
+
+Edit `[enrich].entailment_model`, or set `ENTAILMENT_MODEL=...` for a
+single run. Unlike `embedding_model`, there is no index to rebuild --
+`chitragupta/entailment.py`'s `Entailer` loads the model lazily on first
+use and nothing it produces is cached to disk, so a switch takes effect
+on the next run that touches claim-support checking. The model downloads
+on first use (needs network), the same as an embedding model.
 
 ## 🌱 Seed topics: organising the corpus by phrases you wrote
 

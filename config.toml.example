@@ -363,6 +363,31 @@ good_score = 0.50
 #                       Default if absent: sentence-transformers/all-MiniLM-L6-v2
 embedding_model = "sentence-transformers/all-mpnet-base-v2"
 
+# Which sentence_transformers.CrossEncoder model scores claim-support
+# checking's (premise, hypothesis) pairs -- chitragupta/entailment.py's
+# Entailer, the aid that flags a citing sentence's claim as unsupported by
+# its cited source's retrieved passage.
+#
+# NOTE the default below is not the code's fallback. If this key is
+# absent entirely you get nli-deberta-v3-small (the smaller of the two
+# DeBERTa-v3 candidates investigated -- cross-encoder/nli-MiniLM2-L6-H768,
+# a different family, has fewer parameters still; see docs/CONFIG.md --
+# 141,897,219 parameters, 87.55 MNLI-mismatched accuracy); this file
+# ships nli-deberta-v3-base (larger, 184,424,451 parameters, 90.04
+# MNLI-mismatched accuracy). Both are genuine drop-ins, confirmed by
+# actually loading each one.
+#
+# Not every model is: facebook/bart-large-mnli and the MoritzLaurer/*
+# zero-shot-MNLI models are transformers.pipeline("zero-shot-classification")
+# models, not CrossEncoder-wrapped ones, and would need a second ML code
+# path to use here. docs/CONFIG.md's "Choosing an entailment model" lists
+# what works and what needs a code change first.
+#
+# Changing this affects only the next run that touches claim-support
+# checking -- unlike embedding_model above, there is no index to rebuild.
+#                       Default if absent: cross-encoder/nli-deberta-v3-small
+entailment_model = "cross-encoder/nli-deberta-v3-base"
+
 # The most chunks of one citekey embed_index.search() will return among
 # its top k (#305): a per-citekey cap applied to the ranked list before
 # it's truncated, so one thoroughly-matched paper can't fill every
