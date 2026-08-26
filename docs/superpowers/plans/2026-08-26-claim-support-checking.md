@@ -1100,12 +1100,22 @@ The issue cites "build order item 9" in `docs/FEATURE-ROADMAP.md`. As of this wr
 
 ## Task 5: Documentation sweep (R10), the parts that don't depend on the measurement
 
+**Scope note, added after Task 4's review:** Task 4's review ran the full suite before and after that task's commit and found registering the seventh aid breaks four cross-reference test files this plan's original Task 5 scope never covered — `tests/test_architecture_review_layer.py`, `tests/test_diagrams_in_sync.py`, `tests/test_features_doc.py`, `tests/test_packaging_command_table.py`, none of them optional (all part of the ordinary suite, not gated on the `enrich` extra). Ruling: these are exactly what R10's "and appears in AGENTS.md, CLI.md, the README tables and mkdocs.yml" sweep is *for* — the plan's original file list was simply incomplete relative to what the live suite actually enforces — so they're added to this task rather than spun into a new one. The file list and steps below are the corrected, complete scope; the version of this task that shipped without them was a plan defect, not a later task's problem.
+
 **Files:**
 - Modify: `AGENTS.md` (layer-4 bullet list, ~line 192-201)
 - Modify: `docs/CLI.md` (TOC entry + new `### 🔬 chitragupta review support` section, alphabetically between `provenance` and `synthesis`)
 - Modify: `docs/REVIEW.md` ("The six aids" → "The seven aids", new bullet)
 - Modify: `README.md` ("six advisory aids" → "seven advisory aids", ~line 81-83)
 - Modify: `docs/AUTO-IMPROVEMENT.md` (item-class table's `unsupported-claim` row Source column, ~line 117-124)
+- Modify: `docs/ARCHITECTURE.md` (Layer 4 section's opening aid-count word, checked by `tests/test_architecture_review_layer.py`)
+- Modify: `docs/FEATURES.md` (review-section aid list and stated count, checked by `tests/test_features_doc.py`)
+- Modify: `docs/PACKAGING.md` (command-surface table's review row and its arithmetic breakdown, checked by `tests/test_packaging_command_table.py`)
+- Modify: `tests/test_packaging_command_table.py` (`REVIEW_FLAT_AIDS` constant, line ~53 — this is a hand-maintained test fixture, not generated, and it does not currently include `"support"`)
+- Modify: `docs/DIAGRAMS.md` (three fenced Mermaid blocks — `v3-artifacts`, `g1-corpus-led`, `extra-sequence` — whichever of their labels enumerate the review aids by name)
+- Modify: `docs/diagrams/{v3-artifacts,g1-corpus-led,extra-sequence}.mmd` and `docs/diagrams/svg/{v3-artifacts,g1-corpus-led,extra-sequence}.svg` (re-rendered from the fenced blocks above, checked by `tests/test_diagrams_in_sync.py`)
+- Modify: `chitragupta/review/__main__.py` (`DESCRIPTION` string, line ~92: "six read-only aids" → "seven")
+- Modify: `chitragupta/review/__init__.py` (module docstring's "six"/"all six" occurrences describing the aid count, NOT `chitragupta/review/claim_support.py:36`'s "Advisory like the other six" — that one is correct as written, since it means the six *other* aids, and must not be touched)
 
 - [ ] **Step 1: AGENTS.md layer-4 bullet**
 
@@ -1113,13 +1123,13 @@ The issue cites "build order item 9" in `docs/FEATURE-ROADMAP.md`. As of this wr
 
 - [ ] **Step 2: docs/CLI.md**
 
-  Add `support` to the TOC (alphabetical: coverage, figure, provenance, **support**, synthesis, uncited, verbatim) and add a `### 🔬 chitragupta review support` section mirroring the `uncited` section's shape exactly: one-line description, advisory/exit-0 boilerplate sentence, a flag table (`-h/--help`, `<draft>`, `--json`, `--write`, `--formats` — no `--genre`, this aid has none), a `bash` usage example, and a paragraph on what `--json` adds to the envelope (`scored`, `unscoreable`, one `findings` object per citation — `id`, `line`, `citekey`, `claim`, `score`, `note`).
+  Add `support` to the TOC (alphabetical: coverage, figure, provenance, **support**, synthesis, uncited, verbatim) and add a `### 🔬 chitragupta review support` section mirroring the `uncited` section's shape exactly: one-line description, advisory/exit-0 boilerplate sentence, a flag table (`-h/--help`, `<draft>`, `--json`, `--write`, `--formats` — no `--genre`, this aid has none), a `bash` usage example, and a paragraph on what `--json` adds to the envelope (`scored`, `unscoreable`, one `findings` object per citation — `id`, `line`, `citekey`, `claim`, `score`, `note`). Task 4's review flagged that `"scored"` counts *findings* and `"unscoreable"` counts *citekeys* — deliberately different units (a citekey cited twice that turns out unscoreable is one `unscoreable` entry but zero of the two findings count as scored) — state this distinction explicitly rather than implying they're the same kind of count.
 
 - [ ] **Step 3: docs/REVIEW.md — the aid list**
 
   Change the section heading "The six aids" to "The seven aids", and add a new bolded-lead-in paragraph for `support` in the same voice as the existing six (see `uncited`'s paragraph as the template), placed after `uncited`'s. Contrast it explicitly against `provenance` — same underlying question (does the source support this claim), different mechanism (entailment model vs. lexical overlap) and different output shape (ranked, no bands).
 
-  Do **not** write the "Limits" bullet yet — that is Task 9, after the measurement exists to inform it honestly.
+  Do **not** write the "Limits" bullet yet — that is Task 8, after the measurement exists to inform it honestly.
 
 - [ ] **Step 4: README.md**
 
@@ -1129,16 +1139,59 @@ The issue cites "build order item 9" in `docs/FEATURE-ROADMAP.md`. As of this wr
 
   The `unsupported-claim` row's Source column currently reads `provenance`. Change it to `provenance, support` — both aids now feed this class; `provenance` is not being retired.
 
-- [ ] **Step 6: Run the docs checks**
+- [ ] **Step 6: docs/ARCHITECTURE.md — Layer 4's aid count**
 
-  Run: `mkdocs build --strict` (from repo root; `docs_dir: .` per `mkdocs.yml`) and `markdownlint-cli2 "**/*.md"` (or whatever the project's existing lint invocation is — check `DEVELOPER-AGENTS.md`'s shipping-cycle section for the exact command).
-  Expected: no new warnings/errors. No `mkdocs.yml` nav entry is needed — `support` has no dedicated doc page, matching the majority of the six existing aids (only `provenance` and `verbatim` have their own pages, via `docs/CITATION-PROVENANCE.md` and `docs/PLAGIARISM.md`).
+  `tests/test_architecture_review_layer.py::TestTheCountAgrees::test_it_matches_the_number_of_aids` reads the Layer 4 section (`## Layer 4: the review layer`, to the next `## `) and asserts it opens with `_NUMBER_WORDS[len(review.AIDS)]` — with `review.AIDS` now at 7 entries, that word is `"Seven"` (`_NUMBER_WORDS = {..., 6: "Six", 7: "Seven", ...}`, `tests/test_architecture_review_layer.py:46-57`). Find wherever the section currently states "Six aids" (or similar) and change it to "Seven". The companion test, `test_no_stale_count_survives_alongside_it`, fails if *any* other `"<word> aids"` phrase remains in the same section after the fix — so grep the whole Layer 4 section for other stale count words, not just the first one you find.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: docs/FEATURES.md — the review-section aid list and count**
+
+  `tests/test_features_doc.py` parametrizes `test_it_is_named` over `sorted(review.AIDS)` and asserts `` `review {aid}` `` (backticked) appears in the document for every aid — add a `` `review support` `` mention. `test_the_stated_aid_count_matches` asserts the document says `"Seven advisory aids"` (again via `_NUMBER_WORDS`, this file's own copy at `tests/test_features_doc.py:36`) — update the stated count the same way as Step 6.
+
+- [ ] **Step 8: docs/PACKAGING.md and its test fixture — the command-surface table**
+
+  Two things move together here, and the test file is genuinely part of this task's file list, not generated from the doc:
+
+  1. In `tests/test_packaging_command_table.py`, add `"support"` to `REVIEW_FLAT_AIDS` (line ~53): `REVIEW_FLAT_AIDS = {"provenance", "coverage", "synthesis", "figure", "uncited", "support"}`. This set is hand-maintained (the file's own docstring: "a hand-maintained structure here, cross-checked against the real `--help` output... and against docs/PACKAGING.md's own text") — it will not update itself.
+  2. In `docs/PACKAGING.md`, add `support` to the review command's row/list of aids, and update the two arithmetic breakdowns `tests/test_packaging_command_table.py`'s `TestTheStatedBreakdownIsRight` class checks term-by-term (`test_the_stated_verb_total_matches_the_live_structures`, `test_the_stated_leaf_total_matches_the_live_structures`, and the two `..._breakdown_matches_it_term_by_term` tests) — these parse the *actual numbers* docs/PACKAGING.md states in prose, so both the total and the term-by-term list need the new aid counted in. Run `pytest tests/test_packaging_command_table.py -v` after editing and read any failure's message directly — each one states the exact pattern/number it expected, which is the fastest way to find every place the count needs to change.
+
+- [ ] **Step 9: docs/DIAGRAMS.md and its exports — the three diagrams that enumerate the aids**
+
+  `tests/test_diagrams_in_sync.py::TestTheReviewLayerDiagramsStayCurrent::test_it_names_every_aid` (parametrized over `["v3-artifacts", "g1-corpus-led", "extra-sequence"]`, per that file's own `NAMES`-derived subset) asserts every `sorted(review.AIDS)` name appears in each of these three fenced Mermaid blocks in `docs/DIAGRAMS.md`; `test_the_svg_carries_the_same_aids` asserts the same against the checked-in `.svg` exports.
+
+  1. Find the three fenced blocks in `docs/DIAGRAMS.md` (search for the diagram titles in the "Editing these" table: "4. Everything on disk" → `v3-artifacts`, "Genre A: corpus-led" → `g1-corpus-led`, "Appendix: one draft, in time order" → `extra-sequence`) and add `support` wherever each block lists the review aids by name, matching that block's existing label style.
+  2. Re-render both exports per `docs/DIAGRAMS.md`'s own "Editing these" section: `mmdc -i docs/diagrams/<name>.mmd -o docs/diagrams/svg/<name>.svg -b white -w 1900` for each of the three names — but first copy the edited fenced block into the `.mmd` file (`tests/test_diagrams_in_sync.py::test_the_mmd_is_the_block` checks the `.mmd` is byte-identical to the fenced block, title front matter aside, so the `.mmd` edit is not optional even though `mmdc` reads it as input). If bare `mmdc` fails or hangs in this environment, it needs a Puppeteer config enabling `--no-sandbox` (a known constraint on this class of host) — pass one via `mmdc`'s `-p`/`--puppeteerConfigFile` flag rather than assuming the bare command works.
+  3. Confirm with `pytest tests/test_diagrams_in_sync.py -v` — note its own docstring's stated limit: SVG freshness is checked for *label text* only, not a full visual re-render, so this catches the missing-aid-name defect exactly but would not catch a layout-only drift.
+
+- [ ] **Step 10: `chitragupta/review/__main__.py` and `chitragupta/review/__init__.py` — the stale "six" in live `--help` text and module docstrings**
+
+  Task 4's review confirmed `python -m chitragupta.review --help` prints `chitragupta/review/__main__.py`'s `DESCRIPTION` string ("The review layer: six read-only aids over a finished draft. No gate.") directly above the seven listed subcommands — change "six" to "seven". Separately, `chitragupta/review/__init__.py`'s module docstring has several "six"/"all six" occurrences describing the aid count (its opening list of six module names, "all six are interpreter tier 1", "obey one output contract instead of six") — update the count and add `claim_support.py` to the opening list of module names, matching the existing list's style. **Do not touch** `chitragupta/review/claim_support.py:36`'s "Advisory like the other six" — that sentence is already correct (it means the six aids *other than* this one) and "fixing" it to "seven" would make it wrong.
+
+  No test in the plan's earlier tasks (`test_review_claim_support.py`, `test_review_entrypoint.py`, `test_review.py`, `test_cli_help_is_short.py`) asserts the word "six" one way or the other, so this step is driven by the two files above being genuinely stale, not by a new failing test — verify by re-reading `python -m chitragupta.review --help`'s actual output after the edit.
+
+- [ ] **Step 11: Run the docs checks and the full regression set this task exists to close**
+
+  Run: `mkdocs build --strict` (from repo root; `docs_dir: .` per `mkdocs.yml`) and `markdownlint-cli2 "**/*.md"` (or whatever the project's existing lint invocation is — check `DEVELOPER-AGENTS.md`'s shipping-cycle section for the exact command). Expected: no new warnings/errors. No `mkdocs.yml` nav entry is needed — `support` has no dedicated doc page, matching the majority of the six existing aids (only `provenance` and `verbatim` have their own pages, via `docs/CITATION-PROVENANCE.md` and `docs/PLAGIARISM.md`).
+
+  Then run the four test files Task 4's review found newly red, plus the full suite, to confirm this task actually closes the gap it exists to close:
 
   ```bash
-  git add AGENTS.md docs/CLI.md docs/REVIEW.md README.md docs/AUTO-IMPROVEMENT.md
-  git commit -m "Document the claim-support aid across CLI.md, REVIEW.md, README and AGENTS.md"
+  /workspace/.venv-full/bin/pytest tests/test_architecture_review_layer.py tests/test_diagrams_in_sync.py \
+      tests/test_features_doc.py tests/test_packaging_command_table.py -v
+  /workspace/.venv-full/bin/pytest -q
+  ```
+
+  Expected: all four pass, and the full run returns to exactly the documented 16-failure baseline (missing root `config.toml` in a worktree checkout) — no more, no fewer. If the full suite is not back at the 16-failure baseline after this task, the task is not done, regardless of how the individual files above look in isolation — this is the exact promise Task 4's own brief made and could not keep alone, because the fix lives in files outside that task's scope.
+
+- [ ] **Step 12: Commit**
+
+  ```bash
+  git add AGENTS.md docs/CLI.md docs/REVIEW.md README.md docs/AUTO-IMPROVEMENT.md \
+          docs/ARCHITECTURE.md docs/FEATURES.md docs/PACKAGING.md \
+          docs/DIAGRAMS.md docs/diagrams/v3-artifacts.mmd docs/diagrams/g1-corpus-led.mmd docs/diagrams/extra-sequence.mmd \
+          docs/diagrams/svg/v3-artifacts.svg docs/diagrams/svg/g1-corpus-led.svg docs/diagrams/svg/extra-sequence.svg \
+          chitragupta/review/__main__.py chitragupta/review/__init__.py \
+          tests/test_packaging_command_table.py
+  git commit -m "Document the claim-support aid everywhere the review layer's aid count is checked"
   ```
 
 ---
