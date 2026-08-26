@@ -114,6 +114,14 @@ def _format_finding(finding: dict) -> str:
 
 
 def format_report(report, found: list[dict]) -> str:
+    """No sections here, unlike `render_markdown` -- a flat list, one line
+    per citation. So this does not also walk `report.unscoreable` the way
+    `_summary` does: `build_report` (Task 2) never sets
+    `unscoreable[citekey]` without appending a `Finding` carrying the same
+    reason in the same pass, so every unscoreable citekey is already one
+    of `_format_finding`'s `n/a` lines above -- a second pass over
+    `report.unscoreable` here would repeat the same reason on an adjacent
+    line rather than add anything a flat, section-less report can use."""
     scored = _scored(found)
     lines = [
         f"Claim support in {report.draft}",
@@ -121,6 +129,4 @@ def format_report(report, found: list[dict]) -> str:
     ]
     for finding in found:
         lines.append(_format_finding(finding))
-    for citekey, reason in sorted(report.unscoreable.items()):
-        lines.append(f"  n/a  {citekey}: {reason}")
     return "\n".join(lines)
