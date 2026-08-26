@@ -56,6 +56,7 @@ from chitragupta import review
 from chitragupta.review import (
     citation_coverage,
     citation_provenance,
+    claim_support,
     figure_layout,
     synthesis,
     uncited_prose,
@@ -72,6 +73,7 @@ AIDS = {
     "synthesis": (synthesis, "how many sources does each unit of the draft rest on?"),
     "figure": (figure_layout, "what a TikZ figure's own geometry says about it"),
     "uncited": (uncited_prose, "which sentences of the draft carry no citation?"),
+    "support": (claim_support, "does the cited source entail this claim?"),
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this

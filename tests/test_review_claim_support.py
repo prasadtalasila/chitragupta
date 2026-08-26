@@ -2,13 +2,15 @@
 entail the claim citing it, per a real NLI model (stubbed here --
 the module's own logic is what is under test, not the model)."""
 
+import argparse
 import json
 
 import pytest
 
-from chitragupta import config, ledger, review
+from chitragupta import config, entailment, ledger, review
 from chitragupta.review import _claim_support_render as render
 from chitragupta.review import claim_support
+from chitragupta.review import __main__ as review_main
 
 
 def _add_item(citekey, parsed_text=None, title="T"):
@@ -211,33 +213,15 @@ class TestFindings:
         ]
 
 
-@pytest.fixture
-def registered_aid(monkeypatch):
-    """`render_markdown` calls `review.header(report.draft, "support",
-    command)`, and `header()` does a bare `AIDS[aid]` lookup. Task 4 --
-    not this one -- registers "support" in `review.AIDS` (and,
-    indivisibly, in `review/__main__.py`'s own `AIDS`, since that
-    module's import-time guard requires both to have the same keys and
-    several other test files already import `review.__main__`). Adding
-    the key here for real, ahead of Task 4, would either leave
-    `__main__.AIDS` behind (tripping that guard for every test file
-    that imports `chitragupta.review.__main__`) or require inventing
-    `claim_support.build_parser` early, which is Task 4's job too. So
-    this patches the key into `review.AIDS` for the tests in this file
-    only -- `render_markdown` itself is unchanged and calls `header`
-    exactly as Task 4 will find it."""
-    monkeypatch.setitem(review.AIDS, "support", "Claim support")
-
-
 class TestRenderMarkdown:
-    def test_includes_the_ranked_not_banded_caveat(self, isolated_config, registered_aid):
+    def test_includes_the_ranked_not_banded_caveat(self, isolated_config):
         draft = _draft(config, "No citations here.\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
         text = render.render_markdown(report, "cmd", claim_support.findings(report))
         assert "ranked" in text.lower()
         assert "not a fact-check" in text.lower()
 
-    def test_lists_a_finding_with_its_score_and_claim(self, isolated_config, registered_aid):
+    def test_lists_a_finding_with_its_score_and_claim(self, isolated_config):
         _add_item("good_2024")
         _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
@@ -248,7 +232,7 @@ class TestRenderMarkdown:
         assert "good_2024" in text
         assert "90%" in text
 
-    def test_notes_an_unscoreable_citekey(self, isolated_config, registered_aid):
+    def test_notes_an_unscoreable_citekey(self, isolated_config):
         draft = _draft(config, "A claim citing nothing on record [@missing_2024].\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
         found = claim_support.findings(report)
@@ -264,7 +248,7 @@ class TestRenderMarkdown:
         assert "(0%)" not in text
 
     def test_a_bare_citation_with_no_surrounding_prose_notes_missing_claim_text(
-        self, isolated_config, registered_aid
+        self, isolated_config
     ):
         draft = _draft(config, "[@missing_2024]\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
@@ -304,3 +288,126 @@ class TestFormatReport:
         # `report.unscoreable` (a real duplication bug found while
         # implementing this task, see task-3-report.md).
         assert text.count("not in the ledger") == 1
+
+
+class TestRegistration:
+    def test_the_aid_is_in_both_tables(self):
+        assert "support" in review.AIDS
+        assert "support" in review_main.AIDS
+
+    def test_it_files_its_report_beside_the_others(self, isolated_config):
+        draft = config.DRAFTS_DIR / "dt" / "survey.md"
+        assert review.report_path(draft, "support") == (
+            config.REVIEW_DIR / "dt" / "survey.support.md"
+        )
+
+
+class TestCli:
+    def test_run_prints_plain_text_by_default(self, isolated_config, capsys, monkeypatch):
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
+        draft = _draft(config, "No citations here.\n")
+        args = claim_support.build_parser().parse_args([str(draft)])
+        assert claim_support.run(args) == 0
+        assert "Claim support" in capsys.readouterr().out
+
+    def test_run_prints_json_and_writes(self, isolated_config, capsys, monkeypatch):
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
+        draft = _draft(config, "No citations here.\n")
+        args = claim_support.build_parser().parse_args([str(draft), "--json", "--write"])
+        assert claim_support.run(args) == 0
+        out = capsys.readouterr().out
+        payload = json.loads(out)
+        assert payload["aid"] == "support"
+        assert (config.REVIEW_DIR / "topic" / "draft.support.json").exists()
+
+    def test_run_json_only_prints_but_does_not_write(self, isolated_config, capsys, monkeypatch):
+        """`--json` with no `--write`: still builds the command/payload
+        (unlike the plain-text default path), but must not touch disk --
+        the `if args.write:` branch below it must come out False."""
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
+        draft = _draft(config, "No citations here.\n")
+        args = claim_support.build_parser().parse_args([str(draft), "--json"])
+        assert claim_support.run(args) == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["aid"] == "support"
+        assert not (config.REVIEW_DIR / "topic" / "draft.support.json").exists()
+
+    def test_run_exits_0_and_says_why_when_unavailable(self, isolated_config, capsys, monkeypatch):
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (None, "not installed"))
+        draft = _draft(config, "No citations here.\n")
+        args = claim_support.build_parser().parse_args([str(draft)])
+        assert claim_support.run(args) == 0
+        assert "not installed" in capsys.readouterr().err
+
+    def test_run_returns_1_for_a_missing_draft(self, isolated_config, capsys):
+        args = claim_support.build_parser().parse_args(["content/drafts/nope.md"])
+        assert claim_support.run(args) == 1
+
+    def test_command_records_json_and_write_flags(self, isolated_config, capsys, monkeypatch):
+        """`_command`'s own reason to exist: the header/envelope must
+        record a re-runnable invocation, flags included -- not just the
+        bare draft path."""
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
+        draft = _draft(config, "No citations here.\n")
+        args = claim_support.build_parser().parse_args([str(draft), "--json", "--write"])
+        claim_support.run(args)
+        payload = json.loads(capsys.readouterr().out)
+        assert "--json" in payload["command"]
+        assert "--write" in payload["command"]
+
+    def test_scored_count_matches_the_rendered_report_when_a_bad_citekey_repeats(
+        self, isolated_config
+    ):
+        """`report.unscoreable` is keyed by citekey, so it gains one
+        entry no matter how many findings cite that same unscoreable
+        citekey -- `support_payload`'s "scored" must not overcount by
+        the naive `len(findings) - len(unscoreable)` in that case (it
+        would read 1 here: 2 findings minus 1 unscoreable citekey).
+        Built directly from a `Report`, not through the CLI, so this can
+        assert the actual invariant the fix is for: the JSON's "scored"
+        and the plain-text report's "N citations scored" agree, both
+        derived from the same report rather than one merely plausible
+        number."""
+        draft = _draft(
+            config,
+            "A claim citing nothing on record [@missing_2024].\n\n"
+            "A second claim citing the same nothing [@missing_2024].\n",
+        )
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        found = claim_support.findings(report)
+        payload = claim_support.support_payload(report, "cmd")
+
+        assert payload["scored"] == 0
+        assert len(payload["unscoreable"]) == 1
+        assert len(payload["findings"]) == 2
+        assert f"{payload['scored']} citations scored" in render.format_report(report, found)
+
+    def test_main_parses_argv_and_runs(self, isolated_config, capsys, monkeypatch):
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
+        draft = _draft(config, "No citations here.\n")
+        assert claim_support.main([str(draft)]) == 0
+        assert "Claim support" in capsys.readouterr().out
+
+    def test_write_only_records_no_json_flag_and_still_writes(
+        self, isolated_config, capsys, monkeypatch
+    ):
+        """`--write` with no `--json`: `_command`'s `as_json` branch must
+        come out False here, unlike every other CLI test above, which
+        always pairs `--write` with `--json`."""
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
+        draft = _draft(config, "No citations here.\n")
+        args = claim_support.build_parser().parse_args([str(draft), "--write"])
+        assert claim_support.run(args) == 0
+        assert (config.REVIEW_DIR / "topic" / "draft.support.json").exists()
+        payload = json.loads((config.REVIEW_DIR / "topic" / "draft.support.json").read_text())
+        assert "--json" not in payload["command"]
+        assert "--write" in payload["command"]
+
+    def test_build_parser_accepts_a_parser_passed_in(self):
+        """`review/__main__.py` calls `module.build_parser(sub.add_parser(...))`
+        -- always with a parser already built -- so the `parser is None`
+        branch (this module's own standalone `main()`) is a second path,
+        not the only one."""
+        parser = argparse.ArgumentParser()
+        returned = claim_support.build_parser(parser)
+        assert returned is parser

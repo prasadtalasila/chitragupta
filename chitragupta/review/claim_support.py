@@ -40,12 +40,17 @@ Usage:
     python -m chitragupta.review support <draft.md> --json --write
 """
 
+import argparse
 import hashlib
+import json
+import shlex
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import ledger
+from chitragupta import config, entailment, ledger, review
 from chitragupta.passages import Passage, source_passages
+from chitragupta.review import _claim_support_render as _render
 from chitragupta.review import citation_provenance
 
 
@@ -144,3 +149,125 @@ def findings(report: Report) -> list[dict]:
         }
         for f in report.findings
     ]
+
+
+def _command(draft: Path, as_json: bool, write: bool) -> str:
+    """The invocation recorded in both the Markdown header and the JSON
+    envelope -- `--json`/`--write` in full when given, the same rule
+    `uncited_prose._command` states for its own `--genre`."""
+    parts = ["python", "-m", "chitragupta.review", "support", str(draft)]
+    if as_json:
+        parts += ["--json"]
+    if write:
+        parts += ["--write"]
+    return shlex.join(parts)
+
+
+def support_payload(report: Report, command: str) -> dict:
+    """The same findings the report prints, as data -- an additional
+    serialisation, never a second computation.
+
+    `"scored"` counts findings the entailer actually scored (`note is
+    None`), not `len(report.findings) - len(report.unscoreable)`. The
+    two differ when a single unscoreable citekey is cited more than
+    once: `report.unscoreable` is keyed by citekey, so it gains one
+    entry no matter how many findings that citekey produces, while
+    `build_report` still gives every one of those findings its own
+    `note`. Counting the naive way would let "scored" overcount by the
+    number of repeat citations of an already-unscoreable citekey --
+    inconsistent with `_claim_support_render._scored`, which every
+    rendered report already uses for the same number. Matching that
+    keeps the JSON and the text report agreeing on what "scored"
+    means.
+
+    Deliberately different units, not a second inconsistency:
+    `"scored"` counts findings (one per citation), `"unscoreable"`
+    counts citekeys (one per source), the same split
+    `_claim_support_render._summary` already prints -- a repeated
+    citation of one bad citekey is one line under "Not scored" but two
+    lines under Findings, in the JSON exactly as in the rendered
+    report."""
+    payload = review.envelope(report.draft, "support", command)
+    payload.update(
+        {
+            "scored": len([f for f in report.findings if f.note is None]),
+            "unscoreable": dict(sorted(report.unscoreable.items())),
+            "findings": findings(report),
+        }
+    )
+    return payload
+
+
+def build_parser(parser=None) -> argparse.ArgumentParser:
+    if parser is None:
+        # A one-line description rather than this module's docstring, for
+        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
+        parser = argparse.ArgumentParser(
+            description="Does the cited source actually entail the claim citing it?",
+        )
+    parser.add_argument("draft", help="Path to the draft to check")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the findings as JSON instead of as text. "
+        "--write files it beside the report either way.",
+    )
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Also write the report to content/review/, mirroring the "
+        "draft's path. Off by default: printing is the usual use.",
+    )
+    parser.add_argument(
+        "--formats",
+        default="md,tex,pdf",
+        help="Additional formats to render beside the Markdown report "
+        "(default: md,tex,pdf). The .md is always written -- it is the "
+        "report; tex/pdf are renders of it, and need pandoc/pdflatex "
+        "on PATH.",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run(build_parser().parse_args(argv))
+
+
+def run(args: argparse.Namespace) -> int:
+    """Dispatch already-parsed arguments, split from main() so
+    chitragupta/review/__main__.py can hand over args parsed with this
+    module's own build_parser().
+
+    Advisory: exits 0 whatever it finds, including when the enrichment
+    layer is not installed at all -- an unbuilt optional check is not a
+    failure, matching how tier 3 of the verbatim scan degrades."""
+    try:
+        draft_path = review.require_reviewable(Path(args.draft))
+    except (FileNotFoundError, config.OutsideContentDir) as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
+    entailer, reason = entailment.open_entailer()
+    if entailer is None:
+        print(f"support: not run -- {reason}", file=sys.stderr)
+        return 0
+
+    report = build_report(draft_path, entailer)
+    found = findings(report)
+
+    if not (args.json or args.write):
+        print(_render.format_report(report, found))
+        return 0
+
+    command = _command(draft_path, args.json, args.write)
+    payload = support_payload(report, command)
+    print(json.dumps(payload, indent=2) if args.json else _render.format_report(report, found))
+
+    if args.write:
+        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
+        written = review.write(
+            draft_path, "support", _render.render_markdown(report, command, found), formats
+        )
+        written["json"] = review.write_json(draft_path, "support", payload)
+        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
+    return 0

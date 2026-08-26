@@ -76,6 +76,7 @@ AIDS = {
     "synthesis": "Multi-source synthesis",
     "figure": "TikZ layout check",
     "uncited": "Uncited prose",
+    "support": "Claim support",
 }
 
 # Deliberately names its sources rather than linking to them: this text
