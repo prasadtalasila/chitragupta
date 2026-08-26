@@ -331,6 +331,22 @@ It is the reading copy for anyone who is not building LaTeX.
    same defect (`TableDuplicateId`) but sees one unit at a time -- across
    units, this is the check.
 
+   **A captioned figure's number is the book's for the same reason, and
+   the same collision risk applies.** Issue 411 gives a figure the same
+   `\label{fig:<id>}` contract, so two units that each wrote
+   `<!-- figure: figures/comparison -->` with a caption below it collide
+   exactly as two same-id tables do. Check before composing:
+
+   ```bash
+   grep -ho '<!-- figure: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
+   ```
+
+   Anything printed is a collision, whether or not every copy is
+   captioned -- an uncaptioned marker sharing the name is still worth
+   catching before whichever unit adds a caption next collides silently.
+   The per-unit prose check (`FigureDuplicateId`) sees one unit at a
+   time; across units, this is the check.
+
    **If the units number their own headings, turn LaTeX's numbering
    off** -- `\setcounter{secnumdepth}{-2}` in the preamble. A book whose
    Markdown says `## 1.0 Before you start` otherwise renders "1.1 1.0

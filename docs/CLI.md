@@ -1644,8 +1644,9 @@ Report where a draft's prose departs from
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- §2's defect markers, §8's
 recorded dialect, a glossary acronym whose recorded expansion has
 drifted from the current `[style].acronyms` vocabulary (§9;
-`chitragupta/style_acronym_drift.py`), and §13's tables
-(`chitragupta/style_tables.py`). Those last two are the findings here
+`chitragupta/style_acronym_drift.py`), §13's tables
+(`chitragupta/style_tables.py`), and §10's captioned figures
+(`chitragupta/style_figures.py`). Those last three are the findings here
 *not* sourced from Vale, and they are computed in plain Python.
 **A review aid: it exits 0 whatever it finds**, and nothing in this
 pipeline reads its output back or blocks on it.
@@ -1662,6 +1663,18 @@ rendered pdf would meet:
 | `chitragupta.TableUnreferenced` | No sentence refers to the table at all |
 | `chitragupta.TableUnknownRef` | A `<!-- tableref: -->` naming a table that does not exist |
 | `chitragupta.TableRefOutsideSection` | The table is referred to, but only from another section |
+
+**The figure findings**, issue 411's extension of the same contract to a
+*captioned* figure -- an uncaptioned one is accepted by §10 and raises
+none of these:
+
+| Rule | What it means |
+| --- | --- |
+| `chitragupta.FigureDuplicateId` | Two captioned figures claim one id; the same `\ref`-collision risk as a duplicate table id |
+| `chitragupta.FigureMalformedId` | An id `\label{fig:<id>}` cannot carry unescaped |
+| `chitragupta.FigureUnreferenced` | No sentence refers to the figure at all |
+| `chitragupta.FigureUnknownRef` | A `<!-- figureref: -->` naming a figure that does not exist, or one that is not captioned |
+| `chitragupta.FigureRefOutsideSection` | The figure is referred to, but only from another section |
 
 ```bash
 chitragupta draft style content/drafts/<path>

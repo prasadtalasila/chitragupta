@@ -153,13 +153,23 @@ panels as a 2x2 grid fit with no warning at all. Reaching for
 document's own size, which "Type and line weight" below forbids for
 exactly this reason.
 
-**Where the figure is captioned, the caption is the figure file's**,
-in a `figure` float around the picture -- `\caption` needs no package,
-and `\label` plus `\renewcommand{\thefigure}{N.M}` beside it is what
-makes `\ref` print a chapter-relative number. That float is part of
-*your* copy of a scaffold, not of the scaffold: the files in
-`assets/tikz/` are bare `tikzpicture` fragments, so wrapping one is a
-step of copying it.
+**Where the figure is captioned, write the caption in the draft, not in
+the figure file.** Issue 411 moved that half out of `TikZ style`'s reach:
+a Markdown draft writes its caption directly below the `figure:` marker
+(WRITING-STANDARDS.md §10), and the renderer -- not the figure file --
+wraps the marker in a `figure` float with `\caption`/`\label`, so LaTeX's
+own counter numbers it. The figure file itself stays a bare
+`tikzpicture` fragment, same shape as `assets/tikz/`'s own scaffolds --
+copying one is no longer a step of wrapping it in a float by hand.
+
+`thesis-chapter-writer`'s `.tex` fragment keeps the older shape, because
+it carries no marker for the renderer to wrap: it hand-authors its own
+`\begin{figure}...\caption{}...\label{fig:<id>}...\end{figure}` around
+the inline `\input`. The one change there too: never write
+`\renewcommand{\thefigure}{N.M}`. The `figure` counter it would override
+is exactly what makes `\ref` agree with the consuming thesis's own
+numbering; a hand-typed number is wrong the moment that thesis renumbers
+a chapter, which is the defect issue 411 exists to remove.
 
 **Do not reach for `subcaption`, `subfig` or `subfigure`.** The package
 is installed on a typical TeX stack, so this is a choice rather than a

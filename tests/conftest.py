@@ -281,6 +281,11 @@ TIKZ_FIGURE = "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpictu
 MARKED_MD = "Before.\n\n<!-- figure: figures/fig1 -->\n\nAfter.\n"
 MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%figure: figures/fig1\n\nAfter.\n"
 
+# Issue 411: a figure marker with its caption directly below it, no blank
+# line between -- the adjacency that makes it a *captioned* figure, with a
+# number and a `\ref`-able id, rather than the uncaptioned case above.
+CAPTIONED_MD = "Before.\n\n<!-- figure: figures/fig1 -->\nOne reading path.\n\nAfter.\n"
+
 
 def figure_pair(draft_dir, name="fig1"):
     """Both halves of a figure on disk, returning the draft's directory."""

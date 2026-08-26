@@ -102,6 +102,18 @@ break:
   table left standing with no sentence pointing at it is a
   `TableUnreferenced` finding and a reader's problem.
 
+- **A captioned figure renumbers itself too; its id does not.** Issue
+  411 gives a *captioned* figure the same contract, over the same
+  `<!-- figure: ... -->` marker this skill already reads for "touch both
+  forms" above -- a literal "Figure 2" in the prose is the defect, and
+  the fix is an inline `<!-- figureref: <id> -->`. An **uncaptioned**
+  figure has no id to protect and no number to write; leave it exactly
+  as it is. What a revision can still break for a captioned one is the
+  id: deleting a figure something still refers to, or copying a figure
+  into another section along with its id. Both are reported by this
+  skill's own prose-check step (`FigureUnreferenced`, `FigureUnknownRef`,
+  `FigureDuplicateId`) -- read those rather than eyeballing the markers.
+
 ## Collection scoping (#195): inherit it, do not re-ask
 
 `scope.md` may carry a `collection:` line, written by the genre skill

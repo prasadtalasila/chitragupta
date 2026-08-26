@@ -79,6 +79,9 @@ CAPTION = re.compile(
 # renderer's to assign and is deliberately not guessed here.
 INLINE_TABLE_REF = re.compile(r"[ \t]*<!--[ \t]*tableref:[ \t]*\S+?[ \t]*-->[ \t]*")
 
+# Issue 411's `figureref`, the same shape and the same reason.
+INLINE_FIGURE_REF = re.compile(r"[ \t]*<!--[ \t]*figureref:[ \t]*\S+?[ \t]*-->[ \t]*")
+
 # A block that is only a comment. Includes WRITING-STANDARDS.md §11's
 # `<!-- single-source: ... -->` marker, which must not be read as an
 # uncited claim about the world -- the drafter is explaining a citation,
@@ -159,7 +162,9 @@ def _body(text: str) -> list[str]:
     would otherwise be read as prose making a claim.
     """
     lines = [
-        line if COMMENT.match(line) else INLINE_TABLE_REF.sub(" Table ", line)
+        line
+        if COMMENT.match(line)
+        else INLINE_FIGURE_REF.sub(" Figure ", INLINE_TABLE_REF.sub(" Table ", line))
         for line in citation_gate._blank_code(text).splitlines()
     ]
     for index, line in enumerate(lines):

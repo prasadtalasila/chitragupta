@@ -381,7 +381,7 @@ collapse them for the sake of a cleaner narrative.
    `.txt` contents in a fence on `--format md` (step 12) and every other
    non-LaTeX format, and for `\input{figures/<name>.tex}` on
    `--format tex`/`--format pdf`, which is what makes a survey figure
-   usable in the paper this draft feeds. Five riders, each of which §10
+   usable in the paper this draft feeds. Six riders, each of which §10
    explains:
 
    - **Commit to a layout metaphor before drawing, and start from the
@@ -433,6 +433,13 @@ collapse them for the sake of a cleaner narrative.
    - **The TikZ must be as original as the ASCII.** A taxonomy redrawn
      from a source survey's own figure is the same violation in
      different pixels, whichever notation it is drawn in.
+   - **A caption, if this figure warrants one, goes in the draft, never
+     in the figure file.** A caption line directly below the marker, no
+     blank line between, and an inline `<!-- figureref: <name> -->`
+     wherever prose points at it -- never write the word "Figure" or a
+     number yourself; the renderer assigns both. This genre's figures are
+     rare enough that most carry no caption at all, and that is fine:
+     an uncaptioned figure is accepted by design, not a defect.
 
    **Any quantity in the prose follows `docs/WRITING-STANDARDS.md` §12,
    not this step.** Write it as ASCII in a code span and give it a row in

@@ -104,6 +104,7 @@ from chitragupta.render_output._citeproc import (
 from chitragupta.render_output import _math, _tables
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
+from chitragupta.render_output._figure_captions import substitute_captions, substitute_refs
 from chitragupta.render_output._figures import (
     _FIGURE_MARKER_MD_RE,
     _FIGURE_MARKER_TEX_RE,
@@ -329,10 +330,15 @@ def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]
     ]
 
 
-# Figures, then tables, then mathematics -- one chain with one definition,
-# reached by both of `render`'s paths. The order is not arbitrary: a
-# figure substitution can introduce a fenced ASCII block, and `_math`'s
-# own display rule reads fences, so mathematics goes last.
+# Figure references and captions, then figure content, then tables, then
+# mathematics -- one chain with one definition, reached by both of
+# `render`'s paths. The order is not arbitrary: `substitute_refs` and
+# `substitute_captions` both read `figures()` off the *original* marker
+# text, so both have to run before `_with_figures_for` replaces the marker
+# with actual content -- after that, the `[marker, caption]` adjacency
+# they look for no longer exists. A figure substitution can also introduce
+# a fenced ASCII block, and `_math`'s own display rule reads fences, so
+# mathematics goes last.
 #
 # The Markdown path passes an empty mapping, which substitutes nothing --
 # §12 deliberately leaves a Markdown render's ASCII alone, and
@@ -343,7 +349,9 @@ def _substituted(
     draft_text: str, input_path: Path, output_format: str, math_mapping: "dict[str, str]"
 ) -> str:
     """The text a writer actually sees, with every marker resolved."""
-    with_figures = _with_figures_for(draft_text, input_path, output_format)
+    with_refs = substitute_refs(draft_text, output_format)
+    with_captions = substitute_captions(with_refs, output_format)
+    with_figures = _with_figures_for(with_captions, input_path, output_format)
     return _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
 
 

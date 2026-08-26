@@ -91,6 +91,15 @@ LEGACY_LONG_FUNCTIONS = {
 # `_report.py`'s, whose docstring records a real seam. Deferred to its
 # own PR under DEVELOPER-AGENTS.md's surgical-changes rule rather than
 # tripling the diff of a reporting fix.
+#
+# One more entered on issue 411: `style_check.py` sat at 249, one import
+# and one `+ figure_findings(draft)` away from the table findings it
+# already wired in the same shape. The module's actual seam -- Vale
+# wiring, language resolution, findings collapsing -- is unrelated to
+# what issue 411 asks for, so splitting it now would be exactly the
+# unrelated refactor DEVELOPER-AGENTS.md's surgical-changes rule forbids
+# inside this diff. Deferred to its own PR, the same call #405 made for
+# `figure_layout/__init__.py` above.
 LEGACY_LONG_FILES = {
     "chitragupta/sync.py",  # 548
     "chitragupta/enrich/docling_parse.py",  # 542
@@ -100,7 +109,7 @@ LEGACY_LONG_FILES = {
     "chitragupta/retrieval.py",  # 432
     "chitragupta/references.py",  # 389
     "chitragupta/review/citation_provenance.py",  # 383
-    "chitragupta/render_output/__init__.py",  # 333
+    "chitragupta/render_output/__init__.py",  # 336
     "chitragupta/overlap_skipgram.py",  # 288
     "chitragupta/review/citation_coverage.py",  # 275
     "chitragupta/enrich/__main__.py",  # 266
@@ -108,6 +117,7 @@ LEGACY_LONG_FILES = {
     "chitragupta/review/verbatim_check/__init__.py",  # 260
     "chitragupta/dossier/_retrieval.py",  # 256
     "chitragupta/review/figure_layout/__init__.py",  # 257
+    "chitragupta/style_check.py",  # 251
 }
 
 

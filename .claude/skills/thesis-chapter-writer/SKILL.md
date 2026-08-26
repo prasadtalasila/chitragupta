@@ -308,7 +308,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `pdflatex`. The renderer
    swaps that `\input` for the `.txt` contents when it builds the `.md`
    preview (step 11); `--format tex` and `--format pdf` get the TikZ.
-   Five things to hold onto, each of which §10 explains:
+   Six things to hold onto, each of which §10 explains:
 
    - **Commit to a layout metaphor before drawing, and start from the
      scaffold for it rather than from an empty picture.** `assets/tikz/`
@@ -359,6 +359,15 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      fragment and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
      that introduces the figure.
+   - **A captioned figure is written as real LaTeX too, around the
+     inline `\input`** -- the same carve-out step 8 states for a table,
+     and for the same reason: `\begin{figure}\input{figures/<name>.tex}\caption{...}\label{fig:<id>}\end{figure}`,
+     referred to as `Figure~\ref{fig:<id>}`. **Never write
+     `\renewcommand{\thefigure}`.** The `figure` counter it would
+     override is what has to agree with the user's own thesis-wide
+     numbering once this fragment is `\input`-ed there -- a hand-typed
+     number is wrong the moment a chapter before it changes length, the
+     same defect issue 411 removes from every other genre's figures.
 
    The TikZ must be as original as the ASCII -- a picture redrawn from a
    source paper's figure is the same violation in different pixels.

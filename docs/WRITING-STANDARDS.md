@@ -1,6 +1,6 @@
 # ✍ Writing standards for the drafting layer
 
-Status: **reference.** Written 2026-08-03. Updated 2026-08-25.
+Status: **reference.** Written 2026-08-03. Updated 2026-08-26.
 
 **Written for** anyone drafting with this pipeline, and for the skills
 that draft on their behalf. **Assumed:** [GENRE.md](GENRE.md) for which
@@ -181,6 +181,8 @@ means they are checked only when someone remembers to.
 | Whether a sentence carries a citation at all | §11 | yes, per sentence -- but *whether it needs one* is not, which is why the genre decides if it is a finding | no -- surfaced. The fix for an uncited claim is evidence, not wording, and a machine rewording one would make it look supported without making it supported |
 | A table has a caption and an id, and every reference resolves | §13 | yes | no -- the fix is a caption someone has to write |
 | Some sentence refers to each table | §13 | yes | no -- and **whether that sentence explains the table is not decidable at all**, which is the half that matters most. A machine can see that a reference exists; only a reader can see that the arrangement was worth making |
+| A captioned figure's id is unique and kebab-case, and every `figureref` resolves | §10 | yes | no -- the fix is an author decision, same as a table's |
+| Some sentence refers to each captioned figure | §10 | yes | no -- and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure is exempt from this row by design, not by gap |
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A
@@ -392,15 +394,70 @@ pipeline.
   anywhere reporting it. [TIKZ-STYLE.md](TIKZ-STYLE.md) has the worked
   example, how to letter an ASCII diagram without sliding every title
   off its panel, and why `subcaption` is not the answer.
-- **Where a figure is captioned, the caption lives in the figure file**,
-  in a `figure` float around the picture, with `\label` and
-  `\renewcommand{\thefigure}{N.M}` beside it. The renderer substitutes a
-  marker for a bare `\input` and adds no float of its own, so a picture
-  whose file carries none is set unnumbered and uncaptioned in the flow
-  of the text. Which lettering a venue wants -- `(a)`, `(i)`, `A`, or
-  titles with no letters -- is a §8 house-style decision: record it in
-  the dossier's `scope.md` beside the dialect, where `draft-reviser`
-  reads it before every edit, rather than settling it again per figure.
+- **A figure is captioned in the draft, not in the figure file** --
+  "A caption, and no number you write yourself" below has the contract.
+  A marker with no caption below it renders unnumbered and uncaptioned,
+  exactly as before. Which lettering a venue wants for panels -- `(a)`,
+  `(i)`, `A`, or titles with no letters -- is a §8 house-style decision:
+  record it in the dossier's `scope.md` beside the dialect, where
+  `draft-reviser` reads it before every edit, rather than settling it
+  again per figure.
+
+### 🔖 A caption, and no number you write yourself
+
+Issue 411 gives a figure the number-and-reference contract §13 gives a
+table. A Markdown draft writes the `figure:` marker, then its caption
+directly below it -- no blank line between, the same adjacency §11's
+`<!-- single-source: -->` and §13's own caption-then-marker pair both
+use:
+
+```markdown
+<!-- figure: figures/delivery-modes -->
+One reading path under three delivery modes.
+```
+
+Prose points at it with an inline marker, which stands in for the whole
+reference phrase -- the author writes neither the word "Figure" nor a
+number:
+
+```markdown
+<!-- figureref: delivery-modes --> shows the same request handled three ways.
+```
+
+**The id is derived, not written.** The marker's own value already names
+the figure's base name, so the id is that name with no `figures/` prefix
+-- `delivery-modes` from `figures/delivery-modes`, the same base name
+`\label{fig:delivery-modes}` already had to agree with before this
+contract existed. There is no second field to keep in sync with the file
+name.
+
+**A figure with no caption line below it is unchanged** -- still §10's
+accepted uncaptioned case, still a bare `\input` or a bare ASCII fence,
+no float, no number, and invisible to `figureref` resolution the same
+way an uncaptioned marker is invisible to it.
+
+**Never write the number.** [RENDERING-FLOW.md](RENDERING-FLOW.md)'s
+"Figure numbering" has the per-format cases: LaTeX-bound output wraps
+the marker in a real `figure` float and lets LaTeX's own counter number
+it -- no `\renewcommand{\thefigure}` is ever written -- and every other
+format gets a number counted at render time, exactly mirroring how §13
+numbers a table outside LaTeX.
+
+The `.tex` fragment carries neither marker: `thesis-chapter-writer`
+hand-authors a real `\begin{figure}...\caption{}...\label{fig:<id>}`
+around its inline `\input`, the same carve-out §13 gives a hand-written
+`\begin{table}`. The one thing that changes there too: never write
+`\renewcommand{\thefigure}{N.M}`. The consuming thesis's own counter is
+what has to agree with its own chapter numbering, which is the whole
+reason a number never belongs in a draft.
+
+`python -m chitragupta.draft style` reports the decidable part of this --
+a captioned figure no sentence refers to, a `figureref` naming a figure
+that does not exist or is not captioned, two figures sharing one id, and
+a reference sitting outside the figure's own section. There is no
+`chitragupta.FigureNoCaption` or `FigureNoId`: an uncaptioned figure is
+accepted above, and a figure marker always carries an id by construction,
+so neither state is a defect for this to catch.
 
 Where `tikz.sty` is absent, the fallback is the same in every genre and
 is what this section required before the pair existed: the ASCII goes

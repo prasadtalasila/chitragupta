@@ -34,6 +34,7 @@ from pathlib import Path
 
 from chitragupta.citation_gate import _PANDOC_CITE_RE
 from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._figure_captions import warnings as _caption_warnings
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
 
 
@@ -318,7 +319,9 @@ def _figure_warnings(text: str, input_path: Path) -> list[str]:
             for ref in _local_tex_include_refs(text)
             if ref not in paired
         ]
-    return found
+    # Issue 411: a captioned figure's id, and a `figureref` naming one --
+    # `_figure_captions.warnings`'s own concern, not this module's.
+    return found + _caption_warnings(text)
 
 
 def _with_figures_for(text: str, input_path: Path, output_format: str) -> str:
