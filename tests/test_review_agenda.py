@@ -5,6 +5,8 @@ drift report into one ranked, deduplicated worklist. Issue #381.
 
 import json
 import os
+import re
+import shlex
 from pathlib import Path
 
 import pytest
@@ -1090,8 +1092,12 @@ class TestLoadBaseline:
         assert _recheck.load_baseline(path)["items"] == [_item_dict("a")]
 
     def test_an_unreadable_file_names_the_path(self, tmp_path):
+        # `match` is a regex, and a Windows path's backslashes are not
+        # literal there -- `\U`/`\A`/etc. are escapes `re` rejects outright
+        # rather than matching literally. `re.escape` is what makes an
+        # arbitrary path safe to use as a `match` pattern on any host.
         path = tmp_path / "nope.json"
-        with pytest.raises(ValueError, match=str(path)):
+        with pytest.raises(ValueError, match=re.escape(str(path))):
             _recheck.load_baseline(path)
 
     def test_not_json_at_all_is_refused(self, tmp_path):
@@ -1159,7 +1165,12 @@ class TestRecheckPayloadAndText:
         return ([_item_dict("r")], [_item_dict("p")], [_item_dict("n")])
 
     def test_command_reproduces_the_invocation(self):
-        assert _recheck.recheck_command(Path("content/drafts/t/s.md"), "b.json") == (
+        # A plain string, not `Path(...)`: `str(Path(...))` normalises to
+        # the host's own separator, and `shlex.join` quotes a backslash --
+        # a literal string keeps this assertion identical on every host,
+        # the same convention `test_verbatim_check.py`'s own command-string
+        # tests already use.
+        assert _recheck.recheck_command("content/drafts/t/s.md", "b.json") == (
             "python -m chitragupta.review agenda content/drafts/t/s.md --baseline b.json --json"
         )
 
@@ -1300,7 +1311,12 @@ class TestBaselineCli:
         agenda.main([str(draft), "--baseline", str(baseline)])
         filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
         assert "--baseline" not in filed["command"]
-        assert filed["command"] == f"python -m chitragupta.review agenda {draft}"
+        # shlex.join, not an f-string: a real tmp_path draft carries the
+        # host's own separator, and `_command` quotes it exactly the way
+        # `shlex.join` does -- a bare f-string only matches on POSIX.
+        assert filed["command"] == shlex.join(
+            ["python", "-m", "chitragupta.review", "agenda", str(draft)]
+        )
 
     def test_a_baseline_at_the_path_this_run_overwrites_is_still_compared_against(
         self, isolated_config, monkeypatch, capsys, aid_stubs
