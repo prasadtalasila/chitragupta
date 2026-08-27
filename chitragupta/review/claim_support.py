@@ -78,9 +78,7 @@ def _quotable(passages: list[Passage]) -> list[Passage]:
     return [p for p in passages if p.quotable]
 
 
-def _score_claim(
-    entailer, claim: str, passages: list[Passage]
-) -> tuple[float, Passage]:
+def _score_claim(entailer, claim: str, passages: list[Passage]) -> tuple[float, Passage]:
     """Best-scoring quotable passage for `claim`.
 
     Callers pass every passage, not just the quotable ones, so the
@@ -118,8 +116,14 @@ def build_report(draft_path: Path, entailer) -> Report:
                 score, passage = _score_claim(entailer, claim, passages)
                 note = None
             report.findings.append(
-                Finding(line=line_no, citekey=citekey, claim=claim, score=score,
-                        passage=passage, note=note)
+                Finding(
+                    line=line_no,
+                    citekey=citekey,
+                    claim=claim,
+                    score=score,
+                    passage=passage,
+                    note=note,
+                )
             )
     report.findings.sort(key=lambda f: (f.score, f.line))
     return report

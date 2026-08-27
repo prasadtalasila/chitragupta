@@ -112,10 +112,14 @@ class TestBuildReport:
         # assertions above by accident if it happened to guess right.
         assert fake.calls == [
             [
-                ("An irrelevant passage about something else.",
-                 "Digital twins close the loop precisely."),
-                ("Twins close the control loop precisely.",
-                 "Digital twins close the loop precisely."),
+                (
+                    "An irrelevant passage about something else.",
+                    "Digital twins close the loop precisely.",
+                ),
+                (
+                    "Twins close the control loop precisely.",
+                    "Digital twins close the loop precisely.",
+                ),
             ]
         ]
 

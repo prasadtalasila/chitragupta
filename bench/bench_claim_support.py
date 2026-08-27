@@ -271,8 +271,7 @@ def _render_candidates(pool, per_draft, unscoreable, missing, duplicates):
             lines.append(f"  - `{citekey}`: {why}")
     lines.append("")
     lines.append(
-        f"Score range: {scores[0]:.3f} .. {scores[-1]:.3f}  "
-        f"median: {statistics.median(scores):.3f}"
+        f"Score range: {scores[0]:.3f} .. {scores[-1]:.3f}  median: {statistics.median(scores):.3f}"
     )
     lines.append(
         f"Shortlisted below: the {len(lowest)} lowest-scored and the {len(highest)} "
@@ -281,9 +280,7 @@ def _render_candidates(pool, per_draft, unscoreable, missing, duplicates):
         "shortlist)."
     )
     if 2 * cap > len(pool):
-        lines.append(
-            "The two lists below overlap: fewer scored findings exist than twice the cap."
-        )
+        lines.append("The two lists below overlap: fewer scored findings exist than twice the cap.")
     lines.append("")
     lines.append(
         "Judge each candidate 'supported', 'unsupported' or 'unclear' against the matched "
@@ -330,8 +327,7 @@ def extract(drafts_dir, out_dir):
         if name in per_draft:
             total, scored, unsc = per_draft[name]
             print(
-                f"  {name}: {total} finding(s), {scored} scored, "
-                f"{len(unsc)} citekey(s) unscoreable"
+                f"  {name}: {total} finding(s), {scored} scored, {len(unsc)} citekey(s) unscoreable"
             )
         else:
             print(f"  WARNING missing draft: {Path(drafts_dir) / name}", file=sys.stderr)
