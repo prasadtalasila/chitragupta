@@ -1,0 +1,109 @@
+# The C1/C2 debt register: every function and module over the limits
+# `docs/CODE-STANDARDS.md` sets that existed when each rule landed.
+#
+# **A ratchet, not an allowance.** `tests/test_code_standards_scan.py`
+# fails on anything over a limit that is not here, and *also* on anything
+# here that has come back under one -- saying to delete the entry. So this
+# file can only shrink, and every shrink is a visible diff.
+#
+# **Data, not code**, and at the repository root rather than under
+# `tests/`, for a reason issue 431 made load-bearing: `scripts/` and
+# `.claude/` ship in the release archive and `tests/` does not, so a
+# register under `tests/` would work in a checkout and be missing from
+# every release. `scripts/code_standards.py` and the test both read this
+# one file.
+#
+# **The count is a value, not a comment.** It was a trailing `# 32` while
+# the register was a Python literal, and `tomllib` discards comments --
+# so keeping it as one would have made the number unreadable to the very
+# consumers this move exists to serve. It is checked on every run by
+# `test_every_registered_offender_records_its_current_count`, so it
+# cannot go stale.
+#
+# Ordered worst-first, so the size of each debt is visible without
+# running anything.
+
+# C1: at most 25 statements per function.
+
+[[c1]]
+name = "tests/test_release.py::make_repo"
+statements = 32
+
+[[c1]]
+name = "chitragupta/retrieval.py::_windows"
+statements = 28
+
+[[c1]]
+name = "scripts/release.py::build_release"
+statements = 26
+
+
+# C2: at most 250 code lines per module.
+
+[[c2]]
+name = "chitragupta/sync.py"
+code_lines = 548
+
+[[c2]]
+name = "chitragupta/enrich/docling_parse.py"
+code_lines = 542
+
+[[c2]]
+name = "chitragupta/overlap_index.py"
+code_lines = 523
+
+[[c2]]
+name = "chitragupta/ledger.py"
+code_lines = 502
+
+[[c2]]
+name = "chitragupta/config.py"
+code_lines = 492
+
+[[c2]]
+name = "chitragupta/retrieval.py"
+code_lines = 432
+
+[[c2]]
+name = "chitragupta/references.py"
+code_lines = 389
+
+[[c2]]
+name = "chitragupta/review/citation_provenance.py"
+code_lines = 383
+
+[[c2]]
+name = "chitragupta/render_output/__init__.py"
+code_lines = 338
+
+[[c2]]
+name = "chitragupta/overlap_skipgram.py"
+code_lines = 288
+
+[[c2]]
+name = "chitragupta/review/citation_coverage.py"
+code_lines = 275
+
+[[c2]]
+name = "chitragupta/enrich/__main__.py"
+code_lines = 266
+
+[[c2]]
+name = "chitragupta/passages.py"
+code_lines = 260
+
+[[c2]]
+name = "chitragupta/review/verbatim_check/__init__.py"
+code_lines = 260
+
+[[c2]]
+name = "chitragupta/review/figure_layout/__init__.py"
+code_lines = 257
+
+[[c2]]
+name = "chitragupta/dossier/_retrieval.py"
+code_lines = 256
+
+[[c2]]
+name = "chitragupta/style_check.py"
+code_lines = 251

@@ -498,9 +498,10 @@ no DTaaS config to inherit it from:
   effect). 222 of 259 Python files, +9,052/-5,153 lines, six new C2
   offenders from the reformat alone -- see [docs/TECHNICAL-DEBT.md's
   5.5](docs/TECHNICAL-DEBT.md#-55-ruff-format-the-whole-tree-reformat)
-  for the full accounting. Registered in
-  `tests/test_code_standards_scan.py`'s `LEGACY_LONG_FILES` the same way
-  5.1's ten were, not papered over or exempted.
+  for the full accounting. Registered the same way 5.1's ten were, not
+  papered over or exempted -- in `tests/test_code_standards_scan.py`'s
+  `LEGACY_LONG_FILES` at the time, and in
+  `code-standards-register.toml`'s `[[c2]]` table since issue 431.
 - **`.git-blame-ignore-revs` lands empty of entries in this PR.** This
   repository squash-merges every PR (see "Merging" below), so the commit
   the reformat becomes on `main` is one GitHub composes at merge time --

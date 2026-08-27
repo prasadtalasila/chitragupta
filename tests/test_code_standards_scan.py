@@ -13,232 +13,77 @@ requirement in direct conflict with a size limit and would reward deleting
 the rationale -- the one edit this project least wants. Counting statements
 measures how much a function *does* and is blind to how well it is
 explained. The difference is not cosmetic: at 5.7.1, 128 functions in
-`chitragupta/` exceed 25 physical lines and 26 exceed 25 statements.
+`chitragupta/` exceeded 25 physical lines and 26 exceeded 25 statements.
 
 **A ratchet, not a wall.** Both rules are violated by code that exists
 today, and a rule that fails on the day it lands is a rule that gets
-switched off. Today's offenders are frozen in the two registers below.
-Anything *not* in a register that crosses a threshold fails; anything in a
-register that comes back *under* its threshold also fails, saying to delete
-the entry. So the register can only shrink, and every shrink is a visible
-diff. It is a debt list, not an allowance.
+switched off. Today's offenders are frozen in the register. Anything *not*
+in it that crosses a threshold fails; anything in it that comes back
+*under* its threshold also fails, saying to delete the entry. So the
+register can only shrink, and every shrink is a visible diff. It is a debt
+list, not an allowance.
 
 What the ratchet deliberately does not do is cap the growth of a module
 already on the C2 register. Pinning each to today's exact size would fail
 on every ordinary edit and would be turned off within a week; growth in a
 registered module is caught by C1 on its functions, and by review.
+
+**Two things moved out of this file in issue 431, and neither changed.**
+The scan itself is now `scripts/code_standards.py`, because the
+edit-time hook needs a hand-runnable command and `tests/` does not ship
+(see that module's docstring). The register is now
+`code-standards-register.toml`, for the same reason and with its trailing
+counts promoted to real values, since `tomllib` discards comments. **This
+file is still the authority**: it is what fails a build, and every
+assertion below is the one it made before the move.
 """
 
-import ast
-import re
+import importlib.util
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-MAX_STATEMENTS = 25
-MAX_CODE_LINES = 250
 
-# C1 covers the tests, C2 does not -- see CODE-STANDARDS.md. In short: the
-# tests already hold C1 (1 offender in 1926 functions), so including them
-# locks in a bar that is met; a test module's *length* tracks the surface
-# of the module under test rather than a count of responsibilities, so C2
-# would push tests into new files for no reason other than the cap.
-#
-# `bench/` is out of scope for both: it is the parser measurement harness,
-# it is one of the trees scripts/release.py excludes from the release
-# archive, and its scripts are one-shot analysis code whose `main()` reads
-# top to bottom on purpose.
-STATEMENT_ROOTS = ("chitragupta", "scripts", "tests")
-CODE_LINE_ROOTS = ("chitragupta", "scripts")
+def _load_scanner():
+    """`scripts/code_standards.py`, by path.
 
-# Every offender as of 5.7.1 that remains, frozen. Ordered worst-first,
-# with today's count in a trailing comment so the size of each debt is
-# visible without running anything. The original register held 28
-# functions, worst of them chitragupta/sync.py::run at 117 statements -- the
-# 5.8.x SonarCloud-debt series split the worst offenders and delisted
-# each as it came back under the limit.
-LEGACY_LONG_FUNCTIONS = {
-    "tests/test_release.py::make_repo",  # 32
-    "chitragupta/retrieval.py::_windows",  # 28
-    "scripts/release.py::build_release",  # 26
-}
-
-# Ten of these grew by a line or six when pylint's `line-too-long` was
-# enabled: wrapping a 105-character line necessarily spends a physical
-# line to save a column, so C0301 and C2 pull against each other and C0301
-# won. The trade is deliberate and one-way -- the wraps are permanent,
-# the growth is bounded by the 34 lines that were over 100 columns, and
-# no file entered the register that was not already on it.
-#
-# Six more entered on #362's `ruff format` adoption, for the same reason
-# in a different shape: this codebase hand-aligned wrapped arguments to
-# the opening paren, `ruff format` never does, and its hanging-indent
-# style spends more physical lines to say the same thing everywhere that
-# pattern appears. Every existing entry's count also moved with the same
-# reformat; none of the six is a real complexity increase, and the trade
-# is accepted the same way the line-wrap one was.
-#
-# One more entered on #405, and it is the first to enter mostly on prose
-# rather than on code. `figure_layout/__init__.py` sat at 247, with a
-# ~70-line docstring stating the aid's whole contract -- which checks
-# exist, which need pdflatex, and which side of AUTO-IMPROVEMENT.md's R3
-# each falls on. Three new rows in that table, a three-line note, and
-# the four statements implementing them took it to 257: ten of those
-# eleven lines are the header, because `code_lines()` charges for a
-# docstring and not for a `#` comment. The seam available is
-# `build_parser`/`main`/`run`/`_command` into a `_cli.py`, which is a
-# pure line-count move rather than a split by responsibility -- unlike
-# `_report.py`'s, whose docstring records a real seam. Deferred to its
-# own PR under DEVELOPER-AGENTS.md's surgical-changes rule rather than
-# tripling the diff of a reporting fix.
-#
-# One more entered on issue 411: `style_check.py` sat at 249, one import
-# and one `+ figure_findings(draft)` away from the table findings it
-# already wired in the same shape. The module's actual seam -- Vale
-# wiring, language resolution, findings collapsing -- is unrelated to
-# what issue 411 asks for, so splitting it now would be exactly the
-# unrelated refactor DEVELOPER-AGENTS.md's surgical-changes rule forbids
-# inside this diff. Deferred to its own PR, the same call #405 made for
-# `figure_layout/__init__.py` above.
-LEGACY_LONG_FILES = {
-    "chitragupta/sync.py",  # 548
-    "chitragupta/enrich/docling_parse.py",  # 542
-    "chitragupta/overlap_index.py",  # 523
-    "chitragupta/ledger.py",  # 502
-    "chitragupta/config.py",  # 492
-    "chitragupta/retrieval.py",  # 432
-    "chitragupta/references.py",  # 389
-    "chitragupta/review/citation_provenance.py",  # 383
-    "chitragupta/render_output/__init__.py",  # 338
-    "chitragupta/overlap_skipgram.py",  # 288
-    "chitragupta/review/citation_coverage.py",  # 275
-    "chitragupta/enrich/__main__.py",  # 266
-    "chitragupta/passages.py",  # 260
-    "chitragupta/review/verbatim_check/__init__.py",  # 260
-    "chitragupta/dossier/_retrieval.py",  # 256
-    "chitragupta/review/figure_layout/__init__.py",  # 257
-    "chitragupta/style_check.py",  # 251
-}
-
-
-def statement_count(node):
-    """Statements in a function body, not descending into nested definitions.
-
-    A nested `def` is reached by `functions()` in its own right and checked
-    on its own account, so counting its body here too would charge it to
-    both and make an inner helper look like a way to fail its parent. The
-    nested `def` or `class` statement itself still counts as one statement
-    of the parent, which is correct -- declaring it is something the parent
-    does.
-
-    Stopping the descent is what makes that true at any depth. An earlier
-    version subtracted a set of nested nodes from the walk instead, which
-    got a nested *class* wrong: its methods were themselves nested
-    definitions, so they survived the subtraction and were charged to the
-    enclosing function. The parent's count then moved when a method was
-    added to a class it merely declared.
+    Loaded rather than imported because `scripts/` is not a package and
+    is not on `sys.path` -- the same `importlib.util.spec_from_file_location`
+    dance `tests/test_check_version_bump.py` and `tests/test_release.py`
+    already do for their own `scripts/` module.
     """
-    count = 0
-    pending = list(ast.iter_child_nodes(node))
-    while pending:
-        child = pending.pop()
-        if isinstance(child, ast.stmt):
-            count += 1
-        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            continue
-        pending.extend(ast.iter_child_nodes(child))
-    return count
-
-
-def _definitions(node, prefix):
-    """`(qualified_name, statement_count)` for every function under `node`.
-
-    A class or an enclosing function extends the prefix; any other
-    statement -- `if`, `try`, `with` -- leaves it alone, so a conditionally
-    defined function is still found and still named for its real scope.
-    """
-    for child in ast.iter_child_nodes(node):
-        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            name = prefix + child.name
-            yield name, statement_count(child)
-            yield from _definitions(child, name + ".")
-        elif isinstance(child, ast.ClassDef):
-            yield from _definitions(child, prefix + child.name + ".")
-        else:
-            yield from _definitions(child, prefix)
-
-
-def functions(source):
-    """Every function in `source` as `(qualified_name, statement_count)`.
-
-    The caller prefixes the path. Nested and method definitions are
-    yielded too -- each is a function someone has to read, and C1 is about
-    reading.
-
-    Qualified (`Class.method`, `outer.inner`), not the bare name, because
-    the bare name is not unique within a file: `chitragupta/pdf_text.py` defined
-    `__init__` twice, in `interrupt_guard` and `_AnnotatedStream`, before
-    #361 split it into a package. `long_functions()` keys a dict on this,
-    so a collision would drop one offender of a colliding pair -- and,
-    worse, would let a register entry for one `main` silently license a
-    *different* `main` added to the same module later.
-    """
-    return list(_definitions(ast.parse(source), ""))
-
-
-def code_lines(source):
-    """Physical lines that are neither blank nor a whole-line comment.
-
-    Deliberately counts docstrings, which are neither. Stripping them
-    would need the rule to distinguish a module's prose header from a
-    string constant, and the point of C2 is module size rather than a
-    precise accounting of what fills it.
-    """
-    return sum(
-        1 for line in source.splitlines() if line.strip() and not line.strip().startswith("#")
+    spec = importlib.util.spec_from_file_location(
+        "code_standards", REPO_ROOT / "scripts" / "code_standards.py"
     )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-def _python_files(roots):
-    """Every `.py` file under `roots` in the working tree, path-sorted.
+scan = _load_scanner()
 
-    The working tree, not `git ls-files`: an untracked scratch file under
-    `chitragupta/` is scanned and can fail the suite. That is deliberate -- it is
-    the state the code is actually in -- but it means a local-only failure
-    naming a file you never committed is a stray file, not a bug here.
+MAX_STATEMENTS = scan.MAX_STATEMENTS
+MAX_CODE_LINES = scan.MAX_CODE_LINES
+STATEMENT_ROOTS = scan.STATEMENT_ROOTS
+CODE_LINE_ROOTS = scan.CODE_LINE_ROOTS
 
-    encoding="utf-8" is passed on every read below. Without it `read_text()`
-    uses the locale codec, which is cp1252 on the Windows CI leg, and these
-    files are full of em dashes -- so the scan would die with a
-    UnicodeDecodeError there while passing on Linux. Same reason
-    tests/test_command_depth_scan.py pins it.
-    """
-    return sorted(path for root in roots for path in (REPO_ROOT / root).glob("**/*.py"))
+statement_count = scan.statement_count
+functions = scan.functions
+code_lines = scan.code_lines
+long_functions = scan.long_functions
+long_files = scan.long_files
+_python_files = scan._python_files
+_relative = scan._relative
 
-
-def _relative(path):
-    return path.relative_to(REPO_ROOT).as_posix()
-
-
-def long_functions(roots):
-    """`{qualified_name: statement_count}` for everything over C1."""
-    found = {}
-    for path in _python_files(roots):
-        source = path.read_text(encoding="utf-8")
-        for name, count in functions(source):
-            if count > MAX_STATEMENTS:
-                found[f"{_relative(path)}::{name}"] = count
-    return found
-
-
-def long_files(roots):
-    """`{path: code_line_count}` for everything over C2."""
-    found = {}
-    for path in _python_files(roots):
-        count = code_lines(path.read_text(encoding="utf-8"))
-        if count > MAX_CODE_LINES:
-            found[_relative(path)] = count
-    return found
+# The register, as this file has always spelled it. Two names rather than
+# the scanner's two dicts, because that is what every assertion below and
+# `tests/test_technical_debt_scan.py`'s import already read -- the move
+# changed where the data lives, not what the ratchet is written against.
+_C1_COUNTS, _C2_COUNTS = scan.register()
+LEGACY_LONG_FUNCTIONS = set(_C1_COUNTS)
+LEGACY_LONG_FILES = set(_C2_COUNTS)
 
 
 def _new_offenders(found, register):
@@ -328,20 +173,16 @@ def test_the_registers_name_only_paths_that_still_exist():
 
 
 def _recorded_counts():
-    """`{register entry: the count in its trailing comment}`.
+    """`{register entry: the count recorded beside it}`.
 
-    Read out of this file's own source rather than kept as a second data
-    structure, because the comment is what a reader sees when deciding
-    which debt to take first -- so the comment is the thing that has to be
-    true.
+    Read from `code-standards-register.toml`'s own values. It was a
+    regex over this file's trailing `# 32` comments until issue 431 --
+    the comment was what a reader saw when deciding which debt to take
+    first, so the comment had to be true. `tomllib` discards comments, so
+    the move promoted the number to a key; it is still the thing a reader
+    sees, and this test is still what keeps it honest.
     """
-    pattern = re.compile(r'^\s+"([^"]+)",\s+#\s+(\d+)\s*$')
-    recorded = {}
-    for line in Path(__file__).read_text(encoding="utf-8").splitlines():
-        match = pattern.match(line)
-        if match:
-            recorded[match.group(1)] = int(match.group(2))
-    return recorded
+    return {**_C1_COUNTS, **_C2_COUNTS}
 
 
 def test_every_registered_offender_records_its_current_count():
@@ -388,9 +229,16 @@ def test_the_registers_are_the_size_this_document_says():
 
 
 def test_this_scanner_obeys_its_own_statement_limit():
-    """The check that would be embarrassing to fail."""
-    source = Path(__file__).read_text(encoding="utf-8")
-    assert all(count <= MAX_STATEMENTS for _, count in functions(source))
+    """The check that would be embarrassing to fail.
+
+    Both files, since issue 431 split them: the scanner in `scripts/`,
+    which is also covered by the whole-tree scan above, and this one,
+    which is not -- `STATEMENT_ROOTS` includes `tests`, so it is, but
+    asserting it here keeps the embarrassment check readable as one.
+    """
+    for path in (REPO_ROOT / "scripts" / "code_standards.py", Path(__file__)):
+        source = path.read_text(encoding="utf-8")
+        assert all(count <= MAX_STATEMENTS for _, count in functions(source)), path
 
 
 def test_a_statement_is_counted_per_statement_not_per_line():

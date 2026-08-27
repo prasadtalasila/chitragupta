@@ -119,6 +119,14 @@ DELIBERATE_DIFFERENCES = frozenset(
         ".markdownlint.yaml",
         ".pylintrc",
         ".opencodereview",
+        # The C1/C2 debt register. It ships, because someone unzipping a
+        # release to work on the pipeline needs it -- `scripts/code_standards.py`
+        # and `tests/test_code_standards_scan.py` both read it. It is not
+        # scaffolded, for the reason every entry in this block shares:
+        # an `init`-ed project has no `chitragupta/` or `scripts/` tree
+        # whose sizes it could describe. The size hook `.claude/` does
+        # scaffold is inert there for the same reason, and says so.
+        "code-standards-register.toml",
         # Audience is someone changing chitragupta's own source, which a
         # pip-installed, init-ed project does not have -- #267 gives
         # CLAUDE.md's routing table the "no src/ to change" row this implies.

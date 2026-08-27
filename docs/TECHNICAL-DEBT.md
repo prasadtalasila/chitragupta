@@ -98,10 +98,13 @@ it is on a register it left is not.
 
 ## 🧱 Tier 1: the debt the ratchet already holds
 
-`tests/test_code_standards_scan.py` freezes **3 functions** over C1 (25
+`code-standards-register.toml` freezes **3 functions** over C1 (25
 statements) and **17 modules** over C2 (250 code lines), each with its
-current size in a trailing comment that
+current size recorded beside it, which
 `test_every_registered_offender_records_its_current_count` keeps honest.
+`tests/test_code_standards_scan.py` reads that file and is still what
+fails a build; the register moved out of it in issue 431, and the size
+was a trailing comment until then.
 
 Those two counts had drifted badly -- this section claimed 26 and 13
 until #228 -- which is [build order](CODE-STANDARDS.md#-build-order) item
