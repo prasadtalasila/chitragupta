@@ -185,6 +185,46 @@ The `.json` beside a report is the same findings as data, for a caller
 that would otherwise parse the printed form. It is a sibling of the
 report, not a render of it -- `.tex`/`.pdf` are another document.
 
+## ⏱ What the layer costs
+
+**Zero tokens, always.** Every aid is deterministic Python with no model
+call, so the only costs are wall-clock and memory. That is what makes
+[LADDERS.md](LADDERS.md)'s first rung free to run to exhaustion before
+anything expensive begins.
+
+Measured on one machine across five real drafts, at `--formats md`, in
+milliseconds. Read it for ratios, not absolutes --
+[PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs) has the full
+method, the peak-memory figures and the caveats:
+
+| words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | all eight |
+| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,258 | no | 180 | 447 | 303 | 90 | 87 | 88 | 89 | 575 | **1,859** |
+| 2,448 | no | 366 | 474 | 303 | 90 | 89 | 92 | 92 | 577 | **2,083** |
+| 5,723 | yes | 144 | 19,737 | 310 | 95 | 486 | 99 | 88 | 508 | **21,467** |
+| 10,003 | yes | 332 | 41,019 | 314 | 96 | 818 | 109 | 88 | 1,017 | **43,793** |
+| 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | **38,522** |
+
+**One aid is the cost of the layer.** `verbatim` is 90--94% of any run
+where its embedding tier can execute, and 447 ms where it cannot -- a
+44--86x difference that depends on whether the dossier, the Docling
+sidecars and the enrichment layer are all present, not on the draft.
+Every other aid is between 88 ms and 1.3 s. Seven of the eight, run
+together, cost under two seconds on any draft measured.
+
+**And it scales on cited sources, not words.** The 18,061-word chapter
+cites 28 distinct citekeys and scans in 35.7 s; the 10,003-word chapter
+cites 40 and takes 41.0 s. Roughly **1.0--1.5 s per distinct citekey**,
+which is what [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) predicts:
+each source is embedded once per scanned draft. So the number to
+estimate from is the draft's citekey count.
+
+**Two rows are not what they look like.** `quotation` returns in ~90 ms
+because no dossier on this machine carries a `quote:` line, so its input
+universe is empty -- that is the cost of finding no work, not of doing
+it. And ~86 ms of every row is interpreter startup, which is most of
+what `synthesis`, `uncited` and `quotation` report.
+
 ## 🚫 Two limits worth knowing
 
 - **A clean verbatim scan is not a clean bill of health.** Detection runs
@@ -204,3 +244,5 @@ report, not a render of it -- `.tex`/`.pdf` are another document.
 - Fixing what a verbatim scan found: the `overlap-reviser` skill
   ([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)).
 - The commands and their flags: [CLI.md](CLI.md).
+- What the layer costs, in full:
+  [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs).

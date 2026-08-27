@@ -1,8 +1,10 @@
 # 🔍 Plagiarism detection: how the three tiers work, and what was measured
 
 Status: **three detection tiers, all built; the second and third
-advisory-only.** Written 2026-08-15. Updated 2026-08-24, splitting the design
-half out of [PLAGIARISM.md](PLAGIARISM.md), which had grown to carry both.
+advisory-only.** Written 2026-08-15. Updated 2026-08-27 with tier 3's
+re-measured cost and its scaling law; split out of
+[PLAGIARISM.md](PLAGIARISM.md) on 2026-08-24, which had grown to carry
+both.
 
 **Written for** someone changing `chitragupta/overlap_index.py`,
 `chitragupta/overlap_skipgram.py`, `chitragupta/overlap_embed.py` or
@@ -375,10 +377,30 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    windows of the passage sidecars, which are embedded on demand and
    held only for the duration of one `scan`. Each source is therefore
    embedded once per scanned draft, not once per corpus. On the
-   15-chapter book that is ~100s per chapter. A persistent
+   15-chapter book that is ~100s per chapter.
+
+   **Re-measured 2026-08-27, and the prediction holds.** "Once per
+   scanned draft" implies the cost should track the number of *distinct
+   cited sources* rather than draft length, and it does: an
+   18,061-word chapter citing 28 citekeys scans in 35.7 s, while a
+   10,003-word chapter citing 40 scans in 41.0 s -- longer draft,
+   shorter scan. That is about **1.0--1.5 s per distinct citekey**, and
+   it is the scaling law to reason with. The ~100s figure above came
+   from a 497-document corpus and an earlier revision; the corpus is
+   642 documents now and the tier is faster, not slower. Without tier 3
+   the same scans take 447--474 ms, so the tier costs 44--86x
+   everything else in a `scan` combined, and peaks at ~1,492 MB against
+   23--73 MB for any other review aid. Full method and the other seven
+   aids' figures:
+   [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs).
+
+   A persistent
    window-level cache is the obvious next step and is deliberately not
    in this change: nothing has yet measured whether the tier is worth
-   running often enough to need one.
+   running often enough to need one. **What has now been measured is
+   the re-scan cost such a cache would save**: three consecutive scans
+   of an unchanged draft took 20,172 / 20,141 / 20,340 ms, so a caller
+   re-scanning in a loop pays full price every iteration.
 
 Because the drafts this pipeline produces are LLM-written and literal
 paraphrase is their normal failure mode, tiers 2-3 were prioritized

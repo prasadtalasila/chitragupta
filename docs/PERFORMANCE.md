@@ -1,6 +1,7 @@
 # ⚡ Performance
 
-Status: **measurements.** Written 2026-08-03. Updated 2026-08-24.
+Status: **measurements.** Written 2026-08-03. Updated 2026-08-27 with
+the review layer's per-aid costs.
 
 **Written for** anyone choosing settings on their own hardware and
 wanting the measured cost rather than a guess. **Assumed:**
@@ -19,6 +20,8 @@ Related reading:
   fidelity, and why two other candidates were evaluated and dropped.
 - [PARALLELISM.md](PARALLELISM.md) -- how the parallel parse is built:
   architecture diagrams, what each component does, and the roadmap.
+- [REVIEW.md](REVIEW.md) -- what the eight review aids do; this document
+  prices them.
 - `bench/RESULTS.md` -- the raw measurement record with per-PDF timings.
   Developer-only: `bench/` is excluded from the release archive, so it is
   in the repository but not in a downloaded release.
@@ -455,6 +458,88 @@ contribution.** The largest is a boolean.
 [PARALLELISM.md](PARALLELISM.md) describes the machinery that produces
 these numbers; `bench/RESULTS.md` carries the measurements themselves,
 including the conclusions later ones overturned.
+
+## 🔍 What a review pass costs
+
+Everything above is the corpus layer. This is the **review layer**
+([REVIEW.md](REVIEW.md)) -- eight aids, all deterministic Python with
+no model call, so **the token cost of every figure here is zero** and
+the only costs are wall-clock and memory.
+
+Measured 2026-08-27 on this host, across five real drafts spanning
+1,258 to 18,061 words, with and without a dossier, at `--formats md`.
+Milliseconds:
+
+| words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | all eight |
+| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,258 | no | 180 | 447 | 303 | 90 | 87 | 88 | 89 | 575 | **1,859** |
+| 2,448 | no | 366 | 474 | 303 | 90 | 89 | 92 | 92 | 577 | **2,083** |
+| 5,723 | yes | 144 | 19,737 | 310 | 95 | 486 | 99 | 88 | 508 | **21,467** |
+| 10,003 | yes | 332 | 41,019 | 314 | 96 | 818 | 109 | 88 | 1,017 | **43,793** |
+| 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | **38,522** |
+
+Corpus at the time: 642 ledger items, 994 parsed sidecars, 6.4 million
+parsed words, a 547 MB overlap index.
+
+### 📐 The variable is the embedding tier, not the draft
+
+**A factor of 23 separates the cheapest run from the dearest, and draft
+length is not what moves it.** `verbatim`'s tier 3 needs the `enrich`
+group, `content/chroma/`, the Docling sidecars and the draft's own
+dossier, all four ([PLAGIARISM.md](PLAGIARISM.md)). Where any is
+missing the scan is **447 ms**; where all are present it is
+**19.7--41.0 s**.
+
+**Where it runs, cost tracks distinct cited sources.** The 18,061-word
+chapter cites 28 citekeys and scans in 35.7 s; the 10,003-word chapter
+cites 40 and takes 41.0 s -- longer draft, *shorter* scan. About
+**1.0--1.5 s per distinct citekey**, which confirms rather than
+surprises: [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) states each
+source is embedded once per scanned draft, and this is that mechanism
+seen from outside. **Estimate from the citekey count, not the word
+count.**
+
+Everything else is flat and nearly free. `coverage` holds ~305 ms at
+every size, because its work is a corpus query rather than a draft
+scan. `synthesis`, `uncited` and `quotation` sit within noise of the
+**~86 ms** interpreter-startup floor that every `python -m` invocation
+pays. `figure` is ~88 ms on a draft with no figures and 486--818 ms on
+one with them.
+
+### 💾 Peak memory, which is what bounds parallelism
+
+| Aid | Peak RSS |
+| --- | ---: |
+| `verbatim` | **1,492 MB** |
+| `coverage`, `agenda` | 73 MB |
+| `provenance` | 32 MB |
+| `synthesis`, `uncited`, `quotation` | 23 MB |
+
+Running the eight concurrently saves little and costs a lot: one aid is
+90--94% of the wall-clock, so the ceiling is ~6--10%, and the same aid
+is 20--65x the memory of any other. Seven aids in parallel is not seven
+times 23 MB.
+
+### 📄 Only three aids render
+
+`--formats md` versus the default `md,tex,pdf`, on the 5,723-word
+chapter: `provenance` 1,502 ms to 140, `coverage` 1,390 to 304,
+`agenda` 1,822 to 525. The other five write no report for that draft
+and so save nothing. **About 2.5 s a run**, which matters only to a
+caller running the whole layer repeatedly.
+
+### ⚠ Two figures to read carefully
+
+- **`quotation`'s ~90 ms is unmeasured, not cheap.** No dossier on this
+  host carries a `quote:` line, so its input universe is empty on every
+  real draft. That row is the cost of finding no work. Re-measure it if
+  the claim/quote contract is adopted.
+- **Tier 3 is not cached, and that is deliberate.**
+  [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) explains why: the
+  enrichment layer's chunk cache does not cover this tier's ~20-word
+  window vectors. Three consecutive scans of an unchanged draft
+  measured 20,172 / 20,141 / 20,340 ms -- no cache, as documented.
+  Tiers 1 and 2 *are* cached and are sub-second after the first run.
 
 ## ⚡ What a drift sweep costs
 
