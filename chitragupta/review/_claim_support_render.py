@@ -8,8 +8,8 @@ dependency one-way.
 One paragraph here is load-bearing and must not be trimmed: the caveat
 that a low score is not a fact-check and a high score is not proof,
 because retrieval already selected these passages by similarity.
-Dropping it is exactly the failure mode docs/REVIEW.md's "Two limits"
-section (soon three) warns against -- a score read as a verdict.
+Dropping it is exactly the failure mode docs/REVIEW.md's "Three limits"
+section warns against -- a score read as a verdict.
 
 A finding whose citekey could not be scored (`finding["note"]` is set)
 is never printed with a percentage here, in either form. `findings()`

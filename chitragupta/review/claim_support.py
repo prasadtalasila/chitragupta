@@ -33,7 +33,7 @@ chasing a higher score would make a claim look supported without
 making it supported.
 
 Needs the `enrich` extra (chitragupta/entailment.py). Advisory like
-the other six -- exit 0 whatever it finds, no lock, no draft blocked.
+the other eight -- exit 0 whatever it finds, no lock, no draft blocked.
 
 Usage:
     python -m chitragupta.review support content/drafts/<slug>.md
