@@ -24,6 +24,19 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def not_on_pypi(_url):
+    """What `_fetch_json` returns for a 404: `on_pypi`'s "not published".
+
+    Every `main()` call below that is not itself about the PyPI rule
+    passes this. It is a *definite* answer, so the run is silent and
+    identical on every host -- where the real fetcher's answer depends
+    both on the network being up and on whether this branch's own
+    version has been released yet. `--offline` would also be quiet, but
+    it skips the rule rather than exercising it.
+    """
+    return False
+
+
 @pytest.fixture(scope="module")
 def check():
     spec = importlib.util.spec_from_file_location(
@@ -32,6 +45,52 @@ def check():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture(autouse=True)
+def _no_real_network(check, monkeypatch):
+    """Fail any test in this module that actually reaches pypi.org (#425).
+
+    Three tests here drove `main()` with neither `--offline` nor a fake
+    fetcher and so requested a real URL on every full-suite run, which
+    failed once: `on_pypi` returns None on a transport hiccup, `main()`
+    reports a None as a `::warning::`, and
+    `test_a_tagged_base_emits_no_warning_at_all` asserts that warning is
+    absent. Intermittent, and it reads as "your branch broke something."
+
+    Four more in `TestTheCommand` reached the network too and passed
+    anyway -- they assert on stdout, and the stray warning goes to
+    stderr. That is why this is a fixture rather than seven fixes: the
+    coupling is one call deep, invisible at the call site, and silent in
+    four of the seven places it existed.
+
+    **The trip is reported at teardown, not where it happens.** Raising
+    here would be swallowed: `on_pypi` catches `Exception` broadly and
+    turns it into "could not tell", which is precisely the behaviour
+    that made the original bug intermittent instead of loud. So the call
+    is recorded and the assertion fires after the test body -- surfacing
+    as an ERROR beside a test that may itself have passed, which is why
+    the message carries the fix and not just the diagnosis.
+
+    `urlopen` is the choke point rather than `_fetch_json`, because
+    `main()` binds its default at definition time: patching the module
+    attribute would not reach a `main()` that has already been defined.
+    `TestFetchJson` stubs `urlopen` for its own purposes afterwards, and
+    monkeypatch is last-write-wins within a test.
+    """
+    reached = []
+
+    def tripwire(url, *_args, **_kwargs):
+        reached.append(url)
+        raise check.urllib.error.URLError("the test suite does not have a network")
+
+    monkeypatch.setattr(check.urllib.request, "urlopen", tripwire)
+    yield
+    assert not reached, (
+        f"this test reached the network: {reached}. Every test here must "
+        "stay off it -- pass `fetch=not_on_pypi` to main() for a definite "
+        "'not published', or `--offline` to skip the PyPI check entirely."
+    )
 
 
 class TestOrdering:
@@ -150,24 +209,24 @@ class TestTheCommand:
 
     def test_a_real_bump_passes(self, check, in_repo, capsys):
         in_repo("5.19.0", "5.20.0")
-        assert check.main(["--base-ref", "main"]) == 0
+        assert check.main(["--base-ref", "main"], fetch=not_on_pypi) == 0
         assert "out-ranks" in capsys.readouterr().out
 
     def test_a_collision_exits_one_and_says_why(self, check, in_repo, capsys):
         in_repo("5.19.0", "5.19.0")
-        assert check.main(["--base-ref", "main"]) == 1
+        assert check.main(["--base-ref", "main"], fetch=not_on_pypi) == 1
         assert "::error::" in capsys.readouterr().err
 
     def test_a_released_version_is_caught_through_real_tags(self, check, in_repo, capsys):
         in_repo("5.19.0", "5.20.0", tag="v5.20.0")
-        assert check.main(["--base-ref", "main"]) == 1
+        assert check.main(["--base-ref", "main"], fetch=not_on_pypi) == 1
         assert "already released" in capsys.readouterr().err
 
     def test_the_base_ref_travels_into_the_message(self, check, in_repo, capsys):
         """A passing run says what it actually compared, so a wrong ref is
         visible rather than silently reassuring."""
         in_repo("5.19.0", "5.20.0")
-        assert check.main(["--base-ref", "main"]) == 0
+        assert check.main(["--base-ref", "main"], fetch=not_on_pypi) == 0
         assert "main's" in capsys.readouterr().out
 
 
@@ -263,14 +322,14 @@ class TestTheWarningDoesNotGate:
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: "a release is owed")
         monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
-        assert check.main([]) == 0
+        assert check.main([], fetch=not_on_pypi) == 0
         assert "::warning::a release is owed" in capsys.readouterr().err
 
     def test_a_real_problem_still_exits_one(self, check, monkeypatch, capsys):
         monkeypatch.setattr(check, "problems", lambda *a: ["collision"])
         monkeypatch.setattr(check, "unreleased", lambda *a: "a release is owed")
         monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
-        assert check.main([]) == 1
+        assert check.main([], fetch=not_on_pypi) == 1
         err = capsys.readouterr().err
         assert "::warning::" in err and "::error::collision" in err
 
@@ -281,7 +340,7 @@ class TestTheWarningDoesNotGate:
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
         monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
-        assert check.main([]) == 0
+        assert check.main([], fetch=not_on_pypi) == 0
         assert "::warning::" not in capsys.readouterr().err
 
 
@@ -340,6 +399,44 @@ class TestPyPIBlocks:
         monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
         assert check.main(["--offline"]) == 0
         assert "could not reach PyPI" not in capsys.readouterr().err
+
+
+class TestTheTestsStayOffTheNetwork:
+    """`_no_real_network` and the injection point it polices (#425).
+
+    Both halves are checked, because each fails silently without the
+    other: a default swapped for a fake would leave the suite green
+    while the CI run stopped asking PyPI anything, and a fixture that
+    stopped being autouse would let the seven `main()` calls below drift
+    back onto the network without a word.
+    """
+
+    def test_the_real_fetcher_is_still_what_ci_gets(self, check):
+        """`main()`'s fetcher is injected for the tests, and must not
+        become a way for the tests to disarm the check in CI.
+
+        Nothing else here would notice, because every `main()` call in
+        this module supplies its own fetcher or patches `on_pypi`. The
+        same idiom as `test_git_output_is_decoded_as_utf8`: assert on
+        the declaration, because the behaviour it guards is only
+        observable on a host this suite is not.
+        """
+        import inspect
+
+        assert inspect.signature(check.main).parameters["fetch"].default is check._fetch_json
+
+    def test_the_tripwire_is_actually_installed(self, check):
+        """The guard's own non-vacuous check, in the idiom `bench/`
+        uses: a guard nothing verifies is a guard that can be deleted.
+
+        Dropping `autouse=True` from `_no_real_network` breaks nothing
+        visible -- every test still passes, on a suite quietly back on
+        the network. Asserted by identity rather than by calling it,
+        since a call would be *recorded* and would fail this test at
+        teardown, which is the fixture reporting itself rather than
+        this test checking it.
+        """
+        assert check.urllib.request.urlopen.__name__ == "tripwire"
 
 
 class TestFetchJson:
