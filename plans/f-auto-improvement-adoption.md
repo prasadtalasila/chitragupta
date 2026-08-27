@@ -352,9 +352,10 @@ already say.
 
 ### It does not enter `review.AIDS`
 
-Stated as a non-goal, since Q3 only implies it. `agenda` is the eighth
-aid; registering a developer tool as a ninth would put it in a drafting
-user's review layer, and would trigger the sweep across `REVIEW.md`,
+Stated as a non-goal, since Q3 only implies it. `agenda` was the eighth
+aid, and `support` (#386) is the ninth; registering a developer tool as
+a tenth would put it in a drafting user's review layer, and would
+trigger the sweep across `REVIEW.md`,
 `FEATURES.md`, `PACKAGING.md` and four diagrams that
 `chitragupta/review/__main__.py`'s import-time check enforces. The
 developer loop's surface is `scripts/`, a test, and the ten-step cycle.
