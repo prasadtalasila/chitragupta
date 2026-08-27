@@ -892,10 +892,12 @@ error.
 One ranked, deduplicated worklist merged across the other seven aids'
 `.json`, `chitragupta.draft style --json`'s prose findings, and the
 dossier's drift report. Layer 4, the review layer: advisory, not a gate,
-and it **reads, never runs, an aid** -- an aid's `.json` that does not
-exist yet is named as absent in the header, not computed on the fly. A
-draft with no dossier still produces an agenda; `missing-citekey` and
-`candidate` are simply absent from it, and the header says why.
+and in its bare form it **reads, never runs, an aid** -- an aid's `.json`
+that does not exist yet is named as absent in the header, not computed on
+the fly. `--baseline` below is the one mode that departs from that, and
+the only one. A draft with no dossier still produces an agenda;
+`missing-citekey` and `candidate` are simply absent from it, and the
+header says why.
 
 Every item carries a `class` from the item-class table
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)), a section anchor where one
@@ -917,12 +919,27 @@ Both are corrected above.
 | `<draft>` | required | The Markdown draft to check |
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report; `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 | `--json` | off | Print the worklist as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
+| `--baseline PATH` | unset | Re-run the seven aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** -- the bare command above never does -- so it costs seconds rather than milliseconds |
 
 ```bash
 chitragupta review agenda content/drafts/survey.md
 # chitragupta review agenda content/drafts/survey.md --formats md
 # chitragupta review agenda content/drafts/survey.md --json > agenda.json
+# chitragupta review agenda content/drafts/survey.md \
+#     --baseline content/review/survey.agenda.json --json
 ```
+
+**`--baseline`** refreshes before it compares, and that is the point
+rather than a convenience: reading the aids' pre-edit `.json` reports a
+finding resolved that is not, and does so silently. Passing the report's
+own `.json` sibling is the normal case and is safe -- the baseline is
+read before anything is re-run, so this run overwriting that file cannot
+affect what it is compared against. `coverage` is re-run with the
+queries the draft's own `retrieval.md` records (revision-boundary rows
+skipped), and skipped entirely when there are none rather than run
+against an invented query. Under `--baseline` the aids are refreshed at
+`--formats md` only, so each aid's `.tex`/`.pdf` goes stale against its
+`.md` until a full-format run of the layer follows.
 
 **`--json`** carries the same envelope every review aid's JSON does, plus
 `sources` (`available`/`stale` per aid, `available`/`partial` for the
@@ -930,7 +947,12 @@ prose check, `available`/`corpus_available` for the dossier drift) and
 one `items` object per worklist entry -- `id`, `class`, `section`,
 `citekey`, `line`, `unattended`, `summary` and a `detail` object whose
 shape is specific to the class. An additional serialisation of what
-`render_markdown` already prints, never a second computation. Like
+`render_markdown` already prints, never a second computation, plus two
+further top-level keys that serve a re-run loop: `pass_bound`, the
+backstop on how many passes one may take, and `objective_class_count`,
+the number of `unattended` items in this agenda -- both carried as data
+because a skill cannot import a Python constant, and hardcoding either
+in prose is what naming them was for. Like
 [`provenance`](#-chitragupta-review-provenance), the `.json` (and the
 `.md`) is filed unconditionally -- there is no `--write` flag -- and
 `--json` only decides whether the worklist is *also* printed to stdout,
