@@ -132,9 +132,14 @@ bucket within a class, then position in the draft.
 `support` (C2) asks the same underlying question as `provenance` --
 does the source support this claim? -- but is not a second source for
 `unsupported-claim`: its score is ranked, never banded, by design
-([REVIEW.md](REVIEW.md)), and this class's extractor decides membership
-by a `band`. Wiring it in would mean thresholding a continuous score,
-which R3 below forbids. `agenda` does not read `support`'s JSON at all
+([REVIEW.md](REVIEW.md)), and this class's extractor
+(`unsupported_claim_items`) decides membership by a `band`, a field
+this aid deliberately does not emit. A surfacing-only extractor with
+its own inclusion rule is possible -- ordering and surfacing what a
+human reads is exactly what R3 below permits an unattended process to
+do -- but is separate work with its own design question (all findings?
+a percentile? ranked-but-unfiltered?), not part of this aid's own
+scope. `agenda` does not read `support`'s JSON at all
 (`chitragupta/review/agenda/_sources.py`'s `AID_NAMES`).
 
 The `prose` class had no producer when this was written. It has both a
