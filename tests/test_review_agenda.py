@@ -5,19 +5,23 @@ drift report into one ranked, deduplicated worklist. Issue #381.
 
 import json
 import os
+import re
+import shlex
 from pathlib import Path
 
 import pytest
 
 from chitragupta import dossier, review, style_check
+from chitragupta.dossier import _retrieval
 from chitragupta.dossier._drift import Candidate, Drift
-from chitragupta.review import agenda
+from chitragupta.review import agenda, citation_provenance
 from chitragupta.review.agenda import (
     _dedup,
     _identity,
     _items,
     _items_findings,
     _order,
+    _recheck,
     _render,
     _sources,
 )
@@ -855,7 +859,9 @@ class TestBuildAgendaAndCli:
         with pytest.raises(SystemExit):
             parser.parse_args(["draft.md", "--write"])
 
-    def test_json_flag_prints_payload_to_stdout(self, isolated_config, monkeypatch, capsys):
+    def test_json_flag_prints_payload_to_stdout(
+        self, isolated_config, monkeypatch, capsys, aid_stubs
+    ):
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
         exit_code = agenda.main([str(draft), "--json"])
         assert exit_code == 0
@@ -863,6 +869,9 @@ class TestBuildAgendaAndCli:
         payload = json.loads(out.out)
         assert payload["aid"] == "agenda"
         assert "json" in out.err  # written-files summary moved to stderr
+        # The bare command never runs an aid -- --baseline is the one mode
+        # that does.
+        assert all(stub.calls == [] for stub in aid_stubs.values())
 
     def test_missing_draft_exits_one(self, isolated_config, capsys):
         exit_code = agenda.main(["content/drafts/nope.md"])
@@ -893,3 +902,452 @@ class TestBuildAgendaAndCli:
         built = agenda.build_agenda(draft)
         assert len(built.items) == 1
         assert built.items[0].cls == "uncited-source"
+
+
+# --------------------------------------------------------------------------
+# _recheck.py -- the `--baseline` refresh mode (F3 Decision 6)
+# --------------------------------------------------------------------------
+
+
+def _item_dict(id_, cls="prose", unattended=True, summary="a finding") -> dict:
+    """One `_render._item_dict`-shaped item, which is what both sides of
+    `compare` are made of."""
+    return {
+        "id": id_,
+        "class": cls,
+        "section": None,
+        "citekey": None,
+        "line": None,
+        "unattended": unattended,
+        "summary": summary,
+        "detail": {},
+    }
+
+
+class _AidStub:
+    """Stands in for one aid module's `main`, recording the argv it was
+    handed and optionally printing, so the stdout-capture requirement can
+    be tested against something that actually pollutes stdout."""
+
+    def __init__(self, chatter: str = ""):
+        self.calls: list[list[str]] = []
+        self.chatter = chatter
+
+    def __call__(self, argv):
+        self.calls.append(list(argv))
+        if self.chatter:
+            print(self.chatter)
+        return 0
+
+
+@pytest.fixture
+def aid_stubs(monkeypatch):
+    """Every one of the seven aids' `main` replaced by a recorder.
+
+    `refresh_aids` is tested against *what it calls*, never against real
+    aid behaviour: the real seven need the enrich stack, a real corpus
+    and real dossiers, none of which a unit test should depend on.
+    """
+    stubs = {}
+    for name, module in _recheck._AID_MODULES.items():
+        stub = _AidStub()
+        monkeypatch.setattr(module, "main", stub)
+        stubs[name] = stub
+    return stubs
+
+
+class TestAidModules:
+    def test_keys_are_exactly_the_seven_aid_names(self):
+        assert tuple(_recheck._AID_MODULES) == _sources.AID_NAMES
+
+
+class TestCoverageQueries:
+    def test_draft_outside_the_drafts_dir_has_none(self, isolated_config):
+        draft = content_draft(isolated_config, "elsewhere/survey.md")
+        draft.write_text("# S\n")
+        assert _recheck._coverage_queries(draft) == []
+
+    def test_draft_with_no_dossier_directory_has_none(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# S\n")
+        assert _recheck._coverage_queries(draft) == []
+
+    def test_dossier_with_no_retrieval_rows_has_none(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# S\n")
+        dossier.dossier_dir(draft).mkdir(parents=True)
+        assert _recheck._coverage_queries(draft) == []
+
+    def test_only_revision_markers_yields_none(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# S\n")
+        _retrieval.mark_revision(draft, "shorten intro")
+        assert _recheck._coverage_queries(draft) == []
+
+    def test_recorded_queries_come_back_first_seen_first(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# S\n")
+        dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
+        dossier.log_retrieval(draft, "draft", "co-simulation", 5, 2, 90)
+        assert _recheck._coverage_queries(draft) == ["digital twin", "co-simulation"]
+
+
+class TestRefreshAids:
+    def _draft(self, isolated_config) -> Path:
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nSome prose.\n")
+        return draft
+
+    def test_every_aid_is_called_once(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
+        _recheck.refresh_aids(draft)
+        assert {name: len(stub.calls) for name, stub in aid_stubs.items()} == {
+            name: 1 for name in _sources.AID_NAMES
+        }
+
+    def test_every_argv_parses_against_that_aids_real_parser(self, isolated_config, aid_stubs):
+        """The stubs cannot catch an argv the real parser rejects -- the
+        `--write`-on-provenance mistake is exactly that shape -- so each
+        recorded argv is replayed through the aid's own `build_parser`."""
+        draft = self._draft(isolated_config)
+        dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
+        _recheck.refresh_aids(draft)
+        for name, stub in aid_stubs.items():
+            parsed = _recheck._AID_MODULES[name].build_parser().parse_args(stub.calls[0])
+            assert parsed.formats == "md"
+            assert getattr(parsed, "write", True) is True
+
+    def test_provenance_is_called_without_write(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        _recheck.refresh_aids(draft)
+        argv = aid_stubs["provenance"].calls[0]
+        assert argv == [str(draft), "--formats", "md"]
+        with pytest.raises(SystemExit):
+            citation_provenance.build_parser().parse_args([*argv, "--write"])
+
+    def test_verbatim_is_called_as_the_scan_subcommand(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        _recheck.refresh_aids(draft)
+        assert aid_stubs["verbatim"].calls[0] == [
+            "scan",
+            str(draft),
+            "--write",
+            "--formats",
+            "md",
+        ]
+
+    def test_the_plain_four_are_called_with_write_and_formats_md(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        _recheck.refresh_aids(draft)
+        for name in ("synthesis", "figure", "uncited", "quotation"):
+            assert aid_stubs[name].calls[0] == [str(draft), "--write", "--formats", "md"]
+
+    def test_coverage_gets_one_query_flag_per_recorded_query(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
+        dossier.log_retrieval(draft, "draft", "co-simulation", 5, 2, 90)
+        _recheck.refresh_aids(draft)
+        assert aid_stubs["coverage"].calls[0] == [
+            str(draft),
+            "--query",
+            "digital twin",
+            "--query",
+            "co-simulation",
+            "--write",
+            "--formats",
+            "md",
+        ]
+
+    def test_coverage_is_skipped_with_no_dossier(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        _recheck.refresh_aids(draft)
+        assert aid_stubs["coverage"].calls == []
+        assert aid_stubs["uncited"].calls  # the other six still ran
+
+    def test_coverage_is_skipped_with_a_dossier_but_no_rows(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        dossier.dossier_dir(draft).mkdir(parents=True)
+        _recheck.refresh_aids(draft)
+        assert aid_stubs["coverage"].calls == []
+
+    def test_coverage_is_skipped_with_only_revision_markers(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        _retrieval.mark_revision(draft, "shorten intro")
+        _recheck.refresh_aids(draft)
+        assert aid_stubs["coverage"].calls == []
+
+    def test_an_aids_own_stdout_is_swallowed(self, isolated_config, monkeypatch, capsys):
+        draft = self._draft(isolated_config)
+        for module in _recheck._AID_MODULES.values():
+            monkeypatch.setattr(module, "main", _AidStub(chatter="WROTE A FILE"))
+        _recheck.refresh_aids(draft)
+        assert "WROTE A FILE" not in capsys.readouterr().out
+
+
+class TestLoadBaseline:
+    def test_an_agenda_payload_round_trips(self, tmp_path):
+        path = tmp_path / "b.json"
+        path.write_text(json.dumps({"aid": "agenda", "items": [_item_dict("a")]}))
+        assert _recheck.load_baseline(path)["items"] == [_item_dict("a")]
+
+    def test_an_unreadable_file_names_the_path(self, tmp_path):
+        # `match` is a regex, and a Windows path's backslashes are not
+        # literal there -- `\U`/`\A`/etc. are escapes `re` rejects outright
+        # rather than matching literally. `re.escape` is what makes an
+        # arbitrary path safe to use as a `match` pattern on any host.
+        path = tmp_path / "nope.json"
+        with pytest.raises(ValueError, match=re.escape(str(path))):
+            _recheck.load_baseline(path)
+
+    def test_not_json_at_all_is_refused(self, tmp_path):
+        path = tmp_path / "b.json"
+        path.write_text("not json")
+        with pytest.raises(ValueError, match="not valid JSON"):
+            _recheck.load_baseline(path)
+
+    def test_another_aids_payload_is_refused(self, tmp_path):
+        path = tmp_path / "b.json"
+        path.write_text(json.dumps({"aid": "coverage", "items": []}))
+        with pytest.raises(ValueError, match="not an agenda payload"):
+            _recheck.load_baseline(path)
+
+    def test_a_payload_with_no_items_key_is_refused(self, tmp_path):
+        path = tmp_path / "b.json"
+        path.write_text(json.dumps({"aid": "agenda"}))
+        with pytest.raises(ValueError, match="not an agenda payload"):
+            _recheck.load_baseline(path)
+
+    def test_json_that_is_not_an_object_is_refused(self, tmp_path):
+        path = tmp_path / "b.json"
+        path.write_text(json.dumps(["agenda"]))
+        with pytest.raises(ValueError, match="not an agenda payload"):
+            _recheck.load_baseline(path)
+
+
+class TestCompare:
+    def test_an_item_in_both_persists(self):
+        both = [_item_dict("a")]
+        resolved, persisting, new, _, _ = _recheck.compare(both, both)
+        assert (resolved, persisting, new) == ([], both, [])
+
+    def test_an_item_only_in_the_baseline_is_resolved(self):
+        before = [_item_dict("a")]
+        resolved, persisting, new, _, _ = _recheck.compare([], before)
+        assert (resolved, persisting, new) == (before, [], [])
+
+    def test_an_item_only_in_the_new_list_is_new(self):
+        after = [_item_dict("a")]
+        resolved, persisting, new, _, _ = _recheck.compare(after, [])
+        assert (resolved, persisting, new) == ([], [], after)
+
+    def test_objective_counts_fall_when_an_unattended_item_is_repaired(self):
+        *_, before, after = _recheck.compare([], [_item_dict("a"), _item_dict("b")])
+        assert (before, after) == (2, 0)
+
+    def test_objective_counts_rise_when_an_unattended_item_appears(self):
+        *_, before, after = _recheck.compare([_item_dict("a"), _item_dict("b")], [_item_dict("a")])
+        assert (before, after) == (1, 2)
+
+    def test_objective_counts_stay_flat_when_nothing_unattended_moved(self):
+        surfaced = _item_dict("s", cls="candidate", unattended=False)
+        *_, before, after = _recheck.compare([_item_dict("a"), surfaced], [_item_dict("a")])
+        assert (before, after) == (1, 1)
+
+    def test_surfaced_items_are_never_objective(self):
+        surfaced = [_item_dict("s", cls="candidate", unattended=False)]
+        *_, before, after = _recheck.compare(surfaced, surfaced)
+        assert (before, after) == (0, 0)
+
+
+class TestRecheckPayloadAndText:
+    def _groups(self):
+        return ([_item_dict("r")], [_item_dict("p")], [_item_dict("n")])
+
+    def test_command_reproduces_the_invocation(self):
+        # A plain string, not `Path(...)`: `str(Path(...))` normalises to
+        # the host's own separator, and `shlex.join` quotes a backslash --
+        # a literal string keeps this assertion identical on every host,
+        # the same convention `test_verbatim_check.py`'s own command-string
+        # tests already use.
+        assert _recheck.recheck_command("content/drafts/t/s.md", "b.json") == (
+            "python -m chitragupta.review agenda content/drafts/t/s.md --baseline b.json --json"
+        )
+
+    def test_payload_carries_the_envelope_the_groups_and_the_delta(self):
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"), "b.json", self._groups(), (3, 1), "cmd"
+        )
+        assert payload["aid"] == "agenda"
+        assert payload["notice"]
+        assert payload["command"] == "cmd"
+        assert payload["baseline"] == "b.json"
+        assert payload["objective_before"] == 3
+        assert payload["objective_after"] == 1
+        assert payload["objective_delta"] == -2
+        assert payload["resolved"] == [_item_dict("r")]
+        assert payload["persisting"] == [_item_dict("p")]
+        assert payload["new"] == [_item_dict("n")]
+
+    def test_a_rising_count_gives_a_positive_delta(self):
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"), "b.json", self._groups(), (1, 4), "cmd"
+        )
+        assert payload["objective_delta"] == 3
+
+    def test_text_names_every_group_and_the_objective_line(self):
+        text = _recheck.format_recheck("b.json", self._groups(), (3, 1))
+        assert "baseline: b.json" in text
+        assert "resolved (1)" in text
+        assert "persisting (1)" in text
+        assert "new (1)" in text
+        assert "`r` [prose]: a finding" in text
+        assert "3 -> 1 (-2)" in text
+
+    def test_text_marks_an_empty_group(self):
+        text = _recheck.format_recheck("b.json", ([], [], []), (0, 0))
+        assert text.count("      -") == 3
+
+
+class TestBaselineCli:
+    def _draft(self, isolated_config, monkeypatch) -> Path:
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nSome prose here.\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None: {"findings": [], "vale_error": None},
+        )
+        return draft
+
+    def _baseline_file(self, tmp_path, items) -> Path:
+        path = tmp_path / "baseline.agenda.json"
+        path.write_text(json.dumps({"aid": "agenda", "items": items}))
+        return path
+
+    def test_baseline_defaults_to_none(self):
+        assert agenda.build_parser().parse_args(["d.md"]).baseline is None
+
+    def test_baseline_is_parsed(self):
+        args = agenda.build_parser().parse_args(["d.md", "--baseline", "b.json"])
+        assert args.baseline == "b.json"
+
+    def test_a_bad_baseline_returns_two_without_refreshing(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        missing = tmp_path / "nope.json"
+        exit_code = agenda.main([str(draft), "--baseline", str(missing)])
+        assert exit_code == 2
+        assert str(missing) in capsys.readouterr().err
+        assert all(stub.calls == [] for stub in aid_stubs.values())
+
+    def test_a_missing_draft_still_returns_one(self, isolated_config, capsys, aid_stubs):
+        assert agenda.main(["content/drafts/nope.md", "--baseline", "b.json"]) == 1
+        assert all(stub.calls == [] for stub in aid_stubs.values())
+
+    def test_json_prints_the_recheck_payload_not_the_agenda(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        baseline = self._baseline_file(tmp_path, [_item_dict("gone")])
+        exit_code = agenda.main([str(draft), "--baseline", str(baseline), "--json"])
+        assert exit_code == 0
+        out = capsys.readouterr()
+        payload = json.loads(out.out)
+        assert payload["resolved"] == [_item_dict("gone")]
+        assert payload["persisting"] == []
+        assert payload["new"] == []
+        assert payload["objective_before"] == 1
+        assert payload["objective_after"] == 0
+        assert payload["objective_delta"] == -1
+        assert payload["baseline"] == str(baseline)
+        assert "--baseline" in payload["command"]
+        assert "json" in out.err  # the written-files summary is still on stderr
+        assert all(len(stub.calls) == 1 for stub in aid_stubs.values() if stub.calls)
+
+    def test_json_stdout_is_only_the_payload(self, isolated_config, monkeypatch, capsys, tmp_path):
+        draft = self._draft(isolated_config, monkeypatch)
+        for module in _recheck._AID_MODULES.values():
+            monkeypatch.setattr(module, "main", _AidStub(chatter="WROTE A FILE"))
+        baseline = self._baseline_file(tmp_path, [])
+        agenda.main([str(draft), "--baseline", str(baseline), "--json"])
+        out = capsys.readouterr().out
+        assert "WROTE A FILE" not in out
+        json.loads(out)
+
+    def test_without_json_the_text_and_the_summary_share_stdout(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        baseline = self._baseline_file(tmp_path, [_item_dict("gone")])
+        assert agenda.main([str(draft), "--baseline", str(baseline)]) == 0
+        out = capsys.readouterr()
+        assert f"baseline: {baseline}" in out.out
+        assert "resolved (1)" in out.out
+        assert "json" in out.out
+        # Nothing of the comparison itself moved to stderr -- the render
+        # warnings pandoc emits there are the layer's own, not this mode's.
+        assert "resolved" not in out.err
+
+    def test_the_agenda_report_is_still_filed_under_baseline(
+        self, isolated_config, monkeypatch, tmp_path, aid_stubs
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        baseline = self._baseline_file(tmp_path, [])
+        agenda.main([str(draft), "--baseline", str(baseline)])
+        assert review.report_path(draft, "agenda", "md").is_file()
+        payload = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert payload["aid"] == "agenda"
+
+    def test_the_filed_json_records_the_bare_command_so_it_can_serve_as_a_baseline(
+        self, isolated_config, monkeypatch, tmp_path, aid_stubs
+    ):
+        """The filed `.json` *is* the next run's baseline, so its envelope
+        must record a command that regenerates an agenda, not one that
+        regenerates a comparison against itself."""
+        draft = self._draft(isolated_config, monkeypatch)
+        baseline = self._baseline_file(tmp_path, [])
+        agenda.main([str(draft), "--baseline", str(baseline)])
+        filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert "--baseline" not in filed["command"]
+        # shlex.join, not an f-string: a real tmp_path draft carries the
+        # host's own separator, and `_command` quotes it exactly the way
+        # `shlex.join` does -- a bare f-string only matches on POSIX.
+        assert filed["command"] == shlex.join(
+            ["python", "-m", "chitragupta.review", "agenda", str(draft)]
+        )
+
+    def test_a_baseline_at_the_path_this_run_overwrites_is_still_compared_against(
+        self, isolated_config, monkeypatch, capsys, aid_stubs
+    ):
+        """The natural invocation passes `<stem>.agenda.json`, which the
+        run then overwrites -- loading before refreshing is what makes
+        that safe, and this pins it."""
+        draft = self._draft(isolated_config, monkeypatch)
+        own = review.write_json(draft, "agenda", {"aid": "agenda", "items": [_item_dict("gone")]})
+        agenda.main([str(draft), "--baseline", str(own), "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["resolved"] == [_item_dict("gone")]
+        assert json.loads(own.read_text())["items"] == []
+
+    def test_objective_after_equals_the_agendas_own_objective_class_count(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """`objective_before`/`objective_after` are only trustworthy
+        against `pass_bound` if they mean exactly what
+        `Agenda.objective_class_count` means."""
+        draft = self._draft(isolated_config, monkeypatch)
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None: {
+                "findings": [{"line": 3, "rule": "chitragupta.Weasel", "message": "weasel"}],
+                "vale_error": None,
+            },
+        )
+        baseline = self._baseline_file(tmp_path, [])
+        agenda.main([str(draft), "--baseline", str(baseline), "--json"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["objective_after"] == agenda.build_agenda(draft).objective_class_count
+        assert payload["objective_after"] == 1

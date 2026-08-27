@@ -11,21 +11,29 @@ The eighth aid in `review.AIDS` (`chitragupta/review/__init__.py`) and in
 Deterministic, stdlib-only, no LLM, takes no lock, exits 0 whatever it
 finds, exactly like the other eight.
 
-**Reads, never invokes.** The seven review aids' `.json` files
+**Reads, never invokes -- in the bare mode, which is the one every
+caller but `--baseline` uses.** The seven review aids' `.json` files
 (`_sources.py`), each optional and read from wherever an earlier
-`--json`/`--write` run left them -- this module never runs an aid live.
-`style_check.check()` and `dossier.drift()` have no on-disk artefact, so
-those two are called in-process instead. A draft with no dossier still
-produces an agenda, with no `missing-citekey`/`candidate` items and the
-absence named in the header -- the same "optional input, missing" pattern
-every aid already uses, not a refusal.
+`--json`/`--write` run left them -- `review agenda <draft>` never runs an
+aid live, and stays the free, read-only command docs/CLI.md and
+docs/AUTO-IMPROVEMENT.md describe. `style_check.check()` and
+`dossier.drift()` have no on-disk artefact, so those two are called
+in-process instead. A draft with no dossier still produces an agenda,
+with no `missing-citekey`/`candidate` items and the absence named in the
+header -- the same "optional input, missing" pattern every aid already
+uses, not a refusal.
 
-**R4's re-run loop, and the `--query` source it needs for `coverage`,
-belong to a future `agenda-reviser` (docs/AUTO-IMPROVEMENT.md step 5),
-not to this module.** That plan's Q5 answer is recorded here so step 5
-does not have to re-derive it: the re-run query source is the draft's own
-`retrieval.md` rows, skipping mode `revision`. Nothing here implements
-that loop.
+**`--baseline` is the one exception, and it is scoped to that flag.**
+`review agenda <draft> --baseline <a previous agenda .json>` re-runs the
+seven aids at `--formats md` first, then rebuilds and reports
+`resolved`/`persisting`/`new` against the baseline -- `_recheck.py`, and
+Decision 6 of `plans/f3-agenda-reviser.md` for why the R4 cycle became
+one deterministic command rather than prose in seven skills. Refreshing
+is what makes the comparison mean anything: reading pre-edit `.json`
+reports a finding resolved that is not, and it does so silently. That
+mode also owns the `--query` source `coverage` needs, which is
+`f-auto-improvement-adoption.md`'s Q5 answer -- the draft's own
+`retrieval.md` rows, skipping mode `revision`.
 """
 
 import argparse
@@ -36,7 +44,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, dossier, review
-from chitragupta.review.agenda import _dedup, _items, _order, _render, _sources
+from chitragupta.review.agenda import _dedup, _items, _order, _recheck, _render, _sources
 
 # plans/f-auto-improvement-adoption.md's Decision 2: a backstop against a
 # miscounting bug in the future agenda-reviser re-run loop, not a cost
@@ -112,6 +120,14 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
         "written-files summary. The .json sibling is filed beside the "
         "Markdown report either way.",
     )
+    parser.add_argument(
+        "--baseline",
+        help="Re-run the seven aids and compare the result against a "
+        "previously written agenda .json, reporting resolved/persisting/"
+        "new items and the objective count before and after. This is the "
+        "only mode that runs another aid -- the bare command never does "
+        "-- and it costs seconds rather than milliseconds.",
+    )
     return parser
 
 
@@ -119,22 +135,15 @@ def main(argv: list[str] | None = None) -> int:
     return run(build_parser().parse_args(argv))
 
 
-def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments.
+def _file_report(draft_path: Path, args) -> tuple[dict, dict]:
+    """Build the agenda for `draft_path` and file its `.md` (plus any
+    renders) and `.json`, returning `(payload, written)`.
 
-    The `.md`+`.json` are filed unconditionally -- there is no `--write`
-    flag, matching AUTO-IMPROVEMENT.md's unconditional "Writes:" line and
-    R9's need for a baseline artefact before a future reviser pass runs.
-    `--json` only decides what prints to stdout; the written-files
-    summary moves to stderr under it, the same discipline `provenance
-    --json` and `verbatim scan --json` already follow.
+    Runs identically in both modes -- `--baseline` refreshes the inputs
+    in front of this and compares behind it, but the report filed for the
+    draft's *current* state is the same artefact either way, and is what
+    the next run reads as a baseline.
     """
-    try:
-        draft_path = review.require_reviewable(Path(args.draft))
-    except (FileNotFoundError, config.OutsideContentDir) as exc:
-        print(exc, file=sys.stderr)
-        return 1
-
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
     agenda = build_agenda(draft_path)
     command = _command(draft_path, args.json)
@@ -142,8 +151,84 @@ def run(args: argparse.Namespace) -> int:
     written = review.write(draft_path, "agenda", body, formats)
     payload = _render.agenda_payload(agenda, command)
     written["json"] = review.write_json(draft_path, "agenda", payload)
+    return payload, written
 
+
+def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, written: dict) -> None:
+    """`--baseline`'s stdout, in place of the plain worklist.
+
+    The comparison is what the caller asked for, so it is what gets
+    printed; the agenda itself is still on disk either way. The
+    stdout/stderr split is the bare path's, unchanged -- under `--json`
+    the payload is the only thing on stdout, so `agenda --baseline ...
+    --json > report.json` stays a valid JSON file.
+    """
+    resolved, persisting, appeared, before, after = _recheck.compare(
+        payload["items"], baseline["items"]
+    )
+    groups, counts = (resolved, persisting, appeared), (before, after)
     if args.json:
+        command = _recheck.recheck_command(draft_path, args.baseline)
+        print(
+            json.dumps(
+                _recheck.recheck_payload(draft_path, args.baseline, groups, counts, command),
+                indent=2,
+            )
+        )
+        review.print_written(written, stream=sys.stderr)
+    else:
+        print(_recheck.format_recheck(args.baseline, groups, counts))
+        review.print_written(written)
+
+
+def run(args: argparse.Namespace) -> int:
+    """Dispatch already-parsed arguments.
+
+    The `.md`+`.json` are filed unconditionally -- there is no `--write`
+    flag, matching AUTO-IMPROVEMENT.md's unconditional "Writes:" line and
+    R9's need for a baseline artefact before a reviser pass runs.
+    `--json` only decides what prints to stdout; the written-files
+    summary moves to stderr under it, the same discipline `provenance
+    --json` and `verbatim scan --json` already follow.
+
+    `--baseline` adds a refresh in front and a comparison behind, and
+    changes nothing between them. Two orderings in it are load-bearing:
+
+    - **The baseline is loaded before anything is refreshed.** A bad one
+      is a usage error, and paying ~21 s of aid runs before saying so
+      would be gratuitous. It is also what makes the natural invocation
+      safe -- the baseline a caller reaches for is usually
+      `<stem>.agenda.json`, which is the very file this run overwrites.
+    - **The filed report still records `_command`'s bare invocation**,
+      not the `--baseline` one. That `.json` is the *next* run's
+      baseline, so its envelope has to name a command that regenerates
+      an agenda rather than a comparison against itself; the
+      `--baseline` spelling belongs to the payload printed to stdout,
+      which is where `_recheck.recheck_command` puts it.
+
+    A `ValueError` from the load prints to stderr and returns 2, the
+    usage-error code `verbatim_check.run` uses for its own refusals.
+    """
+    try:
+        draft_path = review.require_reviewable(Path(args.draft))
+    except (FileNotFoundError, config.OutsideContentDir) as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
+    baseline = None
+    if args.baseline:
+        try:
+            baseline = _recheck.load_baseline(args.baseline)
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            return 2
+        _recheck.refresh_aids(draft_path)
+
+    payload, written = _file_report(draft_path, args)
+
+    if baseline is not None:
+        _print_recheck(draft_path, args, payload, baseline, written)
+    elif args.json:
         print(json.dumps(payload, indent=2))
         review.print_written(written, stream=sys.stderr)
     else:

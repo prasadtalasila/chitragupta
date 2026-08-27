@@ -215,7 +215,10 @@ design would go wrong.
 is
 free, deterministic, read-only and exits 0. It has exactly the standing of
 the other six aids -- you run it because you want to know. No occasion is
-privileged and none is required.
+privileged and none is required. That describes the bare command, which
+is the one every caller here means; its `--baseline` mode re-runs the
+seven aids before comparing (`chitragupta/review/agenda/_recheck.py`), so
+that mode alone is neither free nor read-only.
 
 **The skill: only a person, and only on a draft they consider finished.**
 Its `SKILL.md` description is the whole trigger, so in practice it runs
