@@ -116,6 +116,31 @@ came from.
   fail-silent by design, which is right for what they protect and would be
   a silently inert citation gate if copied across.
 
+### 🪝 Hook architecture as a first-class layer
+
+- **[jcode](https://jcode.sh/docs)** -- hooks as shell commands fired at
+  turn, session and tool boundaries, alongside skills and memory, rather
+  than as an add-on. Read against this repository's own hook layer in
+  2026-08, which is what surfaced the asymmetry issue 431 fixes: every
+  registry row was keyed on a write under `content/drafts/`, and nothing
+  hooked a change to `chitragupta/`. Nothing of jcode's own architecture
+  is adopted -- its daemon/client split, its semantic skill matching and
+  its lane-aware queue all answer questions this project does not have.
+- **OpenClaw** -- the same observation from the other direction: hooks on
+  gateway events, and a four-tier memory stack. Its **heartbeat**, a
+  periodic agent turn driven by a checklist, was considered as the
+  "driver" the developer loop was said to lack and **rejected on this
+  project's own terms**:
+  [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out a mechanism
+  aimed at minimising a count, and a timed turn whose job is to find debt
+  to pay is a ranked worklist with a clock on it. Recorded in
+  `plans/f-auto-improvement-adoption.md`, which retires that loop.
+
+Both were read as secondary sources -- jcode's published documentation,
+and third-party write-ups of OpenClaw rather than its own docs -- so what
+is credited here is the *idea* each made visible, not a claim about
+either implementation's detail.
+
 ## 🗺 The feature roadmap
 
 Two upstreams behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md). Both are

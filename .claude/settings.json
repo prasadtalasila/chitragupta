@@ -28,6 +28,20 @@
             "statusMessage": "Checking the draft's prose..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/code_standards_hook.py"
+            ],
+            "timeout": 30,
+            "statusMessage": "Checking function and module size..."
+          }
+        ]
       }
     ],
     "SessionStart": [

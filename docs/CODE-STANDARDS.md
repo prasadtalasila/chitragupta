@@ -294,11 +294,14 @@ has, both of which fail:
 
 The ratchet takes the useful half of each. Concretely, here:
 
-- Today's offenders are frozen in `LEGACY_LONG_FUNCTIONS` and
-  `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` -- **3
+- Today's offenders are frozen in `code-standards-register.toml`'s
+  `[[c1]]` and `[[c2]]` tables -- **3
   functions** and **17 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
-  register cannot leave this sentence stale.
+  register cannot leave this sentence stale. The register moved out of
+  `tests/test_code_standards_scan.py` in issue 431, so that the
+  edit-time hook could read it from a file the release archive ships;
+  the test still enforces it and is still the authority.
 - **New offenders fail.** Anything not in the register that crosses
   either threshold fails the suite, with the count and the limit in the
   message.

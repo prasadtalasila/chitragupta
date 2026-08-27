@@ -1,11 +1,16 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-23. Three
-hooks exist -- `citation_gate_hook.py`, `style_check_hook.py` and
-`session_start_hook.py` -- sharing one `draft_target.py`, all launching in exec
-form, as `python`. #197 is closed: the placeholder is braced, the interpreter
-name is settled below, and a launcher that cannot start is now reported from
-two sides rather than one.
+Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-27. Four
+hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
+`session_start_hook.py` and `code_standards_hook.py`, the first three sharing
+one `draft_target.py`, all launching in exec form, as `python`. #197 is
+closed: the placeholder is braced, the interpreter name is settled below, and
+a launcher that cannot start is now reported from two sides rather than one.
+
+**The fourth hook is the first that is not about a draft** (issue 431).
+Every row of the registry was keyed on a write under `content/drafts/`
+until it landed, and nothing hooked a change to this repository's own
+code -- an asymmetry nobody had decided, only inherited.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is
@@ -118,6 +123,7 @@ guarantees anything about what the agent then does.
 | --- | --- | --- | --- | --- |
 | `PostToolUse` | `Write\|Edit` | `citation_gate_hook.py` | gate | built |
 | `PostToolUse` | `Write\|Edit` | `style_check_hook.py` | advisory | built |
+| `PostToolUse` | `Write\|Edit` | `code_standards_hook.py` | advisory | built |
 | `SessionStart` | `startup\|clear` | `session_start_hook.py` | advisory | built |
 
 **Two entries on one matcher, not one dispatcher.** Both `PostToolUse`
@@ -217,13 +223,17 @@ three layers with a rule about what may live in each.
 └── hooks/
     ├── draft_target.py         shared -- payload in, draft path or None out
     ├── citation_gate_hook.py   gate class     -- may block
-    └── style_check_hook.py     advisory class -- never blocks
+    ├── style_check_hook.py     advisory class -- never blocks
+    └── code_standards_hook.py  advisory class -- never blocks
 
 chitragupta/
 ├── draft.py                    `python -m chitragupta.draft <gate|style|...>`
 ├── citation_gate.py            what the gate hook shells out to
 ├── hook_launchers.py           can the registered launchers start?
 └── style_check.py              what the style hook shells out to
+
+scripts/
+└── code_standards.py           what the size hook shells out to
 
 tests/
 ├── test_draft_target.py        the shared helper, both classes of caller
@@ -233,13 +243,24 @@ tests/
 └── test_style_check_hook.py    the process contract, not the branches
 ```
 
-**Layer 1, `chitragupta/`, holds the checks.** They are importable, tested, and
-know nothing about hooks, harnesses or JSON envelopes. Each is reachable by
-hand as `python -m chitragupta.draft <verb>`.
+**Layer 1 holds the checks.** They are importable, tested, and know
+nothing about hooks, harnesses or JSON envelopes. Each is reachable by
+hand -- `python -m chitragupta.draft <verb>` for the three drafting
+checks, and `python3 scripts/code_standards.py` for the fourth.
 
-`hook_launchers.py` is the one exception, and the rule names it rather than
-being quietly broken: **layer 1 may read the launcher config, never a
-payload or an envelope.** That line is where the boundary actually falls.
+**`scripts/code_standards.py` is the second named exception**, and it is
+about *where* rather than *what*. Layer 1 is `chitragupta/` for every
+check about a draft, and deliberately is not for this one: it is
+developer tooling, which `DEVELOPER-AGENTS.md` places in `scripts/`;
+`docs/ARCHITECTURE.md`'s artefact graph has no node for a code-standards
+scan; and putting it in the package would ship a developer tool inside
+what a drafting user installs. What makes it layer 1 regardless is the
+property the layer is actually for -- it is hand-runnable, and the
+adapter above it holds nothing.
+
+`hook_launchers.py` is the other exception, and the rule names it rather
+than being quietly broken: **layer 1 may read the launcher config, never
+a payload or an envelope.** That line is where the boundary actually falls.
 An adapter is defined by handling the harness's stdin/stdout contract, and
 this module handles neither -- it reads `settings.json` and returns English
 sentences. It has to be here, because the preflight cannot report its own
