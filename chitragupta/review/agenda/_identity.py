@@ -21,7 +21,7 @@ def item_id(aid: str, cls: str, section: str | None, citekey: str | None, span: 
     `span` is a piece of matched text -- a claim, a sentence, a matched
     run -- never a line number. Two items with identical
     `(aid, cls, section, citekey, span)` are the same item across runs,
-    the same convention the eight aids' own `finding_id` functions use.
+    the same convention the seven aids' own `finding_id` functions use.
     """
     digest = hashlib.sha256(
         f"{aid}\x00{cls}\x00{section or ''}\x00{citekey or ''}\x00{span}".encode()

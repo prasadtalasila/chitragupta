@@ -346,14 +346,14 @@ itself -- where a machine verdict would be either wrong often enough to
 be ignored, or trusted more than it deserves. They give you the evidence
 and leave the call to you.
 
-**`quotation` is the eighth, and it is not one of those.** Its question
+**`quotation` is the seventh, and it is not one of those.** Its question
 -- does this quoted span appear in the source it is attributed to? -- is
 binary, deterministic, and about as close to ground truth as anything
 outside the gate. It is the sharpest test this section has, so it is
 worked through rather than excepted, immediately below.
 
-**`agenda` is the ninth, and it asks no question of its own.** It
-merges what the other eight already found into one ranked list, so each
+**`agenda` is the eighth, and it asks no question of its own.** It
+merges what the other seven already found into one ranked list, so each
 item it surfaces carries whichever answer -- judgement or binary --
 produced it, unchanged. Merging does not turn a judgement into a fact:
 an `agenda` item inherited from `provenance` is still something to read

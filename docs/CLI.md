@@ -304,7 +304,7 @@ chitragupta review synthesis content/drafts/<slug>.md            # how many sour
 chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
 chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
-chitragupta review agenda content/drafts/<slug>.md               # merges the other eight into one ranked worklist
+chitragupta review agenda content/drafts/<slug>.md               # merges the other seven into one ranked worklist
 chitragupta review support content/drafts/<slug>.md              # does the cited source actually entail this claim?
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
@@ -889,7 +889,7 @@ error.
 
 ### 🗺 `chitragupta review agenda`
 
-One ranked, deduplicated worklist merged across the other eight aids'
+One ranked, deduplicated worklist merged across the other seven aids'
 `.json`, `chitragupta.draft style --json`'s prose findings, and the
 dossier's drift report. Layer 4, the review layer: advisory, not a gate,
 and it **reads, never runs, an aid** -- an aid's `.json` that does not

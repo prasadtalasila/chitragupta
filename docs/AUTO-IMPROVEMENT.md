@@ -123,11 +123,19 @@ bucket within a class, then position in the draft.
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
 | `prose` | `style_check` (#107), `steering.md` | no evidence delta | only the mechanically re-checkable subset -- [HOUSE-STYLE.md](HOUSE-STYLE.md) |
-| `unsupported-claim` | provenance, support | judgement | no -- surfaced |
+| `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
 | `misquoted` | quotation | defect -- the span is not in the source it cites | no -- surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
+
+`support` (C2) asks the same underlying question as `provenance` --
+does the source support this claim? -- but is not a second source for
+`unsupported-claim`: its score is ranked, never banded, by design
+([REVIEW.md](REVIEW.md)), and this class's extractor decides membership
+by a `band`. Wiring it in would mean thresholding a continuous score,
+which R3 below forbids. `agenda` does not read `support`'s JSON at all
+(`chitragupta/review/agenda/_sources.py`'s `AID_NAMES`).
 
 The `prose` class had no producer when this was written. It has both a
 producer and a consumer now: #107 shipped the detector in 5.13.0 and

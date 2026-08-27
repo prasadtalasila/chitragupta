@@ -203,7 +203,7 @@ enrichment layer is optional and nothing above it needs it.
   the corpus -- or, for `figure_layout`, the figures the draft
   references, for `uncited_prose`, nothing beyond the draft itself, for
   `quotation`, the dossier's own quoted spans, or for `agenda`, the
-  other eight aids' own reports, the drafting layer's prose check, and
+  other seven aids' own reports, the drafting layer's prose check, and
   the dossier's drift report, merged into one ranked worklist -- and
   produces **evidence for a human judgement, never a
   verdict** -- every one exits 0 whether it finds something or not, and

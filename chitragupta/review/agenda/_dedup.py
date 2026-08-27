@@ -1,7 +1,7 @@
 """R2's cross-signal merge: two distinct rules, not one fuzzy-matching
 engine -- the issue's own framing ("this cross-signal merge is the work
 no individual aid can do") turns out to have exactly one true-duplicate
-case and one correlated-but-distinct case once the eight aids' own outputs
+case and one correlated-but-distinct case once the seven aids' own outputs
 are read closely; see each function's docstring for which is which.
 """
 

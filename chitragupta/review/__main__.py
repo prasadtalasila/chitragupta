@@ -31,7 +31,7 @@ lock, and none of them can block a draft:
         attributed to? The only aid whose answer is binary.
 
     python -m chitragupta.review agenda <draft>
-        merge the other eight aids' reports, the drafting layer's prose
+        merge the other seven aids' reports, the drafting layer's prose
         check, and the dossier's drift report into one ranked,
         deduplicated worklist. Reads what the others wrote; runs none
         of them.

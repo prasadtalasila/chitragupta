@@ -1,4 +1,4 @@
-"""One ranked, deduplicated worklist merged across the other eight review
+"""One ranked, deduplicated worklist merged across the other seven review
 aids, `style_check.py`'s prose findings, and the dossier's drift report.
 
     python -m chitragupta.review agenda <draft>
@@ -11,7 +11,7 @@ The eighth aid in `review.AIDS` (`chitragupta/review/__init__.py`) and in
 Deterministic, stdlib-only, no LLM, takes no lock, exits 0 whatever it
 finds, exactly like the other eight.
 
-**Reads, never invokes.** The eight review aids' `.json` files
+**Reads, never invokes.** The seven review aids' `.json` files
 (`_sources.py`), each optional and read from wherever an earlier
 `--json`/`--write` run left them -- this module never runs an aid live.
 `style_check.check()` and `dossier.drift()` have no on-disk artefact, so
