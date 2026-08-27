@@ -3782,6 +3782,10 @@ CHITRAGUPTA_PROJECT=/workspace /workspace/.venv-full/bin/python \
 
 ## 2026-08-27: does claim-support checking (#C2) separate supported claims from unsupported ones on this corpus?
 
+Extraction ran 2026-08-26 (tag `2026-08-26-claim-support-measurement`,
+below); the human read the shortlist and this section was written
+2026-08-27 — same measurement, two dates, no second run.
+
 `bench/bench_claim_support.py --extract`, run against the four real
 drafts of `digital-twins-for-software-engineers`
 (`survey.md`, `book-chapter.md`, `tutorial.md`, `deep-research.md`):
