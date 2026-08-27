@@ -137,7 +137,7 @@ deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
 **`review agenda` -- one ranked, deduplicated worklist across the other
-eight.** Each of the aids above answers its own question in isolation;
+seven.** Each of the aids above answers its own question in isolation;
 this one reads what they already wrote (each optional -- an aid that
 never ran is named as absent, not treated as clean), plus the drafting
 layer's prose check and the dossier's drift report, and merges them into
@@ -204,8 +204,11 @@ report, not a render of it -- `.tex`/`.pdf` are another document.
 
 ## ⏱ What the layer costs
 
-**Zero tokens, always.** Every aid is deterministic Python with no model
-call, so the only costs are wall-clock and memory. That is what makes
+**Zero tokens, always.** Eight of the nine aids are deterministic
+Python with no model call at all. `support`'s real NLI entailment
+model has no token cost either -- it scores, it does not generate --
+but it is a real model load, and the only aid besides `verbatim`'s
+tier 3 with a real wall-clock and memory floor. That is what makes
 [LADDERS.md](LADDERS.md)'s first rung free to run to exhaustion before
 anything expensive begins.
 
@@ -214,27 +217,40 @@ milliseconds. Read it for ratios, not absolutes --
 [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs) has the full
 method, the peak-memory figures and the caveats:
 
-| words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | all eight |
-| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1,258 | no | 180 | 447 | 303 | 90 | 87 | 88 | 89 | 575 | **1,859** |
-| 2,448 | no | 366 | 474 | 303 | 90 | 89 | 92 | 92 | 577 | **2,083** |
-| 5,723 | yes | 144 | 19,737 | 310 | 95 | 486 | 99 | 88 | 508 | **21,467** |
-| 10,003 | yes | 332 | 41,019 | 314 | 96 | 818 | 109 | 88 | 1,017 | **43,793** |
-| 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | **38,522** |
+| words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | support | all nine |
+| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,258 | no | 180 | 447 | 303 | 90 | 87 | 88 | 89 | 575 | 33,464 | **35,323** |
+| 2,448 | no | 366 | 474 | 303 | 90 | 89 | 92 | 92 | 577 | 40,832 | **42,915** |
+| 5,723 | yes | 144 | 19,737 | 310 | 95 | 486 | 99 | 88 | 508 | 21,160 | **42,627** |
+| 10,003 | yes | 332 | 41,019 | 314 | 96 | 818 | 109 | 88 | 1,017 | 62,292 | **106,085** |
+| 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | 45,902 | **84,424** |
 
-**One aid is the cost of the layer.** `verbatim` is 90--94% of any run
-where its embedding tier can execute, and 447 ms where it cannot -- a
-44--86x difference that depends on whether the dossier, the Docling
-sidecars and the enrichment layer are all present, not on the draft.
-Every other aid is between 88 ms and 1.3 s. Seven of the eight, run
-together, cost under two seconds on any draft measured.
+**Two aids are the cost of the layer now, not one.** `verbatim` is
+90--94% of any run where its embedding tier can execute, and 447 ms
+where it cannot -- a 44--86x difference that depends on whether the
+dossier, the Docling sidecars and the enrichment layer are all present,
+not on the draft. `support` has no such off switch: it always loads
+the entailment model and scores every citation, so it costs
+21.2--62.3 s on every draft measured, dossier or not. Where `verbatim`'s
+tier 3 cannot run, `support` alone is ~95% of the total; where both run,
+they split it -- 39%/59% on the 10,003-word draft. **The layer's floor
+moved.** Before `support`, the cheapest and dearest run differed by a
+factor of 23 (1,859 ms to 43,793 ms), entirely from whether tier 3
+executed. Now they differ by a factor of 3 (35,323 ms to 106,085 ms),
+because `support` puts a 21-second-plus floor under every run. Every
+other aid is between 88 ms and 1.3 s.
 
-**And it scales on cited sources, not words.** The 18,061-word chapter
-cites 28 distinct citekeys and scans in 35.7 s; the 10,003-word chapter
-cites 40 and takes 41.0 s. Roughly **1.0--1.5 s per distinct citekey**,
-which is what [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) predicts:
-each source is embedded once per scanned draft. So the number to
-estimate from is the draft's citekey count.
+**And it scales on cited sources -- a different count each.**
+`verbatim` and `provenance` fetch each source once, so their cost
+tracks *distinct citekeys*: the 18,061-word chapter cites 28 and scans
+in 35.7 s, the 10,003-word chapter cites 40 and takes 41.0 s, roughly
+**1.0--1.5 s per distinct citekey**
+([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)). `support` scores every
+*citation*, not every source -- two citations of the same paper are two
+entailment calls, not one -- so its cost tracks citation count instead:
+835--962 ms per citation on the four larger drafts, rising to 1.5 s on
+the smallest (11 citekeys, 23 citations), where a largely fixed
+model-load cost is spread over the fewest calls.
 
 **Two rows are not what they look like.** `quotation` returns in ~90 ms
 because no dossier on this machine carries a `quote:` line, so its input
@@ -242,7 +258,7 @@ universe is empty -- that is the cost of finding no work, not of doing
 it. And ~86 ms of every row is interpreter startup, which is most of
 what `synthesis`, `uncited` and `quotation` report.
 
-## 🚫 Two limits worth knowing
+## 🚫 Three limits worth knowing
 
 - **A clean verbatim scan is not a clean bill of health.** Detection runs
   in three tiers, and the third needs the optional enrichment layer. A
@@ -251,6 +267,22 @@ what `synthesis`, `uncited` and `quotation` report.
 - **`coverage` is not a gap-finder.** An uncited high-scorer may be a
   source the draft should have used, or a query that was too broad. The
   report deliberately declines to decide which.
+- **`support`'s score is downstream of retrieval, and retrieval is the
+  weaker link.** Measured over the four real drafts of
+  `digital-twins-for-software-engineers` (71 scored citations,
+  `bench/RESULTS.md`'s 2026-08-27 entry): a human read of the 20
+  lowest-scored candidates found the dominant failure was not the source
+  failing to support the claim, but the passage-matching step handing the
+  scorer the wrong passage from an otherwise-relevant paper -- single
+  index terms ("light sensor", "DevOps"), bibliography entries, and
+  once, a page about supply chains and COVID-era shopping habits scored
+  against a claim about the Digital Twin Consortium's definition. Where
+  the matched passage was actually the right one, the score separated
+  cleanly (0.96-0.99 for genuine support). No structured per-claim
+  labelling pass was run, so there is no crosscheck statistic to cite --
+  this is a qualitative read, not a precision number. Read a low score as
+  "the matched passage doesn't say this" first, and "the source doesn't
+  say this" only after checking the passage yourself.
 
 ## ➡ Where to go next
 
