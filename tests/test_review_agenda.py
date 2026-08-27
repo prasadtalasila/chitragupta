@@ -857,7 +857,9 @@ class TestBuildAgendaAndCli:
         with pytest.raises(SystemExit):
             parser.parse_args(["draft.md", "--write"])
 
-    def test_json_flag_prints_payload_to_stdout(self, isolated_config, monkeypatch, capsys):
+    def test_json_flag_prints_payload_to_stdout(
+        self, isolated_config, monkeypatch, capsys, aid_stubs
+    ):
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
         exit_code = agenda.main([str(draft), "--json"])
         assert exit_code == 0
@@ -865,6 +867,9 @@ class TestBuildAgendaAndCli:
         payload = json.loads(out.out)
         assert payload["aid"] == "agenda"
         assert "json" in out.err  # written-files summary moved to stderr
+        # The bare command never runs an aid -- --baseline is the one mode
+        # that does.
+        assert all(stub.calls == [] for stub in aid_stubs.values())
 
     def test_missing_draft_exits_one(self, isolated_config, capsys):
         exit_code = agenda.main(["content/drafts/nope.md"])

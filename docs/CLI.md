@@ -941,6 +941,12 @@ against an invented query. Under `--baseline` the aids are refreshed at
 `--formats md` only, so each aid's `.tex`/`.pdf` goes stale against its
 `.md` until a full-format run of the layer follows.
 
+Under `--baseline --json`, stdout carries the comparison payload, not
+the worklist -- `resolved`/`persisting`/`new`/`objective_before`/
+`objective_after`/`objective_delta`, and no `items` key at all. The
+worklist itself is unaffected: it still lands in the filed `.json`
+report, written unconditionally either way, same as always.
+
 **`--json`** carries the same envelope every review aid's JSON does, plus
 `sources` (`available`/`stale` per aid, `available`/`partial` for the
 prose check, `available`/`corpus_available` for the dossier drift) and
@@ -952,7 +958,8 @@ further top-level keys that serve a re-run loop: `pass_bound`, the
 backstop on how many passes one may take, and `objective_class_count`,
 the number of `unattended` items in this agenda -- both carried as data
 because a skill cannot import a Python constant, and hardcoding either
-in prose is what naming them was for. Like
+into a skill's prose is exactly what naming them as constants was meant
+to prevent. Like
 [`provenance`](#-chitragupta-review-provenance), the `.json` (and the
 `.md`) is filed unconditionally -- there is no `--write` flag -- and
 `--json` only decides whether the worklist is *also* printed to stdout,
