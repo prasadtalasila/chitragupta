@@ -900,11 +900,16 @@ draft with no dossier still produces an agenda; `missing-citekey` and
 Every item carries a `class` from the item-class table
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)), a section anchor where one
 applies, and whether it is `unattended` -- safe for a future automated
-pass to act on without asking first (`missing-citekey`, and the short
-runs a verbatim scan finds) -- or merely surfaced for a person to decide
-(everything judgement-shaped: `unsupported-claim`, `uncited-source`,
-`uncited-claim`, `candidate`, and the mechanically re-checkable subset of
-`prose`).
+pass to act on without asking first (`missing-citekey`, the short runs a
+verbatim scan finds, and `prose`) -- or merely surfaced for a person to
+decide (`unsupported-claim`, `uncited-source`, `uncited-claim`,
+`misquoted` and `candidate`).
+
+`prose` moved to the unattended side in issue 421, and this sentence
+carried the damage that issue was filed for: it called the mechanically
+re-checkable subset judgement-shaped, which is the definition of the
+other column, and it omitted `misquoted`, which is genuinely surfaced.
+Both are corrected above.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -1821,12 +1826,13 @@ rendered pdf would meet:
 | `chitragupta.TableUnknownRef` | A `<!-- tableref: -->` naming a table that does not exist |
 | `chitragupta.TableRefOutsideSection` | The table is referred to, but only from another section |
 
-**The figure findings**, issue 411's extension of the same contract to a
-*captioned* figure -- an uncaptioned one is accepted by §10 and raises
-none of these:
+**The figure findings**, issue 411's extension of the same contract to
+figures. An uncaptioned figure was accepted by §10 and raised none of
+these until issue 421 amended that section; it now raises the first row:
 
 | Rule | What it means |
 | --- | --- |
+| `chitragupta.FigureNoCaption` | A `<!-- figure: -->` marker with no caption line directly below it |
 | `chitragupta.FigureDuplicateId` | Two captioned figures claim one id; the same `\ref`-collision risk as a duplicate table id |
 | `chitragupta.FigureMalformedId` | An id `\label{fig:<id>}` cannot carry unescaped |
 | `chitragupta.FigureUnreferenced` | No sentence refers to the figure at all |

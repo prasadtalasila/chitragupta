@@ -6,13 +6,21 @@ the prose around it, which Vale cannot see -- a figure no sentence refers
 to is the second half of issue 411, the same way an unreferenced table
 was the second half of issue 395.
 
-**Deliberately no `FigureNoCaption` or `FigureNoId`.** Both have table
-analogues and neither applies here: `docs/WRITING-STANDARDS.md` §10
-already accepts an uncaptioned figure as a design choice, not a defect,
-and a figure marker always carries an id by construction -- it names the
-figure's base name, so there is no "marker with no id" state for this
-module to find. Reporting either would contradict §10's own accepted
-case.
+**`FigureNoCaption` yes, `FigureNoId` no**, and the two halves are
+decided separately. Issue 421 amended `docs/WRITING-STANDARDS.md` §10,
+which had accepted an uncaptioned figure as a design choice: it no
+longer does, so the marker carrying no caption is a finding like its
+`style_tables.py` analogue. `FigureNoId` still has none, and for the
+reason that has not changed -- a figure marker always carries an id by
+construction, since the id *is* the base name the marker names, so
+there is no "marker with no id" state for this module to find.
+
+The amendment is why this rule matters beyond tidiness: `prose` is an
+**unattended** class in `docs/AUTO-IMPROVEMENT.md`'s item table, and
+that rests on R3 -- every finding must be cleared by an edit a
+deterministic re-run can confirm. Adding a caption line beneath the
+marker takes this finding away on the next `draft style`, which is what
+makes it a member of that class rather than a judgement.
 
 **A `.tex` fragment is out of scope**, deliberately rather than by
 omission -- the same carve-out `style_tables.py` states for tables.
@@ -30,9 +38,10 @@ import re
 from pathlib import Path
 
 from chitragupta import citation_gate
-from chitragupta.render_output import _figure_captions, _paths, _tables
+from chitragupta.render_output import _figure_captions, _figures, _paths, _tables
 
 RULES = {
+    "no-caption": "chitragupta.FigureNoCaption",
     "duplicate-id": "chitragupta.FigureDuplicateId",
     "malformed-id": "chitragupta.FigureMalformedId",
     "unreferenced": "chitragupta.FigureUnreferenced",
@@ -71,6 +80,40 @@ def _section_starts(text: str) -> "list[int]":
 def _section_of(line: int, starts: "list[int]") -> int:
     """Which section `line` falls in, as an index into `starts`."""
     return sum(1 for start in starts if start <= line)
+
+
+def _uncaptioned(text: str, figures: "list[_figure_captions.Figure]") -> "list[dict]":
+    """A figure marker with no caption line under it.
+
+    Computed by subtraction rather than by a second pattern:
+    `_figure_captions.figures()` returns only the marker/caption *pairs*,
+    so a marker line it did not claim is one that carries no caption.
+    That keeps this module's promise not to restate the marker syntax --
+    `_figures._FIGURE_MARKER_MD_RE` is the one place a bare Markdown
+    marker is spelled, and it is read here rather than copied.
+
+    Unlike the table analogue there is no `no-id` companion to fall
+    through to, because a marker's id is its own base name; see the
+    module docstring for why that half stays absent.
+    """
+    captioned = {figure.line for figure in figures}
+    found = []
+    for match in _figures._FIGURE_MARKER_MD_RE.finditer(text):
+        line = _tables.line_of(text, match.start())
+        if line in captioned:
+            continue
+        found.append(
+            _finding(
+                "no-caption",
+                _figure_captions._figure_id(match.group(1)),
+                line,
+                "this figure has no caption. Put one on the line directly "
+                "below the marker: a figure the reader meets without one "
+                "carries no number and nothing can refer to it "
+                "(WRITING-STANDARDS.md §10).",
+            )
+        )
+    return found
 
 
 def _id_problems(figures: "list[_figure_captions.Figure]") -> "list[dict]":
@@ -167,5 +210,5 @@ def findings(draft: Path) -> "list[dict]":
     # character, so every line number below still points where it says.
     text = citation_gate._blank_code(draft.read_text(encoding="utf-8"))
     figures = _figure_captions.figures(text)
-    found = _id_problems(figures) + _reference_problems(text, figures)
+    found = _uncaptioned(text, figures) + _id_problems(figures) + _reference_problems(text, figures)
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))

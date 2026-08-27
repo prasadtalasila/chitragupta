@@ -107,8 +107,10 @@ break:
   `<!-- figure: ... -->` marker this skill already reads for "touch both
   forms" above -- a literal "Figure 2" in the prose is the defect, and
   the fix is an inline `<!-- figureref: <id> -->`. An **uncaptioned**
-  figure has no id to protect and no number to write; leave it exactly
-  as it is. What a revision can still break for a captioned one is the
+  figure has no id to protect and no number to write, but since #421 it
+  is a finding of its own (`FigureNoCaption`) rather than an accepted
+  state; the fix is a caption line, and it is the reader's gain, not a
+  tidy-up. What a revision can still break for a captioned one is the
   id: deleting a figure something still refers to, or copying a figure
   into another section along with its id. Both are reported by this
   skill's own prose-check step (`FigureUnreferenced`, `FigureUnknownRef`,
