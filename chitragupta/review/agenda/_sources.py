@@ -35,7 +35,7 @@ AID_NAMES = (
 
 @dataclass
 class AidSource:
-    """One of the seven aids' `.json`, as `agenda` sees it.
+    """One of the eight aids' `.json`, as `agenda` sees it.
 
     `stale` is a caveat on the report, never a merge signal: a finding
     from a report older than the draft may still be true, so staleness

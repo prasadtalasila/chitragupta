@@ -1,7 +1,7 @@
 """Ordering: class first (the item-class table's own fixed order), then
 #128's severity bucket within that class, then position in the draft.
 
-No shared severity vocabulary exists across the seven aids -- `provenance`'s
+No shared severity vocabulary exists across the eight aids -- `provenance`'s
 `band`, `verbatim`'s `severity` bucket and so on are unrelated scales
 (confirmed by grep across `chitragupta/review/`) -- so ranking within a
 class is one small per-class lookup each, not one shared enum.
