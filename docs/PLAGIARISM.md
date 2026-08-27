@@ -3,8 +3,9 @@
 Status: **implemented, three detection tiers of a planned three.** The second
 and third shipped advisory-only. The third runs only where the optional
 enrichment layer, the Docling passage sidecars and the draft's own dossier are
-all present. Written 2026-08-10. Updated 2026-08-24; tier 2 added 2026-08-13
-(#133), tier 3 added 2026-08-15 (#134/#164).
+all present. Written 2026-08-10. Updated 2026-08-27 with measured scan
+costs; tier 2 added 2026-08-13 (#133), tier 3 added 2026-08-15
+(#134/#164).
 
 **Written for** someone deciding whether `chitragupta/review/verbatim_check/`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
@@ -93,7 +94,46 @@ thin result and a thorough one look identical.
 | Sees an uncited source's wording? | No -- structurally cannot, by design | Yes |
 | Sees connective prose citing nothing? | No | Yes |
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
-| Cost | Sub-second, even cold | ~27s first run on this corpus (497 docs); sub-second every run after -- **but minutes rather than seconds wherever tier 3 runs**, since it embeds each shortlisted source's sentences. Measured: ~100s for one chapter of the 15-chapter book, dominated by that. See below |
+| Cost | Sub-second, even cold | **447 ms where tier 3 cannot run; 19.7--41.0 s where it can**, since it embeds each shortlisted source's sentences. Re-measured 2026-08-27 across five drafts on a 642-document corpus -- see [What a scan costs](#-what-a-scan-costs) below, and [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs) for the method |
+
+### ⏱ What a scan costs
+
+**Zero tokens.** Every tier is deterministic Python; the cost is
+wall-clock and memory only.
+
+**One question decides it: can tier 3 run?** It needs the `enrich`
+group, `content/chroma/`, the Docling sidecars and the draft's own
+dossier, all four. Without any one of them a full-draft `scan` is
+**447 ms**. With all four it is **19.7--41.0 s** -- a 44--86x
+difference that has nothing to do with the draft.
+
+**Where tier 3 runs, estimate from citekeys, not words.** Measured
+2026-08-27:
+
+| Draft | Distinct citekeys | `scan` |
+| ---: | ---: | ---: |
+| 1,258 words, no dossier | 11 | 447 ms |
+| 2,448 words, no dossier | 33 | 474 ms |
+| 5,723 words, dossier | 13 | 19.7 s |
+| 10,003 words, dossier | 40 | 41.0 s |
+| 18,061 words, dossier | 28 | 35.7 s |
+
+The 18,061-word chapter scans **faster** than the 10,003-word one,
+because it cites twelve fewer sources. Tier 3 embeds each cited source
+once per scanned draft, so the cost is roughly **1.0--1.5 s per
+distinct citekey**.
+
+**It peaks at about 1.5 GB of RAM**, against 23--73 MB for every other
+review aid -- worth knowing before running it beside anything else.
+
+**Re-scanning is not free.** Tiers 1 and 2 are cached and sub-second
+after the first run, but tier 3 is not cached at all, deliberately
+([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#-where-this-sits-in-a-bigger-plan)).
+Three consecutive scans of an unchanged draft measured 20,172 /
+20,141 / 20,340 ms. **Anything that re-scans in a loop pays this every
+time**, which is the figure to plan a repair loop against.
+
+## ⚖ Advisory, never blocking
 
 Both belong to the **review layer**, so both are advisory and neither
 blocks -- [REVIEW.md](REVIEW.md) has what that guarantees, and what it
