@@ -182,7 +182,7 @@ means they are checked only when someone remembers to.
 | A table has a caption and an id, and every reference resolves | §13 | yes | no -- the fix is a caption someone has to write |
 | Some sentence refers to each table | §13 | yes | no -- and **whether that sentence explains the table is not decidable at all**, which is the half that matters most. A machine can see that a reference exists; only a reader can see that the arrangement was worth making |
 | A captioned figure's id is unique and kebab-case, and every `figureref` resolves | §10 | yes | no -- the fix is an author decision, same as a table's |
-| Some sentence refers to each captioned figure | §10 | yes | no -- and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure is exempt from this row by design, not by gap |
+| Some sentence refers to each captioned figure | §10 | yes | no -- and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure raises `chitragupta.FigureNoCaption` instead, so it is not exempt from §10, only from *this* row -- there is nothing yet for a sentence to refer to |
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A
@@ -396,8 +396,11 @@ pipeline.
   off its panel, and why `subcaption` is not the answer.
 - **A figure is captioned in the draft, not in the figure file** --
   "A caption, and no number you write yourself" below has the contract.
-  A marker with no caption below it renders unnumbered and uncaptioned,
-  exactly as before. Which lettering a venue wants for panels -- `(a)`,
+  A marker with no caption below it still renders unnumbered and
+  uncaptioned -- the renderer is unchanged -- but `draft style` now
+  reports it (`chitragupta.FigureNoCaption`), because "captioned in the
+  draft" is the contract and a marker without one has not met it.
+  Which lettering a venue wants for panels -- `(a)`,
   `(i)`, `A`, or titles with no letters -- is a §8 house-style decision:
   record it in the dossier's `scope.md` beside the dialect, where
   `draft-reviser` reads it before every edit, rather than settling it
@@ -431,10 +434,13 @@ the figure's base name, so the id is that name with no `figures/` prefix
 contract existed. There is no second field to keep in sync with the file
 name.
 
-**A figure with no caption line below it is unchanged** -- still §10's
-accepted uncaptioned case, still a bare `\input` or a bare ASCII fence,
-no float, no number, and invisible to `figureref` resolution the same
-way an uncaptioned marker is invisible to it.
+**A figure with no caption line below it renders unchanged** -- a bare
+`\input` or a bare ASCII fence, no float, no number, and invisible to
+`figureref` resolution. What changed in issue 421 is that this is no
+longer an *accepted* case: the render is the same, and `draft style`
+now reports it. Nothing about the rendering path moved, which is worth
+saying plainly, because the amendment is to the standard rather than to
+the renderer.
 
 **Never write the number.** [RENDERING-FLOW.md](RENDERING-FLOW.md)'s
 "Figure numbering" has the per-format cases: LaTeX-bound output wraps
@@ -452,12 +458,16 @@ what has to agree with its own chapter numbering, which is the whole
 reason a number never belongs in a draft.
 
 `python -m chitragupta.draft style` reports the decidable part of this --
-a captioned figure no sentence refers to, a `figureref` naming a figure
-that does not exist or is not captioned, two figures sharing one id, and
-a reference sitting outside the figure's own section. There is no
-`chitragupta.FigureNoCaption` or `FigureNoId`: an uncaptioned figure is
-accepted above, and a figure marker always carries an id by construction,
-so neither state is a defect for this to catch.
+a figure marker carrying no caption, a captioned figure no sentence
+refers to, a `figureref` naming a figure that does not exist or is not
+captioned, two figures sharing one id, and a reference sitting outside
+the figure's own section.
+
+`chitragupta.FigureNoCaption` arrived with issue 421 and reversed what
+this paragraph used to say. There is still no `FigureNoId`, and that
+half is unchanged rather than merely surviving: a figure marker always
+carries an id by construction, since the id *is* the base name the
+marker names, so there is no state for it to catch.
 
 Where `tikz.sty` is absent, the fallback is the same in every genre and
 is what this section required before the pair existed: the ASCII goes

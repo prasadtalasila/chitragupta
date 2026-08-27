@@ -55,8 +55,15 @@ class Agenda:
 
     @property
     def objective_class_count(self) -> int:
-        """The count a future re-run loop watches: unattended items only
-        (`missing-citekey`, and verbatim-run's `"short"` bucket)."""
+        """The count a future re-run loop watches: unattended items only.
+
+        Three classes contribute -- `missing-citekey`, verbatim-run's
+        `"short"` bucket, and `prose`, which joined them in issue 421.
+        The list is spelled out rather than left as "whatever is
+        flagged" because this is the number the loop terminates on: a
+        description of it that has gone stale is the most expensive
+        comment in this module.
+        """
         return sum(1 for item in self.items if item.unattended)
 
 

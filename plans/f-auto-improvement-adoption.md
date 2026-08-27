@@ -160,7 +160,7 @@ corpus** (read-only; nothing was written):
 | --- | --- | --- |
 | `missing-citekey` | 0--2 (6 across all 21 dossiers) | yes |
 | `verbatim-run` | 0--9 (four drafts scanned: 0, 3, 6, 9) | yes, minus the long runs #129 reserves |
-| `prose` | see below | shipped as **no** -- surfaced |
+| `prose` | 0--6 (four drafts: 6, 2, 2, 0) | **yes** -- #421, see below |
 | `candidate` | 7--155, median 49 | no -- surfaced |
 | `unsupported-claim`, `uncited-source` | -- | no -- surfaced |
 
@@ -176,19 +176,28 @@ verbatim counts came from a different revision of `verbatim_check.py`
 than this spec governs, so they were **re-measured against this
 worktree and came back identical** (3 / 0 / 9 / 6). See Q4.
 
-**`prose` does not move N, and the reason is a defect, not a
-measurement.** The 2026-08-21 document made re-measuring N an acceptance
-criterion for the prose producer, expecting N to jump into the dozens
-once it landed. It landed -- #107 in 5.13.0, #183 in 5.19.0 -- and N did
-not move, because `agenda/_items_findings.py`'s `prose_items` sets
-`unattended=False` on every finding and `objective_class_count` counts
-only unattended items. But `docs/AUTO-IMPROVEMENT.md`'s table says
-`prose` *is* unattended for "the mechanically re-checkable subset", and
-`prose_items`' own docstring argues that subset was already applied
-upstream. Spec and code disagree; issue
-[#421](https://github.com/prasadtalasila/chitragupta/issues/421) carries
-it. **N = 0--11 stands today, and is contingent on that issue closing
-the way the code currently behaves.**
+**`prose` is unattended, and it does not move N anyway -- which is the
+opposite of what this section predicted twice.** The 2026-08-21 document
+made re-measuring N an acceptance criterion for the prose producer,
+expecting N to jump into the dozens once it landed. The 2026-08-27
+revision then found the producer had landed (#107 in 5.13.0, #183 in
+5.19.0) while N had not moved, and attributed that to a spec/code
+disagreement: `prose_items` shipped `unattended=False` against a table
+saying yes for "the mechanically re-checkable subset".
+
+Both readings are now settled by measurement rather than by argument.
+Issue [#421](https://github.com/prasadtalasila/chitragupta/issues/421)
+decided the disagreement in the **table's** favour -- the flag flips,
+because the repair is an edit to the draft, which is R1's write-set, and
+it fixes the finding rather than disguising it. And
+`plans/f3-agenda-reviser.md` measured the class it admits: `draft style
+--json` over the four real drafts reports **6, 2, 2 and 0** prose
+findings, not dozens.
+
+**So N is 0--17, not 0--11, and the bound still does not bind.** Three
+passes remain unreachable in practice, and `PASS_BOUND = 3` stays what
+Decision 2 requires it to be described as -- a backstop against a
+miscounting bug, not a budget.
 
 **The R4 re-scan burden, measured properly.** R4 re-runs every aid after
 every accepted edit -- roughly 22 full re-scans on an 11-item agenda at
@@ -462,22 +471,9 @@ re-derive it.
 
 ## Still open
 
-**Two items, and neither is settleable by preference.**
+**One item, and it is not settleable by preference.**
 
-**1. Is the `prose` class unattended?** Issue
-[#421](https://github.com/prasadtalasila/chitragupta/issues/421).
-`docs/AUTO-IMPROVEMENT.md`'s table says yes for the mechanically
-re-checkable subset; `agenda/_items_findings.py` ships `unattended=False`
-for every finding, with a docstring arguing the subset filter already
-ran upstream. One of the two is wrong. This is the successor to the
-2026-08-21 document's first open item -- which asked for N to be
-re-measured once the prose producer landed, and is answered above: N did
-not move, but by implementation rather than by construction. If the flag
-is flipped to match the table, N moves after all and the three-pass
-bound has to be re-measured then. **Decide this before F3 relies on the
-bound.**
-
-**2. The merge queue is not on.** Checked 2026-08-27: the active `main`
+**The merge queue is not on.** Checked 2026-08-27: the active `main`
 ruleset holds `deletion`, `non_fast_forward`, `required_linear_history`
 and `pull_request`, and no `merge_queue` rule. Not a decision anyone has
 declined -- nobody has taken it. It is a repository setting, it converts
@@ -485,8 +481,18 @@ the ten-step cycle's step 7 from a discipline into a mechanism, and it
 pays for itself with or without a loop. Until it is on, debt PRs go one
 at a time.
 
-Two items from the 2026-08-21 list are closed by #381 and are recorded
-here only so this document does not read as though they were dropped:
+**The `prose` question that stood here is closed**, by
+[#421](https://github.com/prasadtalasila/chitragupta/issues/421): the
+class is unattended, the flag flipped to match the table, and the
+consequence Decision 2 above was told to record -- N moves from 0--11 to
+0--17, and the three-pass bound still does not bind -- is recorded
+there. It had been this list's first item since 2026-08-21, in two
+different forms, and neither was settled by preference in the end: one
+was decided against a rule, the other against a measurement.
+
+Two further items from the 2026-08-21 list are closed by #381 and are
+recorded here only so this document does not read as though they were
+dropped:
 whether `missing-citekey` should be acted on unattended (**yes**), and
 how the agenda should behave on a draft with no dossier (**a reduced
 source set, not a refusal** -- so `agenda` keeps the layer's "exit 0

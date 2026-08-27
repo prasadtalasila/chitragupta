@@ -122,7 +122,7 @@ bucket within a class, then position in the draft.
 | --- | --- | --- | --- |
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
-| `prose` | `style_check` (#107), `steering.md` | no evidence delta | only the mechanically re-checkable subset -- [HOUSE-STYLE.md](HOUSE-STYLE.md) |
+| `prose` | `style_check` (#107), `steering.md` | no evidence delta | **yes**, for the whole class -- decided in #421. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |

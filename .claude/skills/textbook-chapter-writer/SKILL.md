@@ -396,7 +396,8 @@ candidate for the chapter.
      blank line between, and an inline `<!-- figureref: <name> -->`
      wherever the prose points at it -- never write the word "Figure" or
      a number; the renderer assigns both, the same contract §13 gives
-     the table above. An uncaptioned figure is still accepted by design.
+     the table above. Every figure needs a caption -- an uncaptioned
+     marker is reported as `chitragupta.FigureNoCaption` (#421).
 
    **Equations follow `docs/WRITING-STANDARDS.md` §12, not this step, and
    this genre has more of them than any other here.** A worked example is

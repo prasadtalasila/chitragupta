@@ -56,8 +56,14 @@ class AidSource:
 class StyleSource:
     """`style_check.check()`'s result. `partial` means Vale did not run
     (`vale_error` was set) -- `prose` is under-reported, not empty, and
-    the header must say so by name since it is otherwise the most
-    populous class."""
+    the header must say so by name because `prose` is an *unattended*
+    class (issue 421): a silently short list of it under-counts
+    `Agenda.objective_class_count`, which a re-run loop terminates on.
+
+    It is not the most populous class, which this docstring claimed
+    until the measurement in `plans/f3-agenda-reviser.md`: prose runs
+    0--6 per draft on the four real drafts, against `candidate`'s
+    7--155."""
 
     available: bool = False
     partial: bool = False

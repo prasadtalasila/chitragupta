@@ -1,9 +1,12 @@
 """chitragupta/style_figures.py: the figure findings `draft style` reports.
 
-Mirrors `tests/test_style_tables.py`, minus `TestNoCaption`/`TestNoId`:
-issue 411 deliberately has no figure analogue for either, since
-`docs/WRITING-STANDARDS.md` §10 already accepts an uncaptioned figure by
-design, and a figure marker always carries an id by construction.
+Mirrors `tests/test_style_tables.py`, minus `TestNoId` only. The
+`TestNoCaption` half arrived with issue 421: `docs/WRITING-STANDARDS.md`
+§10 no longer accepts an uncaptioned figure, so the marker that carries
+no caption is a finding like its table analogue. The `FigureNoId`
+absence stands, and for its own unchanged reason -- a figure marker
+always carries an id by construction, since the id *is* the base name
+the marker names, so there is no "marker with no id" state to find.
 """
 
 from pathlib import Path
@@ -24,11 +27,48 @@ def rules(findings: list[dict]) -> list[str]:
     return [finding["rule"] for finding in findings]
 
 
-class TestUncapturedAndCleanCases:
-    def test_an_uncaptioned_marker_reports_nothing(self, tmp_path):
+class TestNoCaption:
+    """Issue 421 reversed §10's accepted case, so this is the half that
+    inverted. The R3 evidence the flag flip rests on is that adding the
+    caption takes the finding away -- `test_adding_the_caption_clears_it`
+    is that, asserted rather than argued."""
+
+    def test_an_uncaptioned_marker_is_reported(self, tmp_path):
         body = "# S\n\n<!-- figure: figures/x -->\n\nSome prose after a blank line.\n"
+        found = style_figures.findings(draft_with(body, tmp_path))
+        assert "chitragupta.FigureNoCaption" in rules(found)
+
+    def test_it_is_reported_at_the_marker_line_and_names_the_id(self, tmp_path):
+        body = "# S\n\n<!-- figure: figures/x -->\n\nSome prose after a blank line.\n"
+        found = [
+            f
+            for f in style_figures.findings(draft_with(body, tmp_path))
+            if f["rule"] == "chitragupta.FigureNoCaption"
+        ]
+        assert (found[0]["line"], found[0]["match"]) == (3, "x")
+
+    def test_adding_the_caption_clears_it(self, tmp_path):
+        body = f"# S\n\nAs <!-- figureref: fig1 --> shows.\n\n{CAPTIONED}"
+        assert "chitragupta.FigureNoCaption" not in rules(
+            style_figures.findings(draft_with(body, tmp_path))
+        )
+
+    def test_an_uncaptioned_marker_inside_a_fence_is_not_a_figure(self, tmp_path):
+        body = "# S\n\nLike this:\n\n```markdown\n<!-- figure: figures/x -->\n```\n"
         assert style_figures.findings(draft_with(body, tmp_path)) == []
 
+    def test_an_uncaptioned_marker_is_still_unreferenced_only_once(self, tmp_path):
+        """A marker with no caption carries no `Figure`, so it cannot also
+        be reported unreferenced -- there is nothing for a `figureref` to
+        point at. One defect, one finding, and the caption is the fix that
+        makes the second check reachable."""
+        body = "# S\n\n<!-- figure: figures/x -->\n\nProse.\n"
+        assert rules(style_figures.findings(draft_with(body, tmp_path))) == [
+            "chitragupta.FigureNoCaption"
+        ]
+
+
+class TestUncapturedAndCleanCases:
     def test_a_referenced_captioned_figure_reports_nothing(self, tmp_path):
         body = f"# S\n\nAs <!-- figureref: fig1 --> shows.\n\n{CAPTIONED}"
         assert style_figures.findings(draft_with(body, tmp_path)) == []
