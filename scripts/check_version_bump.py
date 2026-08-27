@@ -178,7 +178,22 @@ def _git(*args: str) -> str:
     ).stdout
 
 
-def main(argv: "list[str] | None" = None) -> int:
+# `fetch` is injected here for the same reason `on_pypi()`'s is (#425).
+# Without it, the only ways to drive `main()` off the network were
+# `--offline`, which skips the PyPI rule rather than exercising it, and
+# patching `on_pypi` itself, which stubs out the code under test. Seven
+# tests took neither and requested a real URL on every full-suite run;
+# one of them asserts that no `::warning::` is emitted, and a transport
+# hiccup produces exactly that -- an intermittent red that reads as a
+# broken branch. The default is pinned by a test so it cannot be
+# swapped for a fake and quietly disarm the check in CI.
+#
+# Stated here rather than in a docstring because `main()` sits exactly
+# on C1's 25-statement limit and a docstring is an `ast.Expr` -- it
+# would count as the 26th. CODE-STANDARDS.md's counting rule is what
+# makes this the free place to put it: a `#` comment is charged by
+# neither C1 nor C2.
+def main(argv: "list[str] | None" = None, fetch=_fetch_json) -> int:
     parser = argparse.ArgumentParser(
         prog="python scripts/check_version_bump.py",
         description="Fail when a PR's version bump has been lost to a collision.",
@@ -225,7 +240,7 @@ def main(argv: "list[str] | None" = None) -> int:
     # A published version can never be reused, so this blocks -- but a
     # network failure must not. See on_pypi() for why the three outcomes
     # are kept distinct.
-    published = on_pypi(current, _fetch_json) if not args.offline else None
+    published = on_pypi(current, fetch) if not args.offline else None
     if published is True:
         print(
             f"::error::{current} is already published as chitragupta-cli "
