@@ -14,10 +14,13 @@ resolves it afterwards -- this module wraps around that substitution
 rather than replacing it, and deliberately does not import it: the two
 run in a fixed order (`__init__.py`'s `_substituted`), not a call chain.
 
-An *uncaptioned* figure marker -- §10's accepted case -- carries no
-`Figure` at all: it has no caption for a reader or a `figureref` to point
-at, the same way `_tables.tables()` only returns a table that has both a
-caption and an id.
+An *uncaptioned* figure marker carries no `Figure` at all: it has no
+caption for a reader or a `figureref` to point at, the same way
+`_tables.tables()` only returns a table that has both a caption and an
+id. §10 used to accept that state; since #421 it does not, and
+`chitragupta/style_figures.py` reports it. **Nothing here changed with
+that amendment** -- an uncaptioned marker renders exactly as it always
+did, and the standard moved without the renderer moving.
 """
 
 import re
@@ -111,8 +114,8 @@ def substitute_captions(
     so `_figures._with_figures_for`'s own substitution still finds and
     resolves it afterwards -- this is a pass that runs *before* it, not a
     replacement for it. An uncaptioned marker does not match the pair
-    regex at all and is untouched, preserving §10's accepted uncaptioned
-    case.
+    regex at all and is untouched -- unchanged by #421, which made that
+    state a `draft style` finding without changing what it renders as.
 
     `declared` lets a caller hand in a list already computed from `text`
     before any substitution touched it -- `__init__.py`'s `_substituted`

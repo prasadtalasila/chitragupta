@@ -57,7 +57,27 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
     "mechanically re-checkable" is needed here. A `line` of 0
     (acronym-drift, which checks the draft's vocabulary as a whole) is
     not a position and is treated as None, same as any other item with
-    nothing to anchor on."""
+    nothing to anchor on.
+
+    **Unattended, decided in issue 421** after shipping `False` here for
+    one release while nothing consumed the flag. Two other classes are
+    binary and deterministic yet still surfaced, so being re-checkable
+    is not sufficient on its own -- but neither of those is surfaced for
+    failing R3. `uncited-claim` is surfaced because the fix is evidence
+    rather than wording, and `misquoted` because the defect is in
+    `evidence.md` while a reviser edits drafts. `prose` fails neither
+    test: the repair is an edit to the draft, which is R1's write-set
+    exactly, and it fixes the finding rather than disguising it, because
+    there is no underlying evidential claim for a rewording to
+    misrepresent.
+
+    R3 was tested rather than argued. A draft carrying an uncaptioned
+    table and an unreferenced figure reported `chitragupta.TableNoCaption`
+    and `chitragupta.FigureUnreferenced`; adding the caption and the
+    inline reference took `draft style` to zero findings. That is the
+    whole of what R3 asks, so the flag is set for the class rather than
+    for a per-rule subset -- a filter whose every entry is `True` is what
+    the paragraph above already rules out."""
     if not source.available or source.data is None:
         return []
     items = []
@@ -72,7 +92,7 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
                 section=section,
                 citekey=None,
                 line=line,
-                unattended=False,
+                unattended=True,
                 summary=f"{finding.get('rule')}: {finding.get('match')!r} "
                 f"({finding.get('count', 1)}x)",
                 detail={

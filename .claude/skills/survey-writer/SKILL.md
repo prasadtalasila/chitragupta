@@ -437,9 +437,9 @@ collapse them for the sake of a cleaner narrative.
      in the figure file.** A caption line directly below the marker, no
      blank line between, and an inline `<!-- figureref: <name> -->`
      wherever prose points at it -- never write the word "Figure" or a
-     number yourself; the renderer assigns both. This genre's figures are
-     rare enough that most carry no caption at all, and that is fine:
-     an uncaptioned figure is accepted by design, not a defect.
+     number yourself; the renderer assigns both. Every figure needs a
+     caption: since #421 an uncaptioned marker is reported as
+     `chitragupta.FigureNoCaption` by this skill's own prose-check step.
 
    **Any quantity in the prose follows `docs/WRITING-STANDARDS.md` §12,
    not this step.** Write it as ASCII in a code span and give it a row in

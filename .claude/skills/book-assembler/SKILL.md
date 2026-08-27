@@ -344,6 +344,8 @@ It is the reading copy for anyone who is not building LaTeX.
    Anything printed is a collision, whether or not every copy is
    captioned -- an uncaptioned marker sharing the name is still worth
    catching before whichever unit adds a caption next collides silently.
+   Since #421 an uncaptioned marker is also a `FigureNoCaption` finding
+   in its own unit's prose check, so it should not survive this far.
    The per-unit prose check (`FigureDuplicateId`) sees one unit at a
    time; across units, this is the check.
 

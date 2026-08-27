@@ -137,11 +137,30 @@ def _sources_dict(agenda) -> dict:
 
 def agenda_payload(agenda, command: str) -> dict:
     """The same items `render_markdown` prints, as data -- an additional
-    serialisation, never a second computation."""
+    serialisation, never a second computation.
+
+    `pass_bound` and `objective_class_count` are carried because neither
+    is reachable any other way: `PASS_BOUND` lives only as a module
+    constant and the count only as a property, and a `SKILL.md` can
+    import neither. Without them a skill re-running this loop would
+    write `3` into its own prose, which is the literal
+    `plans/f-auto-improvement-adoption.md`'s Decision 2 forbids -- it is
+    how a backstop against a miscounting bug later gets mistaken for a
+    budget.
+    """
+    # Imported here rather than at module scope, and not moved to a leaf
+    # module to avoid it: `PASS_BOUND` belongs beside the property it
+    # bounds (see the package `__init__.py`'s own comment), and that
+    # package imports this module, so a top-level import would be a
+    # cycle. The parameter shadows the package name, hence the alias.
+    from chitragupta.review import agenda as agenda_module
+
     payload = review.envelope(agenda.draft, "agenda", command)
     payload.update(
         {
             "sources": _sources_dict(agenda),
+            "pass_bound": agenda_module.PASS_BOUND,
+            "objective_class_count": agenda.objective_class_count,
             "items": [_item_dict(item) for item in agenda.items],
         }
     )

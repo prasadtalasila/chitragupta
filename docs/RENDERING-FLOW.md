@@ -206,8 +206,8 @@ is gone:
 | `substitute_captions` | The `[marker, caption]` pair | Wraps the untouched marker in `\begin{figure}...\caption{}\label{fig:<id>}...\end{figure}` -- LaTeX's own counter numbers it, no `\thefigure` override ever written | `<marker>\n**Figure N:** <caption>`, N counted in document order among captioned figures only |
 | `substitute_refs` | An inline `<!-- figureref: <id> -->` | `` `Figure~\ref{fig:<id>}`{=latex} `` -- the same raw-attribute-span reason `_tables._reference_for` needs for `~` | `Figure N` |
 
-An **uncaptioned** marker (§10's accepted case) matches neither pass's
-regex and renders exactly as ["Figure substitution" above](#-figure-substitution-four-combinations-one-real-no-op)
+An **uncaptioned** marker matches neither pass's regex and renders
+exactly as ["Figure substitution" above](#-figure-substitution-four-combinations-one-real-no-op)
 already describes -- no float, no number, no `\label`. A `figureref`
 naming an uncaptioned figure's id, or one no figure declares at all, is
 left exactly as written; `python -m chitragupta.draft style`

@@ -296,6 +296,29 @@ class TestProseItems:
         assert items[0].line == 4
         assert items[0].detail["count"] == 2
 
+    def test_prose_is_unattended(self):
+        """Issue 421's decision. `style_check` already restricts itself to
+        the decidable rules, so every prose item *is* the mechanically
+        re-checkable subset the class table names -- and the repair is an
+        edit to the draft, which is R1's write-set, unlike `uncited-claim`
+        and `misquoted`."""
+        source = _sources.StyleSource(
+            available=True,
+            data={
+                "findings": [
+                    {
+                        "rule": "chitragupta.FigureNoCaption",
+                        "match": "x",
+                        "line": 3,
+                        "message": "m",
+                        "severity": "suggestion",
+                        "count": 1,
+                    }
+                ]
+            },
+        )
+        assert _items_findings.prose_items(source, [])[0].unattended is True
+
     def test_line_zero_is_treated_as_no_position(self):
         source = _sources.StyleSource(
             available=True,
@@ -730,6 +753,39 @@ class TestAgendaPayload:
         assert payload["aid"] == "agenda"
         assert set(payload["sources"]["aids"]) == set(_sources.AID_NAMES)
 
+    def test_the_payload_carries_the_bound_and_the_count(self):
+        """Neither is reachable from a `SKILL.md`: `PASS_BOUND` is a Python
+        constant and `objective_class_count` a property, so a skill that
+        could not read them off the payload would hardcode `3` in prose --
+        which is what `plans/f-auto-improvement-adoption.md`'s Decision 2
+        forbids, and for the reason it gives."""
+        items = [
+            _items.Item("m1", "missing-citekey", None, "a2024", None, True, "s", {}),
+            _items.Item("p1", "prose", None, None, 3, True, "s", {}),
+            _items.Item("c1", "candidate", None, "b2024", None, False, "s", {}),
+        ]
+        payload = _render.agenda_payload(
+            agenda.Agenda(
+                draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=items
+            ),
+            "cmd",
+        )
+        assert payload["pass_bound"] == agenda.PASS_BOUND
+        assert payload["objective_class_count"] == 2
+
+    def test_the_serialised_count_is_the_computed_one(self):
+        """An additional serialisation, never a second computation -- the
+        rule `agenda_payload`'s own docstring states."""
+        items = [
+            _items.Item("p1", "prose", None, None, 3, True, "s", {}),
+            _items.Item("p2", "prose", None, None, 4, True, "s", {}),
+        ]
+        built = agenda.Agenda(
+            draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=items
+        )
+        payload = _render.agenda_payload(built, "cmd")
+        assert payload["objective_class_count"] == built.objective_class_count
+
 
 # --------------------------------------------------------------------------
 # Agenda / CLI (chitragupta/review/agenda/__init__.py)
@@ -747,6 +803,21 @@ class TestObjectiveClassCount:
             ],
         )
         assert one.objective_class_count == 1
+
+    def test_prose_counts_towards_it(self):
+        """The flip in issue 421 makes `prose` the third contributor, and
+        this is the number the re-run loop terminates on -- so it is
+        asserted here rather than left to the flag's own test."""
+        one = agenda.Agenda(
+            draft=Path("d"),
+            sources=_sources_stub(),
+            items=[
+                _items.Item("1", "missing-citekey", None, None, None, True, "s", {}),
+                _items.Item("2", "prose", None, None, 3, True, "s", {}),
+                _items.Item("3", "candidate", None, None, None, False, "s", {}),
+            ],
+        )
+        assert one.objective_class_count == 2
 
 
 class TestBuildAgendaAndCli:
