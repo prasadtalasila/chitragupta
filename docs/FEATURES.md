@@ -29,7 +29,7 @@ and do not update this file, that test fails.
 - [The four layers](#-the-four-layers)
 - [Corpus layer: turning a library into a ledger](#-corpus-layer-turning-a-library-into-a-ledger)
 - [Drafting layer: writing something grounded](#-drafting-layer-writing-something-grounded)
-- [Review layer: eight advisory aids](#-review-layer-eight-advisory-aids)
+- [Review layer: nine advisory aids](#-review-layer-nine-advisory-aids)
 - [Enrichment layer: optional depth](#-enrichment-layer-optional-depth)
 - [Cross-cutting features](#-cross-cutting-features)
 - [What this deliberately does not do](#-what-this-deliberately-does-not-do)
@@ -199,7 +199,7 @@ flowchart LR
 
   DO --- N["<b>seven dossier files</b><br/>scope · evidence · rejected<br/>sections · steering · revisions · retrieval"]
   RE --- M["<b>plus the evidence sidecar</b><br/>survey.evidence.{md,tex,pdf}<br/><small>never committed</small>"]
-  RV --- P["<b>eight review reports</b><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited · quotation · agenda<br/><small>each + .tex/.pdf, some + .json</small>"]
+  RV --- P["<b>nine review reports</b><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited · quotation · agenda · support<br/><small>each + .tex/.pdf, some + .json</small>"]
 
   style DO fill:#eef2ff,stroke:#4338ca
   style RE fill:#eef2ff,stroke:#4338ca
@@ -282,7 +282,7 @@ the drafting layer's own sidecar rather than the corpus plane.
 [docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
 proposal parked at #401.
 
-## 🔍 Review layer: eight advisory aids
+## 🔍 Review layer: nine advisory aids
 
 Run by hand on a finished draft. **None of them gates anything, and none
 may be promoted to a gate** -- [SOUL.md](../SOUL.md) has why. Each
@@ -299,11 +299,12 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review uncited` | which sentences carry no citation at all. The one aid that reads no corpus |
 | `review quotation` | is each quoted span in the dossier really in the source it is attributed to? The one aid whose answer is binary |
 | `review agenda` | merges the other seven aids' reports into one ranked, deduplicated worklist |
+| `review support` | does the cited source actually entail this claim, scored by a real NLI entailment model |
 
 **Why they are not gates, stated once because it is the design and not an
 omission:** the gate answers a question with one correct answer -- is this
-citekey in the ledger? -- so it can be automatic and absolute. Six of
-the eight answer questions of judgement, where a machine verdict would
+citekey in the ledger? -- so it can be automatic and absolute. Seven of
+the nine answer questions of judgement, where a machine verdict would
 be either wrong often enough to be ignored, or trusted more than it
 deserves. `quotation` is binary and deterministic and still not a gate,
 because what it is measured against is the parse rather than the ledger
@@ -364,7 +365,7 @@ decision rather than a gap:
   manager. There is no auto-download and no auto-sync.
 - **It does not rewrite a citekey**, ever -- not to sanitise it, not to
   deduplicate it.
-- **It does not promote a review aid to a gate.** Eight advisory aids
+- **It does not promote a review aid to a gate.** Nine advisory aids
   and one gate is the design, and `review quotation` is the case that
   proves it rather than the exception: binary, deterministic, and still
   advisory. See [SOUL.md](../SOUL.md).

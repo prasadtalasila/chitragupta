@@ -129,6 +129,19 @@ bucket within a class, then position in the draft.
 | `misquoted` | quotation | defect -- the span is not in the source it cites | no -- surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
 
+`support` (C2) asks the same underlying question as `provenance` --
+does the source support this claim? -- but is not a second source for
+`unsupported-claim`: its score is ranked, never banded, by design
+([REVIEW.md](REVIEW.md)), and this class's extractor
+(`unsupported_claim_items`) decides membership by a `band`, a field
+this aid deliberately does not emit. A surfacing-only extractor with
+its own inclusion rule is possible -- ordering and surfacing what a
+human reads is exactly what R3 below permits an unattended process to
+do -- but is separate work with its own design question (all findings?
+a percentile? ranked-but-unfiltered?), not part of this aid's own
+scope. `agenda` does not read `support`'s JSON at all
+(`chitragupta/review/agenda/_sources.py`'s `AID_NAMES`).
+
 The `prose` class had no producer when this was written. It has both a
 producer and a consumer now: #107 shipped the detector in 5.13.0 and
 its automatic invocation (#183) landed in 5.19.0, and `chitragupta/style_check.py`

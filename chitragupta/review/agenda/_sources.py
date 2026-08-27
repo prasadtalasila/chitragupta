@@ -18,10 +18,14 @@ from pathlib import Path
 from chitragupta import dossier, review, style_check
 from chitragupta.dossier._drift import Drift
 
-# The seven existing review aids, in `review.AIDS`'s own order. Read for
-# completeness -- `synthesis` and `figure` carry no item class (see
-# `_items.py`) but are still named in the header as read, not silently
-# dropped.
+# The review aids agenda reads, in `review.AIDS`'s own order -- not all
+# of `review.AIDS`: `agenda` excludes itself, and `support` is not here
+# either, since its findings carry no `band` and `unsupported_claim_items`
+# (`_items_findings.py`) decides membership by one; wiring it in would
+# mean thresholding a continuous score, which this aid's own design
+# forbids (docs/CODE-STANDARDS.md R3). Read for completeness -- `synthesis`
+# and `figure` carry no item class (see `_items.py`) but are still named
+# in the header as read, not silently dropped.
 AID_NAMES = (
     "provenance",
     "verbatim",

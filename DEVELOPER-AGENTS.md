@@ -858,18 +858,54 @@ succeeded -- not merely started:
    it is not in CI and not a dependency -- so if this step is skipped it
    simply does not happen. Record in the PR's test plan which skill ran,
    or that the plugin was unavailable.
-4. Open a PR against `main` (see "Issues and pull requests" above).
-5. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
+4. **Read the documentation the change touches or makes stale, and fix
+   what you find.** OCR does not reach Markdown (["What the plugin does
+   and does not reach"](#-what-the-plugin-does-and-does-not-reach)
+   above) -- for docs, this step *is* the review, not an optional extra
+   on top of it. Two different searches, not one:
+   - **The docs your diff already edited.** Read them for internal
+     consistency -- a table whose row count no longer matches its own
+     prose, a diagram whose exported `.mmd`/`.svg` drifted from the
+     fenced block it was rendered from, a cross-reference to a section
+     you renamed.
+   - **Everywhere else your change made something else false.** A new
+     item added to an existing set is the usual trigger: it moves a
+     count, a "the other N", an enumerated list, or an ordinal ("the
+     Nth aid") in every place that already stated the old total --
+     files nowhere in your diff, found only by grepping the repository
+     for the specific number or name your change moved, not by
+     rereading the files you happened to touch. Seen on 2026-08-27: a
+     ninth review aid landing on a branch that had rebased past two
+     others (`#416`, `#419`) left a stale "the other seven"/"the other
+     eight" in a dozen places -- `chitragupta/review/agenda/*.py`'s own
+     docstrings, `docs/CLI.md`, `docs/ARCHITECTURE.md`,
+     `docs/FEATURES.md`, `docs/DIAGRAMS.md` and its rendered exports --
+     none of them in the PR's file list, all of them broken by it. The
+     same sweep also caught the opposite mistake: prose bumped from
+     "seven" to "eight" on the assumption that a new aid changed what
+     an *existing* aid's code actually reads, when the code hadn't
+     been touched at all -- the fix there is reverting the doc, not
+     changing the code to match a claim nobody verified.
+
+   A doc that was already stale *before* your change touched
+   anything -- traceable with `git log -1 -L<line>,<line>:<path>` to a
+   commit that predates yours -- is a real problem worth naming in the
+   PR description, but fixing it is not this step's job: bundling an
+   unrelated cleanup into a feature PR is exactly what the
+   surgical-changes rule above exists to prevent. The line is whether
+   *your* commit is what made the sentence false.
+5. Open a PR against `main` (see "Issues and pull requests" above).
+6. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
    it's green -- if it fails, fix the actual cause (see "Before claiming a
    task complete") and push again; don't merge past a red check.
-6. Request review from Copilot, resolve every issue it identifies, and
+7. Request review from Copilot, resolve every issue it identifies, and
    mark each as resolved; consider all previous Copilot comments made in
    this PR while resolving the issues. Make a push after all issues are
    resolved, and then request re-review from Copilot. Iterate until all
    issues are resolved. Use judgement on a genuinely trivial finding
    rather than treating every comment as mandatory -- but "trivial" means
    actually inconsequential (a wording nit), not "inconvenient to fix."
-7. **Check that `main` has not moved since CI last ran.** If it has,
+8. **Check that `main` has not moved since CI last ran.** If it has,
    merge or rebase onto it and **do the whole cycle again from step 2** --
    re-decide the version bump, re-run every local check, and wait for CI
    on the new head. A branch that went green against an older `main` is
@@ -886,11 +922,11 @@ succeeded -- not merely started:
    byte-identical line that git merges without a conflict --
    `scripts/check_version_bump.py` now fails CI on that, but it can only
    fail on a run that actually happened.
-8. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
+9. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
    above).
-9. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
+10. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
    push the tag.
-10. Confirm `.github/workflows/release.yml` completed and the resulting
+11. Confirm `.github/workflows/release.yml` completed and the resulting
    GitHub Release has its `chitragupta-<version>.zip` asset
    attached -- this is the actual deliverable, not the tag or the merge
    by itself.

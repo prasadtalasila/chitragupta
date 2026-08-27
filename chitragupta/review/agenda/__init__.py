@@ -9,7 +9,7 @@ The eighth aid in `review.AIDS` (`chitragupta/review/__init__.py`) and in
 `chitragupta/review/__main__.py`'s own `AIDS` -- see that file for the
 `RuntimeError`-at-import-time check tying the two together.
 Deterministic, stdlib-only, no LLM, takes no lock, exits 0 whatever it
-finds, exactly like the other seven.
+finds, exactly like the other eight.
 
 **Reads, never invokes.** The seven review aids' `.json` files
 (`_sources.py`), each optional and read from wherever an earlier

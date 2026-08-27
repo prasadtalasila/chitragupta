@@ -930,6 +930,13 @@ RERANK_MODEL = _get(
     default="cross-encoder/ms-marco-MiniLM-L6-v2",
 )
 
+ENTAILMENT_MODEL = _get(
+    "ENTAILMENT_MODEL",
+    "enrich",
+    "entailment_model",
+    default="cross-encoder/nli-deberta-v3-small",
+)
+
 
 # --------------------------------------------------------------------------
 # Path containment

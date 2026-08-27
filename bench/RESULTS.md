@@ -38,6 +38,7 @@ if it is obvious which is which, so:
 | [2026-08-16: retrieval quality with a ground truth no retrieval method built](#2026-08-16-retrieval-quality-with-a-ground-truth-no-retrieval-method-built) | **Current** | A fairness correction, not a third opinion: the two sections above both score against citekeys a session *kept after BM25 surfaced them* -- a paper dense retrieval found that BM25 never showed a human has no way to score as a hit. This section's ground truth comes from neither: 256 real bib entries' own author-assigned keywords, query = the keywords, correct answer = that entry itself. **BM25 still wins outright** (recall@5 0.80, nDCG@5 0.73, the highest of any row in any of these three sections) -- the strongest evidence yet that the win is real, not an artifact of who built the test. But the SPECTER2 cascade, the worst row in both sections above, is here the **second-best row overall**, beating every standalone dense/rerank row -- read as a property of this section's self-retrieval task favouring paper-level similarity, not a bug fixed in the cascade's own code, which is unchanged from the sections above |
 | [2026-08-26: where a cross-encoder rerank sits, relative to the per-citekey cap](#2026-08-26-where-a-cross-encoder-rerank-sits-relative-to-the-per-citekey-cap) | **Current** | Planning input for #380 (roadmap B4), at the shipped pipeline's own shape -- chunks, cap 3, pool 20 -- which none of the three sections above measure (they collapse to one chunk per paper over a pool of 50, which is a cap of 1 applied after the rerank). **The cap position is strongly observable**: moving the rerank across the cap changes which papers survive on 217 of 256 queries, and #380's stated order is the better one. But reranking is a **wash for finding the right paper** (recall@5 identical at 156/256; the answer is lost 20x and gained 20x), it does **not** move `distinct@5` at all -- so B4 does not unblock #310 -- and **reranking BM25 does not help either**, which answers the open question the first of those sections left. All three findings were re-run against `ms-marco-MiniLM-L12-v2` and `BAAI/bge-reranker-base` and survive the change of reranker |
 | [2026-08-26b: what cross-encoding the over-fetched passages costs](#2026-08-26b-what-cross-encoding-the-over-fetched-passages-costs) | **Current** | The cost half of #380, which the section above deliberately left unmeasured. At the shipped pool of 20 the cheapest reranker makes an `embed_index.search()` call **2.5x** more expensive on a GPU and **5.75x** on a CPU; `bge-reranker-base`, the quality winner above, costs a full **second per call on CPU**. Read beside that section's "recall@5 unchanged", this is what makes `rerank = false` the only defensible default |
+| [2026-08-27: does claim-support checking (#C2) separate supported claims from unsupported ones on this corpus?](#2026-08-27-does-claim-support-checking-c2-separate-supported-claims-from-unsupported-ones-on-this-corpus) | **Current, qualitative only** | 71 real citations scored across four real drafts; a human read of the 20 lowest- and 20 highest-scored found the dominant failure at the low end is the wrong passage being matched, not genuine non-entailment. No `labels.json`/`--crosscheck` was run, so there is no separation statistic here, only the qualitative pattern and its examples |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -3778,3 +3779,91 @@ here, not a free one.
 CHITRAGUPTA_PROJECT=/workspace /workspace/.venv-full/bin/python \
     bench/bench_rerank_cost.py --tag 2026-08-26-rerank-cost
 ```
+
+## 2026-08-27: does claim-support checking (#C2) separate supported claims from unsupported ones on this corpus?
+
+Extraction ran 2026-08-26 (tag `2026-08-26-claim-support-measurement`,
+below); the human read the shortlist and this section was written
+2026-08-27 — same measurement, two dates, no second run.
+
+`bench/bench_claim_support.py --extract`, run against the four real
+drafts of `digital-twins-for-software-engineers`
+(`survey.md`, `book-chapter.md`, `tutorial.md`, `deep-research.md`):
+71 findings scored (of 73; one citekey, `talasila_composable_2025`, is
+not yet in the ledger), score range 0.004-0.989, median 0.526. The 20
+lowest-scored and 20 highest-scored are shortlisted into
+`bench/results/2026-08-26-claim-support-measurement/candidates.md`
+(gitignored — it carries claim text and source excerpts straight out of
+the real drafts; regenerate with the command in that file's own header).
+
+A human read all 40 shortlisted candidates against their matched
+passage. **No structured per-id `labels.json` was produced and
+`--crosscheck` was not run** — this section reports that qualitative
+read, not a labelled separation statistic. Do not read a number into
+this section; there isn't one to cite beyond the score range above.
+
+The read: most of the 20 lowest-scored candidates look "unrelated"
+rather than "contradicted" — but reading the actual matched passages
+shows why. The dominant failure is retrieval, not entailment: the
+passage-matching step frequently hands the scorer the wrong passage from
+an otherwise-relevant paper, and the low score is doing exactly what it
+should with the input it was given. Examples, verbatim from
+`candidates.md`:
+
+- `survey.md#f3c9b7cd2405` (score 0.014, citekey `kamburjan_greenhousedt_2024`):
+  claim about GreenhouseDT's extensible architecture, matched passage is
+  the two words "light sensor".
+- `survey.md#fee1e7705e0e` (score 0.027, citekey `bhandal_conceptualising_2024`):
+  claim about the Digital Twin Consortium's definition, matched passage
+  is a paragraph about supply chains and COVID-19 shopping habits from
+  the same paper's introduction.
+- `survey.md#c06663bef58f` (score 0.028, citekey `bellavista_exploiting_2024`):
+  claim about commercial platforms vs. research treating twins as
+  orchestrated microservices, matched passage is the single word
+  "Outpost".
+- `book-chapter.md#c920f22c9b23` (score 0.103, citekey `gil_survey_2024`):
+  claim about comparing open-source frameworks, matched passage is a
+  bibliography entry (another paper's reference-list line).
+
+Where the matched passage genuinely was the right one, separation was
+clean: `survey.md#7074fe8f5cd9` (score 0.988, citekey
+`kulik_security_2024`) matches a claim about twin traffic and attack
+surface against a passage that says exactly that, almost verbatim.
+`book-chapter.md#61a033a68a98` (score 0.967, citekey
+`committee_on_foundational_research_gaps_and_future_directions_for_digital_twins_foundational_2024`)
+matches a claim about bidirectional physical/virtual interaction against
+a passage stating "the bidirectional interaction between the virtual and
+the physical is central to the digital twin." The risk is not absent at
+the high end either: the single highest-scored candidate
+(`survey.md#70430a377482`, 0.989, citekey `barbie_toward_2024`) matches
+a claim naming a specific CI-pipeline/smart-farming case study against a
+passage about RAMI 4.0's "Business" layer — the same paper, the wrong
+section, scored high on shared digital-twin vocabulary alone.
+
+### What this does not measure
+
+- **A precision or recall number for the scorer itself.** That needs a
+  structured `labels.json` pass this run did not do — see above.
+- **Whether the low-scored claims are actually supported somewhere else
+  in their cited source.** Checking that would mean reading the whole
+  paper for each of the 20, not just the matched passage; not done here.
+- **Passage-matching's own precision**, independent of entailment. This
+  section names the pattern from the 40 shortlisted candidates; it does
+  not count how often it happens across all 71.
+
+### Conclusion
+
+This is not evidence the entailment scorer fails to discriminate — every
+spot check where the matched passage was actually on-topic showed a
+clean, wide separation between genuine support and not. The weak link
+this run surfaces is upstream, in which passage gets handed to the
+scorer, which is exactly the risk
+[`docs/PLAGIARISM-DESIGN.md`](../docs/PLAGIARISM-DESIGN.md)'s tier 3
+argument already names for wording overlap and
+`chitragupta/review/_claim_support_render.py`'s own caveat paragraph
+already states for this aid ("retrieval already selected these passages
+by similarity"). The aid ships as designed — ranked, no verdict, no
+threshold — per that same argument; this result does not change what it
+should say, only confirms it with a real example. See
+[`docs/REVIEW.md`](../docs/REVIEW.md)'s "Three limits worth knowing" for
+the shipped wording.
