@@ -1,7 +1,7 @@
 """Ordering: class first (the item-class table's own fixed order), then
 #128's severity bucket within that class, then position in the draft.
 
-No shared severity vocabulary exists across the seven aids -- `provenance`'s
+No shared severity vocabulary exists across the eight aids -- `provenance`'s
 `band`, `verbatim`'s `severity` bucket and so on are unrelated scales
 (confirmed by grep across `chitragupta/review/`) -- so ranking within a
 class is one small per-class lookup each, not one shared enum.
@@ -19,19 +19,25 @@ _PROVENANCE_RANK = {"no support found": 0, "weak": 1}
 _UNCITED_CLAIM_RANK = {False: 0, True: 1}
 
 
-def severity_rank(item: Item) -> int:
+def severity_rank(item: Item) -> int | float:
     """Where `item` falls within its own class's severity ordering.
     Classes with no distinct severity notion (`missing-citekey`,
     `uncited-source`, `misquoted`, `candidate`) rank everything 0 --
     position (or, lacking one, citekey) is the only thing left to sort
     by. `prose` is also a single bucket, deliberately: neither Vale's own
     `severity` string nor `count` is a documented defect-urgency scale
-    worth reinterpreting here.
+    worth reinterpreting here. `claim-support` is the one class ranked on
+    a raw score rather than a bucket lookup -- unfiltered by design
+    (`_items_findings.claim_support_items`), so ordering worst-first is
+    the only surfacing this class gets, and a bucket would reintroduce
+    the threshold `support` itself refuses to draw.
     """
     if item.cls == "verbatim-run":
         return _VERBATIM_RANK.get(item.detail.get("severity"), 2)
     if item.cls == "unsupported-claim":
         return _PROVENANCE_RANK.get(item.detail.get("band"), 2)
+    if item.cls == "claim-support":
+        return item.detail.get("score", 1.0)
     if item.cls == "uncited-claim":
         return _UNCITED_CLAIM_RANK.get(item.detail.get("block_cites"), 1)
     return 0

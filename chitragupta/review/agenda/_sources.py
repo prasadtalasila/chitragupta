@@ -1,8 +1,8 @@
-"""Reads the nine inputs `agenda` merges, each degrading to "absent"
+"""Reads the ten inputs `agenda` merges, each degrading to "absent"
 rather than raising -- the same posture every review aid already keeps
 towards an optional input.
 
-Seven are on-disk artefacts: the other aids' own `<stem>.<aid>.json`,
+Eight are on-disk artefacts: the other aids' own `<stem>.<aid>.json`,
 written by an earlier `--json`/`--write` run and read here, never
 recomputed. Two have no on-disk artefact at all and are computed
 in-process instead: `style_check.check()` (the `prose` class; nothing
@@ -19,13 +19,14 @@ from chitragupta import dossier, review, style_check
 from chitragupta.dossier._drift import Drift
 
 # The review aids agenda reads, in `review.AIDS`'s own order -- not all
-# of `review.AIDS`: `agenda` excludes itself, and `support` is not here
-# either, since its findings carry no `band` and `unsupported_claim_items`
-# (`_items_findings.py`) decides membership by one; wiring it in would
-# mean thresholding a continuous score, which this aid's own design
-# forbids (docs/CODE-STANDARDS.md R3). Read for completeness -- `synthesis`
-# and `figure` carry no item class (see `_items.py`) but are still named
-# in the header as read, not silently dropped.
+# of `review.AIDS`: only `agenda` itself is excluded. `support`'s
+# findings carry no `band`, so `unsupported_claim_items`
+# (`_items_findings.py`) cannot treat it as a second source for
+# `unsupported-claim` -- but `claim_support_items` reads it as its own
+# `claim-support` class instead, ranked rather than thresholded, so R3
+# (docs/CODE-STANDARDS.md) is not in tension with reading it here.
+# `synthesis` and `figure` carry no item class (see `_items.py`) but are
+# still named in the header as read, not silently dropped.
 AID_NAMES = (
     "provenance",
     "verbatim",
@@ -34,6 +35,7 @@ AID_NAMES = (
     "figure",
     "uncited",
     "quotation",
+    "support",
 )
 
 

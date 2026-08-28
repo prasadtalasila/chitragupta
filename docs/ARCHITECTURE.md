@@ -353,7 +353,7 @@ outside the gate. It is the sharpest test this section has, so it is
 worked through rather than excepted, immediately below.
 
 **`agenda` is the eighth, and it asks no question of its own.** It
-merges what the other seven already found into one ranked list, so each
+merges what the other eight already found into one ranked list, so each
 item it surfaces carries whichever answer -- judgement or binary --
 produced it, unchanged. Merging does not turn a judgement into a fact:
 an `agenda` item inherited from `provenance` is still something to read

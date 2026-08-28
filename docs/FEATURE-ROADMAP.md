@@ -1,7 +1,7 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
 Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-24.
-**Eleven of the original twenty-one items have shipped and have been removed
+**Twelve of the original twenty-one items have shipped and have been removed
 from this document** rather than marked as done -- so everything below is still
 outstanding, which is what makes the list usable.
 
@@ -500,51 +500,6 @@ Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 Detection, after Theme A and B have reduced what there is to detect.
 All three are review-layer aids: advisory, exit 0, never gates.
 
-### 🔍 C2: claim-support checking
-
-Does the cited source actually support the sentence citing it? Closes
-[REQUIREMENTS.md](REQUIREMENTS.md) §1.2, which is on record as unbuilt.
-
-**Do not plan this as a port.** OpenScholar's posthoc citation
-attribution looks like the thing to copy and is not: it is a **pure LLM
-prompt** -- no entailment model, no embeddings, not even string overlap
--- that asks a model to insert citation numbers, and whose live prompt
-variant pressures it toward citing with *"but do your best to insert
-citation"*. It also silently returns the original text when its output
-markers are missing, so its failure mode is invisible. It can only cite
-passages already in the generation window, making it a repair pass
-rather than a verification.
-
-A real support check therefore has to be **built**, against an
-entailment model, not ported. That is why this is an L and why it is
-late: it is the most expensive item here and the one whose value is
-least certain in a corpus where retrieval already selected passages by
-similarity -- the same weak-discriminator problem
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) records for tier 3.
-
-**Surfaced permanently, and the reason is a mechanism rather than a
-policy.** [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md)
-already settles this axis, and its argument is stronger than SOUL.md's:
-a paraphrase that subtly misstates a paper *"passes the gate, because
-the citekey is still real; passes the verbatim scan, because the wording
-now differs -- which is precisely what 'fixing' an overlap means; and
-passes provenance, if the source remains topically related."* So
-
-> Every check the loop owns returns clean on its worst output.
-
-That is why this can never become an unattended repair, however good the
-model gets: *"The exclusion is therefore a property of the mechanism,
-not a policy that could be relaxed by a more permissive rule."* What
-*is* allowed unattended on this axis is ordering and surfacing -- which
-sections are least supported, which citations rest on the thinnest
-passage -- never the fix.
-
-Feeds the agenda's `unsupported-claim` class. **Continuous** (an
-entailment score), so it is read by a human and consumed by nothing.
-Behind the `enrich` extra, and carrying R2 and R10 like any aid.
-
-Size: L. Depends on: C1 for the sentence-splitting it shares.
-
 ### 📖 C3: quotation and page integrity
 
 Given A2's `quote:` and A4's appendix, verify each quoted span appears
@@ -788,7 +743,7 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Eleven items have shipped and have
+**Only unbuilt work appears here.** Twelve items have shipped and have
 been removed from this document rather than marked -- what they became is
 described in [FEATURES.md](FEATURES.md), and how each was built is in the
 PR that closed it and in `plans/`. A roadmap that accumulates its own
@@ -803,8 +758,7 @@ is for.
 | 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
 | 5 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 (shipped, #381) |
 | 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 7 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
-| 8 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 7 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).

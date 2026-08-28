@@ -80,8 +80,8 @@ conscience:
   skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
 - **The review layer** is nine advisory aids for a finished draft:
   provenance, verbatim, coverage, synthesis, figure layout, uncited
-  prose, quotation integrity, agenda -- one ranked, deduplicated
-  worklist merged across the other seven -- and claim support. None of
+  prose, quotation integrity, claim support, and agenda -- one ranked,
+  deduplicated worklist merged across the other eight. None of
   them is a gate -- not even `quotation`, whose answer is binary --
   which is not the same as borrowed wording being fine to leave once
   you have found it

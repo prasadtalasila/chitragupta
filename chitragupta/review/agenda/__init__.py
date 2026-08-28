@@ -1,4 +1,4 @@
-"""One ranked, deduplicated worklist merged across the other seven review
+"""One ranked, deduplicated worklist merged across the other eight review
 aids, `style_check.py`'s prose findings, and the dossier's drift report.
 
     python -m chitragupta.review agenda <draft>
@@ -12,7 +12,7 @@ Deterministic, stdlib-only, no LLM, takes no lock, exits 0 whatever it
 finds, exactly like the other eight.
 
 **Reads, never invokes -- in the bare mode, which is the one every
-caller but `--baseline` uses.** The seven review aids' `.json` files
+caller but `--baseline` uses.** The eight review aids' `.json` files
 (`_sources.py`), each optional and read from wherever an earlier
 `--json`/`--write` run left them -- `review agenda <draft>` never runs an
 aid live, and stays the free, read-only command docs/CLI.md and
@@ -25,7 +25,7 @@ uses, not a refusal.
 
 **`--baseline` is the one exception, and it is scoped to that flag.**
 `review agenda <draft> --baseline <a previous agenda .json>` re-runs the
-seven aids at `--formats md` first, then rebuilds and reports
+eight aids at `--formats md` first, then rebuilds and reports
 `resolved`/`persisting`/`new` against the baseline -- `_recheck.py`, and
 Decision 6 of `plans/f3-agenda-reviser.md` for why the R4 cycle became
 one deterministic command rather than prose in seven skills. Refreshing
@@ -122,7 +122,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--baseline",
-        help="Re-run the seven aids and compare the result against a "
+        help="Re-run the eight aids and compare the result against a "
         "previously written agenda .json, reporting resolved/persisting/"
         "new items and the objective count before and after. This is the "
         "only mode that runs another aid -- the bare command never does "

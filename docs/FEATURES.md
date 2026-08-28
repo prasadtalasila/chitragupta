@@ -298,7 +298,7 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review figure` | what a TikZ figure's own geometry says -- overlapping nodes, protrusion, overlong labels |
 | `review uncited` | which sentences carry no citation at all. The one aid that reads no corpus |
 | `review quotation` | is each quoted span in the dossier really in the source it is attributed to? The one aid whose answer is binary |
-| `review agenda` | merges the other seven aids' reports into one ranked, deduplicated worklist |
+| `review agenda` | merges the other eight aids' reports into one ranked, deduplicated worklist |
 | `review support` | does the cited source actually entail this claim, scored by a real NLI entailment model |
 
 **Why they are not gates, stated once because it is the design and not an

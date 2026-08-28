@@ -304,7 +304,7 @@ chitragupta review synthesis content/drafts/<slug>.md            # how many sour
 chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
 chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
-chitragupta review agenda content/drafts/<slug>.md               # merges the other seven into one ranked worklist
+chitragupta review agenda content/drafts/<slug>.md               # merges the other eight into one ranked worklist
 chitragupta review support content/drafts/<slug>.md              # does the cited source actually entail this claim?
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
@@ -889,7 +889,7 @@ error.
 
 ### 🗺 `chitragupta review agenda`
 
-One ranked, deduplicated worklist merged across the other seven aids'
+One ranked, deduplicated worklist merged across the other eight aids'
 `.json`, `chitragupta.draft style --json`'s prose findings, and the
 dossier's drift report. Layer 4, the review layer: advisory, not a gate,
 and in its bare form it **reads, never runs, an aid** -- an aid's `.json`
@@ -904,8 +904,8 @@ Every item carries a `class` from the item-class table
 applies, and whether it is `unattended` -- safe for a future automated
 pass to act on without asking first (`missing-citekey`, the short runs a
 verbatim scan finds, and `prose`) -- or merely surfaced for a person to
-decide (`unsupported-claim`, `uncited-source`, `uncited-claim`,
-`misquoted` and `candidate`).
+decide (`unsupported-claim`, `claim-support`, `uncited-source`,
+`uncited-claim`, `misquoted` and `candidate`).
 
 `prose` moved to the unattended side in issue 421, and this sentence
 carried the damage that issue was filed for: it called the mechanically
@@ -919,7 +919,7 @@ Both are corrected above.
 | `<draft>` | required | The Markdown draft to check |
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report; `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 | `--json` | off | Print the worklist as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
-| `--baseline PATH` | unset | Re-run the seven aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** -- the bare command above never does -- so it costs seconds rather than milliseconds |
+| `--baseline PATH` | unset | Re-run the eight aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** -- the bare command above never does -- so it costs seconds rather than milliseconds |
 
 ```bash
 chitragupta review agenda content/drafts/survey.md

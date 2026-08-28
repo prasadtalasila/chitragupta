@@ -255,10 +255,11 @@ other skill may start it (R11). Each half of that has its own reason.
 **Why the aid is unrestricted.** It is free, deterministic, read-only and
 exits 0. There is no occasion on which running it is a mistake, so there
 is nothing to restrict. That is the bare command; its `--baseline` mode
-re-runs the seven aids before comparing (~21 s, and the other seven
-aids' `.tex`/`.pdf` go stale against their `.md` until a full-format run
-follows), so for that mode occasion does matter, and R11's restriction
-to a person asking is what covers it.
+re-runs the eight aids before comparing (~21 s, plus `support`'s own
+~21--60 s model-load floor since #427, [REVIEW.md](REVIEW.md) -- and the
+other eight aids' `.tex`/`.pdf` go stale against their `.md` until a
+full-format run follows), so for that mode occasion does matter, and
+R11's restriction to a person asking is what covers it.
 
 **Why not a PostToolUse hook.** One already exists, running the gate on
 every write under `content/drafts/`. The objection is not cost -- the

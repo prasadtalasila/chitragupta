@@ -138,6 +138,45 @@ def unsupported_claim_items(source: AidSource, sections: list[Section]) -> list[
     return items
 
 
+def claim_support_items(source: AidSource, sections: list[Section]) -> list[Item]:
+    """One item per finding the entailer actually scored -- `note` set
+    means no quotable passage (`claim_support.build_report`), so there
+    is no score to rank or act on, and those are excluded. Every scored
+    finding becomes an item regardless of score: unfiltered by design,
+    the reason `claim_support.py` ranks rather than bands -- a cutoff
+    would claim a precision this corpus does not support.
+    `_order.severity_rank` ranks worst-score-first within the class
+    instead of a threshold deciding membership here. The summary states
+    plainly that the score is not a verdict, the caveat
+    `_claim_support_render.py`'s own `_HOW_TO_READ` carries for the
+    standalone report -- an agenda item is read without it."""
+    if not source.available:
+        return []
+    items = []
+    for finding in source.data.get("findings", []):
+        if finding.get("note") is not None:
+            continue
+        line = finding.get("line")
+        section = section_anchor(sections, line)
+        claim = finding.get("claim", "")
+        citekey = finding.get("citekey")
+        score = finding.get("score")
+        items.append(
+            Item(
+                id=item_id("support", "claim-support", section, citekey, claim),
+                cls="claim-support",
+                section=section,
+                citekey=citekey,
+                line=line,
+                unattended=False,
+                summary=f"`[@{citekey}]` entailment score {score:.0%} "
+                f"(not a verdict): {claim[:80]}",
+                detail={"score": score, "claim": claim, "support_id": finding.get("id")},
+            )
+        )
+    return items
+
+
 def uncited_source_items(source: AidSource) -> list[Item]:
     """Only `status == \"uncited_candidates\"`. `\"cited_outside_candidates\"`
     is explicitly not a problem per `citation_coverage.py`'s own

@@ -15,6 +15,7 @@ _SOURCE_LABELS = {
     "figure": "TikZ layout check",
     "uncited": "Uncited prose",
     "quotation": "Quotation integrity",
+    "support": "Claim support",
 }
 
 # Read for header completeness, but neither carries an item class --

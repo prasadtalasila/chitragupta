@@ -6,11 +6,14 @@ another.
 Refreshing first is the whole point, and what a skill re-deriving this
 loop in prose gets wrong **silently**: a naive re-run of `agenda` alone
 reads the aids' pre-edit `.json` and reports a finding resolved that is
-not. So this module re-runs the seven, then compares --
+not. So this module re-runs the eight, then compares --
 `resolved`/`persisting`/`new` matched by each item's stable `id`, plus an
 objective count before and after, so "is this item gone?" and "did the
 total rise?" are field lookups rather than a model reading two JSON
-documents side by side.
+documents side by side. `support` is one of the eight for the same
+reason as the other seven -- skipping it would leave `claim-support`
+stale, the exact bug this module exists to prevent -- at the cost of
+its own ~21--60 s model-load floor (docs/REVIEW.md) every call.
 
 Mirrors `chitragupta/review/verbatim_check/_recheck.py`'s payload shape
 key for key, because the skill reading this one already reads that one.
@@ -18,18 +21,18 @@ What differs is what an item *is*: agenda's are `_render._item_dict`
 dicts, not raw scan findings, and "objective" here is `unattended`
 (`Agenda.objective_class_count`), not verbatim's "severity is not quoted".
 
-**Why the seven aid modules are imported directly here.**
+**Why the eight aid modules are imported directly here.**
 `chitragupta/review/__main__.py` already owns a name->module mapping, and
 reusing it is impossible: it imports `chitragupta.review.agenda`, which
 imports this module, so reaching back into either is a cycle. The mapping
-is restated below instead, keyed by `_sources.AID_NAMES`' own seven
+is restated below instead, keyed by `_sources.AID_NAMES`' own eight
 strings and checked against them in the tests -- a small, deliberate
 duplication in exchange for an import graph that stays a tree. Nothing
 here imports from `chitragupta.review.agenda` either -- `run()` hands its
 own `build_agenda()` result to `compare` as plain data.
 
 Module scope rather than inside `refresh_aids`: measured here, importing
-all seven beside `chitragupta.review.agenda` costs 13 ms against a bare
+all eight beside `chitragupta.review.agenda` costs 13 ms against a bare
 `review agenda <draft>` run of ~500 ms -- too little to buy indirection.
 """
 
@@ -44,6 +47,7 @@ from chitragupta.dossier._retrieval import recorded_queries
 from chitragupta.review import (
     citation_coverage,
     citation_provenance,
+    claim_support,
     figure_layout,
     quotation,
     synthesis,
@@ -60,6 +64,7 @@ _AID_MODULES = {
     "figure": figure_layout,
     "uncited": uncited_prose,
     "quotation": quotation,
+    "support": claim_support,
 }
 
 
@@ -89,13 +94,13 @@ def _coverage_queries(draft: Path) -> list[str]:
 def _aid_argv(aid: str, draft: Path, queries: list[str]) -> list[str] | None:
     """One aid's refresh argv, or `None` for one that must be skipped.
 
-    Everything runs at `--formats md`: only three of the seven render
+    Everything runs at `--formats md`: only three of the eight render
     beside the Markdown at all, and dropping those saves ~2.5 s a cycle
     (Decision 6 of `plans/f3-agenda-reviser.md`, measured). Each aid's
     `.tex`/`.pdf` therefore goes stale against its `.md` during a pass --
     acceptable only because reports are regenerable and untimestamped.
 
-    Three of the seven depart from the common shape, and each is an
+    Three of the eight depart from the common shape, and each is an
     argparse `SystemExit(2)` rather than quiet misbehaviour if got wrong:
     `provenance` has **no `--write` flag** (it files unconditionally, the
     convention `agenda` itself follows); `verbatim` takes a subcommand,
@@ -117,17 +122,17 @@ def _aid_argv(aid: str, draft: Path, queries: list[str]) -> list[str] | None:
 
 
 def refresh_aids(draft: Path) -> None:
-    """Re-run the seven aids over `draft`, so the rebuild that follows
+    """Re-run the eight aids over `draft`, so the rebuild that follows
     reads this edit's findings and not the last one's.
 
-    No return value: the side effect is the seven `.json`/`.md` landing
+    No return value: the side effect is the eight `.json`/`.md` landing
     on disk, which the caller's own `build_agenda()` then reads. Exit
     codes are deliberately ignored -- every aid here exits 0 whatever it
     finds, and one that could not read an input degrades to "absent",
     which the agenda names in its header rather than refuses on.
 
     **Each `main()` runs with stdout redirected into a throwaway buffer.**
-    All seven print a written-files summary of their own, which under
+    All eight print a written-files summary of their own, which under
     `agenda --baseline ... --json` would land on stdout ahead of the
     payload and corrupt a caller piping it through `json.loads`.
     Discarding it is right rather than convenient: it reports files this

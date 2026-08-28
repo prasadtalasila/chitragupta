@@ -1,5 +1,5 @@
-"""chitragupta/review/agenda/: the seventh review aid, merging the other
-six aids' `.json`, `style_check`'s prose findings, and the dossier's
+"""chitragupta/review/agenda/: the eighth review aid, merging the other
+eight aids' `.json`, `style_check`'s prose findings, and the dossier's
 drift report into one ranked, deduplicated worklist. Issue #381.
 """
 
@@ -73,6 +73,14 @@ class TestSectionAnchor:
 # --------------------------------------------------------------------------
 # _sources.py
 # --------------------------------------------------------------------------
+
+
+class TestAidNames:
+    def test_support_is_read(self):
+        """#427: `support`'s findings carry no `band`, but that only ever
+        ruled out `unsupported_claim_items` re-using it as a second
+        source -- not `agenda` reading its `.json` at all."""
+        assert "support" in _sources.AID_NAMES
 
 
 class TestReadAidJson:
@@ -376,6 +384,50 @@ class TestUnsupportedClaimItems:
         assert items[0].detail["claim"] == "a claim"
 
 
+class TestClaimSupportItems:
+    def _finding(self, **overrides):
+        base = {
+            "id": "x",
+            "citekey": "a2024",
+            "claim": "a claim",
+            "score": 0.12,
+            "line": 3,
+            "note": None,
+        }
+        base.update(overrides)
+        return base
+
+    def test_unavailable_source_gives_no_items(self):
+        assert _items_findings.claim_support_items(_sources.AidSource(), []) == []
+
+    def test_scored_finding_becomes_an_item(self):
+        source = _sources.AidSource(available=True, data={"findings": [self._finding()]})
+        items = _items_findings.claim_support_items(source, [])
+        assert len(items) == 1
+        item = items[0]
+        assert item.cls == "claim-support"
+        assert item.citekey == "a2024"
+        assert item.line == 3
+        assert item.unattended is False
+        assert item.detail["score"] == 0.12
+        assert "not a verdict" in item.summary
+
+    def test_unscoreable_finding_is_excluded(self):
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(note="no quotable passage", score=0.0)]},
+        )
+        assert _items_findings.claim_support_items(source, []) == []
+
+    def test_well_supported_finding_is_still_included(self):
+        """Unfiltered by design: a high score is not excluded, since a
+        cutoff would claim a precision this corpus does not support --
+        the same argument that keeps this aid ranked, never banded."""
+        source = _sources.AidSource(available=True, data={"findings": [self._finding(score=0.97)]})
+        items = _items_findings.claim_support_items(source, [])
+        assert len(items) == 1
+
+
 class TestUncitedSourceItems:
     def test_unavailable_source_gives_no_items(self):
         assert _items_findings.uncited_source_items(_sources.AidSource()) == []
@@ -452,6 +504,29 @@ class TestMisquotedItems:
 
 
 class TestAllItems:
+    def test_claim_support_items_are_included(self):
+        sources = _sources_stub(
+            aids={
+                "support": _sources.AidSource(
+                    available=True,
+                    data={
+                        "findings": [
+                            {
+                                "id": "1",
+                                "citekey": "a2024",
+                                "claim": "a claim",
+                                "score": 0.2,
+                                "line": 1,
+                                "note": None,
+                            }
+                        ]
+                    },
+                )
+            }
+        )
+        items = _items.all_items(sources, [])
+        assert [item.cls for item in items] == ["claim-support"]
+
     def test_synthesis_and_figure_produce_no_items(self):
         sources = _sources_stub(
             aids={
@@ -536,6 +611,39 @@ class TestDedup:
         assert by_id["v1"].detail["also_flagged"] == [{"id": "u1", "class": "unsupported-claim"}]
         assert by_id["u1"].detail["also_flagged"] == [{"id": "v1", "class": "verbatim-run"}]
 
+    def test_unsupported_claim_and_claim_support_cross_link_not_collapse(self):
+        """#427: `support` asks the same underlying question as
+        `provenance` but is deliberately not a second source for
+        `unsupported-claim` -- two scorers on the same claim are two
+        distinct findings, cross-linked by the same generic same-line
+        mechanism every other class pair already uses, never collapsed
+        into one item."""
+        unsupported = _items.Item(
+            id="u1",
+            cls="unsupported-claim",
+            section=None,
+            citekey="a2024",
+            line=5,
+            unattended=False,
+            summary="claim",
+            detail={"claim": "x", "band": "weak"},
+        )
+        support = _items.Item(
+            id="s1",
+            cls="claim-support",
+            section=None,
+            citekey="a2024",
+            line=5,
+            unattended=False,
+            summary="claim",
+            detail={"claim": "x", "score": 0.12},
+        )
+        merged = _dedup.merge([unsupported, support])
+        assert {item.id for item in merged} == {"u1", "s1"}
+        by_id = {item.id: item for item in merged}
+        assert by_id["u1"].detail["also_flagged"] == [{"id": "s1", "class": "claim-support"}]
+        assert by_id["s1"].detail["also_flagged"] == [{"id": "u1", "class": "unsupported-claim"}]
+
     def test_no_line_means_no_cross_link(self):
         candidate = _items.Item(
             id="c1",
@@ -600,6 +708,11 @@ class TestSeverityRank:
         weak = _items.Item("2", "unsupported-claim", None, None, 1, False, "s", {"band": "weak"})
         assert _order.severity_rank(no_support) < _order.severity_rank(weak)
 
+    def test_claim_support_lower_score_ranks_first(self):
+        low = _items.Item("1", "claim-support", None, None, 1, False, "s", {"score": 0.1})
+        high = _items.Item("2", "claim-support", None, None, 1, False, "s", {"score": 0.9})
+        assert _order.severity_rank(low) < _order.severity_rank(high)
+
     def test_uncited_claim_bare_ranks_before_block_cites(self):
         bare = _items.Item("1", "uncited-claim", None, None, 1, False, "s", {"block_cites": False})
         cited = _items.Item("2", "uncited-claim", None, None, 1, False, "s", {"block_cites": True})
@@ -637,6 +750,15 @@ class TestSort:
         ordered = [i.cls for i in _order.sort([candidate, misquoted, uncited_claim])]
         assert ordered == ["uncited-claim", "misquoted", "candidate"]
 
+    def test_claim_support_sits_between_unsupported_claim_and_uncited_source(self):
+        uncited_source = _items.Item("s", "uncited-source", None, "z", None, False, "s", {})
+        claim_support = _items.Item("cs", "claim-support", None, "a", 1, False, "s", {"score": 0.2})
+        unsupported_claim = _items.Item(
+            "uc", "unsupported-claim", None, None, 1, False, "s", {"band": "weak"}
+        )
+        ordered = [i.cls for i in _order.sort([uncited_source, claim_support, unsupported_claim])]
+        assert ordered == ["unsupported-claim", "claim-support", "uncited-source"]
+
     def test_candidates_order_by_citekey(self):
         z = _items.Item("z-id", "candidate", None, "z2024", None, False, "s", {})
         a = _items.Item("a-id", "candidate", None, "a2024", None, False, "s", {})
@@ -657,6 +779,20 @@ class TestRenderMarkdown:
             "python -m chitragupta.review agenda content/drafts/t/survey.md",
         )
         assert "No items" in rendered
+
+    def test_support_is_named_in_the_sources_header(self):
+        """#427: `support` is one of the aids `agenda` reads
+        (`_sources.AID_NAMES`), and every aid it reads gets its own
+        Sources line -- `_render._SOURCE_LABELS` has to name it too, or
+        the header silently drops the one aid `--baseline` pays the most
+        to refresh."""
+        rendered = _render.render_markdown(
+            agenda.Agenda(
+                draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=[]
+            ),
+            "cmd",
+        )
+        assert "Claim support" in rendered
 
     def test_absent_stale_and_partial_sources_are_all_named(self):
         sources = _sources_stub(
@@ -854,6 +990,43 @@ class TestBuildAgendaAndCli:
         assert payload["aid"] == "agenda"
         assert payload["items"] == []
 
+    def test_a_real_support_json_produces_a_claim_support_item_end_to_end(
+        self, isolated_config, monkeypatch
+    ):
+        """#427, exercised through the real pipeline rather than a stubbed
+        `AidSource`: a `.support.json` an earlier `review support --write`
+        run left on disk should surface as a `claim-support` item in both
+        the rendered Markdown and the JSON payload, unfiltered and
+        carrying the not-a-verdict caveat."""
+        draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
+        review.write_json(
+            draft,
+            "support",
+            {
+                "findings": [
+                    {
+                        "id": "f1",
+                        "line": 1,
+                        "citekey": "a2024",
+                        "claim": "a claim",
+                        "score": 0.12,
+                        "note": None,
+                    }
+                ]
+            },
+        )
+
+        built = agenda.build_agenda(draft)
+        assert [item.cls for item in built.items] == ["claim-support"]
+        assert "not a verdict" in built.items[0].summary
+
+        rendered = _render.render_markdown(built, "cmd")
+        assert "### claim-support" in rendered
+        assert "not a verdict" in rendered
+
+        payload = _render.agenda_payload(built, "cmd")
+        assert payload["items"][0]["class"] == "claim-support"
+
     def test_no_write_flag_exists(self):
         parser = agenda.build_parser()
         with pytest.raises(SystemExit):
@@ -942,10 +1115,10 @@ class _AidStub:
 
 @pytest.fixture
 def aid_stubs(monkeypatch):
-    """Every one of the seven aids' `main` replaced by a recorder.
+    """Every one of the eight aids' `main` replaced by a recorder.
 
     `refresh_aids` is tested against *what it calls*, never against real
-    aid behaviour: the real seven need the enrich stack, a real corpus
+    aid behaviour: the real eight need the enrich stack, a real corpus
     and real dossiers, none of which a unit test should depend on.
     """
     stubs = {}
@@ -957,7 +1130,7 @@ def aid_stubs(monkeypatch):
 
 
 class TestAidModules:
-    def test_keys_are_exactly_the_seven_aid_names(self):
+    def test_keys_are_exactly_the_eight_aid_names(self):
         assert tuple(_recheck._AID_MODULES) == _sources.AID_NAMES
 
 
@@ -1037,10 +1210,10 @@ class TestRefreshAids:
             "md",
         ]
 
-    def test_the_plain_four_are_called_with_write_and_formats_md(self, isolated_config, aid_stubs):
+    def test_the_plain_five_are_called_with_write_and_formats_md(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         _recheck.refresh_aids(draft)
-        for name in ("synthesis", "figure", "uncited", "quotation"):
+        for name in ("synthesis", "figure", "uncited", "quotation", "support"):
             assert aid_stubs[name].calls[0] == [str(draft), "--write", "--formats", "md"]
 
     def test_coverage_gets_one_query_flag_per_recorded_query(self, isolated_config, aid_stubs):
@@ -1063,7 +1236,7 @@ class TestRefreshAids:
         draft = self._draft(isolated_config)
         _recheck.refresh_aids(draft)
         assert aid_stubs["coverage"].calls == []
-        assert aid_stubs["uncited"].calls  # the other six still ran
+        assert aid_stubs["uncited"].calls  # the other seven still ran
 
     def test_coverage_is_skipped_with_a_dossier_but_no_rows(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
