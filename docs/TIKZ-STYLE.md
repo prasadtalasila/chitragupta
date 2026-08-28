@@ -275,6 +275,21 @@ Concrete defects, not taste:
 - **Conciseness** -- a node whose text runs past 15 words is too long
   for a box; cut it or split the node. Shrinking the font to fit more
   words in is not a fix -- see "Type and line weight" below.
+- **A distinction carried by colour alone** -- if the only thing
+  separating two node classes, two arrow kinds or two zones is their
+  colour, the distinction **does not exist for most of your readers**.
+  Not principally for the usual accessibility reason, though that holds
+  too: in this pipeline the figure has an
+  [ASCII twin](WRITING-STANDARDS.md#-every-figure-has-two-forms) in a
+  7-bit alphabet, and `md`, `docx` and `html` render *only that form*.
+  So colour-only meaning is information the Markdown reader is
+  structurally incapable of receiving, and nothing warns you -- both
+  files exist, both render, and the two quietly say different things.
+  **Carry every distinction redundantly**: shape, line style (solid
+  against dashed), border weight, or an explicit label. Then colour is
+  what it should be, an accent on a distinction already legible without
+  it. The test is quick -- read the `.txt` twin and ask whether the
+  point still arrives.
 - **Literal copying** -- a box-ified copy-paste of prose, with no
   visual abstraction, is not a figure. This is
   [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's originality rule
@@ -315,6 +330,21 @@ Style keys unavailable to a raster path, worth using once the layout
 and type are settled: zone fills at 10-15% opacity via the
 `backgrounds` layer, dashed lines for auxiliary flow against solid for
 forward flow, sans-serif labels against serif-italic maths.
+
+**Two of those three are colour-free, and that is why they are the ones
+to reach for.** Dashed-against-solid and a font-family change both
+survive into the ASCII twin's alphabet, or can be annotated there;
+a fill opacity cannot. The checklist above states the rule -- no
+distinction carried by colour alone -- and this is the practical
+consequence: **prefer the encodings that survive the round trip**, and
+treat a zone fill as an accent on grouping the layout already makes
+obvious, never as the thing that establishes it.
+
+There is no house palette here, deliberately. A figure sets in the
+consuming document's own colours as often as not, and a palette this
+project could not enforce across a thesis it never sees would be advice
+pretending to be a standard. What *is* stated is the constraint that
+survives every venue: the figure has to work in one colour.
 
 ## 🚫 Nothing here is a gate
 
