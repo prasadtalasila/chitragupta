@@ -325,6 +325,10 @@ revision path exists to use. The state a revision feature would need
 largely already exists on disk in three of the four; what is missing is
 any entry point that reads it.
 
+**[RAG.md](RAG.md) is the stage-by-stage version of everything below**
+-- the eleven stages of a RAG pipeline, the algorithm each of these
+systems uses at each, and the trade-off it buys.
+
 ### 🧪 Two more, read for retrieval and evaluation
 
 A follow-up read of **AutoRAG** and **MiniRAG** (2026-08-28) added two

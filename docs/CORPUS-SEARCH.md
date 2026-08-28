@@ -11,6 +11,8 @@ you can change from `config.toml`.
 Read this if you are turning `[enrich].rerank` on, choosing a
 `rerank_model`, or wondering why a paper you know is in the corpus did
 not come back.
+[RAG.md](RAG.md) is the level above: the same stages across six other
+RAG systems, with the trade-off each choice buys.
 
 ## 🧭 Table of contents
 
