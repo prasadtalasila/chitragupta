@@ -113,6 +113,45 @@ def _bullets_in(text: str) -> list[str]:
     return bullets
 
 
+# GitHub's own closing-keyword vocabulary, in every form it accepts, and
+# an issue reference after it. Deliberately not `\b#\d+` on its own: a
+# bare "#421" inside a code span is an ordinary cross-reference, not a
+# disabled instruction, and reporting one would train the reader to skip
+# the warning.
+_CLOSING_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+", re.IGNORECASE)
+
+# The two spans GitHub does not parse a keyword inside: an inline code
+# span and a fenced block. Both matter here for the same reason -- the
+# mistake propagates by *quoting* a template or a plan, and a plan
+# quoting the line a PR should carry is exactly where #430's came from.
+_CODE_SPAN_RE = re.compile(r"```.*?```|`[^`]*`", re.DOTALL)
+
+
+def inert_closing_keywords(pr_body: str) -> list[str]:
+    """Closing keywords sitting inside a code span, which do nothing.
+
+    GitHub links and closes an issue from `Closes #N` in a PR body, and
+    silently does not when the same text is inside backticks or a fence.
+    The failure has no symptom at merge time: the PR merges, the issue
+    stays open, and the next person reads a closed PR beside an open
+    issue and cannot tell whether that was deliberate.
+
+    Seen on #430, which carried ``Closes #421.`` in backticks -- copied
+    from `plans/f3-agenda-reviser.md`, which quotes that line as what PR
+    1 should say. The issue had to be closed by hand afterwards.
+
+    Reported rather than corrected, and never blocking: a PR
+    legitimately quoting a keyword (this repository's own plans do) must
+    still be mergeable. `--dry-run` is where a person sees this, which is
+    the point at which it is still cheap to fix.
+    """
+    return [
+        match.group(0)
+        for span in _CODE_SPAN_RE.finditer(pr_body)
+        for match in _CLOSING_RE.finditer(span.group(0))
+    ]
+
+
 def bullets_from_commits(subjects: list[str]) -> list[str]:
     """The fallback source: one bullet per distinct, non-blank commit
     subject, order preserved. Used only when the PR's Description carries
@@ -210,9 +249,16 @@ def main(argv: "list[str] | None" = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    text, source = compose_body(_pr_body(args.pr_number), _pr_commit_subjects(args.pr_number))
+    body = _pr_body(args.pr_number)
+    text, source = compose_body(body, _pr_commit_subjects(args.pr_number))
     print(text)
     print(f"(composed from the PR's {source})")
+    for dead in inert_closing_keywords(body):
+        print(
+            f"warning: `{dead}` is inside a code span, so GitHub will not "
+            "close that issue on merge. Remove the backticks, or close it "
+            "by hand afterwards."
+        )
     if args.dry_run:
         return 0
     _merge(args.pr_number, text)

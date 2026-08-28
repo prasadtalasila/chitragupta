@@ -267,6 +267,43 @@ class TestMerge:
             merge_pr._merge(42, "- a change")
 
 
+class TestInertClosingKeywords:
+    """GitHub does not parse a closing keyword inside a code span, and the
+    failure is silent: the PR merges, the issue stays open, and nothing
+    says so. Seen on #430, whose body carried `Closes #421.` in backticks
+    -- copied from `plans/f3-agenda-reviser.md`, which *quotes* the line
+    PR 1 should carry. Reported at `--dry-run`, which is when it can
+    still be fixed."""
+
+    def test_a_backticked_keyword_is_reported(self, merge_pr):
+        assert merge_pr.inert_closing_keywords("`Closes #421.`") == ["Closes #421"]
+
+    def test_a_bare_keyword_is_not_reported(self, merge_pr):
+        assert merge_pr.inert_closing_keywords("Closes #421.") == []
+
+    def test_every_keyword_github_accepts_is_recognised(self, merge_pr):
+        for word in ("Closes", "Fixes", "Resolves", "close", "fixed", "resolved"):
+            assert merge_pr.inert_closing_keywords(f"`{word} #7`") == [f"{word} #7"]
+
+    def test_a_keyword_in_a_fenced_block_is_reported_too(self, merge_pr):
+        """A fence is the other span GitHub does not parse, and quoting a
+        PR template in one is exactly how the mistake propagates."""
+        body = "Example:\n\n```text\nCloses #9\n```\n"
+        assert merge_pr.inert_closing_keywords(body) == ["Closes #9"]
+
+    def test_a_bare_keyword_beside_a_backticked_one_still_reports_only_the_dead_one(self, merge_pr):
+        assert merge_pr.inert_closing_keywords("Closes #1. See `Fixes #2`.") == ["Fixes #2"]
+
+    def test_prose_mentioning_an_issue_is_not_a_keyword(self, merge_pr):
+        assert merge_pr.inert_closing_keywords("`See #421 for the argument.`") == []
+
+    def test_several_are_all_reported(self, merge_pr):
+        assert merge_pr.inert_closing_keywords("`Closes #1` and `Fixes #2`") == [
+            "Closes #1",
+            "Fixes #2",
+        ]
+
+
 class TestMain:
     def _stub(self, merge_pr, monkeypatch, body, subjects, merged=None):
         monkeypatch.setattr(merge_pr, "_pr_body", lambda n: body)
@@ -300,3 +337,38 @@ class TestMain:
         self._stub(merge_pr, monkeypatch, "## Description\n\nJust prose.\n", ["Fix it"])
         merge_pr.main(["42", "--dry-run"])
         assert "commits" in capsys.readouterr().out.lower()
+
+    def test_an_inert_closing_keyword_is_warned_about(self, merge_pr, monkeypatch, capsys):
+        self._stub(
+            merge_pr,
+            monkeypatch,
+            "`Closes #421.`\n\n## Description\n\n- Fix it.\n",
+            ["Fix it"],
+        )
+        merge_pr.main(["42", "--dry-run"])
+        out = capsys.readouterr().out
+        assert "Closes #421" in out
+        assert "backtick" in out.lower() or "code span" in out.lower()
+
+    def test_a_working_keyword_produces_no_warning(self, merge_pr, monkeypatch, capsys):
+        self._stub(
+            merge_pr,
+            monkeypatch,
+            "Closes #421.\n\n## Description\n\n- Fix it.\n",
+            ["Fix it"],
+        )
+        merge_pr.main(["42", "--dry-run"])
+        assert "will not close" not in capsys.readouterr().out
+
+    def test_the_warning_does_not_stop_the_merge(self, merge_pr, monkeypatch, capsys):
+        """Advisory, like every other check this project added to a
+        developer path: it reports, and a person decides. Blocking would
+        make a deliberately-quoted keyword unmergeable."""
+        calls = self._stub(
+            merge_pr,
+            monkeypatch,
+            "`Closes #421.`\n\n## Description\n\n- Fix it.\n",
+            ["Fix it"],
+        )
+        assert merge_pr.main(["42"]) == 0
+        assert calls == [(42, "- Fix it.")]
