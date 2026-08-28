@@ -117,6 +117,38 @@ The operating formula, from #183: **invocation is enforced, conformance is
 not.** A hook guarantees the findings reach the agent. Only the gate
 guarantees anything about what the agent then does.
 
+## 🪢 A second mechanism: git's own hooks
+
+**This document's registry is not everything that runs automatically**,
+and saying so here is what stops the next reader assuming it is. Since
+issue 431's successor, `git-hooks/pre-commit` runs `actionlint` over
+`.github/workflows/` when a commit stages one.
+
+It is deliberately *not* a row in the registry below, because it is a
+different mechanism answering a different question:
+
+| | `.claude/hooks/` | `git-hooks/` |
+| --- | --- | --- |
+| Fired by | the Claude Code harness, on `Write`/`Edit` | git, on `commit` |
+| Sees | what *this agent* wrote | every path into a commit -- a human in an editor, another agent, `git apply`, `sed` |
+| Installed by | `.claude/settings.json`, which ships and is scaffolded | `core.hooksPath`, set by `install_full_pipeline.sh dev-deps` |
+| May block | only the citation gate | yes -- see below |
+
+**Why the git hook may block when the rule above says only one hook
+may.** That rule governs the review layer, where a finding is a
+judgement about a draft and the aid cannot know whether it is right. A
+workflow file either parses and type-checks or it does not; `ci.yml`'s
+lint job already fails the build on the same check, and blocking at the
+commit only moves an identical binary verdict earlier, to where the fix
+is part of the change in hand. The rule that *does* carry over intact is
+the one about not blocking when it cannot tell: an absent `actionlint`
+is silence, because the install stage is opt-in.
+
+**The inert-hook failure applies here too, in a new shape.** A tracked
+hook directory git has not been pointed at runs nothing, and
+`core.hooksPath` is per-clone config that cannot be committed. That is
+why `dev-deps` sets it rather than a README asking you to.
+
 ## 🗄 The registry
 
 | Event | Matcher | Script | Class | Status |

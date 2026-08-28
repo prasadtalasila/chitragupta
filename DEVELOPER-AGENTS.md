@@ -58,6 +58,13 @@ caution over speed; for a genuinely trivial change, use judgement.
 itself is held to -- the code counterpart of `docs/WRITING-STANDARDS.md`.
 Read it before a non-trivial change. In brief:
 
+- **Workflows are linted at the commit.** `bash
+  scripts/install_full_pipeline.sh dev-deps` installs `actionlint` and
+  points `core.hooksPath` at `git-hooks/`, so a commit touching
+  `.github/workflows/` is checked before it lands rather than in CI ten
+  minutes later. `ci.yml`'s lint job runs the same check, so the hook
+  changes when you find out, not whether. `git commit --no-verify`
+  bypasses it.
 - **Two rules are machine-checked**, by `tests/test_code_standards_scan.py`
   as part of the ordinary `pytest` run: at most **25 statements** per
   function, at most **250 code lines** per module. Both are **ratchets** --
