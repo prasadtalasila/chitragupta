@@ -221,7 +221,7 @@ differently:
 | System | Looks like revision | Why it is not |
 | --- | --- | --- |
 | OpenScholar | the `--feedback` edit loop | runs **before** the artifact exists |
-| RAGFlow | the assistant message filled in place | streaming persistence of the **current** turn; `refine_multiturn` rewrites the **question**, not the answer |
+| RAGFlow | a **regenerate** button | truncate-and-resend: the prior answer is destroyed, never read as input, no version kept. `PATCH .../sessions/<id>` **explicitly refuses** to change stored messages -- a deliberate refusal, not a gap |
 | papersgpt | "writes findings into Zotero Notes" | **appends at the cursor** of an already-open editor; never looks a note up |
 | local-deep-research | follow-up with a `parent_research_id` | creates a **new child row**; the parent is untouched |
 

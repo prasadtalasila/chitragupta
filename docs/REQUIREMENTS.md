@@ -280,7 +280,7 @@ differently:
 | System | Looks like revision | Why it is not |
 | --- | --- | --- |
 | OpenScholar | the `--feedback` edit loop | it runs **before** the artifact exists -- intra-generation refinement, not a post-hoc path |
-| RAGFlow | the assistant message being filled in place | that is streaming persistence of the **current** turn; a prior turn's answer is never touched. `refine_multiturn` rewrites the **question**, not the answer |
+| RAGFlow | a **regenerate** button in the UI | it truncates the history and re-asks: the prior answer is *destroyed*, never read as input, and no version is kept. `refine_multiturn` rewrites the **question**, not the answer -- and `PATCH .../sessions/<id>` **explicitly refuses** to change stored messages, so this is a deliberate design refusal rather than a missing feature |
 | papersgpt | "writes findings into Zotero Notes" | it **appends at the cursor** of an editor you already had open, and never looks a note up. Its chat state is one global in-memory conversation that dies on restart |
 | local-deep-research | follow-up carrying a `parent_research_id` | it creates a **new child row**; the parent's report is untouched |
 
