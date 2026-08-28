@@ -525,6 +525,36 @@ candidate for an unattended class. Carries R2 and R10.
 
 Size: M. Depends on: A2, A4.
 
+### 🔢 C4: a numeral in prose is a claim too
+
+The gate proves a **citekey** is real. Nothing proves a **magnitude**
+came from anywhere -- a draft may state "throughput rose 43%" with a
+perfectly real citation beside it and no check anywhere relates the
+number to the source. Invented magnitudes are the second-most dangerous
+fabrication class after invented references, and they are currently
+unguarded.
+
+The mechanism is deterministic and needs no model: **report a prose line
+that contains a numeral and no traceable origin.** Credited to
+[K-Dense-AI/scientific-agent-skills](INSPIRATION.md), whose writing
+skill errors on exactly that condition.
+
+Three things this project already has make it cheaper here than there.
+`math.md` (WRITING-STANDARDS.md §12) is keyed on the exact span text of
+every quantity a draft states, so a mapped quantity already has a
+record; the sentence splitter exists; and the review layer's report
+shape is settled. The work is deciding what counts as traceable -- a
+`math.md` row, an adjacent citekey, a `quote:` in `evidence.md` -- and
+being honest that a year, a section number and a figure reference are
+numerals that are not claims.
+
+**Advisory, and the false-positive rate decides whether it is usable at
+all**: a survey is full of legitimate bare numerals. Ship it reporting
+what it finds and let a real draft say whether the signal survives.
+Carries R2 and R10 like any aid.
+
+Size: M. Depends on: C1's sentence splitting.
+
 ## 📐 Theme D: figure layout
 
 The second thing the request asks for. PaperBanana generates **raster**
@@ -653,6 +683,34 @@ evidence and reopens the question; this run is not a permanent proof,
 only the specific answer on the specific corpus asked about.
 
 Size: M. Depends on: D1-D3, and evidence that they left a real gap.
+
+### 📏 D5: two checks `review figure` could compute from source
+
+The pre-flight list in [TIKZ-STYLE.md](TIKZ-STYLE.md) *names* two
+defects it cannot decide, and both are recoverable from the TikZ source
+that `review figure` already parses:
+
+- **Type size at final scale.** "Illegible type" is currently a human
+  judgement. It is arithmetic: a `\footnotesize` node inside a picture
+  carrying `scale=0.8`, set in a document at a known width, has a
+  computable final point size. `figure_layout/_source.py` already splits
+  picture and node options, so the parse is in place and the check is
+  not.
+- **A distinction carried by colour alone.** The two-form contract makes
+  this worse than an accessibility question -- `md`, `docx` and `html`
+  render only the ASCII twin, and a black-and-white print renders the
+  TikZ form greyscaled. A screen over *declared* colours (`\definecolor`
+  and named colours, not pixels) for pairs that differ in hue but not in
+  lightness would catch it. The idea is
+  [K-Dense-AI/scientific-agent-skills](INSPIRATION.md)'s palette audit,
+  which reads declarations rather than rendering; note their own caveat,
+  that a lightness heuristic is not colour-vision simulation.
+
+Both fit the existing aid: deterministic, source-parsing, advisory,
+exit 0. Neither needs the vision critic
+[D4](#-d4-optional-vision-critique) declined.
+
+Size: M. Depends on: nothing.
 
 ## 🧭 Theme E: the human's own structure
 
@@ -909,7 +967,9 @@ is for.
 | 6 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
 | 7 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
 | 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 9 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 9 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 10 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 11 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 **E1 leads because it is cheap, measured, and a prerequisite that gets
 more expensive to add later**: E2 invites people to write queries, and

@@ -290,6 +290,13 @@ Concrete defects, not taste:
   what it should be, an accent on a distinction already legible without
   it. The test is quick -- read the `.txt` twin and ask whether the
   point still arrives.
+  **There is a second reader with the same problem, and the `.txt` twin
+  does not stand in for them.** A thesis printed in black and white
+  renders the *TikZ* form, greyscaled -- so two fills that differ in hue
+  but not in lightness merge into one shade there, while the ASCII form
+  is fine. The twin is not a mono preview of the picture; the two
+  failures are independent, and passing the `.txt` test says nothing
+  about the printed one.
 - **Literal copying** -- a box-ified copy-paste of prose, with no
   visual abstraction, is not a figure. This is
   [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's originality rule
@@ -345,6 +352,57 @@ consuming document's own colours as often as not, and a palette this
 project could not enforce across a thesis it never sees would be advice
 pretending to be a standard. What *is* stated is the constraint that
 survives every venue: the figure has to work in one colour.
+
+## 📏 Draw for the width it will be printed at
+
+The six layout metaphors have no width dimension, and a figure drawn
+without one in mind is a figure whose type size is decided by accident.
+A single-column figure in a two-column paper sets at roughly half a page
+width; the same picture dropped into a thesis sets at nearly double
+that. **Nothing in the picture changes -- but the type does**, because
+`scale=` and the consuming document's own width between them decide the
+final physical size of every label.
+
+So settle the target width *before* choosing a metaphor: a
+hub-and-spoke needs horizontal room a single column does not have, and
+is the wrong metaphor there however well it fits the content. A layered
+stack degrades gracefully to a narrow column; a wide map does not.
+
+**No venue table is bundled here, deliberately.** Column widths are
+per-publisher, differ between initial and revised submission, and go
+stale -- a table checked into this repository would be read as current
+long after it stopped being. If you keep one, keep it the way a
+maintained one is kept: a date it was accessed, a source URL per entry,
+and the standing caveat that **a passing check is not compliance** --
+re-read the publisher's live page before you submit.
+
+## 🧿 Rules that are not universal
+
+Figure guidance is mostly written for raster images, and several rules
+that sound authoritative do not transfer to a TikZ picture at all.
+Named here so nobody spends an afternoon satisfying one:
+
+- **"Line art must be 600 or 1000 dpi."** A TikZ figure is vector and
+  has **no DPI**. There is nothing to set and nothing to check. The
+  requirement that *does* transfer is physical width, above.
+- **"Convert everything to CMYK / everything to RGB."** A colour-space
+  question about exported raster assets. It reaches a `\input`-ed TikZ
+  picture only through whatever the consuming document does at export,
+  which this pipeline does not control and should not pretend to.
+- **"Make the figure bigger so the text is readable."** Backwards.
+  Enlarging the picture enlarges the type *and everything else*, so it
+  overflows the column and gets scaled back down. Type size at final
+  scale is the quantity that matters, and `\footnotesize` inside a
+  picture that is then scaled to 0.8 is the actual defect.
+- **"A colourblind-safe palette makes the figure accessible."**
+  Necessary and not sufficient here. Two readers of a draft from this
+  pipeline receive **no colour whatever** -- anyone reading the `md`,
+  `docx` or `html` render, which shows only the ASCII twin, and anyone
+  reading the PDF in black and white. Working in one colour is the
+  binding constraint; a safe palette is what you do afterwards.
+- **"A vector figure is resolution-independent, so size does not
+  matter."** True of fidelity, false of legibility, and the second is
+  what a reader notices.
 
 ## 🚫 Nothing here is a gate
 

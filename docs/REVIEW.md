@@ -288,6 +288,39 @@ what `synthesis`, `uncited` and `quotation` report.
   "the matched passage doesn't say this" first, and "the source doesn't
   say this" only after checking the passage yourself.
 
+## 🕳 The distinction all three limits are instances of
+
+Those three read as separate caveats. They are the same one, and it is
+worth stating once as a rule the next aid should be built to rather than
+re-derive:
+
+> **A finding can be absent for three reasons -- there was nothing to
+> find, the check could not run, or the case was out of scope -- and an
+> aid that collapses them is lying by omission.**
+
+"Nothing found" and "not checked" look identical in any report that
+prints only findings, and the second is the one a reader would act on.
+This is why a verbatim scan names the tier it skipped, why `coverage`
+declines to say which kind of gap it found, and why `support` reports a
+score beside the passage it scored rather than alone.
+
+**Where an aid publishes an aggregate, the same rule binds harder:
+something not measured is never counted as a zero.** A zero is a
+finding -- it says the check ran and found nothing. Averaging an
+unmeasured item in as zero produces a number that looks like evidence of
+quality and is partly evidence of a missing dependency. An aggregate
+that cannot say what share of its inputs were actually assessable should
+say so beside itself.
+
+The idea of separating *rated* from *missing* from *not applicable*, and
+of refusing to encode missing as zero, is credited to
+[K-Dense-AI/scientific-agent-skills](INSPIRATION.md). It fits this
+project's existing posture rather than changing it:
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s **R3** already forbids a
+continuous score from being the thing optimised, and this is the
+reporting-side companion -- if a number is published at all, publish
+what it could not see next to it.
+
 ## ➡ Where to go next
 
 - Reading a verbatim report: [PLAGIARISM.md](PLAGIARISM.md); how the

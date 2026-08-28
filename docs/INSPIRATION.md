@@ -41,6 +41,39 @@ came from.
 - Nav Toor's (@heynavtoor) 4-prompt adaptation, fused into claude-storm's
   pipeline and carried through into `deep-research`'s synthesis-briefing
   and single-reviewer (`quick` depth) peer-review phases.
+- **[K-Dense-AI/scientific-agent-skills](https://github.com/K-Dense-AI/scientific-agent-skills)**
+  (MIT at the repository root, (c) 2025 K-Dense Inc.; **per-skill
+  `license:` frontmatter diverges from it** -- four skills declare none
+  and two are non-commercial, so check the skill rather than the root
+  before reusing anything). Read 2026-08-28 as a peer project: a skills
+  repository in the same format family as `.claude/skills/`. Three ideas
+  are credited to it and none of its text is used.
+
+  - **A numeral in prose is a claim too.** Its writing skill errors on a
+    line containing a number with no claim marker. This project's gate
+    proves a *citekey* is real; nothing proves a *magnitude* came from
+    anywhere, which is the gap
+    [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C4 records.
+  - **Missing is not zero.** Its rubric records each criterion as rated,
+    missing or not-applicable, refuses to encode a missing one as zero,
+    and emits a coverage warning beside any aggregate.
+    [REVIEW.md](REVIEW.md) adopts the distinction for this project's
+    aids.
+  - **Publish a score, then show its fragility.** Its weight-sensitivity
+    pass perturbs each weight and reports whether the *ordering* flips --
+    a way to let a number exist without it becoming the thing optimised.
+
+  Two things were read and deliberately not taken. Its citation
+  verification is a **human attestation** -- two booleans in a JSON file
+  the agent itself writes, with the reference checker network-free and
+  syntax-only by design -- so it is an evidence *bookkeeping* system
+  where this project has an enforcement one. And its claim hash is
+  format-checked but never recomputed from the manuscript, so it cannot
+  detect a claim edited after verification: the same
+  decays-while-looking-authoritative failure this project refuses for
+  author provenance
+  ([DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies)) and
+  avoids by regenerating `sections.md` rather than trusting it.
 - **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**
   -- the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
   (an independent multi-reviewer panel including a dedicated adversarial
