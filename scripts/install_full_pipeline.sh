@@ -23,9 +23,16 @@
 #                everyone wants this script touching apt. Also reachable
 #                as `chitragupta install os-deps` (#265), unmodified.
 #   dev-deps     -- `poetry install --with dev` (pytest, pytest-cov) into
-#                the same venv as python-deps. Only needed to run the
-#                test suite, not the pipeline itself -- opt-in, and not
-#                part of `all`. Run `python-deps` first.
+#                the same venv as python-deps, plus the two things needed
+#                to *change* this repository rather than run it: the
+#                pinned `actionlint` binary, and `core.hooksPath` pointed
+#                at git-hooks/ so the tracked pre-commit hook fires. Only
+#                needed to run the test suite and commit, not the pipeline
+#                itself -- opt-in, and not part of `all`. Run
+#                `python-deps` first.
+#   actionlint   -- the workflow linter alone, without the venv dev-deps
+#                also builds. CI's lint job wants exactly this, the same
+#                reason `vale` is a stage of its own.
 #   gpu-torch    -- calls ensure_gpu_torch (below) directly, pointed at
 #                CHITRAGUPTA_PIP/CHITRAGUPTA_PYTHON rather than this
 #                script's own venv -- what `chitragupta install gpu-torch`
@@ -179,6 +186,15 @@ install_os_deps() {
 # Absent Vale is not an error here or anywhere else: `chitragupta.draft style`
 # probes for it and reports missing-binary, exactly as render does for
 # pandoc, so a host that skips this keeps every other capability.
+# actionlint checks .github/workflows/. Pinned and digest-verified for
+# the same reason Vale is: these two are the only files this script takes
+# from outside the distribution's archives. 5.8 MB as a released binary --
+# fetching it through a pre-commit framework instead builds a full Go
+# toolchain to compile it from source, measured at 340-370 MB of cache,
+# which is why this is a curl and not a framework.
+ACTIONLINT_VERSION="1.7.12"
+ACTIONLINT_SHA256="8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+
 VALE_VERSION="3.9.1"
 VALE_SHA256="fbc2eb47d0b8c50220ed1a2c5c611fbe0904ed567d638143d482016a18fd2db0"
 
@@ -215,6 +231,63 @@ install_vale() {
     sudo_if_needed install -m 0755 "${vale_tmp}/vale" /usr/local/bin/vale
     rm -rf "$vale_tmp"
     echo "installed $(vale --version)"
+}
+
+install_actionlint() {
+    if command -v actionlint >/dev/null 2>&1; then
+        echo "actionlint already installed: $(actionlint --version | head -1)"
+        return 0
+    fi
+    case "$(uname -m)" in
+        x86_64|amd64) actionlint_arch="amd64" ;;
+        aarch64|arm64) actionlint_arch="arm64" ;;
+        *)
+            echo "WARNING: no pinned actionlint build for $(uname -m); skipping." >&2
+            echo "         git-hooks/pre-commit will report it as missing." >&2
+            return 0
+            ;;
+    esac
+    # Only the amd64 digest is pinned, so an arm64 host is told rather
+    # than silently given an unverified binary. Verifying one archive
+    # against another architecture's digest would fail confusingly.
+    if [[ "$actionlint_arch" != "amd64" ]]; then
+        echo "WARNING: only the amd64 actionlint digest is pinned; skipping $actionlint_arch." >&2
+        return 0
+    fi
+    actionlint_tmp="$(mktemp -d)"
+    actionlint_url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${actionlint_arch}.tar.gz"
+    if ! curl -fsSL -o "${actionlint_tmp}/actionlint.tar.gz" "$actionlint_url"; then
+        echo "WARNING: could not download actionlint from $actionlint_url; skipping." >&2
+        rm -rf "$actionlint_tmp"
+        return 0
+    fi
+    # Verified before it is unpacked, not after -- the same rule, and the
+    # same reason, install_vale states below.
+    if ! echo "${ACTIONLINT_SHA256}  ${actionlint_tmp}/actionlint.tar.gz" | sha256sum -c --status; then
+        echo "ERROR: actionlint checksum mismatch -- refusing to install." >&2
+        echo "       expected ${ACTIONLINT_SHA256}" >&2
+        rm -rf "$actionlint_tmp"
+        return 1
+    fi
+    tar xzf "${actionlint_tmp}/actionlint.tar.gz" -C "$actionlint_tmp" actionlint
+    sudo_if_needed install -m 0755 "${actionlint_tmp}/actionlint" /usr/local/bin/actionlint
+    rm -rf "$actionlint_tmp"
+    echo "actionlint installed: $(actionlint --version | head -1)"
+}
+
+install_git_hooks() {
+    # A hook directory git does not know about is inert, and inert is the
+    # failure docs/HOOKS.md exists to prevent -- the settings file still
+    # lists it, the tests still pass, and nothing runs. Pointing
+    # core.hooksPath at the tracked directory is what makes the checked-in
+    # hook actually fire, and it is per-clone config, so it has to be set
+    # by an install step rather than committed.
+    if ! git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Not a git checkout -- skipping the pre-commit hook." >&2
+        return 0
+    fi
+    git -C "$REPO_ROOT" config core.hooksPath git-hooks
+    echo "git hooks enabled: core.hooksPath=git-hooks"
 }
 
 check_poetry() {
@@ -497,6 +570,13 @@ install_dev_deps() {
     # same GPU check as python-deps rather than assume it's still fine.
     ensure_gpu_torch "$bin_dir/pip" "$bin_dir/python"
 
+    # The developer-side checks that are not Python packages: the
+    # workflow linter CI's lint job also runs, and the git hook that
+    # calls it. Both belong to dev-deps rather than python-deps -- they
+    # are needed to *change* this repository, never to run the pipeline.
+    install_actionlint
+    install_git_hooks
+
     echo
     echo "Installed. Run the test suite via:"
     echo "  ${bin_dir}/python -m pytest --cov --cov-report=term-missing"
@@ -524,6 +604,10 @@ for stage in "${STAGES[@]}"; do
         # below with no stage -- which defaults to python-deps and fails
         # on a runner that has no poetry.
         vale) install_vale ;;
+        # actionlint alone, for the same reason `vale` is a stage: CI's
+        # lint job wants the workflow linter and nothing else, and it must
+        # not drag in poetry or a venv to get it.
+        actionlint) install_actionlint ;;
         # `chitragupta install gpu-torch` (#265) reaches ensure_gpu_torch
         # the same way vale above reaches install_vale -- a stage of its
         # own, for the same reason the comment above vale gives: sourcing
