@@ -464,6 +464,10 @@ Size: M-L. Depends on: B1.
 
 ### 🔁 B5: pre-gate self-feedback loop
 
+Designed, unbuilt -- `plans/b5-pregate-self-feedback.md` is the
+authoritative design; this section is the ticket, not a second
+specification.
+
 OpenScholar's `--feedback`: before running the citation gate, the skill
 critiques its own draft against the evidence packet and repairs gaps.
 Cheaper than the redraft cycle a gate failure currently triggers, and
@@ -798,7 +802,7 @@ is for.
 | 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
 | 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
 | 5 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 (shipped, #381) |
-| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, F3 |
+| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
 | 7 | [C2](#-c2-claim-support-checking) claim-support checking | C | L | C1 |
 | 8 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 

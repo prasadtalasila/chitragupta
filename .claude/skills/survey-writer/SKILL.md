@@ -378,7 +378,7 @@ collapse them for the sake of a cleaner narrative.
    Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
    picture) and `content/drafts/<topic>/figures/<name>.txt` (the ASCII
    form, in §10's 7-bit alphabet). The renderer swaps the marker for the
-   `.txt` contents in a fence on `--format md` (step 12) and every other
+   `.txt` contents in a fence on `--format md` (step 13) and every other
    non-LaTeX format, and for `\input{figures/<name>.tex}` on
    `--format tex`/`--format pdf`, which is what makes a survey figure
    usable in the paper this draft feeds. Six riders, each of which §10
@@ -423,7 +423,7 @@ collapse them for the sake of a cleaner narrative.
      copy that line into the probe too: the renderer's preamble loads
      `tikz` and no library, so a picture that relies on one and does not
      load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
-   - **No citekey inside either figure file.** Step 10's gate reads the
+   - **No citekey inside either figure file.** Step 11's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. This is the genre
      most likely to want one -- a taxonomy figure naturally attributes
@@ -448,7 +448,79 @@ collapse them for the sake of a cleaner narrative.
    rarely has much, but a threshold or an error bound quoted from a source
    is a quantity, and a bare `` `k = 4` `` renders as typewriter text.
 
-10. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
+10. **Critique against the evidence packet, before gating.** Read the
+    dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
+    recorded -- against the draft's own prose, section by section. List,
+    in priority order, up to five places where the prose claims more
+    than its `claim:` line supports, omits a kept `claim:` the draft
+    never used, or drifts from the wording `claim:` actually recorded.
+    This is one inline judgement call, not a subagent dispatch and not a
+    deterministic check -- nothing in this pipeline scores this
+    automatically.
+
+    Take the baseline before touching anything:
+
+    ```bash
+    python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.md --write --json
+    python -m chitragupta.draft style content/drafts/<slug>.md --json
+    ```
+
+    The first two are `overlap-reviser`'s own baseline discipline
+    (uncapped, never `--limit`): they file
+    `content/review/<topic>/<stem>.verbatim.json`, the file every edit
+    below is rechecked against. The third's finding count -- not the
+    file, `style` never writes one -- is the number you compare after
+    each edit; note it down. Take all three fresh now rather than
+    reusing anything on disk from an earlier run. If the scan's
+    `tiers_not_run` is not empty, quote the reason: **genuine
+    restatement is only detected where the embedding tier can run**, so
+    the recheck below only ever compares what the tiers that did run
+    can see.
+    `style` reports only what WRITING-STANDARDS.md §9 marks
+    decidable, and this step -- like every other -- is told to fix
+    none of them: its count is a proxy for whether the edit
+    introduced a new defect, not a work list to act on.
+
+    Work the top of your list, **at most three items, one edit each, no
+    retry and no second critique pass** once the three are done or the
+    list runs out first. For each:
+
+    1. Keep the pre-edit text of the section you are about to touch.
+    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+       reword the claim to match what `claim:` says, or drop a sentence
+       that overstates it. Never add a claim `evidence.md` does not
+       already record, and never touch a `quote:` span -- a quotation is
+       captured when the evidence is judged, never rewritten here.
+    3. Check, all three required:
+
+       ```bash
+       python -m chitragupta.draft gate content/drafts/<slug>.md
+       python -m chitragupta.review verbatim recheck content/drafts/<slug>.md \
+           --baseline content/review/<topic>/<stem>.verbatim.json --json
+       python -m chitragupta.draft style content/drafts/<slug>.md --json
+       ```
+
+       Accept the edit only if: the gate exits `OK`; the recheck's
+       `objective_delta` is not positive; and the fresh `style` finding
+       count -- read only as a number, since `style` reports what §9
+       marks decidable and this step is told to fix none of them -- is
+       no higher than the count noted before editing. Also check the
+       edited section did not fall under 90% of its own pre-edit length
+       -- a secondary sanity floor against a rewrite that deletes its
+       way to a lower count, never itself a reason to accept one that
+       the three checks above already failed.
+    4. If any check fails, restore the text you kept in step 1 and move
+       to the next item. Do not retry the same item.
+    5. Log the attempt in the dossier's `revisions.md`: which gap, what
+       you changed, and the outcome -- accepted or reverted. Never write
+       any of this to `rejected.md`.
+
+    If nothing on the list clears the bar, or the list was empty,
+    continue to the gate exactly as if this step had not run -- the
+    gate remains the only thing that blocks a draft, and this step is
+    never a condition of presenting.
+11. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
     (this is the canonical, source-of-truth format), then run:
 
     ```bash
@@ -458,7 +530,7 @@ collapse them for the sake of a cleaner narrative.
     If it reports `FAIL`, fix the offending line(s) — either correct the citekey
     or remove the claim — and re-run until it reports `OK`. Never show the user
     a draft that hasn't passed.
-11. **Build the References section.** Once the gate passes, generate it from
+12. **Build the References section.** Once the gate passes, generate it from
     exactly the gated citekeys rather than writing it by hand:
 
     ```bash
@@ -476,7 +548,7 @@ collapse them for the sake of a cleaner narrative.
     Leave the body's inline citations as `[@citekey]` — do **not**
     hand-number them to `[1]`. The literal key is what the gate and the
     hook verify; pandoc assigns the numbers at render time.
-12. **Render tex and pdf.** Once the gate passes and the references section
+13. **Render tex and pdf.** Once the gate passes and the references section
     is built, also render the other three formats:
 
     ```bash
@@ -521,17 +593,17 @@ collapse them for the sake of a cleaner narrative.
     failure, and it means you captured no quotation you meant to use.
     Never add a `quote:` after the fact to populate it; a quote is
     captured when the evidence is judged or not at all.
-13. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
+14. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
     specifically for: terms used before they're defined, a theme heading that
     doesn't match what the subsection actually argues, a comparison-table row
     that repeats prose already above it, and any paragraph whose first
     sentence doesn't carry its point.
-14. **Record any steering.** If the user shaped this draft in chat --
+15. **Record any steering.** If the user shaped this draft in chat --
     "don't lead with tooling", "shorter", "drop the adoption angle" --
     append it to the dossier's `steering.md`, dated. It is invisible in
     the prose and has nowhere else to live; a revision that doesn't know
     about it will undo it.
-15. **Run the prose check.** After the gate passes and before
+16. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -557,7 +629,7 @@ collapse them for the sake of a cleaner narrative.
     short list is not a clean draft. A review aid, not a gate — it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-16. **Run the verbatim scan.** Before presenting, rebuild the section map
+17. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
     ```bash
@@ -591,7 +663,7 @@ collapse them for the sake of a cleaner narrative.
     finding kept, add `--write`: the report goes to `content/review/`,
     mirroring the draft's path, beside any provenance and coverage reports for
     the same draft.
-17. Present the draft plus a one-paragraph summary of thin-coverage areas and
+18. Present the draft plus a one-paragraph summary of thin-coverage areas and
     any unresolved cross-source disagreement, and report the render outcome
     (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
     Tell the user where the dossier is, that changes to this draft should go

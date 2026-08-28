@@ -389,6 +389,16 @@ other skills already wrote, so where a rule below is about *writing* --
 the dossier, the acronym vocabulary -- it says how that skill differs and
 why, rather than being quietly exempt.
 
+One rule below is narrower still: the pre-gate self-feedback step
+(roadmap [B5](FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop),
+designed in `plans/b5-pregate-self-feedback.md`) is shared by the five
+genre skills that write fresh prose from an
+evidence packet -- `survey-writer`, `thesis-chapter-writer`,
+`textbook-chapter-writer`, `tutorial-writer`, `deep-research` -- and not
+by `book-assembler` (writes no prose of its own) or the three revisers
+(`draft-reviser`, `corpus-reviser`, `overlap-reviser`), which already
+gate-and-recheck per section rather than critiquing a whole fresh draft.
+
 **One invariant.** A citekey may only be used if it appears in your `.bib`
 export *and* was picked up into the ledger by a real parse of a real PDF.
 No skill fabricates one, ever, and none may "fix" a gate failure by
