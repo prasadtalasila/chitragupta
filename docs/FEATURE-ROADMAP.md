@@ -737,14 +737,19 @@ the best idea already here and should be generalised rather than
 reinvented.
 
 **Prose in an outline is ambiguous and that ambiguity is the defect.**
-Two paragraphs under a heading may be a brief or seed text, and a skill
-must guess. So intent is declared: a **brief** (never appears), **seed**
-text (appears verbatim inside a provenance marker, excluded from the
-advisory aids, still gated), or a **claim** (rewritten, and every
-sentence that could not be grounded is reported rather than shipped).
-[DESIGN.md](DESIGN.md#-whose-prose-is-it) carries the reasoning and the
-one rule that binds it: *an advisory aid may exclude a human-authored
-span; the gate never does.*
+Two paragraphs under a heading may be steering or text to preserve, and a
+skill must guess. So intent is declared *about the input*: a **brief**
+(never appears in the draft) or a **claim** (rewritten, with every
+sentence that could not be grounded reported rather than shipped).
+
+**Neither leaves a marker in the draft, and recording authorship is
+explicitly rejected** -- a draft gets revised, the drafting layer
+rewrites what is inside any such span, and the marker would go stale
+while still looking authoritative. Declaring intent about the *input*
+works because a brief is consumed once and a claim's grounding stays
+re-checkable against the ledger; authorship is neither.
+[DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the
+argument.
 
 **No sign-off gate.** `spec sign` guards a 178,000-word generation run;
 one survey does not earn a second gate (constraint 2).

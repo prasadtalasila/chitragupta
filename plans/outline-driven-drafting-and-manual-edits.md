@@ -306,47 +306,59 @@ section: the heading, a **brief**, and the **declared queries**.
 
 The question this section has to answer: **you hand the pipeline an
 outline and one of its sections contains two paragraphs of your own
-prose. What are they?** A brief, to be read and written from -- or seed
-text you want to appear? The two are indistinguishable as prose, so a
-skill must guess, and either guess is wrong half the time.
+prose. What are they?** A brief, to be read and written from -- or text
+you want to appear? The two are indistinguishable as prose, so a skill
+must guess, and either guess is wrong half the time.
 
-**Guessing "seed" is the damaging one**, because unmarked human prose in
-a draft is read by six mechanisms as the drafter's output, four of which
-will try to change it: `verbatim scan` reports your wording against the
-corpus with no attribution path (and `overlap-reviser` exists to rewrite
-exactly that), `review synthesis` flags your paragraph for citing one
-source, `draft style` flags your spelling against the recorded dialect,
-and `draft-reviser`'s copy-edit mode rewrites it to a convention you
-never applied. The citation gate also fires -- and that one is correct
-and must not change.
+#### Recording who wrote it is the wrong fix
 
-So intent is **declared, not inferred**:
+The obvious answer is a provenance span marking your paragraphs as yours,
+which the advisory aids then skip. **Rejected, and the reason generalises
+past this feature.**
+
+A draft gets revised. `draft-reviser` rewrites, shortens, re-scopes and
+copy-edits the prose inside such a span, legitimately -- that is what it
+is for. After one revision the span is part your wording and part the
+model's; after two nobody can say which part; and the marker still
+asserts a single author. **The record does not decay gracefully, it
+becomes false while continuing to look authoritative** -- and an aid told
+to skip it would then be skipping the model's prose on a stale claim.
+
+This repository already treats that as the serious failure. `sections.md`
+is regenerated immediately before a scan rather than trusted, and
+`math.md` desyncing on a reworded span is called out as a hazard, both
+because **recorded state a later edit can silently falsify is worse than
+no record**. Authorship is the least recoverable case: a citekey can be
+re-derived from the draft and a section map rebuilt from its headings,
+but nothing can recompute who wrote a sentence after the fact.
+
+So there is **no author provenance and no aid exemption resting on one**,
+and this plan does not propose one.
+
+#### What is declared instead
+
+Intent is declared **about the input**, checked once and then discharged
+-- not attached to the output, where it would have to survive every later
+edit:
 
 | Declared as | In the draft? | What the pipeline owes you |
 | --- | --- | --- |
 | `brief` | no | write the section from it; your wording is not preserved |
-| `seed` | yes, verbatim, inside a provenance marker | preserve exactly; exclude from the advisory aids; **still gate it** |
 | `claim` | no -- rewritten | find a citekey supporting each assertion, and **report every sentence that could not be grounded** rather than shipping it |
 
-`claim` is the one worth building deliberately: it turns your paragraphs
-into an obligation the pipeline can discharge honestly, and *"I could not
-ground your third sentence in this corpus"* is precisely the output this
-project exists to produce. It is unavailable if the same two paragraphs
-are silently copied through as seed text.
+Neither leaves a marker, because neither needs one: a brief is consumed
+by the time the draft exists, and a claim's grounding is re-checkable at
+any point against the ledger. That is the property authorship lacks, and
+why this split survives revision.
 
-**The rule that binds all three**, stated in
-[DESIGN.md](../docs/DESIGN.md#-whose-prose-is-it): *an advisory aid may
-exclude a human-authored span; the gate never does.* A fabricated citekey
-is fabricated whoever typed it, and putting the pipeline's only hard
-guarantee behind a marker a person controls would be the one exemption
-CLAUDE.md cannot take.
+`claim` is the one worth building deliberately -- it turns your
+paragraphs into an obligation the pipeline can discharge honestly, and
+*"I could not ground your third sentence in this corpus"* is precisely
+the output this project exists to produce.
 
-A span marker needs an open/close pair, unlike the single-line adjacency
-markers already in use (`<!-- single-source: -->`, `<!-- table: -->`).
-Note the symmetry with a design this roadmap already records: the
-OpenScholar sample labels *ungrounded* sentences rather than mixing them
-silently into cited prose. Marking human-authored spans is that instinct
-pointed the other way.
+**If you want your exact words in the draft, put them in the draft.**
+They are then draft prose like any other. That is not a gap; it is what
+is true of every sentence in a revised document.
 
 **Declared queries bind by default.** The skill runs them verbatim instead
 of inventing sub-themes. `--extend` permits additions where a sub-theme

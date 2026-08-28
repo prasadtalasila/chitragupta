@@ -528,18 +528,19 @@ its own statement of how little 286 comparisons can pin down.
   current. The book track does detect this for a unit
   (`unit status` reports `stale: draft changed since accepted`); the
   dossier has no counterpart.
-- **It cannot tell your prose from the drafter's.** Nothing marks a span
-  as human-authored, so text you write into a draft yourself is measured
-  by every review aid as though a skill had produced it -- `verbatim
-  scan` reports your wording against the corpus with no attribution path,
-  `review synthesis` flags your paragraph for citing one source,
-  `draft style` flags your spelling, and `draft-reviser`'s copy-edit mode
-  will rewrite it. The citation gate is the one that should *not* change:
-  a fabricated citekey is fabricated whoever typed it.
+- **It does not record who wrote a sentence, and will not.** Prose you
+  write into a draft yourself is measured by every review aid as though a
+  skill produced it. That is deliberate rather than missing: a draft gets
+  revised, the drafting layer legitimately rewrites what is in it, and an
+  authorship marker would go stale while still looking authoritative --
+  the failure mode this pipeline already guards against by regenerating
+  `sections.md` before a scan instead of trusting it.
+  [DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the
+  argument and what is declared instead.
 
-Those last three are the subject of
+The first two are the subject of
 `plans/outline-driven-drafting-and-manual-edits.md`,
-which is a proposal and not built.
+which is a proposal and not built. The third is a settled decision.
 
 ## 🔧 What each capability requires
 
