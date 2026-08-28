@@ -223,7 +223,7 @@ class TestTheInstallStageWiresItUp:
         a file taken from outside the distribution's archives."""
         script = self._script()
         check = script.index("ACTIONLINT_SHA256}")
-        unpack = script.index("actionlint.tar.gz\" -C")
+        unpack = script.index('actionlint.tar.gz" -C')
         assert check < unpack
 
     def test_dev_deps_points_git_at_the_hook_directory(self):
