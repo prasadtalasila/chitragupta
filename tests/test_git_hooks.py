@@ -19,6 +19,7 @@ hook tested only as a function is one whose exit codes were never checked.
 """
 
 import os
+import platform
 import shutil
 import stat
 import subprocess
@@ -28,6 +29,12 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOK = REPO_ROOT / "git-hooks" / "pre-commit"
+
+# Git Bash provides this on the Windows runner, and it is what git itself
+# uses to run a hook there. Absent it, none of these can run at all.
+BASH = shutil.which("bash")
+
+pytestmark = pytest.mark.skipif(BASH is None, reason="no bash on PATH; git could not run the hook")
 
 BAD_WORKFLOW = """name: w
 on: push
@@ -93,12 +100,18 @@ class HookRepo:
         else:
             fake_actionlint(self.bin, with_actionlint)
             env["PATH"] = f"{self.bin}{os.pathsep}{env['PATH']}"
-        # Executed directly, not via `sh`: git runs the hook file itself
-        # and its `#!/usr/bin/env bash` shebang decides the interpreter.
-        # Forcing `sh` here ran it under dash and failed on the process
-        # substitution, which told us nothing about the hook.
+        # Invoked through `bash` by name rather than executed directly.
+        # Two failures got us here. Running it as `sh <path>` used dash,
+        # which cannot parse the process substitution. Executing the path
+        # itself works on POSIX via the shebang but raises
+        # `OSError: [WinError 193]` on Windows, which cannot exec a
+        # shebang script -- and Windows is where git runs hooks through
+        # its bundled bash anyway, so naming the interpreter is both
+        # portable and faithful to how the hook really runs. The execute
+        # bit git needs is asserted separately, in
+        # `TestItIsAShippedExecutable`.
         return subprocess.run(
-            [str(self.hook)],
+            [BASH, str(self.hook)],
             cwd=self.root,
             env=env,
             capture_output=True,
@@ -271,11 +284,32 @@ class TestTheInstallStageNeverFailsTheBuild:
         shutil.which("actionlint") is not None,
         reason="actionlint is installed here, so the stage short-circuits before the guard",
     )
+    @pytest.mark.skipif(
+        platform.system() != "Linux",
+        reason="the stub cannot shadow uname under Git Bash; the unstubbed case below covers it",
+    )
     @pytest.mark.parametrize("system", ["MINGW64_NT-10.0", "Darwin"])
     def test_a_host_with_no_pinned_build_is_a_note_not_a_failure(self, tmp_path, system):
         result = self._run_stage(tmp_path, system)
         assert result.returncode == 0, result.stderr
         assert "skipping" in result.stderr.lower()
+
+    @pytest.mark.skipif(
+        platform.system() == "Linux", reason="Linux has a pinned build; nothing to skip over"
+    )
+    def test_a_real_non_linux_host_gets_the_note_and_exit_zero(self):
+        """The same guard, observed live rather than through a stub. This
+        is the case that actually broke CI -- the Windows leg runs
+        `dev-deps`, which calls this -- so on Windows it is asserted
+        against the real `uname`."""
+        result = subprocess.run(
+            [BASH, str(REPO_ROOT / "scripts" / "install_full_pipeline.sh"), "actionlint"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
 
     def test_the_guard_returns_before_any_download(self):
         """The non-Linux path must not reach curl -- an install step that
