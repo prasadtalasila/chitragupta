@@ -275,28 +275,16 @@ Concrete defects, not taste:
 - **Conciseness** -- a node whose text runs past 15 words is too long
   for a box; cut it or split the node. Shrinking the font to fit more
   words in is not a fix -- see "Type and line weight" below.
-- **A distinction carried by colour alone** -- if the only thing
-  separating two node classes, two arrow kinds or two zones is their
-  colour, the distinction **does not exist for most of your readers**.
-  Not principally for the usual accessibility reason, though that holds
-  too: in this pipeline the figure has an
-  [ASCII twin](WRITING-STANDARDS.md#-every-figure-has-two-forms) in a
-  7-bit alphabet, and `md`, `docx` and `html` render *only that form*.
-  So colour-only meaning is information the Markdown reader is
-  structurally incapable of receiving, and nothing warns you -- both
-  files exist, both render, and the two quietly say different things.
-  **Carry every distinction redundantly**: shape, line style (solid
-  against dashed), border weight, or an explicit label. Then colour is
-  what it should be, an accent on a distinction already legible without
-  it. The test is quick -- read the `.txt` twin and ask whether the
-  point still arrives.
-  **There is a second reader with the same problem, and the `.txt` twin
-  does not stand in for them.** A thesis printed in black and white
-  renders the *TikZ* form, greyscaled -- so two fills that differ in hue
-  but not in lightness merge into one shade there, while the ASCII form
-  is fine. The twin is not a mono preview of the picture; the two
-  failures are independent, and passing the `.txt` test says nothing
-  about the printed one.
+- **The figure's main point resting on colour alone.** Colour is
+  house-standard here and carries meaning freely -- see "The house
+  palette" below. What it may not do is carry the *whole* point on its
+  own, because two readers get none of it: the ASCII twin is 7-bit, and
+  `md`, `docx` and `html` render only that form; and a black-and-white
+  print greyscales the TikZ form, where `cgFlow` and `cgAlt` land at
+  similar lightness. Position, arrow direction and node labels should
+  still deliver the argument; colour should make it fast. The test is
+  quick -- read the `.txt` twin and ask whether the point still arrives.
+  A *secondary* distinction living only in colour is fine and expected.
 - **Literal copying** -- a box-ified copy-paste of prose, with no
   visual abstraction, is not a figure. This is
   [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's originality rule
@@ -331,27 +319,76 @@ document rather than something pasted in:
   border were both gone. `\begin{tikzpicture}[thick]` cannot clobber
   anything, because it never touches `every node` at all.
 
-## 🎨 Free once you are in TikZ
+## 🎨 The house palette
 
-Style keys unavailable to a raster path, worth using once the layout
-and type are settled: zone fills at 10-15% opacity via the
-`backgrounds` layer, dashed lines for auxiliary flow against solid for
-forward flow, sans-serif labels against serif-italic maths.
+**Figures here are in colour, and they use one palette.** Five named
+colours, each with a job. A figure that invents its own hues reads as
+imported from somewhere else, which is the thing a house palette exists
+to stop.
 
-**Two of those three are colour-free, and that is why they are the ones
-to reach for.** Dashed-against-solid and a font-family change both
-survive into the ASCII twin's alphabet, or can be annotated there;
-a fill opacity cannot. The checklist above states the rule -- no
-distinction carried by colour alone -- and this is the practical
-consequence: **prefer the encodings that survive the round trip**, and
-treat a zone fill as an accent on grouping the layout already makes
-obvious, never as the thing that establishes it.
+```latex
+\definecolor{cgInk}{HTML}{1A1A1A}     % borders, labels, default strokes
+\definecolor{cgFlow}{HTML}{0072B2}    % the primary path through the figure
+\definecolor{cgAccent}{HTML}{D55E00}  % the one thing the figure is about
+\definecolor{cgAlt}{HTML}{009E73}     % a second class of node or edge
+\definecolor{cgAux}{HTML}{56B4E9}     % auxiliary, secondary, "also happens"
+```
 
-There is no house palette here, deliberately. A figure sets in the
-consuming document's own colours as often as not, and a palette this
-project could not enforce across a thesis it never sees would be advice
-pretending to be a standard. What *is* stated is the constraint that
-survives every venue: the figure has to work in one colour.
+The values are Okabe-Ito's colourblind-safe qualitative set (Okabe &
+Ito, 2008), which is the usual choice for exactly this and costs nothing
+to adopt. `cgInk` is a near-black rather than `black`, because a pure
+black border next to body text set in the same ink reads heavier than
+the text does.
+
+**Roles, not decoration.** Use `cgAccent` for one thing per figure -- if
+two things are accented, neither is. `cgFlow` carries the spine; `cgAux`
+is for what happens off to the side, usually dashed as well as coloured.
+`cgAlt` exists so a figure with two node classes does not have to reach
+outside the palette.
+
+**Tints for fills, the named colour for strokes.** `fill=cgFlow!8` is a
+zone wash that text still reads through; `fill=cgFlow` is a block of
+solid blue with your label lost inside it. Between 8 and 15 is the
+usable band, and `draw=` always takes the colour undiluted.
+
+**One contrast caveat worth knowing.** `cgAux` is light -- fine as a
+fill, fine as a `thick` stroke, and **not** usable for label text on
+white. `cgInk`, `cgFlow` and `cgAccent` are all safe for text.
+
+### 📎 The palette travels inside the figure
+
+**Paste those five lines into every figure that uses them.** Not into a
+shared file the figure `\input`s, and not into a preamble -- the
+renderer injects `\usepackage{tikz}` and nothing else, and
+`thesis-chapter-writer`'s fragment is `\input` directly into the user's
+own thesis, which has never heard of this project. A figure that depends
+on a colour defined elsewhere compiles here and fails there, which is
+the worst of the two orders to fail in.
+
+This is the same discipline the `\usetikzlibrary` line already follows,
+for the same reason, and it means the definitions are duplicated across
+figures on purpose. The six scaffolds in `assets/tikz/` all carry the
+block, so copying one gets it for free.
+
+### 🖨 What the other two forms do with it
+
+Two readers receive no colour at all, and this is accepted rather than
+designed around:
+
+- The **ASCII twin** is 7-bit, so `md`, `docx` and `html` get none of
+  it. The twin still has to work as a figure -- that is
+  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's two-form contract
+  and it is unchanged -- but it is not required to reproduce the colour
+  form's every distinction.
+- A **black-and-white print** greyscales the TikZ form, where
+  `cgFlow` and `cgAlt` land at similar lightness.
+
+So the practical rule is weaker than "never encode meaning in colour"
+and stronger than nothing: **colour may carry meaning, and should not be
+the only thing carrying the figure's main point.** Keep the spine
+legible through position and arrow direction, which every layout
+metaphor above already gives you, and let colour do the work of making
+the figure quick to read rather than possible to read.
 
 ## 📏 Draw for the width it will be printed at
 
@@ -394,12 +431,13 @@ Named here so nobody spends an afternoon satisfying one:
   overflows the column and gets scaled back down. Type size at final
   scale is the quantity that matters, and `\footnotesize` inside a
   picture that is then scaled to 0.8 is the actual defect.
-- **"A colourblind-safe palette makes the figure accessible."**
-  Necessary and not sufficient here. Two readers of a draft from this
-  pipeline receive **no colour whatever** -- anyone reading the `md`,
-  `docx` or `html` render, which shows only the ASCII twin, and anyone
-  reading the PDF in black and white. Working in one colour is the
-  binding constraint; a safe palette is what you do afterwards.
+- **"Pick a colourblind-safe palette and accessibility is handled."**
+  Necessary, and not the end of it. The house palette is already
+  Okabe-Ito, so the hue question is settled and you should not be
+  re-deciding it per figure. What a safe palette does *not* address is
+  the two readers who receive no colour at all -- the ASCII twin's
+  audience and anyone printing in black and white -- which is a
+  redundancy question rather than a palette one.
 - **"A vector figure is resolution-independent, so size does not
   matter."** True of fidelity, false of legibility, and the second is
   what a reader notices.

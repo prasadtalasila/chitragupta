@@ -345,15 +345,15 @@ pipeline.
   missing half renders in one format and disappears in the other, and a
   draft that refers in prose to a figure the reader cannot see is worse
   than one with no figure at all.
-- **Whatever colour carries, the ASCII form cannot.** The twin is a
-  7-bit alphabet, and `md`, `docx` and `html` render *only* the twin. So
-  a distinction drawn in colour alone -- two node classes, two arrow
-  kinds, a highlighted zone -- reaches no reader of those three formats,
-  and nothing warns you: both files exist, both render, and they quietly
-  say different things. Carry the distinction redundantly in shape, line
-  style, border weight or a label, and let colour be the accent rather
-  than the message. [TIKZ-STYLE.md](TIKZ-STYLE.md) has the checklist
-  entry and which encodings survive the round trip.
+- **The TikZ form is in colour; the ASCII form is not, and that is
+  accepted.** Figures here use a house palette
+  ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and the 7-bit twin cannot reproduce
+  it -- `md`, `docx` and `html` render only the twin. The pair contract
+  is therefore about the *point*, not the pixels: **both forms must work
+  as figures, and they need not carry the same secondary distinctions.**
+  Keep the argument legible through position, arrow direction and
+  labels, which the twin can express, and let colour make the picture
+  quick to read rather than possible to read.
 - **Originality binds the TikZ identically.** A TikZ picture redrawn
   from a source paper's figure is the same violation in different
   pixels, and that a vector redraw is easier to produce than a traced

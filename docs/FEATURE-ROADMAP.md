@@ -696,15 +696,19 @@ that `review figure` already parses:
   computable final point size. `figure_layout/_source.py` already splits
   picture and node options, so the parse is in place and the check is
   not.
-- **A distinction carried by colour alone.** The two-form contract makes
-  this worse than an accessibility question -- `md`, `docx` and `html`
-  render only the ASCII twin, and a black-and-white print renders the
-  TikZ form greyscaled. A screen over *declared* colours (`\definecolor`
-  and named colours, not pixels) for pairs that differ in hue but not in
-  lightness would catch it. The idea is
+- **Two palette colours a greyscale print cannot separate.** Colour is
+  house-standard and carries meaning freely
+  ([TIKZ-STYLE.md](TIKZ-STYLE.md)); what it may not do is carry the
+  figure's *main* point alone, because a black-and-white print
+  greyscales the TikZ form and `cgFlow` and `cgAlt` land at similar
+  lightness. A screen over *declared* colours (`\definecolor` and named
+  colours, not pixels) for pairs that differ in hue but not lightness
+  would report it. The idea is
   [K-Dense-AI/scientific-agent-skills](INSPIRATION.md)'s palette audit,
   which reads declarations rather than rendering; note their own caveat,
-  that a lightness heuristic is not colour-vision simulation.
+  that a lightness heuristic is not colour-vision simulation. **Advisory
+  and easy to over-fire** -- a secondary distinction living only in
+  colour is legitimate, so this reports a pair, not a verdict.
 
 Both fit the existing aid: deterministic, source-parsing, advisory,
 exit 0. Neither needs the vision critic

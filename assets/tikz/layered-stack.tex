@@ -7,11 +7,20 @@
 % them, so re-wording a member widens its layer instead of overflowing
 % it. `review figure` treats containment as grouping rather than
 % collision, which is exactly what this idiom is.
+% House palette (docs/TIKZ-STYLE.md). These five lines travel *inside*
+% every figure that uses them -- not a shared file, not a preamble: the
+% renderer injects only \usepackage{tikz}, and a thesis fragment is
+% \input into a document that has never heard of this project.
+\definecolor{cgInk}{HTML}{1A1A1A}
+\definecolor{cgFlow}{HTML}{0072B2}
+\definecolor{cgAccent}{HTML}{D55E00}
+\definecolor{cgAlt}{HTML}{009E73}
+\definecolor{cgAux}{HTML}{56B4E9}
 \usetikzlibrary{fit,positioning}
 \begin{tikzpicture}[thick,
-                    part/.style={draw,align=center,
+                    part/.style={draw=cgInk,align=center,fill=cgFlow!8,
                                  minimum width=26mm,minimum height=10mm},
-                    layer/.style={draw,dashed,inner sep=3mm}]
+                    layer/.style={draw=cgAux,dashed,inner sep=3mm}]
   \node[part] (store) {store};
   \node[part,right=6mm of store] (queue) {queue};
   \node[layer,fit=(store)(queue)] (persistence) {};
@@ -22,5 +31,5 @@
   \node[part,above=14mm of store] (api) {api};
   \node[part,right=6mm of api] (auth) {auth};
   \node[layer,fit=(api)(auth)] (service) {};
-  \draw[->] (service) -- (persistence);
+  \draw[->,cgFlow] (service) -- (persistence);
 \end{tikzpicture}
