@@ -379,7 +379,7 @@ the lesson design is the part worth keeping either way.
    picture) and `content/drafts/<topic>/figures/<name>.txt` (the ASCII
    form, in §10's 7-bit alphabet). The renderer swaps the marker for the
    `.txt` contents in a fence on `--format md` and every other
-   non-LaTeX format, and `--format tex`/`--format pdf` (step 14) get
+   non-LaTeX format, and `--format tex`/`--format pdf` (step 15) get
    `\input{figures/<name>.tex}`, so a learner reading the PDF gets a
    real picture instead of monospace art. Six riders, each of which §10
    explains:
@@ -424,7 +424,7 @@ the lesson design is the part worth keeping either way.
      copy that line into the probe too: the renderer's preamble loads
      `tikz` and no library, so a picture that relies on one and does not
      load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
-   - **No citekey inside either figure file.** Step 12's gate reads the
+   - **No citekey inside either figure file.** Step 13's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. This genre's
      citations belong in "Where to go next" anyway.
@@ -473,7 +473,83 @@ the lesson design is the part worth keeping either way.
     what lets `draft-reviser` repair one step of the lesson, at its recorded
     line range, without reading the whole thing.
 
-12. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`. If
+12. **Critique against the evidence packet, before gating.** Skip this
+    entirely if the lesson has no citations at all -- a tutorial with
+    zero citations is the normal case, not a gap, and there is no
+    evidence packet to critique against. Otherwise, since this genre
+    cites only in "Where to go next," read the dossier's `evidence.md`
+    -- the `claim:`/`quote:` blocks step 6 recorded -- against that
+    section's own prose. List, in priority order, up to five places
+    where the prose claims more than its `claim:` line supports, omits
+    a kept `claim:` the section never used, or drifts from the wording
+    `claim:` actually recorded. This is one inline judgement call, not
+    a subagent dispatch and not a deterministic check -- nothing in
+    this pipeline scores this automatically.
+
+    Take the baseline before touching anything:
+
+    ```bash
+    python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.md --write --json
+    python -m chitragupta.draft style content/drafts/<slug>.md --json
+    ```
+
+    The first two are `overlap-reviser`'s own baseline discipline
+    (uncapped, never `--limit`): they file
+    `content/review/<topic>/<stem>.verbatim.json`, the file every edit
+    below is rechecked against. The third's finding count -- not the
+    file, `style` never writes one -- is the number you compare after
+    each edit; note it down. Take all three fresh now rather than
+    reusing anything on disk from an earlier run. If the scan's
+    `tiers_not_run` is not empty, quote the reason: **genuine
+    restatement is only detected where the embedding tier can run**, so
+    the recheck below only ever compares what the tiers that did run
+    can see.
+    `style` reports only what WRITING-STANDARDS.md §9 marks
+    decidable, and this step -- like every other -- is told to fix
+    none of them: its count is a proxy for whether the edit
+    introduced a new defect, not a work list to act on.
+
+    Work the top of your list, **at most three items, one edit each, no
+    retry and no second critique pass** once the three are done or the
+    list runs out first. For each:
+
+    1. Keep the pre-edit text of the section you are about to touch.
+    2. Edit with `Edit`, inside "Where to go next" only. Preserve the
+       citekey; reword the claim to match what `claim:` says, or drop a
+       sentence that overstates it. Never add a claim `evidence.md`
+       does not already record, and never touch a `quote:` span -- a
+       quotation is captured when the evidence is judged, never
+       rewritten here.
+    3. Check, all three required:
+
+       ```bash
+       python -m chitragupta.draft gate content/drafts/<slug>.md
+       python -m chitragupta.review verbatim recheck content/drafts/<slug>.md \
+           --baseline content/review/<topic>/<stem>.verbatim.json --json
+       python -m chitragupta.draft style content/drafts/<slug>.md --json
+       ```
+
+       Accept the edit only if: the gate exits `OK`; the recheck's
+       `objective_delta` is not positive; and the fresh `style` finding
+       count -- read only as a number, since `style` reports what §9
+       marks decidable and this step is told to fix none of them -- is
+       no higher than the count noted before editing. Also check the
+       edited section did not fall under 90% of its own pre-edit length
+       -- a secondary sanity floor against a rewrite that deletes its
+       way to a lower count, never itself a reason to accept one that
+       the three checks above already failed.
+    4. If any check fails, restore the text you kept in step 1 and move
+       to the next item. Do not retry the same item.
+    5. Log the attempt in the dossier's `revisions.md`: which gap, what
+       you changed, and the outcome -- accepted or reverted. Never write
+       any of this to `rejected.md`.
+
+    If nothing on the list clears the bar, or the list was empty,
+    continue to the gate exactly as if this step had not run -- the
+    gate remains the only thing that blocks a draft, and this step is
+    never a condition of presenting.
+13. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`. If
     it contains any `[@citekey]`, run:
 
     ```bash
@@ -487,7 +563,7 @@ the lesson design is the part worth keeping either way.
     similar tokens in your worked code are not false positives. Don't mangle
     real teaching code to appease it.
 
-13. **Build the References section**, only if the draft cites anything:
+14. **Build the References section**, only if the draft cites anything:
 
     ```bash
     python -m chitragupta.draft references content/drafts/<slug>.md --heading "Further reading"
@@ -508,7 +584,7 @@ the lesson design is the part worth keeping either way.
     the tutorial genre cites lightly. Pass the default heading instead if
     a single bibliography matters more for a given tutorial.
 
-14. **Render tex, pdf, and numbered md.**
+15. **Render tex, pdf, and numbered md.**
 
     ```bash
     python -m chitragupta.draft render content/drafts/<slug>.md --format tex
@@ -547,14 +623,14 @@ the lesson design is the part worth keeping either way.
     textbook chapter -- see `textbook-chapter-writer`, whose reader is
     studying rather than doing.
 
-15. **Record any steering.** If the user shaped this lesson in chat -- "use
+16. **Record any steering.** If the user shaped this lesson in chat -- "use
     FastAPI, not Flask", "no Docker", "keep it under twenty minutes", "assume
     they've never opened a terminal" -- append it to the dossier's
     `steering.md`, dated. In this genre it is usually what fixed the single
     path in the first place, it is invisible in the prose, and it has nowhere
     else to live; a revision that doesn't know about it will undo it.
 
-16. **Run the prose check.** After the gate passes and before
+17. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -581,7 +657,7 @@ the lesson design is the part worth keeping either way.
     short list is not a clean draft. A review aid, not a gate -- it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-17. **Run the verbatim scan.** Before presenting, rebuild the section map
+18. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
     ```bash
@@ -617,7 +693,7 @@ the lesson design is the part worth keeping either way.
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
 
-18. **Present**, reporting: the draft path, the render outcome (or warning),
+19. **Present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of

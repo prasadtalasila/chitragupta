@@ -45,6 +45,7 @@ writes the ledger.
 - [The cost ladder](#-the-cost-ladder)
 - [What accumulates across drafts](#-what-accumulates-across-drafts)
 - [Build order](#-build-order)
+- [B5 is a separate mechanism, not a widening of this one](#-b5-is-a-separate-mechanism-not-a-widening-of-this-one)
 - [What this does not change](#-what-this-does-not-change)
 
 ## 🏗 The shape
@@ -347,6 +348,29 @@ sequence.
 Step 5's widening is the only work left live. Steps 1, 2, 3, 4 and 6
 are shipped, and step 7 (#130) is a closed, declined decision rather
 than an open issue -- see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
+
+## 🚧 B5 is a separate mechanism, not a widening of this one
+
+The five genre skills' own pre-gate self-feedback step (roadmap item
+[B5](FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop), designed in
+`plans/b5-pregate-self-feedback.md`) is easy to misfile as part of this
+track, since both critique a draft
+against a deterministic count before accepting an edit. They are not
+the same mechanism, and R11 ("no other skill invokes the
+`agenda-reviser` skill... only trigger is a person asking") does not
+cover B5:
+
+- B5's step runs **inside** a genre skill, at generation time, on the
+  draft that skill itself is producing. It is not `agenda-reviser` --
+  R11 governs when a person may start a *reviser* skill, not what a
+  genre skill's own step does to its own output before the gate.
+- It does not widen step 5 above and is not a build-order step in this
+  track; it is a sibling mechanism the roadmap tracks separately, under
+  B5.
+- It calls `verbatim scan`/`recheck` and `draft style` directly, the
+  same commands `overlap-reviser` and every genre skill's own later
+  steps already call. It never calls `review agenda`, so there is no
+  overlap with this track's own machinery to exempt it from.
 
 ## 🚫 What this does not change
 

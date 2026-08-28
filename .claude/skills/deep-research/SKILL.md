@@ -505,14 +505,92 @@ sources dominate); a missing 6th perspective; overall grade.
 Synthesis briefing -> article body -> Contradiction map -> Peer-review
 scorecard -> References (citekeys with title/year from the ledger, not URLs).
 
-**(c) Save, log provenance, and gate.** Save the assembled report to
+**(c) Save, log provenance, critique, and gate.** Save the assembled report to
 `content/drafts/deep-research-<slug>.md` first -- the gate reads a file, and
 every other skill in this repo saves before gating. Then write
 `content/dossiers/<draft path minus suffix>/provenance.json`
 covering every section's citekeys. This is the machine record, and it is
 not the dossier: the JSON maps section -> citekey for tooling, while the
 dossier holds the working state a human or a later revision reads. Write
-both. Then:
+both.
+
+**Then critique against the evidence packet, before gating.** Read the
+dossier's `evidence.md` -- the `relevance:`/`claim:`/`quote:` blocks
+Phase 5 recorded -- against the assembled report's own prose, section by
+section. This is separate from (a)'s peer review above: peer review
+judges rigor and coverage across five personas and produces a scorecard
+a human reads; this is a narrower, single-pass check of whether each
+section's prose still matches what its own `claim:` lines say, with an
+external, deterministic accept/reject test rather than a reviewer's
+verdict. List, in priority order, up to five places where the prose
+claims more than its `claim:` line supports, omits a kept `claim:` the
+report never used, or drifts from the wording `claim:` actually
+recorded. This is one inline judgement call, not a subagent dispatch and
+not a deterministic check -- nothing in this pipeline scores this
+automatically.
+
+Take the baseline before touching anything:
+
+```bash
+python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>.md --citekeys --write
+python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.md --write --json
+python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
+```
+
+The first two are `overlap-reviser`'s own baseline discipline (uncapped,
+never `--limit`): they file
+`content/review/<topic>/<stem>.verbatim.json`, the file every edit below
+is rechecked against. The third's finding count -- not the file, `style`
+never writes one -- is the number you compare after each edit; note it
+down. Take all three fresh now rather than reusing anything on disk from
+an earlier run. If the scan's `tiers_not_run` is not empty, quote the
+reason: **genuine restatement is only detected where the embedding tier
+can run**, so the recheck below only ever compares what the tiers that
+did run can see. `style` reports only what WRITING-STANDARDS.md §9
+marks decidable, and this step -- like every other -- is told to fix
+none of them: its count is a proxy for whether the edit introduced a
+new defect, not a work list to act on.
+
+Work the top of your list, **at most three items, one edit each, no
+retry and no second critique pass** once the three are done or the list
+runs out first. For each:
+
+1. Keep the pre-edit text of the section you are about to touch.
+2. Edit with `Edit`, inside that section only. Preserve the citekey;
+   reword the claim to match what `claim:` says, or drop a sentence
+   that overstates it. Never add a claim `evidence.md` does not already
+   record, and never touch a `quote:` span -- a quotation is captured
+   when the evidence is judged, never rewritten here.
+3. Check, all three required:
+
+   ```bash
+   python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md
+   python -m chitragupta.review verbatim recheck content/drafts/deep-research-<slug>.md \
+       --baseline content/review/<topic>/<stem>.verbatim.json --json
+   python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
+   ```
+
+   Accept the edit only if: the gate exits `OK`; the recheck's
+   `objective_delta` is not positive; and the fresh `style` finding
+   count -- read only as a number, since `style` reports what §9 marks
+   decidable and this step is told to fix none of them -- is no higher
+   than the count noted before editing. Also check the edited section
+   did not fall under 90% of its own pre-edit length -- a secondary
+   sanity floor against a rewrite that deletes its way to a lower
+   count, never itself a reason to accept one that the three checks
+   above already failed.
+4. If any check fails, restore the text you kept in step 1 and move to
+   the next item. Do not retry the same item.
+5. Log the attempt in the dossier's `revisions.md`: which gap, what you
+   changed, and the outcome -- accepted or reverted. Never write any of
+   this to `rejected.md`.
+
+If nothing on the list clears the bar, or the list was empty, continue
+to the gate exactly as if this step had not run -- the gate remains the
+only thing that blocks a draft, and this step is never a condition of
+presenting.
+
+**Then gate:**
 
 ```bash
 python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md

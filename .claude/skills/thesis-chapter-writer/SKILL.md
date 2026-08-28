@@ -307,7 +307,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    §10's 7-bit alphabet, since a Unicode box character hard-fails
    `pdflatex`. The renderer
    swaps that `\input` for the `.txt` contents when it builds the `.md`
-   preview (step 11); `--format tex` and `--format pdf` get the TikZ.
+   preview (step 12); `--format tex` and `--format pdf` get the TikZ.
    Six things to hold onto, each of which §10 explains:
 
    - **Commit to a layout metaphor before drawing, and start from the
@@ -348,14 +348,14 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      present, wrap `figures/<name>.tex` in a minimal
      `\documentclass{article}` + `\usepackage{tikz}` document and run
      `pdflatex` on it. A malformed figure fails the *whole* pdf render
-     in step 11, not just the figure, so a figure that will not compile
+     in step 12, not just the figure, so a figure that will not compile
      alone never reaches the fragment.
      If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
      its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
      copy that line into the probe too: the renderer's preamble loads
      `tikz` and no library, so a picture that relies on one and does not
      load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
-   - **No citekey inside either figure file.** Step 10's gate reads the
+   - **No citekey inside either figure file.** Step 11's gate reads the
      fragment and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
      that introduces the figure.
@@ -372,7 +372,79 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    The TikZ must be as original as the ASCII -- a picture redrawn from a
    source paper's figure is the same violation in different pixels.
 
-10. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
+10. **Critique against the evidence packet, before gating.** Read the
+    dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
+    recorded -- against the fragment's own prose, section by section.
+    List, in priority order, up to five places where the prose claims
+    more than its `claim:` line supports, omits a kept `claim:` the
+    fragment never used, or drifts from the wording `claim:` actually
+    recorded. This is one inline judgement call, not a subagent
+    dispatch and not a deterministic check -- nothing in this pipeline
+    scores this automatically.
+
+    Take the baseline before touching anything:
+
+    ```bash
+    python -m chitragupta.draft dossier sections content/drafts/<slug>.tex --citekeys --write
+    python -m chitragupta.review verbatim scan content/drafts/<slug>.tex --write --json
+    python -m chitragupta.draft style content/drafts/<slug>.tex --json
+    ```
+
+    The first two are `overlap-reviser`'s own baseline discipline
+    (uncapped, never `--limit`): they file
+    `content/review/<topic>/<stem>.verbatim.json`, the file every edit
+    below is rechecked against. The third's finding count -- not the
+    file, `style` never writes one -- is the number you compare after
+    each edit; note it down. Take all three fresh now rather than
+    reusing anything on disk from an earlier run. If the scan's
+    `tiers_not_run` is not empty, quote the reason: **genuine
+    restatement is only detected where the embedding tier can run**, so
+    the recheck below only ever compares what the tiers that did run
+    can see.
+    `style` reports only what WRITING-STANDARDS.md §9 marks
+    decidable, and this step -- like every other -- is told to fix
+    none of them: its count is a proxy for whether the edit
+    introduced a new defect, not a work list to act on.
+
+    Work the top of your list, **at most three items, one edit each, no
+    retry and no second critique pass** once the three are done or the
+    list runs out first. For each:
+
+    1. Keep the pre-edit text of the section you are about to touch.
+    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+       reword the claim to match what `claim:` says, or drop a sentence
+       that overstates it. Never add a claim `evidence.md` does not
+       already record, and never touch a `quote:` span -- a quotation is
+       captured when the evidence is judged, never rewritten here.
+    3. Check, all three required:
+
+       ```bash
+       python -m chitragupta.draft gate content/drafts/<slug>.tex
+       python -m chitragupta.review verbatim recheck content/drafts/<slug>.tex \
+           --baseline content/review/<topic>/<stem>.verbatim.json --json
+       python -m chitragupta.draft style content/drafts/<slug>.tex --json
+       ```
+
+       Accept the edit only if: the gate exits `OK`; the recheck's
+       `objective_delta` is not positive; and the fresh `style` finding
+       count -- read only as a number, since `style` reports what §9
+       marks decidable and this step is told to fix none of them -- is
+       no higher than the count noted before editing. Also check the
+       edited section did not fall under 90% of its own pre-edit length
+       -- a secondary sanity floor against a rewrite that deletes its
+       way to a lower count, never itself a reason to accept one that
+       the three checks above already failed.
+    4. If any check fails, restore the text you kept in step 1 and move
+       to the next item. Do not retry the same item.
+    5. Log the attempt in the dossier's `revisions.md`: which gap, what
+       you changed, and the outcome -- accepted or reverted. Never write
+       any of this to `rejected.md`.
+
+    If nothing on the list clears the bar, or the list was empty,
+    continue to the gate exactly as if this step had not run -- the
+    gate remains the only thing that blocks a draft, and this step is
+    never a condition of presenting.
+11. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
     (this remains the canonical deliverable -- the one meant to be `\input`-ed),
     then run:
 
@@ -381,7 +453,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     ```
 
     Fix and re-run until `OK`. Never present a draft that hasn't passed.
-11. **Render md and pdf previews.** The `.tex` fragment stays the canonical
+12. **Render md and pdf previews.** The `.tex` fragment stays the canonical
     deliverable exactly as-is -- don't wrap it in a preamble or change its
     `\input`-able shape. In addition, render an `.md` and a `.pdf` preview
     from that same fragment (pandoc's LaTeX reader handles a preamble-less
@@ -450,19 +522,19 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     unchanged, and the real thesis renders it in whatever style its own
     document class and `\bibliographystyle` specify. Don't rewrite
     `\citep`/`\citet` to match the preview.
-12. **Read it once as the examiner** (`docs/WRITING-STANDARDS.md` §6, in its
+13. **Read it once as the examiner** (`docs/WRITING-STANDARDS.md` §6, in its
     adversarial form). Check specifically for: a conclusion stated more
     strongly than its cited evidence supports, a section that summarizes
     rather than argues, notation or terminology that shifts mid-chapter, and
     any claim carrying no citation that isn't genuinely your own contribution.
     Where you find overreach, weaken the claim rather than adding a citation
     that doesn't quite support it.
-13. **Record any steering.** If the user shaped this chapter in chat --
+14. **Record any steering.** If the user shaped this chapter in chat --
     "argue it harder against X", "the RQ is narrower than that", "cut the
     background recap" -- append it to the dossier's `steering.md`, dated.
     It is invisible in the prose and has nowhere else to live; a revision
     that doesn't know about it will undo it.
-14. **Run the prose check.** After the gate passes and before
+15. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -490,7 +562,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     short list is not a clean draft. A review aid, not a gate -- it
     exits 0 whatever it finds, and a missing `vale` binary is a one-line
     warning that blocks nothing.
-15. **Run the verbatim scan.** Before presenting, rebuild the section map
+16. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
     ```bash
@@ -523,7 +595,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     and only if the user asks. If the user wants the finding kept, add
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
-16. Present the `.tex` fragment (the deliverable to `\input`) plus, if
+17. Present the `.tex` fragment (the deliverable to `\input`) plus, if
     rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
     it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of this
