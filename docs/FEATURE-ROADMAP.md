@@ -680,12 +680,28 @@ array-bounds test. Nothing here is ported as text
 **A prerequisite for E2, and independently valuable.** `_STOPWORDS` holds
 twenty function words and no interrogatives, and `len(w) > 2` passes
 `how`, `why`, `who`, `can`. Because those are *rare in academic PDFs*
-they carry high IDF and compete for the ranking. Measured over the
-497-parsed corpus, six paired queries at `k=10`: a question and its
-keyword equivalent share **4.7 of 10** results, and stripping
-interrogatives from the query alone takes that to **9.2** --
+they carry high IDF and compete for the ranking.
+
+**Measured against ground truth no retrieval method built** --
+`bench_retrieval_keyword_selfretrieval.py`'s instrument, where the query
+is a paper's own author-assigned `keywords` and the answer is that paper.
+Over the 208 parsed entries carrying keywords, wrapped in interrogative
+glue:
+
+| Query form | recall@5 | recall@10 |
+| --- | --- | --- |
+| author keywords (baseline) | **0.808** | **0.865** |
+| wrapped as a question | 0.731 (-0.077) | 0.812 (-0.053) |
+| question, interrogatives stripped | 0.788 (-0.019) | 0.846 (-0.019) |
+| keywords, interrogatives stripped | 0.808 (**+0.000**) | 0.865 (**+0.000**) |
+
+**Free, provably inert on keyword queries, and only a partial fix** --
+it recovers 75% of the loss at k=5 and 64% at k=10, and roughly a third
+once the question also carries ordinary words like "role" or "evaluate",
+which are not stopwords and which no stopword list can reach. So this
+does not make question-form querying safe, and
 [CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
-has the working.
+keeps "phrase it as keywords" as the standing advice.
 
 E2 invites a person to author queries; people write questions. Shipping
 E2 without this makes a human-written query measurably worse than the
@@ -699,14 +715,22 @@ baseline (nDCG@5 0.7321) undisturbed. A symmetric change would re-rank
 every query in the corpus for no further gain. The idea is RAGFlow's
 `rmWWW`, which is query-side for the same reason.
 
-**What it owes before it ships.** Six pairs are a probe, not a result,
-and the 4.7 -> 9.2 figure measures *convergence between two phrasings*,
-not that ranking improved. The existing 48-pair ground truth cannot
-settle it -- its queries are claim sentences from a drafted book and
-contain no questions -- so this PR owes a question-form query set with
-known-correct citekeys, reported as recall@3 / recall@5 / nDCG@5 in
-B4's table shape, plus the claim-form figures to show it is inert where
-it should be.
+**What this measurement is, and what it still owes.** The instrument is
+the right one -- author-assigned keywords are independent of every
+retrieval method, so this is a correctness measurement rather than the
+convergence-between-phrasings figure an earlier draft of this item
+quoted. What it does not cover: the templates are synthetic, so the
+residual loss depends on how wordy a real question is, and no
+claim-form regression was run. Report both when it ships, in B4's table
+shape.
+
+**Do not reach for LLM-generated evaluation questions here.** AutoRAG's
+`legacy/` QA generator (Apache-2.0) writes the question *from* the gold
+chunk, so the query inherits that chunk's vocabulary and the set
+structurally favours lexical retrieval -- a BM25 change measured on it
+looks better than it is, and nothing upstream says so. The keyword
+ground truth has no such circularity, which is why it is the instrument
+above.
 
 Carries one hygiene change on measured but modest grounds: **22.8% of
 retrieved snippets contain their source's own citation markers** (39 of

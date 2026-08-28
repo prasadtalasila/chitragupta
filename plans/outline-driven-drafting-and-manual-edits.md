@@ -72,22 +72,46 @@ interrogatives**, and the `len(w) > 2` filter passes `how`, `why`, `who`,
 are *rare in academic PDFs* they carry high IDF, so they do not merely add
 noise -- they compete for the ranking.
 
-**Stripping them from the query alone closes it, and rebuilds nothing:**
+**Stripping them from the query alone changes nothing about the index:**
 
 | | mean overlap@10 | index rebuilt |
 | --- | --- | --- |
 | raw question form | 4.7 / 10 | -- |
 | query-side strip only | **9.2 / 10** | **no** |
 
-The query-side-only result is the whole of the effect. That matters for
-scope: see [PR 1](#-pr-1-strip-interrogatives-from-the-query-side).
+**That figure is convergence, not correctness**, and the correctness
+measurement below supersedes it as the number to quote.
 
-**This is a convergence measurement, not a correctness one.** The keyword
-form is the reference, not ground truth. The claim it supports is
-*"phrasing a query as a question no longer changes which papers you
-get"* -- which is exactly the property [PR 2](#-pr-2-an-outline-the-human-writes)
-needs, and not a claim that ranking improved. See PR 1 for what has to be
-measured before it ships.
+### Measured against ground truth no retrieval method built
+
+`bench_retrieval_keyword_selfretrieval.py` already solves the instrument
+problem this item was going to owe a new harness for: the query is a
+paper's own author-assigned `keywords` field, and the correct answer is
+that paper. No retrieval method's history chose it and no LLM wrote it.
+Over the 208 parsed entries carrying keywords, each wrapped in
+interrogative glue (`what is X`, `how does X work`, `why is X
+important`):
+
+| Query form | recall@5 | recall@10 |
+| --- | --- | --- |
+| author keywords (baseline) | **0.808** | **0.865** |
+| wrapped as a question | 0.731 (-0.077) | 0.812 (-0.053) |
+| question, interrogatives stripped | 0.788 (-0.019) | 0.846 (-0.019) |
+| keywords, interrogatives stripped | 0.808 (**+0.000**) | 0.865 (**+0.000**) |
+
+- **Free and provably inert on keyword queries** -- +0.000 at both
+  cut-offs, so nothing that already searches in keywords can be harmed.
+- **A partial fix, not a cure**: 75% of the loss recovered at k=5, 64%
+  at k=10. Re-run with wordier templates adding ordinary words like
+  "role", "practice" or "evaluate" and recovery falls to about a third,
+  because those are not stopwords. **A question is not a keyword query
+  with interrogatives attached.**
+- So E1 is worth shipping and is **not** a licence to write queries as
+  questions.
+
+**What it still owes:** the templates are synthetic, so residual loss
+depends on how wordy real questions are; and a claim-form regression
+should be reported alongside, in B4's table shape.
 
 ### 2. Retrieved snippets carry their sources' own citation markers
 

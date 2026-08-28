@@ -54,15 +54,39 @@ damage is not that they add noise -- it is that they are **rare in
 academic PDFs**, so they carry high IDF and compete for the ranking
 against the terms you meant.
 
-**So phrase a query as keywords, not as a question.** That is the
-practical advice today, and
-`plans/outline-driven-drafting-and-manual-edits.md`
-carries a proposal to strip interrogatives on the query side, which
-measured 4.7 -> 9.2 and rebuilds no index. Read that number honestly: it
-measures *convergence* between the two phrasings, not that ranking
-improved. The existing 48-pair ground truth cannot settle the latter,
-because its queries are claim sentences from a drafted book and contain
-no questions at all.
+**Measured against real ground truth, question phrasing costs recall.**
+The overlap figure above says two phrasings disagree; it does not say
+which is right. `bench_retrieval_keyword_selfretrieval.py`'s ground truth
+answers that, and is the right instrument because **no retrieval method
+built it**: the query is a paper's own author-assigned `keywords` field
+and the correct answer is that paper. Over the 208 parsed entries that
+carry keywords, wrapping each in interrogative glue (`what is X`, `how
+does X work`, `why is X important`):
+
+| Query form | recall@5 | recall@10 |
+| --- | --- | --- |
+| author keywords (baseline) | **0.808** | **0.865** |
+| wrapped as a question | 0.731 (-0.077) | 0.812 (-0.053) |
+| question, interrogatives stripped | 0.788 (-0.019) | 0.846 (-0.019) |
+| keywords, interrogatives stripped | 0.808 (**+0.000**) | 0.865 (**+0.000**) |
+
+Three things follow, and the second is the one that keeps the advice
+above in place:
+
+- **Stripping is free and provably inert on keyword queries** -- the last
+  row is +0.000 at both cut-offs, so nothing that already searches in
+  keywords can be harmed by it.
+- **It recovers most of the loss, not all of it: 75% at k=5, 64% at
+  k=10, leaving about two recall points on the floor.** And that is the
+  *favourable* case. Repeat it with wordier templates that add ordinary
+  words like "role", "practice" or "evaluate" and recovery falls to
+  roughly a third, because those are not stopwords and no stopword list
+  can reach them. **A question is not merely a keyword query with
+  interrogatives attached; it carries generic content words that compete
+  for the ranking on their own.**
+- So `plans/outline-driven-drafting-and-manual-edits.md`'s proposal to
+  strip interrogatives is worth doing and is **not** a licence to write
+  queries as questions. Keywords remain the advice.
 
 **This is a BM25 property, not a dense one.** The embedding path encodes
 the whole string, so an interrogative shifts the vector slightly rather

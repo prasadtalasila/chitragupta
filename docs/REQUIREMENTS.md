@@ -229,6 +229,21 @@ exists:
   engines *or* a private document collection, behind one search-engine
   interface. Its fully-local egress scoping is genuinely enforced and
   fail-closed, which is the part most worth reading.
+- **AutoRAG** -- AutoML for RAG: generate an evaluation set from your own
+  corpus, then sweep retrieval/rerank/generation modules against it.
+  **Mind the licence split** -- the root is MIT and covers a rewritten
+  TypeScript agent, while the Python tool everything above describes now
+  lives in `legacy/` under **Apache-2.0**. Its one genuinely valuable
+  idea here is *label-by-construction*: sample a chunk, record its id as
+  the ground truth, and only then generate a question from it, so the
+  label needs no judge. Its filters are worth the same look --
+  particularly the one that drops passage-dependent questions ("what does
+  the table show?") that no retriever can resolve.
+- **MiniRAG** (MIT, and a LightRAG fork -- roughly 330 lines are its own)
+  -- a heterogeneous graph index plus topology-enhanced retrieval, aimed
+  at small on-device models. The transferable idea is the framing:
+  *reduce what the model is asked to do to one structured extraction and
+  make the ranking arithmetic*.
 - **Zotero** -- the open-source reference manager itself; the natural
   upstream of any bring-your-own-corpus pipeline (and Chitragupta's
   actual upstream), but not a writing tool.
@@ -309,6 +324,44 @@ pre-edit draft, the feedback, every accepted edit -- and reads back only
 revision path exists to use. The state a revision feature would need
 largely already exists on disk in three of the four; what is missing is
 any entry point that reads it.
+
+### 🧪 Two more, read for retrieval and evaluation
+
+A follow-up read of **AutoRAG** and **MiniRAG** (2026-08-28) added two
+findings and one warning.
+
+**The warning is about measuring retrieval at all, and it is the most
+useful thing either produced.** AutoRAG generates its evaluation
+questions *from* the gold chunk's own text. The query therefore inherits
+that chunk's vocabulary, so the set **structurally favours lexical
+retrieval** -- a BM25 change scored on it looks better than it is, and
+nothing upstream flags this. It also has no near-duplicate question
+dedup, and no train/test tooling at all: its own documentation warns
+about overfitting while its code does nothing to prevent it. **A
+generated evaluation set is not neutral ground for a retrieval change.**
+This project's `bench_retrieval_keyword_selfretrieval.py` avoids the
+circularity by construction -- author-assigned keywords were written
+without reference to any retriever, or to the paper's body text.
+
+**Worth adapting.** *Label-by-construction* (AutoRAG): fix the ground
+truth before generating anything, so no judge is needed. *Cross-route
+agreement* (MiniRAG): a passage that two independent retrieval routes
+reach is worth multiplicatively more than one either route merely ranks
+highly -- implementable over BM25 in stdlib, needing no graph, no
+embeddings and no LLM.
+
+**Not worth taking.** MiniRAG's index needs an LLM pass per chunk --
+about 8,400 calls and tens of millions of tokens for a 500-paper corpus
+-- to build entity nodes typed `organization` / `person` / `location` /
+`event`, a news ontology with no override hook and little purchase on
+academic content. Its retrieval value ultimately flows through a
+chunk-id adjacency list, which a SQLite ledger already stores exactly
+and without hallucination risk. **Its paper also never benchmarks
+against BM25** -- "beats NaiveRAG" means beats embedding-only retrieval
+-- so there is no published evidence it would beat what already runs
+here. And its generator is handed anonymous text: chunk identity is
+replaced by a loop index before the prompt is built, which is the
+inverse of this project's requirement.
 
 That is the gap [DRAFT-ITERATION.md](DRAFT-ITERATION.md)'s dossier and
 the `draft-reviser` / `corpus-reviser` split were built to fill, and this
