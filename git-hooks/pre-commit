@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# git pre-commit hook: lint a staged workflow file before it is committed.
+#
+# **Why a git hook when .claude/hooks/ already exists.** Those are Claude
+# Code harness hooks: they fire on an agent's Write/Edit, so they only
+# ever see what that agent wrote. A human editing in an editor, a second
+# agent, `git apply`, `sed` -- none of them produce a PostToolUse event,
+# and none of them are checked until CI. git's own pre-commit sees every
+# path into a commit. The two mechanisms cover different sets and neither
+# replaces the other.
+#
+# **It blocks, and that is not a contradiction of docs/HOOKS.md's "exactly
+# one gate".** That rule governs the review layer, where a finding is a
+# judgement about a draft. A workflow file either parses and type-checks
+# or it does not; ci.yml's lint job already fails the build on it, and
+# blocking here only moves the same binary verdict earlier, to where the
+# fix is still part of the change in hand. What it must never do is block
+# when it cannot tell -- an absent actionlint is silence, not a refusal.
+#
+# Installed by `bash scripts/install_full_pipeline.sh dev-deps`, which
+# fetches the pinned binary and points `core.hooksPath` here. Both halves
+# matter: a hook directory git does not know about is inert, and inert is
+# the failure docs/HOOKS.md exists to prevent.
+#
+# Bypass with `git commit --no-verify` when you mean to.
+
+set -euo pipefail
+
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || true)"
+
+# A merge, cherry-pick, revert or rebase continuation stages the
+# *operation's* result, not something the developer typed. Findings there
+# belong to whichever commit is being replayed, on a tree they may not
+# have chosen yet -- and refusing the commit leaves the sequencer
+# half-finished, which is far worse than a late lint. Borrowed from
+# openclaw's own pre-commit hook, which states the same reason.
+if [ -n "$GIT_DIR" ]; then
+    for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD REBASE_HEAD; do
+        [ -f "$GIT_DIR/$marker" ] && exit 0
+    done
+    for marker in rebase-merge rebase-apply; do
+        [ -d "$GIT_DIR/$marker" ] && exit 0
+    done
+fi
+
+# ACMR, not the default: a *deleted* workflow leaves nothing to lint, and
+# linting the survivors would report findings this commit did not cause.
+# NUL-delimited so a filename containing a space or a newline cannot split
+# into two arguments.
+staged=0
+while IFS= read -r -d '' file; do
+    case "$file" in
+        .github/workflows/*.yml|.github/workflows/*.yaml) staged=1 ;;
+    esac
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+[ "$staged" -eq 1 ] || exit 0
+
+if ! command -v actionlint >/dev/null 2>&1; then
+    # Not installed is the ordinary state of a checkout that has not run
+    # the opt-in `dev-deps` stage. Say so once -- silent about findings is
+    # right, silent about not having looked is how someone comes to
+    # believe a check ran when it did not.
+    echo "pre-commit: actionlint not on PATH, workflows not checked." >&2
+    echo "            bash scripts/install_full_pipeline.sh dev-deps" >&2
+    exit 0
+fi
+
+# Whole-directory, not the staged subset: actionlint resolves reusable
+# workflows and job dependencies across files, so checking one in
+# isolation reports errors that the sibling it calls would have answered.
+if ! actionlint; then
+    echo "" >&2
+    echo "pre-commit: actionlint rejected a workflow above." >&2
+    echo "            ci.yml's lint job runs the same check, so this would" >&2
+    echo "            fail there too. Commit anyway with --no-verify." >&2
+    exit 1
+fi

@@ -425,8 +425,25 @@ jobs:
       # (added in 6.1.0), and CI now depends on a stage inside
       # it. A shell script CI calls deserves the bar the Python and the
       # Markdown already hold.
+      # git-hooks/pre-commit is shell this repository ships and a
+      # developer's git runs on every commit, so it holds the same bar
+      # scripts/*.sh does -- and it is not under scripts/, so the glob
+      # above does not reach it.
       - name: shellcheck
-        run: shellcheck scripts/*.sh
+        run: shellcheck scripts/*.sh git-hooks/pre-commit
+
+      # The same linter git-hooks/pre-commit runs locally. Required in
+      # both places deliberately: the hook catches it at the commit, and
+      # this catches it for anyone who bypassed the hook or never ran the
+      # opt-in dev-deps stage that installs it. Fetched as the pinned
+      # 5.8 MB release binary rather than through a pre-commit framework,
+      # which builds a Go toolchain to compile it from source (measured at
+      # 340-370 MB of cache).
+      - name: Install actionlint
+        run: bash scripts/install_full_pipeline.sh actionlint
+
+      - name: actionlint
+        run: actionlint
 
       - uses: actions/setup-node@v4
         with:

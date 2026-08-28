@@ -127,6 +127,13 @@ DELIBERATE_DIFFERENCES = frozenset(
         # whose sizes it could describe. The size hook `.claude/` does
         # scaffold is inert there for the same reason, and says so.
         "code-standards-register.toml",
+        # The git pre-commit hook and its directory. It ships for the same
+        # reason `scripts/` does -- someone unzipping a release to work on
+        # the pipeline can use it -- and `init` does not scaffold it: an
+        # `init`-ed project has no workflows to lint, and pointing a
+        # drafting user's `core.hooksPath` at a hook they never asked for
+        # would be a surprising thing for a scaffolder to do.
+        "git-hooks",
         # Audience is someone changing chitragupta's own source, which a
         # pip-installed, init-ed project does not have -- #267 gives
         # CLAUDE.md's routing table the "no src/ to change" row this implies.
