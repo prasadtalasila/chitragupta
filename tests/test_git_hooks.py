@@ -235,6 +235,57 @@ class TestTheInstallStageWiresItUp:
         assert "actionlint) install_actionlint" in self._script()
 
 
+class TestTheInstallStageNeverFailsTheBuild:
+    """The regression the first CI run on this branch found.
+
+    `dev-deps` is what the Windows test leg runs to get pytest. The first
+    version of `install_actionlint` called `sudo_if_needed install ...
+    /usr/local/bin`, which exits 1 where it cannot elevate -- Git Bash has
+    no sudo -- so the whole step died and pytest never ran. A workflow
+    linter that cannot install is a reason to skip the commit hook, never
+    a reason to fail the install of everything else.
+    """
+
+    def _run_stage(self, tmp_path, uname_output):
+        """The `actionlint` stage with a stubbed `uname` ahead of PATH."""
+        fake = tmp_path / "bin"
+        fake.mkdir(parents=True, exist_ok=True)
+        stub = fake / "uname"
+        stub.write_text(
+            f'#!/bin/sh\ncase "$1" in -s) echo {uname_output} ;; *) echo x86_64 ;; esac\n',
+            encoding="utf-8",
+        )
+        stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
+        env = dict(os.environ)
+        env["PATH"] = f"{fake}{os.pathsep}{env['PATH']}"
+        return subprocess.run(
+            ["bash", str(REPO_ROOT / "scripts" / "install_full_pipeline.sh"), "actionlint"],
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    @pytest.mark.skipif(
+        shutil.which("actionlint") is not None,
+        reason="actionlint is installed here, so the stage short-circuits before the guard",
+    )
+    @pytest.mark.parametrize("system", ["MINGW64_NT-10.0", "Darwin"])
+    def test_a_host_with_no_pinned_build_is_a_note_not_a_failure(self, tmp_path, system):
+        result = self._run_stage(tmp_path, system)
+        assert result.returncode == 0, result.stderr
+        assert "skipping" in result.stderr.lower()
+
+    def test_the_guard_returns_before_any_download(self):
+        """The non-Linux path must not reach curl -- an install step that
+        fetches 5.8 MB to then discard it is a slow way to do nothing."""
+        script = (REPO_ROOT / "scripts" / "install_full_pipeline.sh").read_text(encoding="utf-8")
+        body = script[script.index("install_actionlint() {") :]
+        body = body[: body.index("\ninstall_git_hooks")]
+        assert body.index("uname -s") < body.index("curl")
+
+
 class TestCiRunsItToo:
     def test_the_lint_job_runs_actionlint(self):
         ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")

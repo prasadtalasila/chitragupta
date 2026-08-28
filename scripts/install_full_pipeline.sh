@@ -238,6 +238,24 @@ install_actionlint() {
         echo "actionlint already installed: $(actionlint --version | head -1)"
         return 0
     fi
+    # Every path below warns and returns 0 rather than exiting, because
+    # this is called from `dev-deps` -- which the Windows CI leg runs to
+    # get pytest, and which a developer runs to get the test suite. A
+    # workflow linter that cannot install is a reason to skip the commit
+    # hook, never a reason to fail the install of everything else. The
+    # one exception is a checksum mismatch, which stays fatal.
+    #
+    # `install_vale` has no such guard and does not need one: it is only
+    # ever reached through the `vale` stage on the Linux lint job. Adding
+    # this function to `dev-deps` is what put it on Windows, and the
+    # first CI run said so -- `install -m 0755 ... /usr/local/bin` needs
+    # root, Git Bash has no sudo, and the whole step failed before pytest
+    # ran.
+    if [[ "$(uname -s)" != "Linux" ]]; then
+        echo "NOTE: only a Linux actionlint build is pinned here; skipping on $(uname -s)." >&2
+        echo "      git-hooks/pre-commit will report it as missing, and CI still checks workflows." >&2
+        return 0
+    fi
     case "$(uname -m)" in
         x86_64|amd64) actionlint_arch="amd64" ;;
         aarch64|arm64) actionlint_arch="arm64" ;;
@@ -270,9 +288,18 @@ install_actionlint() {
         return 1
     fi
     tar xzf "${actionlint_tmp}/actionlint.tar.gz" -C "$actionlint_tmp" actionlint
-    sudo_if_needed install -m 0755 "${actionlint_tmp}/actionlint" /usr/local/bin/actionlint
+    # Not sudo_if_needed: that exits 1 where it cannot elevate, which is
+    # right for os-deps and wrong here (see the note above). A host with
+    # no root gets the warning and keeps its test suite.
+    if [[ "$(id -u)" == "0" ]] || command -v sudo >/dev/null 2>&1; then
+        sudo_if_needed install -m 0755 "${actionlint_tmp}/actionlint" /usr/local/bin/actionlint
+        echo "actionlint installed: $(actionlint --version | head -1)"
+    else
+        echo "NOTE: no root and no sudo, so actionlint was not installed to /usr/local/bin." >&2
+        echo "      Put it on PATH by hand to enable the commit hook:" >&2
+        echo "      $actionlint_url" >&2
+    fi
     rm -rf "$actionlint_tmp"
-    echo "actionlint installed: $(actionlint --version | head -1)"
 }
 
 install_git_hooks() {
