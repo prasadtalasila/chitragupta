@@ -1,6 +1,6 @@
 """`Item`, the worklist-entry type, plus the two drift-based extractors
 (`missing-citekey`, `candidate`) and the `all_items` orchestrator. The
-other six classes' extractors -- reading the other aids' `.json` and
+other seven classes' extractors -- reading the other aids' `.json` and
 `style_check`'s findings -- are `_items_findings.py`, split out once the
 two halves together crossed the 250-code-line cap.
 """
@@ -17,6 +17,7 @@ CLASSES = (
     "verbatim-run",
     "prose",
     "unsupported-claim",
+    "claim-support",
     "uncited-source",
     "uncited-claim",
     "misquoted",
@@ -98,6 +99,7 @@ def all_items(sources, sections: list[Section]) -> list[Item]:
         *f.verbatim_run_items(sources.aids["verbatim"], sections),
         *f.prose_items(sources.style, sections),
         *f.unsupported_claim_items(sources.aids["provenance"], sections),
+        *f.claim_support_items(sources.aids["support"], sections),
         *f.uncited_source_items(sources.aids["coverage"]),
         *f.uncited_claim_items(sources.aids["uncited"], sections),
         *f.misquoted_items(sources.aids["quotation"]),

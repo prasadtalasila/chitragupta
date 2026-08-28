@@ -53,7 +53,7 @@ writes the ledger.
 Three sentences.
 
 - The **deterministic half** is a further review aid: it reads the other
-  six aids' findings plus the dossier's drift report and emits one
+  eight aids' findings plus the dossier's drift report and emits one
   ranked, deduplicated worklist.
 - The **generative half** is a skill: it consumes that worklist, repairs
   what may be repaired unattended, re-verifies each repair, and hands the
@@ -97,7 +97,7 @@ it finds.
 
 **Reads:**
 
-- the six aids' `.json` for this draft -- each optional, and skipped
+- the eight aids' `.json` for this draft -- each optional, and skipped
   with a note when absent;
 - `chitragupta.dossier.drift(dossier_dir)`, for missing citekeys and candidates;
 - `rejected.md` -- a candidate already turned down with a reason is never
@@ -125,23 +125,22 @@ bucket within a class, then position in the draft.
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
 | `prose` | `style_check` (#107), `steering.md` | no evidence delta | **yes**, for the whole class -- decided in #421. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
+| `claim-support` | support | judgement | no -- surfaced. Unfiltered by design -- a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)) -- so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
 | `uncited-source` | coverage | judgement | no -- surfaced |
 | `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
 | `misquoted` | quotation | defect -- the span is not in the source it cites | no -- surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
 | `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
 
 `support` (C2) asks the same underlying question as `provenance` --
-does the source support this claim? -- but is not a second source for
-`unsupported-claim`: its score is ranked, never banded, by design
-([REVIEW.md](REVIEW.md)), and this class's extractor
+does the source support this claim? -- but was never wired in as a
+second source for `unsupported-claim`: its score is ranked, never
+banded, by design ([REVIEW.md](REVIEW.md)), and that class's extractor
 (`unsupported_claim_items`) decides membership by a `band`, a field
-this aid deliberately does not emit. A surfacing-only extractor with
-its own inclusion rule is possible -- ordering and surfacing what a
-human reads is exactly what R3 below permits an unattended process to
-do -- but is separate work with its own design question (all findings?
-a percentile? ranked-but-unfiltered?), not part of this aid's own
-scope. `agenda` does not read `support`'s JSON at all
-(`chitragupta/review/agenda/_sources.py`'s `AID_NAMES`).
+this aid deliberately does not emit. #427 gave it its own class instead,
+`claim-support`, ranked-but-unfiltered rather than thresholded -- a
+percentile cutoff would claim the same false precision a band would.
+Findings the entailer could not score at all (`note` set, no quotable
+passage) are excluded, since there is no score there to rank or act on.
 
 The `prose` class had no producer when this was written. It has both a
 producer and a consumer now: #107 shipped the detector in 5.13.0 and
@@ -215,10 +214,10 @@ design would go wrong.
 **The aid: anyone, at any time.** `python -m chitragupta.review agenda <draft>`
 is
 free, deterministic, read-only and exits 0. It has exactly the standing of
-the other six aids -- you run it because you want to know. No occasion is
+the other eight aids -- you run it because you want to know. No occasion is
 privileged and none is required. That describes the bare command, which
 is the one every caller here means; its `--baseline` mode re-runs the
-seven aids before comparing (`chitragupta/review/agenda/_recheck.py`), so
+eight aids before comparing (`chitragupta/review/agenda/_recheck.py`), so
 that mode alone is neither free nor read-only.
 
 **The skill: only a person, and only on a draft they consider finished.**
@@ -383,4 +382,4 @@ cover B5:
 - **No new entry point.** `python -m chitragupta.review agenda <draft>` is one
   verb under an existing front door, at depth 1.
 - **The review layer still never blocks.** `agenda` exits 0 with a full
-  worklist, exactly as the other six aids do with findings.
+  worklist, exactly as the other eight aids do with findings.

@@ -137,21 +137,21 @@ deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
 **`review agenda` -- one ranked, deduplicated worklist across the other
-seven.** Each of the aids above answers its own question in isolation;
+eight.** Each of the aids above answers its own question in isolation;
 this one reads what they already wrote (each optional -- an aid that
 never ran is named as absent, not treated as clean), plus the drafting
 layer's prose check and the dossier's drift report, and merges them into
 one ordered list a person or a future reviser skill can work down. In its
 bare form it **reads, never runs, an aid** -- a stale or missing input is
 named in the report's header rather than triggering a live re-run.
-`--baseline` is the one exception: it re-runs the seven aids first so the
+`--baseline` is the one exception: it re-runs the eight aids first so the
 comparison it reports means something, then rebuilds and diffs against a
 previous agenda. Every item carries whether it is `unattended` (safe for
 a future automated pass) or merely surfaced for a human to decide;
 `missing-citekey`, `prose`, and the short runs a verbatim scan finds are
 the former, everything judgement-shaped -- `unsupported-claim`,
-`uncited-source`, `uncited-claim`, `misquoted` and `candidate` -- is the
-latter.
+`claim-support`, `uncited-source`, `uncited-claim`, `misquoted` and
+`candidate` -- is the latter.
 
 **`review support` -- does the source actually entail this claim?** Same
 underlying question as `provenance`, asked a different way. `provenance`
