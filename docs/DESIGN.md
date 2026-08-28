@@ -1,6 +1,6 @@
 # 🏗 Design
 
-Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-23.
+Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-28.
 
 Why this pipeline refuses what it refuses.
 
@@ -22,6 +22,7 @@ over the alternative.
 - [Repository constraints and operating model](#-repository-constraints-and-operating-model)
 - [Concurrency and conflict policy](#-concurrency-and-conflict-policy)
 - [Parallelism and resource design](#-parallelism-and-resource-design)
+- [Whose prose is it?](#-whose-prose-is-it)
 - [Parser backends](#-parser-backends)
 
 ## 🎯 Repository constraints and operating model
@@ -279,6 +280,78 @@ passage sidecar both vary at high worker counts. What that costs, artifact
 by artifact, is
 [ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
 -- the single statement of it, measured rather than asserted.
+
+## ✍ Whose prose is it?
+
+A draft is assumed throughout this pipeline to have been written by a
+skill. Nothing marks a span as human-authored, and the assumption is
+load-bearing in more places than it looks -- so this section states what
+breaks when a person writes prose into a draft themselves, and the one
+rule that has to hold when that is fixed.
+
+**The concrete case.** You hand the pipeline an outline and one of its
+sections contains two paragraphs of your own prose. What are they? A
+*brief* -- steering, to be read and then written from -- or *seed text*
+you want to appear? The two are indistinguishable as prose, so a skill
+must guess, and either guess is wrong half the time. **That ambiguity is
+the defect**, not the presence of prose: the pipeline cannot infer intent
+from wording, so intent has to be declared rather than inferred.
+
+**What happens to unmarked human prose that lands in a draft.** Six
+mechanisms read it as the drafter's output, and four of them will try to
+change it:
+
+| Mechanism | What it does to your paragraph |
+| --- | --- |
+| `review verbatim scan` | scans it against the corpus. If you paraphrased a paper you had just read, it reports overlap with no attribution path -- and `overlap-reviser` exists to rewrite exactly that |
+| `review synthesis` | flags it for closing on fewer than two citekeys ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11) |
+| `draft style` | flags your spelling against `scope.md`'s recorded dialect (§8) |
+| `draft-reviser` copy-edit mode | rewrites it to a convention you never applied to it |
+| an uncited-prose report | flags it as ungrounded |
+| **`draft gate`** | **fails if you typed a citekey the ledger does not hold** |
+
+**The last row is the asymmetry, and it gives the rule:**
+
+> An advisory aid may exclude a human-authored span. **The gate never
+> does.**
+
+A fabricated citekey is fabricated whoever typed it --
+[CLAUDE.md](../CLAUDE.md)'s invariant admits no author exemption, and
+adding one would put the pipeline's only hard guarantee behind a marker
+a person controls. The advisory aids are in the opposite position: they
+measure *how the drafter behaved*, and running them over a human's own
+sentences is a category error that produces findings nobody can act on.
+This is also why the fix is a marker rather than a configuration switch
+-- the aids need to know *which span*, not whether to run.
+
+**Why three declared kinds rather than one.** Given that intent must be
+declared, the useful question is what a person actually wants when they
+put prose in front of this pipeline, and there are three answers, not
+one:
+
+| Declared as | Appears in the draft? | What the pipeline owes you |
+| --- | --- | --- |
+| a **brief** | no | write the section from it; your wording is not preserved |
+| **seed** text | yes, verbatim, inside a provenance marker | preserve it exactly; exclude it from the advisory aids; still gate it |
+| a **claim** | no -- it is rewritten | find a citekey supporting each assertion, and **report every sentence that could not be grounded** rather than shipping it |
+
+The third is the one worth building deliberately, because it is the only
+one that turns a person's paragraphs into an obligation the pipeline can
+discharge honestly. "I could not ground your third sentence in this
+corpus" is precisely the output this project exists to produce, and it is
+unavailable if the same two paragraphs are silently copied through as
+seed text.
+
+There is a symmetry worth noting with a design
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md) already records: the OpenScholar
+sample labels *ungrounded* sentences (`(LLM Memory)`, `(Model-Generated)`)
+rather than mixing them silently into cited prose. Marking human-authored
+spans is the same instinct pointed the other way -- and the reason both
+are worth doing is the same one, that a reader cannot audit what a
+document does not distinguish.
+
+None of this is built. The proposal is
+`plans/outline-driven-drafting-and-manual-edits.md`.
 
 ## 🗺 Where proposed work lives
 

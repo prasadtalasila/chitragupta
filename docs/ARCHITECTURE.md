@@ -1,6 +1,6 @@
 # 🏗 Architecture
 
-Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
+Status: **reference.** Written 2026-08-06. Updated 2026-08-28.
 
 What actually runs, what each part writes, and which parts are optional.
 
@@ -511,6 +511,35 @@ its own statement of how little 286 comparisons can pin down.
   not that the sentence attached to it is *right*. That is what the review
   aids above are for, and they are aids -- reading the source remains your
   job.
+- **It does not take an outline from you, except for a book.** The book
+  track has one -- you write `spec.md`, sign it, and each unit is
+  generated from its slice ([BOOKS.md](BOOKS.md)). At *single-draft*
+  scale there is no equivalent: all five genre skills manufacture their
+  own retrieval queries from a one-line topic, and there is nowhere to
+  hand them a structure, a per-section brief, or the queries you want
+  run. `deep-research` writes section-to-citekey rows into `sections.md`
+  at its Phase 4 and dispatches writers through `dossier brief
+  --section`, so the *mechanism* exists at this scale -- but the rows are
+  written by the model, and the other four genres never use them.
+- **It does not notice that you edited the draft by hand.** `scope.md`
+  fingerprints the *corpus*; nothing fingerprints the draft. So after a
+  manual edit, `sections.md`, `evidence.md` and `math.md` describe a
+  document that no longer exists, and `draft-reviser` reads them as
+  current. The book track does detect this for a unit
+  (`unit status` reports `stale: draft changed since accepted`); the
+  dossier has no counterpart.
+- **It cannot tell your prose from the drafter's.** Nothing marks a span
+  as human-authored, so text you write into a draft yourself is measured
+  by every review aid as though a skill had produced it -- `verbatim
+  scan` reports your wording against the corpus with no attribution path,
+  `review synthesis` flags your paragraph for citing one source,
+  `draft style` flags your spelling, and `draft-reviser`'s copy-edit mode
+  will rewrite it. The citation gate is the one that should *not* change:
+  a fabricated citekey is fabricated whoever typed it.
+
+Those last three are the subject of
+`plans/outline-driven-drafting-and-manual-edits.md`,
+which is a proposal and not built.
 
 ## 🔧 What each capability requires
 

@@ -1,6 +1,6 @@
 # 🔭 Corpus search: how a query becomes passages
 
-Status: **reference.** Written 2026-08-26.
+Status: **reference.** Written 2026-08-26. Updated 2026-08-28.
 
 [RETRIEVAL.md](RETRIEVAL.md) answers *which* search to build -- BM25,
 embeddings, or the topic model -- and stops there. This document answers
@@ -14,6 +14,7 @@ not come back.
 
 ## 🧭 Table of contents
 
+- [Before stage 1: the shape of the query](#-before-stage-1-the-shape-of-the-query)
 - [The four stages](#-the-four-stages)
 - [Why the rerank sits where it does](#-why-the-rerank-sits-where-it-does)
 - [What reranking does and does not buy](#-what-reranking-does-and-does-not-buy)
@@ -22,6 +23,55 @@ not come back.
 - [Turning it on](#-turning-it-on)
 - [When a paper does not come back](#-when-a-paper-does-not-come-back)
 - [What BM25 does instead](#-what-bm25-does-instead)
+
+## ❓ Before stage 1: the shape of the query
+
+Everything below is about what happens *to* a query. This section is
+about the query itself, because on the BM25 path the wording you choose
+changes the answer more than any setting in the table further down.
+
+**Asking a question retrieves different papers than asking in keywords.**
+Measured 2026-08-28 over the 497-parsed corpus, six paired queries at
+`k=10` -- each phrased once as a natural-language question and once as
+the equivalent keyword string:
+
+| | mean overlap@10 | top-1 identical |
+| --- | --- | --- |
+| question form vs keyword form | **4.7 / 10** | 2 of 6 |
+
+Less than half the same papers. The cause is visible in the tokenizer:
+`_STOPWORDS` (`chitragupta/retrieval.py`) holds twenty function words and
+**no interrogatives**, and the `len(w) > 2` filter passes `how`, `why`,
+`who` and `can`:
+
+```text
+'what are the failure modes of co-simulation' -> ['what', 'failure', 'modes', 'simulation']
+'why does model calibration matter'           -> ['why', 'does', 'model', 'calibration', 'matter']
+```
+
+`what`, `why`, `does` and `matter` are scored as ordinary BM25 terms. The
+damage is not that they add noise -- it is that they are **rare in
+academic PDFs**, so they carry high IDF and compete for the ranking
+against the terms you meant.
+
+**So phrase a query as keywords, not as a question.** That is the
+practical advice today, and
+`plans/outline-driven-drafting-and-manual-edits.md`
+carries a proposal to strip interrogatives on the query side, which
+measured 4.7 -> 9.2 and rebuilds no index. Read that number honestly: it
+measures *convergence* between the two phrasings, not that ranking
+improved. The existing 48-pair ground truth cannot settle the latter,
+because its queries are claim sentences from a drafted book and contain
+no questions at all.
+
+**This is a BM25 property, not a dense one.** The embedding path encodes
+the whole string, so an interrogative shifts the vector slightly rather
+than competing as a high-IDF term. It is still noise; it is not this
+failure.
+
+One related defect, recorded because the term is central here and the fix
+is not the same one: **`co-simulation` tokenizes to `simulation`** -- the
+`co` is dropped by the `len(w) > 2` filter.
 
 ## 🪜 The four stages
 
@@ -260,6 +310,7 @@ Work down this list instead:
 
 | Symptom | Likely stage | What to change |
 | --- | --- | --- |
+| You phrased the query as a question | **before stage 1** | Re-phrase it as keywords and compare. On the BM25 path this alone changes over half the result -- [above](#-before-stage-1-the-shape-of-the-query) |
 | The paper has no parsed text | before stage 1 | It is findable by BM25 (title) but not here -- `build_index` skips documents with no text. Re-run `sync`, check the PDF parsed |
 | One paper fills the result | stage 3 | Lower `embed_max_passages_per_source` (to `1` for maximal diversity) |
 | The right paper is in the results but 4th or 5th | stage 2 | This is what reranking is for |

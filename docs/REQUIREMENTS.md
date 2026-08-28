@@ -210,9 +210,113 @@ exists:
   actually entailed; closer in spirit (a verification step exists) but
   explicitly a small learning-oriented reference implementation, and the
   check is a judged pass/fail score, not an existence-gated block.
+- **OpenScholar** (Apache-2.0) -- retrieval-augmented scientific answer
+  generation over a pes2o datastore, with an optional self-feedback pass.
+  Already credited in [INSPIRATION.md](INSPIRATION.md) as an influence on
+  [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s synthesis half.
+- **RAGFlow** (Apache-2.0) -- a full production RAG platform: layout-aware
+  "deep document understanding", fifteen chunking templates, hybrid
+  keyword+vector retrieval with a tunable fusion weight, and a
+  citation-rendering UI. Server, database and web app; the opposite end
+  of the deployment spectrum from this project.
+- **papersgpt-for-zotero** -- a Zotero plugin, and therefore the closest
+  thing to a direct competitor for this project's *input* side. Note the
+  three-way licence split: the GitHub source tree is AGPL-3.0, the npm
+  wrapper Apache-2.0, and **the shipped engine is a proprietary binary**
+  whose source is not published, behind commercial tiers. The AGPL text
+  is not the source of the shipped artefact.
+- **local-deep-research** (MIT) -- multi-round "deep research" over web
+  engines *or* a private document collection, behind one search-engine
+  interface. Its fully-local egress scoping is genuinely enforced and
+  fail-closed, which is the part most worth reading.
 - **Zotero** -- the open-source reference manager itself; the natural
   upstream of any bring-your-own-corpus pipeline (and Chitragupta's
   actual upstream), but not a writing tool.
+
+### 📉 What a 2026-08-28 source read of those four found
+
+Read for architecture only, as [INSPIRATION.md](INSPIRATION.md) requires.
+The result was largely negative, and the negative result is the useful
+part -- it says these are not the places to look for the two capabilities
+this project keeps being asked about.
+
+| | Query manufacture | Is a citation verified? |
+| --- | --- | --- |
+| **OpenScholar** | **None.** No decomposition, no rewriting, no HyDE. Its one LLM generator caps at 3 by `split(", ")` at temperature 0.9 | **No.** Positional `[n]` into a *reranked* list, so a marker denotes a rank slot rather than a document. Posthoc attribution is a pure LLM prompt that silently returns the original text when its markers are missing |
+| **RAGFlow** | Three LLM rewrites, **all off by default**; decomposition exists but sits behind `thinking_mode` | **No.** If the model emitted any marker, the only check is `i < len(chunks)` -- an array-bounds test. Its fallback attributor lowers a 0.63 threshold by ×0.8 in a loop *until something matches* |
+| **papersgpt** | **None**, in both versions -- the raw user string goes straight to embedding | **No.** One regex turns a `REFID:` marker into an anchor; the "click to jump" lands on a line the model itself wrote. Its prompt contract points citations at the *source papers' own bibliographies* -- works never parsed, and not necessarily in the library |
+| **local-deep-research** | Fixed round counts. One genuinely deterministic templated generator (entity coverage) | **No.** An out-of-range `[42]` survives as inert literal text. Its own benchmark **strips citation markers before grading**, so citation correctness is never measured at all |
+
+Three consequences worth recording, because each one is a design
+decision this project already took differently:
+
+1. **"Grounded" in these tools means retrieval happened, not that the
+   citation was checked.** None of the four validates that a cited source
+   supports -- or even exists for -- the sentence citing it. §1.1's gate
+   property remains without an equivalent here.
+2. **Every one of them is built to always produce a citation.** RAGFlow
+   relaxes its threshold until one sticks; OpenScholar's attribution
+   prompt tells the model that one citation suffices even where several
+   sources support a claim. Against a closed, human-curated bibliography
+   the opposite disposition is available and better: **an empty result
+   means the claim cannot be grounded, so the sentence is cut rather than
+   cited.**
+3. **Marking coverage on the query rather than on the evidence is a real
+   and repeated bug.** local-deep-research marks a topic covered when it
+   appears in an *issued* query, so a search that returned nothing marks
+   its topic covered permanently.
+
+### ♻ How those four handle revision: they don't
+
+The same read asked a second question -- once output exists, what happens
+if you want it *changed*? Taking **revision** to mean a path that accepts
+a prior artifact as input, emits a modified version of *that* artifact,
+and persists it so the prior is superseded or versioned:
+
+**None of the four supports it. Regeneration is the only model, zero for
+four.** Three come close enough to look like exceptions, and each fails
+differently:
+
+| System | Looks like revision | Why it is not |
+| --- | --- | --- |
+| OpenScholar | the `--feedback` edit loop | it runs **before** the artifact exists -- intra-generation refinement, not a post-hoc path |
+| RAGFlow | the assistant message being filled in place | that is streaming persistence of the **current** turn; a prior turn's answer is never touched. `refine_multiturn` rewrites the **question**, not the answer |
+| papersgpt | "writes findings into Zotero Notes" | it **appends at the cursor** of an editor you already had open, and never looks a note up. Its chat state is one global in-memory conversation that dies on restart |
+| local-deep-research | follow-up carrying a `parent_research_id` | it creates a **new child row**; the parent's report is untouched |
+
+Three properties follow, and each is a requirement this project already
+meets:
+
+- **No hand-edit detection anywhere.** Not one has a digest, mtime or
+  version check on its output. Two are structurally immune rather than
+  merely missing the check -- LDR reads reports only from its database,
+  so its optional file backup is write-only; papersgpt has no persistent
+  artifact at all. OpenScholar is the worst case: it *does* read its
+  output file back, but only for a row count, so edited content is
+  silently honoured.
+- **No section-scoped editing anywhere.** The unit of change is always
+  the whole document. OpenScholar comes closest and still replaces the
+  entire answer per feedback item.
+- **Evidence reuse in two of four, and forced re-search in both.** LDR
+  pre-injects filtered prior sources so they stay citable without
+  re-fetching, then runs a fresh search unconditionally; OpenScholar
+  reuses prior passages as the base and retrieves only conditionally.
+
+**The pattern worth naming: all four persist far more than they
+consume.** OpenScholar writes a complete refinement audit trail -- the
+pre-edit draft, the feedback, every accepted edit -- and reads back only
+`len()`. RAGFlow stores per-turn retrieved chunks in a parallel array no
+revision path exists to use. The state a revision feature would need
+largely already exists on disk in three of the four; what is missing is
+any entry point that reads it.
+
+That is the gap [DRAFT-ITERATION.md](DRAFT-ITERATION.md)'s dossier and
+the `draft-reviser` / `corpus-reviser` split were built to fill, and this
+read found no open- or closed-source equivalent for either. It also
+sharpens what is still missing here: nothing yet fingerprints the draft,
+so a *hand*-edited draft is as invisible to this pipeline as to the other
+four -- Theme E3 in
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-e3-notice-that-the-draft-moved).
 
 ### 🔍 2.3 Plagiarism detection for a closed corpus (source-vs-draft overlap, iThenticate-style)
 

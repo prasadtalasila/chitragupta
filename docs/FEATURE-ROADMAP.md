@@ -1,6 +1,6 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-24.
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
 **Twelve of the original twenty-one items have shipped and have been removed
 from this document** rather than marked as done -- so everything below is still
 outstanding, which is what makes the list usable.
@@ -57,6 +57,7 @@ everything below.
 - [Theme B: make synthesis structural](#-theme-b-make-synthesis-structural)
 - [Theme C: verify faithful use](#-theme-c-verify-faithful-use)
 - [Theme D: figure layout](#-theme-d-figure-layout)
+- [Theme E: the human's own structure](#-theme-e-the-humans-own-structure)
 - [Theme F: the auto-improvement loop](#-theme-f-the-auto-improvement-loop)
 - [Theme G: topic modelling](#-theme-g-topic-modelling)
 - [Build order](#-build-order)
@@ -493,6 +494,17 @@ This item is also self-marking in the sense
 and it needs the amendment. It sits late for both reasons rather than
 one.
 
+**A 2026-08-28 read of four upstreams (Theme E's research) left four
+amendments owed to this item.** They are recorded in
+`plans/b5-pregate-self-feedback.md`, which is the authoritative design;
+in one line each, so this ticket says what moved without becoming a
+second specification: the length-ratio rejection is now **confirmed from
+source**; coverage must be marked on **evidence retrieved, never on query
+issued**; a **fixed corpus makes a declared query list exhaustible**, so
+a real termination condition is available here and is not in any of the
+four; and **an empty result set is informative** -- it means the claim
+cannot be grounded, so the sentence is cut rather than cited.
+
 Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 
 ## ✅ Theme C: verify faithful use
@@ -642,6 +654,131 @@ only the specific answer on the specific corpus asked about.
 
 Size: M. Depends on: D1-D3, and evidence that they left a real gap.
 
+## 🧭 Theme E: the human's own structure
+
+Themes A-D are about what the pipeline does with what it retrieved. This
+theme is about the two places a **person** cannot currently get a word
+in: supplying the structure before drafting, and hand-editing a draft
+afterwards. Both are already solved at *book* scale and neither at
+single-draft scale --
+`plans/outline-driven-drafting-and-manual-edits.md`
+is the plan, and carries the measurements.
+
+Researched against four upstreams for this theme
+([OpenScholar](https://github.com/AkariAsai/OpenScholar),
+[RAGFlow](https://github.com/infiniflow/ragflow),
+[papersgpt-for-zotero](https://github.com/papersgpt/papersgpt-for-zotero),
+[local-deep-research](https://github.com/LearningCircuit/local-deep-research)).
+**The result was mostly negative and that is the useful part: three of
+the four manufacture no queries at all**, and none verifies a citation --
+RAGFlow's only check on a model-emitted marker is `i < len(chunks)`, an
+array-bounds test. Nothing here is ported as text
+([INSPIRATION.md](INSPIRATION.md)).
+
+### ❓ E1: strip interrogatives on the query side
+
+**A prerequisite for E2, and independently valuable.** `_STOPWORDS` holds
+twenty function words and no interrogatives, and `len(w) > 2` passes
+`how`, `why`, `who`, `can`. Because those are *rare in academic PDFs*
+they carry high IDF and compete for the ranking. Measured over the
+497-parsed corpus, six paired queries at `k=10`: a question and its
+keyword equivalent share **4.7 of 10** results, and stripping
+interrogatives from the query alone takes that to **9.2** --
+[CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
+has the working.
+
+E2 invites a person to author queries; people write questions. Shipping
+E2 without this makes a human-written query measurably worse than the
+sub-theme a skill hand-tunes today.
+
+**Query-side only.** A term absent from the query contributes nothing
+whatever the documents hold, so this buys the whole effect while leaving
+`_tokenize`, every document's term frequencies, every IDF and
+`_INDEX_SCHEMA_VERSION` untouched -- and leaves `bench/RESULTS.md`'s BM25
+baseline (nDCG@5 0.7321) undisturbed. A symmetric change would re-rank
+every query in the corpus for no further gain. The idea is RAGFlow's
+`rmWWW`, which is query-side for the same reason.
+
+**What it owes before it ships.** Six pairs are a probe, not a result,
+and the 4.7 -> 9.2 figure measures *convergence between two phrasings*,
+not that ranking improved. The existing 48-pair ground truth cannot
+settle it -- its queries are claim sentences from a drafted book and
+contain no questions -- so this PR owes a question-form query set with
+known-correct citekeys, reported as recall@3 / recall@5 / nDCG@5 in
+B4's table shape, plus the claim-form figures to show it is inert where
+it should be.
+
+Carries one hygiene change on measured but modest grounds: **22.8% of
+retrieved snippets contain their source's own citation markers** (39 of
+180, mostly `[12]`-style) and nothing strips them. Checked before
+claiming more: **zero have ever leaked into a real draft**, so this is
+context hygiene, not a fabrication vector. The idea is OpenScholar's
+`remove_citations`; take the idea, not the regex, which also does a
+global `]` delete.
+
+Size: S. Depends on: nothing.
+
+### 🗂 E2: an outline the human writes
+
+A dossier file the person edits before drafting: per section, a heading,
+a brief, and the **declared queries**, which the skill runs verbatim
+instead of inventing sub-themes. `--extend` permits additions where a
+sub-theme comes up thin, logged distinctly so `retrieval.md` can be
+diffed against the declared list -- *"did this draft follow my
+structure?"* becomes decidable rather than trusted.
+
+**Most of the mechanism exists.** `dossier brief --section` already
+resolves a section name through `sections.md` to its evidence blocks, and
+`--check` validates the rows resolve without printing them. What is
+missing is that a human cannot author those rows and four of five genres
+never use them. `deep-research`'s Phase 1 -- broad calls *before* naming
+perspectives, so structure is derived from what the corpus holds -- is
+the best idea already here and should be generalised rather than
+reinvented.
+
+**Prose in an outline is ambiguous and that ambiguity is the defect.**
+Two paragraphs under a heading may be a brief or seed text, and a skill
+must guess. So intent is declared: a **brief** (never appears), **seed**
+text (appears verbatim inside a provenance marker, excluded from the
+advisory aids, still gated), or a **claim** (rewritten, and every
+sentence that could not be grounded is reported rather than shipped).
+[DESIGN.md](DESIGN.md#-whose-prose-is-it) carries the reasoning and the
+one rule that binds it: *an advisory aid may exclude a human-authored
+span; the gate never does.*
+
+**No sign-off gate.** `spec sign` guards a 178,000-word generation run;
+one survey does not earn a second gate (constraint 2).
+
+> ⚠ **`_retrieval_rows` will swallow the new `origin` column.** Its guard
+> is `if len(cells) not in (6, 7): continue`, so an eighth cell makes
+> every new row **skipped, not rejected** -- `retrieval_cost` undercounts
+> and `recorded_queries` loses the queries. Extend to `(6, 7, 8)` and pad
+> as #254's column is padded.
+
+Size: L. Depends on: E1.
+
+### 🖉 E3: notice that the draft moved
+
+`scope.md` fingerprints the corpus; nothing fingerprints the draft. After
+a hand edit, `sections.md`, `evidence.md` and `math.md` describe a
+document that no longer exists and `draft-reviser` reads them as current.
+The book track already detects this for a unit -- `unit status` reports
+`stale: draft changed since accepted` -- so reuse the vocabulary.
+
+> ⚠ **Not `dossier.digest()`.** That is order-independent over a *set of
+> citekeys* and is meaningless over prose. The text digest is in
+> `chitragupta/spec/_cli.py`.
+
+A digest says only *that* it moved, so `status` also reports four
+staleness classes: a citekey in the draft with no evidence block (drift
+reporting is computed from the dossier, **not** the draft body, so a
+hand-added citation is otherwise invisible forever), an evidence block
+whose citation was deleted, a `sections.md` that no longer matches the
+headings, and a desynced `math.md`. `draft-reviser` offers each repair
+one at a time -- never applies unasked, never blocks.
+
+Size: M. Depends on: nothing.
+
 ## 🔄 Theme F: the auto-improvement loop
 
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) specifies a seven-step track
@@ -735,12 +872,20 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
-| 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 7 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 1 | [E1](#-e1-strip-interrogatives-on-the-query-side) strip interrogatives | E | S | -- |
+| 2 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
+| 3 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
+| 4 | [E3](#-e3-notice-that-the-draft-moved) notice the draft moved | E | M | -- |
+| 5 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
+| 6 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 7 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
+| 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
+| 9 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+
+**E1 leads because it is cheap, measured, and a prerequisite that gets
+more expensive to add later**: E2 invites people to write queries, and
+every query written before E1 lands is one whose retrieval nobody can
+reproduce afterwards.
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
