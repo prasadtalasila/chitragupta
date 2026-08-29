@@ -200,8 +200,9 @@ class TestFindingIdentity:
         assert ids[0] == ids[1]
 
     def test_is_unchanged_by_an_edit_above_it(self, isolated_config):
-        """Position-free, for the reason citation_provenance.finding_id
-        is: a line-based identity renames every finding below an edit."""
+        """Position-free, for the reason
+        citation_provenance/_citation_provenance_render.finding_id is: a
+        line-based identity renames every finding below an edit."""
         before = a_draft("One [@A].\n", name="before.md")
         after = a_draft("A new opening paragraph [@X] and [@Y].\n\nOne [@A].\n", name="after.md")
         ids = [

@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-from chitragupta.review import _blocks
+from chitragupta.review import _blocks, _citation_provenance_render
 from chitragupta.review import citation_provenance as cp
 from chitragupta import config, ledger
 
@@ -162,7 +162,9 @@ class TestBlockShapedClaims:
 
         quoted = [
             line
-            for line in cp.render_markdown(cp.build_report(path)).splitlines()
+            for line in _citation_provenance_render.render_markdown(
+                cp.build_report(path)
+            ).splitlines()
             if line.startswith("> ")
         ]
         assert quoted, "the report quotes the citing claim"
@@ -432,7 +434,7 @@ class TestReport:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
 
-        text = cp.render_markdown(cp.build_report(path))
+        text = _citation_provenance_render.render_markdown(cp.build_report(path))
 
         assert "review aid, not a gate" in text
         assert "does not adjudicate" in text
@@ -452,7 +454,7 @@ class TestReport:
             "Hysteresis prevents relay chatter [@paged_2024].\n"
         )
 
-        text = cp.render_markdown(cp.build_report(path))
+        text = _citation_provenance_render.render_markdown(cp.build_report(path))
 
         assert "> Hysteresis prevents relay chatter." in text
         assert "Best match is on **page 1**" in text
@@ -463,7 +465,7 @@ class TestReport:
         path.write_text("A claim about something [@ghost_2024].\n")
 
         report = cp.build_report(path)
-        text = cp.render_markdown(report)
+        text = _citation_provenance_render.render_markdown(report)
 
         assert "ghost_2024" in report.unreadable
         assert "Sources that could not be read" in text
@@ -473,7 +475,9 @@ class TestReport:
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Prose with no citations at all.\n")
-        assert "No citations found" in cp.render_markdown(cp.build_report(path))
+        assert "No citations found" in _citation_provenance_render.render_markdown(
+            cp.build_report(path)
+        )
 
 
 class TestWriteReportAndCli:
@@ -709,11 +713,11 @@ class TestBands:
         ],
     )
     def test_band_boundaries(self, isolated_config, score, expected):
-        assert cp._band(score) == expected
+        assert _citation_provenance_render._band(score) == expected
 
     def test_thresholds_are_configurable(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PROVENANCE_WEAK_SCORE", 0.9)
-        assert cp._band(0.5) == "no support found"
+        assert _citation_provenance_render._band(0.5) == "no support found"
 
 
 class TestEdgeShapes:
@@ -739,7 +743,7 @@ class TestEdgeShapes:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Hysteresis prevents chatter [@a_2024].\n")
 
-        text = cp.render_markdown(cp.build_report(path))
+        text = _citation_provenance_render.render_markdown(cp.build_report(path))
         assert "No passage in the source matched" in text
 
     def test_md_only_request_skips_the_render_import(self, isolated_config):

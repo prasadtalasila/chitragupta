@@ -131,7 +131,7 @@ def build_report(draft_path: Path, entailer) -> Report:
 
 def finding_id(citekey: str, claim: str) -> str:
     """A finding's identity, stable across runs (R2) -- keyed on the
-    same (citekey, claim) pair citation_provenance.finding_id uses,
+    same (citekey, claim) pair _citation_provenance_render.finding_id uses,
     because this is the same underlying question asked by a different
     scorer. Defined locally rather than imported: every aid in this
     layer owns its own finding_id, even when the formula matches."""
