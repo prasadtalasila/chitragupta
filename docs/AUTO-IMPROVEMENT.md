@@ -325,9 +325,10 @@ sequence.
    independently of whether step 5 follows.*
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect
    classes rather than verbatim runs alone. *Built narrow first, in
-   5.7.0: `overlap-reviser` (renamed `agenda-reviser` in #435) is #129 as filed, over the `verbatim-run`
-   class alone, consuming `verbatim scan --json` directly rather than an
-   agenda. It did not wait for steps 2 and 4 because it did not need to
+   5.7.0: `overlap-reviser` (renamed `agenda-reviser` in #435) is #129
+   as filed, over the `verbatim-run` class alone, consuming `verbatim
+   scan --json` directly rather than an agenda. It did not wait for
+   steps 2 and 4 because it did not need to
    -- one aid's JSON already existed, and a loop that repairs one class
    is the report step 7 has to be tuned against. Widening it is now a
    matter of giving it the agenda as an input and the other classes as
