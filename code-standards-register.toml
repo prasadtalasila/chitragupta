@@ -53,10 +53,6 @@ name = "chitragupta/overlap_index.py"
 code_lines = 523
 
 [[c2]]
-name = "chitragupta/ledger.py"
-code_lines = 502
-
-[[c2]]
 name = "chitragupta/config.py"
 code_lines = 492
 
@@ -71,6 +67,10 @@ code_lines = 389
 [[c2]]
 name = "chitragupta/review/citation_provenance.py"
 code_lines = 383
+
+[[c2]]
+name = "chitragupta/ledger.py"
+code_lines = 370
 
 [[c2]]
 name = "chitragupta/render_output/__init__.py"

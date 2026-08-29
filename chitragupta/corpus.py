@@ -15,9 +15,11 @@ Neither `sync.py` nor `ledger.py` carries a command of its own any more,
 which is the reason this file exists rather than two scattered ones.
 docs/ARCHITECTURE.md states the invariant.
 
-`ledger.py` carries the usual price of that: no `__main__` block, so
-running it directly imports the module and exits 0 having done nothing --
-the same silent trap `chitragupta/enrich/`'s, `chitragupta/review/`'s and the drafting
+`ledger_cli.py` -- the module this file dispatches `ledger` to; the
+library half, `chitragupta/ledger.py`, has no command of its own at all --
+carries the usual price of that: no `__main__` block, so running it
+directly imports the module and exits 0 having done nothing -- the same
+silent trap `chitragupta/enrich/`'s, `chitragupta/review/`'s and the drafting
 layer's modules carry. `sync.py` does not, and that is the one place
 this layer departs from the others. Its old spelling is the one command
 string in this project that plausibly runs unattended, from a crontab or
@@ -73,7 +75,10 @@ from chitragupta.progname import prog_for
 
 VERBS = {
     "sync": ("chitragupta.sync", "bib file -> ledger -> PDF text: the deterministic corpus run"),
-    "ledger": ("chitragupta.ledger", "read-only view of what that run recorded -- takes no lock"),
+    "ledger": (
+        "chitragupta.ledger_cli",
+        "read-only view of what that run recorded -- takes no lock",
+    ),
     "topics": (
         "chitragupta.seed_topics",
         "read-only view of which papers each seed topic matched -- takes no lock",

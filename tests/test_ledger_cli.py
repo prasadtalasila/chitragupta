@@ -17,7 +17,7 @@ import sys
 
 import pytest
 
-from chitragupta import config, ledger
+from chitragupta import config, ledger, ledger_cli
 from tests.conftest import make_reference
 
 
@@ -51,7 +51,7 @@ def corpus(isolated_config, ledger_con, tmp_path):
 
 class TestSummary:
     def test_it_summarises_rather_than_dumping_every_row(self, corpus, capsys):
-        assert ledger.main([]) == 0
+        assert ledger_cli.main([]) == 0
         out = capsys.readouterr().out
         assert "2  parsed" in out
         assert "1  no PDF attachment" in out
@@ -60,7 +60,7 @@ class TestSummary:
         assert "citekey" not in out.lower() or "key_0" not in out
 
     def test_a_deterministic_failure_is_called_out_with_what_to_do(self, corpus, capsys):
-        ledger.main([])
+        ledger_cli.main([])
         out = capsys.readouterr().out
         assert "need attention" in out
         assert "--reparse" in out
@@ -71,33 +71,33 @@ class TestSummary:
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
         ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "a.txt")
-        ledger.main([])
+        ledger_cli.main([])
         assert "nothing needs attention" in capsys.readouterr().out.lower()
 
     def test_an_empty_ledger_says_to_run_sync(self, isolated_config, capsys):
-        assert ledger.main([]) == 0
+        assert ledger_cli.main([]) == 0
         assert "chitragupta.corpus sync" in capsys.readouterr().out
 
 
 class TestFilters:
     def test_status_filter_lists_matching_items(self, corpus, capsys):
-        assert ledger.main(["--status", "parse_failed"]) == 0
+        assert ledger_cli.main(["--status", "parse_failed"]) == 0
         out = capsys.readouterr().out
         assert "broken_1" in out
         assert "key_0" not in out
 
     def test_citekey_shows_one_item_in_full(self, corpus, capsys):
-        assert ledger.main(["--citekey", "broken_1"]) == 0
+        assert ledger_cli.main(["--citekey", "broken_1"]) == 0
         out = capsys.readouterr().out
         assert "broken_1" in out
         assert "cannot read" in out
 
     def test_an_unknown_citekey_is_reported_not_silent(self, corpus, capsys):
-        assert ledger.main(["--citekey", "nope_2024"]) == 1
+        assert ledger_cli.main(["--citekey", "nope_2024"]) == 1
         assert "not in the ledger" in capsys.readouterr().out
 
     def test_list_shows_every_item(self, corpus, capsys):
-        assert ledger.main(["--list"]) == 0
+        assert ledger_cli.main(["--list"]) == 0
         out = capsys.readouterr().out
         assert all(f"key_{i}" in out for i in range(4))
 
@@ -116,12 +116,12 @@ class TestStdlibOnly:
         from chitragupta import runlock
 
         with runlock.pipeline_lock(isolated_config.PIPELINE_LOCK_PATH):
-            assert ledger.main([]) == 0
+            assert ledger_cli.main([]) == 0
 
 
 class TestEdges:
     def test_a_status_with_no_matches_says_so(self, corpus, capsys):
-        assert ledger.main(["--status", "discovered_typo"]) == 0
+        assert ledger_cli.main(["--status", "discovered_typo"]) == 0
         assert "No items with status" in capsys.readouterr().out
 
     def test_an_existing_but_empty_ledger_says_to_run_sync(
@@ -129,7 +129,7 @@ class TestEdges:
     ):
         """Distinct from "no ledger file": the file exists because
         something connected, but sync has never populated it."""
-        assert ledger.main([]) == 0
+        assert ledger_cli.main([]) == 0
         out = capsys.readouterr().out
         assert "empty" in out.lower()
         assert "chitragupta.corpus sync" in out
@@ -145,7 +145,7 @@ class TestEdges:
         ledger.upsert_reference(ledger_con, ref)
         ledger.mark_parse_failed(ledger_con, ref.citekey, "worker died", transient=True)
 
-        ledger.main([])
+        ledger_cli.main([])
         out = capsys.readouterr().out
         assert "retried on the next sync" in out
         assert "need attention" not in out
@@ -157,7 +157,7 @@ class TestReadOnly:
         by mtime rather than by inspection, because the failure mode is a
         write nobody notices."""
         before = config.LEDGER_PATH.stat().st_mtime_ns
-        assert ledger.main([]) == 0
+        assert ledger_cli.main([]) == 0
         assert config.LEDGER_PATH.stat().st_mtime_ns == before
 
     def test_a_pre_failure_kind_ledger_still_summarises(
@@ -171,5 +171,5 @@ class TestReadOnly:
         ledger_con.execute("ALTER TABLE items RENAME COLUMN failure_kind TO fk_old")
         ledger_con.commit()
 
-        assert ledger.main([]) == 0
+        assert ledger_cli.main([]) == 0
         assert "1  found, not yet parsed" in capsys.readouterr().out

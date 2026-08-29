@@ -319,7 +319,8 @@ def grams_for_citekey(
 # Read-only ledger access. Deliberately not chitragupta/ledger.py::connect(): that
 # runs the schema, migrations and a commit -- a writer, which contradicts
 # this module's "no writer lock" contract (module docstring). Opened the
-# same way chitragupta/ledger.py's own read-only CLI (`ledger.main`) does.
+# same way chitragupta/ledger_cli.py's own read-only CLI (`ledger_cli.main`)
+# does.
 # ---------------------------------------------------------------------
 
 
