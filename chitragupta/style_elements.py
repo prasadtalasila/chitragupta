@@ -129,9 +129,7 @@ def reference_problems(
                     f"({standards_anchor}).",
                 )
             )
-        elif all(
-            section_of(line, starts) != section_of(element.line, starts) for line in lines
-        ):
+        elif all(section_of(line, starts) != section_of(element.line, starts) for line in lines):
             found.append(
                 finding(
                     rules,

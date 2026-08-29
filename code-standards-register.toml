@@ -61,9 +61,9 @@ name = "chitragupta/review/figure_layout/__init__.py"
 code_lines = 257
 
 [[c2]]
-name = "chitragupta/dossier/_retrieval.py"
-code_lines = 256
+name = "chitragupta/style_check.py"
+code_lines = 257
 
 [[c2]]
-name = "chitragupta/style_check.py"
-code_lines = 251
+name = "chitragupta/dossier/_retrieval.py"
+code_lines = 256
