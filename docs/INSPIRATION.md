@@ -74,6 +74,32 @@ came from.
   author provenance
   ([DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies)) and
   avoids by regenerating `sections.md` rather than trusting it.
+- **ITER-RETGEN** -- Shao, Gong, Shen, Huang, Duan and Chen, *"Enhancing
+  Retrieval-Augmented Large Language Models with Iterative
+  Retrieval-Generation Synergy"*, Findings of EMNLP 2023, pp. 9248-9274.
+  The idea behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s E4: form the
+  next retrieval query by concatenating the previous generation with the
+  question, so **no model call is needed to write a query**. Credited as
+  a published method rather than a codebase; the adaptation -- a person's
+  own draft standing in for the generation -- is not something the paper
+  proposes, and the paper explicitly does not cover long-form generation.
+- **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT)
+  -- read as a reproduction surface rather than for code. Two mechanisms
+  credited: its `IRCoT` pipeline's cross-round document merge (dedupe by
+  id, `max(old, new)` on the score, re-sort) which E4 adopts **with the
+  cap that implementation is missing**, and its habit of writing every
+  round's retrieval, prompt and prediction into the record as a
+  per-iteration trace. Its evidence on *determinism* is cited in
+  [RAG.md](RAG.md) against itself: seeded runs still varied, because
+  sampling was on by default, batching was composition-dependent and the
+  inference backend changed the result.
+- **[run-llama/llama_index](https://github.com/run-llama/llama_index)**
+  (MIT core, read at v0.14.24) -- read only for its response-synthesis
+  shapes. [C5](FEATURE-ROADMAP.md)'s citekey-union invariant comes from
+  the observation that four of its five modes can drop a source with no
+  error and no log, and that only the mode keeping one output slot per
+  input can say *which* source went missing. The invariant itself is not
+  theirs -- it is what their failure modes imply.
 - **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**
   -- the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
   (an independent multi-reviewer panel including a dedicated adversarial

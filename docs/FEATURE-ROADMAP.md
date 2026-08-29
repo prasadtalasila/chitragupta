@@ -870,6 +870,74 @@ one at a time -- never applies unasked, never blocks.
 
 Size: M. Depends on: nothing.
 
+### 🔁 E4: the draft is the query
+
+ITER-RETGEN (Shao et al., Findings of EMNLP 2023) forms its next
+retrieval query by concatenating the previous generation with the
+original question. **No model writes the query**, so the retrieval path
+stays deterministic -- which is why this is the one iterative method in
+[RAG.md](RAG.md)'s survey that survives this project's constraints
+intact.
+
+**Its `y_{t-1}` need not come from a model.** If a person supplies a
+starting draft, or hand-edits one, *their* prose is the query. That makes
+"give the pipeline a draft to work from, and revise it by hand later" the
+same loop with a human in the generation slot -- and it settles a
+question [E2](#-e2-an-outline-the-human-writes) left open, because prose
+used as a **query** needs no provenance marker: it never enters the
+draft, so there is nothing to keep in sync and nothing to go stale.
+
+Three things this item must get right, each from a measurement rather
+than a preference:
+
+- **Two rounds, not three.** The paper's own answer-recall table gains
+  13.7-16.6 points at iteration 2 and about one point across iterations
+  3 to 7. FlashRAG's shipped implementation uses 3 and does not say why.
+- **Accumulate across rounds, then cap.** FlashRAG's `IterativePipeline`
+  discards the previous round's documents; its `IRCoT` dedupes by id and
+  merges scores with `max(old, new)` but never truncates, which is a live
+  crash in their tracker. Do both: merge, re-sort, **cap**.
+- **Bound the appended prose.** A long draft section swamps the
+  sub-theme's own terms in a bag-of-words score. Truncate explicitly and
+  say so, rather than silently clipping at a token limit.
+
+**The failure mode is documented and it argues for the human path.** The
+paper's error analysis finds 65% of failures retrieval-related, and
+**76.9% of those are retrieval misled by wrong reasoning in the first
+iteration** -- a bad draft becomes a bad query and entrenches itself. A
+human-supplied first draft largely sidesteps it. Note also the authors'
+own limitation: they did not test long-form generation, which is the only
+thing this pipeline does.
+
+Size: M. Depends on: E3 (a draft fingerprint is what says the query moved).
+
+### 🧾 C5: the citekeys out must be the citekeys in
+
+A deterministic invariant for any synthesis that combines evidence:
+**after every combining step, the union of citekeys in the inputs must
+equal the union in the output.** Set arithmetic, no model, no judgement.
+
+The shapes this guards against are catalogued in
+[RAG.md](RAG.md#-the-synthesis-shape-how-n-passages-become-one-section):
+of LlamaIndex's five synthesis modes, four can drop a source with no
+error and no log -- by truncating the tail, by declining to fold a
+passage into a running answer, or by attrition across summarisation
+levels. Only the one that keeps a fixed-length slot per input can say
+which input a missing output belongs to.
+
+Here the relevant surfaces are `deep-research`'s Phase 5, where each
+writer is dispatched with the citekeys its section will stand on, and
+`book-assembler`, which composes accepted units. In both, the expected
+set is already recorded before generation, so the check is a comparison
+against something on disk rather than a reconstruction.
+
+**Advisory, and it reports both directions**: a citekey dropped, and a
+citekey that appeared from nowhere. The second is the gate's business and
+the gate will catch it; reporting it here is how a *located* failure
+("section 4 lost `smith_2024`") reaches a person instead of a diff.
+
+Size: S-M. Depends on: nothing.
+
 ## 🔄 Theme F: the auto-improvement loop
 
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) specifies a seven-step track
@@ -973,7 +1041,9 @@ is for.
 | 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
 | 9 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
 | 10 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 11 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 11 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 12 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | E3 |
+| 13 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 **E1 leads because it is cheap, measured, and a prerequisite that gets
 more expensive to add later**: E2 invites people to write queries, and

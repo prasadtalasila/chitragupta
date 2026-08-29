@@ -31,6 +31,24 @@ level of detail.
 | [AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG) | **split**: root MIT, `legacy/` Apache-2.0 | source |
 | [MiniRAG](https://github.com/HKUDS/MiniRAG) | MIT (a LightRAG fork; ~330 lines are its own) | source |
 
+**Two further sources are read for one stage each and are deliberately
+not counted among the six**, because neither is a comparable end-to-end
+system and folding them into the tallies below would make those tallies
+mean less:
+
+- **[LlamaIndex](https://github.com/run-llama/llama_index)** (MIT core,
+  read at v0.14.24) is a *library*, and it is read only for
+  [the synthesis shapes](#-the-synthesis-shape-how-n-passages-become-one-section)
+  it ships -- the question of how N passages become one section, which
+  none of the six answers explicitly.
+- **ITER-RETGEN** (Shao, Gong, Shen, Huang, Duan, Chen, *"Enhancing
+  Retrieval-Augmented Large Language Models with Iterative
+  Retrieval-Generation Synergy"*, Findings of EMNLP 2023, pp. 9248-9274)
+  is a *method paper*, read for
+  [query manufacture](#-stage-4-query-manufacture-the-stage-most-systems-skip).
+  It is the only source anywhere in this document whose iteration count
+  is backed by a published measurement.
+
 Two caveats a reader should hold throughout:
 
 - **Read for architecture, never copied.** [INSPIRATION.md](INSPIRATION.md)'s
@@ -51,9 +69,11 @@ Two caveats a reader should hold throughout:
 - [Stage 7: reranking](#-stage-7-reranking)
 - [Stage 8: capping and diversity](#-stage-8-capping-and-diversity)
 - [Stage 9: context assembly](#-stage-9-context-assembly)
+- [The synthesis shape](#-the-synthesis-shape-how-n-passages-become-one-section)
 - [Stage 10: citation and verification](#-stage-10-citation-and-verification)
 - [Stage 11: revision](#-stage-11-revision)
 - [Evaluation, which is a stage too](#-evaluation-which-is-a-stage-too)
+- [What a reproduction toolkit found](#-what-a-reproduction-toolkit-found-and-what-it-says-about-determinism)
 - [The trade-off table](#-the-trade-offs-in-one-table)
 
 ## 📥 Stage 1: ingestion, and what is admitted
@@ -166,6 +186,47 @@ distribution, not invention, and Theme E in
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-theme-e-the-humans-own-structure)
 is the plan.
 
+**The one published method whose query costs no LLM call.**
+ITER-RETGEN (Shao et al., *Findings of EMNLP 2023*) forms the next
+query by **concatenating the previous generation with the original
+question** -- `y_{t-1} || q` -- and retrieving on that. No model writes
+the query; it is string concatenation over text that already exists, so
+the retrieval path stays reproducible. Against a stdlib BM25 index that
+makes the whole loop deterministic, which is the property every other
+approach in this table gives up.
+
+Its evidence is about retrieval rather than generation, and it is the
+only *measured* termination condition in this document. Answer recall by
+iteration, from the paper's own Table 6:
+
+| Dataset | iter 1 | iter 2 | iters 3-7 |
+| --- | --- | --- | --- |
+| HotPotQA | 49.5 | **66.1** | 65.7 -> 67.1 |
+| 2WikiMultiHopQA | 29.0 | **45.2** | ~46 |
+| MuSiQue | 18.6 | **32.3** | ~33 |
+| Bamboogle | 20.8 | **36.0** | ~36 |
+
+**A shipped implementation exists and diverges from the paper.**
+[FlashRAG](https://github.com/RUC-NLPIR/FlashRAG) (MIT) implements it in
+about 45 lines as `IterativePipeline`, and four differences are worth
+knowing before citing it as a reference: it runs **3 iterations, not 2**,
+with the choice undocumented; it concatenates `{question} {generation}`
+rather than the paper's `y_{t-1} || q` (**inert under BM25**, which is a
+bag of words, but not under a dense retriever, where order changes the
+embedding); it **discards the previous round's documents entirely**
+rather than accumulating them; and it **overwrites the retrieval record
+with the last round's**, so any recall computed from it describes round 3
+alone rather than what the method actually consumed.
+
+**Iteration 2 buys 13.7 to 16.6 points; iterations 3 through 7 buy about
+one.** Two caveats the paper states itself and this document repeats
+rather than buries: its error analysis finds 65% of failures are
+retrieval-related and **76.9% of those are retrieval misled by wrong
+reasoning from the first iteration** -- a bad draft becomes a bad query
+and entrenches itself; and *"our experiments did not cover long-form
+generation"*, which is the only thing this pipeline does. Its headline
+metric is also an LLM judge.
+
 **One measured hazard belongs here.** BM25 over whitespace tokens with a
 20-word stopword list containing **no interrogatives** scores `what`,
 `why` and `does` as ordinary terms -- and because they are rare in
@@ -250,6 +311,16 @@ single source. AutoRAG's multi-query path is worse: results are combined
 by a per-query quota with **no cross-query deduplication**, so a document
 returned by two expanded queries occupies two of your slots.
 
+**Across rounds, the same question returns and two implementations
+answer it oppositely.** In FlashRAG, `IterativePipeline` keeps nothing
+between rounds while `IRCoT` dedupes by document id, merges scores with
+`max(old, new)` and re-sorts the accumulated pool -- **but never
+truncates it**, so after N rounds the prompt carries up to N x k
+documents. That is a live crash in their tracker, not a hypothetical.
+The mechanism is right and the missing cap is the whole lesson: dedupe,
+merge, re-sort, **then cap** -- which under a stdlib BM25 is a dict and
+a `sorted()`.
+
 **The trade-off chitragupta accepts:** capping costs relevance. Dropping
 a dominant paper's fourth-best chunk to promote another paper's
 tenth-best is a deliberate loss of per-passage quality, bought for source
@@ -279,6 +350,54 @@ not 500-character source windows -- because a model writing with a
 source's sentences in front of it will track those sentences.
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s Theme A exists because the
 current arrangement does not yet fully achieve this.
+
+### 🌲 The synthesis shape: how N passages become one section
+
+Stage 9's table is about *what* the generator is handed. The other half
+is **how many passages become one output**, and it is the stage a
+long-form pipeline lives or dies at. LlamaIndex (MIT) is the useful
+reference here because it ships five named shapes and they behave very
+differently. Read as algorithms, for N retrieved passages:
+
+| Shape | LLM calls | Can a source vanish silently? |
+| --- | --- | --- |
+| `simple_summarize` | 1 | **Yes, by construction** -- joins all passages, then keeps only what fits and discards the tail with no warning |
+| `refine` | >= N | **Yes, twice over** -- a running answer is the only state carried forward, so anything a step declines to fold in is gone; and a failed call is caught, logged at warning level, and skipped |
+| `compact` (the default) | k <= N | Yes, as `refine`, **plus source boundaries** -- passages are concatenated and re-split on token boundaries, so one prompt piece spans several papers with nothing marking where one ends |
+| `tree_summarize` | k + 1 | **Yes, by attrition** -- leaves are query-conditioned summaries, and the root never sees source text, so a detail dropped at leaf time cannot be recovered |
+| **`accumulate`** | N | **No** -- one independent call per passage into a fixed-length slot array; a failure materialises as a visible empty slot rather than an absence |
+
+**`accumulate` is the only shape with a preservation guarantee**, and the
+guarantee is positional: output slot *k* corresponds to input passage
+*k*, so a missing answer is a *located* failure rather than a diff
+against text nobody can align. Its sibling `compact_accumulate` packs the
+inputs first and thereby destroys exactly that property -- the slots
+survive but no longer name a source.
+
+**What that implies for a citation-dense draft.** The shape worth
+building is `accumulate`'s for the first stage -- one bounded call per
+passage, emitting a claim that already carries its citekey -- and
+`tree_summarize`'s *shape* for the fan-in, with one constraint its
+default lacks: **after every level, check that the union of citekeys in
+the children equals the union in the parent.** That check is arithmetic
+over sets, not a judgement, and it converts tree summarisation's
+characteristic failure from silent attrition into a caught error.
+`refine` and `compact` are the wrong shape for anything citation-bearing
+for the opposite reason: a running answer means every earlier citation
+must survive re-derivation N-1 times.
+
+**Where this pipeline currently sits.** `deep-research` fans *out* -- one
+writer per outline section, each dispatched with
+`dossier brief --section` rather than pasted evidence -- which is the
+right shape at section granularity and has no fan-in problem, because
+sections are assembled rather than summarised. The other four genres
+write in a single context, which is `simple_summarize`'s shape with a
+human-sized context window instead of a token budget: nothing truncates,
+but nothing checks either. No genre currently verifies that the citekeys
+it was handed are the citekeys it used --
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s A3 and B2 are the nearest
+existing items, and the union invariant above is the cheap deterministic
+part neither of them names.
 
 ## ✅ Stage 10: citation and verification
 
@@ -329,6 +448,18 @@ None detects a hand-edit. None supports section-scoped editing. And
 **all of them persist far more than they consume** -- OpenScholar writes
 a complete refinement audit trail and reads back only a row count.
 
+**ITER-RETGEN is the exception that clarifies the rule.** It *does*
+feed a prior generation back in -- but as a **retrieval query**, not as
+an artifact to edit, and it regenerates the answer from scratch each
+iteration. So it is iterative *retrieval*, not revision, and it belongs
+to stage 4 rather than here. What makes it interesting for this pipeline
+is that `y_{t-1}` need not come from a model: **if a person writes the
+draft, the person's draft is the query.** That turns "supply a starting
+draft, revise it by hand later" into the same loop with a human in the
+generation slot -- and it sidesteps the paper's own dominant failure
+mode, since the wrong-first-reasoning problem is a property of a *model's*
+first pass.
+
 **Chitragupta's dossier is the answer to exactly this**, and the
 `draft-reviser` / `corpus-reviser` split -- a cheap scoped path that
 contains no instructions for a wide search, so it cannot drift into one
@@ -357,6 +488,60 @@ its code does nothing to prevent it.
 Chitragupta's answer avoids the circularity by construction: the query is
 a paper's **own author-assigned `keywords` field** and the answer is that
 paper. No retrieval method's history chose it, and no LLM wrote it.
+
+### 🔬 What a reproduction toolkit found, and what it says about determinism
+
+[FlashRAG](https://github.com/RUC-NLPIR/FlashRAG) (MIT) exists to
+re-implement published RAG methods under one uniform setting, which makes
+its results the closest thing to an independent check on this whole
+field. Three things it reports are worth more than any method it ships.
+
+**Retrieval sometimes makes things worse, and the toolkit's own table
+says so.** On 2WikiMultiHopQA, standard RAG scores *below* generation
+with no retrieval at all, and **8 of 16 methods land under the
+no-retrieval baseline** on that column. One widely-cited method
+contributes nothing on three of six datasets. Whatever else a RAG
+pipeline is, "retrieval helps" is a claim to measure rather than assume.
+
+**It never compares against the published numbers.** The README is candid
+that its uniform setting "may differ from the original setting of the
+method" -- but there is no side-by-side against the source papers
+anywhere in the repository, so *reproduction quality is unmeasured rather
+than good*. Users attempting it report gaps of several points and, in one
+thread, that most results could not be matched.
+
+**Seeds are not sufficient for determinism, and this is the part that
+generalises.** The toolkit seeds `random`, `numpy` and `torch`, and users
+still observed **three runs at a fixed seed scoring 18.7, 17.1 and 17.4**.
+Three causes, none of which a seed touches:
+
+- **Sampling was on by default.** The shipped config left `do_sample`
+  commented out, so the default generator fell through to the model's own
+  `temperature: 0.6`. The documented experimental condition was not the
+  default anyone got, and the published tables predate the fix.
+- **Batch composition.** Everything is batched across the dataset, and
+  continuous batching makes kernel reductions depend on what else is in
+  the batch. A per-request seed cannot fix that.
+- **Inference framework.** The same task scored 19.0 under one backend
+  and 21.8 under another.
+
+The clean part, and the one this pipeline shares: **retrieval itself is
+deterministic** given an exact index -- they use a Faiss `Flat` index for
+precisely that reason, rather than an approximate one.
+
+**The lesson for a pipeline that promises reproducible inputs** is that
+the guarantee has to be structural rather than seeded. This project's
+retrieval path is deterministic because BM25 over a fingerprinted index
+is arithmetic, not because anything is seeded -- and
+[stage 4](#-stage-4-query-manufacture-the-stage-most-systems-skip)'s
+preference for a query that costs no model call is the same argument one
+step earlier. What a seed cannot make reproducible is best not put in the
+path at all.
+
+**One naming trap worth carrying away:** its `acc` metric is *substring
+containment* -- whether the prediction contains the gold answer -- and it
+sits in the default metric list. A verbose model scores well on it for
+the wrong reason. Read what a metric computes, not what it is called.
 
 ## ⚖ The trade-offs in one table
 
