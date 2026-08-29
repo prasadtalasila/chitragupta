@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from chitragupta import config, ledger
-from chitragupta.review import citation_coverage
+from chitragupta.review import _citation_coverage_render, citation_coverage
 
 from tests.conftest import make_reference
 
@@ -89,7 +89,7 @@ class TestFormatReport:
         draft.write_text("Composable twins [@a2024] are useful.\n")
 
         result = citation_coverage.compute_coverage(draft, ["digital twin"])
-        report = citation_coverage.format_report(draft, ["digital twin"], result)
+        report = _citation_coverage_render.format_report(draft, ["digital twin"], result)
 
         assert "Coverage: 50%" in report
         assert "b2024: Digital Twin Simulation" in report
@@ -102,7 +102,9 @@ class TestFormatReport:
         draft.write_text("[@a2024] and also [@never_retrieved_2024].\n")
 
         result = citation_coverage.compute_coverage(draft, ["digital twin composability"])
-        report = citation_coverage.format_report(draft, ["digital twin composability"], result)
+        report = _citation_coverage_render.format_report(
+            draft, ["digital twin composability"], result
+        )
 
         assert "Cited but not surfaced by these queries" in report
         assert "never_retrieved_2024" in report
@@ -111,7 +113,7 @@ class TestFormatReport:
         draft = tmp_path / "draft.md"
         draft.write_text("Nothing here.\n")
         result = citation_coverage.CoverageResult()
-        report = citation_coverage.format_report(draft, ["x"], result)
+        report = _citation_coverage_render.format_report(draft, ["x"], result)
         assert "No candidates found" in report
 
 
