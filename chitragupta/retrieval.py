@@ -111,6 +111,19 @@ def _query_terms(query: str) -> list[str]:
 # out of scoring, not out of how many candidates were offered.
 _MAX_ANCHORS_PER_TERM = 500
 
+# Bracketed digits/commas/hyphens only, so a real citation marker
+# ([12], [3, 7], [12-14]) is stripped and [Figure 2] / [sic] survive.
+# 22.8% of retrieved snippets carry one of the corpus's own markers and
+# nothing downstream ever needs it -- OpenScholar's remove_citations is
+# the idea; not its regex, which also globally deletes every ']'.
+_CITATION_MARKER = re.compile(r"\[\d+(?:\s*[,-]\s*\d+)*\]")
+
+
+def _clean_window(text: str) -> str:
+    """Whitespace-normalized `text` with a numeric citation marker
+    stripped."""
+    return " ".join(_CITATION_MARKER.sub("", text).split())
+
 
 def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
     """The `count` best-matching windows of `text`, in document order.
@@ -161,7 +174,7 @@ def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
         chosen.append((begin, end))
         if len(chosen) == count:
             break
-    return [" ".join(text[begin:end].split()) for begin, end in sorted(chosen)]
+    return [_clean_window(text[begin:end]) for begin, end in sorted(chosen)]
 
 
 def _snippet(text: str, terms: set[str], window: int = 500) -> str:
@@ -183,7 +196,7 @@ def _snippet(text: str, terms: set[str], window: int = 500) -> str:
     best = _windows(text, terms, width=window, count=1)
     if best:
         return best[0]
-    return " ".join(text[:window].split())
+    return _clean_window(text[:window])
 
 
 def _full_text(item: sqlite3.Row) -> str:

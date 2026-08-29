@@ -106,6 +106,11 @@ class TestSnippet:
         snippet = retrieval._snippet(text, {"zzz"}, window=10)
         assert snippet == "no matchin"
 
+    def test_fallback_snippet_also_strips_a_citation_marker(self):
+        text = "no query terms appear here [3, 7] at all, just filler"
+        snippet = retrieval._snippet(text, {"nonexistentterm"}, window=40)
+        assert "[3, 7]" not in snippet
+
 
 class TestSearch:
     def test_empty_query_returns_empty(self, ledger_con):
@@ -400,6 +405,17 @@ class TestWindows:
     def test_respects_the_requested_count(self):
         text = ("term " + "pad " * 40) * 10
         assert len(retrieval._windows(text, {"term"}, 30, 3)) == 3
+
+    def test_strips_a_numeric_citation_marker(self):
+        text = "the result [12] shows a clear trend in the data"
+        windows = retrieval._windows(text, {"result", "trend"}, 50, 1)
+        assert "[12]" not in windows[0]
+        assert "result" in windows[0] and "trend" in windows[0]
+
+    def test_does_not_strip_a_non_numeric_bracket(self):
+        text = "the result [Figure 2] shows a clear trend in the data here"
+        windows = retrieval._windows(text, {"result", "trend"}, 50, 1)
+        assert "[Figure 2]" in windows[0]
 
 
 class TestEvidence:
