@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, ledger, overlap_index
+from chitragupta import config, ledger, overlap_index, overlap_index_doc
 
 from tests.conftest import make_reference
 
@@ -96,7 +96,7 @@ class TestFingerprintDocument:
         def _boom(*a, **kw):
             raise AssertionError("should not rebuild when the cache key is unchanged")
 
-        monkeypatch.setattr(overlap_index, "_build_fingerprint", _boom)
+        monkeypatch.setattr(overlap_index_doc, "_build_fingerprint", _boom)
         second = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
         assert second.postings == first.postings
 
@@ -264,7 +264,7 @@ class TestBuildCorpusIndex:
         def _boom(*a, **kw):
             raise AssertionError("must not re-fingerprint an unchanged corpus")
 
-        monkeypatch.setattr(overlap_index, "_build_fingerprint", _boom)
+        monkeypatch.setattr(overlap_index_doc, "_build_fingerprint", _boom)
         second = overlap_index.build_corpus_index(n=4)
         assert second.citekeys == ["smith_2024"]
 
@@ -283,13 +283,13 @@ class TestBuildCorpusIndex:
         os.utime(parsed_a, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))
 
         calls = []
-        real = overlap_index._build_fingerprint
+        real = overlap_index_doc._build_fingerprint
 
         def _spy(citekey, *a, **kw):
             calls.append(citekey)
             return real(citekey, *a, **kw)
 
-        monkeypatch.setattr(overlap_index, "_build_fingerprint", _spy)
+        monkeypatch.setattr(overlap_index_doc, "_build_fingerprint", _spy)
         overlap_index.build_corpus_index(n=4)
         assert calls == ["aaa_2024"]
 
