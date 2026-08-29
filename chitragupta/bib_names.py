@@ -20,13 +20,15 @@ prints a different one for the same entry, with nothing failing. On a
 tool whose whole purpose is citations you can trust, two disagreeing
 spellings of an author is the wrong kind of quiet.
 
-**Stdlib-only, and deliberately import-free.** `references.py` is tier-1
-code that has to run under the bare system interpreter with no venv (see
-its own module docstring, and AGENTS.md on `python -m chitragupta.draft gate`),
-while `bib_reader.py` needs `bibtexparser`. A shared helper that reached
-for anything at all would either drag a dependency into tier 1 or invert
-the layering; this is plain string handling, so it needs neither. That is
-enforced rather than asserted, and by a test that already existed:
+**Stdlib-only, and deliberately import-free.** `references.py` (and
+`chitragupta/references_ieee.py`, which it imports and which is where
+`_format_name` now lives, #441) is tier-1 code that has to run under the
+bare system interpreter with no venv (see its own module docstring, and
+AGENTS.md on `python -m chitragupta.draft gate`), while `bib_reader.py`
+needs `bibtexparser`. A shared helper that reached for anything at all
+would either drag a dependency into tier 1 or invert the layering; this
+is plain string handling, so it needs neither. That is enforced rather
+than asserted, and by a test that already existed:
 `tests/test_references.py::test_runs_with_bare_system_python3` runs
 `python -m chitragupta.draft references` on the system interpreter, which now
 imports this module, so an import added here that a venv-less host cannot

@@ -22,7 +22,7 @@ from tests.conftest import content_draft, make_reference, pandoc_available
 def seed(con, *citekeys):
     """One ledger row per citekey, enough for an IEEE attribution line.
 
-    Titles are letters only: `references._md_escape` neutralises Markdown
+    Titles are letters only: `references_ieee._md_escape` neutralises Markdown
     emphasis, so a title echoing a citekey would come back as
     `Paper doe\\_a\\_2024` and make an assertion about the attribution
     line read like a bug in the escaping rather than a fixture choice.
