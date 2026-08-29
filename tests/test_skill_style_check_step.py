@@ -110,8 +110,17 @@ def test_every_drafting_skill_runs_the_prose_check():
     ],
 )
 def test_every_step_carries_its_qualifier(literal, why):
+    # `agenda-reviser` is the one exception to `_NO_FIX`: under Decision 1 of
+    # plans/f3-agenda-reviser.md, a `prose` finding is unattended work for
+    # that skill alone, not merely a report, so requiring "fix none of them"
+    # near its own mention of the command would pin the wrong invariant for
+    # it specifically. `_CAVEAT` still applies -- the check is still silent
+    # on the same judgement-shaped rules for every skill, this one included.
+    exempt = {"agenda-reviser"} if literal == _NO_FIX else set()
     offenders = {}
     for path in _skill_files():
+        if path.parent.name in exempt:
+            continue
         text = _body(path)
         for match in _STEP.finditer(text):
             window = text[match.start() : match.start() + _LOOKAHEAD_CHARS]
