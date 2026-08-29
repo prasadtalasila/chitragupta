@@ -24,6 +24,33 @@ class TestTokenize:
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
 
 
+class TestQueryTerms:
+    def test_strips_wh_words_and_a_modal(self):
+        assert retrieval._query_terms(
+            "what are the failure modes of co-simulation"
+        ) == ["failure", "modes", "simulation"]
+
+    def test_strips_why_and_does(self):
+        assert retrieval._query_terms("why does model calibration matter") == [
+            "model",
+            "calibration",
+            "matter",
+        ]
+
+    def test_leaves_a_keyword_query_untouched(self):
+        assert retrieval._query_terms(
+            "digital twin structural health monitoring"
+        ) == ["digital", "twin", "structural", "health", "monitoring"]
+
+    def test_tokenize_itself_is_not_touched(self):
+        """_query_terms must be additive over _tokenize, not a
+        replacement for it -- document-side indexing calls _tokenize
+        directly and must keep seeing interrogatives, or every
+        document's IDF moves for a change the roadmap explicitly
+        declined."""
+        assert retrieval._tokenize("what why how") == ["what", "why", "how"]
+
+
 class TestSnippet:
     def test_centers_the_window_on_a_matching_term(self):
         text = "x" * 100 + " digital twin simulation " + "y" * 100

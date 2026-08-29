@@ -69,6 +69,16 @@ _STOPWORDS = {
     "at",
 }
 
+# Question words and question-forming auxiliaries -- rare in academic
+# PDFs, so they carry high IDF and out-compete the terms a question is
+# actually about. Query-side only: see _query_terms below.
+# docs/CORPUS-SEARCH.md has the measurement.
+_INTERROGATIVES = {
+    "what", "why", "how", "who", "whom", "whose", "which", "when",
+    "where", "can", "could", "would", "should", "will", "shall",
+    "does", "did",
+}
+
 # Standard Okapi BM25 constants (term-frequency saturation and length
 # normalization strength) -- the usual defaults, not tuned against this
 # corpus specifically.
@@ -86,6 +96,12 @@ class SearchResult:
 
 def _tokenize(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2 and w not in _STOPWORDS]
+
+
+def _query_terms(query: str) -> list[str]:
+    """`_tokenize(query)` with interrogatives also dropped -- query-side
+    only, so a document's own term frequencies and every IDF stay put."""
+    return [w for w in _tokenize(query) if w not in _INTERROGATIVES]
 
 
 # Occurrences of one query term that `_windows` will anchor a candidate
