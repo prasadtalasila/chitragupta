@@ -6,12 +6,18 @@ tags: [revision, review, agenda, dossier, citation]
 
 # agenda-reviser
 
-`python -m chitragupta.review verbatim scan` finds every run of borrowed wording
-in a draft, buckets it by severity and files it as JSON. Then it stops,
-because it is a review aid and review aids report. Everything after that
--- reading the report, finding the passage, rewriting it without losing
-the claim, checking the rewrite did not make things worse -- was left to
-a person. That is the tedious half, and the half that gets skipped.
+`python -m chitragupta.review agenda <draft>` merges every review aid's own report
+-- provenance, verbatim, coverage, synthesis, figure layout, uncited prose,
+quotation integrity, claim support -- plus the dossier's own drift, into one
+ranked, deduplicated worklist. Each item carries an `unattended` field,
+decided once by the aid that produced it and never re-derived here: a
+`verbatim-run` at severity `short`, every `prose` finding, and a
+`missing-citekey` may be repaired without asking; everything else is
+surfaced for a person. The agenda stops there, because it is a review aid
+and review aids report. Everything after that -- reading an unattended
+item, finding its repair payload, applying it without losing the claim,
+checking the repair did not make something else worse -- was left to a
+person. That is the tedious half, and the half that gets skipped.
 
 That scan runs two deterministic tiers -- exact and word-swap-tolerant
 skip-gram -- plus an embedding tier that only runs where the optional
@@ -25,10 +31,11 @@ scan names the tiers that did not run; read that line. An empty findings
 list is not an achievement, and repairing every finding is not a clean
 bill of health. Say so when you present, every time.
 
-This skill does the half that was left over. It is not a better scan and
-it does not decide anything the scan was careful not to decide: what it
-adds is the repair, the re-check that says whether the repair worked, and
-a written record of both.
+This skill does the half that was left over. It is not a better agenda
+and it does not decide anything the agenda was careful not to decide --
+`unattended` is read, never recomputed. What it adds is the repair, the
+`--baseline` recheck that says whether the repair worked, and a written
+record of both.
 
 **A finding is not a verdict.** A run of shared wording is a place to
 look. A defined term, a standard's name and a correctly attributed
@@ -40,9 +47,9 @@ is a defect.
 
 | Situation | Action |
 | --- | --- |
-| User asks to fix, clean up or remediate verbatim overlap, borrowed wording or a plagiarism report | Invoke this skill |
-| A scan was just run and the user asks "what do I do about these" | Invoke this skill |
-| The user wants the draft **scanned** but says nothing about fixing it | Run the scan and show them. Do not start repairing |
+| User asks to work the review agenda, fix an unattended finding, or clean up what an agenda run found | Invoke this skill |
+| An agenda was just run and the user asks "what do I do about these" | Invoke this skill |
+| The user wants the draft's agenda **run** but says nothing about fixing it | Run `review agenda <draft>` and show them. Do not start repairing |
 | The finding is real but the user disagrees that it needs changing | They are right by default -- record it and move on. `SOUL.md`: a machine does not outrank a person on a judgment call |
 | Any other change to an existing draft -- shorten, expand, restructure, re-ground | Use `draft-reviser` |
 | User asks to re-check the whole draft against the corpus | Use `corpus-reviser` |
