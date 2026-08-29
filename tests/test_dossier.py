@@ -1677,6 +1677,34 @@ class TestDrift:
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
         assert report.candidates[0].queries == ["digital twin"]
 
+    def test_a_recorded_question_form_query_finds_what_search_would(self, draft):
+        """DriftIndex.matches() replays a recorded query outside search()
+        -- it must strip interrogatives the same way search() does, or
+        drift reporting silently disagrees with what search() itself
+        would return for the same human-typed query. `what_only_2026`
+        matches nothing but the literal word "what", so it is a false
+        candidate pre-fix and no candidate at all post-fix -- genuinely
+        red before the fix, not vacuously green."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(
+            "# Kept evidence\n\n## `kept_paper_2024`\n\nWhy kept.\n"
+        )
+        (target / "sections.md").write_text(
+            "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | `kept_paper_2024` |\n"
+        )
+        dossier.log_retrieval(draft, "search", "what is digital twin", 15, 15, 2400)
+        _seed_corpus(
+            [
+                ("kept_paper_2024", "Kept", "digital twin architecture"),
+                ("fresh_twin_2026", "A fresh twin paper", "digital twin co-simulation study"),
+                ("what_only_2026", "Unrelated", "what what what happened next in the story"),
+            ]
+        )
+        report = _drift.drift(target)
+        assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
+
     def test_a_paper_already_rejected_is_never_offered_again(self, grounded):
         _seed_corpus(
             [

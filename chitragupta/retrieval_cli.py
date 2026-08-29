@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import config, ledger
-from chitragupta.retrieval import SearchResult, _full_text, _tokenize, _windows, search
+from chitragupta.retrieval import SearchResult, _full_text, _query_terms, _windows, search
 
 EVIDENCE_CHARS = 600
 EVIDENCE_WINDOWS = 2
@@ -70,7 +70,7 @@ def evidence(
         con.row_factory = None
     if row is None:
         raise KeyError(f"{citekey} is not in the ledger")
-    terms = set(_tokenize(query))
+    terms = set(_query_terms(query))
     if not terms:
         return []
     return _windows(_full_text(row), terms, width=chars, count=windows)

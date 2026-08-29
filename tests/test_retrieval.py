@@ -470,6 +470,30 @@ class TestCli:
         assert retrieval.main(["evidence", "x", "--citekey", "nope_2024"]) == 1
         assert "not in the ledger" in capsys.readouterr().err
 
+    def test_evidence_strips_interrogatives_from_the_query(self, ledger_con, tmp_path):
+        """A second, separate anchor exists only for the literal word
+        "what" -- pre-fix it earns evidence() a second window; post-fix
+        it contributes no anchor at all, so this is genuinely red before
+        _query_terms is wired in, not vacuously green."""
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text(
+            ("padding word here " * 40)
+            + "architecture patterns catalog"
+            + (
+                " filler continues on and on beyond the window width here we go "
+                "some more padding text words" * 10
+            )
+            + " what appears alone over here"
+        )
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Patterns"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+
+        with_question = retrieval_cli.evidence(
+            "a2024", "what are architecture patterns", windows=2
+        )
+        without_question = retrieval_cli.evidence("a2024", "architecture patterns", windows=2)
+        assert with_question == without_question
+
     def test_no_ledger_exits_nonzero_with_the_fix(self, isolated_config, capsys):
         assert retrieval.main(["search", "anything"]) == 1
         assert "chitragupta.corpus sync" in capsys.readouterr().err
