@@ -444,7 +444,7 @@ shipped it; §5 has the full status table.
 ### 🔁 4.4 The remediation loop — built
 
 1. Overlap findings are machine-readable (`--json`, draft span, source
-   span, citekey, run length) and feed the `overlap-reviser` skill: a
+   span, citekey, run length) and feed the `agenda-reviser` skill: a
    constrained rewrite per finding, restating the draft's own register
    while preserving citation and meaning -- or, for long runs, stopping
    to ask the human paraphrase-or-quote rather than deciding silently.
@@ -536,7 +536,7 @@ production, not just designed. As of v5.29.0:
 | Genre conventions as data (skills) | Built -- nine skills, five of which draft ([GENRE.md](GENRE.md)) |
 | Content-hash caching / "second run costs nothing" | Built, and load-bearing for the overlap index (#110) specifically |
 | Verbatim overlap checking, exact tier | Built (#110, #127, #128, #131): corpus-wide n-gram index, disk-cached and ledger-keyed; whole-draft scan, not just citing paragraphs; severity buckets; boilerplate allowlist; `--json` output |
-| Overlap remediation loop | Built (#129): the `overlap-reviser` skill -- rewrite, re-scan, re-gate, log |
+| Overlap remediation loop | Built (#129): the `agenda-reviser` skill -- rewrite, re-scan, re-gate, log |
 | Paraphrase detection, deterministic tier | Built (#133): stemmed skip-grams, advisory |
 | Paraphrase detection, embedding tier | Built (#134), but **narrower than §1.3 asks for**: SBERT-style local alignment, advisory, and only where the optional enrichment layer, Docling passage sidecars and the draft's own dossier are all present. Per `docs/PLAGIARISM.md`, it compares a section only against the sources *that section already cites* -- a restatement of a source the draft never cited at all is still tiers 1 and 2's business alone, invisible to this tier by design, not just by the weak-discriminator argument below. And per `docs/PLAGIARISM-DESIGN.md`, even within that scope it is a weak discriminator specifically *because* this pipeline's retrieval step already selects a draft's grounding by semantic similarity, so "similar because copied" and "similar because correctly grounded" are hard to separate by cosine distance alone in a single-field corpus |
 | Blocking `overlap_gate` | **Declined** (#130): measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |

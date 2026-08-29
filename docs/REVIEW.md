@@ -294,8 +294,8 @@ what `synthesis`, `uncited` and `quotation` report.
   detector works: [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
 - Reading a provenance report:
   [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
-- Fixing what a verbatim scan found: the `overlap-reviser` skill
-  ([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)).
+- Fixing what a verbatim scan found: the `agenda-reviser` skill
+  ([GENRE.md](GENRE.md#-working-the-agenda-agenda-reviser)).
 - The commands and their flags: [CLI.md](CLI.md).
 - What the layer costs, in full:
   [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs).

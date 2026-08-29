@@ -122,7 +122,7 @@ bucket within a class, then position in the draft.
 | Class | Source | Kind | Unattended? |
 | --- | --- | --- | --- |
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
-| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `overlap-reviser` |
+| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `agenda-reviser` |
 | `prose` | `style_check` (#107), `steering.md` | no evidence delta | **yes**, for the whole class -- decided in #421. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `claim-support` | support | judgement | no -- surfaced. Unfiltered by design -- a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)) -- so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
@@ -325,9 +325,10 @@ sequence.
    independently of whether step 5 follows.*
 5. **#129, widened** -- the `agenda-reviser` skill, over all defect
    classes rather than verbatim runs alone. *Built narrow first, in
-   5.7.0: `overlap-reviser` is #129 as filed, over the `verbatim-run`
-   class alone, consuming `verbatim scan --json` directly rather than an
-   agenda. It did not wait for steps 2 and 4 because it did not need to
+   5.7.0: `overlap-reviser` (renamed `agenda-reviser` in #435) is #129
+   as filed, over the `verbatim-run` class alone, consuming `verbatim
+   scan --json` directly rather than an agenda. It did not wait for
+   steps 2 and 4 because it did not need to
    -- one aid's JSON already existed, and a loop that repairs one class
    is the report step 7 has to be tuned against. Widening it is now a
    matter of giving it the agenda as an input and the other classes as
@@ -367,7 +368,7 @@ cover B5:
   track; it is a sibling mechanism the roadmap tracks separately, under
   B5.
 - It calls `verbatim scan`/`recheck` and `draft style` directly, the
-  same commands `overlap-reviser` and every genre skill's own later
+  same commands `agenda-reviser` and every genre skill's own later
   steps already call. It never calls `review agenda`, so there is no
   overlap with this track's own machinery to exempt it from.
 

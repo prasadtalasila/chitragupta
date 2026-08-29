@@ -537,7 +537,7 @@ python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.m
 python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
 ```
 
-The first two are `overlap-reviser`'s own baseline discipline (uncapped,
+The first two are `agenda-reviser`'s own baseline discipline (uncapped,
 never `--limit`): they file
 `content/review/<topic>/<stem>.verbatim.json`, the file every edit below
 is rechecked against. The third's finding count -- not the file, `style`
@@ -739,7 +739,7 @@ reason as the scan wrote it, and where the reason names a fix (`poetry install
 verbatim and near-verbatim reuse only, and **genuine
 restatement is only detected where the embedding tier can run**, so a clean
 scan is not a clean bill of health (`docs/PLAGIARISM.md`). Repairing a finding
-is `overlap-reviser`'s job, and only if the user asks. If the user wants
+is `agenda-reviser`'s job, and only if the user asks. If the user wants
 the finding kept, add `--write`: the report goes to `content/review/`,
 mirroring the draft's path, beside any provenance and coverage reports for the
 same draft.

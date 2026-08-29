@@ -715,7 +715,7 @@ nothing.
 **The condition that would flip this:** if the step ever grows from one
 command into a multi-step judgement loop -- read the findings, decide which
 to act on, edit, re-check, log the attempt -- then it *is* a skill, and
-`overlap-reviser` is the proof, since that is precisely its shape for
+`agenda-reviser` is the proof, since that is precisely its shape for
 verbatim findings. Today the fix path for a prose finding already has a
 home in `draft-reviser`'s copy-edit mode (#103), so the loop does not need
 a second one.

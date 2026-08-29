@@ -20,7 +20,7 @@ from chitragupta.review.agenda._sources import AidSource, StyleSource
 
 
 def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]:
-    """`severity == \"short\"` is unattended (`overlap-reviser` handles
+    """`severity == \"short\"` is unattended (`agenda-reviser` handles
     it); `\"long\"` is surfaced (#129 reserves it for a human);
     `\"quoted\"` is not a defect and is excluded entirely."""
     if not source.available:

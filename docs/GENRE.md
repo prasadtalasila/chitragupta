@@ -43,7 +43,7 @@ Related reading:
 - [Assembling a book](#-assembling-a-book)
 - [Revising: draft-reviser](#-revising-draft-reviser)
 - [Revising widely: corpus-reviser](#-revising-widely-corpus-reviser)
-- [Repairing overlap: overlap-reviser](#-repairing-overlap-overlap-reviser)
+- [Working the agenda: agenda-reviser](#-working-the-agenda-agenda-reviser)
 - [What all nine have in common](#-what-all-nine-have-in-common)
 - [The boundaries, and why they are enforced](#-the-boundaries-and-why-they-are-enforced)
 - [Genres this project does not have](#-genres-this-project-does-not-have)
@@ -88,7 +88,7 @@ document that fails at both.
 | `deep-research` | `content/drafts/deep-research-<slug>.md` | every claim | 6 interviewers, N writers, 4 reviewers | heaviest by design |
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass -- by request only |
-| `overlap-reviser` | edits an existing draft in place | inherits the draft's | none | one scan, then one edit per finding |
+| `agenda-reviser` | edits an existing draft in place | inherits the draft's | none | one agenda run, then one edit per unattended item |
 | `book-assembler` | `content/drafts/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
 
 ### 📖 The evidence sidecar, decided per genre
@@ -322,13 +322,15 @@ The thing that stays never, in both skills, is re-running the genre
 skill: that discards all of that state and pays to rediscover a worse
 version of it.
 
-## 🩹 Repairing overlap: `overlap-reviser`
+## 🩹 Working the agenda: `agenda-reviser`
 
 Not a genre either, and narrower than both revisers above: its input is
-one report rather than a request in prose. `python -m chitragupta.review verbatim
-scan --json` lists every run of wording a draft shares with the corpus.
-This skill works that list, repairing each finding and re-checking the
-repair before keeping it.
+one worklist rather than a request in prose. `python -m chitragupta.review
+agenda <draft>` merges every review aid's report into one ranked,
+deduplicated list, and each item's own `unattended` field -- read, never
+re-derived -- says whether this skill may act on it without asking. Three
+classes currently qualify: `verbatim-run` at severity `short`, `prose`,
+and `missing-citekey`. Everything else is surfaced for a person.
 
 **A genuine restatement is only detected where the embedding tier can
 run**, so finishing the list is not a clean bill of health. See
@@ -396,7 +398,7 @@ genre skills that write fresh prose from an
 evidence packet -- `survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research` -- and not
 by `book-assembler` (writes no prose of its own) or the three revisers
-(`draft-reviser`, `corpus-reviser`, `overlap-reviser`), which already
+(`draft-reviser`, `corpus-reviser`, `agenda-reviser`), which already
 gate-and-recheck per section rather than critiquing a whole fresh draft.
 
 **One invariant.** A citekey may only be used if it appears in your `.bib`

@@ -333,8 +333,8 @@ being visible from the report's own side.
 ## 🛠 Repairing what the scan found
 
 Detection without remediation leaves the human doing the tedious part.
-Issue #129 adds the other half: the `overlap-reviser` skill
-([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)) works a scan's
+Issue #129 adds the other half: the `agenda-reviser` skill
+([GENRE.md](GENRE.md#-working-the-agenda-agenda-reviser)) works a scan's
 findings one at a time, and `python -m chitragupta.review verbatim recheck`
 decides whether each repair may be kept.
 
