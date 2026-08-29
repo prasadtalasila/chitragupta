@@ -57,10 +57,6 @@ name = "chitragupta/config.py"
 code_lines = 492
 
 [[c2]]
-name = "chitragupta/retrieval.py"
-code_lines = 432
-
-[[c2]]
 name = "chitragupta/references.py"
 code_lines = 389
 

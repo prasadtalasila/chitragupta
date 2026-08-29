@@ -16,7 +16,7 @@ import sqlite3
 
 import pytest
 
-from chitragupta import bib_collections, config, ledger, ledger_cli, retrieval
+from chitragupta import bib_collections, config, ledger, ledger_cli, retrieval, retrieval_cache
 
 from tests.conftest import make_reference
 
@@ -194,8 +194,8 @@ class TestRetrievalFilter:
                 (str(parsed), citekey),
             )
         ledger_con.commit()
-        retrieval._load_cache.cache_clear() if hasattr(
-            retrieval._load_cache, "cache_clear"
+        retrieval_cache._load_cache.cache_clear() if hasattr(
+            retrieval_cache._load_cache, "cache_clear"
         ) else None
         return isolated_config
 

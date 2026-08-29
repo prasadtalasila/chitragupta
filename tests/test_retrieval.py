@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import config, ledger, retrieval
+from chitragupta import config, ledger, retrieval, retrieval_cli
 
 from tests.conftest import make_reference
 
@@ -367,34 +367,34 @@ class TestEvidence:
             tmp_path,
             "padding " * 100 + "simulation time must follow wall clock time" + " tail" * 50,
         )
-        passages = retrieval.evidence("a2024", "simulation wall clock", chars=80)
+        passages = retrieval_cli.evidence("a2024", "simulation wall clock", chars=80)
         assert any("wall clock" in p for p in passages)
 
     def test_reads_more_of_the_document_than_a_search_snippet(self, ledger_con, tmp_path):
         body = " ".join(f"clock segment {i} simulation" for i in range(200))
         self._seed(ledger_con, tmp_path, body)
-        total = sum(len(p) for p in retrieval.evidence("a2024", "clock simulation", chars=300))
+        total = sum(len(p) for p in retrieval_cli.evidence("a2024", "clock simulation", chars=300))
         assert total > 500
 
     def test_an_empty_query_returns_nothing(self, ledger_con, tmp_path):
         self._seed(ledger_con, tmp_path, "some text")
-        assert retrieval.evidence("a2024", "the of and") == []
+        assert retrieval_cli.evidence("a2024", "the of and") == []
 
     def test_a_citekey_with_no_parsed_text_is_not_an_error(self, ledger_con):
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
-        assert retrieval.evidence("a2024", "quantum entanglement") == []
+        assert retrieval_cli.evidence("a2024", "quantum entanglement") == []
 
     def test_the_title_alone_can_carry_a_match(self, ledger_con):
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="a2024", title="Robotics And Control")
         )
-        assert retrieval.evidence("a2024", "robotics", chars=40) != []
+        assert retrieval_cli.evidence("a2024", "robotics", chars=40) != []
 
     def test_an_unknown_citekey_raises(self, ledger_con):
         import pytest
 
         with pytest.raises(KeyError, match="not in the ledger"):
-            retrieval.evidence("nope_2024", "anything")
+            retrieval_cli.evidence("nope_2024", "anything")
 
 
 class TestCli:
@@ -535,18 +535,20 @@ class TestDocsQuoteTheActualDefaults:
     def test_the_docs_quote_the_actual_defaults(self):
         cli = (config.shipped("docs", "CLI.md")).read_text(encoding="utf-8")
         chars_row = next(line for line in cli.splitlines() if "`--chars N`" in line)
-        assert f"{retrieval.EVIDENCE_CHARS} / 500" in chars_row
+        assert f"{retrieval_cli.EVIDENCE_CHARS} / 500" in chars_row
 
         windows_row = next(line for line in cli.splitlines() if "`--windows N`" in line)
-        assert f"| {retrieval.EVIDENCE_WINDOWS} |" in windows_row
+        assert f"| {retrieval_cli.EVIDENCE_WINDOWS} |" in windows_row
 
         evidence_row = next(
             line for line in cli.splitlines() if '`evidence "<query>" --citekey KEY`' in line
         )
-        assert f"{retrieval.EVIDENCE_WINDOWS} by default" in evidence_row
+        assert f"{retrieval_cli.EVIDENCE_WINDOWS} by default" in evidence_row
 
         retr = (config.shipped("docs", "RETRIEVAL.md")).read_text(encoding="utf-8")
-        assert f"{retrieval.EVIDENCE_WINDOWS} x {retrieval.EVIDENCE_CHARS} characters" in retr
+        assert (
+            f"{retrieval_cli.EVIDENCE_WINDOWS} x {retrieval_cli.EVIDENCE_CHARS} characters" in retr
+        )
 
 
 class TestLogNeverFailsTheSearch:

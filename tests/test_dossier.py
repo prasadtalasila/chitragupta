@@ -1854,12 +1854,12 @@ class TestEphemeralIndex:
         proves the cache was read: the match can only come from the cache,
         since the parsed text says something else entirely."""
         _seed_corpus([("cached_paper_2026", "Cached", "sourdough starter")])
-        from chitragupta import retrieval
+        from chitragupta import retrieval_cache
 
         con = __import__("sqlite3").connect(config.LEDGER_PATH)
         con.row_factory = __import__("sqlite3").Row
         (row,) = con.execute("SELECT * FROM items").fetchall()
-        fingerprint = retrieval._fingerprint(row)
+        fingerprint = retrieval_cache._fingerprint(row)
         con.close()
         config.RETRIEVAL_INDEX_PATH.write_text(
             __import__("json").dumps(

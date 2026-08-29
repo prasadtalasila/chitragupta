@@ -56,15 +56,15 @@ def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
     are both about this being a *report*. It connects through
     `ledger.connect()`, which mkdirs `content/`, executes the schema and
     runs migrations -- a write connection, which is exactly what
-    `_corpus_rows` avoids. And it goes through `retrieval._load_index`,
+    `_corpus_rows` avoids. And it goes through `retrieval_cache._load_index`,
     which calls `_save_cache` whenever any document's fingerprint moved
     -- which, after the sync that caused the drift being reported, is
     guaranteed. Either one would make an inspection mutate the corpus
     layer it is inspecting.
 
-    The index itself is not the problem, though: `_tokenize_item` and
-    `_bm25_scores` are pure, and the only thing that persists in
-    `retrieval` is the cache write between them. So this composes the
+    The index itself is not the problem, though: `retrieval._tokenize_item`
+    and `retrieval._bm25_scores` are pure, and the only thing that persists
+    is `retrieval_cache`'s cache write between them. So this composes the
     same two halves and skips the middle -- seeding from the on-disk
     cache where a fingerprint still matches (`_load_cache` only reads),
     tokenizing the rest into memory, and never writing back. A warm cache
@@ -73,15 +73,17 @@ def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
 
     Imported lazily so that `import chitragupta.dossier` stays as cheap as the
     rest of the module -- and it stays stdlib-only either way, since
-    `chitragupta.retrieval` is too.
+    `chitragupta.retrieval`/`chitragupta.retrieval_cache` are too.
     """
-    from chitragupta import retrieval
+    from chitragupta import retrieval, retrieval_cache
 
-    cached = retrieval._load_cache()
+    cached = retrieval_cache._load_cache()
     index = {}
     for row in rows:
         entry = cached.get(row["citekey"])
-        if isinstance(entry, dict) and entry.get("fingerprint") == retrieval._fingerprint(row):
+        if isinstance(entry, dict) and entry.get("fingerprint") == retrieval_cache._fingerprint(
+            row
+        ):
             index[row["citekey"]] = entry
         else:
             index[row["citekey"]] = retrieval._tokenize_item(row)

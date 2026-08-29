@@ -55,7 +55,7 @@ architecture:
 
 4. **Incremental processing is a load-bearing design goal**
    - `ledger.py` uses stat-before-hash skipping.
-   - `retrieval.py` caches term-frequency stats.
+   - `retrieval_cache.py` caches term-frequency stats.
    - `embed_index.py` and `topic_model.py` cache embeddings.
    - `docling_parse.py` fingerprints each PDF by (size, mtime).
    - The intent is to avoid reprocessing unchanged material.

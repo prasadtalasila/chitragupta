@@ -199,7 +199,7 @@ quote: an optional verbatim span, quotable-only
   actually intended.
 
 **Migration.** This replaces a `support:` field that held, in practice, a
-raw retrieval window -- `EVIDENCE_CHARS = 600` in `chitragupta/retrieval.py`,
+raw retrieval window -- `EVIDENCE_CHARS = 600` in `chitragupta/retrieval_cli.py`,
 handed straight to the drafter. `support:` is **read but never written**
 after this landed: existing dossiers keep it as-is, and nothing rewrites
 one to the new shape. `evidence_blocks()` already returns a block

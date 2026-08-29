@@ -424,7 +424,7 @@ flowchart TB
   TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
   SED --> CVG
 
-  TXT -- "chitragupta/retrieval.py" --> RIX
+  TXT -- "chitragupta/retrieval_cache.py" --> RIX
 
   RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
   CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Only<br/>survey-writer and deep-research name it.</small>" .-> DRF
