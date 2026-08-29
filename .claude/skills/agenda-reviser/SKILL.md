@@ -238,10 +238,20 @@ Accept the repair only if **all** of:
   likeliest of all of them to break that mapping and the least likely to
   notice, since it is reasoning about wording or markers, not quantities.
 
-Otherwise revert the item from the pre-edit text kept in step 4 and try
-once more. **Two attempts per item.** A second failure escalates to the
-human and the loop moves on; a reverted item leaves every earlier
-accepted one intact.
+Otherwise revert the item from the pre-edit text kept in step 4. **Before
+trying again, re-file the baseline against the true reverted state**:
+
+```bash
+python -m chitragupta.review agenda content/drafts/<path> --json
+```
+
+`--baseline`'s target is also what every `agenda` call refiles on exit,
+failed attempt included -- so skipping this bare re-file before a second
+attempt would compare it against the first attempt's inflated count
+instead of the pass's real starting point, silently reporting a retry as
+progress it never made. Then try once more. **Two attempts per item.** A
+second failure escalates to the human and the loop moves on; a reverted
+item leaves every earlier accepted one intact.
 
 **The pass loop.** After each accepted repair, re-read
 `objective_class_count` from the same `--baseline` response (its
