@@ -6,6 +6,37 @@ BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync) without editing t
 tomllib is stdlib since Python 3.11, so this adds no dependency.
 """
 
+# Only the path-containment class/functions moved out (#441, ->
+# chitragupta/config_path.py) -- this module stays registered on C2,
+# smaller than before but not under the limit. Two constraints rule out
+# the rest of the obvious split:
+#
+# 1. `_toml` and every `_get*` getter must stay in one module.
+#    `tests/test_config.py` monkeypatches `_toml` directly (~30 call
+#    sites) and then calls the getters as `config._get(...)`; a getter
+#    that read `_toml` from a different module's globals would silently
+#    stop seeing those patches -- the same failure class `sync_pool.py`
+#    and `overlap_index_doc.py` were split to *fix*, reintroduced by
+#    moving the wrong half. That floor alone is already ~200 lines.
+# 2. Every setting this module resolves is read elsewhere as
+#    `config.NAME`, and `chitragupta/render_output.py`,
+#    `chitragupta/citation_gate.py`, `chitragupta/style_check.py` and
+#    `chitragupta/acronyms.py` are tier-1, stdlib-only commands
+#    (docs/ARCHITECTURE.md) committed to importing only `config`
+#    alongside each other -- not a second settings module. Moving a
+#    tier-1-read setting out and re-exporting it back costs as many
+#    lines as it saves (one assignment line traded for one import-name
+#    line); moving it out *without* re-exporting it would give the same
+#    setting two spellings across the codebase, which
+#    docs/CODE-STANDARDS.md calls out as the highest-value kind of
+#    finding to avoid, not commit.
+#
+# Splitting further from here means either hollowing out a getter's own
+# "why" docstring (which C2 counts on purpose, to make that trade
+# visible rather than free) or accepting the two-spellings cost above --
+# both changes to a documented contract, not a mechanical extraction,
+# so left to a deliberate decision rather than folded into this pass.
+
 import math
 import os
 import tomllib
@@ -942,92 +973,22 @@ ENTAILMENT_MODEL = _get(
 # Path containment
 # --------------------------------------------------------------------------
 #
-# Lives here rather than in any one tool because all three of the tier-1,
-# stdlib-only tools need it and none of them can import each other:
-# chitragupta/render_output.py already imports chitragupta/citation_gate.py, so a shared
-# helper in either of those two would close a cycle. This module imports
-# nothing from chitragupta/ and owns CONTENT_DIR, which makes "is this path inside
-# the content directory" its question to answer.
+# Split into chitragupta/config_path.py (#441): "is this path inside the
+# content directory" no longer needs to live in this file's own body to
+# stay reachable as config.OutsideContentDir/resolves_inside/mirrored_dir/
+# require_inside_content -- every one of this project's existing call
+# sites keeps working through the re-export below. config_path.py reads
+# CONTENT_DIR back off this module (a live `config.CONTENT_DIR` attribute
+# lookup, not a bare name snapshotted at its own import time), which is
+# what keeps `tests/conftest.py`'s `isolated_config` fixture -- which
+# patches `config.CONTENT_DIR` directly -- visible to it.
 
+# pylint: disable=unused-import,wrong-import-position
+from chitragupta.config_path import (  # noqa: F401,E402
+    OutsideContentDir,
+    mirrored_dir,
+    require_inside_content,
+    resolves_inside,
+)
 
-class OutsideContentDir(RuntimeError):
-    """A path a tool was asked to read or write lies outside CONTENT_DIR.
-
-    Raised rather than worked around. Every path this pipeline reads or
-    writes lives under `content/`, which is what makes a `dossier export`
-    or a copy of that one directory a complete record of the work -- a
-    draft kept somewhere else is invisible to backup, to `dossier`, and
-    to every later revision.
-    """
-
-
-def resolves_inside(path: Path, root: Path) -> bool:
-    """Whether `path` really lives under `root`, once both are resolved.
-
-    Resolving both sides is the whole point: it is what makes a symlink
-    and a `..` component answer for where they actually land rather than
-    for how they are spelled.
-    """
-    return Path(path).resolve().is_relative_to(Path(root).resolve())
-
-
-def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | None":
-    """`target_root` carrying `path`'s own place under `source_root`.
-
-    The one rule four directories under `content/` obey: a draft at
-    `content/drafts/<topic>/survey.md` has its renders at
-    `content/rendered/<topic>/`, its dossier at
-    `content/dossiers/<topic>/survey/`, and its review reports at
-    `content/review/<topic>/`. One topic directory, one draft's worth of
-    everything.
-
-    Returns `None` when `path` is not under `source_root`, rather than
-    picking an answer, because the callers disagree about what that means
-    and each is right for itself. `render_output._output_dir` and
-    `review.report_path` fall back to the flat target directory: both
-    accept an input that is legitimately elsewhere under `content/`, and
-    writing its output flat is a better answer than refusing to produce
-    any. `dossier.dossier_dir` raises, because a dossier written
-    somewhere unmirrored would be found by nothing later. Policy stays
-    with the caller; only the rule lives here.
-
-    Note this says nothing about which inputs a caller will *accept* --
-    that is a separate decision each one makes for itself, before it gets
-    here (`render_output` and `references` confine reads to `content/`
-    with `require_inside_content`, and `review.require_reviewable` does
-    the same for the three review aids).
-
-    Only the part of `path` *below* `source_root` is ever carried over,
-    and both sides are resolved before being compared, so the result can
-    hold neither a `..` nor a symlink's spelling. It is still the
-    caller's job to check the result resolves inside `target_root`:
-    `source_root` and `target_root` are configuration, and a symlinked
-    one can land outside without any argument being at fault.
-
-    Lives here rather than in either caller because `chitragupta/render_output.py`
-    is committed to stdlib plus `config`/`citation_gate`/`references` so a
-    genre skill can render under bare `python` -- it cannot import
-    `chitragupta/dossier/`, and before this the rule was written out three times
-    and missed in a fourth place (`citation_provenance`), which is how
-    two drafts named `survey.md` came to share one report.
-    """
-    try:
-        relative = Path(path).resolve().relative_to(Path(source_root).resolve())
-    except ValueError:
-        return None
-    return Path(target_root) / relative.parent
-
-
-def require_inside_content(path: Path, what: str = "draft") -> Path:
-    """Returns `path`, having refused it if it resolves outside CONTENT_DIR."""
-    if not resolves_inside(path, CONTENT_DIR):
-        raise OutsideContentDir(
-            f"{path} resolves to {Path(path).resolve()}, outside the content "
-            f"directory {CONTENT_DIR.resolve()}. This pipeline reads and writes "
-            f"only under content/, so that one directory is the whole record of "
-            f"the work -- move the {what} under content/drafts/ (where the genre "
-            f"skills save one, and the only place whose path is mirrored into "
-            f"content/rendered/), or point [content].dir in config.toml at the "
-            f"tree you are really working in."
-        )
-    return Path(path)
+# pylint: enable=unused-import,wrong-import-position
