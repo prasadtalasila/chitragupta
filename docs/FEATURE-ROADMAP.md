@@ -371,10 +371,10 @@ built and withdrawn.
 The highest-value theme, and the one the request is actually about.
 A1 is cheap and immediate; A2-A4 are the structural fix.
 
-### 🚫 A1b: auto-route findings into `overlap-reviser` -- declined
+### 🚫 A1b: auto-route findings into `agenda-reviser` -- declined
 
 The first draft of this roadmap paired A1a with automatic routing of
-findings into the existing `overlap-reviser` skill. **That half is
+findings into the existing `agenda-reviser` skill. **That half is
 withdrawn**, on the project's own reasoning rather than on new grounds.
 
 [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md) refuses a
@@ -384,7 +384,7 @@ discards an unsupported claim and writes again rather than 'fixing'
 it."* The amendment does not touch this argument -- it is about
 self-marking, not about who may invoke an aid.
 
-It also falsifies two written claims at once: `overlap-reviser`'s own
+It also falsifies two written claims at once: `agenda-reviser`'s own
 description ends *"never runs unless a person asked for it"*, and
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s build-order step 5 asserts
 that skill's *"person-only trigger"* is already what R1-R11 ask for.
@@ -489,7 +489,7 @@ reverts"*, made deterministic by `verbatim recheck`, which shipped in
 gutting a draft, never as the thing being satisfied.
 
 This item is also self-marking in the sense
-[A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined) declines,
+[A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined) declines,
 and it needs the amendment. It sits late for both reasons rather than
 one.
 
@@ -654,27 +654,10 @@ Its own status line is stale, which matters for anyone costing this:
 it says the `prose` class *"has no producer until #103 and #107 land"*,
 but [HOUSE-STYLE.md](HOUSE-STYLE.md) records #107 shipped in 5.13.0 and
 its automatic invocation (#183) in 5.19.0, and `chitragupta/style_check.py`
-carries `--json` today. **Build-order step 6 has shipped, and so has step
-4 (#381).** Steps 1, 2, 3, 4 and 6 are done, and step 7 (#130) is a
-closed, declined decision rather than an open issue; only step 5's
-widening is the live work.
-
-### 🤖 F3: widen `overlap-reviser` into `agenda-reviser`
-
-Step 5. `overlap-reviser` shipped in 5.7.0 as #129-as-filed: the
-`verbatim-run` class alone, consuming `verbatim scan --json` directly.
-Widening it means *"giving it the agenda as an input and the other
-classes as work"* -- the write-set, the two-attempt limit, the binary
-re-check and the person-only trigger are already what R1-R11 ask for.
-
-Two pieces landed with it that this work should reuse rather than
-rebuild: the scan payload's `id` (R2's stable identity) and
-`verbatim recheck` (R3's binary check and R4's count, made
-deterministic). [B5](#-b5-pre-gate-self-feedback-loop) in particular should
-take its acceptance test from here rather than from upstream.
-
-Size: L. Depends on: F2 (shipped, #381), and the amendment only for
-automation -- person-triggered widening needs no amendment at all.
+carries `--json` today. **Build-order step 6 has shipped, so has step
+4 (#381), and so has step 5's widening (#384, #435).** Steps 1 through 6
+are done, and step 7 (#130) is a closed, declined decision rather than
+an open issue. Nothing in Theme F remains open.
 
 ### ⚖ F4: the gating decision -- already answered
 
@@ -756,11 +739,10 @@ is for.
 | 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
 | 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
 | 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 5 | [F3](#-f3-widen-overlap-reviser-into-agenda-reviser) widen to `agenda-reviser` | F | L | F2 (shipped, #381) |
 | 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
 | 7 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
-Withdrawn: [A1b](#-a1b-auto-route-findings-into-overlap-reviser----declined).
+Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
 
 **What changed from the first draft of this document, and why it
