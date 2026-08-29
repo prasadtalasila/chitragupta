@@ -251,49 +251,42 @@ surfaced.
 
 ### 6. Log every attempt
 
-Append to the dossier's `revisions.md`: the date, each finding by `id`
-and citekey, what was done, and what happened -- accepted, reverted,
+Append to the dossier's `revisions.md`: the date, each item by `id` and
+`class`, what was done, and what happened -- accepted, reverted,
 escalated, or declined by the user. Refusals are the entries most worth
 having, because they are what stops the next session re-attempting
 something that was already decided against.
 
 **Never write any of this to `rejected.md`.** That file is about sources
-that were retrieved and turned down. A rewrite that did not work is not a
-rejected source, and putting it there would teach the next revision to
-skip a paper for a reason that has nothing to do with the paper.
+that were retrieved and turned down, not repairs that did not work.
 
 ### 7. Present
 
 Show the diff and the `revisions.md` entries, and state the outcome
-against the baseline from step 2: findings before, findings now, what was
-repaired, what was escalated and why.
+against the baseline agenda from step 2: `objective_class_count` before
+and after, what was repaired per class, what was escalated and why.
 
 The human accepts. Nothing here merges, commits or renders on its own.
 
-### Run the prose check
+### Prose is now this skill's work, not merely surfaced
 
-Before you present:
+`draft style content/drafts/<path>` was already run as part of the
+baseline agenda in step 2 -- `agenda` reads it as one of its eight
+sources. Under Decision 1 of `plans/f3-agenda-reviser.md`, every `prose`
+finding carries `unattended: true` and is repaired in step 4, the same
+as any other unattended class -- not merely reported. Your own repairs
+are new prose, written under pressure to avoid someone else's wording on
+the `verbatim-run` items, which is exactly where a defect marker or a
+dialect slip gets back in, so re-run the check as part of every
+`--baseline` cycle in step 5 rather than only once at the end.
 
-```bash
-python -m chitragupta.draft style content/drafts/<path>
-```
-
-Your repairs are new prose, written under pressure to avoid someone
-else's wording, which is where a defect marker or a dialect slip gets in.
-**It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
-§2's defect markers, an acronym never expanded at first use, a glossary
-acronym whose expansion has drifted from the vocabulary, and §8's
-dialect against `scope.md`'s `language:` line. It knows nothing about
-overlap, and it cannot tell a quotation from the draft's own voice, so a
-clean report says nothing about the findings you just repaired.
-
-**Report every finding and fix none of them.** This skill's write-set is
-the draft's overlap findings and `revisions.md`; a spelling fix is not a
-verbatim finding, and anything that is not a verbatim finding is
-`draft-reviser` -- hand it off and say so. Report the header lines too:
-`dialect: not checked` means nobody ever recorded one. A review aid, not
-a gate -- it exits 0 whatever it finds, and a missing `vale` binary is a
-one-line warning that blocks nothing.
+**It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+-- §2's defect markers, an acronym never expanded at first use, a
+glossary acronym whose expansion has drifted, §8's dialect against
+`scope.md`'s `language:` line, and (since #435) an uncaptioned table or
+figure. It cannot tell a quotation from the draft's own voice, and a
+clean report on the classes it does not check says nothing about them.
+A review aid, not a gate -- it exits 0 whatever it finds.
 
 ### Run the verbatim scan
 
@@ -325,17 +318,33 @@ findings fixed" from two tiers of three is the most misleading sentence in
 this pipeline. **A review aid, not a gate: it exits 0 either way, and it is
 never a condition of presenting.**
 
+### Close the pass with one full-format run
+
+Every `--baseline` refresh in step 5 ran at `--formats md` (Decision 6 --
+only three of the eight aids render anything beyond Markdown, and
+skipping the other formats saves about 2.5 seconds a cycle). Each aid's
+`.tex`/`.pdf` is therefore stale against its own `.md` until the pass
+ends. Before presenting, run one more `review agenda content/drafts/<path>
+--json` (its default `--formats md,tex,pdf`, and still no `--baseline`),
+so the final artefacts on disk are the ones the human reads.
+
+`agenda-reviser` repairs a style finding **that appears as an agenda
+item**; every other change to wording -- including `draft-reviser`'s own
+copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
+
 ## Guardrails
 
 - **Never start this on your own initiative.** Not from a hook, not from
   a scheduled job, not at the end of a genre skill's run, and not from
   `draft-reviser`. A person asking is the only trigger.
 - **Never edit anything but the draft and `revisions.md`.** Not
-  `content/verbatim_allowlist.toml`, not `rejected.md`, not `scope.md`,
-  not `evidence.md`, and nothing under the corpus layer. Suppressing a
-  finding by allowlisting it is the user's call about their own project,
-  and a loop that could silence its own detector is not a loop anyone
-  should trust.
+  `content/verbatim_allowlist.toml`, not `assets/vale/styles/chitragupta/*.yml`
+  (prose became work under Decision 1, which puts the Vale rule
+  definitions within reach of the same failure for the first time), not
+  `rejected.md`, not `scope.md`, not `evidence.md`, and nothing under the
+  corpus layer. Suppressing a finding by allowlisting it is the user's
+  call about their own project, and a loop that could silence its own
+  detector is not a loop anyone should trust.
 - **Never decide paraphrase-or-quote on a long run.** Ask.
 - **Never `Write` the whole draft.** `Edit` the passage.
 - **Never add a claim, and never fabricate a citekey.** A fabricated
