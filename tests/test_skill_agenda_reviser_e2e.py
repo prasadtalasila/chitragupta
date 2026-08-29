@@ -16,8 +16,19 @@ and one shared loop belongs in one file read on its own, the same
 reasoning tests/test_skill_verbatim_scan_step.py and
 tests/test_skill_pregate_feedback_step.py already follow.
 
-**Two mechanics this suite exists to pin, discovered writing it rather
+**Three mechanics this suite exists to pin, discovered writing it rather
 than assumed from the spec:**
+
+The fixture's `prose` finding is an uncaptioned figure marker
+(`chitragupta.FigureNoCaption`), not an unexpanded acronym
+(`chitragupta.Acronyms`) -- deliberately. `Acronyms` is a Vale rule
+(`assets/vale/`), and Vale is an optional binary this repo's own Windows
+CI leg does not install (`docs/CLI.md`'s tier-1 contract); a fixture
+built on it passes on a host with Vale on PATH and silently finds zero
+`prose` items -- and every assertion downstream of that count -- on one
+that lacks it. `FigureNoCaption`/`FigureUnreferenced`
+(`chitragupta/style_figures.py`) are computed in plain Python and run
+identically everywhere, which is what this module actually needs to pin.
 
 `missing-citekey` is detected off the dossier's own record of what it
 cites (`evidence.md`/`sections.md` via `dossier._citekeys.cited_citekeys`),
@@ -49,7 +60,22 @@ STEM = "agenda-reviser-e2e"
 
 ORIGINAL = (
     "# Deployment\n\n"
-    "A DT tracks the physical asset across its life [@twin_ref_2024].\n\n"
+    "A system tracks the physical asset across its life [@twin_ref_2024].\n\n"
+    "<!-- figure: figures/deployment-diagram -->\n\n"
+    "## Monitoring\n\nSensors report drift on a fixed schedule.\n"
+)
+
+# Captions and references `deployment-diagram` -- the marker's `prose`
+# finding (FigureNoCaption) resolves and, since referencing it means it
+# is now "declared", no FigureUnreferenced appears to replace it. Both
+# halves are load-bearing: captioning alone swaps one finding for the
+# other net zero (verified empirically before this fixture was written).
+REPAIRED_FIGURE = (
+    "# Deployment\n\n"
+    "As <!-- figureref: deployment-diagram --> shows, a system tracks the "
+    "physical asset across its life [@twin_ref_2024].\n\n"
+    "<!-- figure: figures/deployment-diagram -->\n"
+    "The deployment topology.\n\n"
     "## Monitoring\n\nSensors report drift on a fixed schedule.\n"
 )
 
@@ -69,13 +95,20 @@ def _run_agenda(draft, *extra):
     return json.loads(buf.getvalue())
 
 
+def _new_figure(marker_id):
+    """A fresh, unrelated, uncaptioned figure marker -- one new `prose`
+    finding, independent of the deployment-diagram one, for tests that
+    need to introduce a problem without touching anything else."""
+    return f"\n\n<!-- figure: figures/{marker_id} -->\n"
+
+
 @pytest.fixture
 def draft(isolated_config):
     """`content/drafts/agenda-reviser-e2e.md`, carrying three findings in
     three different classes, all computed live so no other aid's `.json`
     has to be pre-seeded on disk:
 
-    - `A DT tracks...` -- an unexpanded acronym, `prose`, unattended
+    - an uncaptioned figure marker -- `prose`, unattended
       (`chitragupta.style_check` runs live on every agenda build).
     - `[@twin_ref_2024]` -- cited while the paper existed, then the
       paper is dropped from the corpus -- `missing-citekey`, unattended
@@ -101,7 +134,7 @@ def draft(isolated_config):
     dossier.init(draft, "survey")
     target = dossier.dossier_dir(draft)
     (target / "evidence.md").write_text(
-        "# Kept evidence\n\n## `twin_ref_2024`\n\nHow a DT tracks the asset.\n"
+        "# Kept evidence\n\n## `twin_ref_2024`\n\nHow the system tracks the asset.\n"
     )
     (target / "sections.md").write_text(
         "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
@@ -137,19 +170,20 @@ def _decite(draft):
     )
 
 
-def _retry_agenda(draft, path, attempt_texts):
-    """One item's R7 loop, up to `len(attempt_texts)` attempts: apply
-    each candidate edit over the *original* draft, `--baseline` against
-    `path`, and revert if `objective_delta` is positive. Between a
-    revert and the next attempt, re-files `path` with a bare `agenda`
-    call against the true reverted draft first -- see the module
-    docstring for why that refile is load-bearing rather than
-    defensive. Returns the list of deltas observed, one per attempt
-    made (stops early on a non-positive delta, i.e. an accepted repair).
+def _retry_agenda(draft, path, marker_ids):
+    """One item's R7 loop, up to `len(marker_ids)` attempts: introduce a
+    fresh uncaptioned figure (named by each id in turn) over the
+    *original* draft, `--baseline` against `path`, and revert if
+    `objective_delta` is positive. Between a revert and the next
+    attempt, re-files `path` with a bare `agenda` call against the true
+    reverted draft first -- see the module docstring for why that refile
+    is load-bearing rather than defensive. Returns the list of deltas
+    observed, one per attempt made (stops early on a non-positive delta,
+    i.e. an accepted repair).
     """
     deltas = []
-    for attempt_text in attempt_texts:
-        draft.write_text(ORIGINAL.replace("Sensors report", attempt_text), encoding="utf-8")
+    for marker_id in marker_ids:
+        draft.write_text(ORIGINAL + _new_figure(marker_id), encoding="utf-8")
         comparison = _run_agenda(draft, "--baseline", str(path))
         deltas.append(comparison["objective_delta"])
         if comparison["objective_delta"] <= 0:
@@ -163,10 +197,7 @@ def test_repairing_one_unattended_item_falls_the_objective_count(draft):
     path, before = _baseline(draft)
     prose_item = next(i for i in before["items"] if i["class"] == "prose")
 
-    draft.write_text(
-        ORIGINAL.replace("A DT tracks", "A Digital Twin (DT) tracks"),
-        encoding="utf-8",
-    )
+    draft.write_text(REPAIRED_FIGURE, encoding="utf-8")
     comparison = _run_agenda(draft, "--baseline", str(path))
 
     assert prose_item["id"] in [i["id"] for i in comparison["resolved"]]
@@ -174,13 +205,13 @@ def test_repairing_one_unattended_item_falls_the_objective_count(draft):
 
 
 def test_a_repair_that_raises_the_count_is_not_accepted(draft):
-    """A "repair" that fixes nothing and introduces a fresh, unexpanded
-    acronym raises the total -- the accept condition (`objective_delta`
+    """A "repair" that fixes nothing and introduces a fresh, uncaptioned
+    figure raises the total -- the accept condition (`objective_delta`
     not positive) fails, so a caller following R4 must revert rather
     than keep it."""
     path, before = _baseline(draft)
 
-    draft.write_text(ORIGINAL.replace("Sensors report", "An IMU reports"), encoding="utf-8")
+    draft.write_text(ORIGINAL + _new_figure("monitoring-diagram"), encoding="utf-8")
     comparison = _run_agenda(draft, "--baseline", str(path))
 
     assert comparison["objective_delta"] > 0
@@ -208,7 +239,7 @@ def test_two_failed_attempts_then_the_item_is_escalated(draft):
     third signal from the CLI itself."""
     path, before = _baseline(draft)
 
-    deltas = _retry_agenda(draft, path, ["An IMU reports", "A GPS unit reports"])
+    deltas = _retry_agenda(draft, path, ["imu-diagram", "gps-diagram"])
 
     assert len(deltas) == 2
     assert all(delta > 0 for delta in deltas)
@@ -227,10 +258,7 @@ def test_a_pass_that_keeps_falling_terminates_before_the_bound(draft):
     path, before = _baseline(draft)
     assert before["pass_bound"] == 3  # PASS_BOUND, read from the payload
 
-    draft.write_text(
-        ORIGINAL.replace("A DT tracks", "A Digital Twin (DT) tracks"),
-        encoding="utf-8",
-    )
+    draft.write_text(REPAIRED_FIGURE, encoding="utf-8")
     comparison = _run_agenda(draft, "--baseline", str(path))
 
     # One pass resolved the only prose finding; the count fell to 1
@@ -246,7 +274,7 @@ def test_a_pass_that_never_falls_stops_at_the_bound(draft):
 
     deltas = []
     for _ in range(before["pass_bound"]):
-        draft.write_text(ORIGINAL.replace("Sensors report", "An IMU reports"), encoding="utf-8")
+        draft.write_text(ORIGINAL + _new_figure("imu-diagram"), encoding="utf-8")
         comparison = _run_agenda(draft, "--baseline", str(path))
         deltas.append(comparison["objective_delta"])
         draft.write_text(ORIGINAL, encoding="utf-8")
@@ -262,7 +290,7 @@ def test_a_pass_that_never_falls_stops_at_the_bound(draft):
 
 def test_a_repair_in_one_class_that_raises_another_classs_count_reverts(draft):
     """Decision 4's cross-class coupling: repairing missing-citekey
-    (-1) while the same edit introduces two fresh unexpanded acronyms
+    (-1) while the same edit introduces two fresh uncaptioned figures
     (+2) nets positive even though the targeted item resolved -- R4
     reads the total, not the targeted item's own delta."""
     path, before = _baseline(draft)
@@ -270,10 +298,7 @@ def test_a_repair_in_one_class_that_raises_another_classs_count_reverts(draft):
 
     _decite(draft)
     draft.write_text(
-        draft.read_text(encoding="utf-8").replace(
-            "Sensors report drift on a fixed schedule.",
-            "An IMU reports GPS drift on a fixed schedule.",
-        ),
+        draft.read_text(encoding="utf-8") + _new_figure("imu-diagram") + _new_figure("gps-diagram"),
         encoding="utf-8",
     )
     comparison = _run_agenda(draft, "--baseline", str(path))
@@ -293,11 +318,12 @@ def test_missing_citekey_repair_removes_only_the_marker(draft):
     assert item["id"] in [i["id"] for i in comparison["resolved"]]
     # The sentence survives -- it becomes an uncited-claim, a surfaced
     # class, on the next agenda rather than vanishing.
-    assert "A DT tracks the physical asset across its life." in draft.read_text(encoding="utf-8")
+    sentence = "A system tracks the physical asset across its life."
+    assert sentence in draft.read_text(encoding="utf-8")
     new_uncited_summaries = {
         i["summary"] for i in comparison["new"] if i["class"] == "uncited-claim"
     }
-    assert "A DT tracks the physical asset across its life." in new_uncited_summaries
+    assert sentence in new_uncited_summaries
 
 
 def test_pass_bound_is_read_from_the_payload_not_hardcoded(draft):
