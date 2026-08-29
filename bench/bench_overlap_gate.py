@@ -42,7 +42,7 @@ low finding count here is still not a clean bill of health, and genuine
 restatement is invisible to both deterministic tiers regardless -- see
 docs/PLAGIARISM-DESIGN.md. Nor does it measure whether a blocked draft is
 *fixable*: the
-`long` runs it counts are exactly the class `overlap-reviser` refuses to
+`long` runs it counts are exactly the class `agenda-reviser` refuses to
 rewrite unattended, referring the paraphrase-or-quote choice to a person.
 Nor recall against reuse the corpus does not contain -- every true
 positive here is reuse from one of 497 parsed documents.
