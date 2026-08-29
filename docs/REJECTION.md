@@ -256,7 +256,7 @@ defaults (3 windows of 700 characters) lost to one-stage in *every*
 scenario and nobody had checked. That check has no pinning test of its
 own any more -- it was removed along with the `triage` two-stage path
 itself, and only a historical comment survives at
-`chitragupta/retrieval.py`'s "It is a lookup, not a stage" passage,
+`chitragupta/retrieval_cli.py`'s "It is a lookup, not a stage" passage,
 pointing back here.
 
 ## ✍ Recording how a rejection was made

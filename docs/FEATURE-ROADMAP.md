@@ -70,7 +70,7 @@ drafter is. Traced through the current code:
 
 1. `chitragupta/retrieval.py::search()` returns a **500-character raw
    snippet** per candidate (`snippet_chars=500`).
-2. `chitragupta/retrieval.py::evidence()` returns **two 600-character
+2. `chitragupta/retrieval_cli.py::evidence()` returns **two 600-character
    raw windows** of the source (`EVIDENCE_CHARS = 600`,
    `EVIDENCE_WINDOWS = 2`).
 3. `survey-writer` step 2 tells the skill to record, per kept citekey, a
