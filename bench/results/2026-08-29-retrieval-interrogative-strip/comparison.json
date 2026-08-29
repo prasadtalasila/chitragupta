@@ -1,0 +1,37 @@
+[
+ {
+  "row": "BM25 (chitragupta/retrieval.py)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "E1 interrogative-strip: keywords (baseline)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "E1 interrogative-strip: wrapped as a question",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7773,
+  "ndcg@5": 0.7089
+ },
+ {
+  "row": "E1 interrogative-strip: question, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "E1 interrogative-strip: keywords, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ }
+]

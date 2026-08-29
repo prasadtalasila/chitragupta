@@ -24,6 +24,39 @@ class TestTokenize:
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
 
 
+class TestQueryTerms:
+    def test_strips_wh_words_and_a_modal(self):
+        assert retrieval._query_terms("what are the failure modes of co-simulation") == [
+            "failure",
+            "modes",
+            "simulation",
+        ]
+
+    def test_strips_why_and_does(self):
+        assert retrieval._query_terms("why does model calibration matter") == [
+            "model",
+            "calibration",
+            "matter",
+        ]
+
+    def test_leaves_a_keyword_query_untouched(self):
+        assert retrieval._query_terms("digital twin structural health monitoring") == [
+            "digital",
+            "twin",
+            "structural",
+            "health",
+            "monitoring",
+        ]
+
+    def test_tokenize_itself_is_not_touched(self):
+        """_query_terms must be additive over _tokenize, not a
+        replacement for it -- document-side indexing calls _tokenize
+        directly and must keep seeing interrogatives, or every
+        document's IDF moves for a change the roadmap explicitly
+        declined."""
+        assert retrieval._tokenize("what why how") == ["what", "why", "how"]
+
+
 class TestSnippet:
     def test_centers_the_window_on_a_matching_term(self):
         text = "x" * 100 + " digital twin simulation " + "y" * 100
@@ -79,10 +112,36 @@ class TestSnippet:
         snippet = retrieval._snippet(text, {"zzz"}, window=10)
         assert snippet == "no matchin"
 
+    def test_fallback_snippet_also_strips_a_citation_marker(self):
+        text = "no query terms appear here [3, 7] at all, just filler"
+        snippet = retrieval._snippet(text, {"nonexistentterm"}, window=40)
+        assert "[3, 7]" not in snippet
+
 
 class TestSearch:
     def test_empty_query_returns_empty(self, ledger_con):
         assert retrieval.search("") == []
+
+    def test_a_question_and_its_keyword_form_rank_the_same(self, ledger_con):
+        """`what` must not survive into the query's term set: seed a
+        third title where the literal word "what" is what would win the
+        ranking pre-fix, so this is red before _query_terms is wired in,
+        not vacuously green."""
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="Structural Health Monitoring")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
+        )
+        ledger.upsert_reference(
+            ledger_con,
+            make_reference(citekey="c2024", title="What Is Wrong With Benchmarks What What"),
+        )
+        keyword_hits = [r.citekey for r in retrieval.search("structural health monitoring")]
+        question_hits = [
+            r.citekey for r in retrieval.search("what is structural health monitoring")
+        ]
+        assert keyword_hits == question_hits == ["a2024"]
 
     def test_ranks_by_term_overlap_descending(self, ledger_con):
         ledger.upsert_reference(
@@ -353,6 +412,17 @@ class TestWindows:
         text = ("term " + "pad " * 40) * 10
         assert len(retrieval._windows(text, {"term"}, 30, 3)) == 3
 
+    def test_strips_a_numeric_citation_marker(self):
+        text = "the result [12] shows a clear trend in the data"
+        windows = retrieval._windows(text, {"result", "trend"}, 50, 1)
+        assert "[12]" not in windows[0]
+        assert "result" in windows[0] and "trend" in windows[0]
+
+    def test_does_not_strip_a_non_numeric_bracket(self):
+        text = "the result [Figure 2] shows a clear trend in the data here"
+        windows = retrieval._windows(text, {"result", "trend"}, 50, 1)
+        assert "[Figure 2]" in windows[0]
+
 
 class TestEvidence:
     def _seed(self, con, tmp_path, text, citekey="a2024"):
@@ -421,6 +491,28 @@ class TestCli:
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["evidence", "x", "--citekey", "nope_2024"]) == 1
         assert "not in the ledger" in capsys.readouterr().err
+
+    def test_evidence_strips_interrogatives_from_the_query(self, ledger_con, tmp_path):
+        """A second, separate anchor exists only for the literal word
+        "what" -- pre-fix it earns evidence() a second window; post-fix
+        it contributes no anchor at all, so this is genuinely red before
+        _query_terms is wired in, not vacuously green."""
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text(
+            ("padding word here " * 40)
+            + "architecture patterns catalog"
+            + (
+                " filler continues on and on beyond the window width here we go "
+                "some more padding text words" * 10
+            )
+            + " what appears alone over here"
+        )
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Patterns"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+
+        with_question = retrieval_cli.evidence("a2024", "what are architecture patterns", windows=2)
+        without_question = retrieval_cli.evidence("a2024", "architecture patterns", windows=2)
+        assert with_question == without_question
 
     def test_no_ledger_exits_nonzero_with_the_fix(self, isolated_config, capsys):
         assert retrieval.main(["search", "anything"]) == 1

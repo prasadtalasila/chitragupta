@@ -281,13 +281,13 @@ and entrenches itself; and *"our experiments did not cover long-form
 generation"*, which is the only thing this pipeline does. Its headline
 metric is also an LLM judge.
 
-**One measured hazard belongs here.** BM25 over whitespace tokens with a
-20-word stopword list containing **no interrogatives** scores `what`,
-`why` and `does` as ordinary terms -- and because they are rare in
-academic PDFs they carry high IDF and compete for the ranking. Against
-author-assigned ground truth, phrasing a query as a question costs
-**7.7 recall points at k=5**;
-[CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
+**One measured hazard belongs here.** BM25 over whitespace tokens used
+to score `what`, `why` and `does` as ordinary terms when a query was
+phrased as a question -- fixed query-side
+(`chitragupta/retrieval.py::_query_terms()`), leaving the shared
+tokenizer and its stopword list alone. Against author-assigned ground
+truth, phrasing a query as a question cost **7.7 recall points at
+k=5**; [CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
 has the table and the partial fix.
 
 **The principled fix for that is an indexing change, not a query
@@ -296,8 +296,8 @@ change, and it collides with a rule here.** Gao §III-B2 describes
 *questions* a document answers, and index those alongside it. A
 question-form query then matches a question rather than competing
 against a paper's prose, which is the part a stopword list structurally
-cannot reach. It is the right shape for the residual loss
-[E1](FEATURE-ROADMAP.md) leaves on the floor.
+cannot reach. It is the right shape for the residual loss the
+query-side fix (`_query_terms()`, shipped) still leaves on the floor.
 
 **It is also LLM output entering the retrieval path**, and
 [SOUL.md](../SOUL.md) keeps the corpus layer free of generated content

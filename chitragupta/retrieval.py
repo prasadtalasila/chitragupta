@@ -46,27 +46,30 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import bib_collections, ledger, retrieval_cache
+from chitragupta.passages import _CORE_STOPWORDS as _STOPWORDS
 
-_STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "of",
-    "on",
-    "in",
-    "for",
-    "and",
-    "to",
-    "with",
-    "is",
-    "are",
-    "be",
-    "this",
-    "that",
-    "as",
-    "by",
-    "from",
-    "at",
+# Question words and question-forming auxiliaries -- rare in academic
+# PDFs, so they carry high IDF and out-compete the terms a question is
+# actually about. Query-side only: see _query_terms below.
+# docs/CORPUS-SEARCH.md has the measurement.
+_INTERROGATIVES = {
+    "what",
+    "why",
+    "how",
+    "who",
+    "whom",
+    "whose",
+    "which",
+    "when",
+    "where",
+    "can",
+    "could",
+    "would",
+    "should",
+    "will",
+    "shall",
+    "does",
+    "did",
 }
 
 # Standard Okapi BM25 constants (term-frequency saturation and length
@@ -88,12 +91,31 @@ def _tokenize(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2 and w not in _STOPWORDS]
 
 
+def _query_terms(query: str) -> list[str]:
+    """`_tokenize(query)` with interrogatives also dropped -- query-side
+    only, so a document's own term frequencies and every IDF stay put."""
+    return [w for w in _tokenize(query) if w not in _INTERROGATIVES]
+
+
 # Occurrences of one query term that `_windows` will anchor a candidate
 # window on before it stops looking for more of that term. A ceiling on
 # work for a pathological document, not a quality knob: 500 anchors of one
 # term already spread across the whole text, and the top few windows come
 # out of scoring, not out of how many candidates were offered.
 _MAX_ANCHORS_PER_TERM = 500
+
+# Bracketed digits/commas/hyphens only, so a real citation marker
+# ([12], [3, 7], [12-14]) is stripped and [Figure 2] / [sic] survive.
+# 22.8% of retrieved snippets carry one of the corpus's own markers and
+# nothing downstream ever needs it -- OpenScholar's remove_citations is
+# the idea; not its regex, which also globally deletes every ']'.
+_CITATION_MARKER = re.compile(r"\[\d+(?:\s*[,-]\s*\d+)*\]")
+
+
+def _clean_window(text: str) -> str:
+    """Whitespace-normalized `text` with a numeric citation marker
+    stripped."""
+    return " ".join(_CITATION_MARKER.sub("", text).split())
 
 
 def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
@@ -145,7 +167,7 @@ def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
         chosen.append((begin, end))
         if len(chosen) == count:
             break
-    return [" ".join(text[begin:end].split()) for begin, end in sorted(chosen)]
+    return [_clean_window(text[begin:end]) for begin, end in sorted(chosen)]
 
 
 def _snippet(text: str, terms: set[str], window: int = 500) -> str:
@@ -167,7 +189,7 @@ def _snippet(text: str, terms: set[str], window: int = 500) -> str:
     best = _windows(text, terms, width=window, count=1)
     if best:
         return best[0]
-    return " ".join(text[:window].split())
+    return _clean_window(text[:window])
 
 
 def _full_text(item: sqlite3.Row) -> str:
@@ -241,7 +263,7 @@ def search(
     tests/test_retrieval.py so a future chunk-level BM25 index can't
     silently lose this property.
     """
-    terms = _tokenize(query)
+    terms = _query_terms(query)
     if not terms:
         return []
 

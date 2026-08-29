@@ -70,7 +70,8 @@ from chitragupta import config
 # matching keys off the words that actually distinguish one claim from
 # another.
 _WORD = re.compile(r"[a-z0-9]+")
-_STOPWORDS = {
+
+_CORE_STOPWORDS = {
     "a",
     "an",
     "the",
@@ -90,6 +91,15 @@ _STOPWORDS = {
     "by",
     "from",
     "at",
+}
+
+# Shared with chitragupta/retrieval.py, which imports _CORE_STOPWORDS
+# from here (this module has no drafting-layer dependents, so this is
+# the direction that keeps the corpus/enrichment/review layers
+# independent of drafting). Editing this constant moves retrieval.py's
+# BM25 index too and needs _INDEX_SCHEMA_VERSION bumped there --
+# passages.py's own extras just below are free to change on their own.
+_STOPWORDS = _CORE_STOPWORDS | {
     "it",
     "its",
     "can",

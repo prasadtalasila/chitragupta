@@ -57,6 +57,16 @@ damage is not that they add noise -- it is that they are **rare in
 academic PDFs**, so they carry high IDF and compete for the ranking
 against the terms you meant.
 
+**Fixed query-side, in `_query_terms()` (`chitragupta/retrieval.py`).**
+`_tokenize` above is unchanged -- a symmetric fix would re-rank every
+query in the corpus for no further gain, so `_INDEX_SCHEMA_VERSION` and
+every document's term frequencies stay exactly as they were. `search()`,
+`evidence()`, and `dossier/_drift.py`'s replay of a recorded query all
+call `_query_terms()` instead: `_tokenize()` plus a small, hand-maintained
+set of wh-words and question auxiliaries. The illustration above still
+describes `_tokenize()` exactly; it is `_query_terms()`, not
+`_tokenize()`, that a real query is scored against.
+
 **Measured against real ground truth, question phrasing costs recall.**
 The overlap figure above says two phrasings disagree; it does not say
 which is right. `bench_retrieval_keyword_selfretrieval.py`'s ground truth
@@ -87,9 +97,9 @@ above in place:
   can reach them. **A question is not merely a keyword query with
   interrogatives attached; it carries generic content words that compete
   for the ranking on their own.**
-- So `plans/outline-driven-drafting-and-manual-edits.md`'s proposal to
-  strip interrogatives is worth doing and is **not** a licence to write
-  queries as questions. Keywords remain the advice.
+- So stripping interrogatives (shipped, above) was worth doing and is
+  **not** a licence to write queries as questions. Keywords remain the
+  advice.
 
 **This is a BM25 property, not a dense one.** The embedding path encodes
 the whole string, so an interrogative shifts the vector slightly rather
