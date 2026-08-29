@@ -151,100 +151,103 @@ draft's last edit.
 
 ### 3. Triage
 
-Read the payload's `findings`. Each carries `severity` (the bucket
-above), `cites_source`, `quoted`, and enough to locate itself.
+Read the baseline agenda's `items`. Group by `class`, then by
+`unattended`. Tell the user the counts before you start editing: how
+many of each unattended class will be repaired, how many surfaced items
+exist (report, do not touch), and `objective_class_count`/`pass_bound`
+from the payload. Work `missing-citekey` and `prose` first -- both are
+single-field lookups with no external payload to fetch -- then
+`verbatim-run` at `short`, collecting any `long` ones into one question
+rather than interrupting per finding.
 
-Sort into the three buckets and tell the user the counts before you start
-editing: how many will be repaired unattended, how many need their
-decision, and how many are already correct. Then work the `short` bucket,
-and collect the `long` ones into one question rather than interrupting
-per finding.
-
-### 4. Repair one finding
+### 4. Repair one item
 
 Read only the section that owns it -- `python -m chitragupta.draft dossier
-sections content/drafts/<path>` gives the line ranges -- and edit with
-`Edit`, using the finding's own `draft_text` as `old_string`. That field
-is the passage exactly as written, casing, punctuation, line breaks and
-any citation marker sitting mid-run included; it is there so you do not
-have to search the draft for the passage and risk matching the wrong one.
+sections content/drafts/<path>` gives the line ranges. Keep the pre-edit
+text; step 5 needs it if the repair is rejected.
 
-If an `Edit` built from `draft_text` does not match, the draft almost
-certainly has CRLF line endings and the run spans a line break: the
-payload carries the `\n` the file was read with, not the `\r\n` on disk.
-Re-read the line and edit it by hand rather than widening the search.
+**Repair a `missing-citekey` item.** The only unattended repair available
+is a deletion: this skill may not run `corpus sync` (the user's write
+lock) and may not fabricate a citekey. Remove the `[@citekey]` marker with
+`Edit`, leaving the sentence standing -- never delete the sentence itself.
+The now-uncited claim becomes an `uncited-claim` item on the next agenda,
+a **surfaced** class, so it is reported rather than silently dropped. Where
+the sentence carries another surviving citation, only the marker for the
+missing one goes.
 
-Keep the pre-edit text. You will need it in step 5 if the repair is
-rejected.
+**Repair a `prose` item.** Apply the fix `draft style`'s rule names: expand
+an acronym at first use, add the `<!-- table: -->` or `<!-- figureref: -->`
+marker a `TableNoCaption`/`FigureNoCaption`/`FigureUnreferenced` finding
+names, correct a glossary term drifted from `scope.md`'s vocabulary, fix
+a dialect slip against `scope.md`'s `language:` line. `Edit` the exact
+span `detail.message` or the item's `summary` names.
+
+**Repair a `verbatim-run` item at severity `short`.** Look up
+`detail.verbatim_id` in `content/review/<topic>/<stem>.verbatim.json`'s
+`findings` for `draft_text`, the exact passage including casing,
+punctuation and any mid-run citation marker -- use it as `Edit`'s
+`old_string`. If it does not match, the draft almost certainly has CRLF
+line endings and the run spans a line break: the payload carries the
+`\n` the file was read with, not the `\r\n` on disk. Re-read the line and
+edit it by hand rather than widening the search.
 
 **Paraphrase** -- the default, and the only option for a `short` run:
 
 - Preserve the claim. This is a rewording, not a retraction.
-- Preserve the citation. Breaking up borrowed wording while dropping the
-  attribution converts a citation problem into a worse one.
-- Leave no run of `min_run` consecutive source words. The payload's
-  `min_run` is the number.
-- Prefer the smaller diff. Where deleting a redundant clause and
-  rewriting the sentence both work, delete.
+- Preserve the citation.
+- Leave no run of `min_run` consecutive source words (the looked-up
+  finding's own field).
+- Prefer the smaller diff.
 
-**Quotation** -- only for a `long` run, and only when the human chose it:
-
-- Wrap the passage in quote marks and anchor the citation to the
-  finding's own page: `[@citekey, p. 12]`, or `[@citekey, pp. 12-13]`
-  when `end_page` is greater than `page` -- a quotation lifted from a run
-  spanning a source page break (#131) is misattributed if the citation
-  names only where it starts.
-- Check the source can actually be quoted first. `chitragupta/passages.py` gives
-  a page-level passage no text at all when the source was parsed by
-  `pdftotext -layout`, because an excerpt cut from a two-column paper is
-  a collage of two arguments rather than a quotation. If it is not
-  quotable, say so and paraphrase instead -- do not quote from a page
-  number alone.
-
-**Never add a claim.** On these findings you are only ever rewording,
-attributing or removing something the draft already said. New ground is a
-different request and belongs to `draft-reviser`.
+A `long` verbatim-run is surfaced, not unattended -- it is never repaired
+here without the human first choosing paraphrase or quotation, same as
+before. **Never add a claim** on any of these three classes: every repair
+is a rewording, an attribution, a marker removal or a caption addition,
+never new ground.
 
 ### 5. Accept or revert
 
-Both of these, after every repair:
+After every repair, one command does the whole R4 cycle -- it refreshes
+all eight aids itself, so **never hand-roll this as a bare `review agenda`
+read**: that reads the pre-edit aid `.json` still on disk and reports a
+finding resolved that is not.
 
 ```bash
-python -m chitragupta.draft gate content/drafts/<path>
-python -m chitragupta.review verbatim recheck content/drafts/<path> \
-    --baseline content/review/<topic>/<stem>.verbatim.json --json
+python -m chitragupta.review agenda content/drafts/<path> \
+    --baseline content/review/<topic>/<stem>.agenda.json --json
 ```
 
 Accept the repair only if **all** of:
 
-- the gate exits 0;
-- the finding's `id` appears in `recheck`'s `resolved`;
-- `objective_delta` is not positive;
-- **if the draft's dossier has a `math.md`**, the repaired passage's
-  quantities still match it. That mapping is keyed on the exact text of a
-  code span (docs/WRITING-STANDARDS.md §12), and breaking borrowed
-  wording is *precisely* the operation that desyncs it -- rephrase a
-  sentence containing `` `tau = 48` `` and the row no longer matches
-  anything. Update the row when you reword a quantity, and let
-  `python -m chitragupta.draft render content/drafts/<path> --format tex`
-  confirm it: a `<!-- math -->` marker it cannot resolve fails the render,
-  and a gap or orphan prints a `[math]` warning.
+- `python -m chitragupta.draft gate content/drafts/<path>` exits 0;
+- the item's `id` appears in the comparison's `resolved`;
+- `objective_delta` is not positive -- **this now couples classes that
+  used to be independent.** A `verbatim-run` repair that introduces an
+  unexpanded acronym or a `Just` raises the `prose` count, and the total
+  rising is exactly what this check exists to catch, so the verbatim
+  repair reverts even though it fixed its own finding;
+- **if the draft's dossier has a `math.md`**, a repaired quantity still
+  matches it (docs/WRITING-STANDARDS.md §12) -- this skill is the
+  likeliest of all of them to break that mapping and the least likely to
+  notice, since it is reasoning about wording or markers, not quantities.
 
-This skill is the likeliest of all of them to break that mapping and the
-least likely to notice, because it is reasoning about borrowed wording
-rather than about quantities.
+Otherwise revert the item from the pre-edit text kept in step 4 and try
+once more. **Two attempts per item.** A second failure escalates to the
+human and the loop moves on; a reverted item leaves every earlier
+accepted one intact.
 
-That last one is the check worth having. A rewrite that fixes its own
-finding by lifting from a different source resolves the item and leaves
-the draft no better, and the delta is what catches it.
+**The pass loop.** After each accepted repair, re-read
+`objective_class_count` from the same `--baseline` response (its
+`objective_after`). Continue to the next item only while that count
+**strictly falls** pass over pass; that is the terminator, read from the
+payload rather than carried as a literal. Stop at `pass_bound` (also
+read from the baseline agenda's payload, taken in step 2) as a backstop
+against a miscounting bug -- said in those words if this stop is ever
+reached, since it is a backstop and not a budget.
 
-Otherwise revert the passage from the text you kept in step 4 and try
-once more. **Two attempts per finding.** A second failure means the item
-is escalated to the human and the loop moves on -- reverting one finding
-leaves every earlier accepted one intact.
-
-**One pass per invocation.** When the list is done, stop and hand back.
-Do not re-scan and start again on whatever the repairs surfaced.
+**One pass per invocation.** When the worklist is done, stop and hand
+back. Do not re-run the agenda and start again on whatever the repairs
+surfaced.
 
 ### 6. Log every attempt
 
