@@ -210,9 +210,207 @@ exists:
   actually entailed; closer in spirit (a verification step exists) but
   explicitly a small learning-oriented reference implementation, and the
   check is a judged pass/fail score, not an existence-gated block.
+- **OpenScholar** (Apache-2.0) -- retrieval-augmented scientific answer
+  generation over a pes2o datastore, with an optional self-feedback pass.
+  Already credited in [INSPIRATION.md](INSPIRATION.md) as an influence on
+  [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s synthesis half.
+- **RAGFlow** (Apache-2.0) -- a full production RAG platform: layout-aware
+  "deep document understanding", fifteen chunking templates, hybrid
+  keyword+vector retrieval with a tunable fusion weight, and a
+  citation-rendering UI. Server, database and web app; the opposite end
+  of the deployment spectrum from this project.
+- **papersgpt-for-zotero** -- a Zotero plugin, and therefore the closest
+  thing to a direct competitor for this project's *input* side. Note the
+  three-way licence split: the GitHub source tree is AGPL-3.0, the npm
+  wrapper Apache-2.0, and **the shipped engine is a proprietary binary**
+  whose source is not published, behind commercial tiers. The AGPL text
+  is not the source of the shipped artefact.
+- **local-deep-research** (MIT) -- multi-round "deep research" over web
+  engines *or* a private document collection, behind one search-engine
+  interface. Its fully-local egress scoping is genuinely enforced and
+  fail-closed, which is the part most worth reading.
+- **AutoRAG** -- AutoML for RAG: generate an evaluation set from your own
+  corpus, then sweep retrieval/rerank/generation modules against it.
+  **Mind the licence split** -- the root is MIT and covers a rewritten
+  TypeScript agent, while the Python tool everything above describes now
+  lives in `legacy/` under **Apache-2.0**. Its one genuinely valuable
+  idea here is *label-by-construction*: sample a chunk, record its id as
+  the ground truth, and only then generate a question from it, so the
+  label needs no judge. Its filters are worth the same look --
+  particularly the one that drops passage-dependent questions ("what does
+  the table show?") that no retriever can resolve.
+- **MiniRAG** (MIT, and a LightRAG fork -- roughly 330 lines are its own)
+  -- a heterogeneous graph index plus topology-enhanced retrieval, aimed
+  at small on-device models. The transferable idea is the framing:
+  *reduce what the model is asked to do to one structured extraction and
+  make the ranking arithmetic*.
 - **Zotero** -- the open-source reference manager itself; the natural
   upstream of any bring-your-own-corpus pipeline (and Chitragupta's
   actual upstream), but not a writing tool.
+
+### 📉 What a 2026-08-28 source read of those four found
+
+Read for architecture only, as [INSPIRATION.md](INSPIRATION.md) requires.
+The result was largely negative, and the negative result is the useful
+part -- it says these are not the places to look for the two capabilities
+this project keeps being asked about.
+
+| | Query manufacture | Is a citation verified? |
+| --- | --- | --- |
+| **OpenScholar** | **None.** No decomposition, no rewriting, no HyDE. Its one LLM generator caps at 3 by `split(", ")` at temperature 0.9 | **No.** Positional `[n]` into a *reranked* list, so a marker denotes a rank slot rather than a document. Posthoc attribution is a pure LLM prompt that silently returns the original text when its markers are missing |
+| **RAGFlow** | Three LLM rewrites, **all off by default**; decomposition exists but sits behind `thinking_mode` | **No.** If the model emitted any marker, the only check is `i < len(chunks)` -- an array-bounds test. Its fallback attributor lowers a 0.63 threshold by ×0.8 in a loop *until something matches* |
+| **papersgpt** | **None**, in both versions -- the raw user string goes straight to embedding | **No.** One regex turns a `REFID:` marker into an anchor; the "click to jump" lands on a line the model itself wrote. Its prompt contract points citations at the *source papers' own bibliographies* -- works never parsed, and not necessarily in the library |
+| **local-deep-research** | Fixed round counts. One genuinely deterministic templated generator (entity coverage) | **No.** An out-of-range `[42]` survives as inert literal text. Its own benchmark **strips citation markers before grading**, so citation correctness is never measured at all |
+
+Three consequences worth recording, because each one is a design
+decision this project already took differently:
+
+1. **"Grounded" in these tools means retrieval happened, not that the
+   citation was checked.** None of the four validates that a cited source
+   supports -- or even exists for -- the sentence citing it. §1.1's gate
+   property remains without an equivalent here.
+2. **Every one of them is built to always produce a citation.** RAGFlow
+   relaxes its threshold until one sticks; OpenScholar's attribution
+   prompt tells the model that one citation suffices even where several
+   sources support a claim. Against a closed, human-curated bibliography
+   the opposite disposition is available and better: **an empty result
+   means the claim cannot be grounded, so the sentence is cut rather than
+   cited.**
+3. **Marking coverage on the query rather than on the evidence is a real
+   and repeated bug.** local-deep-research marks a topic covered when it
+   appears in an *issued* query, so a search that returned nothing marks
+   its topic covered permanently.
+
+### ♻ How those four handle revision: they don't
+
+The same read asked a second question -- once output exists, what happens
+if you want it *changed*? Taking **revision** to mean a path that accepts
+a prior artifact as input, emits a modified version of *that* artifact,
+and persists it so the prior is superseded or versioned:
+
+**None of the four supports it. Regeneration is the only model, zero for
+four.** Three come close enough to look like exceptions, and each fails
+differently:
+
+| System | Looks like revision | Why it is not |
+| --- | --- | --- |
+| OpenScholar | the `--feedback` edit loop | it runs **before** the artifact exists -- intra-generation refinement, not a post-hoc path |
+| RAGFlow | a **regenerate** button in the UI | it truncates the history and re-asks: the prior answer is *destroyed*, never read as input, and no version is kept. `refine_multiturn` rewrites the **question**, not the answer -- and `PATCH .../sessions/<id>` **explicitly refuses** to change stored messages, so this is a deliberate design refusal rather than a missing feature |
+| papersgpt | "writes findings into Zotero Notes" | it **appends at the cursor** of an editor you already had open, and never looks a note up. Its chat state is one global in-memory conversation that dies on restart |
+| local-deep-research | follow-up carrying a `parent_research_id` | it creates a **new child row**; the parent's report is untouched |
+
+Three properties follow, and each is a requirement this project already
+meets:
+
+- **No hand-edit detection anywhere.** Not one has a digest, mtime or
+  version check on its output. Two are structurally immune rather than
+  merely missing the check -- LDR reads reports only from its database,
+  so its optional file backup is write-only; papersgpt has no persistent
+  artifact at all. OpenScholar is the worst case: it *does* read its
+  output file back, but only for a row count, so edited content is
+  silently honoured.
+- **No section-scoped editing anywhere.** The unit of change is always
+  the whole document. OpenScholar comes closest and still replaces the
+  entire answer per feedback item.
+- **Evidence reuse in two of four, and forced re-search in both.** LDR
+  pre-injects filtered prior sources so they stay citable without
+  re-fetching, then runs a fresh search unconditionally; OpenScholar
+  reuses prior passages as the base and retrieves only conditionally.
+
+**The pattern worth naming: all four persist far more than they
+consume.** OpenScholar writes a complete refinement audit trail -- the
+pre-edit draft, the feedback, every accepted edit -- and reads back only
+`len()`. RAGFlow stores per-turn retrieved chunks in a parallel array no
+revision path exists to use. The state a revision feature would need
+largely already exists on disk in three of the four; what is missing is
+any entry point that reads it.
+
+### 📚 Two surveys, and what they say this pipeline is
+
+Read 2026-08-29, and useful mainly for placing this project in the
+field's own vocabulary rather than its own:
+
+- **Gao et al.**, *"Retrieval-Augmented Generation for Large Language
+  Models: A Survey"* (arXiv:2312.10997v5, 2024) -- the Naive / Advanced /
+  Modular paradigms, a retrieval-process taxonomy (Once / Iterative /
+  Recursive / Adaptive), a granularity ladder from Token to Doc, and an
+  evaluation framework of three quality scores and four required
+  abilities.
+- **Fan et al.**, *"A Survey on RAG Meeting LLMs"* (KDD '24,
+  pp. 6491-6501) -- organised by architecture, training strategy and
+  application, and the source of the integration-layer distinction
+  (input / intermediate / output).
+
+Placed against those, this pipeline is **Advanced** (not Modular),
+**Once** (not iterative), **Doc**-granularity on its lexical path,
+**input-layer** by necessity, and **train-free** by design.
+[RAG.md](RAG.md#-where-this-sits-in-the-standard-taxonomy) carries the
+table and what each choice costs.
+
+**Three things the surveys supply that §1's requirement list did not.**
+The first is that intermediate- and output-layer integration are
+*unavailable* to any pipeline driving a model through an inference API,
+so a large part of the published technique space is inapplicable rather
+than merely unbuilt. The second is **negative rejection** -- declining
+to answer when the retrieved material does not support one -- named as a
+first-class evaluable ability, which is the behaviour this project is
+built around and the one it has never measured (now
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6). The third is a defence
+of retrieval that does not depend on context length: Gao §VII-A argues
+that RAG's durable advantage over a long-context model is that "the
+entire retrieval and reasoning process is observable, while generation
+solely relying on long context remains a black box". That is §1.1's
+gate property argued from the outside.
+
+**[RAG.md](RAG.md) is the stage-by-stage version of everything below**
+-- the eleven stages of a RAG pipeline, the algorithm each of these
+systems uses at each, and the trade-off it buys.
+
+### 🧪 Two more, read for retrieval and evaluation
+
+A follow-up read of **AutoRAG** and **MiniRAG** (2026-08-28) added two
+findings and one warning.
+
+**The warning is about measuring retrieval at all, and it is the most
+useful thing either produced.** AutoRAG generates its evaluation
+questions *from* the gold chunk's own text. The query therefore inherits
+that chunk's vocabulary, so the set **structurally favours lexical
+retrieval** -- a BM25 change scored on it looks better than it is, and
+nothing upstream flags this. It also has no near-duplicate question
+dedup, and no train/test tooling at all: its own documentation warns
+about overfitting while its code does nothing to prevent it. **A
+generated evaluation set is not neutral ground for a retrieval change.**
+This project's `bench_retrieval_keyword_selfretrieval.py` avoids the
+circularity by construction -- author-assigned keywords were written
+without reference to any retriever, or to the paper's body text.
+
+**Worth adapting.** *Label-by-construction* (AutoRAG): fix the ground
+truth before generating anything, so no judge is needed. *Cross-route
+agreement* (MiniRAG): a passage that two independent retrieval routes
+reach is worth multiplicatively more than one either route merely ranks
+highly -- implementable over BM25 in stdlib, needing no graph, no
+embeddings and no LLM.
+
+**Not worth taking.** MiniRAG's index needs an LLM pass per chunk --
+about 8,400 calls and tens of millions of tokens for a 500-paper corpus
+-- to build entity nodes typed `organization` / `person` / `location` /
+`event`, a news ontology with no override hook and little purchase on
+academic content. Its retrieval value ultimately flows through a
+chunk-id adjacency list, which a SQLite ledger already stores exactly
+and without hallucination risk. **Its paper also never benchmarks
+against BM25** -- "beats NaiveRAG" means beats embedding-only retrieval
+-- so there is no published evidence it would beat what already runs
+here. And its generator is handed anonymous text: chunk identity is
+replaced by a loop index before the prompt is built, which is the
+inverse of this project's requirement.
+
+That is the gap [DRAFT-ITERATION.md](DRAFT-ITERATION.md)'s dossier and
+the `draft-reviser` / `corpus-reviser` split were built to fill, and this
+read found no open- or closed-source equivalent for either. It also
+sharpens what is still missing here: nothing yet fingerprints the draft,
+so a *hand*-edited draft is as invisible to this pipeline as to the other
+four -- Theme E3 in
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-e3-notice-that-the-draft-moved).
 
 ### 🔍 2.3 Plagiarism detection for a closed corpus (source-vs-draft overlap, iThenticate-style)
 

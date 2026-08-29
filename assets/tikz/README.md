@@ -23,6 +23,22 @@ Copy it beside the draft that needs it and re-label the nodes:
 cp assets/tikz/pipeline.tex content/drafts/<topic>/figures/<name>.tex
 ```
 
+## 🎨 The palette comes with the file
+
+Every scaffold carries the five `\definecolor` lines of the house
+palette ([TIKZ-STYLE.md](../../docs/TIKZ-STYLE.md)) and uses them,
+so a copied file is already in house colours and you re-label rather than
+re-decide. Keep the block **inside** the figure when you edit it: the
+renderer injects only `\usepackage{tikz}`, and a `thesis-chapter-writer`
+fragment is `\input` into the user's own thesis, which has never heard
+of this project. A figure depending on a colour defined elsewhere
+compiles here and fails there.
+
+The roles, in one line each: `cgInk` borders and labels, `cgFlow` the
+primary path, `cgAccent` the one thing the figure is about, `cgAlt` a
+second class, `cgAux` what happens off to the side. Fills are tints
+(`cgFlow!8`); strokes take the colour undiluted.
+
 Then write the ASCII twin at `figures/<name>.txt` and reference the pair
 from the draft with a single marker line -- `docs/WRITING-STANDARDS.md`
 §10 owns that contract, and your genre skill's figure step spells the

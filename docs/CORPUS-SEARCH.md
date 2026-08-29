@@ -1,6 +1,6 @@
 # 🔭 Corpus search: how a query becomes passages
 
-Status: **reference.** Written 2026-08-26.
+Status: **reference.** Written 2026-08-26. Updated 2026-08-28.
 
 [RETRIEVAL.md](RETRIEVAL.md) answers *which* search to build -- BM25,
 embeddings, or the topic model -- and stops there. This document answers
@@ -11,17 +11,94 @@ you can change from `config.toml`.
 Read this if you are turning `[enrich].rerank` on, choosing a
 `rerank_model`, or wondering why a paper you know is in the corpus did
 not come back.
+[RAG.md](RAG.md) is the level above: the same stages across six other
+RAG systems, with the trade-off each choice buys.
 
 ## 🧭 Table of contents
 
+- [Before stage 1: the shape of the query](#-before-stage-1-the-shape-of-the-query)
 - [The four stages](#-the-four-stages)
 - [Why the rerank sits where it does](#-why-the-rerank-sits-where-it-does)
 - [What reranking does and does not buy](#-what-reranking-does-and-does-not-buy)
 - [What it costs](#-what-it-costs)
+- [FlashRank, evaluated and declined](#-flashrank-evaluated-and-declined-2026-08-29)
 - [Choosing a reranker](#-choosing-a-reranker)
 - [Turning it on](#-turning-it-on)
 - [When a paper does not come back](#-when-a-paper-does-not-come-back)
 - [What BM25 does instead](#-what-bm25-does-instead)
+
+## ❓ Before stage 1: the shape of the query
+
+Everything below is about what happens *to* a query. This section is
+about the query itself, because on the BM25 path the wording you choose
+changes the answer more than any setting in the table further down.
+
+**Asking a question retrieves different papers than asking in keywords.**
+Measured 2026-08-28 over the 497-parsed corpus, six paired queries at
+`k=10` -- each phrased once as a natural-language question and once as
+the equivalent keyword string:
+
+| | mean overlap@10 | top-1 identical |
+| --- | --- | --- |
+| question form vs keyword form | **4.7 / 10** | 2 of 6 |
+
+Less than half the same papers. The cause is visible in the tokenizer:
+`_STOPWORDS` (`chitragupta/retrieval.py`) holds twenty function words and
+**no interrogatives**, and the `len(w) > 2` filter passes `how`, `why`,
+`who` and `can`:
+
+```text
+'what are the failure modes of co-simulation' -> ['what', 'failure', 'modes', 'simulation']
+'why does model calibration matter'           -> ['why', 'does', 'model', 'calibration', 'matter']
+```
+
+`what`, `why`, `does` and `matter` are scored as ordinary BM25 terms. The
+damage is not that they add noise -- it is that they are **rare in
+academic PDFs**, so they carry high IDF and compete for the ranking
+against the terms you meant.
+
+**Measured against real ground truth, question phrasing costs recall.**
+The overlap figure above says two phrasings disagree; it does not say
+which is right. `bench_retrieval_keyword_selfretrieval.py`'s ground truth
+answers that, and is the right instrument because **no retrieval method
+built it**: the query is a paper's own author-assigned `keywords` field
+and the correct answer is that paper. Over the 208 parsed entries that
+carry keywords, wrapping each in interrogative glue (`what is X`, `how
+does X work`, `why is X important`):
+
+| Query form | recall@5 | recall@10 |
+| --- | --- | --- |
+| author keywords (baseline) | **0.808** | **0.865** |
+| wrapped as a question | 0.731 (-0.077) | 0.812 (-0.053) |
+| question, interrogatives stripped | 0.788 (-0.019) | 0.846 (-0.019) |
+| keywords, interrogatives stripped | 0.808 (**+0.000**) | 0.865 (**+0.000**) |
+
+Three things follow, and the second is the one that keeps the advice
+above in place:
+
+- **Stripping is free and provably inert on keyword queries** -- the last
+  row is +0.000 at both cut-offs, so nothing that already searches in
+  keywords can be harmed by it.
+- **It recovers most of the loss, not all of it: 75% at k=5, 64% at
+  k=10, leaving about two recall points on the floor.** And that is the
+  *favourable* case. Repeat it with wordier templates that add ordinary
+  words like "role", "practice" or "evaluate" and recovery falls to
+  roughly a third, because those are not stopwords and no stopword list
+  can reach them. **A question is not merely a keyword query with
+  interrogatives attached; it carries generic content words that compete
+  for the ranking on their own.**
+- So `plans/outline-driven-drafting-and-manual-edits.md`'s proposal to
+  strip interrogatives is worth doing and is **not** a licence to write
+  queries as questions. Keywords remain the advice.
+
+**This is a BM25 property, not a dense one.** The embedding path encodes
+the whole string, so an interrogative shifts the vector slightly rather
+than competing as a high-IDF term. It is still noise; it is not this
+failure.
+
+One related defect, recorded because the term is central here and the fix
+is not the same one: **`co-simulation` tokenizes to `simulation`** -- the
+`co` is dropped by the `len(w) > 2` filter.
 
 ## 🪜 The four stages
 
@@ -169,6 +246,56 @@ second of added latency on every one of them.
 Deepening the pool is the expensive knob, not a free one: 5 → 20 → 50
 chunks costs roughly 1x → 3.3x → 7.2x.
 
+### ⚡ FlashRank, evaluated and declined (2026-08-29)
+
+The obvious "make rerank cheap enough to default on" candidate is
+[FlashRank](https://github.com/PrithivirajDamodaran/FlashRank) -- ONNX
+Runtime, no torch, a 4.4M-parameter default model. Benchmarked on this
+host against 20 real 200-word corpus chunks, at the token length the
+shipped path actually uses (500-character snippets, ~110-130 tokens):
+
+| Reranker | ms/call | implied `search()` cost |
+| --- | --- | --- |
+| `ms-marco-MiniLM-L6-v2`, torch fp32 (**shipped**) | 216 | 5.75x |
+| FlashRank `TinyBERT-L-2` (its default) | 54 | **2.20x** |
+| FlashRank `MiniLM-L-12` (its "best") | 390 | **9.57x** |
+| the shipped L6 weights exported to **ONNX int8** | 113 | **3.50x** |
+
+**Declined, on three independent grounds:**
+
+- **Licence.** The library is Apache-2.0 but **the weights it downloads
+  are CC-BY-SA-4.0**, repackaged from Apache-2.0 originals. A ShareAlike
+  obligation reaching a project that ships a release archive is
+  disqualifying on its own.
+- **2.2x is not free, and the advantage shrinks toward our shape.**
+  Between 512 and 128 tokens the torch baseline falls 7.6x while
+  FlashRank falls only 1.9x -- at short passages a 4.4M-parameter model
+  is dominated by fixed overhead. This pipeline sits at the unfavourable
+  end of that curve, and its own "best" model is *slower than what
+  already ships*.
+- **The fast model is materially worse** -- NDCG@10 69.84 against
+  74.30, MRR@10 32.56 against 39.01 on the sbert authors' own table. The
+  rerank gain here already survived swapping to two *stronger* models
+  (L12 and `bge-reranker-base`, `bench/RESULTS.md`), so ordering is not
+  reranker-limited and a weaker one has no upside.
+
+**Two determinism findings worth keeping**, because they generalise past
+this decision. Dynamic int8 quantisation makes a score depend on **what
+else is in the batch** -- the same (query, passage) pair scored 4.82e-5
+in a pool of 20 and 4.37e-5 alone, 9.2% relative, against 0.000% for
+torch fp32. Ordering within a fixed pool is unaffected, so it would not
+break the shipped path, but it does mean scores are not comparable across
+`k` or `embed_overfetch_multiplier`. And FlashRank's weights are fetched
+from `resolve/main` with **no revision pin and no checksum**, so a silent
+re-upload would change results with no version bump -- unacceptable for a
+pipeline whose proposition is reproducibility.
+
+**What the measurement did surface:** exporting the *existing*
+Apache-2.0 L6 weights to ONNX int8 is 1.9x faster at the shipped shape
+with no new dependency, no new model and no licence question. ONNX alone
+bought almost nothing (1.2x); the win is the quantisation -- which brings
+the batch-composition caveat above with it.
+
 ## 🧮 Choosing a reranker
 
 `rerank_model` takes a **cross-encoder** -- a model that scores a
@@ -260,6 +387,7 @@ Work down this list instead:
 
 | Symptom | Likely stage | What to change |
 | --- | --- | --- |
+| You phrased the query as a question | **before stage 1** | Re-phrase it as keywords and compare. On the BM25 path this alone changes over half the result -- [above](#-before-stage-1-the-shape-of-the-query) |
 | The paper has no parsed text | before stage 1 | It is findable by BM25 (title) but not here -- `build_index` skips documents with no text. Re-run `sync`, check the PDF parsed |
 | One paper fills the result | stage 3 | Lower `embed_max_passages_per_source` (to `1` for maximal diversity) |
 | The right paper is in the results but 4th or 5th | stage 2 | This is what reranking is for |

@@ -6,11 +6,20 @@
 % path read as a return path rather than as a line that happens to run
 % backwards; nodes are placed relative to each other with `positioning`
 % so the cycle keeps its shape when a label grows.
+% House palette (docs/TIKZ-STYLE.md). These five lines travel *inside*
+% every figure that uses them -- not a shared file, not a preamble: the
+% renderer injects only \usepackage{tikz}, and a thesis fragment is
+% \input into a document that has never heard of this project.
+\definecolor{cgInk}{HTML}{1A1A1A}
+\definecolor{cgFlow}{HTML}{0072B2}
+\definecolor{cgAccent}{HTML}{D55E00}
+\definecolor{cgAlt}{HTML}{009E73}
+\definecolor{cgAux}{HTML}{56B4E9}
 \usetikzlibrary{positioning}
 \begin{tikzpicture}[thick,
-                    unit/.style={draw,align=center,
+                    unit/.style={draw=cgInk,align=center,fill=cgFlow!8,
                                  minimum width=26mm,minimum height=11mm}]
-  \node[unit] (plant) {plant};
+  \node[unit,draw=cgAccent,fill=cgAccent!10] (plant) {plant};
   \node[unit,right=18mm of plant] (sensor) {sensor};
   \node[unit,above=8mm of sensor] (estimate) {estimate};
   \node[unit,above=8mm of plant] (control) {control};
@@ -18,8 +27,10 @@
   % centre. Bending them the other way is the easy slip: the two curves
   % then lean into the middle of the loop and read as one lens-shaped
   % blob rather than as a cycle going round.
-  \draw[->] (plant) to[bend right=12] (sensor);
-  \draw[->] (sensor) -- (estimate);
-  \draw[->] (estimate) to[bend right=12] (control);
-  \draw[->] (control) -- (plant);
+  \draw[->,cgFlow] (plant) to[bend right=12] (sensor);
+  \draw[->,cgFlow] (sensor) -- (estimate);
+  \draw[->,cgFlow] (estimate) to[bend right=12] (control);
+  % The returning edge is the feedback: `cgAux`, dashed, so the loop's
+  % forward path stays the thing the eye follows first.
+  \draw[->,cgAux,dashed] (control) -- (plant);
 \end{tikzpicture}

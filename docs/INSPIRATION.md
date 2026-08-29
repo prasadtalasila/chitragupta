@@ -41,6 +41,65 @@ came from.
 - Nav Toor's (@heynavtoor) 4-prompt adaptation, fused into claude-storm's
   pipeline and carried through into `deep-research`'s synthesis-briefing
   and single-reviewer (`quick` depth) peer-review phases.
+- **[K-Dense-AI/scientific-agent-skills](https://github.com/K-Dense-AI/scientific-agent-skills)**
+  (MIT at the repository root, (c) 2025 K-Dense Inc.; **per-skill
+  `license:` frontmatter diverges from it** -- four skills declare none
+  and two are non-commercial, so check the skill rather than the root
+  before reusing anything). Read 2026-08-28 as a peer project: a skills
+  repository in the same format family as `.claude/skills/`. Three ideas
+  are credited to it and none of its text is used.
+
+  - **A numeral in prose is a claim too.** Its writing skill errors on a
+    line containing a number with no claim marker. This project's gate
+    proves a *citekey* is real; nothing proves a *magnitude* came from
+    anywhere, which is the gap
+    [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C4 records.
+  - **Missing is not zero.** Its rubric records each criterion as rated,
+    missing or not-applicable, refuses to encode a missing one as zero,
+    and emits a coverage warning beside any aggregate.
+    [REVIEW.md](REVIEW.md) adopts the distinction for this project's
+    aids.
+  - **Publish a score, then show its fragility.** Its weight-sensitivity
+    pass perturbs each weight and reports whether the *ordering* flips --
+    a way to let a number exist without it becoming the thing optimised.
+
+  Two things were read and deliberately not taken. Its citation
+  verification is a **human attestation** -- two booleans in a JSON file
+  the agent itself writes, with the reference checker network-free and
+  syntax-only by design -- so it is an evidence *bookkeeping* system
+  where this project has an enforcement one. And its claim hash is
+  format-checked but never recomputed from the manuscript, so it cannot
+  detect a claim edited after verification: the same
+  decays-while-looking-authoritative failure this project refuses for
+  author provenance
+  ([DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies)) and
+  avoids by regenerating `sections.md` rather than trusting it.
+- **ITER-RETGEN** -- Shao, Gong, Shen, Huang, Duan and Chen, *"Enhancing
+  Retrieval-Augmented Large Language Models with Iterative
+  Retrieval-Generation Synergy"*, Findings of EMNLP 2023, pp. 9248-9274.
+  The idea behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s E4: form the
+  next retrieval query by concatenating the previous generation with the
+  question, so **no model call is needed to write a query**. Credited as
+  a published method rather than a codebase; the adaptation -- a person's
+  own draft standing in for the generation -- is not something the paper
+  proposes, and the paper explicitly does not cover long-form generation.
+- **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT)
+  -- read as a reproduction surface rather than for code. Two mechanisms
+  credited: its `IRCoT` pipeline's cross-round document merge (dedupe by
+  id, `max(old, new)` on the score, re-sort) which E4 adopts **with the
+  cap that implementation is missing**, and its habit of writing every
+  round's retrieval, prompt and prediction into the record as a
+  per-iteration trace. Its evidence on *determinism* is cited in
+  [RAG.md](RAG.md) against itself: seeded runs still varied, because
+  sampling was on by default, batching was composition-dependent and the
+  inference backend changed the result.
+- **[run-llama/llama_index](https://github.com/run-llama/llama_index)**
+  (MIT core, read at v0.14.24) -- read only for its response-synthesis
+  shapes. [C5](FEATURE-ROADMAP.md)'s citekey-union invariant comes from
+  the observation that four of its five modes can drop a source with no
+  error and no log, and that only the mode keeping one output slot per
+  input can say *which* source went missing. The invariant itself is not
+  theirs -- it is what their failure modes imply.
 - **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**
   -- the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
   (an independent multi-reviewer panel including a dedicated adversarial

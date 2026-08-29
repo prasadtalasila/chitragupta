@@ -345,12 +345,29 @@ pipeline.
   missing half renders in one format and disappears in the other, and a
   draft that refers in prose to a figure the reader cannot see is worse
   than one with no figure at all.
+- **The TikZ form is in colour; the ASCII form is not, and that is
+  accepted.** Figures here use a house palette
+  ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and the 7-bit twin cannot reproduce
+  it -- `md`, `docx` and `html` render only the twin. The pair contract
+  is therefore about the *point*, not the pixels: **both forms must work
+  as figures, and they need not carry the same secondary distinctions.**
+  Keep the argument legible through position, arrow direction and
+  labels, which the twin can express, and let colour make the picture
+  quick to read rather than possible to read.
 - **Originality binds the TikZ identically.** A TikZ picture redrawn
   from a source paper's figure is the same violation in different
   pixels, and that a vector redraw is easier to produce than a traced
   bitmap changes nothing about whose figure it is. Reading a source
   figure for understanding is fine; the boundary is the same one as
   above.
+- **No figure number inside a figure file either, and for the same
+  reason.** The renderer assigns every number
+  ([below](#-a-caption-and-no-number-you-write-yourself)), so a literal
+  "Figure 3" written into a node label or a `\node` caption inside
+  `figures/<name>.tex` is a second, unmanaged number that nothing
+  renumbers and nothing checks -- it survives into the PDF beside the
+  real one. The rule generalises: **the artifact carries the picture,
+  the document carries its identity.**
 - **No citekeys inside a figure file.** `python -m chitragupta.draft gate` reads
   the draft and does not follow `\input`, so a citekey in a node label
   or a caption inside `figures/<name>.tex` is invisible to the one check

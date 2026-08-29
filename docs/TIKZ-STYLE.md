@@ -275,6 +275,16 @@ Concrete defects, not taste:
 - **Conciseness** -- a node whose text runs past 15 words is too long
   for a box; cut it or split the node. Shrinking the font to fit more
   words in is not a fix -- see "Type and line weight" below.
+- **The figure's main point resting on colour alone.** Colour is
+  house-standard here and carries meaning freely -- see "The house
+  palette" below. What it may not do is carry the *whole* point on its
+  own, because two readers get none of it: the ASCII twin is 7-bit, and
+  `md`, `docx` and `html` render only that form; and a black-and-white
+  print greyscales the TikZ form, where `cgFlow` and `cgAlt` land at
+  similar lightness. Position, arrow direction and node labels should
+  still deliver the argument; colour should make it fast. The test is
+  quick -- read the `.txt` twin and ask whether the point still arrives.
+  A *secondary* distinction living only in colour is fine and expected.
 - **Literal copying** -- a box-ified copy-paste of prose, with no
   visual abstraction, is not a figure. This is
   [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's originality rule
@@ -309,12 +319,128 @@ document rather than something pasted in:
   border were both gone. `\begin{tikzpicture}[thick]` cannot clobber
   anything, because it never touches `every node` at all.
 
-## 🎨 Free once you are in TikZ
+## 🎨 The house palette
 
-Style keys unavailable to a raster path, worth using once the layout
-and type are settled: zone fills at 10-15% opacity via the
-`backgrounds` layer, dashed lines for auxiliary flow against solid for
-forward flow, sans-serif labels against serif-italic maths.
+**Figures here are in colour, and they use one palette.** Five named
+colours, each with a job. A figure that invents its own hues reads as
+imported from somewhere else, which is the thing a house palette exists
+to stop.
+
+```latex
+\definecolor{cgInk}{HTML}{1A1A1A}     % borders, labels, default strokes
+\definecolor{cgFlow}{HTML}{0072B2}    % the primary path through the figure
+\definecolor{cgAccent}{HTML}{D55E00}  % the one thing the figure is about
+\definecolor{cgAlt}{HTML}{009E73}     % a second class of node or edge
+\definecolor{cgAux}{HTML}{56B4E9}     % auxiliary, secondary, "also happens"
+```
+
+The values are Okabe-Ito's colourblind-safe qualitative set (Okabe &
+Ito, 2008), which is the usual choice for exactly this and costs nothing
+to adopt. `cgInk` is a near-black rather than `black`, because a pure
+black border next to body text set in the same ink reads heavier than
+the text does.
+
+**Roles, not decoration.** Use `cgAccent` for one thing per figure -- if
+two things are accented, neither is. `cgFlow` carries the spine; `cgAux`
+is for what happens off to the side, usually dashed as well as coloured.
+`cgAlt` exists so a figure with two node classes does not have to reach
+outside the palette.
+
+**Tints for fills, the named colour for strokes.** `fill=cgFlow!8` is a
+zone wash that text still reads through; `fill=cgFlow` is a block of
+solid blue with your label lost inside it. Between 8 and 15 is the
+usable band, and `draw=` always takes the colour undiluted.
+
+**One contrast caveat worth knowing.** `cgAux` is light -- fine as a
+fill, fine as a `thick` stroke, and **not** usable for label text on
+white. `cgInk`, `cgFlow` and `cgAccent` are all safe for text.
+
+### 📎 The palette travels inside the figure
+
+**Paste those five lines into every figure that uses them.** Not into a
+shared file the figure `\input`s, and not into a preamble -- the
+renderer injects `\usepackage{tikz}` and nothing else, and
+`thesis-chapter-writer`'s fragment is `\input` directly into the user's
+own thesis, which has never heard of this project. A figure that depends
+on a colour defined elsewhere compiles here and fails there, which is
+the worst of the two orders to fail in.
+
+This is the same discipline the `\usetikzlibrary` line already follows,
+for the same reason, and it means the definitions are duplicated across
+figures on purpose. The six scaffolds in `assets/tikz/` all carry the
+block, so copying one gets it for free.
+
+### 🖨 What the other two forms do with it
+
+Two readers receive no colour at all, and this is accepted rather than
+designed around:
+
+- The **ASCII twin** is 7-bit, so `md`, `docx` and `html` get none of
+  it. The twin still has to work as a figure -- that is
+  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's two-form contract
+  and it is unchanged -- but it is not required to reproduce the colour
+  form's every distinction.
+- A **black-and-white print** greyscales the TikZ form, where
+  `cgFlow` and `cgAlt` land at similar lightness.
+
+So the practical rule is weaker than "never encode meaning in colour"
+and stronger than nothing: **colour may carry meaning, and should not be
+the only thing carrying the figure's main point.** Keep the spine
+legible through position and arrow direction, which every layout
+metaphor above already gives you, and let colour do the work of making
+the figure quick to read rather than possible to read.
+
+## 📏 Draw for the width it will be printed at
+
+The six layout metaphors have no width dimension, and a figure drawn
+without one in mind is a figure whose type size is decided by accident.
+A single-column figure in a two-column paper sets at roughly half a page
+width; the same picture dropped into a thesis sets at nearly double
+that. **Nothing in the picture changes -- but the type does**, because
+`scale=` and the consuming document's own width between them decide the
+final physical size of every label.
+
+So settle the target width *before* choosing a metaphor: a
+hub-and-spoke needs horizontal room a single column does not have, and
+is the wrong metaphor there however well it fits the content. A layered
+stack degrades gracefully to a narrow column; a wide map does not.
+
+**No venue table is bundled here, deliberately.** Column widths are
+per-publisher, differ between initial and revised submission, and go
+stale -- a table checked into this repository would be read as current
+long after it stopped being. If you keep one, keep it the way a
+maintained one is kept: a date it was accessed, a source URL per entry,
+and the standing caveat that **a passing check is not compliance** --
+re-read the publisher's live page before you submit.
+
+## 🧿 Rules that are not universal
+
+Figure guidance is mostly written for raster images, and several rules
+that sound authoritative do not transfer to a TikZ picture at all.
+Named here so nobody spends an afternoon satisfying one:
+
+- **"Line art must be 600 or 1000 dpi."** A TikZ figure is vector and
+  has **no DPI**. There is nothing to set and nothing to check. The
+  requirement that *does* transfer is physical width, above.
+- **"Convert everything to CMYK / everything to RGB."** A colour-space
+  question about exported raster assets. It reaches a `\input`-ed TikZ
+  picture only through whatever the consuming document does at export,
+  which this pipeline does not control and should not pretend to.
+- **"Make the figure bigger so the text is readable."** Backwards.
+  Enlarging the picture enlarges the type *and everything else*, so it
+  overflows the column and gets scaled back down. Type size at final
+  scale is the quantity that matters, and `\footnotesize` inside a
+  picture that is then scaled to 0.8 is the actual defect.
+- **"Pick a colourblind-safe palette and accessibility is handled."**
+  Necessary, and not the end of it. The house palette is already
+  Okabe-Ito, so the hue question is settled and you should not be
+  re-deciding it per figure. What a safe palette does *not* address is
+  the two readers who receive no colour at all -- the ASCII twin's
+  audience and anyone printing in black and white -- which is a
+  redundancy question rather than a palette one.
+- **"A vector figure is resolution-independent, so size does not
+  matter."** True of fidelity, false of legibility, and the second is
+  what a reader notices.
 
 ## 🚫 Nothing here is a gate
 

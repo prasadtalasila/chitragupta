@@ -1,6 +1,6 @@
 # 🏗 Design
 
-Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-23.
+Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-28.
 
 Why this pipeline refuses what it refuses.
 
@@ -22,6 +22,7 @@ over the alternative.
 - [Repository constraints and operating model](#-repository-constraints-and-operating-model)
 - [Concurrency and conflict policy](#-concurrency-and-conflict-policy)
 - [Parallelism and resource design](#-parallelism-and-resource-design)
+- [What happens to prose a person supplies](#-what-happens-to-prose-a-person-supplies)
 - [Parser backends](#-parser-backends)
 
 ## 🎯 Repository constraints and operating model
@@ -279,6 +280,76 @@ passage sidecar both vary at high worker counts. What that costs, artifact
 by artifact, is
 [ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
 -- the single statement of it, measured rather than asserted.
+
+## ✍ What happens to prose a person supplies
+
+The concrete case: **you hand the pipeline an outline and one of its
+sections contains two paragraphs of your own prose. What are they?** A
+*brief* -- steering, to be read and written from -- or text you want to
+appear? The two are indistinguishable as prose, so a skill must guess,
+and either guess is wrong half the time. **That ambiguity is the
+defect**, not the presence of prose: intent has to be declared rather
+than inferred.
+
+### 🚫 Why the answer is not "record who wrote it"
+
+The obvious fix is to mark your paragraphs as yours -- a provenance span
+the review aids skip. **It is the wrong fix, and the reason generalises
+past this feature.**
+
+A draft is revised. The drafting layer rewrites, shortens, re-scopes and
+copy-edits the prose inside those markers, and it does so legitimately --
+that is what `draft-reviser` is *for*. After one revision the span is
+part your wording and part the model's, after two nobody can say which
+part, and the marker still asserts a single author. **The record does not
+decay gracefully; it becomes false while continuing to look
+authoritative** -- and a review aid instructed to skip it would then be
+skipping the model's prose on the strength of a stale claim.
+
+This repository already treats exactly that failure as the serious one.
+`sections.md` is regenerated immediately before a scan rather than
+trusted, and `math.md` desyncing on a reworded span is called out as a
+hazard, both for the same reason: **recorded state that a later edit can
+silently falsify is worse than no record**, because the check that reads
+it now reports confidently about a document that no longer exists.
+Authorship is the least recoverable instance of it -- a citekey can be
+re-derived from the draft and a section map rebuilt from its headings,
+but nothing can recompute who wrote a sentence after the fact.
+
+So: **no author provenance, and no aid exemption built on one.** Every
+sentence in a draft is measured the same way regardless of who typed it
+first, which is also the honest position after any revision at all.
+
+### ✅ What is declared instead: a brief, or a claim
+
+Intent is declared *about the input*, where it is checked once and then
+discharged -- not attached to the output, where it would have to survive
+every later edit:
+
+| Declared as | In the draft? | What the pipeline owes you |
+| --- | --- | --- |
+| a **brief** | no | write the section from it; your wording is not preserved |
+| a **claim** | no -- it is rewritten | find a citekey supporting each assertion, and **report every sentence that could not be grounded** rather than shipping it |
+
+Neither leaves a marker behind, because neither needs to: a brief has
+been consumed by the time the draft exists, and a claim's grounding is
+**re-checkable at any point** against the ledger. That is the property
+authorship lacks and the reason this split survives revision.
+
+`claim` is the one worth building deliberately. It turns your paragraphs
+into an obligation the pipeline can discharge honestly, and *"I could not
+ground your third sentence in this corpus"* is precisely the output this
+project exists to produce -- unavailable if the same two paragraphs are
+copied through as text to be preserved.
+
+**If you want your exact words in the draft, put them in the draft.**
+They are then draft prose like any other: the gate checks any citekey in
+them, and the advisory aids measure them alongside everything else. That
+is not a gap to close. It is what is true of every sentence in a
+revised document.
+
+None of this is built. The proposal is
+`plans/outline-driven-drafting-and-manual-edits.md`.
 
 ## 🗺 Where proposed work lives
 

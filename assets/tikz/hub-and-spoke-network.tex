@@ -5,19 +5,28 @@
 % Idiom: a star. Every spoke is placed relative to the hub, so the hub
 % stays the centre of the picture as well as of the argument, and a
 % spoke can be added without re-deriving anyone else's coordinate.
+% House palette (docs/TIKZ-STYLE.md). These five lines travel *inside*
+% every figure that uses them -- not a shared file, not a preamble: the
+% renderer injects only \usepackage{tikz}, and a thesis fragment is
+% \input into a document that has never heard of this project.
+\definecolor{cgInk}{HTML}{1A1A1A}
+\definecolor{cgFlow}{HTML}{0072B2}
+\definecolor{cgAccent}{HTML}{D55E00}
+\definecolor{cgAlt}{HTML}{009E73}
+\definecolor{cgAux}{HTML}{56B4E9}
 \usetikzlibrary{positioning}
 \begin{tikzpicture}[thick,
-                    spoke/.style={draw,align=center,
+                    spoke/.style={draw=cgInk,align=center,fill=cgAlt!8,
                                   minimum width=24mm,minimum height=10mm},
-                    hub/.style={draw,align=center,
+                    hub/.style={draw=cgAccent,align=center,fill=cgAccent!10,
                                 minimum width=26mm,minimum height=11mm}]
   \node[hub] (broker) {broker};
   \node[spoke,above=9mm of broker] (sensors) {sensors};
   \node[spoke,below=9mm of broker] (archive) {archive};
   \node[spoke,left=12mm of broker] (control) {control};
   \node[spoke,right=12mm of broker] (dashboard) {dashboard};
-  \draw[->] (sensors) -- (broker);
-  \draw[->] (broker) -- (archive);
-  \draw[->] (broker) -- (control);
-  \draw[->] (broker) -- (dashboard);
+  \draw[->,cgFlow] (sensors) -- (broker);
+  \draw[->,cgFlow] (broker) -- (archive);
+  \draw[->,cgFlow] (broker) -- (control);
+  \draw[->,cgFlow] (broker) -- (dashboard);
 \end{tikzpicture}

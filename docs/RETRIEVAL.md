@@ -14,6 +14,8 @@ draft cited a paper they didn't expect. **Assumed:** you have run
 covered:** how to
 tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
 [PERFORMANCE.md](PERFORMANCE.md) for what each costs.
+For how this pipeline's choices compare with six other RAG systems,
+stage by stage, see [RAG.md](RAG.md).
 
 ## 🔭 The short answer
 

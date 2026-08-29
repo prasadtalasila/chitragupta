@@ -13,14 +13,23 @@
 % `python -m chitragupta.review figure` reports no edge list for this
 % picture at all. That is the aid being silently short, not the figure
 % being unwired -- read the nesting below for what connects to what.
+% House palette (docs/TIKZ-STYLE.md). These five lines travel *inside*
+% every figure that uses them -- not a shared file, not a preamble: the
+% renderer injects only \usepackage{tikz}, and a thesis fragment is
+% \input into a document that has never heard of this project.
+\definecolor{cgInk}{HTML}{1A1A1A}
+\definecolor{cgFlow}{HTML}{0072B2}
+\definecolor{cgAccent}{HTML}{D55E00}
+\definecolor{cgAlt}{HTML}{009E73}
+\definecolor{cgAux}{HTML}{56B4E9}
 \usetikzlibrary{trees}
 \begin{tikzpicture}[thick,
                     level distance=16mm,
                     level 1/.style={sibling distance=46mm},
                     level 2/.style={sibling distance=23mm},
-                    every node/.style={draw,align=center,
+                    every node/.style={draw=cgInk,align=center,fill=cgFlow!8,
                                        minimum width=20mm,minimum height=9mm}]
-  \node (source) {source}
+  \node[draw=cgAccent,fill=cgAccent!10] (source) {source}
     child { node (batch) {batch}
       child { node (nightly) {nightly} }
       child { node (weekly) {weekly} } }

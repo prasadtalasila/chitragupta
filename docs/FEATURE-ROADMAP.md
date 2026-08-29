@@ -1,6 +1,6 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-24.
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
 **Twelve of the original twenty-one items have shipped and have been removed
 from this document** rather than marked as done -- so everything below is still
 outstanding, which is what makes the list usable.
@@ -57,6 +57,7 @@ everything below.
 - [Theme B: make synthesis structural](#-theme-b-make-synthesis-structural)
 - [Theme C: verify faithful use](#-theme-c-verify-faithful-use)
 - [Theme D: figure layout](#-theme-d-figure-layout)
+- [Theme E: the human's own structure](#-theme-e-the-humans-own-structure)
 - [Theme F: the auto-improvement loop](#-theme-f-the-auto-improvement-loop)
 - [Theme G: topic modelling](#-theme-g-topic-modelling)
 - [Build order](#-build-order)
@@ -493,6 +494,17 @@ This item is also self-marking in the sense
 and it needs the amendment. It sits late for both reasons rather than
 one.
 
+**A 2026-08-28 read of four upstreams (Theme E's research) left four
+amendments owed to this item.** They are recorded in
+`plans/b5-pregate-self-feedback.md`, which is the authoritative design;
+in one line each, so this ticket says what moved without becoming a
+second specification: the length-ratio rejection is now **confirmed from
+source**; coverage must be marked on **evidence retrieved, never on query
+issued**; a **fixed corpus makes a declared query list exhaustible**, so
+a real termination condition is available here and is not in any of the
+four; and **an empty result set is informative** -- it means the claim
+cannot be grounded, so the sentence is cut rather than cited.
+
 Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 
 ## ✅ Theme C: verify faithful use
@@ -512,6 +524,65 @@ cited page or does not -- so unlike C1 and C2 this one is a legitimate
 candidate for an unattended class. Carries R2 and R10.
 
 Size: M. Depends on: A2, A4.
+
+### 🔢 C4: a numeral in prose is a claim too
+
+The gate proves a **citekey** is real. Nothing proves a **magnitude**
+came from anywhere -- a draft may state "throughput rose 43%" with a
+perfectly real citation beside it and no check anywhere relates the
+number to the source. Invented magnitudes are the second-most dangerous
+fabrication class after invented references, and they are currently
+unguarded.
+
+The mechanism is deterministic and needs no model: **report a prose line
+that contains a numeral and no traceable origin.** Credited to
+[K-Dense-AI/scientific-agent-skills](INSPIRATION.md), whose writing
+skill errors on exactly that condition.
+
+Three things this project already has make it cheaper here than there.
+`math.md` (WRITING-STANDARDS.md §12) is keyed on the exact span text of
+every quantity a draft states, so a mapped quantity already has a
+record; the sentence splitter exists; and the review layer's report
+shape is settled. The work is deciding what counts as traceable -- a
+`math.md` row, an adjacent citekey, a `quote:` in `evidence.md` -- and
+being honest that a year, a section number and a figure reference are
+numerals that are not claims.
+
+**Advisory, and the false-positive rate decides whether it is usable at
+all**: a survey is full of legitimate bare numerals. Ship it reporting
+what it finds and let a real draft say whether the signal survives.
+Carries R2 and R10 like any aid.
+
+Size: M. Depends on: C1's sentence splitting.
+
+### 🙅 C6: measure the refusal
+
+Gao's survey (arXiv:2312.10997) lists **negative rejection** among the
+four abilities a RAG system should be evaluated on -- whether a system
+declines to answer when the retrieved material does not support an
+answer. **This project is designed around that behaviour and does not
+measure it.** Every genre skill is told to report thin coverage rather
+than pad it; [E4](#-e4-the-draft-is-the-query) sharpens it further with
+"an empty result means the claim cannot be grounded, so the sentence is
+cut". Nothing tests whether any of that actually happens.
+
+The instrument is buildable without a model and without labels, because
+the corpus is closed and this repository already owns the trick:
+`bench_retrieval_keyword_selfretrieval.py` uses a paper's own
+author-assigned keywords as a query whose right answer is known. The
+negative case is its complement -- **a query whose correct answer is
+that the corpus holds nothing** -- and one honest way to build it is to
+take keyword sets from entries that are *in the bib file but not
+parsed*, or from a held-out shelf excluded by `--collection`, so the
+topic is real and the supporting text genuinely absent.
+
+What it reports is a rate, not a verdict: how often a draft asserts a
+claim on a sub-theme the corpus cannot support, against how often it
+says so. **Advisory, and the harder half is the ground truth rather than
+the check** -- a sub-theme the corpus covers thinly is not the same as
+one it does not cover, and conflating them would manufacture failures.
+
+Size: M. Depends on: nothing, though it reads best beside E4.
 
 ## 📐 Theme D: figure layout
 
@@ -642,6 +713,260 @@ only the specific answer on the specific corpus asked about.
 
 Size: M. Depends on: D1-D3, and evidence that they left a real gap.
 
+### 📏 D5: two checks `review figure` could compute from source
+
+The pre-flight list in [TIKZ-STYLE.md](TIKZ-STYLE.md) *names* two
+defects it cannot decide, and both are recoverable from the TikZ source
+that `review figure` already parses:
+
+- **Type size at final scale.** "Illegible type" is currently a human
+  judgement. It is arithmetic: a `\footnotesize` node inside a picture
+  carrying `scale=0.8`, set in a document at a known width, has a
+  computable final point size. `figure_layout/_source.py` already splits
+  picture and node options, so the parse is in place and the check is
+  not.
+- **Two palette colours a greyscale print cannot separate.** Colour is
+  house-standard and carries meaning freely
+  ([TIKZ-STYLE.md](TIKZ-STYLE.md)); what it may not do is carry the
+  figure's *main* point alone, because a black-and-white print
+  greyscales the TikZ form and `cgFlow` and `cgAlt` land at similar
+  lightness. A screen over *declared* colours (`\definecolor` and named
+  colours, not pixels) for pairs that differ in hue but not lightness
+  would report it. The idea is
+  [K-Dense-AI/scientific-agent-skills](INSPIRATION.md)'s palette audit,
+  which reads declarations rather than rendering; note their own caveat,
+  that a lightness heuristic is not colour-vision simulation. **Advisory
+  and easy to over-fire** -- a secondary distinction living only in
+  colour is legitimate, so this reports a pair, not a verdict.
+
+Both fit the existing aid: deterministic, source-parsing, advisory,
+exit 0. Neither needs the vision critic
+[D4](#-d4-optional-vision-critique) declined.
+
+Size: M. Depends on: nothing.
+
+## 🧭 Theme E: the human's own structure
+
+Themes A-D are about what the pipeline does with what it retrieved. This
+theme is about the two places a **person** cannot currently get a word
+in: supplying the structure before drafting, and hand-editing a draft
+afterwards. Both are already solved at *book* scale and neither at
+single-draft scale --
+`plans/outline-driven-drafting-and-manual-edits.md`
+is the plan, and carries the measurements.
+
+Researched against four upstreams for this theme
+([OpenScholar](https://github.com/AkariAsai/OpenScholar),
+[RAGFlow](https://github.com/infiniflow/ragflow),
+[papersgpt-for-zotero](https://github.com/papersgpt/papersgpt-for-zotero),
+[local-deep-research](https://github.com/LearningCircuit/local-deep-research)).
+**The result was mostly negative and that is the useful part: three of
+the four manufacture no queries at all**, and none verifies a citation --
+RAGFlow's only check on a model-emitted marker is `i < len(chunks)`, an
+array-bounds test. Nothing here is ported as text
+([INSPIRATION.md](INSPIRATION.md)).
+
+### ❓ E1: strip interrogatives on the query side
+
+**A prerequisite for E2, and independently valuable.** `_STOPWORDS` holds
+twenty function words and no interrogatives, and `len(w) > 2` passes
+`how`, `why`, `who`, `can`. Because those are *rare in academic PDFs*
+they carry high IDF and compete for the ranking.
+
+**Measured against ground truth no retrieval method built** --
+`bench_retrieval_keyword_selfretrieval.py`'s instrument, where the query
+is a paper's own author-assigned `keywords` and the answer is that paper.
+Over the 208 parsed entries carrying keywords, wrapped in interrogative
+glue:
+
+| Query form | recall@5 | recall@10 |
+| --- | --- | --- |
+| author keywords (baseline) | **0.808** | **0.865** |
+| wrapped as a question | 0.731 (-0.077) | 0.812 (-0.053) |
+| question, interrogatives stripped | 0.788 (-0.019) | 0.846 (-0.019) |
+| keywords, interrogatives stripped | 0.808 (**+0.000**) | 0.865 (**+0.000**) |
+
+**Free, provably inert on keyword queries, and only a partial fix** --
+it recovers 75% of the loss at k=5 and 64% at k=10, and roughly a third
+once the question also carries ordinary words like "role" or "evaluate",
+which are not stopwords and which no stopword list can reach. So this
+does not make question-form querying safe, and
+[CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
+keeps "phrase it as keywords" as the standing advice.
+
+E2 invites a person to author queries; people write questions. Shipping
+E2 without this makes a human-written query measurably worse than the
+sub-theme a skill hand-tunes today.
+
+**Query-side only.** A term absent from the query contributes nothing
+whatever the documents hold, so this buys the whole effect while leaving
+`_tokenize`, every document's term frequencies, every IDF and
+`_INDEX_SCHEMA_VERSION` untouched -- and leaves `bench/RESULTS.md`'s BM25
+baseline (nDCG@5 0.7321) undisturbed. A symmetric change would re-rank
+every query in the corpus for no further gain. The idea is RAGFlow's
+`rmWWW`, which is query-side for the same reason.
+
+**What this measurement is, and what it still owes.** The instrument is
+the right one -- author-assigned keywords are independent of every
+retrieval method, so this is a correctness measurement rather than the
+convergence-between-phrasings figure an earlier draft of this item
+quoted. What it does not cover: the templates are synthetic, so the
+residual loss depends on how wordy a real question is, and no
+claim-form regression was run. Report both when it ships, in B4's table
+shape.
+
+**Do not reach for LLM-generated evaluation questions here.** AutoRAG's
+`legacy/` QA generator (Apache-2.0) writes the question *from* the gold
+chunk, so the query inherits that chunk's vocabulary and the set
+structurally favours lexical retrieval -- a BM25 change measured on it
+looks better than it is, and nothing upstream says so. The keyword
+ground truth has no such circularity, which is why it is the instrument
+above.
+
+Carries one hygiene change on measured but modest grounds: **22.8% of
+retrieved snippets contain their source's own citation markers** (39 of
+180, mostly `[12]`-style) and nothing strips them. Checked before
+claiming more: **zero have ever leaked into a real draft**, so this is
+context hygiene, not a fabrication vector. The idea is OpenScholar's
+`remove_citations`; take the idea, not the regex, which also does a
+global `]` delete.
+
+Size: S. Depends on: nothing.
+
+### 🗂 E2: an outline the human writes
+
+A dossier file the person edits before drafting: per section, a heading,
+a brief, and the **declared queries**, which the skill runs verbatim
+instead of inventing sub-themes. `--extend` permits additions where a
+sub-theme comes up thin, logged distinctly so `retrieval.md` can be
+diffed against the declared list -- *"did this draft follow my
+structure?"* becomes decidable rather than trusted.
+
+**Most of the mechanism exists.** `dossier brief --section` already
+resolves a section name through `sections.md` to its evidence blocks, and
+`--check` validates the rows resolve without printing them. What is
+missing is that a human cannot author those rows and four of five genres
+never use them. `deep-research`'s Phase 1 -- broad calls *before* naming
+perspectives, so structure is derived from what the corpus holds -- is
+the best idea already here and should be generalised rather than
+reinvented.
+
+**Prose in an outline is ambiguous and that ambiguity is the defect.**
+Two paragraphs under a heading may be steering or text to preserve, and a
+skill must guess. So intent is declared *about the input*: a **brief**
+(never appears in the draft) or a **claim** (rewritten, with every
+sentence that could not be grounded reported rather than shipped).
+
+**Neither leaves a marker in the draft, and recording authorship is
+explicitly rejected** -- a draft gets revised, the drafting layer
+rewrites what is inside any such span, and the marker would go stale
+while still looking authoritative. Declaring intent about the *input*
+works because a brief is consumed once and a claim's grounding stays
+re-checkable against the ledger; authorship is neither.
+[DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the
+argument.
+
+**No sign-off gate.** `spec sign` guards a 178,000-word generation run;
+one survey does not earn a second gate (constraint 2).
+
+> ⚠ **`_retrieval_rows` will swallow the new `origin` column.** Its guard
+> is `if len(cells) not in (6, 7): continue`, so an eighth cell makes
+> every new row **skipped, not rejected** -- `retrieval_cost` undercounts
+> and `recorded_queries` loses the queries. Extend to `(6, 7, 8)` and pad
+> as #254's column is padded.
+
+Size: L. Depends on: E1.
+
+### 🖉 E3: notice that the draft moved
+
+`scope.md` fingerprints the corpus; nothing fingerprints the draft. After
+a hand edit, `sections.md`, `evidence.md` and `math.md` describe a
+document that no longer exists and `draft-reviser` reads them as current.
+The book track already detects this for a unit -- `unit status` reports
+`stale: draft changed since accepted` -- so reuse the vocabulary.
+
+> ⚠ **Not `dossier.digest()`.** That is order-independent over a *set of
+> citekeys* and is meaningless over prose. The text digest is in
+> `chitragupta/spec/_cli.py`.
+
+A digest says only *that* it moved, so `status` also reports four
+staleness classes: a citekey in the draft with no evidence block (drift
+reporting is computed from the dossier, **not** the draft body, so a
+hand-added citation is otherwise invisible forever), an evidence block
+whose citation was deleted, a `sections.md` that no longer matches the
+headings, and a desynced `math.md`. `draft-reviser` offers each repair
+one at a time -- never applies unasked, never blocks.
+
+Size: M. Depends on: nothing.
+
+### 🔁 E4: the draft is the query
+
+ITER-RETGEN (Shao et al., Findings of EMNLP 2023) forms its next
+retrieval query by concatenating the previous generation with the
+original question. **No model writes the query**, so the retrieval path
+stays deterministic -- which is why this is the one iterative method in
+[RAG.md](RAG.md)'s survey that survives this project's constraints
+intact.
+
+**Its `y_{t-1}` need not come from a model.** If a person supplies a
+starting draft, or hand-edits one, *their* prose is the query. That makes
+"give the pipeline a draft to work from, and revise it by hand later" the
+same loop with a human in the generation slot -- and it settles a
+question [E2](#-e2-an-outline-the-human-writes) left open, because prose
+used as a **query** needs no provenance marker: it never enters the
+draft, so there is nothing to keep in sync and nothing to go stale.
+
+Three things this item must get right, each from a measurement rather
+than a preference:
+
+- **Two rounds, not three.** The paper's own answer-recall table gains
+  13.7-16.6 points at iteration 2 and about one point across iterations
+  3 to 7. FlashRAG's shipped implementation uses 3 and does not say why.
+- **Accumulate across rounds, then cap.** FlashRAG's `IterativePipeline`
+  discards the previous round's documents; its `IRCoT` dedupes by id and
+  merges scores with `max(old, new)` but never truncates, which is a live
+  crash in their tracker. Do both: merge, re-sort, **cap**.
+- **Bound the appended prose.** A long draft section swamps the
+  sub-theme's own terms in a bag-of-words score. Truncate explicitly and
+  say so, rather than silently clipping at a token limit.
+
+**The failure mode is documented and it argues for the human path.** The
+paper's error analysis finds 65% of failures retrieval-related, and
+**76.9% of those are retrieval misled by wrong reasoning in the first
+iteration** -- a bad draft becomes a bad query and entrenches itself. A
+human-supplied first draft largely sidesteps it. Note also the authors'
+own limitation: they did not test long-form generation, which is the only
+thing this pipeline does.
+
+Size: M. Depends on: E3 (a draft fingerprint is what says the query moved).
+
+### 🧾 C5: the citekeys out must be the citekeys in
+
+A deterministic invariant for any synthesis that combines evidence:
+**after every combining step, the union of citekeys in the inputs must
+equal the union in the output.** Set arithmetic, no model, no judgement.
+
+The shapes this guards against are catalogued in
+[RAG.md](RAG.md#-the-synthesis-shape-how-n-passages-become-one-section):
+of LlamaIndex's five synthesis modes, four can drop a source with no
+error and no log -- by truncating the tail, by declining to fold a
+passage into a running answer, or by attrition across summarisation
+levels. Only the one that keeps a fixed-length slot per input can say
+which input a missing output belongs to.
+
+Here the relevant surfaces are `deep-research`'s Phase 5, where each
+writer is dispatched with the citekeys its section will stand on, and
+`book-assembler`, which composes accepted units. In both, the expected
+set is already recorded before generation, so the check is a comparison
+against something on disk rather than a reconstruction.
+
+**Advisory, and it reports both directions**: a citekey dropped, and a
+citekey that appeared from nowhere. The second is the gate's business and
+the gate will catch it; reporting it here is how a *located* failure
+("section 4 lost `smith_2024`") reaches a person instead of a diff.
+
+Size: S-M. Depends on: nothing.
+
 ## 🔄 Theme F: the auto-improvement loop
 
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) specifies a seven-step track
@@ -735,12 +1060,25 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
-| 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 7 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 1 | [E1](#-e1-strip-interrogatives-on-the-query-side) strip interrogatives | E | S | -- |
+| 2 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
+| 3 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
+| 4 | [E3](#-e3-notice-that-the-draft-moved) notice the draft moved | E | M | -- |
+| 5 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
+| 6 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 7 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
+| 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
+| 9 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 10 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 11 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 12 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | E3 |
+| 13 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 14 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+
+**E1 leads because it is cheap, measured, and a prerequisite that gets
+more expensive to add later**: E2 invites people to write queries, and
+every query written before E1 lands is one whose retrieval nobody can
+reproduce afterwards.
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -753,23 +1091,29 @@ here that makes something run automatically, or repairs a draft without
 being asked, is gated on the amendment or refused by the self-marking
 argument.** Check a new proposal against both before costing it.
 
-**Four items have written plans.** `plans/` holds the implementation
-plan for a roadmap item whose design is genuinely underdetermined --
-A2,
-B2,
-C1 and
-D2 have one each, as worked
-examples of the convention. Most items do not need one: the entry above
-already names the files, the size and the dependencies, and for a
-mechanical change that is the whole plan.
-`plans/README.md` has the three tests for when a
-plan earns its place. That directory does not ship.
+**Some items have written plans, and the entry says so where one
+exists.** `plans/` holds the implementation plan for a roadmap item whose
+design is genuinely underdetermined. Of the items still listed here,
+[B4](#-b4-cross-encoder-reranking), [B5](#-b5-pre-gate-self-feedback-loop)
+and [C3](#-c3-quotation-and-page-integrity) have one, and Theme E's three
+share `plans/outline-driven-drafting-and-manual-edits.md`. Several more
+sit there for items that have since shipped, kept as worked examples of
+the convention. Most items need none: the entry above already names the
+files, the size and the dependencies, and for a mechanical change that is
+the whole plan. `plans/README.md` has the three tests for when a plan
+earns its place. That directory does not ship.
 
-**The first four PRs need no decision and no new dependency**, and
-between them they do the thing that was actually asked for -- move the
-pipeline from detecting verbatim reuse afterwards to not producing it.
-B1 and A2 are the whole spine; A3 closes the context leak; D1 addresses
-the figure complaint at its source.
+**Where an item names its own plan, the plan governs.** B5's entry says
+so explicitly, and the entry is the ticket rather than a second
+specification -- so a design decision recorded in a plan file is not
+repeated here, and the two cannot drift.
+
+**The leading PRs need no decision and no new dependency.** E1 is a
+measured retrieval fix and a prerequisite that gets more expensive later;
+A3 closes the context leak that Theme A's diagnosis is about; B3 is a
+one-session stylistic change with a checkable count; E3 makes a
+hand-edited draft visible to the pipeline at all. None of the four needs
+the amendment, a new model, or a decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 
