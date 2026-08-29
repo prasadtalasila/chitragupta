@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from chitragupta import config, ledger, passages
+from chitragupta import config, ledger, ledger_upsert, passages
 
 from tests.conftest import make_reference
 
@@ -208,7 +208,7 @@ class TestBibFields:
         # as a ledger change.
         a = make_reference(citekey="doe2024", fields={"author": "Doe, Jane", "journal": "J"})
         b = make_reference(citekey="doe2024", fields={"journal": "J", "author": "Doe, Jane"})
-        assert ledger._bib_fields_json(a) == ledger._bib_fields_json(b)
+        assert ledger_upsert._bib_fields_json(a) == ledger_upsert._bib_fields_json(b)
 
 
 class TestUpsertReference:
@@ -385,13 +385,13 @@ class TestUpsertReferenceRehashSkip:
         ledger.upsert_reference(ledger_con, ref)
 
         calls = []
-        original_hash_pdf = ledger._hash_pdf
+        original_hash_pdf = ledger_upsert._hash_pdf
 
         def spy(path):
             calls.append(path)
             return original_hash_pdf(path)
 
-        monkeypatch.setattr(ledger, "_hash_pdf", spy)
+        monkeypatch.setattr(ledger_upsert, "_hash_pdf", spy)
 
         needs_parse = ledger.upsert_reference(ledger_con, ref)
 
@@ -411,13 +411,13 @@ class TestUpsertReferenceRehashSkip:
         os.utime(pdf, (future, future))
 
         calls = []
-        original_hash_pdf = ledger._hash_pdf
+        original_hash_pdf = ledger_upsert._hash_pdf
 
         def spy(path):
             calls.append(path)
             return original_hash_pdf(path)
 
-        monkeypatch.setattr(ledger, "_hash_pdf", spy)
+        monkeypatch.setattr(ledger_upsert, "_hash_pdf", spy)
 
         ledger.upsert_reference(ledger_con, ref)
 
