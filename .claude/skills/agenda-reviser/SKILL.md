@@ -170,10 +170,17 @@ text; step 5 needs it if the repair is rejected.
 is a deletion: this skill may not run `corpus sync` (the user's write
 lock) and may not fabricate a citekey. Remove the `[@citekey]` marker with
 `Edit`, leaving the sentence standing -- never delete the sentence itself.
-The now-uncited claim becomes an `uncited-claim` item on the next agenda,
-a **surfaced** class, so it is reported rather than silently dropped. Where
+**Also drop the citekey from `evidence.md`** (and from `sections.md`'s row
+for the section, on the next `dossier sections --citekeys --write`) --
+`missing-citekey` is detected off the dossier's own record of what it
+cites, not off the draft's live markers, so a repair that only edits the
+draft leaves the item unresolved on the next agenda. This is the "writing
+the dossier back" half of `draft-reviser`'s loop, referenced above, made
+explicit here because it is easy to miss for this one class. The now-
+uncited claim becomes an `uncited-claim` item on the next agenda, a
+**surfaced** class, so it is reported rather than silently dropped. Where
 the sentence carries another surviving citation, only the marker for the
-missing one goes.
+missing one goes, and `evidence.md` keeps that citekey's entry.
 
 **Repair a `prose` item.** Apply the fix `draft style`'s rule names: expand
 an acronym at first use, add the `<!-- table: -->` or `<!-- figureref: -->`
