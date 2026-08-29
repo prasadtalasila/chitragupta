@@ -149,9 +149,7 @@ def _retry_agenda(draft, path, attempt_texts):
     """
     deltas = []
     for attempt_text in attempt_texts:
-        draft.write_text(
-            ORIGINAL.replace("Sensors report", attempt_text), encoding="utf-8"
-        )
+        draft.write_text(ORIGINAL.replace("Sensors report", attempt_text), encoding="utf-8")
         comparison = _run_agenda(draft, "--baseline", str(path))
         deltas.append(comparison["objective_delta"])
         if comparison["objective_delta"] <= 0:
@@ -182,9 +180,7 @@ def test_a_repair_that_raises_the_count_is_not_accepted(draft):
     than keep it."""
     path, before = _baseline(draft)
 
-    draft.write_text(
-        ORIGINAL.replace("Sensors report", "An IMU reports"), encoding="utf-8"
-    )
+    draft.write_text(ORIGINAL.replace("Sensors report", "An IMU reports"), encoding="utf-8")
     comparison = _run_agenda(draft, "--baseline", str(path))
 
     assert comparison["objective_delta"] > 0
@@ -212,9 +208,7 @@ def test_two_failed_attempts_then_the_item_is_escalated(draft):
     third signal from the CLI itself."""
     path, before = _baseline(draft)
 
-    deltas = _retry_agenda(
-        draft, path, ["An IMU reports", "A GPS unit reports"]
-    )
+    deltas = _retry_agenda(draft, path, ["An IMU reports", "A GPS unit reports"])
 
     assert len(deltas) == 2
     assert all(delta > 0 for delta in deltas)
@@ -252,9 +246,7 @@ def test_a_pass_that_never_falls_stops_at_the_bound(draft):
 
     deltas = []
     for _ in range(before["pass_bound"]):
-        draft.write_text(
-            ORIGINAL.replace("Sensors report", "An IMU reports"), encoding="utf-8"
-        )
+        draft.write_text(ORIGINAL.replace("Sensors report", "An IMU reports"), encoding="utf-8")
         comparison = _run_agenda(draft, "--baseline", str(path))
         deltas.append(comparison["objective_delta"])
         draft.write_text(ORIGINAL, encoding="utf-8")
@@ -301,10 +293,7 @@ def test_missing_citekey_repair_removes_only_the_marker(draft):
     assert item["id"] in [i["id"] for i in comparison["resolved"]]
     # The sentence survives -- it becomes an uncited-claim, a surfaced
     # class, on the next agenda rather than vanishing.
-    assert (
-        "A DT tracks the physical asset across its life."
-        in draft.read_text(encoding="utf-8")
-    )
+    assert "A DT tracks the physical asset across its life." in draft.read_text(encoding="utf-8")
     new_uncited_summaries = {
         i["summary"] for i in comparison["new"] if i["class"] == "uncited-claim"
     }

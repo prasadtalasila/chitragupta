@@ -287,15 +287,22 @@ The human accepts. Nothing here merges, commits or renders on its own.
 
 ### Prose is now this skill's work, not merely surfaced
 
-`draft style content/drafts/<path>` was already run as part of the
-baseline agenda in step 2 -- `agenda` reads it as one of its eight
-sources. Under Decision 1 of `plans/f3-agenda-reviser.md`, every `prose`
-finding carries `unattended: true` and is repaired in step 4, the same
-as any other unattended class -- not merely reported. Your own repairs
-are new prose, written under pressure to avoid someone else's wording on
-the `verbatim-run` items, which is exactly where a defect marker or a
-dialect slip gets back in, so re-run the check as part of every
-`--baseline` cycle in step 5 rather than only once at the end.
+```bash
+python -m chitragupta.draft style content/drafts/<path>
+```
+
+Already run as part of the baseline agenda in step 2 -- `agenda` reads
+it as one of its eight sources. Under Decision 1 of
+`plans/f3-agenda-reviser.md`, every `prose` finding carries
+`unattended: true` and is repaired in step 4, the same as any other
+unattended class. **This is the one skill of the nine where that
+finding list is a work list rather than only a report** -- every other
+skill that runs this command stops at reporting; this one goes on to
+repair. Your own repairs are new prose, written under pressure to avoid
+someone else's wording on the `verbatim-run` items, which is exactly
+where a defect marker or a dialect slip gets back in, so re-run the
+check as part of every `--baseline` cycle in step 5 rather than only
+once at the end.
 
 **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
 -- §2's defect markers, an acronym never expanded at first use, a
