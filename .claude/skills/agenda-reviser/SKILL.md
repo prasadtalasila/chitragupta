@@ -63,20 +63,36 @@ write lock and are the user's to run.
 
 ## What may be repaired unattended, and what may not
 
-The scan already buckets every finding by severity. That bucket is the
-line, so this skill does not invent a second threshold:
+Every agenda item carries its own `unattended` field. That field is the
+line, decided once by the aid that produced the item -- **this skill
+never re-derives it from `class` or from anything else in the item.**
+Three classes carry `unattended: true` on this checkout:
 
-| Bucket | What it is | This skill |
+| Class | What it is | This skill |
 | --- | --- | --- |
-| `quoted` | Touching quote marks **and** citing the source | Report it as already correct. Do not touch it |
-| `short` | Under 15 words, not a marked quotation | Repair unattended |
-| `long` | 15 words or more, not a marked quotation | **Stop and ask.** Present paraphrase and quotation as two options and let the human choose |
+| `verbatim-run`, severity `short` | Under 15 words of borrowed wording, not a marked quotation | Repair unattended |
+| `verbatim-run`, severity `long` | 15 words or more, not a marked quotation | **Stop and ask** -- surfaced, not unattended |
+| `verbatim-run`, `quoted` | Touching quote marks **and** citing the source | Already correct. Do not touch it |
+| `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended |
+| `missing-citekey` | A citekey the draft cites that the corpus no longer has | Repair unattended -- by removing the `[@citekey]` marker, per "Repair a `missing-citekey` item" below |
+| Every other class (`unsupported-claim`, `claim-support`, `uncited-source`, `uncited-claim`, `misquoted`, `candidate`) | Judgement calls | Surfaced. Report and do not touch |
 
-A long run is where the choice actually matters. Paraphrasing a sentence
-the field states one particular way makes the prose worse to no benefit;
-quoting a passage that was never meant to be quoted pads the draft and
-signals a claim the author did not make. That is an authorial decision,
-so it is asked, not taken.
+**The agenda's own `detail` field is thin by design and is not the repair
+payload.** A `verbatim-run` item's `detail` carries `verbatim_id`, not
+the `draft_text` an `Edit`'s `old_string` needs. **Look the id up in the
+raising aid's own filed JSON** instead:
+
+| Class | `detail` key | Look it up in |
+| --- | --- | --- |
+| `verbatim-run` | `verbatim_id` | `content/review/<topic>/<stem>.verbatim.json`'s `findings`, matched on `id` -- gives `draft_text`, `min_run`, `citekey`, page range |
+| `prose` | (none needed) | The item's own `summary`/`detail.message` names the rule and the match; `draft style content/drafts/<path>` reproduces the full finding if more context is needed |
+| `missing-citekey` | (none needed) | The item's own `citekey` and `section` are the whole repair payload -- there is nothing else to look up |
+
+A long `verbatim-run` is still where the choice actually matters, for the
+same reason it always did: paraphrasing a sentence the field states one
+particular way makes the prose worse to no benefit, and quoting a passage
+that was never meant to be quoted pads the draft. That is an authorial
+decision, asked rather than taken.
 
 ## The loop
 
