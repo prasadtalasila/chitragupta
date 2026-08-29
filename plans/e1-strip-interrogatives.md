@@ -1,6 +1,19 @@
 # E1: strip interrogatives on the query side
 
-Status: **plan.** Written 2026-08-29, for
+Status: **shipped**, by
+[PR #458](https://github.com/prasadtalasila/chitragupta/pull/458),
+merged 2026-08-29. Two things changed from this plan on the way: the
+stopword-consolidation direction below was drafted as `passages.py`
+importing from `retrieval.py` and shipped reversed (`retrieval.py`
+imports `_CORE_STOPWORDS` from `passages.py`), once the real import
+graph showed `passages.py` has corpus/enrichment/review-layer
+dependents that must not depend on the drafting layer; and the
+consolidation was found *not* to resolve `passages.py`'s existing C2
+debt (`ruff format`'s one-item-per-line reflow costs two lines more
+than the dedup saves -- 260 to 262, not under 250). Both are recorded
+in place below rather than edited out.
+
+Written 2026-08-29, for
 [issue 453](https://github.com/prasadtalasila/chitragupta/issues/453) --
 [E1](../docs/FEATURE-ROADMAP.md#-e1-strip-interrogatives-on-the-query-side)
 in docs/FEATURE-ROADMAP.md.
