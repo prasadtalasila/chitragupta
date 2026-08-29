@@ -45,7 +45,16 @@ import re
 import sys
 from pathlib import Path
 
-from chitragupta import bib_names, citation_gate, config, ledger
+from chitragupta import citation_gate, config, ledger
+from chitragupta.references_ieee import format_entry
+from chitragupta.references_renumber import renumber
+
+# Re-exported, not used here: tests/test_references.py reaches this as
+# references._format_numbers directly.
+# pylint: disable=unused-import
+from chitragupta.references_renumber import _format_numbers  # noqa: F401
+
+# pylint: enable=unused-import
 
 # Matches the References heading this module writes, bare ("## References")
 # or numbered to match a draft's own heading convention ("## 6. References"),
@@ -104,187 +113,6 @@ def section_start(lines: list[str]) -> int | None:
         if _HEADING_RE.match(line.strip()):
             return i
     return None
-
-
-def _initials(first: str) -> str:
-    """A given-name field as IEEE initials.
-
-    `Jane Mary` -> `J. M.`, `J.-P.` -> `J.-P.`, `` -> ``.
-    """
-    out = []
-    for part in first.replace(".", " ").split():
-        # A hyphenated given name initializes on both halves ("Jean-Paul"
-        # -> "J.-P."), which is IEEE's own rule and not what a naive
-        # part[0] would give.
-        out.append("-".join(f"{seg[0]}." for seg in part.split("-") if seg))
-    return " ".join(out)
-
-
-def _format_name(name: str) -> str:
-    """One BibTeX author name in IEEE order: "Doe, Jane" -> "J. Doe".
-
-    The given/family split itself lives in `bib_names`, shared with
-    `bib_reader` -- this module reads the ledger's `bib_fields` column and
-    never `bibliography.bib`, but the *grammar* for reading a name out of
-    that column is the same grammar, and it used to exist here in a second
-    copy. See that module for what the duplication actually risked.
-    """
-    name = name.strip()
-    # Braced corporate authors ("{IEEE Standards Association}") are a
-    # single unit, never split into given/family or initialized. Stays
-    # here rather than moving into the shared helper: `_parse_authors`
-    # does not do it, and hoisting it would change what the ledger
-    # records rather than where the split lives.
-    if name.startswith("{") and name.endswith("}"):
-        return name[1:-1].strip()
-    first, last = bib_names.split_name(name)
-    initials = _initials(first)
-    return f"{initials} {last}".strip()
-
-
-def _format_authors(field: str) -> str:
-    """A BibTeX author/editor field as an IEEE author list.
-
-    IEEE abbreviates to "first author et al." past six names; below that
-    it lists all of them, with "and" before the last.
-    """
-    names = [n.strip() for n in field.split(" and ") if n.strip()]
-    if not names:
-        return ""
-    formatted = [_format_name(n) for n in names]
-    if len(formatted) > 6:
-        return f"{formatted[0]} et al."
-    if len(formatted) == 1:
-        return formatted[0]
-    if len(formatted) == 2:
-        return f"{formatted[0]} and {formatted[1]}"
-    return ", ".join(formatted[:-1]) + f", and {formatted[-1]}"
-
-
-# Where the containing work's name lives, in the order BibTeX/biblatex
-# variants prefer it. "booktitle" is checked last because an @inbook entry
-# can carry both, and there the journal-shaped field is the wrong one.
-_VENUE_FIELDS = ("journal", "journaltitle", "booktitle")
-
-
-def _md_escape(text: str) -> str:
-    """Neutralizes Markdown emphasis in a value pasted into an entry.
-
-    A title like "The C_str_ Problem" or "A*B benchmarks" would otherwise
-    silently italicize part of the reference list, and a citekey-labelled
-    bibliography that renders differently from the bib file it came from
-    is exactly the sort of quiet drift this project's citation rules
-    exist to prevent.
-    """
-    return re.sub(r"([*_`\[\]])", r"\\\1", text)
-
-
-def format_entry(citekey: str, title: str, year: str, fields: dict[str, str]) -> str:
-    """One IEEE-style bibliography entry, without its "[n] " number.
-
-    `fields` is the ledger's `bib_fields` for this citekey (see
-    ledger_upsert._BIB_FIELDS_KEPT), and may be empty -- a row synced before that
-    column existed, or an entry that genuinely carries nothing but a
-    title. The entry then degrades to title and year rather than failing:
-    a thinner reference is still a true one, and `sync` is what fixes it.
-    """
-    fields = {k.lower(): v for k, v in fields.items()}
-    parts = [
-        _authors_part(fields),
-        _title_part(title, fields),
-        _venue_part(fields),
-        *_locator_parts(fields),
-        _publisher_part(fields),
-    ]
-    if year:
-        parts.append(_md_escape(str(year).strip()))
-
-    entry = _join(parts)
-    if not entry:
-        return f"{citekey}."
-    # A value can already end the sentence itself -- an undated entry's
-    # year is the literal "n.d.", which would otherwise close as "n.d..".
-    return entry if entry.endswith(".") else f"{entry}."
-
-
-def _authors_part(fields: dict[str, str]) -> str:
-    """Authors, or the editors marked as such when there are none."""
-    authors = _format_authors(fields.get("author", ""))
-    if not authors and fields.get("editor"):
-        authors = f"{_format_authors(fields['editor'])}, Eds."
-    return _md_escape(authors) if authors else ""
-
-
-def _title_part(title: str, fields: dict[str, str]) -> str:
-    """The title, quoted or italicised by IEEE's container rule.
-
-    IEEE quotes the title of a work published *inside* something
-    else (an article in a journal, a paper in proceedings) and
-    italicizes the title of a work that is itself the publication (a
-    book, a thesis, a standalone report). The presence of a
-    container field is what distinguishes the two, and is more
-    reliable here than the entry type: this corpus's exports use
-    @misc for both preprints and books.
-    """
-    title = _md_escape((title or "").strip().rstrip("."))
-    if not title:
-        return ""
-    has_container = any(fields.get(f) for f in _VENUE_FIELDS)
-    return f'"{title},"' if has_container else f"*{title}*"
-
-
-def _venue_part(fields: dict[str, str]) -> str:
-    venue = next((fields[f] for f in _VENUE_FIELDS if fields.get(f)), "")
-    if not venue:
-        return ""
-    venue = _md_escape(venue.strip())
-    # "in" only for a paper inside a proceedings/edited volume, which
-    # is what a booktitle (rather than a journal) means.
-    prefix = "in " if fields.get("booktitle") and not fields.get("journal") else ""
-    return f"{prefix}*{venue}*"
-
-
-def _locator_parts(fields: dict[str, str]) -> list[str]:
-    """Volume, number and pages, each only when present."""
-    parts = []
-    if fields.get("volume"):
-        parts.append(f"vol. {_md_escape(fields['volume'])}")
-    if fields.get("number"):
-        parts.append(f"no. {_md_escape(fields['number'])}")
-    if fields.get("pages"):
-        # BibTeX page ranges are "1--10"; IEEE prints an en dash, and the
-        # doubled hyphen is a TeX-ism that shouldn't reach a Markdown reader.
-        pages = re.sub(r"-{2,}", "–", fields["pages"].strip())
-        label = "pp." if re.search(r"[–,]", pages) else "p."
-        parts.append(f"{label} {_md_escape(pages)}")
-    return parts
-
-
-def _publisher_part(fields: dict[str, str]) -> str:
-    """The most specific issuing body the entry names, and only one."""
-    for field_name in ("school", "institution", "publisher", "organization"):
-        if fields.get(field_name):
-            return _md_escape(fields[field_name].strip())
-    return ""
-
-
-def _join(parts: list[str]) -> str:
-    """Comma-joins entry parts without doubling punctuation.
-
-    A quoted title already carries IEEE's comma *inside* the quotes
-    (`"Title,"`), so the separator before the next part is a space, not
-    another comma -- otherwise every article entry reads `"Title,",
-    *Journal*`.
-    """
-    out = ""
-    for part in (p for p in parts if p):
-        if not out:
-            out = part
-        elif out.endswith(',"'):
-            out += f" {part}"
-        else:
-            out += f", {part}"
-    return out
 
 
 def entries(citekeys: list[str], con) -> dict[str, str]:
@@ -352,97 +180,6 @@ def build_section(
         lines.append(f"[{number}] {entry} `{key}`" if label_citekeys else f"[{number}] {entry}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
-
-
-# A bracketed Pandoc citation containing nothing but citekeys separated
-# by ";" -- `[@a]`, `[@a; @b; @c]`, `[-@a]`. Deliberately does NOT match a
-# group carrying a prefix or locator (`[see @a, p. 33]`): collapsing that
-# to a bare number would silently delete the words around it. Those are
-# handled one key at a time by _BARE_KEY_RE below, which leaves the
-# surrounding text alone.
-_CITATION_GROUP_RE = re.compile(
-    r"\[\s*-?@[A-Za-z][A-Za-z0-9_-]*(?:\s*;\s*-?@[A-Za-z][A-Za-z0-9_-]*)*\s*\]"
-)
-# citation_gate's own Pandoc-citation regex, not a second definition of
-# one. Its negative lookbehind is what keeps `@` inside a larger token
-# from reading as a citation -- this project's own tutorial draft carries
-# an author's email address, and a looser pattern would rewrite the
-# `@gmail` in it the moment a citekey happened to be named `gmail`.
-# Sharing the gate's pattern also guarantees that what gets renumbered
-# here is exactly what the gate verified and what used_citekeys() counted;
-# two patterns that drifted apart would silently leave a real citation
-# un-numbered, or number something that was never a citation.
-_BARE_KEY_RE = citation_gate._PANDOC_CITE_RE
-# IEEE, and the CSL style's own `collapse="citation-number"`, only
-# contract a run of *three or more*: [1], [2] stays as it is, [3]-[5]
-# collapses. Matching that keeps the numbered Markdown identical to what
-# the same draft's PDF shows.
-_MIN_COLLAPSIBLE_RUN = 3
-
-
-def _format_numbers(numbers: list[int]) -> str:
-    """`[1]`, `[1], [2]`, `[3]–[6]` -- IEEE's own contraction rules."""
-    runs: list[list[int]] = []
-    for n in sorted(set(numbers)):
-        if runs and n == runs[-1][-1] + 1:
-            runs[-1].append(n)
-        else:
-            runs.append([n])
-
-    out = []
-    for run in runs:
-        if len(run) >= _MIN_COLLAPSIBLE_RUN:
-            out.append(f"[{run[0]}]–[{run[-1]}]")
-        else:
-            out.extend(f"[{n}]" for n in run)
-    return ", ".join(out)
-
-
-def renumber(text: str, numbers: dict[str, int]) -> str:
-    """Rewrites `text`'s citekey markers as IEEE numbers from `numbers`.
-
-    Scans a code-blanked copy to locate the citations, then edits the
-    original at those offsets -- `citation_gate._blank_code` replaces a
-    fenced block or code span with spaces while preserving every
-    character position, so a `[@key]` shown inside an example (which the
-    gate itself ignores) is left exactly as written here too.
-
-    A key with no number -- which can only happen if a caller passes a
-    partial map -- is left untouched rather than rendered as `[None]`.
-    """
-    blanked = citation_gate._blank_code(text)
-
-    edits: list[tuple[int, int, str]] = []
-    covered: list[tuple[int, int]] = []
-    for match in _CITATION_GROUP_RE.finditer(blanked):
-        keys = _BARE_KEY_RE.findall(match.group())
-        # Marked covered either way, so that a group holding even one
-        # unnumbered key is left exactly as written. Without this the
-        # per-key pass below would still rewrite its *known* keys and
-        # leave `[[1]; @zzz]` -- a mangling that is worse than the
-        # untouched marker, which at least reads as an obvious omission.
-        covered.append((match.start(), match.end()))
-        if any(k not in numbers for k in keys):
-            continue
-        edits.append((match.start(), match.end(), _format_numbers([numbers[k] for k in keys])))
-
-    # Anything left: a bare `@key`, or one inside a group with a prefix or
-    # locator. Replaced individually so the words around it survive.
-    for match in _BARE_KEY_RE.finditer(blanked):
-        if any(start <= match.start() < end for start, end in covered):
-            continue
-        number = numbers.get(match.group(1))
-        if number is not None:
-            edits.append((match.start(), match.end(), f"[{number}]"))
-
-    out = []
-    position = 0
-    for start, end, replacement in sorted(edits):
-        out.append(text[position:start])
-        out.append(replacement)
-        position = end
-    out.append(text[position:])
-    return "".join(out)
 
 
 def numbered_markdown(text: str, con, heading: str | None = None) -> str:
