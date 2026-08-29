@@ -16,7 +16,13 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, passages, pdf_text
-from chitragupta.enrich import docling_parse
+from chitragupta.enrich import (
+    _docling_cache,
+    _docling_figures,
+    _docling_pool,
+    _docling_reuse,
+    docling_parse,
+)
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -127,7 +133,7 @@ def fake_docling(monkeypatch):
     FakeDocumentConverter.last_format_options = None
     FakeDocumentConverter.call_count = 0
     FakeDocumentConverter.build_count = 0
-    docling_parse._reset_worker_converter()
+    _docling_pool._reset_worker_converter()
     FakeDocumentConverter.pictures = []
     FakeDocumentConverter.texts = []
     FakeDocument.last_image_mode = None
@@ -364,7 +370,7 @@ class TestImageExtraction:
         md = tmp_path / "doc.md"
         md.write_text("text\n\n![Image](doc_artifacts/img.png)\n")
 
-        names = docling_parse._relativise_image_refs(md)
+        names = _docling_figures._relativise_image_refs(md)
 
         assert names == ["doc_artifacts/img.png"]
         assert "![Image](doc_artifacts/img.png)" in md.read_text()
@@ -378,7 +384,7 @@ class TestImageExtraction:
         nested = md.parent / "doc_artifacts" / "sub" / "img.png"
         md.write_text(f"text\n\n![Image]({nested})\n")
 
-        names = docling_parse._relativise_image_refs(md)
+        names = _docling_figures._relativise_image_refs(md)
 
         assert names == ["doc_artifacts/sub/img.png"]
         assert "\\" not in md.read_text()
@@ -390,7 +396,7 @@ class TestImageExtraction:
         outside = tmp_path.parent / "elsewhere" / "img.png"
         md.write_text(f"text\n\n![Image]({outside})\n")
 
-        names = docling_parse._relativise_image_refs(md)
+        names = _docling_figures._relativise_image_refs(md)
 
         assert names == [str(outside)]
         assert str(outside) in md.read_text()
@@ -402,7 +408,7 @@ class TestImageExtraction:
         names = ["only_one.png"]
         pics = [FakePicture("Figure 1", page=1), FakePicture("Figure 2", page=2)]
         doc = self._doc(tmp_path)
-        records = docling_parse._figure_records(doc, types.SimpleNamespace(pictures=pics), names)
+        records = _docling_figures._figure_records(doc, types.SimpleNamespace(pictures=pics), names)
         assert [r["image"] for r in records] == [None, None]
         assert records[0]["cite"].startswith("Figure 1 of")  # citation still works
 
@@ -563,7 +569,7 @@ class TestReusingTheCorpusLayersParse:
         passages.sidecar_path(doc.citekey).mkdir()
 
         assert (
-            docling_parse._reuse_corpus_parse(doc, config.DOCLING_DIR / "a2024.md", "a2024")
+            _docling_reuse._reuse_corpus_parse(doc, config.DOCLING_DIR / "a2024.md", "a2024")
             is False
         )
         assert not (config.DOCLING_DIR / "a2024.md").exists()
@@ -586,7 +592,7 @@ class TestReusingTheCorpusLayersParse:
             return [(d.citekey, "ok: parsed", [1, 2]) for d, _threads in jobs]
 
         monkeypatch.setattr(
-            docling_parse,
+            _docling_pool,
             "_executor_for",
             lambda workers: types.SimpleNamespace(map=fake_map, shutdown=lambda **kw: None),
         )
@@ -857,21 +863,21 @@ class TestIncrementalSkip:
 
 class TestCacheLoading:
     def test_missing_cache_file_is_empty(self, isolated_config):
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_corrupt_json_is_treated_as_empty(self, isolated_config):
         isolated_config.CONTENT_DIR.mkdir(parents=True)
         isolated_config.DOCLING_CACHE_PATH.write_text("{not valid json")
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_non_dict_top_level_is_treated_as_empty(self, isolated_config):
         isolated_config.CONTENT_DIR.mkdir(parents=True)
         isolated_config.DOCLING_CACHE_PATH.write_text("[1, 2, 3]")
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def _write_cache(self, isolated_config, items, **overrides):
         payload = {
-            "version": docling_parse._CACHE_VERSION,
+            "version": _docling_cache._CACHE_VERSION,
             "images": isolated_config.DOCLING_IMAGES,
             "ocr": isolated_config.PARSER_OCR,
             "items": items,
@@ -890,25 +896,25 @@ class TestCacheLoading:
                 "bad_non_int": [1, "two"],
             },
         )
-        assert docling_parse._load_cache() == {"good2024": [123, 456]}
+        assert _docling_cache._load_cache() == {"good2024": [123, 456]}
 
     def test_stale_schema_version_invalidates_whole_cache(self, isolated_config):
         self._write_cache(
             isolated_config,
             {"good2024": [123, 456]},
-            version=docling_parse._CACHE_VERSION + 1,
+            version=_docling_cache._CACHE_VERSION + 1,
         )
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_non_dict_items_is_treated_as_empty(self, isolated_config):
         self._write_cache(isolated_config, ["not", "a", "dict"])
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_unversioned_legacy_cache_is_invalidated(self, isolated_config):
         """Pre-versioning caches were a bare {citekey: fingerprint} dict."""
         isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
         isolated_config.DOCLING_CACHE_PATH.write_text(json.dumps({"good2024": [123, 456]}))
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_toggling_images_invalidates_whole_cache(self, isolated_config, monkeypatch):
         """The trap this guards: DOCLING_IMAGES changes what every .md
@@ -916,10 +922,10 @@ class TestCacheLoading:
         the PDF -- so without this the old image-less output is served
         forever."""
         self._write_cache(isolated_config, {"good2024": [123, 456]})
-        assert docling_parse._load_cache() == {"good2024": [123, 456]}
+        assert _docling_cache._load_cache() == {"good2024": [123, 456]}
 
         monkeypatch.setattr(isolated_config, "DOCLING_IMAGES", not isolated_config.DOCLING_IMAGES)
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_toggling_ocr_invalidates_whole_cache(self, isolated_config, monkeypatch):
         """Same trap as DOCLING_IMAGES above, on a second axis: OCR
@@ -927,15 +933,15 @@ class TestCacheLoading:
         between reading a scan and not), while the (size, mtime_ns)
         fingerprint still only sees the PDF."""
         self._write_cache(isolated_config, {"good2024": [123, 456]})
-        assert docling_parse._load_cache() == {"good2024": [123, 456]}
+        assert _docling_cache._load_cache() == {"good2024": [123, 456]}
 
         monkeypatch.setattr(isolated_config, "PARSER_OCR", not isolated_config.PARSER_OCR)
-        assert docling_parse._load_cache() == {}
+        assert _docling_cache._load_cache() == {}
 
     def test_save_then_load_round_trips(self, isolated_config):
         isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
-        docling_parse._save_cache({"a2024": [1, 2]})
-        assert docling_parse._load_cache() == {"a2024": [1, 2]}
+        _docling_cache._save_cache({"a2024": [1, 2]})
+        assert _docling_cache._load_cache() == {"a2024": [1, 2]}
 
     def test_corrupt_cache_does_not_abort_the_batch(self, isolated_config, fake_docling, tmp_path):
         isolated_config.CONTENT_DIR.mkdir(parents=True)
@@ -954,9 +960,9 @@ class TestSaveCacheFailureIsNonFatal:
         def boom(*args, **kwargs):
             raise OSError("disk full")
 
-        monkeypatch.setattr(docling_parse.os, "replace", boom)
+        monkeypatch.setattr(_docling_cache.os, "replace", boom)
 
-        docling_parse._save_cache({"a2024": [1, 2]})
+        _docling_cache._save_cache({"a2024": [1, 2]})
 
         assert "WARNING" in capsys.readouterr().out
 
@@ -966,7 +972,7 @@ class TestSaveCacheFailureIsNonFatal:
         def boom(*args, **kwargs):
             raise OSError("disk full")
 
-        monkeypatch.setattr(docling_parse.os, "replace", boom)
+        monkeypatch.setattr(_docling_cache.os, "replace", boom)
 
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
@@ -1012,7 +1018,7 @@ class TestParseCorpusParallel:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(docling_parse, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
 
     def _docs(self, tmp_path, n=5):
         docs = []
@@ -1054,9 +1060,9 @@ class TestParseCorpusParallel:
         docling_parse.parse_corpus(docs)
 
         submitted = []
-        real_parse_one = docling_parse.parse_one
+        real_parse_one = _docling_pool.parse_one
         monkeypatch.setattr(
-            docling_parse,
+            _docling_pool,
             "parse_one",
             lambda job: submitted.append(job[0].citekey) or real_parse_one(job),
         )
@@ -1087,9 +1093,9 @@ class TestParseCorpusParallel:
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
         submitted = []
-        real_parse_one = docling_parse.parse_one
+        real_parse_one = _docling_pool.parse_one
         monkeypatch.setattr(
-            docling_parse,
+            _docling_pool,
             "parse_one",
             lambda job: submitted.append(job[0].citekey) or real_parse_one(job),
         )
@@ -1106,12 +1112,12 @@ class TestParallelHelpers:
         assert docling_parse._is_cached(doc, {"gone": [1, 2]}) is False
 
     def test_pdf_size_of_a_missing_file_sorts_last(self, tmp_path):
-        assert docling_parse._pdf_size(str(tmp_path / "gone.pdf")) == 0
+        assert _docling_pool._pdf_size(str(tmp_path / "gone.pdf")) == 0
 
     def test_pdf_size_of_none_sorts_last(self):
         """corpus docs without a PDF never reach the pool, but the sort
         key must not raise if one does."""
-        assert docling_parse._pdf_size(None) == 0
+        assert _docling_pool._pdf_size(None) == 0
 
     def test_executor_claims_a_gpu_per_worker(self, monkeypatch):
         """Asserted through a recording stub rather than the executor's
@@ -1125,7 +1131,7 @@ class TestParallelHelpers:
 
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor", record)
-        with docling_parse._executor_for(2):
+        with _docling_pool._executor_for(2):
             pass
 
         assert captured["max_workers"] == 2
@@ -1146,7 +1152,7 @@ class TestParallelHelpers:
             "ProcessPoolExecutor",
             lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext(),
         )
-        with docling_parse._executor_for(2):
+        with _docling_pool._executor_for(2):
             pass
 
         assert captured["initargs"][2] == [1, 2]
@@ -1164,7 +1170,7 @@ class TestParallelHelpers:
             "ProcessPoolExecutor",
             lambda **kwargs: captured.update(kwargs) or contextlib.nullcontext(),
         )
-        with docling_parse._executor_for(2):
+        with _docling_pool._executor_for(2):
             pass
 
         pdf_text._reset_worker_device()
@@ -1181,7 +1187,7 @@ class TestParallelHelpers:
         monkeypatch.setattr(
             pdf_text._pool, "ProcessPoolExecutor", lambda **kwargs: contextlib.nullcontext()
         )
-        with docling_parse._executor_for(2):
+        with _docling_pool._executor_for(2):
             pass
 
         assert "WARNING skipping cuda:0" in capsys.readouterr().out
@@ -1198,7 +1204,7 @@ class TestParallelHelpers:
         monkeypatch.setattr(
             pdf_text._pool, "ProcessPoolExecutor", lambda **kwargs: contextlib.nullcontext()
         )
-        with docling_parse._executor_for(2):
+        with _docling_pool._executor_for(2):
             pass
 
         assert "NOTE fell back" in capsys.readouterr().out
@@ -1228,7 +1234,7 @@ class TestParseCorpusParallelEdges:
     @pytest.fixture(autouse=True)
     def _pool(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(docling_parse, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
 
     def test_already_cached_docs_are_still_reported_in_a_parallel_run(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
@@ -1300,9 +1306,9 @@ class TestWorkerConverterReuse:
     @pytest.fixture(autouse=True)
     def _reset(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        docling_parse._reset_worker_converter()
+        _docling_pool._reset_worker_converter()
         yield
-        docling_parse._reset_worker_converter()
+        _docling_pool._reset_worker_converter()
 
     def _doc(self, tmp_path, name):
         pdf = tmp_path / f"{name}.pdf"
@@ -1313,13 +1319,13 @@ class TestWorkerConverterReuse:
         self, isolated_config, fake_docling, tmp_path
     ):
         for i in range(5):
-            docling_parse.parse_one((self._doc(tmp_path, f"d{i}"), 4))
+            _docling_pool.parse_one((self._doc(tmp_path, f"d{i}"), 4))
         assert FakeDocumentConverter.build_count == 1
         assert FakeDocumentConverter.call_count == 5
 
     def test_a_changed_thread_budget_rebuilds_it(self, isolated_config, fake_docling, tmp_path):
-        docling_parse.parse_one((self._doc(tmp_path, "a"), 4))
-        docling_parse.parse_one((self._doc(tmp_path, "b"), 2))
+        _docling_pool.parse_one((self._doc(tmp_path, "a"), 4))
+        _docling_pool.parse_one((self._doc(tmp_path, "b"), 2))
         assert FakeDocumentConverter.build_count == 2
 
     def test_a_changed_device_rebuilds_it(
@@ -1328,17 +1334,17 @@ class TestWorkerConverterReuse:
         """Caching on "was one built already" alone would leave a worker
         using a converter pinned to another worker's GPU."""
         monkeypatch.setattr(pdf_text._worker, "_WORKER_DEVICE", "cuda:0")
-        docling_parse.parse_one((self._doc(tmp_path, "a"), 4))
+        _docling_pool.parse_one((self._doc(tmp_path, "a"), 4))
         monkeypatch.setattr(pdf_text._worker, "_WORKER_DEVICE", "cuda:1")
-        docling_parse.parse_one((self._doc(tmp_path, "b"), 4))
+        _docling_pool.parse_one((self._doc(tmp_path, "b"), 4))
         assert FakeDocumentConverter.build_count == 2
 
     def test_a_changed_image_setting_rebuilds_it(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
-        docling_parse.parse_one((self._doc(tmp_path, "a"), 4))
+        _docling_pool.parse_one((self._doc(tmp_path, "a"), 4))
         monkeypatch.setattr(isolated_config, "DOCLING_IMAGES", True)
-        docling_parse.parse_one((self._doc(tmp_path, "b"), 4))
+        _docling_pool.parse_one((self._doc(tmp_path, "b"), 4))
         assert FakeDocumentConverter.build_count == 2
 
 
@@ -1351,7 +1357,7 @@ class TestParseCorpusInterrupt:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(docling_parse, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
 
     def _docs(self, tmp_path, n=6):
         docs = []
@@ -1365,7 +1371,7 @@ class TestParseCorpusInterrupt:
         self, isolated_config, fake_docling, monkeypatch, tmp_path, capsys
     ):
         seen = []
-        real = docling_parse.parse_one
+        real = _docling_pool.parse_one
 
         def interrupt_after_two(job):
             seen.append(job[0].citekey)
@@ -1373,7 +1379,7 @@ class TestParseCorpusInterrupt:
                 raise KeyboardInterrupt
             return real(job)
 
-        monkeypatch.setattr(docling_parse, "parse_one", interrupt_after_two)
+        monkeypatch.setattr(_docling_pool, "parse_one", interrupt_after_two)
         docs = self._docs(tmp_path)
         with pytest.raises(KeyboardInterrupt):
             docling_parse.parse_corpus(docs)

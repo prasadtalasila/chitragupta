@@ -67,7 +67,8 @@ Two entry points reach it, sharing the same machinery:
           │                                        │
           │ chitragupta/sync.py                            │ chitragupta/enrich/docling_parse.py
           │ _parse_parallel()                      │ parse_corpus()
-          │ _executor_for()                        │ _executor_for()
+          │ _executor_for()                        │ chitragupta/enrich/_docling_pool.py
+          │                                        │ _executor_for()
           └────────────────┬───────────────────────┘
                            ▼
                    chitragupta/pdf_text/
@@ -75,7 +76,7 @@ Two entry points reach it, sharing the same machinery:
    process_pool_context · prestart_pool · init_worker · usable_devices
 ```
 
-`chitragupta/enrich/docling_parse.py` keeps its own `_executor_for` rather than
+`chitragupta/enrich/_docling_pool.py` keeps its own `_executor_for` rather than
 importing `sync`'s, so `chitragupta/enrich/` never depends on the core entry
 point — the dependency runs the other way everywhere else. Both delegate
 every *policy* decision to `pdf_text`, so "how many workers, which start

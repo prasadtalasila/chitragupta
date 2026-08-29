@@ -60,12 +60,18 @@ what every .md should contain.
 import json
 import logging
 import os
-import re
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
 from chitragupta import config, logging_setup, passages, pdf_text
+from chitragupta.enrich._docling_cache import _load_cache, _save_cache
+from chitragupta.enrich._docling_figures import _figure_records, _relativise_image_refs
+from chitragupta.enrich._docling_pool import _LazyConverter, _parse_with_pool
+from chitragupta.enrich._docling_reuse import (
+    _corpus_parse_available,
+    _outputs_present,
+    _reuse_corpus_parse,
+)
 from chitragupta.enrich.corpus import CorpusDoc
 
 # Fixed name, not __name__: this module has no __main__ block of its
@@ -73,100 +79,6 @@ from chitragupta.enrich.corpus import CorpusDoc
 # tree logging_setup.configure() pins permissive -- the same trap
 # chitragupta/sync.py documents at its own getLogger call.
 logger = logging.getLogger("chitragupta.enrich.docling_parse")
-
-# Bump when a change to what parse_doc() *writes* makes an existing .md
-# stale even though its PDF hasn't changed -- the (size, mtime_ns)
-# fingerprint below only sees the input, never the output shape, so
-# without this an option change silently serves last run's files
-# forever. Mirrors chitragupta/retrieval.py's _INDEX_SCHEMA_VERSION.
-# config.DOCLING_IMAGES is stored alongside it for the same reason:
-# it's a *runtime* toggle, so it can't be folded into this constant.
-# 2: added <stem>.passages.json, so a cache written by version 1 has
-# no sidecar for citation_provenance to read even though its .md is
-# current.
-_CACHE_VERSION = 2
-
-
-def _load_cache() -> dict:
-    """Corrupt or unexpected-shape cache data is treated as empty rather
-    than raised -- see chitragupta/retrieval.py's _load_cache for the same
-    defensive shape, applied here so a truncated write (e.g. a killed
-    mid-run process) doesn't take down every doc in the next parse_corpus
-    call, just cost it one avoidable re-parse per doc.
-
-    A version or image-setting mismatch invalidates the whole cache
-    rather than any one entry: both change what every .md in
-    config.DOCLING_DIR should contain, not just one document's."""
-    try:
-        data = json.loads(config.DOCLING_CACHE_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(data, dict):
-        return {}
-    if (
-        data.get("version") != _CACHE_VERSION
-        or data.get("images") != config.DOCLING_IMAGES
-        or data.get("ocr") != config.PARSER_OCR
-    ):
-        return {}
-    items = data.get("items")
-    if not isinstance(items, dict):
-        return {}
-    return {
-        citekey: fp
-        for citekey, fp in items.items()
-        if isinstance(fp, list) and len(fp) == 2 and all(isinstance(n, int) for n in fp)
-    }
-
-
-def _save_cache(cache: dict) -> None:
-    """Atomic write-then-replace so a process killed mid-save leaves the
-    previous, still-valid cache in place instead of a torn file --
-    doesn't need chitragupta/retrieval.py's per-writer-unique temp name (its
-    concurrent-subagent scenario doesn't apply: enrich.py runs
-    this stage from a single process).
-
-    A failure to persist (permission, disk full) is reported, not
-    raised (PR #10 review): by the time this runs, the expensive part
-    -- Docling itself -- has already succeeded, so failing the whole
-    parse over a cache write is worse than the alternative of just
-    re-paying that one doc's parse cost next call."""
-    try:
-        config.DOCLING_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = config.DOCLING_CACHE_PATH.with_suffix(".json.tmp")
-        payload = {
-            "version": _CACHE_VERSION,
-            "images": config.DOCLING_IMAGES,
-            "ocr": config.PARSER_OCR,
-            "items": cache,
-        }
-        tmp_path.write_text(json.dumps(payload), encoding="utf-8")
-        os.replace(tmp_path, config.DOCLING_CACHE_PATH)
-    except OSError as exc:
-        logging_setup.say(
-            logger,
-            f"  WARNING: couldn't persist Docling's incremental cache "
-            f"({exc}) -- next run will re-parse what was already done "
-            "this run.",
-            level=logging.WARNING,
-        )
-
-
-# Leading "Figure 3." / "Fig. 1.1" / "Table 2:" in a caption -- the
-# paper's *own* numbering, which is the only trustworthy source for it.
-# Docling's picture order can't stand in: publisher logos and licence
-# badges are pictures too (3 of the first 3 on a real MDPI paper), so
-# the Nth picture is routinely not the paper's Figure N.
-#
-# The number has to be captured whole. Chapter-scoped numbering ("Fig.
-# 1.1" ... "Fig. 1.4", the convention in every edited book chapter in
-# this corpus) and sub-figures ("Figure 2a") are both common, and
-# matching only the leading integer collapses all four of that chapter's
-# distinct figures onto a single "Fig 1" -- a citation that points at
-# the wrong picture, which is worse than declining to number it.
-_CAPTION_LABEL_RE = re.compile(
-    r"^\s*(Figure|Fig\.?|Table|Scheme)\s*(\d+(?:\.\d+)*[a-z]?)\b", re.IGNORECASE
-)
 
 
 def _build_converter(threads: int | None = None) -> Any:
@@ -211,209 +123,6 @@ def _build_converter(threads: int | None = None) -> Any:
     )
 
 
-_IMAGE_REF_RE = re.compile(r"(!\[[^\]]*\]\()([^)]+)(\))")
-
-
-def _relativise_image_refs(md_path: Path) -> list[str]:
-    """Rewrite the .md's image references to be relative to the .md, and
-    return them in document order.
-
-    Docling's `save_as_markdown` writes *absolute* paths, which bakes this
-    host's directory layout into every file -- moving `content/docling/`,
-    or generating it in a container and reading it elsewhere, breaks all
-    of them. Relative refs keep the .md and its `_artifacts/` directory
-    movable as a unit.
-
-    The returned names are also what `_figure_records` records for each
-    picture: the document's own `pic.image.uri` is a `data:` URI carrying
-    the whole PNG base64-encoded, and `save_as_markdown` does not rewrite
-    it, so the markdown is the only place the written filename appears.
-    """
-    text = md_path.read_text(encoding="utf-8")
-    base = md_path.parent
-    names: list[str] = []
-
-    def rewrite(match) -> str:
-        target = match.group(2)
-        path = Path(target)
-        if path.is_absolute():
-            try:
-                # as_posix(), not str(): a Markdown image reference is a
-                # URL-ish path and must use forward slashes. On Windows
-                # str() yields "dir\image.png", which is not a valid
-                # reference anywhere -- including on the Windows box that
-                # produced it -- and would make content/docling/ readable
-                # only on the platform it was generated on.
-                target = path.relative_to(base).as_posix()
-            except ValueError:
-                # Somewhere outside the .md's own tree -- leave it alone
-                # rather than emit a fragile chain of `../`.
-                pass
-        names.append(target)
-        return match.group(1) + target + match.group(3)
-
-    md_path.write_text(_IMAGE_REF_RE.sub(rewrite, text), encoding="utf-8")
-    return names
-
-
-def _figure_records(doc: CorpusDoc, dl_doc, image_names: list[str] | None = None) -> list[dict]:
-    """One record per extracted picture: where it sits in the source, and
-    the exact string to cite it by.
-
-    Deliberately produces a *textual* citation, never an instruction to
-    reproduce the image -- see DEVELOPER.md's "Figures and copyright".
-    A figure whose caption carries no number is cited by page, rather
-    than by a number this module would otherwise have to invent.
-
-    `image_names` pairs positionally with `dl_doc.pictures` (both are in
-    document order). A count mismatch means that assumption broke, so
-    every record drops the filename rather than risk pointing a figure at
-    someone else's image.
-    """
-    if image_names is not None and len(image_names) != len(dl_doc.pictures):
-        image_names = None
-    records = []
-    for index, pic in enumerate(dl_doc.pictures):
-        caption = (pic.caption_text(dl_doc) or "").strip()
-        page = pic.prov[0].page_no if pic.prov else None
-        records.append(
-            {
-                "page": page,
-                "caption": caption or None,
-                "cite": _figure_cite(doc.citekey, caption, page),
-                "image": image_names[index] if image_names else None,
-            }
-        )
-    return records
-
-
-def _figure_cite(citekey: str, caption: str, page: "int | None") -> str:
-    """The exact string a draft cites one figure by.
-
-    A numbered caption is cited by its own number; an unnumbered one by
-    page; a figure with neither is named as unplaced rather than given a
-    number this module would otherwise have to invent.
-    """
-    ref = f"[@{citekey}]"
-    label_match = _CAPTION_LABEL_RE.match(caption)
-    if label_match:
-        kind = label_match.group(1).rstrip(".")
-        # "Fig"/"Fig." -> "Figure", so the citation reads the way a
-        # reader would write it, rather than echoing the source's
-        # abbreviation into the middle of a sentence.
-        kind = "Figure" if kind.lower().startswith("fig") else kind.capitalize()
-        return f"{kind} {label_match.group(2)} of {ref}" + (f", p.{page}" if page else "")
-    if page:
-        return f"the figure on p.{page} of {ref}"
-    return f"an unplaced figure in {ref}"
-
-
-def _outputs_present(stem: str) -> bool:
-    """Every file this stage writes for `stem`, not just the .md.
-
-    The fingerprint only says the *input* PDF is unchanged. Checking one
-    output was enough when the .md was the only one; now a deleted or
-    corrupted `<stem>.passages.json` (or `<stem>.figures.json`, with
-    images on) would be skipped over on every subsequent run and stay
-    missing forever, because the .md it is paired with is still there.
-    """
-    expected = [
-        config.DOCLING_DIR / f"{stem}.md",
-        config.DOCLING_DIR / f"{stem}.passages.json",
-    ]
-    if config.DOCLING_IMAGES:
-        expected.append(config.DOCLING_DIR / f"{stem}.figures.json")
-    return all(path.exists() for path in expected)
-
-
-def _corpus_parse_available(doc: CorpusDoc) -> bool:
-    """Whether the corpus layer has already Docling-parsed this document.
-
-    The signal is the corpus layer's own passage sidecar. Only a Docling
-    parse writes one -- `pdftotext` returns no records, and
-    `pdf_text.extract_text` clears any stale sidecar before every parse --
-    so its presence means `content/parsed/<citekey>.txt` is Docling
-    Markdown rather than column-spliced flat text.
-
-    Refused in three cases:
-
-    - a document the corpus layer has not written parsed text for
-      (`text_path` unset -- e.g. a bib entry with no PDF attachment, or
-      one whose parse failed);
-    - `config.DOCLING_IMAGES`, because the corpus layer writes no figure
-      bitmaps and no `<stem>.figures.json`, and adopting a parse that
-      lacks them would leave this stage's own output incomplete;
-    - artefacts older than the PDF, which means the PDF has been replaced
-      since the corpus layer read it.
-
-    One gap, stated rather than hidden: this cannot tell which
-    `[parser].ocr` setting produced the corpus text. But that staleness
-    already exists in `content/parsed/` the moment the setting changes --
-    adopting it here propagates it rather than creating it, and the fix is
-    the same either way (`python -m chitragupta.corpus sync --reparse`).
-    """
-    if config.DOCLING_IMAGES or not doc.text_path:
-        return False
-    parsed = Path(doc.text_path)
-    sidecar = passages.sidecar_path(doc.citekey)
-    try:
-        pdf_mtime = os.stat(doc.pdf_path).st_mtime_ns
-        return min(parsed.stat().st_mtime_ns, sidecar.stat().st_mtime_ns) >= pdf_mtime
-    except OSError:
-        # Either artefact missing, or an unreadable PDF -- parse it.
-        return False
-
-
-def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
-    """Write this stage's outputs from the corpus layer's, without parsing.
-
-    The dependency runs the way this repository allows it to: the
-    enrichment layer reads the corpus layer's artefacts, never the
-    reverse. Nothing in `chitragupta/` outside this package changes shape to make
-    it possible, and a corpus layer that has never run docling simply
-    leaves this returning False.
-
-    What makes the two interchangeable is that both converters are built
-    from the same two settings (`config.PARSER_OCR`,
-    `config.PARSER_DOCUMENT_TIMEOUT`) and, with picture bitmaps off, ask
-    Docling for the same thing -- so for one PDF they produce the same
-    document. The passage sidecar is then literally the same records from
-    the same `passages.passage_records()`, and the Markdown differs only
-    by the form feeds the corpus layer asks for and this layer does not.
-    Removing them, and collapsing the blank run each one leaves behind,
-    gives back what `export_to_markdown()` would have returned -- the same
-    normalisation `strip_image_refs` already applies before embedding.
-
-    Worth what it saves: a full second parse of every document the corpus
-    layer has already parsed, measured at 6.65s per PDF serial
-    (docs/PERFORMANCE.md).
-    """
-    if not _corpus_parse_available(doc):
-        return False
-    # Both reads before either write, and a damaged one declines the reuse
-    # instead of raising. A sidecar truncated mid-write by a killed
-    # process can split a multi-byte character, which fails to decode --
-    # chitragupta/passages.py's reader already tolerates exactly that, for the
-    # same reason. Here the cost of not tolerating it would be worse than
-    # a fallback: parse_doc would report a hard error for a document whose
-    # PDF is sitting right there, perfectly parseable.
-    try:
-        markdown = Path(doc.text_path).read_text(encoding="utf-8", errors="replace")
-        records = passages.sidecar_path(doc.citekey).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return False
-    # Each form feed becomes the paragraph break it sits inside, rather
-    # than being deleted: Docling writes them surrounded by blank lines,
-    # but a form feed flush against the text either side would otherwise
-    # fuse the last word of one page onto the first word of the next.
-    # encoding spelled out on the way back down, not just on the way up:
-    # write_text without one encodes with the *platform* encoding, so any
-    # non-ASCII paper fails with UnicodeEncodeError under a C-locale host.
-    out_path.write_text(re.sub(r"\n{3,}", "\n\n", markdown.replace("\f", "\n\n")), encoding="utf-8")
-    (config.DOCLING_DIR / f"{stem}.passages.json").write_text(records, encoding="utf-8")
-    return True
-
-
 def _fingerprint(doc: CorpusDoc) -> list:
     """(size, mtime_ns) of a doc's PDF -- the cache key parse_doc uses."""
     st = os.stat(doc.pdf_path)
@@ -433,27 +142,6 @@ def _is_cached(doc: CorpusDoc, cache: dict) -> bool:
         return cache.get(doc.citekey) == _fingerprint(doc) and _outputs_present(doc.citekey)
     except OSError:
         return False
-
-
-def _pdf_size(path: str | None) -> int:
-    """Bytes, or 0 if it can't be stat'd -- only used to order work."""
-    try:
-        return os.path.getsize(path)
-    except (OSError, TypeError):
-        return 0
-
-
-def _executor_for(workers: int) -> ProcessPoolExecutor:
-    """This module's docling pool, built by the one place that knows how
-    (pdf_text.docling_process_pool -- see its docstring for why the pool
-    itself moved there, in #290). Kept as its own named function, rather
-    than calling that helper inline at the one call site below, purely as
-    the test seam `tests/test_enrich_docling_parse.py` already
-    monkeypatches.
-    """
-    return pdf_text.docling_process_pool(
-        workers, lambda msg: logging_setup.say(logger, msg, level=logging.WARNING)
-    )
 
 
 def _convert(doc: CorpusDoc, converter) -> "object":
@@ -558,79 +246,6 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     return out_path
 
 
-class _LazyConverter:
-    """One converter for the whole corpus, built on first actual use.
-
-    Two things at once, both of which matter on a 501-PDF corpus:
-    building it once means Docling's layout/table/OCR models load once
-    rather than per document (16.5s of measured cold start each time),
-    and deferring the build means a fully-cached run -- the common case
-    for a re-run of `enrich.py --stages docling` -- never loads
-    them at all.
-    """
-
-    def __init__(self) -> None:
-        self._converter = None
-
-    def convert(self, pdf_path) -> Any:
-        if self._converter is None:
-            self._converter = _build_converter()
-        return self._converter.convert(pdf_path)
-
-
-# One converter per worker *process*, not per document. A pool worker
-# handles many documents over its life, and DocumentConverter keeps its
-# initialized_pipelines cache on the instance -- so building one per
-# document would reload Docling's layout, table and OCR models for every
-# file, which is exactly the cost the serial path stopped paying in
-# v0.12.0. Keyed on everything that changes what a converter *is*, so a
-# changed setting can't be served a stale one.
-_WORKER_CONVERTER = None
-_WORKER_CONVERTER_KEY = None
-
-
-def _worker_converter(threads: int | None) -> Any:
-    global _WORKER_CONVERTER, _WORKER_CONVERTER_KEY
-
-    key = (
-        threads,
-        pdf_text.worker_device(),
-        config.PARSER_OCR,
-        config.DOCLING_IMAGES,
-        config.DOCLING_IMAGE_SCALE,
-        config.PARSER_DOCUMENT_TIMEOUT,
-    )
-    if _WORKER_CONVERTER is None or _WORKER_CONVERTER_KEY != key:
-        _WORKER_CONVERTER = _build_converter(threads)
-        _WORKER_CONVERTER_KEY = key
-    return _WORKER_CONVERTER
-
-
-def _reset_worker_converter() -> None:
-    """Test hook -- module state otherwise leaks between tests."""
-    global _WORKER_CONVERTER, _WORKER_CONVERTER_KEY
-    _WORKER_CONVERTER = None
-    _WORKER_CONVERTER_KEY = None
-
-
-def parse_one(job: tuple) -> tuple:
-    """One worker's unit of work: (doc, threads) in, (citekey, status,
-    fingerprint) out.
-
-    Module-level and exception-free by design -- both the argument and
-    the result have to survive pickling to and from a worker process, and
-    an arbitrary Docling exception may not. The fingerprint travels back
-    so the *parent* owns every cache write, the same way chitragupta/sync.py
-    keeps every ledger write on the main process.
-    """
-    doc, threads = job
-    try:
-        out_path = parse_doc(doc, cache={}, converter=_worker_converter(threads))
-        return doc.citekey, f"ok: {out_path}", _fingerprint(doc)
-    except Exception as exc:  # noqa: BLE001  # report per-doc, don't abort the batch
-        return doc.citekey, f"error: {exc}", None
-
-
 def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     """Returns {citekey: 'ok' | 'error: ...'} -- never raises for a single doc failure.
 
@@ -693,53 +308,3 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
                 status[doc.citekey] = f"error: {exc}"
     _save_cache(cache)
     return status
-
-
-def _parse_with_pool(
-    docs: list[CorpusDoc],
-    pending: list[CorpusDoc],
-    cache: dict,
-    status: dict[str, str],
-    workers: int,
-) -> None:
-    """parse_corpus's parallel leg: the cached docs adopted serially, the
-    rest fanned out to a process pool. Mutates `status` and `cache` in
-    place -- the caller owns saving the cache, except on interrupt, where
-    this saves before re-raising so finished work survives the Ctrl+C.
-    """
-    threads = pdf_text.docling_threads(workers)
-    # Biggest-file-first, same LPT reasoning as chitragupta/sync.py: one
-    # 675-page document in this corpus would otherwise define the
-    # wall clock all by itself if it were picked up last.
-    jobs = [(d, threads) for d in sorted(pending, key=lambda d: -_pdf_size(d.pdf_path))]
-    cached = [d for d in docs if d not in pending]
-    for doc in cached:
-        try:
-            status[doc.citekey] = f"ok: {parse_doc(doc, cache=cache)}"
-        except Exception as exc:  # noqa: BLE001 -- as below
-            status[doc.citekey] = f"error: {exc}"
-    # Explicit shutdown rather than `with`, for the reason chitragupta/sync.py
-    # gives: the context manager waits for every queued job, so
-    # Ctrl+C would drain the whole corpus before exiting.
-    executor = _executor_for(workers)
-    done = 0
-    try:
-        for citekey, doc_status, fingerprint in executor.map(parse_one, jobs):
-            status[citekey] = doc_status
-            if fingerprint is not None:
-                cache[citekey] = fingerprint
-            done += 1
-            logging_setup.say(logger, f"  [{done}/{len(jobs)}] {citekey}")
-    except KeyboardInterrupt:
-        executor.shutdown(wait=False, cancel_futures=True)
-        pdf_text.terminate_workers(executor)
-        logging_setup.say(
-            logger,
-            f"\n  interrupted after {done}/{len(jobs)} document(s) -- "
-            "parsed output is kept; re-run to continue.",
-            level=logging.WARNING,
-        )
-        _save_cache(cache)
-        raise
-    finally:
-        executor.shutdown(wait=False)

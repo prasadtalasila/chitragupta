@@ -99,7 +99,7 @@ it is on a register it left is not.
 ## 🧱 Tier 1: the debt the ratchet already holds
 
 `code-standards-register.toml` freezes **3 functions** over C1 (25
-statements) and **11 modules** over C2 (250 code lines), each with its
+statements) and **10 modules** over C2 (250 code lines), each with its
 current size recorded beside it, which
 `test_every_registered_offender_records_its_current_count` keeps honest.
 `tests/test_code_standards_scan.py` reads that file and is still what
@@ -659,7 +659,7 @@ worse.
 | --- | --- |
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
 | `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:137`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
-| `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/docling_parse.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |
+| `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/_docling_cache.py` | Different requirements, and each docstring names the difference: retrieval needs a per-writer-unique temp name for concurrent subagents, docling does not and says why |
 | 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline) -- confirmed live, not assumed so |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
 | C2 permits a registered module to grow | [Deliberate](CODE-STANDARDS.md#-what-a-ratchet-is-and-the-debt-register). Pinning each to today's size fails on every ordinary edit and gets the rule turned off |
