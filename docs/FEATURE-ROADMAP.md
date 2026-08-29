@@ -1,9 +1,9 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
 Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
-**Twelve of the original twenty-one items have shipped and have been removed
-from this document** rather than marked as done -- so everything below is still
-outstanding, which is what makes the list usable.
+**Thirteen of the original twenty-one items have shipped and have been
+removed from this document** rather than marked as done -- so everything
+below is still outstanding, which is what makes the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
 That is this document's counterpart: the capability surface as built,
@@ -766,73 +766,6 @@ RAGFlow's only check on a model-emitted marker is `i < len(chunks)`, an
 array-bounds test. Nothing here is ported as text
 ([INSPIRATION.md](INSPIRATION.md)).
 
-### ❓ E1: strip interrogatives on the query side
-
-**A prerequisite for E2, and independently valuable.** `_STOPWORDS` holds
-twenty function words and no interrogatives, and `len(w) > 2` passes
-`how`, `why`, `who`, `can`. Because those are *rare in academic PDFs*
-they carry high IDF and compete for the ranking.
-
-**Measured against ground truth no retrieval method built** --
-`bench_retrieval_keyword_selfretrieval.py`'s instrument, where the query
-is a paper's own author-assigned `keywords` and the answer is that paper.
-Over the 208 parsed entries carrying keywords, wrapped in interrogative
-glue:
-
-| Query form | recall@5 | recall@10 |
-| --- | --- | --- |
-| author keywords (baseline) | **0.808** | **0.865** |
-| wrapped as a question | 0.731 (-0.077) | 0.812 (-0.053) |
-| question, interrogatives stripped | 0.788 (-0.019) | 0.846 (-0.019) |
-| keywords, interrogatives stripped | 0.808 (**+0.000**) | 0.865 (**+0.000**) |
-
-**Free, provably inert on keyword queries, and only a partial fix** --
-it recovers 75% of the loss at k=5 and 64% at k=10, and roughly a third
-once the question also carries ordinary words like "role" or "evaluate",
-which are not stopwords and which no stopword list can reach. So this
-does not make question-form querying safe, and
-[CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
-keeps "phrase it as keywords" as the standing advice.
-
-E2 invites a person to author queries; people write questions. Shipping
-E2 without this makes a human-written query measurably worse than the
-sub-theme a skill hand-tunes today.
-
-**Query-side only.** A term absent from the query contributes nothing
-whatever the documents hold, so this buys the whole effect while leaving
-`_tokenize`, every document's term frequencies, every IDF and
-`_INDEX_SCHEMA_VERSION` untouched -- and leaves `bench/RESULTS.md`'s BM25
-baseline (nDCG@5 0.7321) undisturbed. A symmetric change would re-rank
-every query in the corpus for no further gain. The idea is RAGFlow's
-`rmWWW`, which is query-side for the same reason.
-
-**What this measurement is, and what it still owes.** The instrument is
-the right one -- author-assigned keywords are independent of every
-retrieval method, so this is a correctness measurement rather than the
-convergence-between-phrasings figure an earlier draft of this item
-quoted. What it does not cover: the templates are synthetic, so the
-residual loss depends on how wordy a real question is, and no
-claim-form regression was run. Report both when it ships, in B4's table
-shape.
-
-**Do not reach for LLM-generated evaluation questions here.** AutoRAG's
-`legacy/` QA generator (Apache-2.0) writes the question *from* the gold
-chunk, so the query inherits that chunk's vocabulary and the set
-structurally favours lexical retrieval -- a BM25 change measured on it
-looks better than it is, and nothing upstream says so. The keyword
-ground truth has no such circularity, which is why it is the instrument
-above.
-
-Carries one hygiene change on measured but modest grounds: **22.8% of
-retrieved snippets contain their source's own citation markers** (39 of
-180, mostly `[12]`-style) and nothing strips them. Checked before
-claiming more: **zero have ever leaked into a real draft**, so this is
-context hygiene, not a fabrication vector. The idea is OpenScholar's
-`remove_citations`; take the idea, not the regex, which also does a
-global `]` delete.
-
-Size: S. Depends on: nothing.
-
 ### 🗂 E2: an outline the human writes
 
 A dossier file the person edits before drafting: per section, a heading,
@@ -1060,25 +993,19 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [E1](#-e1-strip-interrogatives-on-the-query-side) strip interrogatives | E | S | -- |
-| 2 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
-| 3 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 4 | [E3](#-e3-notice-that-the-draft-moved) notice the draft moved | E | M | -- |
-| 5 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 6 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 7 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
-| 8 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 9 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 10 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 11 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 12 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | E3 |
-| 13 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
-| 14 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
-
-**E1 leads because it is cheap, measured, and a prerequisite that gets
-more expensive to add later**: E2 invites people to write queries, and
-every query written before E1 lands is one whose retrieval nobody can
-reproduce afterwards.
+| 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
+| 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
+| 3 | [E3](#-e3-notice-that-the-draft-moved) notice the draft moved | E | M | -- |
+| 4 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
+| 5 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 6 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
+| 7 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
+| 8 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 9 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 10 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 11 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | E3 |
+| 12 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 13 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -1108,12 +1035,11 @@ so explicitly, and the entry is the ticket rather than a second
 specification -- so a design decision recorded in a plan file is not
 repeated here, and the two cannot drift.
 
-**The leading PRs need no decision and no new dependency.** E1 is a
-measured retrieval fix and a prerequisite that gets more expensive later;
-A3 closes the context leak that Theme A's diagnosis is about; B3 is a
-one-session stylistic change with a checkable count; E3 makes a
-hand-edited draft visible to the pipeline at all. None of the four needs
-the amendment, a new model, or a decision from anyone.
+**The leading PRs need no decision and no new dependency.** A3 closes
+the context leak that Theme A's diagnosis is about; B3 is a one-session
+stylistic change with a checkable count; E3 makes a hand-edited draft
+visible to the pipeline at all. None of the three needs the amendment, a
+new model, or a decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 
