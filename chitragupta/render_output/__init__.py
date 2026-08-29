@@ -101,7 +101,7 @@ from chitragupta.render_output._citeproc import (
     _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
-from chitragupta.render_output import _math, _tables
+from chitragupta.render_output import _equation_captions, _math, _tables
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figure_captions import figures as _declared_figures
