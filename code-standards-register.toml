@@ -41,10 +41,6 @@ statements = 26
 # C2: at most 250 code lines per module.
 
 [[c2]]
-name = "chitragupta/sync.py"
-code_lines = 548
-
-[[c2]]
 name = "chitragupta/config.py"
 code_lines = 492
 

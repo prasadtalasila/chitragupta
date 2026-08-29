@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import bib_reader, config, ledger, pdf_text, runlock, sync
+from chitragupta import bib_reader, config, ledger, pdf_text, runlock, sync, sync_pool
 from tests.conftest import make_reference
 
 
@@ -696,7 +696,7 @@ class TestWorkerCount:
         def refuse(workers):
             raise AssertionError(f"built a pool of {workers} for a serial run")
 
-        monkeypatch.setattr(sync, "_executor_for", refuse)
+        monkeypatch.setattr(sync_pool, "_executor_for", refuse)
         assert sync.run() == 0
 
     def test_oversized_request_is_clamped_and_warned(self, many_corpus, monkeypatch, caplog):
@@ -704,7 +704,7 @@ class TestWorkerCount:
         monkeypatch.setattr(config, "PARSER_WORKERS", 64)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
         sync.run()
         assert "[parser].workers=64" in caplog.text
@@ -723,7 +723,7 @@ class TestParallelParsing:
         # would drive the real docling. Swapping the executor (the seam
         # TestExecutorChoice covers separately) keeps the concurrency
         # real while leaving the patches visible.
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
     def test_every_document_is_parsed_and_recorded(self, many_corpus, monkeypatch, capsys):
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
@@ -764,7 +764,7 @@ class TestParallelParsing:
         """
         submitted = []
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
-        monkeypatch.setattr(sync, "_executor_for", _recording_executor(submitted))
+        monkeypatch.setattr(sync_pool, "_executor_for", _recording_executor(submitted))
         sync.run()
         assert submitted == [f"doc_{i}_2024" for i in reversed(range(6))]
 
@@ -845,7 +845,7 @@ class TestParallelParsing:
             def shutdown(self, *args, **kwargs):
                 pass
 
-        monkeypatch.setattr(sync, "_executor_for", lambda workers: DeadExecutor())
+        monkeypatch.setattr(sync_pool, "_executor_for", lambda workers: DeadExecutor())
         rc = sync.run()
         captured = capsys.readouterr()
 
@@ -902,7 +902,7 @@ class TestExecutorChoice:
         from concurrent.futures import ProcessPoolExecutor
 
         monkeypatch.setattr(config, "PARSER", "docling")
-        with sync._executor_for(2) as ex:
+        with sync_pool._executor_for(2) as ex:
             assert isinstance(ex, ProcessPoolExecutor)
 
     def test_pdftotext_gets_threads(self, monkeypatch):
@@ -912,7 +912,7 @@ class TestExecutorChoice:
         from concurrent.futures import ThreadPoolExecutor
 
         monkeypatch.setattr(config, "PARSER", "pdftotext")
-        with sync._executor_for(2) as ex:
+        with sync_pool._executor_for(2) as ex:
             assert isinstance(ex, ThreadPoolExecutor)
 
 
@@ -922,20 +922,20 @@ class TestPdfSize:
     def test_reports_the_file_size(self, tmp_path):
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"x" * 321)
-        assert sync._pdf_size(str(pdf)) == 321
+        assert sync_pool._pdf_size(str(pdf)) == 321
 
     def test_unreadable_file_sorts_last_instead_of_raising(self, tmp_path):
         """A PDF that vanished between bib resolution and here must not
         take down the ordering -- the parse will report the real error a
         moment later, which is the better place for it."""
-        assert sync._pdf_size(str(tmp_path / "gone.pdf")) == 0
+        assert sync_pool._pdf_size(str(tmp_path / "gone.pdf")) == 0
 
 
 class TestParseSerial:
     def test_yields_a_triple_per_reference(self, isolated_config, monkeypatch, tmp_path):
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         refs = [make_ref("a", tmp_path), make_ref("b", tmp_path)]
-        assert [(k, e) for k, _, e in sync._parse_serial(refs)] == [("a", None), ("b", None)]
+        assert [(k, e) for k, _, e in sync_pool._parse_serial(refs)] == [("a", None), ("b", None)]
 
     def test_a_failure_becomes_the_third_slot_not_a_raise(
         self, isolated_config, monkeypatch, tmp_path
@@ -943,7 +943,7 @@ class TestParseSerial:
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"b"})
         )
-        results = list(sync._parse_serial([make_ref("a", tmp_path), make_ref("b", tmp_path)]))
+        results = list(sync_pool._parse_serial([make_ref("a", tmp_path), make_ref("b", tmp_path)]))
         assert results[0][2] is None
         assert isinstance(results[1][2], pdf_text.ExtractionError)
 
@@ -974,7 +974,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert captured["initializer"] is pdf_text.init_worker
@@ -998,7 +998,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([2, 3], None))
         captured = self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         pdf_text._reset_worker_device()
@@ -1015,7 +1015,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert captured["initargs"][2] == [1, 2, 3]
@@ -1030,7 +1030,7 @@ class TestGpuAssignment:
         )
         self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert "WARNING skipping cuda:0" in caplog.text
@@ -1055,7 +1055,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(pdf_text._pool, "process_pool_context", lambda: (chosen, None))
         captured = self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert captured["mp_context"] is chosen
@@ -1068,7 +1068,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert captured["mp_context"].get_start_method() != "fork"
@@ -1085,7 +1085,7 @@ class TestGpuAssignment:
         )
         self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert "NOTE fell back" in caplog.text
@@ -1095,7 +1095,7 @@ class TestGpuAssignment:
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
         captured = self._capture(monkeypatch)
 
-        with sync._executor_for(2):
+        with sync_pool._executor_for(2):
             pass
 
         assert captured["initargs"][2] == []
@@ -1104,7 +1104,7 @@ class TestGpuAssignment:
         from concurrent.futures import ThreadPoolExecutor
 
         monkeypatch.setattr(config, "PARSER", "pdftotext")
-        with sync._executor_for(2) as ex:
+        with sync_pool._executor_for(2) as ex:
             assert isinstance(ex, ThreadPoolExecutor)
 
 
@@ -1123,7 +1123,7 @@ class TestInterrupt:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
     def test_pending_work_is_cancelled_not_drained(self, many_corpus, monkeypatch, capsys):
         """The bug: `with executor` shuts down with wait=True, draining
@@ -1147,7 +1147,7 @@ class TestInterrupt:
             inner.shutdown = shutdown
             return inner
 
-        monkeypatch.setattr(sync, "_executor_for", recording_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", recording_executor)
         monkeypatch.setattr(
             pdf_text, "extract_one", lambda job: (_ for _ in ()).throw(KeyboardInterrupt)
         )
@@ -1180,7 +1180,7 @@ class TestProgressReporting:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
     def test_each_completion_is_reported_as_it_lands(self, many_corpus, monkeypatch, caplog):
         caplog.set_level(logging.INFO)
@@ -1218,7 +1218,7 @@ class TestStallWatchdog:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
     def test_a_stalled_pool_is_abandoned_and_its_documents_reported(
         self, many_corpus, monkeypatch, capsys, caplog
@@ -1356,7 +1356,7 @@ class TestFailureReporting:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
         monkeypatch.setattr(
             pdf_text,
             "extract_one",
@@ -1527,7 +1527,7 @@ class TestTimeoutReporting:
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 30.0)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
         def timing_out_extract_one(job):
             _pdf_path, citekey, _threads = job
@@ -1557,7 +1557,7 @@ class TestStallWarning:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
 
     def test_it_warns_at_half_time_before_killing(self, many_corpus, monkeypatch, caplog):
         import threading
