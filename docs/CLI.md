@@ -1631,8 +1631,8 @@ is read again months later; a comparison against one particular baseline
 is consumed by whoever asked for it and stale the next time the draft is
 touched.
 
-The `overlap-reviser` skill
-([GENRE.md](GENRE.md#-repairing-overlap-overlap-reviser)) is the intended
+The `agenda-reviser` skill
+([GENRE.md](GENRE.md#-working-the-agenda-agenda-reviser)) is the intended
 caller: it takes a baseline, repairs findings one at a time, and keeps a
 repair only when `recheck` and `chitragupta draft gate` both come back
 clean. Nothing obliges you to use it -- `recheck` is as free and as
