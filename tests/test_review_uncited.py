@@ -231,6 +231,18 @@ class TestTheExclusions:
         draft = a_draft("The flow in <!-- figureref: fig1 --> differs.\n")
         assert found_text(draft) == ["The flow in Figure differs."]
 
+    def test_an_equation_caption_label_is_excluded(self, isolated_config):
+        """Issue 457's numbered label, `**Equation N:**` -- without this
+        alternative every numbered equation in a draft reads as an uncited
+        claim, one false finding per equation."""
+        draft = a_draft("Equation 1: E = mc^2\n")
+        assert found_text(draft) == []
+
+    def test_an_inline_equation_reference_does_not_reach_the_report(self, isolated_config):
+        """Mirrors the table/figure inline-reference tests."""
+        draft = a_draft("Substituting <!-- equationref: energy --> gives the result.\n")
+        assert found_text(draft) == ["Substituting Equation gives the result."]
+
     def test_fenced_code_is_excluded(self, isolated_config):
         draft = a_draft("```\nprint('the pot is dry')\n```\n")
         assert found_text(draft) == []

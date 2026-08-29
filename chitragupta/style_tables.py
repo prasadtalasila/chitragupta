@@ -26,12 +26,18 @@ The marker syntax itself is not restated here: it lives in
 `chitragupta/render_output/_tables.py`, which is what resolves it at
 render time, and a second copy of those patterns is exactly the drift
 docs/CODE-STANDARDS.md's "one place a fact is written" rules out.
+
+**Id validity and the reference checks are `chitragupta/style_elements.py`'s**,
+shared with `style_figures.py` and, since issue 457, `style_equations.py`
+-- three near-identical copies of that logic is the "needless repetition"
+line docs/CODE-STANDARDS.md draws. What stays here is what is genuinely
+table-specific: telling a bare pipe table from a captioned one.
 """
 
 import re
 from pathlib import Path
 
-from chitragupta import citation_gate
+from chitragupta import citation_gate, style_elements
 from chitragupta.render_output import _paths, _tables
 
 RULES = {
@@ -53,45 +59,13 @@ _TABLE_HEAD_RE = re.compile(r"^[ \t]*\|.*\|[ \t]*\n[ \t]*\|[ \t:|-]+\|[ \t]*$", 
 # "no caption at all" from "a caption nobody can refer to".
 _CAPTION_RE = re.compile(r"^[ \t]*:[ \t]*\S.*$", re.MULTILINE)
 
-# A Markdown heading, only to bound a section. `review/_blocks.HEADING`
-# already spells this, and is deliberately not imported: the review layer
-# sits above this one in docs/ARCHITECTURE.md, so a drafting-layer check
-# reaching into it would be a new dependency in the wrong direction for
-# one three-token pattern.
-_HEADING_RE = re.compile(r"^#{1,6}[ \t]+\S.*$", re.MULTILINE)
-
-# The id shape a `\\label{tab:<id>}` can carry without further escaping,
-# and the one the figure markers already use for a base name.
-_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-
 
 def _finding(rule: str, match: str, line: int, message: str) -> dict:
     """One finding in the shape `style_check.collapse()` produces from
-    Vale's own, so `style_report.py` never has to know which check wrote
-    which line."""
-    return {
-        "rule": RULES[rule],
-        "match": match,
-        "line": line,
-        "message": message,
-        "severity": "suggestion",
-        "count": 1,
-    }
-
-
-def _section_starts(text: str) -> "list[int]":
-    """The 1-based line of every heading, so a line can be placed in one.
-
-    A draft with no headings has exactly one section, which is why the
-    list may be empty and `_section_of` returns 0 for that case rather
-    than failing.
-    """
-    return [_tables.line_of(text, m.start()) for m in _HEADING_RE.finditer(text)]
-
-
-def _section_of(line: int, starts: "list[int]") -> int:
-    """Which section `line` falls in, as an index into `starts`."""
-    return sum(1 for start in starts if start <= line)
+    Vale's own -- a thin `RULES`-bound wrapper over the shared
+    `style_elements.finding`, kept so the calls below read the same as
+    they did before that module existed."""
+    return style_elements.finding(RULES, rule, match, line, message)
 
 
 def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
@@ -137,85 +111,6 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
     return found
 
 
-def _id_problems(tables: "list[_tables.Table]") -> "list[dict]":
-    """Ids that collide or that a `\\label{}` cannot carry."""
-    ids = [table.id for table in tables]
-    found = [
-        _finding(
-            "duplicate-id",
-            table.id,
-            table.line,
-            f"`{table.id}` is claimed by more than one table. Both become "
-            "`\\label{}`s in one LaTeX document, where a duplicate resolves "
-            "silently to the wrong table.",
-        )
-        for table in tables
-        if ids.count(table.id) > 1
-    ]
-    found += [
-        _finding(
-            "malformed-id",
-            table.id,
-            table.line,
-            f"`{table.id}` is not a kebab-case id (lowercase, digits and "
-            "hyphens), which is what `\\label{tab:<id>}` can carry unescaped.",
-        )
-        for table in tables
-        if not _ID_RE.match(table.id)
-    ]
-    return found
-
-
-def _reference_problems(text: str, tables: "list[_tables.Table]") -> "list[dict]":
-    """A table nobody reads from, and a reference to a table that is not
-    there.
-
-    The second is also reported by the renderer at render time. It is
-    repeated here deliberately: every genre skill runs `draft style`
-    before it renders, so this is where the author is still writing.
-    """
-    starts = _section_starts(text)
-    refs = _tables.references(text)
-    ids = {table.id for table in tables}
-    found = []
-    for table in tables:
-        lines = [line for ref_id, line in refs if ref_id == table.id]
-        if not lines:
-            found.append(
-                _finding(
-                    "unreferenced",
-                    table.id,
-                    table.line,
-                    f"no sentence refers to `{table.id}`. A table the prose "
-                    "never reads is one the reader has to explain to "
-                    "themselves (WRITING-STANDARDS.md §13).",
-                )
-            )
-        elif all(_section_of(line, starts) != _section_of(table.line, starts) for line in lines):
-            found.append(
-                _finding(
-                    "ref-outside-section",
-                    table.id,
-                    table.line,
-                    f"`{table.id}` is referred to, but only from another "
-                    "section. The sentence that introduces a table belongs "
-                    "beside it.",
-                )
-            )
-    found += [
-        _finding(
-            "unknown-ref",
-            ref_id,
-            line,
-            f"`{ref_id}` is referred to but no table declares it, so the "
-            "marker survives into the rendered document.",
-        )
-        for ref_id, line in refs
-        if ref_id not in ids
-    ]
-    return found
-
-
 def findings(draft: Path) -> "list[dict]":
     """Every table finding for `draft`, ordered by where it is."""
     # `render`'s own answer to "is this a Markdown draft?", not a second
@@ -233,5 +128,11 @@ def findings(draft: Path) -> "list[dict]":
     # character, so every line number below still points where it says.
     text = citation_gate._blank_code(draft.read_text(encoding="utf-8"))
     tables = _tables.tables(text)
-    found = _uncaptioned(text, tables) + _id_problems(tables) + _reference_problems(text, tables)
+    found = (
+        _uncaptioned(text, tables)
+        + style_elements.id_problems(RULES, tables, "table", "tab")
+        + style_elements.reference_problems(
+            RULES, text, tables, _tables.references(text), "table", "WRITING-STANDARDS.md §13"
+        )
+    )
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))

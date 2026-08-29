@@ -55,16 +55,19 @@ REFERENCE_TITLE = re.compile(
     re.IGNORECASE,
 )
 
-# A caption names a figure or a table; it does not assert anything the
-# draft has to support. Four shapes the genre skills emit: an image line,
-# a `Figure 1.`/`Table 2:` lead-in, LaTeX's own command, and -- since
-# WRITING-STANDARDS.md §13 -- pandoc's own `: caption` line, which is
-# what a numbered table's caption is written as.
+# A caption names a figure, a table or an equation; it does not assert
+# anything the draft has to support. Four shapes the genre skills emit:
+# an image line, a `Figure 1.`/`Table 2:`/`Equation 3:` lead-in, LaTeX's
+# own command, and -- since WRITING-STANDARDS.md §13 -- pandoc's own
+# `: caption` line, which is what a numbered table's caption is written
+# as. `equation` joined issue 457, the same shape as the other two: a
+# numbered equation gets a `**Equation N:**` label, and without this
+# alternative every one of them reads as an uncited claim.
 #
 # The `:` alternative requires the following space, so a sentence opening
 # on a colon is not swallowed with it.
 CAPTION = re.compile(
-    r"^\s*(?::[ \t]|!\[|\\caption\*?\{|(?:figure|table|listing)\s+\d+\s*[.:])",
+    r"^\s*(?::[ \t]|!\[|\\caption\*?\{|(?:figure|table|listing|equation)\s+\d+\s*[.:])",
     re.IGNORECASE,
 )
 
@@ -81,6 +84,9 @@ INLINE_TABLE_REF = re.compile(r"[ \t]*<!--[ \t]*tableref:[ \t]*\S+?[ \t]*-->[ \t
 
 # Issue 411's `figureref`, the same shape and the same reason.
 INLINE_FIGURE_REF = re.compile(r"[ \t]*<!--[ \t]*figureref:[ \t]*\S+?[ \t]*-->[ \t]*")
+
+# Issue 457's `equationref`, the same shape and the same reason.
+INLINE_EQUATION_REF = re.compile(r"[ \t]*<!--[ \t]*equationref:[ \t]*\S+?[ \t]*-->[ \t]*")
 
 # A block that is only a comment. Includes WRITING-STANDARDS.md §11's
 # `<!-- single-source: ... -->` marker, which must not be read as an
@@ -164,7 +170,9 @@ def _body(text: str) -> list[str]:
     lines = [
         line
         if COMMENT.match(line)
-        else INLINE_FIGURE_REF.sub(" Figure ", INLINE_TABLE_REF.sub(" Table ", line))
+        else INLINE_EQUATION_REF.sub(
+            " Equation ", INLINE_FIGURE_REF.sub(" Figure ", INLINE_TABLE_REF.sub(" Table ", line))
+        )
         for line in citation_gate._blank_code(text).splitlines()
     ]
     for index, line in enumerate(lines):

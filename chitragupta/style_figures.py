@@ -32,12 +32,17 @@ The marker syntax itself is not restated here: it lives in
 `chitragupta/render_output/_figure_captions.py`, which is what resolves it
 at render time, and a second copy of those patterns is exactly the drift
 `docs/CODE-STANDARDS.md`'s "one place a fact is written" rules out.
+
+**Id validity and the reference checks are `chitragupta/style_elements.py`'s**,
+shared with `style_tables.py` and, since issue 457, `style_equations.py`
+-- see that module's own docstring for why a third copy of this logic is
+the line docs/CODE-STANDARDS.md draws. What stays here is what is
+genuinely figure-specific: a marker with no caption below it.
 """
 
-import re
 from pathlib import Path
 
-from chitragupta import citation_gate
+from chitragupta import citation_gate, style_elements
 from chitragupta.render_output import _figure_captions, _figures, _paths, _tables
 
 RULES = {
@@ -49,37 +54,12 @@ RULES = {
     "ref-outside-section": "chitragupta.FigureRefOutsideSection",
 }
 
-# A Markdown heading, only to bound a section -- the same pattern
-# `style_tables._HEADING_RE` uses and the same reason it is not imported
-# from the review layer: a drafting-layer check reaching up into it would
-# be a dependency in the wrong direction for one three-token pattern.
-_HEADING_RE = re.compile(r"^#{1,6}[ \t]+\S.*$", re.MULTILINE)
-
-# The id shape a `\\label{fig:<id>}` can carry without further escaping.
-_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-
 
 def _finding(rule: str, match: str, line: int, message: str) -> dict:
     """One finding in the shape `style_check.collapse()` produces from
-    Vale's own, mirroring `style_tables._finding`."""
-    return {
-        "rule": RULES[rule],
-        "match": match,
-        "line": line,
-        "message": message,
-        "severity": "suggestion",
-        "count": 1,
-    }
-
-
-def _section_starts(text: str) -> "list[int]":
-    """The 1-based line of every heading, so a line can be placed in one."""
-    return [_tables.line_of(text, m.start()) for m in _HEADING_RE.finditer(text)]
-
-
-def _section_of(line: int, starts: "list[int]") -> int:
-    """Which section `line` falls in, as an index into `starts`."""
-    return sum(1 for start in starts if start <= line)
+    Vale's own -- a thin `RULES`-bound wrapper over the shared
+    `style_elements.finding`, mirroring `style_tables._finding`."""
+    return style_elements.finding(RULES, rule, match, line, message)
 
 
 def _uncaptioned(text: str, figures: "list[_figure_captions.Figure]") -> "list[dict]":
@@ -116,85 +96,6 @@ def _uncaptioned(text: str, figures: "list[_figure_captions.Figure]") -> "list[d
     return found
 
 
-def _id_problems(figures: "list[_figure_captions.Figure]") -> "list[dict]":
-    """Ids that collide or that a `\\label{}` cannot carry."""
-    ids = [figure.id for figure in figures]
-    found = [
-        _finding(
-            "duplicate-id",
-            figure.id,
-            figure.line,
-            f"`{figure.id}` is claimed by more than one figure. Both become "
-            "`\\label{}`s in one LaTeX document, where a duplicate resolves "
-            "silently to the wrong figure.",
-        )
-        for figure in figures
-        if ids.count(figure.id) > 1
-    ]
-    found += [
-        _finding(
-            "malformed-id",
-            figure.id,
-            figure.line,
-            f"`{figure.id}` is not a kebab-case id (lowercase, digits and "
-            "hyphens), which is what `\\label{fig:<id>}` can carry unescaped.",
-        )
-        for figure in figures
-        if not _ID_RE.match(figure.id)
-    ]
-    return found
-
-
-def _reference_problems(text: str, figures: "list[_figure_captions.Figure]") -> "list[dict]":
-    """A figure nobody reads from, and a reference to a figure that is not
-    there -- mirroring `style_tables._reference_problems`.
-
-    The unknown-ref half is also reported by the renderer at render time.
-    It is repeated here deliberately: every genre skill runs `draft style`
-    before it renders, so this is where the author is still writing.
-    """
-    starts = _section_starts(text)
-    refs = _figure_captions.references(text)
-    ids = {figure.id for figure in figures}
-    found = []
-    for figure in figures:
-        lines = [line for ref_id, line in refs if ref_id == figure.id]
-        if not lines:
-            found.append(
-                _finding(
-                    "unreferenced",
-                    figure.id,
-                    figure.line,
-                    f"no sentence refers to `{figure.id}`. A figure the prose "
-                    "never reads is one the reader has to explain to "
-                    "themselves (WRITING-STANDARDS.md §10).",
-                )
-            )
-        elif all(_section_of(line, starts) != _section_of(figure.line, starts) for line in lines):
-            found.append(
-                _finding(
-                    "ref-outside-section",
-                    figure.id,
-                    figure.line,
-                    f"`{figure.id}` is referred to, but only from another "
-                    "section. The sentence that introduces a figure belongs "
-                    "beside it.",
-                )
-            )
-    found += [
-        _finding(
-            "unknown-ref",
-            ref_id,
-            line,
-            f"`{ref_id}` is referred to but no figure declares it, so the "
-            "marker survives into the rendered document.",
-        )
-        for ref_id, line in refs
-        if ref_id not in ids
-    ]
-    return found
-
-
 def findings(draft: Path) -> "list[dict]":
     """Every figure finding for `draft`, ordered by where it is."""
     # `render`'s own answer to "is this a Markdown draft?", not a second
@@ -210,5 +111,16 @@ def findings(draft: Path) -> "list[dict]":
     # character, so every line number below still points where it says.
     text = citation_gate._blank_code(draft.read_text(encoding="utf-8"))
     figures = _figure_captions.figures(text)
-    found = _uncaptioned(text, figures) + _id_problems(figures) + _reference_problems(text, figures)
+    found = (
+        _uncaptioned(text, figures)
+        + style_elements.id_problems(RULES, figures, "figure", "fig")
+        + style_elements.reference_problems(
+            RULES,
+            text,
+            figures,
+            _figure_captions.references(text),
+            "figure",
+            "WRITING-STANDARDS.md §10",
+        )
+    )
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))
