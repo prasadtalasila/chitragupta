@@ -21,6 +21,7 @@ RAG systems, with the trade-off each choice buys.
 - [Why the rerank sits where it does](#-why-the-rerank-sits-where-it-does)
 - [What reranking does and does not buy](#-what-reranking-does-and-does-not-buy)
 - [What it costs](#-what-it-costs)
+- [FlashRank, evaluated and declined](#-flashrank-evaluated-and-declined-2026-08-29)
 - [Choosing a reranker](#-choosing-a-reranker)
 - [Turning it on](#-turning-it-on)
 - [When a paper does not come back](#-when-a-paper-does-not-come-back)
@@ -244,6 +245,56 @@ second of added latency on every one of them.
 
 Deepening the pool is the expensive knob, not a free one: 5 → 20 → 50
 chunks costs roughly 1x → 3.3x → 7.2x.
+
+### ⚡ FlashRank, evaluated and declined (2026-08-29)
+
+The obvious "make rerank cheap enough to default on" candidate is
+[FlashRank](https://github.com/PrithivirajDamodaran/FlashRank) -- ONNX
+Runtime, no torch, a 4.4M-parameter default model. Benchmarked on this
+host against 20 real 200-word corpus chunks, at the token length the
+shipped path actually uses (500-character snippets, ~110-130 tokens):
+
+| Reranker | ms/call | implied `search()` cost |
+| --- | --- | --- |
+| `ms-marco-MiniLM-L6-v2`, torch fp32 (**shipped**) | 216 | 5.75x |
+| FlashRank `TinyBERT-L-2` (its default) | 54 | **2.20x** |
+| FlashRank `MiniLM-L-12` (its "best") | 390 | **9.57x** |
+| the shipped L6 weights exported to **ONNX int8** | 113 | **3.50x** |
+
+**Declined, on three independent grounds:**
+
+- **Licence.** The library is Apache-2.0 but **the weights it downloads
+  are CC-BY-SA-4.0**, repackaged from Apache-2.0 originals. A ShareAlike
+  obligation reaching a project that ships a release archive is
+  disqualifying on its own.
+- **2.2x is not free, and the advantage shrinks toward our shape.**
+  Between 512 and 128 tokens the torch baseline falls 7.6x while
+  FlashRank falls only 1.9x -- at short passages a 4.4M-parameter model
+  is dominated by fixed overhead. This pipeline sits at the unfavourable
+  end of that curve, and its own "best" model is *slower than what
+  already ships*.
+- **The fast model is materially worse** -- NDCG@10 69.84 against
+  74.30, MRR@10 32.56 against 39.01 on the sbert authors' own table. The
+  rerank gain here already survived swapping to two *stronger* models
+  (L12 and `bge-reranker-base`, `bench/RESULTS.md`), so ordering is not
+  reranker-limited and a weaker one has no upside.
+
+**Two determinism findings worth keeping**, because they generalise past
+this decision. Dynamic int8 quantisation makes a score depend on **what
+else is in the batch** -- the same (query, passage) pair scored 4.82e-5
+in a pool of 20 and 4.37e-5 alone, 9.2% relative, against 0.000% for
+torch fp32. Ordering within a fixed pool is unaffected, so it would not
+break the shipped path, but it does mean scores are not comparable across
+`k` or `embed_overfetch_multiplier`. And FlashRank's weights are fetched
+from `resolve/main` with **no revision pin and no checksum**, so a silent
+re-upload would change results with no version bump -- unacceptable for a
+pipeline whose proposition is reproducibility.
+
+**What the measurement did surface:** exporting the *existing*
+Apache-2.0 L6 weights to ONNX int8 is 1.9x faster at the shipped shape
+with no new dependency, no new model and no licence question. ONNX alone
+bought almost nothing (1.2x); the win is the quantisation -- which brings
+the batch-composition caveat above with it.
 
 ## 🧮 Choosing a reranker
 

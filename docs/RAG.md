@@ -287,6 +287,15 @@ with a cap of 3 and `k` of 5 the distinct-paper count is bounded by the
 default, documented, and reached for only when the right paper comes back
 fourth.
 
+**A faster reranker was measured and does not change the default.**
+FlashRank (ONNX, no torch, a 4.4M-parameter model) benchmarked at 2.2x
+per call against the shipped 5.75x -- real, but not free, and its
+advantage shrinks as passages shorten toward the length this pipeline
+actually uses. Its weights are also CC-BY-SA-4.0 over Apache-2.0
+originals, and its own "best" model is slower than what already ships.
+[CORPUS-SEARCH.md](CORPUS-SEARCH.md#-flashrank-evaluated-and-declined-2026-08-29)
+has the table and the two determinism findings that came out of it.
+
 **Where it sits matters more than whether it runs.** Chitragupta reranks
 **before** the per-citekey cap, so a promotion can change *which
 document* survives; reranking after the cap can only permute what the
