@@ -36,7 +36,7 @@ different mechanisms, and keeps them apart on purpose.
 
 | Term | What it means here | Where it lives |
 | --- | --- | --- |
-| **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync.py`'s worker pool, `chitragupta/pdf_text/` |
+| **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync_pool.py`'s worker pool, `chitragupta/pdf_text/` |
 | **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `chitragupta/runlock.py` |
 
 Unrelated problems, unrelated solutions. Parallelism is an opt-in speed
@@ -65,7 +65,7 @@ Two entry points reach it, sharing the same machinery:
   python -m chitragupta.corpus sync                     python -m chitragupta.enrich
   (corpus layer: bib ──► text)           (enrichment layer, opt-in)
           │                                        │
-          │ chitragupta/sync.py                            │ chitragupta/enrich/docling_parse.py
+          │ chitragupta/sync_pool.py                       │ chitragupta/enrich/docling_parse.py
           │ _parse_parallel()                      │ parse_corpus()
           │ _executor_for()                        │ chitragupta/enrich/_docling_pool.py
           │                                        │ _executor_for()
@@ -77,10 +77,10 @@ Two entry points reach it, sharing the same machinery:
 ```
 
 `chitragupta/enrich/_docling_pool.py` keeps its own `_executor_for` rather than
-importing `sync`'s, so `chitragupta/enrich/` never depends on the core entry
-point — the dependency runs the other way everywhere else. Both delegate
-every *policy* decision to `pdf_text`, so "how many workers, which start
-method, which GPU" is answered in exactly one place.
+importing `sync_pool`'s, so `chitragupta/enrich/` never depends on the core
+entry point — the dependency runs the other way everywhere else. Both
+delegate every *policy* decision to `pdf_text`, so "how many workers, which
+start method, which GPU" is answered in exactly one place.
 
 ## 🔄 The parse path, end to end
 
@@ -272,7 +272,7 @@ since nvidia-smi ignores it and torch does not. Falls back to torch only
 where the driver's CLI is absent — the point is to answer the question
 without importing torch into the parent.
 
-### ⏱ `_as_they_land()` — `chitragupta/sync.py`
+### ⏱ `_as_they_land()` — `chitragupta/sync_pool.py`
 
 Yields futures as they complete, abandoning the run if the **whole pool**
 goes silent for `[parser].stall_timeout`.

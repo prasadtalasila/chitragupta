@@ -19,27 +19,35 @@ Needs `bibtexparser` installed -- run scripts/install_full_pipeline.sh
 first (creates .venv-full/ on a bare host), then run this via that
 venv's python. python -m chitragupta.draft gate does not need it and still
 runs with the bare system interpreter.
+
+Split (#441) into four modules: this one keeps the top-level
+orchestration (`run`/`main`) and the per-document ledger-write/tally
+step, `chitragupta/sync_pool.py` holds the parse-dispatch engine,
+`chitragupta/sync_decide.py` the two ledger-vs-bib-file decisions, and
+`chitragupta/sync_report.py` the printed summary/warnings -- each a
+one-way dependency of this module, none of the other three importing
+back.
 """
 
 import argparse
 import logging
-import os
 import sys
 import time
 from collections import Counter
-from collections.abc import Iterator
 from dataclasses import dataclass, field
-from concurrent.futures import (
-    FIRST_COMPLETED,
-    Future,
-    ProcessPoolExecutor,
-    ThreadPoolExecutor,
-    wait,
-)
-from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
-from chitragupta import bib_reader, config, dedup, ledger, logging_setup, pdf_text, runlock
+from chitragupta import (
+    bib_reader,
+    config,
+    ledger,
+    logging_setup,
+    pdf_text,
+    runlock,
+    sync_decide,
+    sync_pool,
+    sync_report,
+)
 
 # A fixed name, not __name__. Until 5.2.0 this module was itself the CLI
 # entrypoint (python -m chitragupta.sync), and Python sets __name__ to
@@ -56,257 +64,10 @@ from chitragupta import bib_reader, config, dedup, ledger, logging_setup, pdf_te
 # to use.
 logger = logging.getLogger("chitragupta.sync")
 
-# How many timed-out citekeys the summary names before falling back to
-# "(+N more)". Enough that the case worth naming -- a handful of long
-# documents against a limit that is right for the rest of the corpus --
-# is always named in full, and small enough that a corpus-wide timeout
-# stays one readable line.
-_MAX_NAMED_TIMEOUTS = 10
-
 # What running this module directly exits with. `EX_USAGE` from BSD's
 # sysexits -- chosen for what it is *not*: none of the three codes
 # docs/CLI.md publishes as `sync`'s API. See refuse_direct_invocation.
 EXIT_COMMAND_REMOVED = 64
-
-# The (citekey, out_path, exception) triple pdf_text.extract_one produces,
-# yielded back out by both _parse_serial and _parse_parallel.
-_ParseResult = tuple[str, str | None, Exception | None]
-
-
-def _executor_for(workers: int) -> ProcessPoolExecutor | ThreadPoolExecutor:
-    """Processes for docling, threads for pdftotext.
-
-    The two backends want opposite things, so this is deliberately
-    backend-conditional rather than one pool type for both. `pdftotext`
-    is an external subprocess that releases the GIL while it runs, so a
-    ThreadPoolExecutor already gets full OS-level concurrency and a
-    process pool would only add pickling and spawn cost on top. `docling`
-    runs in-process and holds the GIL, so threads would serialise exactly
-    the work we are trying to overlap.
-
-    The docling pool itself is pdf_text.docling_process_pool -- shared with
-    chitragupta/enrich/docling_parse.py's own docling-only pool (see its
-    docstring for why the GPU/start-method reasoning lives there now
-    rather than duplicated here).
-
-    Also the seam the tests substitute: a real ProcessPoolExecutor runs
-    its work in a child interpreter, where the test process's
-    monkeypatches don't exist.
-    """
-    if config.PARSER == "docling":
-        return pdf_text.docling_process_pool(workers, logger.warning)
-    return ThreadPoolExecutor(max_workers=workers)
-
-
-def _pdf_size(path: str) -> int:
-    """Bytes, or 0 if the file can't be stat'd.
-
-    Only ever used to sort work biggest-first, so a file that vanished
-    between bib resolution and here just sorts last -- the parse will
-    report the real error a moment later, which is the better place for
-    it.
-    """
-    try:
-        return os.path.getsize(path)
-    except OSError:
-        return 0
-
-
-def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
-    """Yield futures as they complete, giving up if the whole pool goes
-    silent for config.PARSER_STALL_TIMEOUT.
-
-    `wait(..., FIRST_COMPLETED)` rather than `as_completed(timeout=...)`:
-    as_completed measures its timeout from the original call, i.e. total
-    elapsed, so on a long corpus it would fire on a perfectly healthy
-    run. What is wanted is the gap *between* completions -- with several
-    workers those arrive constantly, so silence across the entire pool is
-    what distinguishes a hung worker from a merely slow document. That
-    distinction matters because the slowest legitimate document in this
-    corpus takes 246s, and no per-document deadline can be both above
-    that and a useful hang detector.
-
-    The workers are terminated on the way out, not merely abandoned.
-    Without that, in-flight jobs keep running and write
-    content/parsed/<citekey>.txt for documents this run has already
-    reported as failed -- a file on disk contradicting the ledger -- and
-    the processes stay alive holding GPU memory.
-
-    Giving up here is not a data loss: the caller reports the
-    unfinished documents as failures, and since v1.2.0 a failed document
-    is retried on the next run rather than dropped.
-    """
-    # Half the budget, twice: a warning at the midpoint, then the kill.
-    # The warning matters because the schedule invites a long first gap
-    # -- submission is biggest-file-first, so at pool start every worker
-    # is on the largest documents at once. On a slow host that gap is the
-    # schedule working, not a hang, and a kill without warning would
-    # repeat every run (stall-killed documents are retried identically),
-    # leaving a legitimate configuration unable to ever finish.
-    pending = set(futures)
-    half = config.PARSER_STALL_TIMEOUT / 2 if config.PARSER_STALL_TIMEOUT else None
-    warned = False
-    while pending:
-        done, pending = wait(pending, timeout=half, return_when=FIRST_COMPLETED)
-        if not done and not warned and half is not None:
-            warned = True
-            logger.warning(
-                "WARNING no completions in %.0fs; giving up at %.0fs "
-                "([parser].stall_timeout). %d document(s) still running -- if "
-                "this host is simply slow (CPU-only, OCR on, large scans), "
-                "raise or disable that setting rather than letting the run be "
-                "abandoned.",
-                half,
-                config.PARSER_STALL_TIMEOUT,
-                len(pending),
-            )
-            continue
-        if done:
-            warned = False
-        if not done:
-            stalled.append(True)
-            pdf_text.terminate_workers(executor)
-            logger.warning(
-                "WARNING no document finished in %ss ([parser].stall_timeout) -- "
-                "giving up on the %d still outstanding. They are reported as "
-                "failures below and retried on the next run.",
-                config.PARSER_STALL_TIMEOUT,
-                len(pending),
-            )
-            return
-        yield from done
-
-
-def _parse_serial(refs) -> Iterator[_ParseResult]:
-    """The historical path, taken whenever [parser].workers resolves to 1.
-
-    Deliberately not "a pool with one worker": no executor, no pickling,
-    no subprocess, and pdf_text.extract_text is called with exactly the
-    arguments it always was.
-    """
-    for ref in refs:
-        try:
-            yield ref.citekey, str(pdf_text.extract_text(ref.pdf_path, ref.citekey)), None
-        except (pdf_text.ExtractionError, pdf_text.BackendUnavailable) as exc:
-            yield ref.citekey, None, exc
-
-
-def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
-    """The result-draining loop: submit every job and collect (out_path,
-    exc) per citekey as workers finish. Returns whatever was collected
-    before an early exit alongside the pool's break, if any -- the caller
-    reports both, rather than either being lost to an interrupt or a
-    broken pool.
-
-    submit() plus _as_they_land() rather than map(): map yields in *input*
-    order, so a pool that breaks while the first (largest) job is still
-    running would raise before yielding the smaller jobs that had
-    already finished, throwing away real work and reporting parsed
-    documents as failures. _as_they_land records each result at the
-    moment it lands, so a broken pool costs only what was actually in
-    flight.
-
-    Not `with executor`: the context manager's __exit__ calls
-    shutdown(wait=True), and every job is submitted up front, so a
-    KeyboardInterrupt would drain the *entire* remaining queue before
-    exiting. Reported from real use on a 501-document corpus -- Ctrl+C
-    "took forever to exit" and emitted docling teardown tracebacks from
-    workers still being fed. Shutdown is therefore explicit below, with
-    cancel_futures on the interrupt path.
-    """
-    results = {}
-    broken = None
-    done = 0
-    try:
-        with pdf_text.interrupt_guard(executor, lambda: f"{done}/{len(jobs)} document(s) parsed"):
-            futures = [executor.submit(pdf_text.extract_one, job) for job in jobs]
-            for future in _as_they_land(futures, executor, stalled):
-                try:
-                    citekey, out_path, exc = future.result()
-                except BrokenProcessPool as pool_exc:
-                    broken = pool_exc
-                    continue
-                results[citekey] = (out_path, exc)
-                done += 1
-                # Live progress, on stderr so stdout stays in
-                # bibliography order and diffable between runs. Without
-                # it a parallel run over a real corpus prints nothing for
-                # tens of minutes, which is indistinguishable from being
-                # stuck -- especially under docling's own OCR chatter.
-                logger.info("[%d/%d] %s", done, len(jobs), citekey)
-    except BrokenProcessPool as pool_exc:
-        # submit() itself raises once the pool is already known-broken.
-        broken = pool_exc
-    except KeyboardInterrupt:
-        # cancel_futures drops everything not yet started; wait=False
-        # means we don't block on the handful still running. Whatever
-        # finished is still recorded by the caller, so an interrupted run
-        # keeps its work rather than discarding it.
-        executor.shutdown(wait=False, cancel_futures=True)
-        pdf_text.terminate_workers(executor)
-        logger.warning(
-            "interrupted after %d/%d document(s) -- work already finished "
-            "is kept; re-run to continue.",
-            done,
-            len(jobs),
-        )
-        raise
-    finally:
-        executor.shutdown(wait=False)
-    return results, broken
-
-
-def _account_for_unfinished(refs, results: dict, broken, stalled) -> None:
-    """The failure accounting: warn on a broken pool, then fill in a
-    transient failure for every ref _drain_pool didn't land a result for.
-    Mutates `results` in place.
-
-    Marked transient: these documents were never given a fair attempt,
-    so they must come back next run. A failure the *backend* returned
-    for a specific PDF is deterministic and stays that way.
-    """
-    if broken is not None:
-        # A worker killed outright (the OOM killer is the realistic
-        # cause) takes the whole pool with it, and every future still in
-        # flight. Reported against the documents that didn't get parsed
-        # rather than raised, so the run still writes its ledger updates,
-        # its summary, and a nonzero exit code.
-        logger.warning(
-            "WARNING a parse worker died (%s) -- the documents it had not "
-            "finished are reported as failures below. A lower "
-            "[parser].workers is the usual fix.",
-            broken,
-        )
-    unfinished = (
-        "gave up waiting: no document finished within "
-        f"{config.PARSER_STALL_TIMEOUT}s ([parser].stall_timeout)"
-        if stalled
-        else "parse worker died before this document was parsed"
-    )
-    for ref in refs:
-        if ref.citekey not in results:
-            error = pdf_text.ExtractionError(unfinished)
-            error.transient = True
-            results[ref.citekey] = (None, error)
-
-
-def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseResult]:
-    """Same triples as _parse_serial, produced by `workers` at once.
-
-    Submitted biggest-file-first (the LPT heuristic). One 675-page
-    document in this project's own corpus is 5% of all its pages; picked
-    up last it would define the wall clock single-handedly. File size
-    rather than page count on purpose -- counting pages needs a PDF
-    library, and the corpus layer deliberately has no such dependency.
-    """
-    jobs = [
-        (r.pdf_path, r.citekey, threads) for r in sorted(refs, key=lambda r: -_pdf_size(r.pdf_path))
-    ]
-    stalled = []
-    executor = _executor_for(workers)
-    results, broken = _drain_pool(executor, jobs, stalled)
-    _account_for_unfinished(refs, results, broken, stalled)
-    return ((ref.citekey, *results[ref.citekey]) for ref in refs)
 
 
 @dataclass
@@ -328,68 +89,6 @@ class _Tally:
     no_pdf_reasons: Counter = field(default_factory=Counter)
 
 
-def _preflight_warnings(references) -> None:
-    """The two bibliography-quality warnings a sync leads with."""
-    incomplete = [r for r in references if not r.authors]
-    if incomplete:
-        print(
-            f"  WARNING: {len(incomplete)} item(s) have no author metadata in the bib file "
-            f"(likely a page saved as 'webpage' rather than proper item type) -- "
-            f"citing them will produce a low-quality reference:"
-        )
-        for ref in incomplete:
-            print(f"    {ref.citekey}: {ref.title[:80]!r}")
-        print("  Fix the item type/metadata in your reference manager, re-export, and re-run sync.")
-
-    duplicate_groups = dedup.find_duplicates(references)
-    if duplicate_groups:
-        print(
-            f"  WARNING: {len(duplicate_groups)} possible duplicate group(s) -- same DOI or "
-            f"near-identical title under different citekeys. A shared title doesn't always "
-            f"mean the same source (e.g. a blog post and a webinar about the same named "
-            f"report) -- check by hand before merging or removing either citekey:"
-        )
-        for group in duplicate_groups:
-            citekeys = " / ".join(ref.citekey for ref in group)
-            print(f"    {citekeys}: {group[0].title[:80]!r}")
-
-
-def _to_parse(con, references, reparse, parser_available, tally) -> list:
-    """The decide half of the decide/parse split: upsert every reference,
-    count the ones that need no work, and return the rest.
-
-    Split from the parse half rather than one loop doing both.
-    Every ledger call stays here, on the main thread, because a
-    sqlite3 connection is not safe to share across threads and
-    sqlite has a single writer regardless -- only the backend call
-    (pdftotext/docling, per config.PARSER) is ever handed to a pool.
-
-    Whether there is a pool at all is [parser].workers, which
-    defaults to 1: a routine sync parses zero-to-few documents
-    (chitragupta/ledger.py's (size, mtime)-before-hash skip), so paying pool
-    setup by default would cost more than it saves. It is a bulk or
-    first-time sync that needs this -- 501 PDFs at one audit, ~39
-    minutes serial with docling -- and that case is opt-in.
-    """
-    to_parse = []
-    for ref in references:
-        needs_parse = ledger.upsert_reference(con, ref, force=reparse)
-        if not ref.pdf_path:
-            tally.no_pdf += 1
-            tally.no_pdf_reasons[ref.pdf_resolution] += 1
-            label = bib_reader.PDF_RESOLUTION_LABELS[ref.pdf_resolution]
-            print(f"  no-pdf  {ref.citekey}: {label}")
-            continue
-        if not needs_parse:
-            tally.skipped += 1
-            continue
-        if not parser_available:
-            tally.backend_unavailable += 1
-            continue
-        to_parse.append(ref)
-    return to_parse
-
-
 def _dispatch_and_apply(con, to_parse, tally) -> None:
     """The parse half: fan the documents out, then apply every result.
 
@@ -409,9 +108,9 @@ def _dispatch_and_apply(con, to_parse, tally) -> None:
     parse_started = time.monotonic()
     if workers > 1:
         print(f"  parsing {len(to_parse)} document(s) with {workers} workers")
-        results = _parse_parallel(to_parse, workers, pdf_text.docling_threads(workers))
+        results = sync_pool._parse_parallel(to_parse, workers, pdf_text.docling_threads(workers))
     else:
-        results = _parse_serial(to_parse)
+        results = sync_pool._parse_serial(to_parse)
 
     # Applied in bib order, not completion order: futures finish in
     # whatever order they finish, and letting that reach stdout would
@@ -473,163 +172,6 @@ def _record_result(con, citekey, out_path, exc, tally) -> None:
         logger.error("FAILED  %s: %s", citekey, exc)
 
 
-def _report_stale(
-    con, references, remove_stale
-) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
-    """Prune or report ledger rows the bib file no longer has.
-
-    Returns (pruned, stale, suspicious). Only the ledger row is ever
-    removed -- see prune_missing's own docstring for why the
-    corresponding content/parsed/<citekey>.txt is deliberately left in
-    place. Deletion only happens with --remove-stale (default off): a
-    bib file that comes back short a citekey is far more often a mistake
-    (a botched re-export, BIB_FILE pointing at the wrong path) than an
-    intentional removal, so the default is to report it and let a human
-    confirm rather than delete on every routine sync.
-    """
-    pruned: list[tuple[str, str | None]] = []
-    stale: list[tuple[str, str | None]] = []
-    suspicious = False
-    seen_citekeys = {r.citekey for r in references}
-    if remove_stale:
-        pruned = ledger.prune_missing(con, seen_citekeys)
-        for citekey, _parsed_path in pruned:
-            print(f"  pruned  {citekey} (no longer in {config.BIB_FILE_PATH.name})")
-        return pruned, stale, suspicious
-
-    stale = ledger.find_stale(con, seen_citekeys)
-    suspicious = not seen_citekeys and bool(stale)
-    if suspicious:
-        # Same shape prune_missing's guard refuses on -- don't
-        # tell the user to run a command that's just going to
-        # raise. references came back completely empty against a
-        # non-empty ledger, so this is far more likely a botched
-        # re-export or BIB_FILE pointing at the wrong path than
-        # every citekey being legitimately removed at once.
-        print(
-            f"  SUSPICIOUS: the bib file yielded 0 references, so all "
-            f"{len(stale)} ledger item(s) show as stale. This usually "
-            f"means the bib file is empty, corrupted, or BIB_FILE is "
-            f"misconfigured -- not that every citekey was actually "
-            f"removed. Fix the export/path and re-run sync rather than "
-            f"passing --remove-stale (which would refuse and raise on "
-            f"this exact shape)."
-        )
-    else:
-        # The "pass --remove-stale" instruction is printed once,
-        # in the summary line below, rather than repeated on every
-        # item here -- a bib file truncated from 200 entries to 3
-        # survivors would otherwise print that instruction 197
-        # times, which reads as routine per-item noise rather than
-        # the "review this list before deleting" signal it's
-        # meant to be.
-        for citekey, _parsed_path in stale:
-            print(f"  stale   {citekey} (no longer in {config.BIB_FILE_PATH.name})")
-    return pruned, stale, suspicious
-
-
-def _summary_line(tally, kinds, stale_count, stale_label) -> str:
-    """The one-line run summary the exit code below has to agree with."""
-    summary = (
-        f"Sync complete: {tally.parsed} parsed, {tally.skipped} unchanged, "
-        f"{tally.no_pdf} without a PDF attachment, {tally.failed} failed, "
-        f"{stale_count} {stale_label}."
-    )
-    # A deterministic failure is not retried, so it would otherwise
-    # vanish from view after the run that produced it while still making
-    # every later run exit nonzero. Say what it is and what to do.
-    if kinds["deterministic"]:
-        # "fix or remove the PDF" is the right remedy for the usual
-        # deterministic failure and the wrong one for a timeout, where
-        # the PDF is fine and a setting is too low. Rather than print
-        # both and let them contradict each other, this line defers to
-        # the per-cause WARNING below whenever this run produced one --
-        # the summary keeps saying what the state is, and the thing that
-        # knows the cause says what to do about it.
-        remedy = (
-            "see the WARNING below for the fix, or re-run with --reparse"
-            if tally.timed_out
-            else "fix or remove the PDF, or re-run with --reparse"
-        )
-        summary += f" {kinds['deterministic']} needs attention (will not be retried -- {remedy})."
-    if kinds["transient"]:
-        summary += f" {kinds['transient']} will be retried next run."
-    if tally.backend_unavailable:
-        summary += f" {tally.backend_unavailable} skipped ({config.PARSER} unavailable)."
-    # Skipped on a no-op run (parsed == 0, the common case once a corpus
-    # is caught up) rather than reporting a meaningless "0 pages/s" --
-    # and only after `parsed` is known to be nonzero is `parse_elapsed`
-    # guaranteed to reflect real work rather than a dispatch that found
-    # nothing to do. `workers` is the resolved count pdf_text.resolve_workers
-    # returned, and both it and the
-    # backend ride along because a bare rate has no tuning value without
-    # them. bench/sweep_sync.py doesn't parse this figure yet -- today it
-    # only regexes the [n/N] progress lines and a raw document count --
-    # but could pick it up the same way, to normalize by document size
-    # rather than compare corpora on raw counts alone.
-    if tally.parsed and tally.parse_elapsed > 0:
-        summary += (
-            f" {tally.total_pages} page(s) parsed in {tally.parse_elapsed:.1f}s "
-            f"({tally.total_pages / tally.parse_elapsed:.2f} pages/s, "
-            f"{tally.workers} worker(s), {config.PARSER})."
-        )
-    return summary
-
-
-def _print_parse_warnings(tally) -> None:
-    """The per-cause WARNING lines that follow the summary."""
-    if tally.timed_out:
-        # Reported on its own line because the "needs attention" advice
-        # above is wrong for this one failure: the fix is a config value,
-        # not the PDF, and a reader following "fix or remove the PDF" on
-        # a document that is merely long has nothing to fix.
-        #
-        # Named rather than counted, because a couple of citekeys points
-        # at those documents (a large scan, OCR on) while most of the
-        # corpus tripping it points at the limit being too low for this
-        # host -- and the list is what tells the two apart.
-        #
-        # Capped, unlike the low_quality list below, because that
-        # distinction is already made by the first handful: past
-        # _MAX_NAMED_TIMEOUTS the count is the diagnosis, and naming all
-        # 646 of a corpus that timed out wholesale would bury it in a
-        # single line no terminal or log aggregator wants. Same
-        # "(+N more)" idiom pdf_text uses on docling's per-page errors,
-        # and the count stays exact either way.
-        named = ", ".join(tally.timed_out[:_MAX_NAMED_TIMEOUTS])
-        if len(tally.timed_out) > _MAX_NAMED_TIMEOUTS:
-            named += f", (+{len(tally.timed_out) - _MAX_NAMED_TIMEOUTS} more)"
-        print(
-            f"  WARNING: {len(tally.timed_out)} document(s) hit the "
-            f"{config.PARSER_DOCUMENT_TIMEOUT}s [parser].document_timeout and were "
-            f"not parsed: {named}. Raise that setting (or switch it "
-            "off) and re-run with --reparse -- a timeout is recorded as a "
-            "deterministic failure, so it is not retried on its own."
-        )
-    if tally.low_quality:
-        # Named in full rather than counted: a handful of citekeys points
-        # at those documents, while most of the corpus tripping it points
-        # at the backend, and the list is what distinguishes the two.
-        print(
-            f"  WARNING: {len(tally.low_quality)} document(s) look like the parser lost "
-            f"word boundaries: {', '.join(tally.low_quality)}. See config.toml's "
-            f"[parser] quality-guard settings and docs/PDF-PARSER.md."
-        )
-    if tally.no_pdf_reasons:
-        # Least-churn fix for the masking this bucket used to cause: the
-        # aggregate "N without a PDF attachment" count above is unchanged
-        # (existing callers/tests depend on that exact wording), but an
-        # audit no longer has to guess whether that N is "never had a
-        # PDF" (routine) or "PDF path silently went missing"/"only an
-        # HTML snapshot, invisible to retrieval" (both worth fixing).
-        breakdown = ", ".join(
-            f"{tally.no_pdf_reasons[reason]} {label}"
-            for reason, label in bib_reader.PDF_RESOLUTION_LABELS.items()
-            if tally.no_pdf_reasons[reason]
-        )
-        print(f"  no-PDF breakdown: {breakdown}")
-
-
 def _parser_available() -> bool:
     """Probe the parse backend once, warning up front when it is absent."""
     available = pdf_text.is_available()
@@ -653,21 +195,21 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     print(f"Reading bibliography from {config.BIB_FILE_PATH} ...")
     references = bib_reader.read_library()
     print(f"  found {len(references)} bibliographic item(s)")
-    _preflight_warnings(references)
+    sync_report._preflight_warnings(references)
 
     parser_available = _parser_available()
     tally = _Tally()
     with ledger.connection() as con:
-        to_parse = _to_parse(con, references, reparse, parser_available, tally)
+        to_parse = sync_decide._to_parse(con, references, reparse, parser_available, tally)
         _dispatch_and_apply(con, to_parse, tally)
-        pruned, stale, suspicious = _report_stale(con, references, remove_stale)
+        pruned, stale, suspicious = sync_decide._report_stale(con, references, remove_stale)
         # Read while the connection is still open -- the summary below
         # runs after it is closed.
         kinds = ledger.failure_counts(con)
 
     stale_count = len(pruned) if remove_stale else len(stale)
     stale_label = "pruned" if remove_stale else "stale (not removed)"
-    summary = _summary_line(tally, kinds, stale_count, stale_label)
+    summary = sync_report._summary_line(tally, kinds, stale_count, stale_label)
     print(summary)
     # Also emitted through the logger -- landing in logs/pipeline.log even
     # though it's already on stdout -- so a rotated log file is a
@@ -690,7 +232,7 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
         summary,
         extra={"file_only": True},
     )
-    _print_parse_warnings(tally)
+    sync_report._print_parse_warnings(tally)
     if stale_count and not remove_stale and not suspicious:
         print(
             f"Review the {stale_count} stale item(s) above, then re-run with "
