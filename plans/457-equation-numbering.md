@@ -77,13 +77,13 @@ above the existing `<!-- math -->` marker -- the same adjacency §11's
 `<!-- single-source: -->`, §13's table caption/marker pair, and #411's
 figure marker/caption pair all use:
 
-```markdown
+````markdown
 <!-- equation: energy-balance -->
 <!-- math -->
 ```
 E = m * c^2
 ```
-```
+````
 
 An unmarked `<!-- math -->` block is untouched by every module this plan
 adds -- this is the mechanism that leaves a derivation step unnumbered.
@@ -295,6 +295,18 @@ writes `\[...\]`/`\(...\)` directly today and may write a real
 `\begin{equation}\label{}` by hand if it wants a number; nothing in this
 plan gives that genre new marker vocabulary, mirroring §12's existing
 "has no third option" note and §13's `.tex` carve-out.
+
+**The genre-writing skills are not taught the new marker in this PR.**
+Plan 395's own build order treated that as its step 6, a genuinely
+separate, independently-shippable increment from the pipeline mechanism
+-- `chitragupta/`'s render and style-check contract is complete and tested
+without it, and a skill that never emits `<!-- equation: id -->` costs
+nothing today, the same way `.claude/skills/*.md` not yet emitting a
+`table:`/`figureref` marker never blocked #395/#411 landing first. Follow-up
+work: `survey-writer`, `textbook-chapter-writer`, `deep-research`,
+`draft-reviser` and `agenda-reviser` each learn the marker and the
+numbering guidance above, the same way they already know
+`tableref`/`figureref`.
 
 ## 🔨 Build order
 

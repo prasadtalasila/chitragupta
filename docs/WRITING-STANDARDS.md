@@ -183,6 +183,9 @@ means they are checked only when someone remembers to.
 | Some sentence refers to each table | §13 | yes | no -- and **whether that sentence explains the table is not decidable at all**, which is the half that matters most. A machine can see that a reference exists; only a reader can see that the arrangement was worth making |
 | A captioned figure's id is unique and kebab-case, and every `figureref` resolves | §10 | yes | no -- the fix is an author decision, same as a table's |
 | Some sentence refers to each captioned figure | §10 | yes | no -- and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure raises `chitragupta.FigureNoCaption` instead, so it is not exempt from §10, only from *this* row -- there is nothing yet for a sentence to refer to |
+| A numbered equation's id is unique and kebab-case, and every `equationref` resolves | §12 | yes | no -- the fix is an author decision, same as a table's or figure's |
+| Some sentence refers to each numbered equation | §12 | yes | no -- and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
+| Whether an equation should have been numbered at all -- standalone, final-of-derivation, reused | §12 | **no** | no -- unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A
@@ -741,6 +744,78 @@ is worth writing by hand. And nothing here reads a rendered `.tex`: a
 post-render grep for math-shaped `\texttt{}` is what reported this book
 clean while a `\begin{verbatim}` equation sat in it, because a fence
 never becomes a `\texttt{}`.
+
+### 🔢 A number for a chosen few, not for every displayed equation
+
+A table or a figure earns a number simply by existing; a displayed
+equation does not. Numbering every step of a derivation is noise, so
+this section leaves the choice to the author -- unlike everything else
+`render` checks in this section, **nothing here can decide which
+equations deserve one**. What follows is guidance for making that call,
+not a rule a program executes.
+
+Number an equation when:
+
+- it is **standalone** -- not one step among several leading somewhere
+  else;
+- it is the **final result of a derivation or a chain of logically
+  continuous equations** -- the steps that lead to it are not numbered,
+  only the one that was proved;
+- it is **reused by a later equation** -- substituted into it, referred
+  back to -- regardless of the two rules above.
+
+Every equation numbered by any of the three rules above must then be
+**referenced and explained in the prose**. This is the one part of the
+decision a machine can check: `chitragupta.EquationUnreferenced` reports a
+numbered equation no sentence points at, the same way
+`chitragupta.TableUnreferenced` does for §13. That a sentence *refers to*
+a numbered equation is decidable; that the sentence *explains* it is not,
+same as a table's or a figure's row in §9's table below.
+
+An equation opts into a number with `<!-- equation: id -->` directly
+above the `<!-- math -->` marker this section already uses:
+
+````markdown
+<!-- equation: energy -->
+<!-- math -->
+```
+E = m * c^2
+```
+````
+
+and prose reads it with `<!-- equationref: id -->`, mirroring §10's
+`figureref` and §13's `tableref`:
+
+```markdown
+Substituting <!-- equationref: energy --> into the momentum relation
+gives the result used throughout this section.
+```
+
+**Ids are kebab-case and unique within a draft**, the same rule §10 and
+§13 state for a figure or table id. **Numbers are never written by an
+author** -- assigned by document order of `equation:` markers, the same
+reasoning §13 gives for a table: document order is LaTeX's own counting
+order, so the number this pipeline writes for `md`/`docx` and the number
+LaTeX assigns for `pdf` point at the same equation. Unlike a table's
+caption, an equation carries no number in the *draft* on either path --
+only in what each format renders to.
+
+**A marked equation gets a number in every rendered format, `md`
+included** -- matching the table/figure precedent above rather than this
+section's own "the `md` path is a no-op" rule. That rule still holds for
+an equation's *content*: the ASCII inside a marked fence is exactly as
+untouched on the `md` path as an unmarked one always was. It does not
+hold for the *number*: a marked equation gains a `**Equation N:**` label
+there, the same way a table already gains `**Table N:**`. This is a
+deliberate, narrow exception -- content substitution is still gated on a
+real `math.md` mapping; equation numbering is not, and runs
+unconditionally the way a table's or figure's numbering already does.
+
+An unmarked `<!-- math -->` block -- a derivation step, or any equation
+the author chose not to number -- is untouched by every check in this
+subsection. There is no finding for "this equation should have been
+numbered and was not": that would require the tool to tell a standalone
+result from an intermediate step, which nothing here can do.
 
 ## 🔢 13. Tables
 
