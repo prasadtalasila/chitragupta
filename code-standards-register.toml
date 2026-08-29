@@ -69,10 +69,6 @@ name = "chitragupta/overlap_skipgram.py"
 code_lines = 288
 
 [[c2]]
-name = "chitragupta/review/citation_coverage.py"
-code_lines = 275
-
-[[c2]]
 name = "chitragupta/passages.py"
 code_lines = 260
 

@@ -42,6 +42,7 @@ from pathlib import Path
 
 from chitragupta import config, retrieval, review
 from chitragupta.citation_gate import extract_citekeys_from_line
+from chitragupta.review import _citation_coverage_render
 
 
 @dataclass
@@ -83,29 +84,6 @@ def compute_coverage(draft_path: Path, queries: list[str], k: int = 5) -> Covera
         for result in retrieval.search(query, k=k):
             candidates[result.citekey] = result.title
     return CoverageResult(candidates=candidates, cited=cited_citekeys(draft_path))
-
-
-def format_report(draft_path: Path, queries: list[str], result: CoverageResult) -> str:
-    lines = [f"Citation coverage for {draft_path}", f"Queries: {queries}"]
-
-    if result.coverage_pct is None:
-        lines.append("No candidates found for any query -- nothing to compare against.")
-    else:
-        lines.append(
-            f"Coverage: {result.coverage_pct:.0f}% "
-            f"({len(result.cited_candidates)}/{len(result.candidates)} retrieved candidates cited)"
-        )
-        if result.uncited_candidates:
-            lines.append("Retrieved but not cited:")
-            for key in sorted(result.uncited_candidates):
-                lines.append(f"  - {key}: {result.candidates[key]}")
-
-    if result.cited_outside_candidates:
-        lines.append("Cited but not surfaced by these queries (not necessarily a problem):")
-        for key in sorted(result.cited_outside_candidates):
-            lines.append(f"  - {key}")
-
-    return "\n".join(lines)
 
 
 def _command(draft_path: Path, queries: list[str], k: int, as_json: bool, write: bool) -> str:
@@ -178,64 +156,6 @@ def coverage_payload(
     return payload
 
 
-def render_markdown(
-    draft_path: Path, queries: list[str], k: int, result: CoverageResult, command: str
-) -> str:
-    """The same report as `format_report`, as a Markdown document.
-
-    Kept beside the plain-text version rather than replacing it: stdout
-    is read in a terminal mid-review and wants no syntax, while a file
-    kept for months is read next to the draft's other review reports and
-    should look like them.
-    """
-    lines = review.header(draft_path, "coverage", command)
-    lines += [
-        "## How to read this",
-        "",
-        "Each query below was run through the same retrieval this project's",
-        "genre skills use. A candidate it surfaced that the draft never cites",
-        "is either a source worth adding or a query that was too broad --",
-        "this report does not know which, and does not guess.",
-        "",
-        "A citekey cited but not surfaced here is **not** a gap: it is almost",
-        "always explained by a different query the skill ran. It is listed so",
-        "the report cannot be misread as a complete picture of the draft's",
-        "sources.",
-        "",
-        "## Queries",
-        "",
-    ]
-    lines += [f"- `{query}`" for query in queries]
-    lines += ["", f"Top {k} results per query.", "", "## Coverage", ""]
-
-    if result.coverage_pct is None:
-        lines += ["No candidates found for any query -- nothing to compare against.", ""]
-    else:
-        lines += [
-            f"**{result.coverage_pct:.0f}%** -- {len(result.cited_candidates)} of "
-            f"{len(result.candidates)} retrieved candidates are cited.",
-            "",
-        ]
-        if result.uncited_candidates:
-            lines += ["### Retrieved but not cited", ""]
-            for key in sorted(result.uncited_candidates):
-                lines.append(f"- `{key}` -- {result.candidates[key]}")
-            lines.append("")
-
-    if result.cited_outside_candidates:
-        lines += [
-            "### Cited but not surfaced by these queries",
-            "",
-            "Not necessarily a problem -- see above.",
-            "",
-        ]
-        for key in sorted(result.cited_outside_candidates):
-            lines.append(f"- `{key}`")
-        lines.append("")
-
-    return "\n".join(lines)
-
-
 def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags.
 
@@ -305,7 +225,7 @@ def run(args: argparse.Namespace) -> int:
     result = compute_coverage(draft_path, args.queries, k=args.k)
 
     if not (args.json or args.write):
-        print(format_report(draft_path, args.queries, result))
+        print(_citation_coverage_render.format_report(draft_path, args.queries, result))
         return 0
 
     command = _command(draft_path, args.queries, args.k, args.json, args.write)
@@ -313,12 +233,14 @@ def run(args: argparse.Namespace) -> int:
     print(
         json.dumps(payload, indent=2)
         if args.json
-        else format_report(draft_path, args.queries, result)
+        else _citation_coverage_render.format_report(draft_path, args.queries, result)
     )
 
     if args.write:
         formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        body = render_markdown(draft_path, args.queries, args.k, result, command)
+        body = _citation_coverage_render.render_markdown(
+            draft_path, args.queries, args.k, result, command
+        )
         written = review.write(draft_path, "coverage", body, formats)
         written["json"] = review.write_json(draft_path, "coverage", payload)
         review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
