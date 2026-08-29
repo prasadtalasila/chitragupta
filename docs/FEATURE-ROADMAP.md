@@ -555,6 +555,35 @@ Carries R2 and R10 like any aid.
 
 Size: M. Depends on: C1's sentence splitting.
 
+### 🙅 C6: measure the refusal
+
+Gao's survey (arXiv:2312.10997) lists **negative rejection** among the
+four abilities a RAG system should be evaluated on -- whether a system
+declines to answer when the retrieved material does not support an
+answer. **This project is designed around that behaviour and does not
+measure it.** Every genre skill is told to report thin coverage rather
+than pad it; [E4](#-e4-the-draft-is-the-query) sharpens it further with
+"an empty result means the claim cannot be grounded, so the sentence is
+cut". Nothing tests whether any of that actually happens.
+
+The instrument is buildable without a model and without labels, because
+the corpus is closed and this repository already owns the trick:
+`bench_retrieval_keyword_selfretrieval.py` uses a paper's own
+author-assigned keywords as a query whose right answer is known. The
+negative case is its complement -- **a query whose correct answer is
+that the corpus holds nothing** -- and one honest way to build it is to
+take keyword sets from entries that are *in the bib file but not
+parsed*, or from a held-out shelf excluded by `--collection`, so the
+topic is real and the supporting text genuinely absent.
+
+What it reports is a rate, not a verdict: how often a draft asserts a
+claim on a sub-theme the corpus cannot support, against how often it
+says so. **Advisory, and the harder half is the ground truth rather than
+the check** -- a sub-theme the corpus covers thinly is not the same as
+one it does not cover, and conflating them would manufacture failures.
+
+Size: M. Depends on: nothing, though it reads best beside E4.
+
 ## 📐 Theme D: figure layout
 
 The second thing the request asks for. PaperBanana generates **raster**
@@ -1043,7 +1072,8 @@ is for.
 | 10 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
 | 11 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
 | 12 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | E3 |
-| 13 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 13 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 14 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 **E1 leads because it is cheap, measured, and a prerequisite that gets
 more expensive to add later**: E2 invites people to write queries, and

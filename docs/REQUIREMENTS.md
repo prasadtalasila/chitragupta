@@ -325,6 +325,43 @@ revision path exists to use. The state a revision feature would need
 largely already exists on disk in three of the four; what is missing is
 any entry point that reads it.
 
+### 📚 Two surveys, and what they say this pipeline is
+
+Read 2026-08-29, and useful mainly for placing this project in the
+field's own vocabulary rather than its own:
+
+- **Gao et al.**, *"Retrieval-Augmented Generation for Large Language
+  Models: A Survey"* (arXiv:2312.10997v5, 2024) -- the Naive / Advanced /
+  Modular paradigms, a retrieval-process taxonomy (Once / Iterative /
+  Recursive / Adaptive), a granularity ladder from Token to Doc, and an
+  evaluation framework of three quality scores and four required
+  abilities.
+- **Fan et al.**, *"A Survey on RAG Meeting LLMs"* (KDD '24,
+  pp. 6491-6501) -- organised by architecture, training strategy and
+  application, and the source of the integration-layer distinction
+  (input / intermediate / output).
+
+Placed against those, this pipeline is **Advanced** (not Modular),
+**Once** (not iterative), **Doc**-granularity on its lexical path,
+**input-layer** by necessity, and **train-free** by design.
+[RAG.md](RAG.md#-where-this-sits-in-the-standard-taxonomy) carries the
+table and what each choice costs.
+
+**Three things the surveys supply that §1's requirement list did not.**
+The first is that intermediate- and output-layer integration are
+*unavailable* to any pipeline driving a model through an inference API,
+so a large part of the published technique space is inapplicable rather
+than merely unbuilt. The second is **negative rejection** -- declining
+to answer when the retrieved material does not support one -- named as a
+first-class evaluable ability, which is the behaviour this project is
+built around and the one it has never measured (now
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6). The third is a defence
+of retrieval that does not depend on context length: Gao §VII-A argues
+that RAG's durable advantage over a long-context model is that "the
+entire retrieval and reasoning process is observable, while generation
+solely relying on long context remains a black box". That is §1.1's
+gate property argued from the outside.
+
 **[RAG.md](RAG.md) is the stage-by-stage version of everything below**
 -- the eleven stages of a RAG pipeline, the algorithm each of these
 systems uses at each, and the trade-off it buys.

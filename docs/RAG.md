@@ -58,8 +58,61 @@ Two caveats a reader should hold throughout:
   README, the code was read and the code won. Named instances are called
   out in place.
 
+## 🗺 Where this sits in the standard taxonomy
+
+Two surveys are the field's common vocabulary, and this document's
+eleven stages are a finer-grained cut of the same territory. Naming the
+correspondence once means a reader who has read either can place this
+pipeline exactly:
+
+- **Gao, Xiong, Gao, Jia, Pan, Bi, Dai, Sun, Wang and Wang**,
+  *"Retrieval-Augmented Generation for Large Language Models: A Survey"*
+  (arXiv:2312.10997v5, 2024).
+- **Fan, Ding, Ning, Wang, Li, Yin, Chua and Li**, *"A Survey on RAG
+  Meeting LLMs: Towards Retrieval-Augmented Large Language Models"*
+  (KDD '24, pp. 6491-6501).
+
+**Four axes, and where chitragupta lands on each:**
+
+| Axis | The options | This pipeline |
+| --- | --- | --- |
+| **Paradigm** (Gao §II) | Naive -> Advanced -> Modular | **Advanced.** It has pre-retrieval (collection scoping) and post-retrieval (cap, optional rerank) around a fixed chain -- not Modular's swappable routing |
+| **Retrieval process** (Gao Table I) | Once / Iterative / Recursive / Adaptive | **Once.** Every genre skill retrieves per sub-theme and moves on. [E4](FEATURE-ROADMAP.md) would make it *Iterative*; nothing here is Recursive or Adaptive |
+| **Granularity** (Gao §III-A2) | Token / Phrase / Sentence / Proposition / Chunk / Doc | **Doc** for BM25 -- the coarsest rung -- and Chunk for the dense path |
+| **Integration layer** (Fan §2.3) | Input / Intermediate / Output | **Input, necessarily.** The other two need white-box access to the generator, which a harness-driven model does not give |
+
+Three consequences worth drawing out, because each one bounds what this
+project can adopt from the literature at all.
+
+**Input-layer integration is not a choice here.** Fan's intermediate-layer
+methods (RETRO's chunked cross-attention, kNN-augmented attention) and
+output-layer methods (kNN-LM's distribution interpolation) both require
+reaching inside the generator. That is unavailable to any pipeline whose
+model is behind an inference API, so a large fraction of the published
+technique space is inapplicable rather than merely unbuilt.
+
+**Doc granularity is the coarsest rung, and the surveys name its cost.**
+Gao: coarse units "can provide more relevant information for the problem,
+but they may also contain redundant content, which could distract the
+retriever and language models". This pipeline accepts that cost knowingly
+and gets something back for it --
+[one result per citekey by construction](#-stage-8-capping-and-diversity),
+which every chunk-ranking system has to reintroduce as a filter.
+
+**Being train-free is also a position, not an absence.** Fan's §3 splits
+the field into train-free and training-based (independent, sequential,
+joint). Everything here is train-free, and Fan states the trade plainly:
+sparse retrieval's "no-training nature ... makes the retrieval
+performance heavily relying on the quality of the database and the
+query". That is precisely what
+[the interrogative measurement](#-stage-4-query-manufacture-the-stage-most-systems-skip)
+found -- with no trained component to absorb a badly-shaped query, query
+wording carries more weight here than in a system that fine-tuned its
+retriever.
+
 ## 🧭 Table of contents
 
+- [Where this sits in the standard taxonomy](#-where-this-sits-in-the-standard-taxonomy)
 - [Stage 1: ingestion](#-stage-1-ingestion-and-what-is-admitted)
 - [Stage 2: chunking](#-stage-2-chunking-the-unit-of-retrieval)
 - [Stage 3: indexing](#-stage-3-indexing-and-the-algorithms)
@@ -73,6 +126,7 @@ Two caveats a reader should hold throughout:
 - [Stage 10: citation and verification](#-stage-10-citation-and-verification)
 - [Stage 11: revision](#-stage-11-revision)
 - [Evaluation, which is a stage too](#-evaluation-which-is-a-stage-too)
+- [The abilities the surveys evaluate on](#-the-abilities-the-surveys-say-a-rag-system-should-be-evaluated-on)
 - [What a reproduction toolkit found](#-what-a-reproduction-toolkit-found-and-what-it-says-about-determinism)
 - [The trade-off table](#-the-trade-offs-in-one-table)
 
@@ -236,6 +290,24 @@ author-assigned ground truth, phrasing a query as a question costs
 [CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
 has the table and the partial fix.
 
+**The principled fix for that is an indexing change, not a query
+change, and it collides with a rule here.** Gao §III-B2 describes
+*Reverse HyDE*: at index time, have a model generate hypothetical
+*questions* a document answers, and index those alongside it. A
+question-form query then matches a question rather than competing
+against a paper's prose, which is the part a stopword list structurally
+cannot reach. It is the right shape for the residual loss
+[E1](FEATURE-ROADMAP.md) leaves on the floor.
+
+**It is also LLM output entering the retrieval path**, and
+[SOUL.md](../SOUL.md) keeps the corpus layer free of generated content
+so that the same bibliography always yields the same citekeys. So it is
+not simply unbuilt -- it would need a home outside the corpus plane, the
+way the per-citekey TL;DR already has one
+([TLDR.md](TLDR.md)), and a story for what happens when the generated
+questions are wrong. Recorded as a real option with a real constraint,
+not as an obvious win.
+
 ## 🎯 Stage 5: candidate retrieval
 
 Chitragupta's dense path over-fetches `k × 4` and its BM25 path returns
@@ -352,6 +424,15 @@ handed anonymous text. papersgpt injects each source paper's *own
 reference list* and points the citation contract at it -- works that were
 never parsed and need not be in the library, which is precisely the
 fabrication this project exists to prevent.
+
+**Position in the prompt is itself a lever, and nothing here uses it.**
+Gao §IV-A1 names the "lost in the middle" effect -- a model attends to
+the beginning and end of a long context and neglects the middle -- and
+notes that a reranker's second job is therefore to *relocate* the most
+relevant passages to the **edges** of the prompt rather than merely to
+sort them. This pipeline orders passages by score and hands them over in
+that order, which puts its best evidence in the middle of a long list.
+Cheap to change and unmeasured here, so it is named rather than claimed.
 
 **Chitragupta's trade-off here is the one it is least done with.** The
 design intent is that the drafter holds `claim:` lines it wrote itself,
@@ -497,6 +578,50 @@ its code does nothing to prevent it.
 Chitragupta's answer avoids the circularity by construction: the query is
 a paper's **own author-assigned `keywords` field** and the answer is that
 paper. No retrieval method's history chose it, and no LLM wrote it.
+
+### 📐 The abilities the surveys say a RAG system should be evaluated on
+
+Gao §VI-C names three quality scores -- **context relevance**, **answer
+faithfulness**, **answer relevance** -- and four required abilities:
+**noise robustness**, **negative rejection**, **information
+integration**, **counterfactual robustness**. Mapping this pipeline onto
+that list is uncomfortable in a useful way:
+
+| Ability | Where it lives here | Measured? |
+| --- | --- | --- |
+| Answer faithfulness | the gate (existence), `review support` (entailment) | partly |
+| Information integration | the multi-source rule, `review synthesis` | reported, not scored |
+| Context relevance | the retrieval benchmarks in `bench/` | yes |
+| **Negative rejection** | the "not found in the corpus" discipline | **no** |
+| Noise robustness | -- | no |
+| Counterfactual robustness | -- | no |
+
+**Negative rejection is the interesting gap**, because this project has
+the *behaviour* and no measurement of it. Every genre skill is told to
+report thin coverage rather than pad it, and
+[E4](FEATURE-ROADMAP.md)'s empty-result-is-informative rule sharpens it
+further -- but nothing anywhere tests whether a draft actually declines
+to claim what the corpus cannot support. It is the one ability on that
+list this pipeline is *designed* around, and the one with no number.
+
+**Two findings from Gao §VII-B are worth carrying, both
+counterintuitive.** Retrieved noise is not uniformly harmful: one study
+it cites found that including irrelevant documents *increased* accuracy
+by over 30%, against the obvious expectation. And the failure that does
+hurt is specific -- "misinformation can be worse than no information at
+all". Together those argue against tuning a pipeline toward precision
+for its own sake, and for caring most about the wrong-but-plausible
+passage, which is exactly the class `review support`'s measured failure
+mode already lives in.
+
+**One argument from Gao §VII-A is this project's own thesis, stated by a
+survey.** Asked whether long-context models make RAG unnecessary, it
+answers partly on cost -- and partly that "RAG-based generation can
+quickly locate the original references for LLMs to help users verify the
+generated answers. The entire retrieval and reasoning process is
+observable, while generation solely relying on long context remains a
+black box." Verifiability, not context length, is the durable reason to
+retrieve.
 
 ### 🔬 What a reproduction toolkit found, and what it says about determinism
 
