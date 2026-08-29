@@ -77,10 +77,6 @@ name = "chitragupta/review/citation_coverage.py"
 code_lines = 275
 
 [[c2]]
-name = "chitragupta/enrich/__main__.py"
-code_lines = 266
-
-[[c2]]
 name = "chitragupta/passages.py"
 code_lines = 260
 
