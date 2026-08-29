@@ -196,7 +196,7 @@ One reading path under three delivery modes.
 ```
 
 Two passes run *before* `_with_figures_for`'s own substitution, in
-`_substituted` (`chitragupta/render_output/__init__.py`), because both
+`_substituted` (`chitragupta/render_output/_substitution.py`), because both
 read `figures()` off the original `[marker, caption]` text -- after
 `_with_figures_for` replaces the marker with real content, that adjacency
 is gone:
@@ -267,7 +267,7 @@ to `pdflatex` untouched. It does not, on pandoc 3.1.11.1 (this host,
 2026-08-24) -- and nothing in `_with_figures_for` or `_pandoc_command`
 intercepts it, because the fourth row is coded as "nothing to do here."
 
-`_pandoc_command` (`chitragupta/render_output/__init__.py`) never passes
+`_pandoc_command` (`chitragupta/render_output/_pandoc.py`) never passes
 `-f`/`--from`. Without it, pandoc guesses the reader from the input
 file's extension, and for `.tex` that guess is the **LaTeX** reader, not
 Markdown -- confirmed by reproducing the render directly (not a mock):
