@@ -26,9 +26,11 @@ class TestTokenize:
 
 class TestQueryTerms:
     def test_strips_wh_words_and_a_modal(self):
-        assert retrieval._query_terms(
-            "what are the failure modes of co-simulation"
-        ) == ["failure", "modes", "simulation"]
+        assert retrieval._query_terms("what are the failure modes of co-simulation") == [
+            "failure",
+            "modes",
+            "simulation",
+        ]
 
     def test_strips_why_and_does(self):
         assert retrieval._query_terms("why does model calibration matter") == [
@@ -38,9 +40,13 @@ class TestQueryTerms:
         ]
 
     def test_leaves_a_keyword_query_untouched(self):
-        assert retrieval._query_terms(
-            "digital twin structural health monitoring"
-        ) == ["digital", "twin", "structural", "health", "monitoring"]
+        assert retrieval._query_terms("digital twin structural health monitoring") == [
+            "digital",
+            "twin",
+            "structural",
+            "health",
+            "monitoring",
+        ]
 
     def test_tokenize_itself_is_not_touched(self):
         """_query_terms must be additive over _tokenize, not a
@@ -504,9 +510,7 @@ class TestCli:
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Patterns"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)
 
-        with_question = retrieval_cli.evidence(
-            "a2024", "what are architecture patterns", windows=2
-        )
+        with_question = retrieval_cli.evidence("a2024", "what are architecture patterns", windows=2)
         without_question = retrieval_cli.evidence("a2024", "architecture patterns", windows=2)
         assert with_question == without_question
 

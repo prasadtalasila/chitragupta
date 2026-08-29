@@ -53,9 +53,23 @@ from chitragupta.passages import _CORE_STOPWORDS as _STOPWORDS
 # actually about. Query-side only: see _query_terms below.
 # docs/CORPUS-SEARCH.md has the measurement.
 _INTERROGATIVES = {
-    "what", "why", "how", "who", "whom", "whose", "which", "when",
-    "where", "can", "could", "would", "should", "will", "shall",
-    "does", "did",
+    "what",
+    "why",
+    "how",
+    "who",
+    "whom",
+    "whose",
+    "which",
+    "when",
+    "where",
+    "can",
+    "could",
+    "would",
+    "should",
+    "will",
+    "shall",
+    "does",
+    "did",
 }
 
 # Standard Okapi BM25 constants (term-frequency saturation and length

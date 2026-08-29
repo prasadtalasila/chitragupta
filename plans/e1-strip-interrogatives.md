@@ -75,33 +75,39 @@ _STOPWORDS = _CORE_STOPWORDS | {
 from chitragupta.passages import _CORE_STOPWORDS as _STOPWORDS
 ```
 
-**A real, verified bonus, not a side claim:** `chitragupta/passages.py`
-is currently a registered C2 offender at 260 code lines
-(`code-standards-register.toml`). The 37-word flat literal this removes
-is ~31 code lines; the compact core-plus-extras form above is ~8. That
-drops the module to roughly 229 lines -- under the 250 limit, so its
-register entry is deleted rather than shrunk, which
-`test_every_registered_offender_records_its_current_count` requires
-either way. `chitragupta/retrieval.py` loses its own 21-line literal and
-gains a 1-line import, which only widens the C2 margin the section
-below already counts on.
+**Checked, and it does *not* resolve the existing C2 debt -- say so
+plainly rather than claiming a bonus that doesn't survive contact with
+the formatter.** `chitragupta/passages.py` is a registered C2 offender
+at 260 code lines. A hand-written compact literal (several words per
+line) would have dropped it under 250, but `ruff format` -- enforced,
+not optional -- reflows any collection literal that doesn't fit one
+line back to one item per line, and splitting one 37-word literal into
+two (`_CORE_STOPWORDS` plus `_STOPWORDS = _CORE_STOPWORDS | {...}`)
+costs two extra brace lines net. Real, ruff-formatted count: **262**,
+two lines worse, not better. The register entry's `code_lines` value
+updates from 260 to 262; it is not deleted. Do not hand-format the
+literal to dodge this -- `ruff format --check` would just revert it and
+you'd be back here. `chitragupta/retrieval.py` still nets out ahead
+(loses a 21-line literal, gains a 1-line import), which is what the C2
+budget section below counts on -- that part of the claim holds.
 
 **Cascade this triggers, checked in advance so it isn't found by a red
 CI run:**
 
+- `code-standards-register.toml`'s `chitragupta/passages.py` entry:
+  `code_lines = 260` -> `262`.
 - `docs/CODE-STANDARDS.md:298-299` states "**3 functions** and **7
   modules**", pinned by
-  `test_the_registers_are_the_size_this_document_says`. Becomes **6
-  modules**.
+  `test_the_registers_are_the_size_this_document_says`. Unchanged --
+  the entry count moves, the number of registered files does not.
 - `docs/TECHNICAL-DEBT.md:101-102` states the same pair independently
   ("`code-standards-register.toml` freezes **3 functions** over C1 ...
   and **7 modules** over C2"), pinned by
-  `test_the_stated_register_sizes_match_the_registers`. Becomes **6
-  modules** too.
+  `test_the_stated_register_sizes_match_the_registers`. Also unchanged.
 - `docs/TECHNICAL-DEBT.md:454-461` also names `chitragupta/passages.py`
   in a historical paragraph about a past reformat PR ("Six modules
   crossed the C2 250-code-line limit from the reformat alone..."). This
-  one does **not** need editing: `test_technical_debt_scan.py`
+  one does **not** need editing regardless: `test_technical_debt_scan.py`
   deliberately only checks a Tier-1 subsection heading or a
   `[Tier 1]`-tagged "What to take first" item (its own docstring: "Not
   free-standing factual claims" / "Not every `chitragupta/*.py` token in
@@ -793,10 +799,9 @@ adding one.
   Expected: PASS, all -- identical content through a different source,
   so nothing about `_tokenize`'s or `distinctive()`'s output changes.
 
-- [ ] Delete `chitragupta/passages.py`'s entry from
-  `code-standards-register.toml`'s `[[c2]]` table (the module is now
-  under 250 code lines). Confirm the exact new count before editing the
-  docs below:
+- [ ] Run `ruff format chitragupta` -- it reflows both new set literals
+  to one item per line, which changes `passages.py`'s code-line count.
+  Confirm the actual new count before touching the register:
 
   ```bash
   .venv-full/bin/python -c "
@@ -805,10 +810,15 @@ adding one.
   "
   ```
 
-- [ ] In `docs/CODE-STANDARDS.md` (around line 298) and
-  `docs/TECHNICAL-DEBT.md` (around line 101), change "**7 modules**" to
-  "**6 modules**" in both places -- leave "**3 functions**" untouched,
-  the C1 register is unaffected.
+  This lands at **262**, not under 250 -- splitting one 37-word literal
+  into two costs two extra brace lines net, more than the word-count
+  saving. Update `chitragupta/passages.py`'s existing
+  `code-standards-register.toml` entry's `code_lines` from `260` to
+  `262`. **Do not delete the entry and do not hand-compact the literal
+  to dodge this** -- `ruff format --check` would just revert it.
+  `docs/CODE-STANDARDS.md` and `docs/TECHNICAL-DEBT.md`'s "**7
+  modules**" stay exactly as they are: the entry count changed, not the
+  number of registered files.
 
 - [ ] Run:
 
@@ -816,14 +826,13 @@ adding one.
   .venv-full/bin/python -m pytest tests/test_code_standards_scan.py tests/test_technical_debt_scan.py -v
   ```
 
-  Expected: PASS, all -- confirms the register, its recorded count, and
-  both docs' stated sizes agree.
+  Expected: PASS, all -- confirms the register's recorded count matches
+  reality and both docs' stated sizes still agree with it.
 
 - [ ] Commit.
 
   ```bash
-  git add chitragupta/passages.py chitragupta/retrieval.py \
-    code-standards-register.toml docs/CODE-STANDARDS.md docs/TECHNICAL-DEBT.md
+  git add chitragupta/passages.py chitragupta/retrieval.py code-standards-register.toml
   git commit -m "passages, retrieval: share the 19-word stopword core instead of duplicating it"
   ```
 
