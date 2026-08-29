@@ -108,7 +108,7 @@ Before the first edit:
 
 ```bash
 python -m chitragupta.draft dossier export <name>
-python -m chitragupta.draft dossier mark-revision content/drafts/<path> --label "overlap remediation"
+python -m chitragupta.draft dossier mark-revision content/drafts/<path> --label "agenda remediation"
 ```
 
 `<name>` is the draft's path under `content/drafts/` with the suffix
@@ -120,35 +120,34 @@ marker is what lets `dossier status` attribute this session's cost
 separately from the drafting run's.
 
 Then read `scope.md` and `steering.md`. A rewrite is still a rewrite: the
-reader is already fixed, and so is the terminology. Introducing a second
-name for a concept while breaking up a borrowed phrase is the exact seam
-a reader notices.
+reader is already fixed, and so is the terminology.
 
-### 2. Take the baseline
+### 2. Take the baseline agenda
 
 ```bash
-python -m chitragupta.review verbatim scan content/drafts/<path> --write --json
+python -m chitragupta.review agenda content/drafts/<path> --json
 ```
 
-Uncapped -- **never pass `--limit` to a baseline**. A capped payload lists
-only the longest findings, so it cannot say what was absent, and
-`recheck` refuses it for that reason.
+Unlike `verbatim scan`, `agenda` has no `--write` flag: the `.md`/`.json`
+report is filed unconditionally on every run, `--json` only decides what
+prints to stdout. This files the payload at
+`content/review/<topic>/<stem>.agenda.json`.
 
-If the scan reports nothing, say so and stop. There is nothing here to do --
-and the draft is not thereby clean, because **genuine restatement is only
-detected where the embedding tier can run** by either deterministic tier this
-baseline came from.
+Read `pass_bound` and `objective_class_count` off it now -- both are
+carried precisely so a skill never hardcodes them (`pass_bound` lives
+only as a Python constant, `objective_class_count` only as a property,
+and neither serialises anywhere a `SKILL.md` could import it). This is
+the file every later `--baseline` in this pass points at, and the
+closing report is stated against it, not against a re-scan taken later.
 
-This files the payload at `content/review/<topic>/<stem>.verbatim.json`.
-That file is the recorded baseline: every claim you make at the end is
-stated against it, not against a re-scan you took later.
+If the agenda reports no unattended items, say so and stop. There is
+nothing here for this skill to do -- report the surfaced items and hand
+off, same as ever.
 
-Take a fresh one at the start of every pass rather than reusing whatever
-is already at that path. An existing payload may predate the draft's last
-edit, and one from an earlier release series `recheck` will refuse
-outright -- what counts as a single finding changes between releases.
-Re-scanning is a sub-second cache hit, so there is nothing to save by
-reusing an old one.
+Take a fresh one at the start of every pass. `agenda` reads the eight
+aids' `.json` off disk and marks a report older than the draft as stale
+via an mtime comparison, so an existing payload may already predate the
+draft's last edit.
 
 ### 3. Triage
 
