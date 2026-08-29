@@ -166,7 +166,7 @@ prose -- which composes an already-drafted book from its accepted units.
 | `deep-research` | a multi-perspective, corpus-grounded report -- heavier and slower than the others by design |
 | `draft-reviser` | a scoped edit to a draft that already exists, made from its dossier rather than the corpus -- including repairing citations after a sync moved the corpus |
 | `corpus-reviser` | the same edit discipline over a full retrieval pass, when you ask for the whole corpus to be re-searched |
-| `overlap-reviser` | a repaired draft after a verbatim-overlap scan found borrowed wording, one finding at a time |
+| `agenda-reviser` | a repaired draft after a review agenda found unattended findings, one item at a time |
 | `book-assembler` | a composed book from already-accepted units -- front matter, `\part`, `\chapter`, back matter |
 
 The two teaching genres are deliberately separate: a textbook chapter

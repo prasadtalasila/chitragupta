@@ -172,7 +172,7 @@ one ([GENRE.md](GENRE.md)).
 | `deep-research` | multi-perspective report, heaviest by design | someone who needs perspectives reconciled |
 | `draft-reviser` | edits an existing draft, from its dossier | -- the cheap, default path for any change |
 | `corpus-reviser` | edits an existing draft, re-searching everything | -- by explicit request only |
-| `overlap-reviser` | repairs verbatim overlap a scan found | -- one finding at a time |
+| `agenda-reviser` | repairs the unattended findings a review agenda found | -- one item at a time |
 | `book-assembler` | one LaTeX book from accepted units | [BOOKS.md](BOOKS.md) |
 
 **The rule that saves the most money:** never re-run a genre skill to

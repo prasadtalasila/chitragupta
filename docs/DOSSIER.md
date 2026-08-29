@@ -81,7 +81,7 @@ before you rename anything:
   to resolve, which is what makes that case loud rather than mute.
 - Because it is keyed on the exact span text, a revision that *rewords*
   an equation desyncs it. Which skill fixes that is not left open --
-  each of `draft-reviser`, `corpus-reviser` and `overlap-reviser` carries
+  each of `draft-reviser`, `corpus-reviser` and `agenda-reviser` carries
   the step, and the four Markdown genre writers create the file.
 
 **`scope.md` -- the boundary.** Genre, the reader the draft is written
@@ -138,7 +138,7 @@ deliberately -- the commonest way a revised draft comes back subtly wrong.
 **`revisions.md` -- an append-only log of what changed and why.**
 Including the attempts that failed. A repair tried and reverted is
 knowledge: without the record, the next session re-tries it, re-discovers
-the same problem, and reverts again. `overlap-reviser` logs every attempt
+the same problem, and reverts again. `agenda-reviser` logs every attempt
 here, refusals and reverts included, and a copy-edit pass leaves one
 entry naming the convention it applied. Append-only because the value is
 the sequence, not the current state.
