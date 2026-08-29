@@ -57,10 +57,6 @@ name = "chitragupta/config.py"
 code_lines = 492
 
 [[c2]]
-name = "chitragupta/review/citation_provenance.py"
-code_lines = 383
-
-[[c2]]
 name = "chitragupta/render_output/__init__.py"
 code_lines = 338
 

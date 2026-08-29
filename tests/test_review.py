@@ -116,13 +116,13 @@ class TestHeader:
         all -- so two drafts called `survey.md` in different topics wrote
         headers that read identically, the confusion the mirrored path
         exists to prevent, reintroduced inside the file."""
-        from chitragupta.review import citation_provenance
+        from chitragupta.review import _citation_provenance_render, citation_provenance
 
         draft = config.DRAFTS_DIR / "my topic" / "survey.md"
         draft.parent.mkdir(parents=True)
         draft.write_text("No citations here.\n")
 
-        body = citation_provenance.render_markdown(citation_provenance.build_report(draft))
+        body = _citation_provenance_render.render_markdown(citation_provenance.build_report(draft))
 
         assert f"- Draft: `{draft}`" in body
         assert f"'{draft}'" in body, "the command has to be shlex-quoted"

@@ -105,7 +105,7 @@ def _command(draft_path: Path, queries: list[str], k: int, as_json: bool, write:
 def finding_id(citekey: str, status: str) -> str:
     """A finding's name, stable across runs and position-free -- the same
     convention `verbatim_check.finding_id` and
-    `citation_provenance.finding_id` use.
+    `citation_provenance/_citation_provenance_render.finding_id` use.
     """
     digest = hashlib.sha256(f"{citekey}\x00{status}".encode())
     return digest.hexdigest()[:12]
