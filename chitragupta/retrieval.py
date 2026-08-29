@@ -257,7 +257,7 @@ def search(
     tests/test_retrieval.py so a future chunk-level BM25 index can't
     silently lose this property.
     """
-    terms = _tokenize(query)
+    terms = _query_terms(query)
     if not terms:
         return []
 

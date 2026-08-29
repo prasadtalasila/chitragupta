@@ -111,6 +111,27 @@ class TestSearch:
     def test_empty_query_returns_empty(self, ledger_con):
         assert retrieval.search("") == []
 
+    def test_a_question_and_its_keyword_form_rank_the_same(self, ledger_con):
+        """`what` must not survive into the query's term set: seed a
+        third title where the literal word "what" is what would win the
+        ranking pre-fix, so this is red before _query_terms is wired in,
+        not vacuously green."""
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="Structural Health Monitoring")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
+        )
+        ledger.upsert_reference(
+            ledger_con,
+            make_reference(citekey="c2024", title="What Is Wrong With Benchmarks What What"),
+        )
+        keyword_hits = [r.citekey for r in retrieval.search("structural health monitoring")]
+        question_hits = [
+            r.citekey for r in retrieval.search("what is structural health monitoring")
+        ]
+        assert keyword_hits == question_hits == ["a2024"]
+
     def test_ranks_by_term_overlap_descending(self, ledger_con):
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="a2024", title="Digital Twin Digital Twin Digital")
