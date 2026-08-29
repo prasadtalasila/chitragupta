@@ -39,6 +39,7 @@ if it is obvious which is which, so:
 | [2026-08-26: where a cross-encoder rerank sits, relative to the per-citekey cap](#2026-08-26-where-a-cross-encoder-rerank-sits-relative-to-the-per-citekey-cap) | **Current** | Planning input for #380 (roadmap B4), at the shipped pipeline's own shape -- chunks, cap 3, pool 20 -- which none of the three sections above measure (they collapse to one chunk per paper over a pool of 50, which is a cap of 1 applied after the rerank). **The cap position is strongly observable**: moving the rerank across the cap changes which papers survive on 217 of 256 queries, and #380's stated order is the better one. But reranking is a **wash for finding the right paper** (recall@5 identical at 156/256; the answer is lost 20x and gained 20x), it does **not** move `distinct@5` at all -- so B4 does not unblock #310 -- and **reranking BM25 does not help either**, which answers the open question the first of those sections left. All three findings were re-run against `ms-marco-MiniLM-L12-v2` and `BAAI/bge-reranker-base` and survive the change of reranker |
 | [2026-08-26b: what cross-encoding the over-fetched passages costs](#2026-08-26b-what-cross-encoding-the-over-fetched-passages-costs) | **Current** | The cost half of #380, which the section above deliberately left unmeasured. At the shipped pool of 20 the cheapest reranker makes an `embed_index.search()` call **2.5x** more expensive on a GPU and **5.75x** on a CPU; `bge-reranker-base`, the quality winner above, costs a full **second per call on CPU**. Read beside that section's "recall@5 unchanged", this is what makes `rerank = false` the only defensible default |
 | [2026-08-27: does claim-support checking (#C2) separate supported claims from unsupported ones on this corpus?](#2026-08-27-does-claim-support-checking-c2-separate-supported-claims-from-unsupported-ones-on-this-corpus) | **Current, qualitative only** | 71 real citations scored across four real drafts; a human read of the 20 lowest- and 20 highest-scored found the dominant failure at the low end is the wrong passage being matched, not genuine non-entailment. No `labels.json`/`--crosscheck` was run, so there is no separation statistic here, only the qualitative pattern and its examples |
+| [2026-08-29: does stripping interrogatives recover the recall a question-form query loses (#453, roadmap E1)?](#2026-08-29-does-stripping-interrogatives-recover-the-recall-a-question-form-query-loses-453-roadmap-e1) | **Current** | Re-runs docs/CORPUS-SEARCH.md's own measurement against today's 256-row corpus (up from 208). Confirms the **provably inert on keyword queries** property (recall@5 and nDCG@5 both exactly unchanged) and finds **full** recovery for a `"what is X"`-form question here, not the partial recovery the original write-up found for a three-template mix -- read as a property of this narrower template, not a correction to the original finding |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -3867,3 +3868,47 @@ threshold — per that same argument; this result does not change what it
 should say, only confirms it with a real example. See
 [`docs/REVIEW.md`](../docs/REVIEW.md)'s "Three limits worth knowing" for
 the shipped wording.
+
+## 2026-08-29: does stripping interrogatives recover the recall a question-form query loses (#453, roadmap E1)?
+
+`bench_retrieval_keyword_selfretrieval.py` extended with
+`wrapped_and_stripped_rows`, re-running the same 256-row keyword ground
+truth (query = a bib entry's own author-assigned keywords, correct
+answer = that entry) through four query forms, going around `search()`
+for the first two rows since the fix now lives inside it -- these call
+`_tokenize` directly to reproduce the pre-fix, unstripped path:
+
+| Query form | n | recall@5 | nDCG@5 |
+| --- | --- | --- | --- |
+| keywords (baseline) | 256 | 0.8047 | 0.7321 |
+| wrapped as a question (`"what is {query}"`) | 256 | 0.7773 | 0.7089 |
+| question, interrogatives stripped | 256 | 0.8047 | 0.7321 |
+| keywords, interrogatives stripped | 256 | 0.8047 | 0.7321 |
+
+**The "provably inert on keyword queries" property holds exactly**:
+the last row's recall@5 and nDCG@5 both equal the baseline row's, to
+four decimal places -- confirmed on today's corpus (256 rows), not just
+the 208-row corpus `docs/CORPUS-SEARCH.md`'s original write-up measured.
+
+**Recovery is full here, not partial -- read that as a property of the
+narrower template, not a correction.** The original write-up mixed
+three templates (`"what is X"`, `"how does X work"`, `"why is X
+important"`) and found 75% of the loss recovered at k=5. This run uses
+only `"what is X"`, the mildest of the three -- it adds one
+interrogative and one word (`is`) already in `_STOPWORDS`, where
+`"how does X work"` adds two interrogatives plus the ordinary content
+word `work`, which no stopword list reaches. Full recovery on the
+mild template is consistent with the original finding, not in tension
+with it: `docs/CORPUS-SEARCH.md`'s own conclusion -- *"a question is not
+merely a keyword query with interrogatives attached; it carries generic
+content words that compete for the ranking on their own"* -- still
+stands, and this run does not re-measure the wordier templates that
+finding rests on.
+
+**What this still does not cover, carried forward rather than silently
+dropped:** the wrapping templates are synthetic (real questions vary
+more than any fixed template), and no claim-form regression (a query
+phrased as an assertion rather than a question) has been run here
+either. Both remain open.
+
+Raw output: `results/2026-08-29-retrieval-interrogative-strip/`.

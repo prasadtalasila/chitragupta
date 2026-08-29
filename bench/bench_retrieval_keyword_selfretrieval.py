@@ -47,7 +47,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta import bib_reader, ledger, retrieval  # noqa: E402
+from chitragupta import bib_reader, ledger, retrieval, retrieval_cache  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
     K_REPORT,
     K_POOL,
@@ -99,6 +99,23 @@ def self_check():
     )
     assert len(rows) == 256, f"expected 256 rows, got {len(rows)}"
 
+    # E1's own before/after, against a fabricated 2-item index -- no
+    # disk cache touched, just _tokenize_item's pure per-document stats
+    # -- where "what" is the only thing that matches the decoy, so
+    # stripping it must change the outcome: proof the rows below see the
+    # fix, not just that they run.
+    fake_items = [
+        {"citekey": "real_2024", "title": "digital twin architecture", "parsed_path": None},
+        {"citekey": "decoy_2024", "title": "what what what happened next", "parsed_path": None},
+    ]
+    index = {item["citekey"]: retrieval._tokenize_item(item) for item in fake_items}
+    wrapped_hits = retrieval._bm25_scores(index, retrieval._tokenize("what is digital twin"))
+    stripped_hits = retrieval._bm25_scores(index, retrieval._query_terms("what is digital twin"))
+    assert "decoy_2024" in wrapped_hits, "fixture's decoy must match the unstripped query"
+    assert "decoy_2024" not in stripped_hits, (
+        "stripping interrogatives must drop the decoy that only matched on 'what'"
+    )
+
 
 def score_keyword_rows(ranked_by_query, ground_truth):
     recalls, ndcgs, missing = [], [], 0
@@ -128,6 +145,41 @@ def bm25_row(ground_truth):
         "row": "BM25 (chitragupta/retrieval.py)",
         **score_keyword_rows(ranked_by_query, ground_truth),
     }
+
+
+def wrapped_and_stripped_rows(ground_truth):
+    """E1's own recall table (docs/CORPUS-SEARCH.md), re-measured against
+    whatever the corpus holds today. Goes around `search()` for the
+    first two rows on purpose: `search()` now always strips
+    interrogatives, so there is no longer a way to reproduce the
+    pre-fix, unstripped path through the public API -- these call
+    `_tokenize` directly to simulate it, exactly as `search()` itself
+    did before E1.
+    """
+    with ledger.connection() as con:
+        items = ledger.all_items(con)
+    index = retrieval_cache._load_index(items, retrieval._tokenize_item)
+
+    forms = {
+        "keywords (baseline)": lambda q: retrieval._tokenize(q),
+        "wrapped as a question": lambda q: retrieval._tokenize(f"what is {q}"),
+        "question, interrogatives stripped": lambda q: retrieval._query_terms(f"what is {q}"),
+        "keywords, interrogatives stripped": lambda q: retrieval._query_terms(q),
+    }
+    rows = []
+    for label, terms_for in forms.items():
+        ranked_by_query = {}
+        for row in ground_truth:
+            scores = retrieval._bm25_scores(index, terms_for(row["query"]))
+            ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:K_REPORT]
+            ranked_by_query[row["citekey"]] = [citekey for citekey, _ in ranked]
+        rows.append(
+            {
+                "row": f"E1 interrogative-strip: {label}",
+                **score_keyword_rows(ranked_by_query, ground_truth),
+            }
+        )
+    return rows
 
 
 def _dense_worker(ground_truth):
@@ -322,7 +374,7 @@ def main(argv=None):
         flush=True,
     )
 
-    rows = [bm25_row(ground_truth)]
+    rows = [bm25_row(ground_truth)] + wrapped_and_stripped_rows(ground_truth)
     for model in DENSE_MODELS:
         dense, rerank = dense_and_rerank_rows(model, ground_truth, args.tag)
         rows += [dense, rerank]
