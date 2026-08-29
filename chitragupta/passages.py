@@ -70,43 +70,21 @@ from chitragupta import config
 # matching keys off the words that actually distinguish one claim from
 # another.
 _WORD = re.compile(r"[a-z0-9]+")
-_STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "of",
-    "on",
-    "in",
-    "for",
-    "and",
-    "to",
-    "with",
-    "is",
-    "are",
-    "be",
-    "this",
-    "that",
-    "as",
-    "by",
-    "from",
-    "at",
-    "it",
-    "its",
-    "can",
-    "has",
-    "have",
-    "was",
-    "were",
-    "which",
-    "such",
-    "these",
-    "those",
-    "their",
-    "than",
-    "then",
-    "but",
-    "not",
-    "also",
+
+_CORE_STOPWORDS = {
+    "a", "an", "the", "of", "on", "in", "for", "and", "to", "with",
+    "is", "are", "be", "this", "that", "as", "by", "from", "at",
+}
+
+# Shared with chitragupta/retrieval.py, which imports _CORE_STOPWORDS
+# from here (this module has no drafting-layer dependents, so this is
+# the direction that keeps the corpus/enrichment/review layers
+# independent of drafting). Editing this constant moves retrieval.py's
+# BM25 index too and needs _INDEX_SCHEMA_VERSION bumped there --
+# passages.py's own extras just below are free to change on their own.
+_STOPWORDS = _CORE_STOPWORDS | {
+    "it", "its", "can", "has", "have", "was", "were", "which", "such",
+    "these", "those", "their", "than", "then", "but", "not", "also",
 }
 
 

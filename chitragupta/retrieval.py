@@ -46,28 +46,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import bib_collections, ledger, retrieval_cache
-
-_STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "of",
-    "on",
-    "in",
-    "for",
-    "and",
-    "to",
-    "with",
-    "is",
-    "are",
-    "be",
-    "this",
-    "that",
-    "as",
-    "by",
-    "from",
-    "at",
-}
+from chitragupta.passages import _CORE_STOPWORDS as _STOPWORDS
 
 # Question words and question-forming auxiliaries -- rare in academic
 # PDFs, so they carry high IDF and out-compete the terms a question is
