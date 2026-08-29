@@ -153,7 +153,7 @@ enrichment layer is optional and nothing above it needs it.
   corpus re-searched, ask for it and you get `corpus-reviser`, which is
   the same edit discipline over a full retrieval pass -- it still keeps
   the dossier. And if what you want repaired is the verbatim overlap a
-  scan reported, that is `overlap-reviser`: it works the findings one at
+  scan reported, that is `agenda-reviser`: it works the findings one at
   a time, reasks you before deciding paraphrase-or-quote on a long run,
   and keeps no repair that `python -m chitragupta.draft gate` and `python -m
   chitragupta.review verbatim recheck` do not both accept. Never re-run a genre

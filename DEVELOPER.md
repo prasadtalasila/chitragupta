@@ -338,7 +338,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
 .claude/skills/           drafting layer: five that write a draft (survey-writer,
                           thesis-chapter-writer, textbook-chapter-writer, tutorial-writer,
                           deep-research), three that revise one that already exists
-                          (draft-reviser, corpus-reviser, overlap-reviser), and one that
+                          (draft-reviser, corpus-reviser, agenda-reviser), and one that
                           assembles accepted units into a book (book-assembler)
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer
 .claude/hooks/            citation_gate_hook.py and style_check_hook.py -- PostToolUse hooks,

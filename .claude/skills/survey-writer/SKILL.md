@@ -466,7 +466,7 @@ collapse them for the sake of a cleaner narrative.
     python -m chitragupta.draft style content/drafts/<slug>.md --json
     ```
 
-    The first two are `overlap-reviser`'s own baseline discipline
+    The first two are `agenda-reviser`'s own baseline discipline
     (uncapped, never `--limit`): they file
     `content/review/<topic>/<stem>.verbatim.json`, the file every edit
     below is rechecked against. The third's finding count -- not the
@@ -658,7 +658,7 @@ collapse them for the sake of a cleaner narrative.
     that on once. It sees verbatim and near-verbatim reuse only, and
     **genuine restatement is only detected where the embedding tier can
     run**, so a clean scan is not a clean bill of health
-    (`docs/PLAGIARISM.md`). Repairing a finding is `overlap-reviser`'s job,
+    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser`'s job,
     and only if the user asks. If the user wants the
     finding kept, add `--write`: the report goes to `content/review/`,
     mirroring the draft's path, beside any provenance and coverage reports for

@@ -374,7 +374,7 @@ reason as the scan wrote it, and where the reason names a fix (`poetry install
 verbatim and near-verbatim reuse only, and **genuine restatement is
 only detected where the embedding tier can run**, so a clean scan is not a
 clean bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-`overlap-reviser`'s job, and only if the user asks. If the user wants the
+`agenda-reviser`'s job, and only if the user asks. If the user wants the
 finding kept, add `--write`: the report goes to `content/review/`, mirroring
 the draft's path, beside any provenance and coverage reports for the same
 draft.

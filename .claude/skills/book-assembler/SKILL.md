@@ -270,7 +270,7 @@ It is the reading copy for anyone who is not building LaTeX.
    near-verbatim reuse only, and **genuine restatement is only detected
    where the embedding tier can run**, so a clean scan is not a clean
    bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-   `overlap-reviser`'s job, one finding at a time, in the unit that owns
+   `agenda-reviser`'s job, one finding at a time, in the unit that owns
    the wording, and only if the user asks.
 
    Report the per-unit results as one table rather than a wall: the book
