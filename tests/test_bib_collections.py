@@ -16,7 +16,7 @@ import sqlite3
 
 import pytest
 
-from chitragupta import bib_collections, config, ledger, retrieval
+from chitragupta import bib_collections, config, ledger, ledger_cli, retrieval
 
 from tests.conftest import make_reference
 
@@ -240,7 +240,7 @@ class TestTheLedgerCLI:
         return isolated_config
 
     def test_collections_lists_every_path_with_its_ancestors(self, corpus, capsys):
-        assert ledger.main(["--collections"]) == 0
+        assert ledger_cli.main(["--collections"]) == 0
         out = capsys.readouterr().out
         assert "  Digital twins\n" in out
         assert "  Digital twins > Modelling\n" in out
@@ -254,13 +254,13 @@ class TestTheLedgerCLI:
         library, so the empty case is guidance rather than a result."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="none_2024"))
         ledger_con.commit()
-        assert ledger.main(["--collections"]) == 0
+        assert ledger_cli.main(["--collections"]) == 0
         out = capsys.readouterr().out
         assert "No collections recorded." in out
         assert "Better BibTeX" in out
 
     def test_collection_filters_the_listing_and_includes_the_subtree(self, corpus, capsys):
-        assert ledger.main(["--collection", "Digital twins"]) == 0
+        assert ledger_cli.main(["--collection", "Digital twins"]) == 0
         out = capsys.readouterr().out
         assert "shelved_2024" in out
         assert "elsewhere_2024" not in out
@@ -270,5 +270,5 @@ class TestTheLedgerCLI:
         """`--list` reports "no items with status None" when empty, which
         would be a confusing thing to print at someone who asked about a
         collection."""
-        assert ledger.main(["--collection", "Nonexistent"]) == 0
+        assert ledger_cli.main(["--collection", "Nonexistent"]) == 0
         assert "No items in collection 'Nonexistent'." in capsys.readouterr().out

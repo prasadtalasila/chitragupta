@@ -41,7 +41,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # uses for it.
 BACKING_MODULES = {
     "sync": "sync",
-    "ledger": "ledger",
+    "ledger": "ledger_cli",
     "topics": "seed_topics",
 }
 
@@ -51,7 +51,7 @@ BACKING_MODULES = {
 # was a real command until 5.2.0 and is the one spelling in this project
 # that plausibly sits in a crontab, so it refuses out loud instead (#153).
 # See TestTheRemovedSyncCommandRefuses.
-SILENT_NO_OP_MODULES = ["ledger", "seed_topics"]
+SILENT_NO_OP_MODULES = ["ledger_cli", "seed_topics"]
 
 # A real top-level entry-point block, anchored at column 0 -- not the
 # string wherever it appears. Same reasoning as test_draft_entrypoint.py:
@@ -175,7 +175,7 @@ class TestLedgerKeepsItsBarePythonTier:
         result = _run(
             "-c",
             "import sys; from chitragupta import corpus; "
-            "print('chitragupta.sync' in sys.modules, 'chitragupta.ledger' in sys.modules)",
+            "print('chitragupta.sync' in sys.modules, 'chitragupta.ledger_cli' in sys.modules)",
         )
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == "False False"
