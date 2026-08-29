@@ -1030,7 +1030,7 @@ class TestVerbatimScanEndToEnd:
 
 
 class TestOverlapRemediationEndToEnd:
-    """The loop #129 exists for, driven the way the `overlap-reviser`
+    """The loop #129 exists for, driven the way the `agenda-reviser`
     skill drives it: `scan --write --json` to take a baseline, an `Edit`
     built from a finding's own `draft_text`, then `recheck` to decide
     whether the repair may be accepted.

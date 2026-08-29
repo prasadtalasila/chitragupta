@@ -16,7 +16,7 @@ step belongs only to the skills that draft fresh prose from a
 `claim:`/`quote:` evidence packet: `survey-writer`,
 `thesis-chapter-writer`, `textbook-chapter-writer`, `tutorial-writer`,
 `deep-research`. `book-assembler` writes no prose of its own;
-`draft-reviser`, `corpus-reviser` and `overlap-reviser` already
+`draft-reviser`, `corpus-reviser` and `agenda-reviser` already
 gate-and-recheck per section rather than critiquing a whole fresh
 draft. `test_only_the_five_genre_skills_carry_the_step` below is what
 keeps a future edit from copying the step into the wrong file by habit,
@@ -57,7 +57,7 @@ _GENRE_SKILLS = {
 # not merely "everything but the five," so a tenth skill landing later
 # fails loudly here rather than silently joining whichever side of the
 # split its file happens to sort into.
-_EXCLUDED_SKILLS = {"draft-reviser", "corpus-reviser", "overlap-reviser", "book-assembler"}
+_EXCLUDED_SKILLS = {"draft-reviser", "corpus-reviser", "agenda-reviser", "book-assembler"}
 
 _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")
 
@@ -70,7 +70,7 @@ _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")
 _STEP_TAIL_CHARS = 4300
 
 # The single-shot rule, stated once per step so a later edit cannot
-# quietly turn this into a retry loop the way overlap-reviser's R7
+# quietly turn this into a retry loop the way agenda-reviser's R7
 # (two attempts per finding) is for a different mechanism.
 _SINGLE_SHOT = "no second critique pass"
 
@@ -99,7 +99,7 @@ _LENGTH_FLOOR = "90% of its own"
 
 # The logging contract: every attempt in revisions.md, never in
 # rejected.md (that file is about sources turned down, not repairs that
-# didn't work -- see overlap-reviser's own step 6).
+# didn't work -- see agenda-reviser's own step 6).
 _REVISIONS = "revisions.md"
 _REJECTED_EXCLUDED = "Never write any of this to `rejected.md`"
 

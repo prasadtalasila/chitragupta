@@ -90,13 +90,14 @@ _TIERS = "tiers_not_run"
 _REGEN = re.compile(r"-m chitragupta\.draft dossier sections[^`]{0,160}?--citekeys --write")
 
 # **The step block is anchored on the regeneration, not on the scan.**
-# Four of the nine files mention `verbatim scan` somewhere other than the
-# step -- `overlap-reviser` alone does it four times, once in its own
-# frontmatter description, because reading that report is its whole
-# subject. Anchoring on the scan would demand a `tiers_not_run` sentence
-# in a skill description, which is the wrong place for it. The
-# regeneration command appears only in the step, which makes it the
-# reliable anchor.
+# Several of the nine files mention `verbatim scan` somewhere other than
+# the step -- `overlap-reviser` (renamed `agenda-reviser` in #435) used
+# to do it four times, once in its own frontmatter description, because
+# reading that report was its whole subject; the widened skill mentions
+# it only once, in the step itself. Anchoring on the scan would demand a
+# `tiers_not_run` sentence in a skill description, which is the wrong
+# place for it. The regeneration command appears only in the step, which
+# makes it the reliable anchor.
 #
 # Measured: the scan follows the regeneration by 86-105 characters in
 # every skill, because they are two lines of one fenced block. 200 is

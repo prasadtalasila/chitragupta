@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 
 # The five genre-writing skills docs/GENRE.md names -- not the revision
-# skills (draft-reviser, corpus-reviser, overlap-reviser), which don't
+# skills (draft-reviser, corpus-reviser, agenda-reviser), which don't
 # call `dossier init` and have no step 0 of this kind.
 _GENRE_SKILLS = (
     "survey-writer",
