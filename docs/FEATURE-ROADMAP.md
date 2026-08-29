@@ -1091,23 +1091,29 @@ here that makes something run automatically, or repairs a draft without
 being asked, is gated on the amendment or refused by the self-marking
 argument.** Check a new proposal against both before costing it.
 
-**Four items have written plans.** `plans/` holds the implementation
-plan for a roadmap item whose design is genuinely underdetermined --
-A2,
-B2,
-C1 and
-D2 have one each, as worked
-examples of the convention. Most items do not need one: the entry above
-already names the files, the size and the dependencies, and for a
-mechanical change that is the whole plan.
-`plans/README.md` has the three tests for when a
-plan earns its place. That directory does not ship.
+**Some items have written plans, and the entry says so where one
+exists.** `plans/` holds the implementation plan for a roadmap item whose
+design is genuinely underdetermined. Of the items still listed here,
+[B4](#-b4-cross-encoder-reranking), [B5](#-b5-pre-gate-self-feedback-loop)
+and [C3](#-c3-quotation-and-page-integrity) have one, and Theme E's three
+share `plans/outline-driven-drafting-and-manual-edits.md`. Several more
+sit there for items that have since shipped, kept as worked examples of
+the convention. Most items need none: the entry above already names the
+files, the size and the dependencies, and for a mechanical change that is
+the whole plan. `plans/README.md` has the three tests for when a plan
+earns its place. That directory does not ship.
 
-**The first four PRs need no decision and no new dependency**, and
-between them they do the thing that was actually asked for -- move the
-pipeline from detecting verbatim reuse afterwards to not producing it.
-B1 and A2 are the whole spine; A3 closes the context leak; D1 addresses
-the figure complaint at its source.
+**Where an item names its own plan, the plan governs.** B5's entry says
+so explicitly, and the entry is the ticket rather than a second
+specification -- so a design decision recorded in a plan file is not
+repeated here, and the two cannot drift.
+
+**The leading PRs need no decision and no new dependency.** E1 is a
+measured retrieval fix and a prerequisite that gets more expensive later;
+A3 closes the context leak that Theme A's diagnosis is about; B3 is a
+one-session stylistic change with a checkable count; E3 makes a
+hand-edited draft visible to the pipeline at all. None of the four needs
+the amendment, a new model, or a decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 
