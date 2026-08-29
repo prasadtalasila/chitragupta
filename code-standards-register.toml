@@ -53,10 +53,6 @@ name = "chitragupta/config.py"
 code_lines = 492
 
 [[c2]]
-name = "chitragupta/render_output/__init__.py"
-code_lines = 338
-
-[[c2]]
 name = "chitragupta/overlap_skipgram.py"
 code_lines = 288
 
