@@ -372,6 +372,26 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    The TikZ must be as original as the ASCII -- a picture redrawn from a
    source paper's figure is the same violation in different pixels.
 
+   **An equation gets the same carve-out, without the pair-of-files
+   ceremony.** Most displayed math in a chapter needs no number at all
+   -- `docs/WRITING-STANDARDS.md` §12's rule (standalone, the final step
+   of a derivation, or reused later) applies here exactly as it does
+   everywhere else, and this genre has no marker vocabulary to reach for
+   in the first place. Write ordinary math with `\[...\]` or `\(...\)`,
+   same as any other LaTeX document. When one does earn a number --
+   most often the closing line of a derivation the chapter cites again
+   -- write it as real LaTeX, the same reasoning step 8 gives a table
+   and step 9 gives a figure: `\begin{equation}...\label{eq:<id>}
+   \end{equation}`, referred to as `Equation~\ref{eq:<id>}`. The
+   fragment is `\input` into the user's own thesis, where their own
+   `pdflatex` numbers it consistently with every other chapter's
+   equations -- a hand-typed number, or a bare `\[...\]` for a result
+   the prose later calls "Equation 3", is wrong the moment an earlier
+   chapter changes length, the same defect this carve-out already
+   avoids for a table and a figure. Introduce the result before the
+   display and read it in the sentence that follows; do not simply
+   caption it and move on.
+
 10. **Critique against the evidence packet, before gating.** Read the
     dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
     recorded -- against the fragment's own prose, section by section.

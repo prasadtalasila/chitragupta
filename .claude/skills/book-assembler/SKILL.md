@@ -349,6 +349,23 @@ It is the reading copy for anyone who is not building LaTeX.
    The per-unit prose check (`FigureDuplicateId`) sees one unit at a
    time; across units, this is the check.
 
+   **A numbered equation's number is the book's for the same reason,
+   and the same collision risk applies.** #457 gives a *numbered*
+   equation the same `\label{eq:<id>}` contract, so two units that each
+   wrote `<!-- equation: comparison -->` collide exactly as two same-id
+   tables do -- most equations across a book carry no id at all, since
+   most stay unnumbered by §12's own rule, so this collision is rarer
+   than the table or figure one but not impossible when two units prove
+   a similarly-named result. Check before composing:
+
+   ```bash
+   grep -ho '<!-- equation: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
+   ```
+
+   Anything printed is a collision. The per-unit prose check
+   (`EquationDuplicateId`) sees one unit at a time; across units, this
+   is the check.
+
    **If the units number their own headings, turn LaTeX's numbering
    off** -- `\setcounter{secnumdepth}{-2}` in the preamble. A book whose
    Markdown says `## 1.0 Before you start` otherwise renders "1.1 1.0
