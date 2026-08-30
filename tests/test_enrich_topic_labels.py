@@ -7,9 +7,8 @@ never see the author-name list.
 
 import json
 
-import pytest
 
-from chitragupta import config, ledger
+from chitragupta import config
 from chitragupta.enrich import topic_labels
 
 

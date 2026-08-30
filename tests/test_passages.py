@@ -29,7 +29,8 @@ def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
     con = ledger.connect()
     try:
         con.execute(
-            "INSERT OR REPLACE INTO items (citekey, title, status, parsed_path, pdf_path, last_synced)"
+            "INSERT OR REPLACE INTO items"
+            " (citekey, title, status, parsed_path, pdf_path, last_synced)"
             " VALUES (?, ?, 'parsed', ?, ?, '2026-01-01')",
             (citekey, title, parsed_path, pdf_path),
         )

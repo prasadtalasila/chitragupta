@@ -357,7 +357,8 @@ class TestReGroundingAfterTheCorpusMoves:
         )
         (target / "rejected.md").write_text(
             "# Rejected candidates\n\n| citekey | query that surfaced it | why rejected |\n"
-            "|---|---|---|\n| `turned_down_2023` | digital twin | out of scope: adoption economics |\n"
+            "|---|---|---|\n"
+            "| `turned_down_2023` | digital twin | out of scope: adoption economics |\n"
         )
         (target / "sections.md").write_text(
             "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"

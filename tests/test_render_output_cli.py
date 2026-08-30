@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 from chitragupta import render_output
 from tests.conftest import content_draft
-from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
-from tests.conftest import pandoc_available, pdflatex_available, tikz_available
+from tests.conftest import MARKED_MD
+from tests.conftest import pandoc_available, pdflatex_available
 
 
 class TestMainCli:

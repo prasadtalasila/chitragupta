@@ -19,7 +19,8 @@ checking out the commit before #110 merged (18f9f4b2) and timing
 `cmd_overlap` from `chitragupta/review/verbatim_check.py` there instead.
 
     python3 bench/bench_overlap.py --draft path/to/draft.md
-    python3 bench/bench_overlap.py --draft path/to/draft.md --out bench/results/<date>-overlap/overlap.json
+    python3 bench/bench_overlap.py --draft path/to/draft.md \
+        --out bench/results/<date>-overlap/overlap.json
 
 Stdlib only, like the module it measures -- runs under bare `python`.
 """

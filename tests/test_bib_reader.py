@@ -51,7 +51,7 @@ class TestResolvePdfPath:
     def test_single_pdf_attachment_relative(self, tmp_path):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        field = f"paper.pdf:paper.pdf:application/pdf"
+        field = "paper.pdf:paper.pdf:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (str(pdf), bib_reader.PDF_RESOLVED)
 
     def test_absolute_path(self, tmp_path):
@@ -105,7 +105,7 @@ class TestResolvePdfPath:
         pdf.write_bytes(b"%PDF-1.4")
         html = tmp_path / "page.html"
         html.write_text("<html></html>")
-        field = f"page.html:page.html:text/html;paper.pdf:paper.pdf:application/pdf"
+        field = "page.html:page.html:text/html;paper.pdf:paper.pdf:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (str(pdf), bib_reader.PDF_RESOLVED)
 
     def test_malformed_field_too_few_parts_reports_malformed(self, tmp_path):

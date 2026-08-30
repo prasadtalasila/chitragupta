@@ -16,11 +16,9 @@ from chitragupta import render_output
 from tests.conftest import content_draft
 from tests.conftest import make_reference
 from tests.conftest import (
-    ASCII_FIGURE,
     CAPTIONED_MD,
     MARKED_MD,
     MARKED_INPUT,
-    TIKZ_FIGURE,
     figure_pair,
 )
 from tests.conftest import pandoc_available, pdflatex_available, tikz_available
@@ -329,7 +327,8 @@ class TestRenderReal:
         )
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
-            "@article{zech_digital-twins-as--service_2024,\n  title={Zech Paper},\n  year={2024},\n}\n"
+            "@article{zech_digital-twins-as--service_2024,\n"
+            "  title={Zech Paper},\n  year={2024},\n}\n"
         )
 
         draft = content_draft(isolated_config, "draft.md")

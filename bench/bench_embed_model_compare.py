@@ -140,7 +140,7 @@ def run_model(model, tag, out_dir):
     # config.CONTENT_DIR (config.toml's `[content] dir`, per-host and
     # possibly outside this checkout), not against this checkout's own
     # (mostly empty) content/ directory.
-    from chitragupta import config  # noqa: PLC0415 -- deferred so self_check() alone stays import-light
+    from chitragupta import config
 
     drafts_dir = str(config.CONTENT_DIR.parent / DRAFTS_DIR)
 

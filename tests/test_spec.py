@@ -8,8 +8,6 @@ derived from the heading text, the sign-off digest is taken over
 "may prose be generated from this outline yet?".
 """
 
-from pathlib import Path
-
 import pytest
 
 from chitragupta import spec

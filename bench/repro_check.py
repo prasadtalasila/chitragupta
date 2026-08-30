@@ -121,7 +121,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from make_corpus import rank_sample  # noqa: E402 -- needs bench/ on sys.path first
+from make_corpus import rank_sample
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BENCH_DIR = REPO_ROOT / "bench"

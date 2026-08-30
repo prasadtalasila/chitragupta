@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta import config, retrieval  # noqa: E402
+from chitragupta import retrieval  # noqa: E402
 
 K_REPORT = 5
 K_POOL = 50  # first-pass depth offered to the reranker, per discussion #43 Sec.3

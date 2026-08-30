@@ -53,7 +53,7 @@ def build_ground_truth(drafts_dir, labels_path=LABELS_PATH):
     read as a clean run."""
     labels = json.loads(labels_path.read_text(encoding="utf-8"))["candidates"]
 
-    con = None  # extract() below owns its own ledger connection
+    # extract() below owns its own ledger connection
     pairs_out = BENCH_DIR / "results" / "_ground_truth_extract_scratch"
     hunt.extract(drafts_dir, pairs_out)
     pairs = json.loads((pairs_out / "pairs.json").read_text(encoding="utf-8"))

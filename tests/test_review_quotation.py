@@ -21,7 +21,6 @@ draft blocked by any of it.
 import json
 from pathlib import Path
 
-import pytest
 
 from chitragupta import config, dossier, review
 from chitragupta.review import __main__ as review_main
