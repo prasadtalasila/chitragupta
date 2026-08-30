@@ -39,6 +39,29 @@ def book(isolated_config):
     return path
 
 
+# A second chapter, so "one chapter moved" and "the book moved" are
+# distinguishable -- which is the whole of #465.
+TWO_CHAPTER_SPEC = (
+    GOOD_SPEC
+    + """
+### Chapter 2: What a twin costs {#ch-cost}
+
+#### The bill {#sec-bill}
+
+Establish who pays, and for which half.
+"""
+)
+
+
+@pytest.fixture
+def two_chapter_book(isolated_config):
+    path = isolated_config.DRAFTS_DIR / "twins"
+    spec_file = spec.spec_path(path)
+    spec_file.parent.mkdir(parents=True, exist_ok=True)
+    spec_file.write_text(TWO_CHAPTER_SPEC, encoding="utf-8")
+    return path
+
+
 def sign_off(book):
     spec.main(["sign", str(book)])
 
@@ -189,6 +212,58 @@ def test_accept_refuses_an_outline_nobody_signed_off(book, corpus, capsys):
     assert unit.main(["accept", str(book), "sec-model"]) == 1
     assert "signed off" in capsys.readouterr().err
     assert not unit.record_path(book, "sec-model").exists()
+
+
+def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, corpus, capsys):
+    """Issue #465. Revising one chapter's brief used to flip `signed_off`
+    for every unit in the book, so a 15-chapter book froze acceptance
+    everywhere while one chapter sat half-revised."""
+    book = two_chapter_book
+    sign_off(book)
+    write_unit_draft(book, "sec-bill")
+    path = spec.spec_path(book)
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "Establish that a twin is", "Establish plainly that a twin is"
+        ),
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "sec-bill", "--source", "smith_example_2024"]) == 0
+    assert unit.record_path(book, "sec-bill").is_file()
+
+
+def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(two_chapter_book, corpus, capsys):
+    book = two_chapter_book
+    sign_off(book)
+    write_unit_draft(book, "sec-model")
+    path = spec.spec_path(book)
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            "Establish that a twin is", "Establish plainly that a twin is"
+        ),
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "sec-model"]) == 1
+    assert "signed off" in capsys.readouterr().err
+
+
+def test_a_book_signed_before_chapter_digests_existed_still_accepts(
+    two_chapter_book, corpus, capsys
+):
+    """The retrofitted books on disk carry a whole-book digest and no
+    chapter lines. They must keep working, and keep refusing once the
+    outline moves at all -- there is nothing finer to fall back on."""
+    book = two_chapter_book
+    write_unit_draft(book, "sec-model")
+    text = spec.spec_path(book).read_text(encoding="utf-8")
+    spec.signoff_path(book).parent.mkdir(parents=True, exist_ok=True)
+    spec.signoff_path(book).write_text(
+        f"# Sign-off\n\n- spec digest: `{spec.digest(text)}`\n", encoding="utf-8"
+    )
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 0
 
 
 def test_accept_refuses_a_unit_that_has_no_draft(book, capsys):
