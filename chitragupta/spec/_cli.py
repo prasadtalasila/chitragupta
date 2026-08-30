@@ -1,4 +1,4 @@
-"""`python -m chitragupta.draft spec`'s four commands and their argparse tree.
+"""`python -m chitragupta.draft spec`'s five commands and their argparse tree.
 
 Split from `chitragupta/spec/__init__.py` for the reason `chitragupta/dossier/_cli.py`
 was split from its own package: parsing an outline and printing one are
@@ -13,6 +13,7 @@ see docs/ARCHITECTURE.md's one-entry-point-per-layer invariant.
 """
 
 import argparse
+import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -26,6 +27,7 @@ from chitragupta.spec import (
     signoff_path,
     spec_path,
 )
+from chitragupta.spec._align import align
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
 
@@ -187,7 +189,45 @@ def _cmd_status(args) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def _print_chapter_alignment(report: dict) -> None:
+    print(f"  {report['id']:<24} {report['title']}")
+    if not report["section_described"]:
+        print("    described at chapter level; nothing to align.")
+        return
+    if not report.get("written"):
+        print(f"    not written yet: {report['draft']}")
+        return
+    for title in report["not_authored"]:
+        print(f"    not authored: {title}")
+    for title in report["not_declared"]:
+        print(f"    not declared: {title}")
+    for declared, authored in report["renamed"]:
+        print(f"    renamed: {declared} -> {authored}")
+    if report["out_of_order"]:
+        print("    out of order: the sections are all here, in a different sequence.")
+    if not report["findings"]:
+        print("    aligned.")
+
+
+def _cmd_align(args) -> int:
+    _, parsed = _read(args.book)
+    if parsed["problems"]:
+        return _report_problems(parsed, args.book)
+    report = align(args.book, parsed)
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 1 if report["findings"] else 0
+    print(f"{spec_path(args.book)}: {parsed['title']}")
+    for chapter in report["chapters"]:
+        _print_chapter_alignment(chapter)
+    return 1 if report["findings"] else 0
+
+
+def _parser() -> argparse.ArgumentParser:
+    """The argparse tree, split from `main` so neither crosses the
+    25-statement limit docs/CODE-STANDARDS.md sets. Building the tree and
+    dispatching into it are separate jobs, and `align` was the subcommand
+    that made keeping them together cost a finding."""
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft spec",
         description="The outline a book is generated from, and the human "
@@ -214,7 +254,20 @@ def main(argv: list[str] | None = None) -> int:
     p_status.add_argument("book", help=_BOOK_HELP)
     p_status.set_defaults(func=_cmd_status)
 
-    args = parser.parse_args(argv)
+    p_align = sub.add_parser(
+        "align", help="Whether each authored chapter still matches the outline"
+    )
+    p_align.add_argument("book", help=_BOOK_HELP)
+    p_align.add_argument(
+        "--json", action="store_true", help="Machine-readable, for a skill to read"
+    )
+    p_align.set_defaults(func=_cmd_align)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
     try:
         return args.func(args)
     except SpecError as exc:

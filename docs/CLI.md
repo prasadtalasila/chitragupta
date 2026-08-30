@@ -2059,6 +2059,7 @@ chitragupta draft spec show content/drafts/<book>
 chitragupta draft spec show content/drafts/<book> --unit sec-1
 chitragupta draft spec sign content/drafts/<book> --by "<name>"
 chitragupta draft spec status content/drafts/<book>
+chitragupta draft spec align  content/drafts/<book> [--json]
 ```
 
 | Command | Does | Exit |
@@ -2067,9 +2068,11 @@ chitragupta draft spec status content/drafts/<book>
 | `show` | the outline as a tree, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
 | `sign` | record that a human approved this outline, by digest | 1 on a spec that does not parse |
 | `status` | what the outline holds, and whether it is signed off | 1 when unsigned or changed since sign-off |
+| `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding |
 
 Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
-section -- and the section is the generation unit. Every part, chapter
+section -- and a **chapter** is one authored document whose sections are
+the headings inside it (#472). Every part, chapter
 and section needs an explicit `{#id}`, because a derived id changes when
 someone rewords a heading and orphans the units written against it.
 

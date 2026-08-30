@@ -32,6 +32,7 @@ stated once and read where you need it.
 - [Retrofitting a book drafted before this track](#-retrofitting-a-book-drafted-before-this-track)
 - [Why an id is required on every heading](#-why-an-id-is-required-on-every-heading)
 - [Why sign-off is a sibling file](#-why-sign-off-is-a-sibling-file)
+- [Why a chapter is the authored document](#-why-a-chapter-is-the-authored-document)
 - [What `status`'s exit code is, and is not](#-what-statuss-exit-code-is-and-is-not)
 - [What the input digest covers, and what it must not](#-what-the-input-digest-covers-and-what-it-must-not)
 - [Why `registry check` exits 0, when the two `status` commands do not](#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
@@ -62,13 +63,13 @@ sign-offs is mechanical.
 | 1 | `spec init`, then edit `spec.md` | you |
 | 2 | `spec sign` | **you, and only you** |
 | 3 | `unit contract` -> a genre skill writes the prose | skill |
-| 4 | `unit accept` | you, per unit |
+| 4 | `spec align`, then `unit accept` | you, per unit |
 | 5 | `registry build`, `registry check` | you or the assembler |
 | 6 | the `book-assembler` skill composes `book.tex` | skill |
 | 7 | `pdflatex` x2 -- no bibliography pass | you or the assembler |
 | 8 | read it | **you, and only you** |
 
-Steps 3 and 4 repeat per section. Steps 5 to 7 are what
+Steps 3 and 4 repeat per chapter. Steps 5 to 7 are what
 `.claude/skills/book-assembler/` does in one run.
 
 ## 🔧 Before you start
@@ -80,11 +81,12 @@ You need a synced corpus, because every unit is grounded in it:
 ```
 
 A book lives in one directory under `content/drafts/`, one file per
-section. Nothing needs to exist there yet -- the outline comes first, and
-the prose is generated into it afterwards:
+**chapter**, named for that chapter's own `{#id}`. Nothing needs to exist
+there yet -- the outline comes first, and the prose is written into it
+afterwards:
 
 ```text
-content/drafts/twins/                 the book (units land here)
+content/drafts/twins/<chapter-id>.md  the book's chapters land here
 content/specs/twins/spec.md           the outline -- step 1
 content/specs/twins/signoff.md        your approval -- step 2
 content/specs/twins/units/*.json      one acceptance record -- step 4
@@ -111,15 +113,20 @@ planned top-down, generated bottom-up. Four heading levels, and no more:
 | --- | --- | --- |
 | `# Title` | the book | -- |
 | `## Part {#part-i}` | a part | -- |
-| `### Chapter {#ch-1}` | a chapter | -- |
-| `#### Section {#sec-1}` | a **section** | one unit of prose |
+| `### Chapter {#ch-1}` | a **chapter** | one authored document |
+| `#### Section {#sec-1}` | a section | one heading inside it |
 
-The section is the generation unit, which is why nothing sits below it: a
-level deeper would be a unit nothing generates. Text beneath a heading is
-that unit's **brief** -- what it must establish, and what it leaves to
-another unit. Text before the first heading belongs to no unit and is
-never handed to a generator; it is the preamble for whoever opens the
-file.
+Nothing sits below a section: a level deeper would describe structure the
+outline has no business owning. Text beneath a heading is that heading's
+**brief** -- what it must establish, and what it leaves to another. Text
+before the first heading belongs to nothing and is never handed to a
+generator; it is the preamble for whoever opens the file.
+
+**A chapter is one authored document, and its sections are the headings
+inside it** (#472). The outline stops at the sections of a chapter; the
+sub-headings an author writes underneath are theirs, not the spec's.
+[Why the chapter and not the section](#-why-a-chapter-is-the-authored-document)
+-- it is what lets `spec align` mean anything.
 
 Every part, chapter and section needs an explicit `{#id}`, and a heading
 without one is refused rather than guessed at --
@@ -221,6 +228,37 @@ than answered with an empty contract: those levels name no prose of their
 own.
 
 ## ▶ Step 4: accept the unit
+
+Before accepting, check that what was written still matches what you
+approved:
+
+```bash
+python -m chitragupta.draft spec align content/drafts/twins
+```
+
+```text
+content/specs/twins/spec.md: Composable Twins
+  ch-1                     Chapter 1: What a twin is
+    not authored: Where the two meet
+    renamed: The data half -> The data half, revisited
+  ch-2                     Chapter 2: What a twin costs
+    described at chapter level; nothing to align.
+```
+
+It compares the sections your outline declares for a chapter against the
+`##` headings that chapter's author actually wrote, and reports four
+things: a declared section **not authored**, an authored section **not
+declared**, a **renamed** heading, and sections all present but **out of
+order**. A reworded heading is one finding rather than two -- "you renamed
+this" is what happened. Numbering is ignored, so `3.1 The model half` and
+`The model half` are the same section: a genre skill numbers what it
+writes and the outline does not.
+
+`align` **reads and refuses nothing**, and exits non-zero on a finding the
+way `spec status` does. It is silent on a chapter the outline describes
+only at chapter level -- see
+[why a chapter is the authored document](#-why-a-chapter-is-the-authored-document)
+for the scoping rule and what it is protecting against.
 
 ```bash
 python -m chitragupta.draft unit accept content/drafts/twins sec-1 --source smith_2024
@@ -513,6 +551,37 @@ later read could ever match. The digest covers `spec.md` alone.
 reports follow: two sign-offs of an unchanged outline produce
 byte-identical files, so "did this change?" is a diff. *When* it was
 approved is not a question any check asks; *what* was approved is.
+
+## 💡 Why a chapter is the authored document
+
+A chapter is one file; its sections are the headings inside it. An earlier
+revision of this document said one file per *section*, and #472 changed
+it.
+
+**The change is what makes `spec align` mean anything.** Under one file
+per section, every file *is* a section by construction -- there is no way
+for what was written to disagree with what was approved, so there is
+nothing to check. Only when a chapter is a single document can its
+headings drift from the outline a human signed.
+
+It also matches the only book that exists. `digital-twins-for-software-
+engineers` is one file per chapter, achieved by
+[retrofitting](#-retrofitting-a-book-drafted-before-this-track) each
+chapter as a single `####` section carrying the filename. That was a
+workaround for the old rule; this makes the real shape the declared one.
+
+**Alignment is scoped to chapters the outline describes at section
+level** -- two or more declared sections, or one whose title differs from
+the chapter's own. Anything else reports "described at chapter level;
+nothing to align", with no finding.
+
+That scoping is not a convenience. Measured on the real book: its
+retrofitted outline declares one section per chapter while its author
+wrote about forty headings under each -- **4 declared sections against 161
+authored headings** across the first four chapters. Without the rule,
+`align` would put roughly 225 findings on a book that is not wrong, only
+described at chapter granularity, and a check like that is the first thing
+anyone turns off.
 
 ## ✅ What `status`'s exit code is, and is not
 
