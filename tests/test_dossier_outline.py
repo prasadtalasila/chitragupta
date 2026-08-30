@@ -222,6 +222,20 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].not_run == ["timestep mismatch"]
         assert drift.extended == []
 
+    def test_a_claim_only_section_with_no_queries_still_appears_in_drift(self, draft):
+        """A claim: section with nothing declared to search for must not
+        be silently absent from the diff -- that would make `dossier
+        status` look like it had nothing to say about the sections whose
+        grounding matters most."""
+        dossier.init(draft, "survey")
+        outline_ = _outline.parse(
+            "## Why calibration matters\n\nclaim: Calibration dominates prediction error.\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert "Why calibration matters" in drift.sections
+        assert drift.sections["Why calibration matters"].run == []
+        assert drift.sections["Why calibration matters"].not_run == []
+
     def test_reads_the_dossiers_own_outline_file_when_none_is_passed(self, draft):
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "outline.md"
