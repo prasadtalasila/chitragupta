@@ -1896,7 +1896,7 @@ right margin rather than anything about the prose itself:
 | Rule | What it means |
 | --- | --- |
 | `chitragupta.BareUrl` | A URL is printed raw where a `[text](https://…)` link would read better and give the pdf something to click. A code span that is *only* a URL counts; one holding a command that contains a URL does not |
-| `chitragupta.WideCodeLine` | A fenced code line is wider than the page fits. A fenced block renders as LaTeX `verbatim`, which cannot wrap, so nothing downstream can repair it -- unlike an inline code span, which `assets/pandoc/breakable_inline_code.lua` gives break points at render time |
+| `chitragupta.WideCodeLine` | A code line is wider than the page fits. In a Markdown draft the render loads `fvextra` and the line wraps with a `,→` continuation marker, so this is a quality note; in a `.tex` fragment, `\input` into a thesis whose preamble this pipeline may not touch, nothing can load it and the line really does run into the margin |
 
 §14's third rule -- prefer a breakable form for a very long token -- is
 deliberately **not** checked. TeX hyphenates long English words

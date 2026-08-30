@@ -187,7 +187,7 @@ means they are checked only when someone remembers to.
 | Some sentence refers to each numbered equation | §12 | yes | no -- and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
 | Whether an equation should have been numbered at all -- standalone, final-of-derivation, reused | §12 | **no** | no -- unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
 | A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | yes -- the repair is the link, which is wording, and there is no evidential claim for it to misrepresent |
-| A fenced code line fits the page's column limit | §14 | yes | yes today, inherited from the `prose` class rather than argued for this rule -- and it is the row where that inheritance is worth re-examining, because the repair edits a code sample rather than prose, and dropping an argument to fit the width leaves a command that still reads plausibly and no longer works |
+| A code line fits the page's column limit | §14 | yes | yes today, inherited from the `prose` class rather than argued for this rule -- and it is the row where that inheritance is worth re-examining, because the repair edits a code sample rather than prose, and dropping an argument to fit the width leaves a command that still reads plausibly and no longer works. In a Markdown draft the stake is only the `,→` a wrap leaves behind; in a `.tex` fragment, whose preamble this pipeline may not touch, it is a real overflow |
 | A very long token has a breakable form | §14 | yes | **no, and it is not checked at all** -- unlike every other row, the mechanical proxy was built and then rejected: TeX hyphenates long English words correctly, so the rule raised 36 candidates on this project's own book and none of them had a repair that was not a worse word. §14 has the measurement |
 | The reread as the reader | §6 | no | never |
 
@@ -950,18 +950,33 @@ it a link would corrupt the thing it prints.
 
 ### 📏 Keep a code block inside the page
 
-**73 columns**, measured rather than chosen: at this project's book
-geometry (11pt, 80pt margins) a `verbatim` line fits 76, and at `draft
-render`'s own defaults (12pt, 1in margins) it fits 73. A draft may be
-rendered either way, so the tighter one is the limit.
+**76 columns**, measured rather than chosen: at this project's book
+geometry (11pt, 80pt margins) a `verbatim` line fits 79, and at `draft
+render`'s own defaults (12pt, 1in margins) it fits 76. A draft may be
+rendered either way, so the tighter one is the limit. Both numbers were
+measured through pandoc's own template, which loads `lmodern` --
+measuring against a bare `\documentclass` gives 76/73, three columns
+tight, because Computer Modern's typewriter face is wider.
 
-This is the one overflow nothing downstream can repair. An over-long
-*inline* code span is fixed at render time -- `assets/pandoc/`'s
-`breakable_inline_code.lua` gives it break points -- but a fenced block
-becomes a LaTeX `verbatim`, and a verbatim line is one unbreakable box
-by construction. No filter, package or preamble wraps it. Shorten the
-line: break the pipeline, drop the aligned comment column, abbreviate
-the path.
+**A Markdown draft's blocks now wrap rather than overflow**, so this is
+a quality rule rather than a defect one. `draft render` loads `fvextra`
+and redefines `verbatim`/`Highlighting` with `breaklines` for any draft
+that has a fenced block, so an over-wide line breaks at a space and
+marks the continuation with `,→`. Keeping the line short avoids that
+marker -- which a reader copying the command out of the pdf would
+otherwise pick up.
+
+**A `.tex` fragment is the case that still cannot be repaired**, and is
+why the check exists at all. `thesis-chapter-writer` emits a fragment
+`\input` into the user's own thesis, whose preamble this pipeline may
+not touch (§13's carve-out) -- so nothing can load `fvextra` on its
+behalf, and a wide `verbatim` line there runs into the margin exactly as
+before. Shorten it: break the pipeline, drop the aligned comment column,
+abbreviate the path.
+
+A book is the third case: its units are rendered `--fragment`, which
+emits no preamble, so its `book.tex` carries the `fvextra` load itself
+-- see `.claude/skills/book-assembler/SKILL.md`.
 
 ### 🔤 Prefer a breakable form for a very long token
 

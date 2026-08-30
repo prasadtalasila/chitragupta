@@ -55,11 +55,18 @@ RULES = {
 # The widest verbatim line that fits, measured rather than assumed --
 # `pdflatex` reports an Overfull \hbox from the next column on. Two
 # geometries matter and they disagree: this project's book style
-# (11pt, 80pt margins) fits 76, and `render()`'s own defaults (12pt,
-# 1in margins) fit 73. The tighter one is the limit, because a draft
-# rendered either way has to fit; picking the book's 76 would pass
+# (11pt, 80pt margins) fits 79, and `render()`'s own defaults (12pt,
+# 1in margins) fit 76. The tighter one is the limit, because a draft
+# rendered either way has to fit; picking the book's 79 would pass
 # lines that overflow under a plain `draft render`.
-MAX_CODE_COLUMNS = 73
+#
+# **Measured through pandoc's own template, not a bare `\documentclass`.**
+# That template loads `lmodern`, whose typewriter face is narrower than
+# Computer Modern's, and measuring without it gave 76/73 -- three
+# columns tight in both geometries, which reported real, fitting lines
+# from this project's own book as too wide. Re-measure the same way if
+# the template or the font ever changes.
+MAX_CODE_COLUMNS = 76
 
 # A URL as *displayed text*. The scheme is required: a bare `www.` or a
 # domain on its own is a judgement about whether it is even a link,
@@ -116,6 +123,16 @@ _FENCE_RE = re.compile(
     r"^([ \t]*)(`{3,}|~{3,})[^\n]*\n(.*?)^[ \t]*\2[^\n]*$", re.MULTILINE | re.DOTALL
 )
 
+# A `.tex` fragment's equivalent, for the same reason and with the same
+# shape: the delimiter lines excluded, the content captured. The
+# environment list matches `citation_gate._LATEX_VERBATIM_RE`'s -- that
+# one blanks these regions and this one measures inside them, so they
+# have to agree on what counts as verbatim.
+_LATEX_VERBATIM_RE = re.compile(
+    r"\\begin\{(verbatim|lstlisting|minted)\*?\}[^\n]*\n(.*?)^[ \t]*\\end\{\1\*?\}",
+    re.MULTILINE | re.DOTALL,
+)
+
 
 def _finding(rule: str, match: str, line: int, message: str) -> dict:
     """One finding in the shape `style_check.collapse()` produces from
@@ -165,13 +182,12 @@ def _bare_urls(text: str) -> "list[dict]":
     return found
 
 
-def _wide_code_lines(text: str) -> "list[dict]":
-    """Every fenced code line too wide for the page it prints on."""
+def _wide_code_lines(text: str, pattern: "re.Pattern", group: int, why: str) -> "list[dict]":
+    """Every code line in `pattern`'s blocks too wide for the page."""
     found = []
-    for fence in _FENCE_RE.finditer(text):
-        content = fence.group(3)
-        offset = fence.start(3)
-        for index, raw in enumerate(content.split("\n")[:-1]):
+    for block in pattern.finditer(text):
+        offset = block.start(group)
+        for index, raw in enumerate(block.group(group).split("\n")[:-1]):
             if len(raw.rstrip()) <= MAX_CODE_COLUMNS:
                 continue
             found.append(
@@ -180,9 +196,8 @@ def _wide_code_lines(text: str) -> "list[dict]":
                     raw.strip()[:60],
                     line_of(text, offset) + index,
                     f"this code line is {len(raw.rstrip())} columns wide, over "
-                    f"the {MAX_CODE_COLUMNS} a page fits. A fenced block renders "
-                    "as LaTeX `verbatim`, which cannot wrap, so it will run into "
-                    "the margin (WRITING-STANDARDS.md §14).",
+                    f"the {MAX_CODE_COLUMNS} a page fits. {why} "
+                    "(WRITING-STANDARDS.md §14).",
                 )
             )
     return found
@@ -190,19 +205,47 @@ def _wide_code_lines(text: str) -> "list[dict]":
 
 def findings(draft: Path) -> "list[dict]":
     """Every typesetting finding for `draft`, ordered by where it is."""
-    # `render`'s own answer to "is this a Markdown draft?", the same
-    # carve-out `style_tables.py` and `style_figures.py` make: a `.tex`
-    # fragment writes `\\begin{verbatim}` and real `\\href{}`, neither of
-    # which is the markup this checks for, so it would be measured
-    # against a contract it was never written to.
-    if draft.suffix.lower() not in _paths._MARKDOWN_SUFFIXES:
-        return []
     text = draft.read_text(encoding="utf-8")
+    # A `.tex` fragment gets the width check and nothing else, and the
+    # asymmetry is the point rather than an omission.
+    #
+    # Width, because it is the one draft this pipeline cannot fix for
+    # the author. A Markdown draft's fences are wrapped at render time
+    # by the `fvextra` load `_pandoc.py` adds; a fragment is `\input`
+    # into the user's own thesis, whose preamble is theirs -- §13's
+    # carve-out and `style_tables.py`'s "nothing this pipeline does may
+    # get between them". So reporting is the only lever there, which
+    # makes this the *more* important surface for the check, not a
+    # lesser one.
+    #
+    # Not the bare-URL rule, because `\url{}` is LaTeX's correct idiom
+    # and flagging it would be wrong; telling a raw URL in `.tex` prose
+    # from one already inside `\url{}`/`\href{}{}` is a different
+    # parsing problem than the Markdown one, and is not attempted here.
+    if draft.suffix.lower() not in _paths._MARKDOWN_SUFFIXES:
+        return sorted(
+            _wide_code_lines(
+                text,
+                _LATEX_VERBATIM_RE,
+                2,
+                "A verbatim environment cannot wrap, and a fragment is `\\input` "
+                "into a document whose preamble this pipeline may not change, so "
+                "nothing downstream can repair it",
+            ),
+            key=lambda finding: (finding["line"], finding["rule"]),
+        )
     # The width check reads fences, so it runs on the original text; the
     # URL check must not see inside them, so it runs on a blanked copy.
     # The backticks around a URL-only span are dropped first (to spaces,
     # so nothing moves), which is what leaves that one visible to the
     # scan while every other span is still blanked out under it.
     prose = citation_gate._blank_code(_URL_ONLY_SPAN_RE.sub(r" \1 ", text))
-    found = _bare_urls(prose) + _wide_code_lines(text)
+    found = _bare_urls(prose) + _wide_code_lines(
+        text,
+        _FENCE_RE,
+        3,
+        "A fenced block renders as LaTeX `verbatim`, which wraps only because "
+        "the render loads `fvextra`; keeping the line short avoids the "
+        "continuation marker a wrap leaves behind",
+    )
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))

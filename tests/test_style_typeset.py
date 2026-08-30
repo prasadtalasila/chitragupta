@@ -146,15 +146,53 @@ class TestExemptions:
         assert rules(style_typeset.findings(draft_with(body, tmp_path))) == ["chitragupta.BareUrl"]
 
 
-class TestScope:
-    def test_a_tex_fragment_is_out_of_scope(self, tmp_path):
-        # Same carve-out style_tables.py and style_figures.py make: a
-        # .tex fragment writes \\begin{verbatim} and \\href{}, neither of
-        # which is the markup checked here.
-        path = tmp_path / "chapter.tex"
-        path.write_text(f"\\section{{S}}\n\nSee {URL}.\n", encoding="utf-8")
-        assert style_typeset.findings(path) == []
+class TestATexFragmentGetsTheWidthCheckOnly:
+    """The asymmetry is the point. A Markdown draft's fences are wrapped
+    for the author at render time (`_pandoc.py` loads `fvextra`); a
+    `.tex` fragment is `\\input` into the user's own thesis, whose
+    preamble this pipeline may not touch -- §13's carve-out. So the
+    width check matters *more* there, and the bare-URL rule does not
+    apply at all, because `\\url{}` is LaTeX's correct idiom."""
 
+    def _tex(self, body: str, tmp_path: Path) -> Path:
+        path = tmp_path / "chapter.tex"
+        path.write_text(body, encoding="utf-8")
+        return path
+
+    def test_a_wide_verbatim_line_is_reported(self, tmp_path):
+        body = f"\\section{{S}}\n\n\\begin{{verbatim}}\n{WIDE}\n\\end{{verbatim}}\n"
+        found = style_typeset.findings(self._tex(body, tmp_path))
+        assert rules(found) == ["chitragupta.WideCodeLine"]
+        assert found[0]["line"] == 4
+
+    def test_the_message_names_the_preamble_this_pipeline_cannot_change(self, tmp_path):
+        body = f"\\section{{S}}\n\n\\begin{{verbatim}}\n{WIDE}\n\\end{{verbatim}}\n"
+        found = style_typeset.findings(self._tex(body, tmp_path))
+        assert "preamble this pipeline may not change" in found[0]["message"]
+
+    def test_a_fitting_verbatim_line_is_not(self, tmp_path):
+        body = f"\\section{{S}}\n\n\\begin{{verbatim}}\n{FITS}\n\\end{{verbatim}}\n"
+        assert style_typeset.findings(self._tex(body, tmp_path)) == []
+
+    def test_lstlisting_counts_too(self, tmp_path):
+        body = f"\\section{{S}}\n\n\\begin{{lstlisting}}\n{WIDE}\n\\end{{lstlisting}}\n"
+        assert rules(style_typeset.findings(self._tex(body, tmp_path))) == [
+            "chitragupta.WideCodeLine"
+        ]
+
+    def test_a_bare_url_in_tex_prose_is_not_reported(self, tmp_path):
+        # `\url{}` is the correct LaTeX idiom, and telling a raw URL from
+        # one already inside it is a different parsing problem.
+        assert style_typeset.findings(self._tex(f"\\section{{S}}\n\nSee {URL}.\n", tmp_path)) == []
+
+    def test_wide_prose_in_tex_is_not_a_finding(self, tmp_path):
+        # Only verbatim cannot reflow; a long prose line is fine.
+        assert (
+            style_typeset.findings(self._tex(f"\\section{{S}}\n\n{WIDE} more.\n", tmp_path)) == []
+        )
+
+
+class TestScope:
     def test_a_draft_with_neither_problem_reports_nothing(self, tmp_path):
         body = f"# S\n\nSee [the repo]({URL}).\n\n```\n{FITS}\n```\n"
         assert style_typeset.findings(draft_with(body, tmp_path)) == []

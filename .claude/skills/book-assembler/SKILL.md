@@ -58,6 +58,8 @@ The document skeleton, in order:
 \usepackage{graphicx}
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
+\usepackage{fvextra}                         % see "Wide code lines" below
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
 \setcounter{secnumdepth}{-2}                 % if the units number themselves
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
@@ -89,6 +91,25 @@ the rest of this pipeline emits. `bibtex` and `IEEEtran.bst` are
 installed (`scripts/install_full_pipeline.sh`) for a document that
 genuinely wants a LaTeX-side bibliography; a book assembled this way does
 not.
+
+**Wide code lines: the book must supply `fvextra` too**, and for the
+same structural reason as the citeproc macros. A `verbatim` line is one
+unbreakable box, so a code line wider than the page runs into the margin
+-- measured on a real 428-page assembly, the largest single class of
+`Overfull \hbox` warnings it produced. `draft render` loads `fvextra`
+itself for a standalone Markdown draft, but a unit is converted
+`--fragment`, which emits no preamble for that load to land in, so the
+book's own preamble carries it. Only `verbatim` needs redefining here,
+not `Highlighting`: `--fragment` travels with `--no-highlight`, so a
+fragment's fences are always plain `verbatim`.
+
+`breaklines` without `breakanywhere`, deliberately -- a break lands at a
+space rather than mid-identifier, and each continuation is marked `,→`
+so a wrapped line cannot be misread as two. A line over the limit is
+reported as `chitragupta.WideCodeLine`
+([docs/WRITING-STANDARDS.md](../../../docs/WRITING-STANDARDS.md) §14);
+shortening it avoids the marker, and this load is what stops it
+overflowing when nobody does.
 
 **The book must supply pandoc's citeproc macros, in their own file.** A
 converted unit uses the `CSLReferences` environment, which `--standalone`
