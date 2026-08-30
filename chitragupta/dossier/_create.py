@@ -17,6 +17,7 @@ from chitragupta.dossier import (
     SCOPE_MD,
     SECTIONS_MD,
     STEERING_MD,
+    STRUCTURE_MD,
     _SECTIONS_TEMPLATE,
     digest,
     dossier_dir,
@@ -176,6 +177,37 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
 """
 
 
+_STRUCTURE_TEMPLATE = """# Structure
+
+<!-- Edited by hand before drafting. Per `##`-or-deeper heading:
+     `brief:` (steering, never appears in the draft) and/or one or more
+     `claim:` blocks (your own prose, rewritten -- every sentence that
+     can't be grounded is reported rather than shipped), and an
+     optional `queries:` list of the search terms to run verbatim
+     instead of the skill inventing sub-themes. A section needs at
+     least a brief or a claim; queries: is optional -- plenty of
+     sections are pure framing prose with nothing to search for.
+
+     Declared queries bind by default. `--origin extended` on the
+     skill's own retrieval calls covers a section that came up thin,
+     logged distinctly so `python -m chitragupta.draft dossier structure <draft>`
+     can report whether the draft ran what this file declared.
+
+     Example:
+
+     ## Failure modes of co-simulation
+
+     brief: Focus on timestep mismatch and solver divergence; skip
+     FMI-specific tooling.
+
+     queries:
+     - failure modes co-simulation
+     - timestep mismatch solver divergence
+-->
+
+"""
+
+
 _TEMPLATES = {
     EVIDENCE_MD: _EVIDENCE_TEMPLATE,
     REJECTED_MD: _REJECTED_TEMPLATE,
@@ -186,7 +218,7 @@ _TEMPLATES = {
 }
 
 
-def init(draft: Path, genre: str) -> list[Path]:
+def init(draft: Path, genre: str, structure: bool = False) -> list[Path]:
     """Create the dossier skeleton for `draft`. Returns what it wrote.
 
     Only ever creates missing files, so re-running it on a dossier that
@@ -194,6 +226,11 @@ def init(draft: Path, genre: str) -> list[Path]:
     nothing else. That matters because `init` is the one command a genre
     skill runs before it knows what it will find -- it must not be able
     to destroy the thing it exists to protect.
+
+    `structure` is opt-in (#455): most dossiers have no `structure.md`,
+    so it is not one of the seven files every dossier always gets --
+    see `STRUCTURE_MD`'s own docstring for why that distinction matters
+    to `status`.
     """
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)
@@ -206,6 +243,8 @@ def init(draft: Path, genre: str) -> list[Path]:
         SCOPE_MD: _scope(draft, genre, corpus),
         **_TEMPLATES,
     }
+    if structure:
+        contents[STRUCTURE_MD] = _STRUCTURE_TEMPLATE
     for name, body in contents.items():
         path = target / name
         if path.exists():
@@ -215,9 +254,31 @@ def init(draft: Path, genre: str) -> list[Path]:
     return written
 
 
+def _print_broad_survey(topic: str) -> None:
+    """`structure.md`'s broad-call survey (#455): what the corpus holds
+    on `topic`, printed once before the human fills the file in by hand.
+
+    Generalises `deep-research` Phase 1's "run 1-2 broad calls before
+    naming perspectives" -- an outline written blind is an outline whose
+    sections the corpus may not support. Advisory only: nothing here is
+    recorded, the same way Phase 1's own broad calls inform a persona
+    list without being logged as retrieval cost.
+    """
+    from chitragupta.retrieval import search
+
+    found = search(topic, k=10)
+    if not found:
+        print(f"\n  No results for {topic!r} -- structure.md's sections may need to name")
+        print("  something narrower, or the corpus may not cover this topic yet.")
+        return
+    print(f"\n  What the corpus holds on {topic!r}, before you fill in structure.md:")
+    for result in found:
+        print(f"    {result.citekey}  {result.title}")
+
+
 def _cmd_init(args: argparse.Namespace) -> int:
     draft = Path(args.draft)
-    written = init(draft, args.genre)
+    written = init(draft, args.genre, structure=args.structure)
     target = dossier_dir(draft)
     if not written:
         print(f"Dossier already complete: {draft_relpath(target)}")
@@ -228,4 +289,6 @@ def _cmd_init(args: argparse.Namespace) -> int:
         if known_citekeys() is None:
             print(f"\n  No ledger at {config.LEDGER_PATH}, so no corpus fingerprint was")
             print("  recorded. Drift checks will be unavailable for this dossier.")
+        elif args.structure and args.topic:
+            _print_broad_survey(args.topic)
     return 0

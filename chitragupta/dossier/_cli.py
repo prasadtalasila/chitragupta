@@ -40,6 +40,17 @@ def _add_init_parser(sub) -> None:
     p_init = sub.add_parser("init", help="Create a dossier skeleton for a draft")
     p_init.add_argument("draft", help=_DRAFT_PATH_HELP)
     p_init.add_argument("--genre", required=True, help=", ".join(GENRES))
+    p_init.add_argument(
+        "--structure",
+        action="store_true",
+        help="Also create structure.md, for a human to declare per-section "
+        "brief/claim/queries before drafting (#455)",
+    )
+    p_init.add_argument(
+        "--topic",
+        help="With --structure: run a broad search on this and print what the "
+        "corpus holds, before you fill structure.md in by hand",
+    )
     p_init.set_defaults(func=_cmd_init)
 
 

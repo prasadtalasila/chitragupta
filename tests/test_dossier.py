@@ -263,6 +263,25 @@ class TestInit:
         assert "- language: not settled" in scope
         assert "en-GB" in scope
 
+    def test_structure_is_opt_in(self, draft):
+        """Most dossiers have no structure.md -- confirming the plain
+        `test_writes_every_dossier_file` case above stays true, and that
+        the file only appears when asked for."""
+        dossier.init(draft, "survey")
+        assert not (dossier.dossier_dir(draft) / "structure.md").exists()
+
+    def test_structure_true_writes_structure_md(self, draft):
+        dossier.init(draft, "survey", structure=True)
+        assert (dossier.dossier_dir(draft) / "structure.md").is_file()
+
+    def test_structure_true_does_not_clobber_a_filled_in_structure_md(self, draft):
+        dossier.init(draft, "survey", structure=True)
+        path = dossier.dossier_dir(draft) / "structure.md"
+        path.write_text("## Real section\n\nbrief: real content\n")
+        written = dossier.init(draft, "survey", structure=True)
+        assert written == []
+        assert "Real section" in path.read_text()
+
 
 def _write_glossary(draft, body):
     """Replace the shipped `## Glossary` placeholder with real bullets.
@@ -2390,6 +2409,52 @@ class TestInitCLI:
         out = capsys.readouterr().out
         assert "created scope.md" in out
         assert "No ledger" not in out
+
+    def test_structure_flag_creates_structure_md(self, draft, capsys):
+        assert dossier.main(["init", str(draft), "--genre", "survey", "--structure"]) == 0
+        assert "created structure.md" in capsys.readouterr().out
+        assert (dossier.dossier_dir(draft) / "structure.md").is_file()
+
+    def test_without_structure_flag_no_structure_md(self, draft, capsys):
+        assert dossier.main(["init", str(draft), "--genre", "survey"]) == 0
+        assert "structure.md" not in capsys.readouterr().out
+
+    def test_structure_with_topic_prints_a_broad_survey(self, draft, ledger_con, tmp_path, capsys):
+        from chitragupta import ledger
+        from tests.conftest import make_reference
+
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text("padding " * 50 + "composable digital twin architecture")
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="Composable Digital Twins")
+        )
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+
+        assert (
+            dossier.main(
+                ["init", str(draft), "--genre", "survey", "--structure", "--topic", "composable"]
+            )
+            == 0
+        )
+        out = capsys.readouterr().out
+        assert "What the corpus holds on 'composable'" in out
+        assert "a2024" in out
+
+    def test_topic_without_structure_is_ignored(self, draft, ledger_con, tmp_path, capsys):
+        """`--topic` only means something alongside `--structure` -- it
+        must not silently run a search nobody asked for."""
+        from chitragupta import ledger
+        from tests.conftest import make_reference
+
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text("padding " * 50 + "composable digital twin architecture")
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+
+        assert (
+            dossier.main(["init", str(draft), "--genre", "survey", "--topic", "composable"]) == 0
+        )
+        assert "What the corpus holds" not in capsys.readouterr().out
 
 
 class TestStatusCLIOutput:
