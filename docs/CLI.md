@@ -1837,11 +1837,13 @@ recorded dialect, a glossary acronym whose recorded expansion has
 drifted from the current `[style].acronyms` vocabulary (§9;
 `chitragupta/style_acronym_drift.py`), §13's tables
 (`chitragupta/style_tables.py`), §10's captioned figures
-(`chitragupta/style_figures.py`), and §12's numbered equations
-(`chitragupta/style_equations.py`). Those last four are the findings here
+(`chitragupta/style_figures.py`), §12's numbered equations
+(`chitragupta/style_equations.py`), and §14's page fit
+(`chitragupta/style_typeset.py`). Those last five are the findings here
 *not* sourced from Vale, and they are computed in plain Python -- the
-id-validity and reference-problem logic behind all four is shared in
-`chitragupta/style_elements.py` rather than copied per kind.
+id-validity and reference-problem logic behind the table, figure and
+equation checks is shared in `chitragupta/style_elements.py` rather than
+copied per kind.
 **A review aid: it exits 0 whatever it finds**, and nothing in this
 pipeline reads its output back or blocks on it.
 
@@ -1886,6 +1888,21 @@ equation is only "declared" at all once the author opts it in with an
 | `chitragupta.EquationUnreferenced` | No sentence refers to the equation at all |
 | `chitragupta.EquationUnknownRef` | An `<!-- equationref: -->` naming an equation that does not exist |
 | `chitragupta.EquationRefOutsideSection` | The equation is referred to, but only from another section |
+
+**The typesetting findings**, WRITING-STANDARDS.md §14's two decidable
+rows. Both name something a reader of the rendered pdf would meet at the
+right margin rather than anything about the prose itself:
+
+| Rule | What it means |
+| --- | --- |
+| `chitragupta.BareUrl` | A URL is printed raw where a `[text](https://…)` link would read better and give the pdf something to click. A code span that is *only* a URL counts; one holding a command that contains a URL does not |
+| `chitragupta.WideCodeLine` | A code line is wider than the page fits. In a Markdown draft the render loads `fvextra` and the line wraps with a `,→` continuation marker, so this is a quality note; in a `.tex` fragment, `\input` into a thesis whose preamble this pipeline may not touch, nothing can load it and the line really does run into the margin |
+
+§14's third rule -- prefer a breakable form for a very long token -- is
+deliberately **not** checked. TeX hyphenates long English words
+correctly, so the rule has no overflow to prevent and no repair that is
+not a worse word; §9's table records it beside the other row with no
+mechanical proxy.
 
 ```bash
 chitragupta draft style content/drafts/<path>

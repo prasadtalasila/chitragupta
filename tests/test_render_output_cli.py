@@ -231,6 +231,84 @@ class TestBreakableInlineCodeFilter:
         assert "--lua-filter" in cmd
 
 
+class TestBreakableCodeBlocks:
+    """`fvextra` is what lets an over-wide fenced line wrap instead of
+    running into the margin. Conditional on the draft having a block,
+    mirroring the tikz load, so a host with a smaller TeX does not lose
+    a render over a package its draft never needs."""
+
+    def _cmd(self, figure_refs, has_code_block):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            figure_refs,
+            False,
+            has_code_block,
+        )
+        return cmd
+
+    def _header_includes(self, cmd):
+        return [
+            cmd[i + 1]
+            for i, flag in enumerate(cmd)
+            if flag == "--variable" and cmd[i + 1].startswith("header-includes")
+        ]
+
+    def test_a_draft_with_a_code_block_loads_fvextra(self):
+        includes = self._header_includes(self._cmd([], True))
+        assert len(includes) == 1
+        assert r"\usepackage{fvextra}" in includes[0]
+        # Both, because which one pandoc emits depends on highlighting.
+        assert "{verbatim}{Verbatim}{breaklines}" in includes[0]
+        assert r"{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}" in includes[0]
+
+    def test_a_draft_with_no_code_block_does_not(self):
+        assert self._header_includes(self._cmd([], False)) == []
+
+    def test_a_draft_with_both_a_figure_and_a_code_block_gets_both(self):
+        # The regression this pins: pandoc concatenates repeated
+        # `header-includes` variables rather than letting the last win.
+        # If that ever changed, a draft with a TikZ figure *and* a code
+        # block would silently lose the tikz load and fail to compile --
+        # and neither the tikz fixtures (figure, no code) nor the fvextra
+        # ones (code, no figure) would catch it alone.
+        includes = self._header_includes(self._cmd(["figures/fig1.tex"], True))
+        assert len(includes) == 2
+        assert any(r"\usepackage{tikz}" in inc for inc in includes)
+        assert any(r"\usepackage{fvextra}" in inc for inc in includes)
+
+
+class TestHasCodeBlock:
+    """What decides whether `fvextra` is loaded at all."""
+
+    def test_a_markdown_fence(self):
+        assert render_output._has_code_block("# T\n\n```\nx\n```\n") is True
+
+    def test_a_tilde_fence(self):
+        assert render_output._has_code_block("# T\n\n~~~\nx\n~~~\n") is True
+
+    def test_a_latex_verbatim_environment(self):
+        assert render_output._has_code_block("\\begin{verbatim}\nx\n\\end{verbatim}\n") is True
+
+    def test_prose_alone(self):
+        assert render_output._has_code_block("# T\n\nJust prose with `a span`.\n") is False
+
+    def test_an_unterminated_fence_still_loads_it(self):
+        # Deliberately not citation_gate's block regexes: those match a
+        # *complete* block in order to blank it, and a draft whose fence
+        # is unclosed should still get the package rather than silently
+        # not.
+        assert render_output._has_code_block("# T\n\n```\nx\n") is True
+
+
 class TestOutputDirFlag:
     """`--output-dir` exposes the parameter `chitragupta/review/__init__.py`
     already passes programmatically. A book's units need it: `\\input`

@@ -130,7 +130,7 @@ from chitragupta.render_output._figures import (
     _with_figures_for,
 )
 from chitragupta.render_output._cli import main
-from chitragupta.render_output._pandoc import _pandoc_command, _render_csl
+from chitragupta.render_output._pandoc import _has_code_block, _pandoc_command, _render_csl
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
 from chitragupta.render_output._substitution import (
     _checked_math_mapping,
@@ -298,6 +298,7 @@ def render(
             margin,
             figure_refs,
             fragment,
+            _has_code_block(draft_text),
         )
         subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
 

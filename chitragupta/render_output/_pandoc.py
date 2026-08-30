@@ -8,6 +8,7 @@ stay identical to the single module it replaced.
 """
 
 import os
+import re
 from pathlib import Path
 
 from chitragupta import config
@@ -41,6 +42,21 @@ def _render_csl(  # pragma: no cover-windows
     return _collapsed_csl(csl_path, tmp_dir) if collapse_citations else csl_path
 
 
+def _has_code_block(text: str) -> bool:
+    """Whether a draft has anything that renders as a LaTeX `verbatim`.
+
+    Both spellings, for the reason `_figure_refs` reads both of its own:
+    a Markdown draft fences its code and a `.tex` fragment writes the
+    environment outright, and this decides whether `fvextra` is loaded
+    for either. Deliberately not `citation_gate`'s equivalents -- those
+    match a *complete* block in order to blank it, and an unterminated
+    fence should still load the package rather than silently not.
+    """
+    return bool(re.search(r"^[ \t]*(`{3,}|~{3,})", text, re.MULTILINE)) or bool(
+        re.search(r"\\begin\{(verbatim|lstlisting|minted)\*?\}", text)
+    )
+
+
 def _pandoc_command(
     safe_md: Path,
     safe_bib: Path,
@@ -54,6 +70,7 @@ def _pandoc_command(
     margin: str,
     figure_refs: list[str],
     fragment: bool = False,
+    has_code_block: bool = False,
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in."""
     # A fragment is for `\input` into a larger document, so it gets no
@@ -118,6 +135,35 @@ def _pandoc_command(
     # draft that never draws one, so this stays conditional.
     if figure_refs:  # pragma: no cover-windows
         cmd += ["--variable", r"header-includes=\usepackage{tikz}"]
+    # Same shape, same reason, for a draft that has a fenced code block:
+    # a LaTeX `verbatim` line is one unbreakable box, so a line wider
+    # than the page runs into the margin and `pdflatex` reports an
+    # Overfull \hbox. `fvextra`'s `breaklines` wraps it instead, marking
+    # each continuation with a `,→` so a wrapped line cannot be misread
+    # as two. Both environments are redefined because which one pandoc
+    # emits depends on highlighting: a plain fence becomes `verbatim`,
+    # and a language-tagged one becomes `Highlighting` (whose
+    # `commandchars` has to be carried over, or every highlight macro
+    # prints literally).
+    #
+    # `breaklines` without `breakanywhere`, so a break lands at a space
+    # rather than mid-identifier -- checked against this project's own
+    # book, where no over-wide line lacks a space before the limit.
+    #
+    # Conditional for the reason the tikz load is: `fvextra` ships in
+    # texlive-latex-extra, and a host with a smaller TeX should not lose
+    # a render that works today over a package its draft never needs.
+    # A `--fragment` render emits no preamble at all, so this reaches
+    # nothing there -- a book supplies it from its own preamble, the
+    # same way it supplies the citeproc macros (docs/BOOKS.md).
+    if has_code_block:  # pragma: no cover-windows
+        cmd += [
+            "--variable",
+            "header-includes="
+            r"\usepackage{fvextra}"
+            r"\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}"
+            r"\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}",
+        ]
     env = None
     if output_format == "pdf":  # pragma: no cover-windows
         cmd += ["--pdf-engine", "pdflatex"]

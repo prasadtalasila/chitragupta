@@ -806,6 +806,50 @@ class TestBreakableInlineCode:
         assert compiled.returncode == 0, compiled.stdout[-2000:]
 
 
+class TestWideCodeBlockRenderReal:
+    """The `fvextra` load, end to end against a real `pdflatex`. A
+    `verbatim` line is one unbreakable box without it, so this is the
+    difference between an over-wide code block wrapping and running into
+    the margin -- the largest single class of `Overfull \\hbox` warnings
+    in this project's own book."""
+
+    # Comfortably past the limit at either geometry, with spaces to
+    # break at -- the shape every over-wide line in the real corpus has.
+    _WIDE = "GET /sensing/{unit}/{parameter}   measurements, with limit and since_timestamp too"
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available),
+        reason="pandoc/pdflatex not installed",
+    )
+    def test_an_over_wide_fenced_line_wraps_instead_of_overflowing(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(f"# Title\n\n```\n{self._WIDE}\n```\n")
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        assert "fvextra" in out_path.read_text()
+        compiled = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
+        )
+        assert compiled.returncode == 0, compiled.stdout[-2000:]
+        # The assertion the package exists for. Unlike the inline-span
+        # test above, this one is safe to make on the log: the fixture is
+        # a single wide line in an otherwise empty document, so there is
+        # nothing else that could report a box.
+        assert "Overfull \\hbox" not in compiled.stdout
+
+
 class TestCaptionedFigureRenderReal:
     """Issue 411: a captioned figure's number, real toolchain end to end --
     the shape unit tests on `_figures.py` alone cannot prove, because only

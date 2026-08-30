@@ -59,6 +59,7 @@ from chitragupta.style_figures import findings as figure_findings
 from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
 from chitragupta.style_tables import findings as table_findings
+from chitragupta.style_typeset import findings as typeset_findings
 
 
 class MissingBinary(RuntimeError):
@@ -248,6 +249,7 @@ def check(draft: Path, override: str | None = None) -> dict:
         + table_findings(draft)
         + figure_findings(draft)
         + equation_findings(draft)
+        + typeset_findings(draft)
     )
     vale_error, proposal = None, None
     try:
