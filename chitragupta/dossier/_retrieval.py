@@ -8,6 +8,14 @@ itself (`log_retrieval`, for the same "write the header if the file
 doesn't exist yet" reason every other template exists for) -- a
 private name crossing one file boundary once is not the same problem
 as crossing three.
+
+The read side -- `_retrieval_rows` and the `recorded_queries` trio --
+moved to `_retrieval_queries.py` (#467): #455's origin column pushed
+this module back over C2, and unlike the write path and the cost
+accounting below, nothing here needs those three to be defined in this
+file rather than merely reachable through it. They stay importable as
+`_retrieval.recorded_queries`/`_with_collection`/`_with_origin`, via the
+re-export where they used to live, so no existing call site changes.
 """
 
 import argparse
@@ -15,8 +23,9 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from chitragupta.dossier import RETRIEVAL_MD, _ROW_SPLIT, dossier_dir, draft_relpath
+from chitragupta.dossier import RETRIEVAL_MD, _REVISION_MARKER_MODE, dossier_dir, draft_relpath
 from chitragupta.dossier._create import _RETRIEVAL_TEMPLATE
+from chitragupta.dossier._retrieval_queries import _retrieval_rows
 
 
 def log_retrieval(
@@ -120,13 +129,6 @@ def log_retrieval(
     return path
 
 
-# `log_retrieval`'s `mode` is always "search" or "evidence" -- the two
-# `python -m chitragupta.draft retrieve` subcommands. "revision" can't collide with a
-# real logged call; it exists only so `retrieval_cost_by_revision` has
-# something to split on.
-_REVISION_MARKER_MODE = "revision"
-
-
 def mark_revision(draft: Path, label: str = "") -> Path:
     """Append a revision-boundary marker to the dossier's `retrieval.md`.
 
@@ -157,43 +159,6 @@ def mark_revision(draft: Path, label: str = "") -> Path:
             handle.write(_RETRIEVAL_TEMPLATE)
         handle.write(row)
     return path
-
-
-def _retrieval_rows(dossier: Path) -> list[list[str]]:
-    """The parseable rows of `retrieval.md`, normalised to eight cells:
-    date, mode, query, asked, results, chars, collection, origin.
-
-    An integer `chars` cell is what separates a logged call from the
-    template's own header and separator rows, which otherwise parse to
-    six, seven or eight cells like any other. Advisory like every other
-    read here: a hand-edited row that doesn't parse is skipped rather
-    than raising.
-
-    A six-cell row -- every row written before #254 added the collection
-    column -- or a seven-cell row -- every row written before #455 added
-    the origin column -- is padded with trailing empty cells rather than
-    rejected, so it reads back exactly as it always has: a call with no
-    recorded collection and no recorded origin, indistinguishable from
-    one explicitly logged corpus-wide with no declared/extended origin.
-    """
-    path = dossier / RETRIEVAL_MD
-    if not path.is_file():
-        return []
-    rows: list[list[str]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        # Split on unescaped pipes only: `log_retrieval` writes a query
-        # containing a pipe as `\|`, which is markdown's literal, and
-        # splitting there would cut the row into extra cells.
-        cells = [cell.strip() for cell in _ROW_SPLIT.split(line.strip().strip("|"))]
-        if len(cells) not in (6, 7, 8):
-            continue
-        try:
-            int(cells[5])
-        except ValueError:
-            continue
-        cells += [""] * (8 - len(cells))
-        rows.append(cells)
-    return rows
 
 
 def retrieval_cost(dossier: Path) -> tuple[int, int]:
@@ -256,95 +221,22 @@ def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
     return segments
 
 
-def recorded_queries(dossier: Path) -> list[str]:
-    """The distinct queries this draft was retrieved with, first seen first.
+# `recorded_queries`, `_with_collection` and `_with_origin` moved to
+# `_retrieval_queries.py` (#467) -- re-exported here, at the spot they
+# used to be defined, so `_retrieval.recorded_queries` and its two
+# siblings keep working for every caller this project already has
+# (`chitragupta/review/agenda/_recheck.py`, `chitragupta/dossier/_drift.py`,
+# `chitragupta/dossier/_outline.py`, and this module's own test suite)
+# without a mechanical rename across files the split didn't otherwise
+# need to touch.
+# pylint: disable=unused-import,wrong-import-position
+from chitragupta.dossier._retrieval_queries import (  # noqa: F401,E402
+    recorded_queries,
+    recorded_queries_with_collection,
+    recorded_queries_with_origin,
+)
 
-    `retrieval.md` was written to measure what a run cost, and this is
-    the second thing it turns out to be good for: it is the only record
-    of *what this draft went looking for*, which is what makes "the
-    corpus grew" answerable as "and here is the part of the growth this
-    draft would have wanted". Deduplicated because a reformulated search
-    logs the same query more than once, and running it twice would just
-    report the same candidate twice.
-
-    Skips `mark_revision`'s boundary rows. Their third cell holds the
-    `--label` text, not a query -- without this exclusion a label like
-    "shorten intro" would be ranked against the corpus as if someone had
-    searched for it, both here and in `recorded_queries_with_collection`,
-    its sibling below, which skips them the same way.
-
-    Says nothing about the collection a call was scoped to --
-    `recorded_queries_with_collection` is the sibling that does, and is
-    what `dossier status`'s drift check reads instead of this, so that a
-    collection-scoped draft's candidates are ranked over the shelf it
-    actually used (#254) rather than the whole corpus.
-    """
-    seen: dict[str, None] = {}
-    for cells in _retrieval_rows(dossier):
-        if cells[1] == _REVISION_MARKER_MODE:
-            continue
-        # `log_retrieval` escapes a pipe on the way in; unescape it so the
-        # query goes to the ranker as the caller actually typed it.
-        query = cells[2].replace("\\|", "|").strip()
-        if query:
-            seen[query] = None
-    return list(seen)
-
-
-def recorded_queries_with_collection(dossier: Path) -> list[tuple[str, str]]:
-    """The distinct (query, collection) pairs this draft was retrieved
-    with, first seen first -- `recorded_queries`'s sibling (#254).
-
-    An empty collection means the call was corpus-wide, which is also
-    what a row logged before this column existed means -- `_retrieval_rows`
-    pads it in, so an old dossier reads back exactly as it always has.
-
-    Deduplicated on the *pair*, not the query alone: the same query asked
-    once corpus-wide and once scoped to a shelf is two different calls,
-    and collapsing them the way `recorded_queries` does would silently
-    widen the scoped one back to corpus-wide.
-    """
-    seen: dict[tuple[str, str], None] = {}
-    for cells in _retrieval_rows(dossier):
-        if cells[1] == _REVISION_MARKER_MODE:
-            continue
-        query = cells[2].replace("\\|", "|").strip()
-        if not query:
-            continue
-        collection = cells[6].replace("\\|", "|").strip()
-        seen[(query, collection)] = None
-    return list(seen)
-
-
-def recorded_queries_with_origin(dossier: Path) -> list[tuple[str, str]]:
-    """The distinct (query, origin) pairs this draft was retrieved with,
-    first seen first -- `recorded_queries`'s other sibling (#455).
-
-    `origin` is `"declared"`, `"extended"`, or `""` for a call that named
-    neither -- which is also what a row logged before this column existed
-    reads as, padded in by `_retrieval_rows`. Unlike
-    `recorded_queries_with_collection`'s empty `collection`, an empty
-    `origin` is not read as any particular thing by this function; a
-    caller comparing this against `outline.md`'s declared list (the
-    reader `_outline.declared_vs_actual` is) has to treat it as out of
-    scope, not as compliance, because a pre-`outline.md` call was
-    neither declared nor extended.
-
-    Deduplicated on the pair, the same way `recorded_queries_with_collection`
-    is: the same query logged once declared and once extended is two
-    different facts about the run, and collapsing them would hide that a
-    declared query also had to be extended.
-    """
-    seen: dict[tuple[str, str], None] = {}
-    for cells in _retrieval_rows(dossier):
-        if cells[1] == _REVISION_MARKER_MODE:
-            continue
-        query = cells[2].replace("\\|", "|").strip()
-        if not query:
-            continue
-        origin = cells[7].replace("\\|", "|").strip()
-        seen[(query, origin)] = None
-    return list(seen)
+# pylint: enable=unused-import,wrong-import-position
 
 
 def _cmd_mark_revision(args: argparse.Namespace) -> int:
