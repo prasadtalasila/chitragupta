@@ -226,16 +226,25 @@ usually the model resuming a draft weeks later, not a person. That is the
 clean split from [REVIEW.md](REVIEW.md), which is written for you.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
-`status`, `stamp`, `sections`, `brief`, `check-evidence`, `list`, and
-`export`/`restore` for backup. **`status` is the one to know** -- it
-recomputes the corpus fingerprint the dossier recorded, and if the corpus
-has moved it names the citekeys that appear nowhere in the dossier,
-neither kept nor rejected. That distinguishes "new papers exist" from "a
-paper this draft cites has left the corpus", which want opposite
-responses. It also recomputes a **draft fingerprint** the same way,
-reporting `CHANGED since last stamp` when a hand edit has moved the draft
-itself since `stamp` last ran -- see [DOSSIER.md](DOSSIER.md)'s "The
-draft fingerprint".
+`status`, `stamp`, `sections`, `outline`, `brief`, `check-evidence`,
+`list`, and `export`/`restore` for backup. **`status` is the one to
+know** -- it recomputes the corpus fingerprint the dossier recorded, and
+if the corpus has moved it names the citekeys that appear nowhere in the
+dossier, neither kept nor rejected. That distinguishes "new papers
+exist" from "a paper this draft cites has left the corpus", which want
+opposite responses. It also recomputes a **draft fingerprint** the same
+way, reporting `CHANGED since last stamp` when a hand edit has moved the
+draft itself since `stamp` last ran -- see [DOSSIER.md](DOSSIER.md)'s
+"The draft fingerprint".
+
+**A human can declare the structure before drafting, instead of a genre
+skill inventing sub-themes from the topic (#455).** `dossier init
+--outline` creates an eighth, opt-in file, `outline.md`: per section, a
+`brief:` and/or `claim:` block plus optional declared `queries:`, which
+the genre skill then runs verbatim. `dossier status` reports whether the
+draft actually ran what was declared, from `retrieval.md`'s `origin`
+column -- "did this draft follow its outline?" becomes decidable rather
+than trusted.
 
 ### 📖 Evidence: `claim:` and `quote:`
 
