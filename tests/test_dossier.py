@@ -1663,7 +1663,8 @@ class TestRecordedQueriesWithOrigin:
         guard would do to it."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
-        path.write_text(path.read_text() + "| 2026-01-01 | search | old query | 15 | 15 | 100 | |\n")
+        row = "| 2026-01-01 | search | old query | 15 | 15 | 100 | |\n"
+        path.write_text(path.read_text() + row)
         assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
             ("old query", ""),
         ]
@@ -1673,7 +1674,8 @@ class TestRecordedQueriesWithOrigin:
         just to seven."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
-        path.write_text(path.read_text() + "| 2026-01-01 | search | ancient query | 15 | 15 | 100 |\n")
+        row = "| 2026-01-01 | search | ancient query | 15 | 15 | 100 |\n"
+        path.write_text(path.read_text() + row)
         assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
             ("ancient query", ""),
         ]

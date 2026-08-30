@@ -10,12 +10,11 @@ draft follow its outline" from retrieval.md alone, without silently
 reading a pre-outline.md dossier as compliant.
 """
 
-from pathlib import Path
 
 import pytest
 
 from chitragupta import config, dossier
-from chitragupta.dossier import _retrieval, _outline
+from chitragupta.dossier import _outline
 
 
 @pytest.fixture
@@ -29,7 +28,8 @@ def draft(isolated_config):
 class TestParse:
     def test_a_brief_only_section(self):
         result = _outline.parse(
-            "## Failure modes\n\nbrief: Focus on timestep mismatch.\n\nqueries:\n- failure modes co-simulation\n"
+            "## Failure modes\n\nbrief: Focus on timestep mismatch.\n\n"
+            "queries:\n- failure modes co-simulation\n"
         )
         section = result.sections["Failure modes"]
         assert section.brief == "Focus on timestep mismatch."
