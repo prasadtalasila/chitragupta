@@ -143,9 +143,9 @@ def _build_parser() -> Any:
         each.add_argument(
             "--origin",
             choices=("declared", "extended"),
-            help="With --log: this query came verbatim from structure.md "
+            help="With --log: this query came verbatim from outline.md "
             "(declared) or was added because a declared section came up "
-            "thin (extended). Omit for a call structure.md had no say in",
+            "thin (extended). Omit for a call outline.md had no say in",
         )
     return parser
 

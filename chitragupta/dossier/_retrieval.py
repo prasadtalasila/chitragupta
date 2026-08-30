@@ -39,11 +39,11 @@ def log_retrieval(
     rows, and nothing downstream could tell which had actually run.
 
     `origin` is `"declared"` or `"extended"` (#455) -- whether the query
-    came verbatim from a `structure.md` section or was added because a
+    came verbatim from an `outline.md` section or was added because a
     declared section came up thin. `None`/empty for a call that named
     neither, which is also how every row logged before this parameter
     existed reads back. Unlike `collection`, that empty reading is not a
-    safe default to widen into: a pre-`structure.md` call was neither
+    safe default to widen into: a pre-`outline.md` call was neither
     declared nor extended, so it stays its own, third state -- see
     `recorded_queries_with_origin`.
 
@@ -326,9 +326,9 @@ def recorded_queries_with_origin(dossier: Path) -> list[tuple[str, str]]:
     reads as, padded in by `_retrieval_rows`. Unlike
     `recorded_queries_with_collection`'s empty `collection`, an empty
     `origin` is not read as any particular thing by this function; a
-    caller comparing this against `structure.md`'s declared list (the
-    reader `_structure.declared_vs_actual` is) has to treat it as out of
-    scope, not as compliance, because a pre-`structure.md` call was
+    caller comparing this against `outline.md`'s declared list (the
+    reader `_outline.declared_vs_actual` is) has to treat it as out of
+    scope, not as compliance, because a pre-`outline.md` call was
     neither declared nor extended.
 
     Deduplicated on the pair, the same way `recorded_queries_with_collection`

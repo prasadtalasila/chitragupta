@@ -1,4 +1,4 @@
-"""`structure.md`: the human's own outline for a single-draft dossier
+"""`outline.md`: the human's own outline for a single-draft dossier
 (#455) -- a heading, a `brief:` and/or one or more `claim:` blocks, and
 optional declared `queries:` a genre skill runs verbatim instead of
 inventing sub-themes.
@@ -21,7 +21,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta.dossier import STRUCTURE_MD, _resolve_dossier, draft_relpath
+from chitragupta.dossier import OUTLINE_MD, _resolve_dossier, draft_relpath
 from chitragupta.dossier._retrieval import recorded_queries_with_origin
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
@@ -32,7 +32,7 @@ _QUERY_ITEM = re.compile(r"^-\s+(.*)$")
 
 
 @dataclass
-class StructureSection:
+class OutlineSection:
     """One `##` heading's declared intent: steering (`brief`), content to
     ground (`claim`, zero or more), and the queries a skill runs verbatim
     for this section. `brief` and `claim` combine -- each carries its own
@@ -46,19 +46,19 @@ class StructureSection:
 
 
 @dataclass
-class StructureProblem:
+class OutlineProblem:
     heading: str
     problem: str
 
 
 @dataclass
-class Structure:
-    sections: "dict[str, StructureSection]" = field(default_factory=dict)
-    problems: list[StructureProblem] = field(default_factory=list)
+class Outline:
+    sections: "dict[str, OutlineSection]" = field(default_factory=dict)
+    problems: list[OutlineProblem] = field(default_factory=list)
 
 
 class _Parser:
-    """One pass over `structure.md`'s lines, tracked as a small state
+    """One pass over `outline.md`'s lines, tracked as a small state
     machine so `parse` itself stays a dispatch loop -- see that
     function's docstring for what the result means.
 
@@ -69,8 +69,8 @@ class _Parser:
     """
 
     def __init__(self) -> None:
-        self.result = Structure()
-        self.section: "StructureSection | None" = None
+        self.result = Outline()
+        self.section: "OutlineSection | None" = None
         self.mode: "str | None" = None
         self.buffer: list[str] = []
 
@@ -85,7 +85,7 @@ class _Parser:
 
     def start_heading(self, heading: str) -> None:
         self.flush()
-        self.section = StructureSection(heading=heading)
+        self.section = OutlineSection(heading=heading)
         self.result.sections[heading] = self.section
         self.mode = None
 
@@ -121,7 +121,10 @@ class _Parser:
             self.problem(f"unrecognised line: {line!r}")
 
     def problem(self, text: str) -> None:
-        self.result.problems.append(StructureProblem(self.section.heading, text))
+        self.problem_for(self.section.heading, text)
+
+    def problem_for(self, heading: str, text: str) -> None:
+        self.result.problems.append(OutlineProblem(heading, text))
 
     def dispatch(self, raw_line: str) -> None:
         line = raw_line.rstrip()
@@ -141,19 +144,16 @@ class _Parser:
         else:
             self.add_line(raw_line, line)
 
-    def finish(self) -> Structure:
+    def finish(self) -> Outline:
         self.flush()
         for heading, section in self.result.sections.items():
             if not section.brief and not section.claims:
                 self.problem_for(heading, "neither a brief: nor a claim: block")
         return self.result
 
-    def problem_for(self, heading: str, text: str) -> None:
-        self.result.problems.append(StructureProblem(heading, text))
 
-
-def parse(text: str) -> Structure:
-    """`structure.md`'s text into one `StructureSection` per `##`-or-deeper
+def parse(text: str) -> Outline:
+    """`outline.md`'s text into one `OutlineSection` per `##`-or-deeper
     heading, plus whatever's wrong with it.
 
     Advisory about *shape*, not about content -- a heading with neither a
@@ -170,7 +170,7 @@ def parse(text: str) -> Structure:
 
 @dataclass
 class SectionDrift:
-    """One `structure.md` section's declared queries, split by whether
+    """One `outline.md` section's declared queries, split by whether
     `retrieval.md` shows them actually run verbatim (`origin=declared`)."""
 
     heading: str
@@ -179,8 +179,8 @@ class SectionDrift:
 
 
 @dataclass
-class StructureDrift:
-    """"Did this draft follow its declared structure?", read from
+class OutlineDrift:
+    """"Did this draft follow its declared outline?", read from
     `retrieval.md`'s `origin` column rather than trusted.
 
     `extended` is flat, not per-section: `retrieval.md` records no
@@ -193,53 +193,62 @@ class StructureDrift:
     extended: list[str] = field(default_factory=list)
 
 
-def declared_vs_actual(dossier: Path, structure: "Structure | None" = None) -> StructureDrift:
-    """Compares `structure.md`'s declared queries against what
-    `retrieval.md` actually shows ran, by exact query text.
+def _normalised(query: str) -> str:
+    """Whitespace-collapsed the same way `log_retrieval` collapses a
+    query before writing it -- a declared query compared against
+    `retrieval.md`'s text without this would read a query logged with
+    different internal spacing as never having run at all."""
+    return " ".join(query.split())
 
-    Reads `structure.md` itself when `structure` isn't already parsed
+
+def declared_vs_actual(dossier: Path, outline: "Outline | None" = None) -> OutlineDrift:
+    """Compares `outline.md`'s declared queries against what
+    `retrieval.md` actually shows ran, by exact (whitespace-normalised)
+    query text.
+
+    Reads `outline.md` itself when `outline` isn't already parsed
     (`_cmd_status` passes one in it already has; a standalone caller
-    doesn't). A dossier with no `structure.md` reports every section
+    doesn't). A dossier with no `outline.md` reports every section
     empty -- there is nothing declared to have drifted from.
     """
-    if structure is None:
-        path = dossier / STRUCTURE_MD
-        structure = parse(path.read_text(encoding="utf-8")) if path.is_file() else Structure()
+    if outline is None:
+        path = dossier / OUTLINE_MD
+        outline = parse(path.read_text(encoding="utf-8")) if path.is_file() else Outline()
 
     pairs = recorded_queries_with_origin(dossier)
-    run = {query for query, origin in pairs if origin == "declared"}
+    run = {_normalised(query) for query, origin in pairs if origin == "declared"}
     extended = [query for query, origin in pairs if origin == "extended"]
 
     sections = {
         heading: SectionDrift(
             heading=heading,
-            run=[q for q in section.queries if q in run],
-            not_run=[q for q in section.queries if q not in run],
+            run=[q for q in section.queries if _normalised(q) in run],
+            not_run=[q for q in section.queries if _normalised(q) not in run],
         )
-        for heading, section in structure.sections.items()
+        for heading, section in outline.sections.items()
     }
-    return StructureDrift(sections=sections, extended=extended)
+    return OutlineDrift(sections=sections, extended=extended)
 
 
-def _cmd_structure(args: argparse.Namespace) -> int:
+def _cmd_outline(args: argparse.Namespace) -> int:
     target = _resolve_dossier(Path(args.draft))
-    path = target / STRUCTURE_MD
+    path = target / OUTLINE_MD
     if not path.is_file():
         print(
-            f"No {STRUCTURE_MD} in {draft_relpath(target)}. Create one with "
-            f"`python -m chitragupta.draft dossier init {args.draft} --genre <genre> --structure`.",
+            f"No {OUTLINE_MD} in {draft_relpath(target)}. Create one with "
+            f"`python -m chitragupta.draft dossier init {args.draft} --genre <genre> --outline`.",
             file=sys.stderr,
         )
         return 1
 
-    structure = parse(path.read_text(encoding="utf-8"))
-    if structure.problems:
-        for problem in structure.problems:
+    outline = parse(path.read_text(encoding="utf-8"))
+    if outline.problems:
+        for problem in outline.problems:
             print(f"[error] {problem.heading!r}: {problem.problem}", file=sys.stderr)
         return 1
 
     if not args.check:
-        for heading, section in structure.sections.items():
+        for heading, section in outline.sections.items():
             print(f"## {heading}")
             if section.brief:
                 print(f"  brief: {section.brief}")
@@ -249,7 +258,7 @@ def _cmd_structure(args: argparse.Namespace) -> int:
                 print(f"  query: {query}")
 
     print(
-        f"{len(structure.sections)} section(s), 0 problem(s), "
+        f"{len(outline.sections)} section(s), 0 problem(s), "
         f"{draft_relpath(path)}.",
         file=sys.stderr,
     )

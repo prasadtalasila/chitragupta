@@ -57,13 +57,13 @@ REVISIONS_MD = "revisions.md"
 RETRIEVAL_MD = "retrieval.md"
 
 
-# `structure.md` (#455): the human's own per-section brief/claim/declared
-# queries, opt-in via `dossier init --structure` rather than one of the
+# `outline.md` (#455): the human's own per-section brief/claim/declared
+# queries, opt-in via `dossier init --outline` rather than one of the
 # seven `init` always writes -- most dossiers don't have one, and `FILES`
 # below is what `status` iterates to report what a dossier holds, which a
 # usually-absent file would misreport as a gap in every dossier that
-# never asked for one. See `_structure.py`.
-STRUCTURE_MD = "structure.md"
+# never asked for one. See `_outline.py`.
+OUTLINE_MD = "outline.md"
 
 
 # The files a dossier holds, in the order `init` writes them and `status`

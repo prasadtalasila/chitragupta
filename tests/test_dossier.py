@@ -263,22 +263,22 @@ class TestInit:
         assert "- language: not settled" in scope
         assert "en-GB" in scope
 
-    def test_structure_is_opt_in(self, draft):
-        """Most dossiers have no structure.md -- confirming the plain
+    def test_outline_is_opt_in(self, draft):
+        """Most dossiers have no outline.md -- confirming the plain
         `test_writes_every_dossier_file` case above stays true, and that
         the file only appears when asked for."""
         dossier.init(draft, "survey")
-        assert not (dossier.dossier_dir(draft) / "structure.md").exists()
+        assert not (dossier.dossier_dir(draft) / "outline.md").exists()
 
-    def test_structure_true_writes_structure_md(self, draft):
-        dossier.init(draft, "survey", structure=True)
-        assert (dossier.dossier_dir(draft) / "structure.md").is_file()
+    def test_outline_true_writes_outline_md(self, draft):
+        dossier.init(draft, "survey", outline=True)
+        assert (dossier.dossier_dir(draft) / "outline.md").is_file()
 
-    def test_structure_true_does_not_clobber_a_filled_in_structure_md(self, draft):
-        dossier.init(draft, "survey", structure=True)
-        path = dossier.dossier_dir(draft) / "structure.md"
+    def test_outline_true_does_not_clobber_a_filled_in_outline_md(self, draft):
+        dossier.init(draft, "survey", outline=True)
+        path = dossier.dossier_dir(draft) / "outline.md"
         path.write_text("## Real section\n\nbrief: real content\n")
-        written = dossier.init(draft, "survey", structure=True)
+        written = dossier.init(draft, "survey", outline=True)
         assert written == []
         assert "Real section" in path.read_text()
 
@@ -1629,7 +1629,7 @@ class TestRecordedQueriesWithCollection:
 class TestRecordedQueriesWithOrigin:
     """`origin` (#455): a scoped/declared call and a corpus-wide/invented
     one otherwise wrote byte-identical rows, and nothing downstream could
-    tell a draft that followed its `structure.md` from one that didn't."""
+    tell a draft that followed its `outline.md` from one that didn't."""
 
     def test_a_declared_call_pairs_with_declared(self, draft):
         dossier.init(draft, "survey")
@@ -1647,7 +1647,7 @@ class TestRecordedQueriesWithOrigin:
 
     def test_a_call_with_no_origin_pairs_with_empty(self, draft):
         """Unlike `collection`, an unset `origin` has no safe default
-        reading -- a pre-structure.md call was neither declared nor
+        reading -- a pre-outline.md call was neither declared nor
         extended, so it stays a third, unspecified state rather than
         silently reading as either."""
         dossier.init(draft, "survey")
@@ -2410,51 +2410,14 @@ class TestInitCLI:
         assert "created scope.md" in out
         assert "No ledger" not in out
 
-    def test_structure_flag_creates_structure_md(self, draft, capsys):
-        assert dossier.main(["init", str(draft), "--genre", "survey", "--structure"]) == 0
-        assert "created structure.md" in capsys.readouterr().out
-        assert (dossier.dossier_dir(draft) / "structure.md").is_file()
+    def test_outline_flag_creates_outline_md(self, draft, capsys):
+        assert dossier.main(["init", str(draft), "--genre", "survey", "--outline"]) == 0
+        assert "created outline.md" in capsys.readouterr().out
+        assert (dossier.dossier_dir(draft) / "outline.md").is_file()
 
-    def test_without_structure_flag_no_structure_md(self, draft, capsys):
+    def test_without_outline_flag_no_outline_md(self, draft, capsys):
         assert dossier.main(["init", str(draft), "--genre", "survey"]) == 0
-        assert "structure.md" not in capsys.readouterr().out
-
-    def test_structure_with_topic_prints_a_broad_survey(self, draft, ledger_con, tmp_path, capsys):
-        from chitragupta import ledger
-        from tests.conftest import make_reference
-
-        parsed = tmp_path / "a2024.txt"
-        parsed.write_text("padding " * 50 + "composable digital twin architecture")
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Composable Digital Twins")
-        )
-        ledger.mark_parsed(ledger_con, "a2024", parsed)
-
-        assert (
-            dossier.main(
-                ["init", str(draft), "--genre", "survey", "--structure", "--topic", "composable"]
-            )
-            == 0
-        )
-        out = capsys.readouterr().out
-        assert "What the corpus holds on 'composable'" in out
-        assert "a2024" in out
-
-    def test_topic_without_structure_is_ignored(self, draft, ledger_con, tmp_path, capsys):
-        """`--topic` only means something alongside `--structure` -- it
-        must not silently run a search nobody asked for."""
-        from chitragupta import ledger
-        from tests.conftest import make_reference
-
-        parsed = tmp_path / "a2024.txt"
-        parsed.write_text("padding " * 50 + "composable digital twin architecture")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024"))
-        ledger.mark_parsed(ledger_con, "a2024", parsed)
-
-        assert (
-            dossier.main(["init", str(draft), "--genre", "survey", "--topic", "composable"]) == 0
-        )
-        assert "What the corpus holds" not in capsys.readouterr().out
+        assert "outline.md" not in capsys.readouterr().out
 
 
 class TestStatusCLIOutput:
@@ -2478,14 +2441,14 @@ class TestStatusCLIOutput:
         assert "1 call(s) returned" in out
         assert "1 kept, 1 rejected" in out
 
-    def test_no_structure_md_means_no_structure_block(self, draft, capsys):
+    def test_no_outline_md_means_no_outline_block(self, draft, capsys):
         dossier.init(draft, "survey")
         dossier.main(["status", str(draft)])
-        assert "Structure:" not in capsys.readouterr().out
+        assert "Outline:" not in capsys.readouterr().out
 
-    def test_structure_block_reports_run_not_run_and_extended(self, draft, capsys):
-        dossier.init(draft, "survey", structure=True)
-        (dossier.dossier_dir(draft) / "structure.md").write_text(
+    def test_outline_block_reports_run_not_run_and_extended(self, draft, capsys):
+        dossier.init(draft, "survey", outline=True)
+        (dossier.dossier_dir(draft) / "outline.md").write_text(
             "## Failure modes\n\nbrief: text\n\nqueries:\n"
             "- timestep mismatch\n- solver divergence\n"
         )
@@ -2493,7 +2456,7 @@ class TestStatusCLIOutput:
         dossier.log_retrieval(draft, "search", "surrogate model", 5, 5, 100, origin="extended")
         dossier.main(["status", str(draft)])
         out = capsys.readouterr().out
-        assert "Structure: 1 declared query run, 1 not, 1 extended." in out
+        assert "Outline: 1 declared query run, 1 not, 1 extended." in out
         assert "not run   Failure modes: 'solver divergence'" in out
         assert "extended  'surrogate model'" in out
 

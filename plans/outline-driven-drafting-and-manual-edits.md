@@ -326,20 +326,8 @@ carrying brackets in mathematics and code** -- not a global `]` delete.
 
 ## ▶ PR 2: an outline the human writes
 
-> 📝 **Renamed from `outline.md` to `structure.md` during design review
-> (2026-08-30).** `docs/CLI.md` already glosses `chitragupta draft spec`
-> as "the outline a book is generated from" -- `spec.md`, at book scale.
-> Naming this file `outline.md` too would put two different files, at two
-> different scales, under the same user-facing word. `structure.md`
-> avoids the collision and matches
-> [FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s own name for this
-> theme, "the human's own structure". The prose below still says
-> "outline" in the ordinary English sense (a structure one sketches
-> before writing); every concrete artefact name -- the file, the module,
-> the CLI -- is `structure`.
-
-A new dossier file, `structure.md`, created by
-`dossier init --structure` and edited by the human before drafting. Per
+A new dossier file, `outline.md`, created by
+`dossier init --outline` and edited by the human before drafting. Per
 section: the heading, and one or more declared-intent blocks (`brief`
 and/or `claim`), plus optional **declared queries**.
 
@@ -349,7 +337,7 @@ drafts" above. A book unit like
 `content/drafts/books/digital-twins-for-software-engineers/04-just-enough-modeling.md`
 already gets this from `spec.md` (the brief analogue, at book scale, with
 its own `spec sign` gate) and `unit --source <citekey>` (the grounding
-analogue). `structure.md` never applies to a book unit; nothing in this PR
+analogue). `outline.md` never applies to a book unit; nothing in this PR
 touches `chitragupta/spec/` or `chitragupta/unit.py`.
 
 ### Two paragraphs under a heading: the ambiguity is the defect
@@ -385,7 +373,7 @@ but nothing can recompute who wrote a sentence after the fact.
 So there is **no author provenance and no aid exemption resting on one**,
 and this plan does not propose one.
 
-#### What is declared instead, and the structure.md format
+#### What is declared instead, and the outline.md format
 
 Intent is declared **about the input**, checked once and then discharged
 -- not attached to the output, where it would have to survive every later
@@ -440,7 +428,7 @@ choice is dominated by which failure mode you can least afford.
 ```
 
 A section needs at least one of `brief`/`claim`; a section with neither
-is a parse error `dossier structure --check` reports (see below), not a
+is a parse error `dossier outline --check` reports (see below), not a
 silent no-op.
 
 **If you want your exact words in the draft, put them in the draft.**
@@ -471,7 +459,7 @@ in its own final report -- backstopped, not duplicated, by `uncited`.
 ### Declared queries, the `origin` column, and the landmine
 
 **Declared queries bind by default.** The skill runs them verbatim instead
-of inventing sub-themes -- *reading* `structure.md` and calling
+of inventing sub-themes -- *reading* `outline.md` and calling
 `retrieve search`/`evidence --log` itself, vetting results and writing
 `evidence.md`/`sections.md` exactly as it does today (this is `deep-
 research` Phase 4's existing shape, generalised to the other four genres,
@@ -506,7 +494,7 @@ diff treats as out of scope, never as compliance.
 **Command surface** (small, deliberately -- this is plumbing, not a new
 keep/reject authority):
 
-- `chitragupta/dossier/_structure.py` (new): parses `structure.md` into
+- `chitragupta/dossier/_outline.py` (new): parses `outline.md` into
   `{heading: OutlineSection(brief, claims, queries)}`; a `dossier
   outline <draft> [--check]` subcommand prints the parsed structure or,
   with `--check`, validates it (every section has brief and/or claim,
@@ -523,31 +511,34 @@ keep/reject authority):
   same dedup-on-the-pair shape.
 - `dossier._outline.declared_vs_actual(dossier) -> OutlineDrift`: the
   actual "did this draft follow my structure?" answer -- reads
-  `structure.md`'s declared queries per section and
+  `outline.md`'s declared queries per section and
   `recorded_queries_with_origin`, and reports, per section, which
   declared queries were run, which declared queries were never run, and
   which `extended` queries were added and why (best-effort: the query
   text alone, `retrieval.md` records no per-row reason). Read by `dossier
   status`, the same place drift is already reported.
 
-**What this explicitly does not do.** No `dossier structure run` command
+**What this explicitly does not do.** No `dossier outline run` command
 that itself calls retrieval and writes `sections.md`/`evidence.md`. That
 would put an automated keep/reject decision into the evidence plane --
 exactly the layer boundary `retrieval_cli` (retrieves and logs) vs. the
 skill (decides what's kept) exists to hold, and `deep-research` Phase 4
 already makes this call by model judgement, not by a Python heuristic.
-`_structure.py` reads and validates; the skill decides and writes, same as
+`_outline.py` reads and validates; the skill decides and writes, same as
 every other genre step today.
 
 **Generalise the corpus-grounded step, which is the best idea already
 here.** `deep-research` Phase 1 runs 1-2 broad calls *before* naming its
 perspectives, so the structure is derived from what the corpus actually
 holds rather than what the topic suggests. An outline written blind is an
-outline whose sections the corpus may not support. `dossier init
---structure` therefore runs the same 1-2 broad calls and prints what they
-return (titles, sub-fields, recurring angles) before leaving the human to
-fill in `structure.md`'s `brief`/`claim`/`queries` by hand; `deep-research`'s
-own Phase 1 reads `structure.md` when present instead of re-deriving this.
+outline whose sections the corpus may not support. That broad call stays
+an ordinary `retrieve search "<topic>"` -- `dossier init --outline`
+itself stays stdlib-only and ledger-read-only, the same contract every
+other `init` call keeps, so it does not gain a retrieval dependency. The
+instruction to run the search first, before filling `outline.md` in by
+hand, belongs in the genre skills' own prose (see below); `deep-research`
+Phase 1 already does this and gains nothing new here beyond reading
+`outline.md` when one exists instead of re-deriving structure itself.
 
 **No sign-off gate.** That ceremony stays book-scale. `spec sign` guards a
 178,000-word generation run; an outline for one survey does not earn a
@@ -556,7 +547,7 @@ constraint 2 says the gate means exactly one thing.
 
 Touches all five genre skills' step 1 (`survey-writer`,
 `thesis-chapter-writer`, `textbook-chapter-writer`, `tutorial-writer`,
-`deep-research`): read `structure.md` when the dossier has one and run its
+`deep-research`): read `outline.md` when the dossier has one and run its
 declared queries instead of inventing sub-themes; fall back to today's
 behaviour when it doesn't. Note that `survey-writer`'s SKILL.md currently
 states that `retrieval.md` records *"not the collection (#254)"*, which is
@@ -565,7 +556,7 @@ corrects that prose too, in the same pass that adds the `origin` mention.
 
 ### What was deliberately cut from an earlier draft of this section
 
-- **A `dossier structure run` command that calls retrieval and writes
+- **A `dossier outline run` command that calls retrieval and writes
   `sections.md`/`evidence.md` itself.** Automates a decision that belongs
   to the skill's judgement about what to keep; see above.
 - **A `claims.md` grounding-report file.** The `uncited` review aid
