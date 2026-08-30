@@ -177,9 +177,7 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
 """
 
 
-_OUTLINE_TEMPLATE = """# Outline
-
-<!-- Edited by hand before drafting. Per `##`-or-deeper heading:
+_OUTLINE_TEMPLATE = """<!-- Outline. Edited by hand before drafting. Per `##`-or-deeper heading:
      `brief:` (steering, never appears in the draft) and/or one or more
      `claim:` blocks (your own prose, rewritten -- every sentence that
      can't be grounded is reported rather than shipped), and an

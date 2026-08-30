@@ -119,6 +119,41 @@ class TestParse:
         result = _outline.parse("<!-- notes to self -->\n\n## Section\n\nbrief: text\n")
         assert list(result.sections) == ["Section"]
 
+    def test_a_multi_line_comment_is_ignored_entirely(self):
+        """The bug an end-to-end smoke test caught: `init --outline`'s
+        own skeleton template is a multi-line `<!-- ... -->` block with
+        a fenced example inside it -- including a `##` heading and a
+        `brief:` line. None of that may become real structure, or the
+        freshly created file fails its own --check before a human has
+        touched it."""
+        result = _outline.parse(
+            "<!-- Some notes.\n"
+            "     ## Not a real heading\n"
+            "     brief: not a real brief either\n"
+            "-->\n\n"
+            "## Real section\n\nbrief: real content\n"
+        )
+        assert list(result.sections) == ["Real section"]
+        assert result.problems == []
+
+    def test_the_shipped_outline_template_parses_clean(self):
+        """The exact skeleton `dossier init --outline` writes must parse
+        to zero sections and zero problems -- a human hasn't touched it
+        yet, and `--check` must not fail on the pipeline's own output."""
+        from chitragupta.dossier._create import _OUTLINE_TEMPLATE
+
+        result = _outline.parse(_OUTLINE_TEMPLATE)
+        assert result.sections == {}
+        assert result.problems == []
+
+    def test_a_comment_inside_a_brief_contributes_no_text(self):
+        result = _outline.parse(
+            "## Section\n\nbrief: before.\n<!-- an aside -->\nstill the brief.\n"
+        )
+        assert "aside" not in result.sections["Section"].brief
+        assert "before." in result.sections["Section"].brief
+        assert "still the brief." in result.sections["Section"].brief
+
     def test_an_unrecognised_line_is_a_problem(self):
         """A line after a heading with no label yet at all -- distinct
         from a line continuing an already-open brief/claim block, which
@@ -224,3 +259,10 @@ class TestOutlineCli:
         path.write_text("## Empty section\n\nqueries:\n- something\n")
         assert dossier.main(["outline", str(draft)]) == 1
         assert "neither a brief" in capsys.readouterr().err
+
+    def test_the_freshly_created_skeleton_passes_check(self, draft, capsys):
+        """End-to-end: `init --outline`'s own output must satisfy
+        `outline --check` before a human has edited a word of it."""
+        assert dossier.main(["init", str(draft), "--genre", "survey", "--outline"]) == 0
+        assert dossier.main(["outline", str(draft), "--check"]) == 0
+        assert "0 section(s), 0 problem(s)" in capsys.readouterr().err

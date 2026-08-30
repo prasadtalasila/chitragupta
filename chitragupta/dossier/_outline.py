@@ -73,6 +73,7 @@ class _Parser:
         self.section: "OutlineSection | None" = None
         self.mode: "str | None" = None
         self.buffer: list[str] = []
+        self.in_comment = False
 
     def flush(self) -> None:
         if self.section is not None and self.mode is not None:
@@ -117,7 +118,7 @@ class _Parser:
     def add_line(self, raw_line: str, line: str) -> None:
         if self.mode in ("brief", "claim"):
             self.buffer.append(raw_line)
-        elif line.strip() and not line.lstrip().startswith("<!--"):
+        elif line.strip():
             self.problem(f"unrecognised line: {line!r}")
 
     def problem(self, text: str) -> None:
@@ -128,6 +129,8 @@ class _Parser:
 
     def dispatch(self, raw_line: str) -> None:
         line = raw_line.rstrip()
+        if self.consume_comment(line):
+            return
         heading_match = _HEADING.match(line)
         if heading_match:
             self.start_heading(heading_match.group(2).strip())
@@ -143,6 +146,24 @@ class _Parser:
             self.add_query_line(line)
         else:
             self.add_line(raw_line, line)
+
+    def consume_comment(self, line: str) -> bool:
+        """True if `line` was swallowed as part of an HTML comment --
+        possibly multi-line, since a human's own `<!-- notes -->` is not
+        obliged to fit on one line, and the templates this module ships
+        don't either. A heading-shaped or label-shaped line *inside* a
+        comment is not real structure, so it must never reach dispatch's
+        own matching below -- consumed here, before any of it runs."""
+        if self.in_comment:
+            if "-->" in line:
+                self.in_comment = False
+            return True
+        stripped = line.lstrip()
+        if stripped.startswith("<!--"):
+            if "-->" not in stripped[4:]:
+                self.in_comment = True
+            return True
+        return False
 
     def finish(self) -> Outline:
         self.flush()
