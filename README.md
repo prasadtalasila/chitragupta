@@ -281,10 +281,9 @@ one-screen router for exactly that.
 | Document | Answers |
 | --- | --- |
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
-| [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
-| [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
-| [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
+| [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
+| [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
 
@@ -292,6 +291,8 @@ one-screen router for exactly that.
 
 | Document | Answers |
 | --- | --- |
+| [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
+| [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What actually runs, what does each part write, which parts are optional, and why do some commands need the venv? |
 | [docs/RENDERING-FLOW.md](docs/RENDERING-FLOW.md) | How does a draft's citation actually resolve into a rendered bibliography, which of four possible stores does a `.tex` fragment's citation defer to, and what happens to a figure on the way through? |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn eleven ways -- six by depth, three by genre, two in an appendix. Pick the one that matches what you already know |
