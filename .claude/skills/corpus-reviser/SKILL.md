@@ -158,6 +158,16 @@ turn a wide pass into the re-run this skill exists to avoid.
   plain-ASCII diagram, nothing can check that the two still depict the
   same thing, and a wide pass is the one most likely to edit a figure
   in passing while re-reading a section for something else.
+- **A numbered equation's id survives a rewrite; the number does not
+  need to.** Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md`
+  §12's `<!-- equation: id -->` marker renumbers itself, so only the id
+  is a wide pass's concern -- reword the surrounding derivation freely,
+  but a numbered equation moved into another section, or deleted while
+  something still points at it with `<!-- equationref: id -->`, is
+  `EquationUnreferenced`/`EquationUnknownRef`, not a rewrite defect.
+  Whether a *newly*-reworded derivation should now carry a number at
+  all is the same judgment call §12 gives every genre, not one this
+  pass gets to skip because the rewrite was wide.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m chitragupta.draft gate`.
 - **Run the prose check** -- `python -m chitragupta.draft style

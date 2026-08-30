@@ -448,6 +448,15 @@ the lesson design is the part worth keeping either way.
    mathematics. When in doubt here, prefer code -- a tutorial's job is
    the keyboard, not the derivation.
 
+   **Numbering one is rarer still.** §12 numbers an equation only if it
+   is standalone, the last step of a derivation, or reused later, and a
+   tutorial that keeps to the keyboard has no derivations to conclude.
+   If a genuine formula does get reused across steps, mark it like a
+   table -- `<!-- equation: <id> -->` directly above the
+   `<!-- math -->` block, an inline `<!-- equationref: <id> -->` at the
+   reuse -- rather than
+   restating "the formula from step 3" in prose.
+
 10. **Reread as the beginner.** One pass as someone who has never seen the
    topic. Flag: undefined terms, steps that assume a prior action you never
    instructed, any point where the learner must decide something, any step

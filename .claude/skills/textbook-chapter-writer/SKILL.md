@@ -409,6 +409,22 @@ candidate for the chapter.
    span with no row renders as typewriter text beside the equation that
    defines it, which is the exact thing §12 exists to stop.
 
+   **This genre also has more of §12's numbered equations than any
+   other, because it has more derivations.** A worked example that
+   chains several displayed steps to a result numbers only the last
+   one -- the one the student is meant to cite back to, not every
+   intermediate line -- with an `<!-- equation: <id> -->` marker directly
+   above it and an inline `<!-- equationref: <id> -->` in the sentence that
+   names it, most often in "Close the loop" or a later example that
+   reuses the result. A standalone definition (not part of a chain) is
+   numbered the same way if the chapter names it again later; a
+   quantity that appears once and is never pointed back at stays
+   unnumbered like any other. Never write "Equation 3" yourself -- the
+   renderer assigns the number, the same contract §13 gives the table
+   above -- and an id left with no referencing sentence is
+   `chitragupta.EquationUnreferenced`, this skill's own prose-check
+   step.
+
 8. **Close the loop.** End with a short summary of what the chapter
    established, tied back to the objectives it opened with, plus pointers to
    where a student who wants more should go next -- including, where it fits,

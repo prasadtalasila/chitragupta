@@ -448,6 +448,20 @@ collapse them for the sake of a cleaner narrative.
    rarely has much, but a threshold or an error bound quoted from a source
    is a quantity, and a bare `` `k = 4` `` renders as typewriter text.
 
+   **Most of that math stays unnumbered.** §12 gives a displayed
+   equation a number only if it is standalone, the final step of a
+   derivation, or reused later -- and a survey, which reports results
+   rather than proving them, rarely has a derivation at all. When a
+   comparison across sources genuinely needs one -- restating a formula
+   two papers define differently before contrasting them, say -- number
+   it like a table or a figure: an `<!-- equation: <id> -->` marker
+   directly above the `<!-- math -->` block, an inline
+   `<!-- equationref: <id> -->` in the sentence that discusses it, and a
+   sentence explaining what the numbered form shows. Never number it
+   yourself; the renderer assigns the number, same as a table's or a
+   figure's. An id left with no referencing sentence is
+   `chitragupta.EquationUnreferenced`, this skill's own prose-check step.
+
 10. **Critique against the evidence packet, before gating.** Read the
     dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
     recorded -- against the draft's own prose, section by section. List,

@@ -216,6 +216,15 @@ apart in ways a single-author draft doesn't:
   writers are dispatched in parallel and each sees only its own slice, so
   **collect their rows into one `math.md` at synthesis**, and reconcile a
   symbol two sections spelled differently rather than keeping both.
+  **Number sparingly, and only at synthesis.** §12's numbering rule --
+  standalone, the final step of a derivation, or reused elsewhere --
+  rarely fires within one section writer's slice; it is more likely to
+  fire *across* sections, when the Phase 6 lead notices two writers
+  independently derived the same bound and a later section reuses it.
+  Add the `<!-- equation: id -->` marker and its `<!-- equationref: id
+  -->` at that point, not per-section, and **check for id collisions the
+  same way as the table ids**: two section writers deriving unrelated
+  results in parallel can pick the same short id.
 
 ## Depth presets
 

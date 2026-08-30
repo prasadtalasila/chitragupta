@@ -183,11 +183,26 @@ the sentence carries another surviving citation, only the marker for the
 missing one goes, and `evidence.md` keeps that citekey's entry.
 
 **Repair a `prose` item.** Apply the fix `draft style`'s rule names: expand
-an acronym at first use, add the `<!-- table: -->` or `<!-- figureref: -->`
-marker a `TableNoCaption`/`FigureNoCaption`/`FigureUnreferenced` finding
-names, correct a glossary term drifted from `scope.md`'s vocabulary, fix
-a dialect slip against `scope.md`'s `language:` line. `Edit` the exact
-span `detail.message` or the item's `summary` names.
+an acronym at first use, add the `<!-- table: -->`, `<!-- tableref: -->` or
+`<!-- figureref: -->` marker a `TableNoCaption`/`TableUnreferenced`/
+`FigureNoCaption`/`FigureUnreferenced` finding names, correct a glossary
+term drifted from `scope.md`'s vocabulary, fix a dialect slip against
+`scope.md`'s `language:` line. `Edit` the exact span `detail.message` or
+the item's `summary` names.
+
+Two equation rules repair differently from their table/figure siblings.
+**`EquationOrphanMarker`** -- delete the stray `<!-- equation: id -->`
+marker rather than hunting for a `<!-- math -->` block to reattach it to:
+the marker's own text cannot tell this skill which block the author
+meant, and guessing wrong either drops intended numbering or leaves the
+finding standing, so deletion is the one repair that is never wrong.
+**`EquationUnreferenced`** -- the fix is not a marker addition but a
+sentence: insert prose that names the equation via
+`<!-- equationref: id -->` (docs/WRITING-STANDARDS.md §12). This is a
+larger edit than a caption line, and the likeliest of this section's
+repairs to trip the `objective_delta` check in step 5 by introducing its
+own new acronym or wording drift -- treat that as the check doing its
+job, not a reason to loosen it.
 
 **Repair a `verbatim-run` item at severity `short`.** Look up
 `detail.verbatim_id` in `content/review/<topic>/<stem>.verbatim.json`'s

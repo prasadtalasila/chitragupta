@@ -116,6 +116,27 @@ break:
   skill's own prose-check step (`FigureUnreferenced`, `FigureUnknownRef`,
   `FigureDuplicateId`) -- read those rather than eyeballing the markers.
 
+- **An equation renumbers itself; its id does not.** #457 gives the same
+  contract to a *numbered* equation, over the `<!-- equation: id -->`
+  marker docs/WRITING-STANDARDS.md §12 has the renderer resolve -- a
+  literal "Equation 3" in the prose is the defect, and the fix is an
+  inline `<!-- equationref: <id> -->`. Unlike a table or a captioned
+  figure, most equations in a draft are correctly **unnumbered**: §12's
+  rule is standalone, final-of-a-derivation, or reused elsewhere, not
+  every displayed equation, and deciding whether an equation you are
+  revising now meets that bar is a judgment call this skill makes, not
+  one `draft style` can make for it (§9 has no mechanical proxy for it).
+  What a revision can still break for an already-numbered one is the
+  id: deleting an equation something still refers to, or copying a
+  numbered equation into another section along with its id. Both are
+  reported by this skill's own prose-check step
+  (`EquationUnreferenced`, `EquationUnknownRef`, `EquationDuplicateId`)
+  -- read those rather than eyeballing the markers. An unattached
+  `<!-- equation: id -->` left behind by a deleted or reflowed `<!--
+  math -->` block is `EquationOrphanMarker`; delete the stray marker,
+  the same conservative repair `agenda-reviser` uses, rather than
+  guessing which block it meant.
+
 ## Collection scoping (#195): inherit it, do not re-ask
 
 `scope.md` may carry a `collection:` line, written by the genre skill
