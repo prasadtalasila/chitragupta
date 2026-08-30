@@ -133,13 +133,18 @@ def status(draft_or_dossier: Path) -> Status:
     report.retrieval_chars = sum(segment.chars for segment in report.revisions)
 
     report.recorded = recorded_corpus(dossier)
+    _fill_corpus_drift(report, dossier)
+    if (dossier / OUTLINE_MD).is_file():
+        report.declared_vs_actual = declared_vs_actual(dossier)
+    return report
+
+
+def _fill_corpus_drift(report: Status, dossier: Path) -> None:
+    """`report.current`/`unconsidered`, when a ledger is readable."""
     corpus_keys = known_citekeys()
     if corpus_keys is not None:
         report.current = (len(corpus_keys), digest(corpus_keys))
         report.unconsidered = corpus_keys - cited_citekeys(dossier)
-    if (dossier / OUTLINE_MD).is_file():
-        report.declared_vs_actual = declared_vs_actual(dossier)
-    return report
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
@@ -169,10 +174,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
     _print_status_outline(report)
     print()
     _print_status_drift(report)
-    if report.fingerprint is not None:
-        print()
-        for line in status_lines(report.fingerprint):
-            print(line)
+    _print_status_fingerprint(report)
     return 0
 
 
@@ -284,3 +286,12 @@ def _print_status_drift(report: Status) -> None:
             print(f"    ... and {len(report.unconsidered) - len(shown)} more")
         print("\n  Re-search only if the change you are making touches a sub-theme")
         print("  these could bear on. Drift is not itself a reason to redraft.")
+
+
+def _print_status_fingerprint(report: Status) -> None:
+    """The draft-fingerprint lines, when this draft has ever been stamped."""
+    if report.fingerprint is None:
+        return
+    print()
+    for line in status_lines(report.fingerprint):
+        print(line)
