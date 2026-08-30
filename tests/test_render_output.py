@@ -739,6 +739,73 @@ class TestFigurePairRenderReal:
         assert "[figure]" in capsys.readouterr().err
 
 
+class TestBreakableInlineCode:
+    """A real, previously-overflowing span from a rendered book: a bare
+    URL long enough to bleed past the margin on its own in a paragraph,
+    plus a shorter code span in a heading (a LaTeX moving argument,
+    where `\\url{}`/`\\path{}` would have broken the build or the ToC --
+    real headings in this project's drafts name a short identifier, not
+    a bare URL, so that is the realistic case to prove safe there)."""
+
+    _LONG_CODE = "https://github.com/INTO-CPS-Association/plant-controller"
+    _HEADING_CODE = "update_schedule"
+    _QUOTED_CODE = "--format='json'"
+
+    def _draft_text(self):
+        return (
+            f"# The `{self._HEADING_CODE}` guard\n\n"
+            f"Run `{self._QUOTED_CODE}`.\n\n"
+            f"Before Chapter 2, see `{self._LONG_CODE}`.\n"
+        )
+
+    @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+    def test_the_rendered_tex_has_break_points_not_a_bare_span(self, isolated_config, tmp_path):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text(self._draft_text())
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        assert f"\\texttt{{{self._LONG_CODE}}}" not in source
+        assert f"\\texttt{{{self._HEADING_CODE}}}" not in source
+        assert "\\penalty0" in source
+        # The split has to go through pandoc's own per-chunk LaTeX
+        # escaping, not a reimplementation of it: a quote inside a code
+        # span is pandoc's code-context `\textquotesingle{}`, and a
+        # heading's PDF-bookmark text (stringified from the AST, not
+        # this filter's RawInlines) still has to read the real
+        # identifier rather than losing it to an opaque raw string.
+        assert "\\textquotesingle{}json\\textquotesingle{}" in source
+        assert "{The update\\_schedule guard}" in source
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available),
+        reason="pandoc/pdflatex not installed",
+    )
+    def test_a_markdown_drafts_long_code_span_compiles(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(self._draft_text())
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        compiled = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
+        )
+        assert compiled.returncode == 0, compiled.stdout[-2000:]
+
+
 class TestCaptionedFigureRenderReal:
     """Issue 411: a captioned figure's number, real toolchain end to end --
     the shape unit tests on `_figures.py` alone cannot prove, because only

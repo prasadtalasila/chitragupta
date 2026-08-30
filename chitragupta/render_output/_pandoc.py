@@ -103,6 +103,13 @@ def _pandoc_command(
         str(safe_bib),
         "--csl",
         str(csl_path),
+        # Gives a long inline code span (a URL, a REST path, a file
+        # path) somewhere to break in LaTeX/PDF output -- see the
+        # filter's own header comment for why pandoc's default
+        # \texttt{...} can't. It no-ops for every other writer
+        # (FORMAT ~= "latex"), so it's safe to pass unconditionally.
+        "--lua-filter",
+        str(config.shipped("assets", "pandoc", "breakable_inline_code.lua")),
     ]
     # Loaded only for a draft that actually has a figure (#222) --
     # pandoc's default LaTeX template has no \usepackage{tikz}, so a bare

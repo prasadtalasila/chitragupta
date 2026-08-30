@@ -184,6 +184,53 @@ class TestFragmentOutput:
         assert seen["fragment"] is True
 
 
+class TestBreakableInlineCodeFilter:
+    """A standalone render and a book-assembler `--fragment` render both
+    build their pandoc argv from this one function, so wiring the filter
+    in here -- rather than in either caller -- is what makes it reach
+    every LaTeX/PDF render, not just the book path (docs/BOOKS.md)."""
+
+    def test_the_filter_is_always_passed(self):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+        )
+        assert "--lua-filter" in cmd
+        filter_path = cmd[cmd.index("--lua-filter") + 1]
+        assert Path(filter_path).name == "breakable_inline_code.lua"
+        assert Path(filter_path).is_file()
+
+    def test_a_fragment_render_also_gets_it(self):
+        # `--lua-filter` lives in the base `cmd` list, before `shape`'s
+        # fragment/standalone branch -- structurally guaranteed, but
+        # worth pinning directly since a book unit's `--fragment` render
+        # is exactly the case that carries no preamble to fall back on.
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            True,
+        )
+        assert "--lua-filter" in cmd
+
+
 class TestOutputDirFlag:
     """`--output-dir` exposes the parameter `chitragupta/review/__init__.py`
     already passes programmatically. A book's units need it: `\\input`
