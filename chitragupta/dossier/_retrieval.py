@@ -27,6 +27,7 @@ def log_retrieval(
     results: int,
     chars: int,
     collection: str | None = None,
+    origin: str | None = None,
 ) -> Path:
     """Append one retrieval call to the dossier's `retrieval.md`.
 
@@ -36,6 +37,15 @@ def log_retrieval(
     parameter existed reads back (#254). Without it, a scoped call and a
     corpus-wide one at the same query and `--k` wrote byte-identical
     rows, and nothing downstream could tell which had actually run.
+
+    `origin` is `"declared"` or `"extended"` (#455) -- whether the query
+    came verbatim from a `structure.md` section or was added because a
+    declared section came up thin. `None`/empty for a call that named
+    neither, which is also how every row logged before this parameter
+    existed reads back. Unlike `collection`, that empty reading is not a
+    safe default to widen into: a pre-`structure.md` call was neither
+    declared nor extended, so it stays its own, third state -- see
+    `recorded_queries_with_origin`.
 
     Creates the file if the dossier exists but predates it, and creates
     the dossier directory if a skill logged before running `init` --
@@ -98,9 +108,10 @@ def log_retrieval(
     path = target / RETRIEVAL_MD
     safe_query = " ".join(query.split()).replace("|", "\\|")
     safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
+    safe_origin = " ".join((origin or "").split()).replace("|", "\\|")
     row = (
         f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
-        f"{chars} | {safe_collection} |\n"
+        f"{chars} | {safe_collection} | {safe_origin} |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
@@ -138,7 +149,10 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
-    row = f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 | |\n"
+    row = (
+        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | "
+        "0 | 0 | 0 | | |\n"
+    )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
             handle.write(_RETRIEVAL_TEMPLATE)
@@ -147,19 +161,21 @@ def mark_revision(draft: Path, label: str = "") -> Path:
 
 
 def _retrieval_rows(dossier: Path) -> list[list[str]]:
-    """The parseable rows of `retrieval.md`, normalised to seven cells:
-    date, mode, query, asked, results, chars, collection.
+    """The parseable rows of `retrieval.md`, normalised to eight cells:
+    date, mode, query, asked, results, chars, collection, origin.
 
     An integer `chars` cell is what separates a logged call from the
     template's own header and separator rows, which otherwise parse to
-    six or seven cells like any other. Advisory like every other read
-    here: a hand-edited row that doesn't parse is skipped rather than
-    raising.
+    six, seven or eight cells like any other. Advisory like every other
+    read here: a hand-edited row that doesn't parse is skipped rather
+    than raising.
 
     A six-cell row -- every row written before #254 added the collection
-    column -- is padded with a trailing empty cell rather than rejected,
-    so it reads back exactly as it always has: a call with no recorded
-    collection, indistinguishable from one explicitly logged corpus-wide.
+    column -- or a seven-cell row -- every row written before #455 added
+    the origin column -- is padded with trailing empty cells rather than
+    rejected, so it reads back exactly as it always has: a call with no
+    recorded collection and no recorded origin, indistinguishable from
+    one explicitly logged corpus-wide with no declared/extended origin.
     """
     path = dossier / RETRIEVAL_MD
     if not path.is_file():
@@ -170,14 +186,13 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
         # containing a pipe as `\|`, which is markdown's literal, and
         # splitting there would cut the row into extra cells.
         cells = [cell.strip() for cell in _ROW_SPLIT.split(line.strip().strip("|"))]
-        if len(cells) not in (6, 7):
+        if len(cells) not in (6, 7, 8):
             continue
         try:
             int(cells[5])
         except ValueError:
             continue
-        if len(cells) == 6:
-            cells.append("")
+        cells += [""] * (8 - len(cells))
         rows.append(cells)
     return rows
 
@@ -299,6 +314,37 @@ def recorded_queries_with_collection(dossier: Path) -> list[tuple[str, str]]:
             continue
         collection = cells[6].replace("\\|", "|").strip()
         seen[(query, collection)] = None
+    return list(seen)
+
+
+def recorded_queries_with_origin(dossier: Path) -> list[tuple[str, str]]:
+    """The distinct (query, origin) pairs this draft was retrieved with,
+    first seen first -- `recorded_queries`'s other sibling (#455).
+
+    `origin` is `"declared"`, `"extended"`, or `""` for a call that named
+    neither -- which is also what a row logged before this column existed
+    reads as, padded in by `_retrieval_rows`. Unlike
+    `recorded_queries_with_collection`'s empty `collection`, an empty
+    `origin` is not read as any particular thing by this function; a
+    caller comparing this against `structure.md`'s declared list (the
+    reader `_structure.declared_vs_actual` is) has to treat it as out of
+    scope, not as compliance, because a pre-`structure.md` call was
+    neither declared nor extended.
+
+    Deduplicated on the pair, the same way `recorded_queries_with_collection`
+    is: the same query logged once declared and once extended is two
+    different facts about the run, and collapsing them would hide that a
+    declared query also had to be extended.
+    """
+    seen: dict[tuple[str, str], None] = {}
+    for cells in _retrieval_rows(dossier):
+        if cells[1] == _REVISION_MARKER_MODE:
+            continue
+        query = cells[2].replace("\\|", "|").strip()
+        if not query:
+            continue
+        origin = cells[7].replace("\\|", "|").strip()
+        seen[(query, origin)] = None
     return list(seen)
 
 

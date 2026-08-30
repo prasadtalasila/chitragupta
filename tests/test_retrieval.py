@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from chitragupta import config, ledger, retrieval, retrieval_cli
 
 from tests.conftest import make_reference
@@ -603,6 +605,64 @@ class TestCli:
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == [
             ("digital twin", ""),
         ]
+
+    def test_log_records_the_origin_the_search_was_declared_with(self, ledger_con, tmp_path):
+        from chitragupta import dossier
+        from chitragupta.dossier import _retrieval
+
+        self._seed(ledger_con, tmp_path)
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert (
+            retrieval.main(
+                [
+                    "search",
+                    "digital twin architecture",
+                    "--origin",
+                    "declared",
+                    "--log",
+                    str(draft),
+                ]
+            )
+            == 0
+        )
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin architecture", "declared"),
+        ]
+
+    def test_evidence_also_takes_origin(self, ledger_con, tmp_path):
+        from chitragupta import dossier
+        from chitragupta.dossier import _retrieval
+
+        self._seed(ledger_con, tmp_path)
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert (
+            retrieval.main(
+                [
+                    "evidence",
+                    "digital twin",
+                    "--citekey",
+                    "a2024",
+                    "--origin",
+                    "extended",
+                    "--log",
+                    str(draft),
+                ]
+            )
+            == 0
+        )
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "extended"),
+        ]
+
+    def test_an_invalid_origin_is_refused_by_argparse(self, ledger_con, tmp_path):
+        with pytest.raises(SystemExit):
+            retrieval.main(["search", "digital twin", "--origin", "invented"])
 
     def test_a_draft_outside_drafts_reports_but_does_not_fail_the_search(
         self, ledger_con, tmp_path, capsys

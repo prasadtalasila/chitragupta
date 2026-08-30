@@ -1607,6 +1607,86 @@ class TestRecordedQueriesWithCollection:
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == []
 
 
+class TestRecordedQueriesWithOrigin:
+    """`origin` (#455): a scoped/declared call and a corpus-wide/invented
+    one otherwise wrote byte-identical rows, and nothing downstream could
+    tell a draft that followed its `structure.md` from one that didn't."""
+
+    def test_a_declared_call_pairs_with_declared(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared"),
+        ]
+
+    def test_an_extended_call_pairs_with_extended(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="extended")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "extended"),
+        ]
+
+    def test_a_call_with_no_origin_pairs_with_empty(self, draft):
+        """Unlike `collection`, an unset `origin` has no safe default
+        reading -- a pre-structure.md call was neither declared nor
+        extended, so it stays a third, unspecified state rather than
+        silently reading as either."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", ""),
+        ]
+
+    def test_a_row_written_before_the_origin_column_pairs_with_empty(self, draft):
+        """The landmine: a pre-#455 seven-cell row (date, mode, query,
+        asked, results, chars, collection) must still parse -- and must
+        not be silently skipped, which is what an unwidened `(6, 7)`
+        guard would do to it."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        path.write_text(path.read_text() + "| 2026-01-01 | search | old query | 15 | 15 | 100 | |\n")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("old query", ""),
+        ]
+
+    def test_a_row_written_before_the_collection_column_pairs_with_empty_origin_too(self, draft):
+        """A six-cell row -- pre-#254 -- pads all the way to eight, not
+        just to seven."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        path.write_text(path.read_text() + "| 2026-01-01 | search | ancient query | 15 | 15 | 100 |\n")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("ancient query", ""),
+        ]
+
+    def test_the_same_query_declared_and_extended_are_two_distinct_pairs(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "twin", 15, 15, 100, origin="declared")
+        dossier.log_retrieval(draft, "search", "twin", 15, 15, 100, origin="extended")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("twin", "declared"),
+            ("twin", "extended"),
+        ]
+
+    def test_a_revision_marker_contributes_no_pair(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
+        _retrieval.mark_revision(draft, "shorten the introduction")
+        dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100, origin="extended")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared"),
+            ("co-simulation", "extended"),
+        ]
+
+    def test_the_landmine_also_costs_correctly_not_only_undercounts_queries(self, draft):
+        """The bug report's other half: an eighth cell must not make the
+        whole row invisible to `retrieval_cost`, not only to
+        `recorded_queries`."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400, origin="declared")
+        assert _retrieval.retrieval_cost(dossier.dossier_dir(draft)) == (1, 2400)
+
+
 class TestSectionCitekeys:
     def test_maps_a_citekey_to_the_sections_citing_it(self, grounded):
         (grounded / "sections.md").write_text(

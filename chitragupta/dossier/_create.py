@@ -160,10 +160,19 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      written before this column existed reads, since an absent seventh
      cell is padded in the same way (#254). Without it, a scoped call and
      a corpus-wide one write byte-identical rows, and `dossier status`
-     re-asks a scoped draft's queries against the whole corpus. -->
+     re-asks a scoped draft's queries against the whole corpus.
 
-| date | mode | query | asked | results | chars | collection |
-|---|---|---|---|---|---|---|
+     `origin` is `declared` or `extended` (#455) -- whether the query came
+     verbatim from structure.md or was added with `--origin extended`
+     because a declared section came up thin. Empty for a call that named
+     neither, padded in the same way for a row written before this column
+     existed -- but unlike `collection`'s empty reading, that is not read
+     as "declared": a pre-structure.md call was neither. Without this
+     column, "did this draft follow the structure it declared?" has no
+     evidence to answer from. -->
+
+| date | mode | query | asked | results | chars | collection | origin |
+|---|---|---|---|---|---|---|---|
 """
 
 
