@@ -19,6 +19,7 @@ from chitragupta.dossier import (
     EVIDENCE_MD,
     FILES,
     REJECTED_MD,
+    STRUCTURE_MD,
     _resolve_dossier,
     digest,
     dossier_dir,
@@ -32,6 +33,7 @@ from chitragupta.dossier._drift import drift, drift_all
 from chitragupta.dossier._drift_report import _cmd_status_all
 from chitragupta.dossier._retrieval import RevisionCost, retrieval_cost_by_revision
 from chitragupta.dossier._sections import Section, sections
+from chitragupta.dossier._structure import StructureDrift, declared_vs_actual
 
 
 @dataclass
@@ -55,6 +57,7 @@ class Status:
     retrieval_chars: int = 0
     revisions: list[RevisionCost] = field(default_factory=list)
     fingerprint: Staleness | None = None
+    structure_drift: StructureDrift | None = None
 
     @property
     def drifted(self) -> bool:
@@ -129,6 +132,8 @@ def status(draft_or_dossier: Path) -> Status:
     if corpus_keys is not None:
         report.current = (len(corpus_keys), digest(corpus_keys))
         report.unconsidered = corpus_keys - cited_citekeys(dossier)
+    if (dossier / STRUCTURE_MD).is_file():
+        report.structure_drift = declared_vs_actual(dossier)
     return report
 
 
@@ -156,6 +161,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
     print(f"Dossier: {draft_relpath(report.dossier)}")
     _print_status_files(report)
     _print_status_retrieval(report)
+    _print_status_structure(report)
     print()
     _print_status_drift(report)
     if report.fingerprint is not None:
@@ -222,6 +228,26 @@ def _print_status_retrieval(report: Status) -> None:
         print("  by revision:")
         for segment in report.revisions:
             print(f"    {segment.label:<24}{segment.calls} call(s), {segment.chars:,} characters")
+
+
+def _print_status_structure(report: Status) -> None:
+    """"Did this draft follow structure.md?", from `declared_vs_actual`
+    (#455) -- absent when there is no structure.md to have followed."""
+    if report.structure_drift is None:
+        return
+    run = [q for s in report.structure_drift.sections.values() for q in s.run]
+    not_run = [
+        (s.heading, q) for s in report.structure_drift.sections.values() for q in s.not_run
+    ]
+    extended = report.structure_drift.extended
+    print(
+        f"\nStructure: {len(run)} declared quer{'y' if len(run) == 1 else 'ies'} run, "
+        f"{len(not_run)} not, {len(extended)} extended."
+    )
+    for heading, query in not_run:
+        print(f"  not run   {heading}: {query!r}")
+    for query in extended:
+        print(f"  extended  {query!r}")
 
 
 def _print_status_drift(report: Status) -> None:

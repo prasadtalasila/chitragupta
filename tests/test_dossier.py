@@ -2478,6 +2478,25 @@ class TestStatusCLIOutput:
         assert "1 call(s) returned" in out
         assert "1 kept, 1 rejected" in out
 
+    def test_no_structure_md_means_no_structure_block(self, draft, capsys):
+        dossier.init(draft, "survey")
+        dossier.main(["status", str(draft)])
+        assert "Structure:" not in capsys.readouterr().out
+
+    def test_structure_block_reports_run_not_run_and_extended(self, draft, capsys):
+        dossier.init(draft, "survey", structure=True)
+        (dossier.dossier_dir(draft) / "structure.md").write_text(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n"
+            "- timestep mismatch\n- solver divergence\n"
+        )
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100, origin="declared")
+        dossier.log_retrieval(draft, "search", "surrogate model", 5, 5, 100, origin="extended")
+        dossier.main(["status", str(draft)])
+        out = capsys.readouterr().out
+        assert "Structure: 1 declared query run, 1 not, 1 extended." in out
+        assert "not run   Failure modes: 'solver divergence'" in out
+        assert "extended  'surrogate model'" in out
+
     def test_a_dossier_with_no_fingerprint_reports_the_current_corpus_instead(self, draft, capsys):
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "scope.md").write_text("# Scope\n\n- genre: survey\n")

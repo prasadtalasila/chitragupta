@@ -123,7 +123,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta draft render <file>` | `--format`, `--documentclass`, `--fontsize`, `--papersize`, `--margin`, `--csl`, `--output-dir`, `--fragment`, `--no-collapse-citations` |
 | `chitragupta draft style <draft>...` | `--language`, `--json` |
 | `chitragupta draft retrieve` | `search`, `evidence` |
-| `chitragupta draft dossier` | `init`, `status`, `mark-revision`, `stamp`, `sections`, `brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`, `export`, `restore` |
+| `chitragupta draft dossier` | `init`, `status`, `mark-revision`, `stamp`, `sections`, `structure`, `brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`, `export`, `restore` |
 | `chitragupta draft spec` | `init`, `show`, `sign`, `status` |
 | `chitragupta draft unit` | `contract`, `accept`, `status` |
 | `chitragupta draft registry` | `build`, `check`, `excerpt` |
