@@ -302,11 +302,11 @@ separate, independently-shippable increment from the pipeline mechanism
 -- `chitragupta/`'s render and style-check contract is complete and tested
 without it, and a skill that never emits `<!-- equation: id -->` costs
 nothing today, the same way `.claude/skills/*.md` not yet emitting a
-`table:`/`figureref` marker never blocked #395/#411 landing first. Follow-up
-work: `survey-writer`, `textbook-chapter-writer`, `deep-research`,
-`draft-reviser` and `agenda-reviser` each learn the marker and the
-numbering guidance above, the same way they already know
-`tableref`/`figureref`.
+`table:`/`figureref` marker never blocked #395/#411 landing first.
+Follow-up work is issue #461, which also covers the uneven adoption
+`table:`/`figureref` themselves already have across the nine skills
+(e.g. `corpus-reviser` mentions neither, `deep-research` knows `table:`
+but not `figureref`) -- not only the new equation marker.
 
 ## 🔨 Build order
 
