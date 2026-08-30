@@ -259,8 +259,8 @@ draft exists cannot be a lightly-edited copy of the source.
 grouped by the section that leans on them -- so verbatim material has one
 legitimate home and the body prose has none. Four of the five genres emit
 one; `tutorial-writer` does not, and
-[GENRE.md](GENRE.md#-the-evidence-sidecar-decided-per-genre) records why
-for each. A sidecar is never committed: it carries wording from
+[DOSSIER.md](DOSSIER.md#-the-evidence-sidecar-decided-per-genre) records
+why for each. A sidecar is never committed: it carries wording from
 copyrighted sources.
 
 ### 🔎 Retrieval, references and rendering

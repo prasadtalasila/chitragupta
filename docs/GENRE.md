@@ -91,28 +91,6 @@ document that fails at both.
 | `agenda-reviser` | edits an existing draft in place | inherits the draft's | none | one agenda run, then one edit per unattended item |
 | `book-assembler` | `content/drafts/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
 
-### 📖 The evidence sidecar, decided per genre
-
-Four of the five drafting skills also render an **evidence sidecar** --
-`content/rendered/<topic>/<name>.evidence.{md,pdf}`, listing each cited
-source and the verbatim spans its dossier marked quotable
-([CLI.md](CLI.md#-chitragupta-draft-evidence)). It changes what a
-finished document set *looks like*, so each genre answers for itself
-rather than inheriting one switch, and the two answers that produce
-nothing are decisions on the record, not omissions:
-
-| Skill | Emits one? | Why |
-| --- | --- | --- |
-| `deep-research` | **yes** -- the strongest case | Showing its work is the product. A reader checking where the corpus disagrees with itself wants what each source actually said |
-| `survey-writer` | **yes** | Citation-dense, and its reader is mapping a field |
-| `thesis-chapter-writer` | **yes** | An examiner reading adversarially is the ideal reader for one. A sidecar is standalone and is never `\input` into the thesis, so none of the objections that keep a References section out of the fragment apply |
-| `textbook-chapter-writer` | **yes, and usually empty** | Deliberately citation-thin, sources cited for motivation, `evidence.md` kept thin by design -- so most chapters capture no `quote:` and nothing is written |
-| `tutorial-writer` | **no** | It cites only in "Where to go next", and a quotation has no use in a lesson: a learner at a keyboard needs the next command, and pausing to attribute a sentence is the digression this genre refuses |
-
-A sidecar is never committed -- `.gitignore` excludes it even under the
-example topic whose renders are tracked, because it carries verbatim
-wording from copyrighted sources.
-
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
 a machine-readable `provenance.json` in that same directory. Nothing under
