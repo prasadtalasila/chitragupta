@@ -1,7 +1,7 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
 Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
-**Seventeen of the original twenty-one items have shipped and have been
+**Eighteen of the original twenty-one items have shipped and have been
 removed from this document** rather than marked as done -- so everything
 below is still outstanding, which is what makes the list usable.
 
@@ -500,9 +500,9 @@ four abilities a RAG system should be evaluated on -- whether a system
 declines to answer when the retrieved material does not support an
 answer. **This project is designed around that behaviour and does not
 measure it.** Every genre skill is told to report thin coverage rather
-than pad it; [E4](#-e4-the-draft-is-the-query) sharpens it further with
-"an empty result means the claim cannot be grounded, so the sentence is
-cut". Nothing tests whether any of that actually happens.
+than pad it; E4 (shipped, #456) sharpens it further with "an empty
+result means the claim cannot be grounded, so the sentence is cut".
+Nothing tests whether any of that actually happens.
 
 The instrument is buildable without a model and without labels, because
 the corpus is closed and this repository already owns the trick:
@@ -520,7 +520,7 @@ says so. **Advisory, and the harder half is the ground truth rather than
 the check** -- a sub-theme the corpus covers thinly is not the same as
 one it does not cover, and conflating them would manufacture failures.
 
-Size: M. Depends on: nothing, though it reads best beside E4.
+Size: M. Depends on: nothing, though it reads best beside E4 (shipped, #456).
 
 ## 📐 Theme D: figure layout
 
@@ -694,9 +694,12 @@ supplying the structure before drafting, and hand-editing a draft
 afterwards. Both were already solved at *book* scale and neither at
 single-draft scale -- both have now shipped at single-draft scale too:
 supplying the structure (`outline.md`, #455) and noticing a hand edit
-(the draft fingerprint, #462).
-`plans/outline-driven-drafting-and-manual-edits.md` is the plan and
-carries the measurements for both; only E4 below is still open.
+(the draft fingerprint, #462) -- and so has the item that used the
+second of those, letting a hand-edited section's own prose drive one
+extra retrieval round (`chitragupta/retrieval_iterative.py`, #456).
+Nothing in Theme E remains open.
+`plans/outline-driven-drafting-and-manual-edits.md` and
+`plans/e4-draft-is-the-query.md` carry the measurements.
 
 Researched against four upstreams for this theme
 ([OpenScholar](https://github.com/AkariAsai/OpenScholar),
@@ -708,50 +711,6 @@ the four manufacture no queries at all**, and none verifies a citation --
 RAGFlow's only check on a model-emitted marker is `i < len(chunks)`, an
 array-bounds test. Nothing here is ported as text
 ([INSPIRATION.md](INSPIRATION.md)).
-
-### 🔁 E4: the draft is the query
-
-ITER-RETGEN (Shao et al., Findings of EMNLP 2023) forms its next
-retrieval query by concatenating the previous generation with the
-original question. **No model writes the query**, so the retrieval path
-stays deterministic -- which is why this is the one iterative method in
-[RAG.md](RAG.md)'s survey that survives this project's constraints
-intact.
-
-**Its `y_{t-1}` need not come from a model.** If a person supplies a
-starting draft, or hand-edits one, *their* prose is the query. That makes
-"give the pipeline a draft to work from, and revise it by hand later" the
-same loop with a human in the generation slot -- and it settles the same
-question outline-driven drafting (shipped: `outline.md`'s `brief`/`claim`
-split) had to answer for prose that enters the draft, because prose used
-as a **query** needs no provenance marker at all: it never enters the
-draft, so there is nothing to keep in sync and nothing to go stale.
-
-Three things this item must get right, each from a measurement rather
-than a preference:
-
-- **Two rounds, not three.** The paper's own answer-recall table gains
-  13.7-16.6 points at iteration 2 and about one point across iterations
-  3 to 7. FlashRAG's shipped implementation uses 3 and does not say why.
-- **Accumulate across rounds, then cap.** FlashRAG's `IterativePipeline`
-  discards the previous round's documents; its `IRCoT` dedupes by id and
-  merges scores with `max(old, new)` but never truncates, which is a live
-  crash in their tracker. Do both: merge, re-sort, **cap**.
-- **Bound the appended prose.** A long draft section swamps the
-  sub-theme's own terms in a bag-of-words score. Truncate explicitly and
-  say so, rather than silently clipping at a token limit.
-
-**The failure mode is documented and it argues for the human path.** The
-paper's error analysis finds 65% of failures retrieval-related, and
-**76.9% of those are retrieval misled by wrong reasoning in the first
-iteration** -- a bad draft becomes a bad query and entrenches itself. A
-human-supplied first draft largely sidesteps it. Note also the authors'
-own limitation: they did not test long-form generation, which is the only
-thing this pipeline does.
-
-Size: M. Depends on: the draft fingerprint (#454, [docs/DOSSIER.md](DOSSIER.md)'s
-"The draft fingerprint") -- shipped; a draft fingerprint is what says the
-query moved.
 
 ### 🧾 C5: the citekeys out must be the citekeys in
 
@@ -861,7 +820,7 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Seventeen items have shipped and have
+**Only unbuilt work appears here.** Eighteen items have shipped and have
 been removed from this document rather than marked -- what they became is
 described in [FEATURES.md](FEATURES.md), and how each was built is in the
 PR that closed it and in `plans/`. A roadmap that accumulates its own
@@ -875,8 +834,7 @@ is for.
 | 3 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
 | 4 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
 | 5 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 6 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | the draft fingerprint (shipped) |
-| 7 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 6 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -893,9 +851,7 @@ argument.** Check a new proposal against both before costing it.
 **Some items have written plans, and the entry says so where one
 exists.** `plans/` holds the implementation plan for a roadmap item whose
 design is genuinely underdetermined. Of the items still listed here,
-[B5](#-b5-pre-gate-self-feedback-loop) has one, and Theme E's
-remaining item, [E4](#-e4-the-draft-is-the-query), shares
-`plans/outline-driven-drafting-and-manual-edits.md`. Several more
+[B5](#-b5-pre-gate-self-feedback-loop) has one. Several more
 sit there for items that have since shipped, kept as worked examples of
 the convention. Most items need none: the entry above already names the
 files, the size and the dependencies, and for a mechanical change that is

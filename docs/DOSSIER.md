@@ -417,3 +417,28 @@ computes over a book's outline (`chitragupta.spec.digest`, a plain
 sha256[:12] of the text) -- not `dossier.digest`, the corpus
 fingerprint's function, which is order-independent over a *set of
 citekeys* and would not move at all for a reworded sentence.
+
+### 🔁 The fingerprint as a retrieval trigger (#456, FEATURE-ROADMAP.md's E4)
+
+A `CHANGED` fingerprint is also ITER-RETGEN's `y_{t-1}` (Shao et al.,
+*Findings of EMNLP 2023*, docs/RAG.md) with a person in the generation
+slot instead of a model: a hand-edited section's own prose can stand
+in for the paper's "previous generation" and drive one extra
+retrieval round for that section, rather than a plain single-round
+search. `draft-reviser` offers this once the four staleness findings
+above are settled, and only for a section `outline.md` declares a
+query for -- never applies it unasked, same as every other repair
+this fingerprint gates.
+
+```bash
+python -m chitragupta.draft retrieve search "<query>" \
+    --y-prev "<section's current prose>" --origin reground --log <draft>
+```
+
+Exactly two rounds, never more (`chitragupta/retrieval_iterative.py`):
+round 1 is the plain query, round 2 appends the prose (bounded to
+1500 characters, on a word boundary), and the two rounds' results are
+merged by citekey and capped back to `--k` -- accumulate, then cap,
+not FlashRAG's uncapped `IRCoT` merge. The prose itself never becomes
+draft content, an `evidence.md` block, or anything else persisted
+beyond the query string.

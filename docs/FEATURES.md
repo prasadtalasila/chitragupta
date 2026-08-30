@@ -246,6 +246,14 @@ draft actually ran what was declared, from `retrieval.md`'s `origin`
 column -- "did this draft follow its outline?" becomes decidable rather
 than trusted.
 
+**A hand-edited section's own prose can re-run its own retrieval
+(#456).** Once `dossier status` reports the draft fingerprint
+`CHANGED`, `draft-reviser` can offer one extra retrieval round for the
+section that changed, using the section's new wording as ITER-RETGEN's
+`y_{t-1}` (Shao et al., *Findings of EMNLP 2023*) -- a human in the
+generation slot a model would otherwise occupy. Exactly two rounds,
+merged and capped, never applied unasked.
+
 ### 📖 Evidence: `claim:` and `quote:`
 
 Kept evidence records what a source establishes in the drafter's own

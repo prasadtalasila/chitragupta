@@ -790,6 +790,13 @@ class TestDocsQuoteTheActualDefaults:
             f"{retrieval_cli.EVIDENCE_WINDOWS} x {retrieval_cli.EVIDENCE_CHARS} characters" in retr
         )
 
+    def test_y_prev_bound_is_pinned_in_cli_md(self):
+        from chitragupta import retrieval_iterative
+
+        cli = (config.shipped("docs", "CLI.md")).read_text(encoding="utf-8")
+        y_prev_row = next(line for line in cli.splitlines() if line.startswith("| `--y-prev"))
+        assert f"{retrieval_iterative.Y_PREV_MAX_CHARS} characters" in y_prev_row
+
 
 class TestLogNeverFailsTheSearch:
     """docs/CLI.md states that a `--log` problem is reported and skipped,

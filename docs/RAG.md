@@ -77,7 +77,7 @@ pipeline exactly:
 | Axis | The options | This pipeline |
 | --- | --- | --- |
 | **Paradigm** (Gao §II) | Naive -> Advanced -> Modular | **Advanced.** It has pre-retrieval (collection scoping) and post-retrieval (cap, optional rerank) around a fixed chain -- not Modular's swappable routing |
-| **Retrieval process** (Gao Table I) | Once / Iterative / Recursive / Adaptive | **Once.** Every genre skill retrieves per sub-theme and moves on. [E4](FEATURE-ROADMAP.md) would make it *Iterative*; nothing here is Recursive or Adaptive |
+| **Retrieval process** (Gao Table I) | Once / Iterative / Recursive / Adaptive | **Once**, for every genre skill's ordinary retrieve-per-sub-theme flow. `draft-reviser`'s hand-edit re-grounding round (#456, "Stage 11" below) is the one opt-in, two-round exception; nothing here is Recursive or Adaptive |
 | **Granularity** (Gao §III-A2) | Token / Phrase / Sentence / Proposition / Chunk / Doc | **Doc** for BM25 -- the coarsest rung -- and Chunk for the dense path |
 | **Integration layer** (Fan §2.3) | Input / Intermediate / Output | **Input, necessarily.** The other two need white-box access to the generator, which a harness-driven model does not give |
 
@@ -557,9 +557,12 @@ contains no instructions for a wide search, so it cannot drift into one
 -- has no equivalent in any of the six. **The trade-off is that the
 dossier is only as good as what was written into it**, and a skill that
 skips recording a rejection costs the next revision the most expensive
-work in the pipeline. Its one real remaining gap is honest: nothing
-fingerprints the draft, so on *hand-edit* detection this pipeline is no
-better than the other six.
+work in the pipeline. That gap closed at #462 (the draft fingerprint,
+which says *that* a section moved) and #456
+(`chitragupta/retrieval_iterative.py`, which uses what moved): a
+hand-edited section's own prose can stand in for `y_{t-1}` and drive
+one extra, capped retrieval round for that section, merged with what
+round 1 already found rather than replacing it.
 
 ## 📏 Evaluation, which is a stage too
 
@@ -599,11 +602,11 @@ that list is uncomfortable in a useful way:
 
 **Negative rejection is the interesting gap**, because this project has
 the *behaviour* and no measurement of it. Every genre skill is told to
-report thin coverage rather than pad it, and
-[E4](FEATURE-ROADMAP.md)'s empty-result-is-informative rule sharpens it
-further -- but nothing anywhere tests whether a draft actually declines
-to claim what the corpus cannot support. It is the one ability on that
-list this pipeline is *designed* around, and the one with no number.
+report thin coverage rather than pad it, and E4 (shipped, #456)'s
+empty-result-is-informative rule sharpens it further -- but nothing
+anywhere tests whether a draft actually declines to claim what the
+corpus cannot support. It is the one ability on that list this pipeline
+is *designed* around, and the one with no number.
 
 **Two findings from Gao §VII-B are worth carrying, both
 counterintuitive.** Retrieved noise is not uniformly harmful: one study
