@@ -122,6 +122,12 @@ added. Measured 2026-08-04, end to end over the whole 501-PDF corpus:
 | 12 | 310.2s | 1213.9s | **3.91x** |
 | 24 | 237.6s | 1139.0s | **4.79x** |
 
+> **Re-measured 2026-08-30:** 12 workers **745.9s** OCR on / **244.6s**
+> off (3.05x), 24 workers **628.1s** / **184.5s** (3.40x) -- a smaller
+> cost of OCR than the 3.91x/4.79x above. **Read that as the CPU count,
+> not as software:** OCR is CPU-bound, those runs used up to 80.6% of 96
+> cores, and the run above was capped at 48.
+
 Equivalently, from the other side -- **turning OCR on roughly halves how
 well the pipeline parallelises**:
 
@@ -247,6 +253,18 @@ one run from an empty ledger; all reported 501 parsed, 0 failed:
 | 24 | 235.0s | 14.17x | 59% | median of 3 |
 | **32** | **223.4s** | **14.91x** | 47% | median of 3 |
 | 48 | 221.4s | 15.04x | 31% | median of 3 |
+
+> **Re-measured 2026-08-30, and the base rate moved.** On the same host
+> but with **96 allowed CPUs rather than 48**, and a corpus that has
+> drifted to 497 PDFs, every arm came out ~21% faster: serial
+> **2568.9s (42m 49s)** against the 3330.4s above, and 12 workers
+> **245.6s** against 310.2s. **The efficiency curve is unchanged** --
+> 102%/95%/87% at 4/8/12 against 104%/97%/89% here -- so the shape of
+> this table still holds and only its base rate is stale. The evidence
+> that the gain is model-load-side rather than GPU-side, including the
+> one arm that came out *slower*, is in
+> [bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md).
+> Treat the two as different machine configurations, not as a correction.
 
 - **Scaling holds far better than previously documented.** 97% at 8
   workers, 89% at 12. The 104% at 4 is not an error: one worker does not
