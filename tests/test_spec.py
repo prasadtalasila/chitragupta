@@ -354,6 +354,52 @@ def test_a_signoff_without_chapter_lines_records_nothing_per_chapter(book):
     assert spec.recorded_chapter_digests(book) == {}
 
 
+def test_a_part_after_the_last_chapter_closes_that_chapters_span():
+    """A part heading ends the chapter above it, so the last chapter is
+    recorded even when nothing follows it but a `##`."""
+    digests = spec.chapter_digests(TWO_CHAPTERS + "\n## Part II: Later {#part-later}\n")
+    assert sorted(digests) == ["ch-cost", "ch-what"]
+    assert digests["ch-what"] == spec.chapter_digests(TWO_CHAPTERS)["ch-what"]
+
+
+def test_status_says_which_chapter_left_the_outline(book, capsys):
+    write_spec(book, TWO_CHAPTERS)
+    spec.main(["sign", str(book)])
+    write_spec(book, TWO_CHAPTERS[: TWO_CHAPTERS.index("### Chapter 2")])
+    capsys.readouterr()
+    assert spec.main(["status", str(book)]) == 1
+    assert "no longer in the outline: ch-cost" in capsys.readouterr().out
+
+
+def test_status_says_so_when_the_edit_is_outside_every_chapter(book, capsys):
+    """A preamble edit moves the file's digest but no chapter's. Saying
+    that is the difference between "re-read fifteen chapters" and
+    "re-approve; nothing you wrote has moved"."""
+    write_spec(book, TWO_CHAPTERS)
+    spec.main(["sign", str(book)])
+    write_spec(book, TWO_CHAPTERS.replace("# Composable Digital Twins", "# Composable Twins"))
+    capsys.readouterr()
+    assert spec.main(["status", str(book)]) == 1
+    assert "no chapter changed" in capsys.readouterr().out
+
+
+def test_status_names_no_chapters_for_a_signoff_written_before_they_existed(book, capsys):
+    write_spec(book, TWO_CHAPTERS)
+    spec.signoff_path(book).parent.mkdir(parents=True, exist_ok=True)
+    spec.signoff_path(book).write_text(
+        f"# Sign-off\n\n- spec digest: `{spec.digest(TWO_CHAPTERS)}`\n", encoding="utf-8"
+    )
+    write_spec(book, edit_one_chapter(TWO_CHAPTERS))
+    capsys.readouterr()
+    assert spec.main(["status", str(book)]) == 1
+    out = capsys.readouterr().out
+    assert "changed since sign-off" in out
+    # Nothing per-chapter is claimed either way: the file on disk records
+    # no chapter digests, so there is no finer answer to give.
+    assert "chapters changed:" not in out
+    assert "no chapter changed" not in out
+
+
 def test_status_names_only_the_chapter_that_moved(book, capsys):
     write_spec(book, TWO_CHAPTERS)
     spec.main(["sign", str(book)])
