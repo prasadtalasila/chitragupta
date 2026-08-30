@@ -187,7 +187,7 @@ means they are checked only when someone remembers to.
 | Some sentence refers to each numbered equation | §12 | yes | no -- and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
 | Whether an equation should have been numbered at all -- standalone, final-of-derivation, reused | §12 | **no** | no -- unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
 | A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | yes -- the repair is the link, which is wording, and there is no evidential claim for it to misrepresent |
-| A fenced code line fits the page's column limit | §14 | yes | no -- the fix is a shorter line, and only the author knows which part of it is expendable |
+| A fenced code line fits the page's column limit | §14 | yes | yes today, inherited from the `prose` class rather than argued for this rule -- and it is the row where that inheritance is worth re-examining, because the repair edits a code sample rather than prose, and dropping an argument to fit the width leaves a command that still reads plausibly and no longer works |
 | A very long token has a breakable form | §14 | yes | **no, and it is not checked at all** -- unlike every other row, the mechanical proxy was built and then rejected: TeX hyphenates long English words correctly, so the rule raised 36 candidates on this project's own book and none of them had a repair that was not a worse word. §14 has the measurement |
 | The reread as the reader | §6 | no | never |
 
